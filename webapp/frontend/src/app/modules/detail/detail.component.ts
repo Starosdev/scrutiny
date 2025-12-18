@@ -447,7 +447,6 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         });
 
         dialogRef.afterClosed().subscribe((result: undefined | null | { muted: boolean }) => {
-            console.log('Settings dialog result', result);
             if (!result) return;
             if (result.muted !== this.device.muted) {
                 this._detailService.setMuted(this.device.wwn, result.muted).toPromise().then(() => {
