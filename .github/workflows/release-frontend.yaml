@@ -5,10 +5,6 @@ on:
   release:
     # Only use the types keyword to narrow down the activity types that will trigger your workflow.
     types: [published]
-
-permissions:
-  contents: write
-
 jobs:
   release-frontend:
     name: Release Frontend
@@ -16,11 +12,11 @@ jobs:
     container: node:lts-slim
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.release.tag_name }}
-      - name: Generate frontend version information
-        run: cd webapp/frontend && ./git.version.sh
+          ref: ${{github.event.release.tag_name}}
+      - name: "Generate frontend version information"
+        run: "cd webapp/frontend && ./git.version.sh"
       - name: Build Frontend
         run: |
           apt-get update && apt-get install -y make
@@ -50,8 +46,12 @@ jobs:
           gh release upload "$VERSION" SHA256SUMS.txt --repo ${{ github.repository }} --clobber
 
       - name: Upload Frontend Asset
-        uses: softprops/action-gh-release@v2
-        with:
-          files: scrutiny-web-frontend.tar.gz
+        id: upload-release-asset3
+        uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          asset_path: './scrutiny-web-frontend.tar.gz'
+          asset_name: scrutiny-web-frontend.tar.gz
+          asset_content_type: application/gzip
