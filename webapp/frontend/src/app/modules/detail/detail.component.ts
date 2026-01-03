@@ -481,4 +481,52 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         // return item.id || index;
     }
 
+    /**
+     * Calculate TBs written from LBAs
+     * Uses logical block size from smartctl data (defaults to 512 bytes if not available)
+     */
+    getTBsWritten(): number | null {
+        if (!this.smart_results || this.smart_results.length === 0) {
+            return null;
+        }
+
+        const lbaWrittenAttr = this.smart_results[0]?.attrs?.['241'];
+        if (!lbaWrittenAttr || lbaWrittenAttr.raw_value === undefined || lbaWrittenAttr.raw_value === null) {
+            return null;
+        }
+
+        // Use logical block size from smartctl data, default to 512 bytes if not available
+        const blockSize = this.smart_results[0]?.logical_block_size || 512;
+        const lbaWritten = lbaWrittenAttr.raw_value;
+
+        // Convert LBAs to TBs: (LBAs * block_size) / (1024^4)
+        const tbsWritten = (lbaWritten * blockSize) / (1024 * 1024 * 1024 * 1024);
+
+        return tbsWritten;
+    }
+
+    /**
+     * Calculate TBs read from LBAs
+     * Uses logical block size from smartctl data (defaults to 512 bytes if not available)
+     */
+    getTBsRead(): number | null {
+        if (!this.smart_results || this.smart_results.length === 0) {
+            return null;
+        }
+
+        const lbaReadAttr = this.smart_results[0]?.attrs?.['242'];
+        if (!lbaReadAttr || lbaReadAttr.raw_value === undefined || lbaReadAttr.raw_value === null) {
+            return null;
+        }
+
+        // Use logical block size from smartctl data, default to 512 bytes if not available
+        const blockSize = this.smart_results[0]?.logical_block_size || 512;
+        const lbaRead = lbaReadAttr.raw_value;
+
+        // Convert LBAs to TBs: (LBAs * block_size) / (1024^4)
+        const tbsRead = (lbaRead * blockSize) / (1024 * 1024 * 1024 * 1024);
+
+        return tbsRead;
+    }
+
 }
