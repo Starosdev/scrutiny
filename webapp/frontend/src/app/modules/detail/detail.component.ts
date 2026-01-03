@@ -291,15 +291,15 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     isAta(): boolean {
-        return this.device.device_protocol === 'ATA'
+        return this.device?.device_protocol === 'ATA'
     }
 
     isScsi(): boolean {
-        return this.device.device_protocol === 'SCSI'
+        return this.device?.device_protocol === 'SCSI'
     }
 
     isNvme(): boolean {
-        return this.device.device_protocol === 'NVMe'
+        return this.device?.device_protocol === 'NVMe'
     }
 
     private _generateSmartAttributeTableDataSource(smartResults: SmartModel[]): SmartAttributeModel[] {
@@ -437,6 +437,8 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     openSettingsDialog(): void {
+        if (!this.device) return;
+
         const dialogRef = this.dialog.open(DetailSettingsComponent, {
             width: '600px',
             data: {
@@ -446,7 +448,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         });
 
         dialogRef.afterClosed().subscribe((result: undefined | null | { muted: boolean, label: string }) => {
-            if (!result) return;
+            if (!result || !this.device) return;
 
             const promises: Promise<any>[] = [];
 
@@ -535,7 +537,8 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         return null;
-      
+    }
+
     openHistoryDialog(attribute: SmartAttributeModel, event: Event): void {
         event.stopPropagation(); // Prevent row expansion when clicking sparkline
         const dialogData: AttributeHistoryData = {
@@ -548,5 +551,4 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             data: dialogData
         });
     }
-
 }
