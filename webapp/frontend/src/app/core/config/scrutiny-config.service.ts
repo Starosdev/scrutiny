@@ -44,7 +44,7 @@ export class ScrutinyConfigService {
                 this._config.next(settings);
                 return settings
             })
-        ).subscribe((resp: any) => {})
+        ).subscribe()
     }
 
     get config$(): Observable<AppConfig> {

@@ -105,7 +105,7 @@ export class DashboardDeviceComponent implements OnInit {
         });
 
         dialogRef.afterClosed().subscribe(result => {
-            if (result.success) {
+            if (result?.success) {
                 this.deviceDeleted.emit(this.deviceSummary.device.wwn)
             }
         });

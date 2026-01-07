@@ -248,7 +248,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
     openDialog(): void {
         const dialogRef = this.dialog.open(DashboardSettingsComponent, {width: '600px',});
 
-        dialogRef.afterClosed().subscribe(result => {});
+        dialogRef.afterClosed().subscribe();
     }
 
     onDeviceDeleted(wwn: string): void {
