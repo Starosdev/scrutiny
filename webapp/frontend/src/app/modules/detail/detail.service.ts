@@ -57,4 +57,11 @@ export class DetailService {
         const action = muted ? 'mute' : 'unmute';
         return this._httpClient.post(getBasePath() + `/api/device/${wwn}/${action}`, {});
     }
+
+    /**
+     * Set device label (custom user-provided name)
+     */
+    setLabel(wwn: string, label: string): Observable<any> {
+        return this._httpClient.post(getBasePath() + `/api/device/${wwn}/label`, { label });
+    }
 }
