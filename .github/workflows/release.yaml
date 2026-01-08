@@ -30,23 +30,21 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: |
-          npm install -g \
-            semantic-release \
-            @semantic-release/commit-analyzer \
-            @semantic-release/release-notes-generator \
-            @semantic-release/changelog \
-            @semantic-release/exec \
-            @semantic-release/git \
-            @semantic-release/github \
-            conventional-changelog-conventionalcommits
-
       - name: Semantic Release
         id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          semantic_version: 24
+          extra_plugins: |
+            @semantic-release/commit-analyzer
+            @semantic-release/release-notes-generator
+            @semantic-release/changelog
+            @semantic-release/exec
+            @semantic-release/git
+            @semantic-release/github
+            conventional-changelog-conventionalcommits
         env:
           GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
-        run: npx semantic-release
 
   build:
     name: Build Binaries
@@ -117,6 +115,12 @@ jobs:
       - name: List files
         run: ls -la
 
+      - name: Generate checksums
+        run: |
+          sha256sum scrutiny-* > SHA256SUMS.txt
+          echo "Generated checksums:"
+          cat SHA256SUMS.txt
+
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
@@ -128,3 +132,5 @@ jobs:
               gh release upload "$VERSION" "$file" --repo ${{ github.repository }} --clobber
             fi
           done
+          echo "Uploading SHA256SUMS.txt..."
+          gh release upload "$VERSION" SHA256SUMS.txt --repo ${{ github.repository }} --clobber

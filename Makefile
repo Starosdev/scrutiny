@@ -38,7 +38,11 @@ ifdef GOARM
 COLLECTOR_BINARY_NAME := $(COLLECTOR_BINARY_NAME)-$(GOARM)
 WEB_BINARY_NAME := $(WEB_BINARY_NAME)-$(GOARM)
 endif
+# Add .exe extension when building for Windows (native or cross-compile)
 ifeq ($(OS),Windows_NT)
+COLLECTOR_BINARY_NAME := $(COLLECTOR_BINARY_NAME).exe
+WEB_BINARY_NAME := $(WEB_BINARY_NAME).exe
+else ifeq ($(GOOS),windows)
 COLLECTOR_BINARY_NAME := $(COLLECTOR_BINARY_NAME).exe
 WEB_BINARY_NAME := $(WEB_BINARY_NAME).exe
 endif
@@ -72,7 +76,7 @@ binary-test-coverage: binary-dep
 
 .PHONY: binary-collector
 binary-collector: binary-dep
-	go build -ldflags "$(LD_FLAGS)" -o $(COLLECTOR_BINARY_NAME) $(STATIC_TAGS) ./collector/cmd/collector-metrics/
+	go build -buildvcs=false -ldflags "$(LD_FLAGS)" -o $(COLLECTOR_BINARY_NAME) $(STATIC_TAGS) ./collector/cmd/collector-metrics/
 ifneq ($(OS),Windows_NT)
 	chmod +x $(COLLECTOR_BINARY_NAME)
 	file $(COLLECTOR_BINARY_NAME) || true
@@ -82,7 +86,7 @@ endif
 
 .PHONY: binary-web
 binary-web: binary-dep
-	go build -ldflags "$(LD_FLAGS)" -o $(WEB_BINARY_NAME) $(STATIC_TAGS) ./webapp/backend/cmd/scrutiny/
+	go build -buildvcs=false -ldflags "$(LD_FLAGS)" -o $(WEB_BINARY_NAME) $(STATIC_TAGS) ./webapp/backend/cmd/scrutiny/
 ifneq ($(OS),Windows_NT)
 	chmod +x $(WEB_BINARY_NAME)
 	file $(WEB_BINARY_NAME) || true

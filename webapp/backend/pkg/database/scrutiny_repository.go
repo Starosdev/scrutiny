@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/influxdata/influxdb-client-go/v2/domain"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
+	gormLogger "gorm.io/gorm/logger"
 )
 
 const (
@@ -36,28 +39,20 @@ const (
 	DURATION_KEY_MONTH   = "month"
 	DURATION_KEY_YEAR    = "year"
 	DURATION_KEY_FOREVER = "forever"
-)
 
-//// GormLogger is a custom logger for Gorm, making it use logrus.
-//type GormLogger struct{ Logger logrus.FieldLogger }
-//
-//// Print handles log events from Gorm for the custom logger.
-//func (gl *GormLogger) Print(v ...interface{}) {
-//	switch v[0] {
-//	case "sql":
-//		gl.Logger.WithFields(
-//			logrus.Fields{
-//				"module":  "gorm",
-//				"type":    "sql",
-//				"rows":    v[5],
-//				"src_ref": v[1],
-//				"values":  v[4],
-//			},
-//		).Debug(v[3])
-//	case "log":
-//		gl.Logger.WithFields(logrus.Fields{"module": "gorm", "type": "log"}).Print(v[2])
-//	}
-//}
+	// InfluxDB time range literals
+	INFLUX_DURATION_1_DAY    = "-1d"
+	INFLUX_DURATION_1_WEEK   = "-1w"
+	INFLUX_DURATION_1_MONTH  = "-1mo"
+	INFLUX_DURATION_1_YEAR   = "-1y"
+	INFLUX_DURATION_10_YEARS = "-10y"
+	INFLUX_NOW               = "now()"
+
+	// Aggregation window resolutions
+	RESOLUTION_10_MINUTES = "10m"
+	RESOLUTION_1_HOUR     = "1h"
+	RESOLUTION_1_DAY      = "1d"
+)
 
 func NewScrutinyRepository(appConfig config.Interface, globalLogger logrus.FieldLogger) (DeviceRepo, error) {
 	backgroundContext := context.Background()
@@ -92,9 +87,30 @@ func NewScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 		"temp_store":   "MEMORY",
 		"synchronous":  "NORMAL",
 	})
+
+	// Configure GORM logger based on debug mode
+	// In production (non-debug), use Silent mode for no performance impact
+	// In debug mode, log all SQL queries to help with debugging
+	var dbLogLevel gormLogger.LogLevel
+	if strings.ToLower(appConfig.GetString("log.level")) == "debug" {
+		dbLogLevel = gormLogger.Info // Log all SQL queries
+		globalLogger.Debug("GORM database query logging enabled")
+	} else {
+		dbLogLevel = gormLogger.Silent // No logging in production
+	}
+
+	gormLoggerConfig := gormLogger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+		gormLogger.Config{
+			SlowThreshold:             time.Second,   // Slow SQL threshold
+			LogLevel:                  dbLogLevel,    // Log level
+			IgnoreRecordNotFoundError: true,          // Ignore ErrRecordNotFound error
+			Colorful:                  true,          // Enable color output
+		},
+	)
+
 	database, err := gorm.Open(sqlite.Open(appConfig.GetString("web.database.location")+pragmaStr), &gorm.Config{
-		//TODO: figure out how to log database queries again.
-		//Logger: logger
+		Logger:                                   gormLoggerConfig,
 		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	if err != nil {
@@ -110,8 +126,6 @@ func NewScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 		return nil, fmt.Errorf("Failed to connect to database! - %v", err)
 	}
 	globalLogger.Infof("Successfully connected to scrutiny sqlite db: %s\n", appConfig.GetString("web.database.location"))
-
-	//database.SetLogger()
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// InfluxDB setup
@@ -491,31 +505,31 @@ func (sr *scrutinyRepository) lookupDuration(durationKey string) []string {
 	switch durationKey {
 	case DURATION_KEY_DAY:
 		//data stored in the last day
-		return []string{"-1d", "now()"}
+		return []string{INFLUX_DURATION_1_DAY, INFLUX_NOW}
 	case DURATION_KEY_WEEK:
 		//data stored in the last week
-		return []string{"-1w", "now()"}
+		return []string{INFLUX_DURATION_1_WEEK, INFLUX_NOW}
 	case DURATION_KEY_MONTH:
 		// data stored in the last month (after the first week)
-		return []string{"-1mo", "-1w"}
+		return []string{INFLUX_DURATION_1_MONTH, INFLUX_DURATION_1_WEEK}
 	case DURATION_KEY_YEAR:
 		// data stored in the last year (after the first month)
-		return []string{"-1y", "-1mo"}
+		return []string{INFLUX_DURATION_1_YEAR, INFLUX_DURATION_1_MONTH}
 	case DURATION_KEY_FOREVER:
 		//data stored before the last year
-		return []string{"-10y", "-1y"}
+		return []string{INFLUX_DURATION_10_YEARS, INFLUX_DURATION_1_YEAR}
 	}
-	return []string{"-1w", "now()"}
+	return []string{INFLUX_DURATION_1_WEEK, INFLUX_NOW}
 }
 
 func (sr *scrutinyRepository) lookupResolution(durationKey string) string {
 	switch durationKey {
 	case DURATION_KEY_DAY:
 		// Return data with higher resolution for daily summaries
-		return "10m"
+		return RESOLUTION_10_MINUTES
 	default:
 		// Return data with 1h resolution for other summaries
-		return "1h"
+		return RESOLUTION_1_HOUR
 	}
 }
 

@@ -11,7 +11,7 @@ describe('DetailSettingsComponent', () => {
     TestBed.configureTestingModule({
       declarations: [ DetailSettingsComponent ],
       providers: [
-        { provide: MAT_DIALOG_DATA, useValue: { curMuted: false } }
+        { provide: MAT_DIALOG_DATA, useValue: { curMuted: false, curLabel: '' } }
       ]
     })
     .compileComponents();
