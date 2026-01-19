@@ -2,6 +2,51 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.10.0](https://github.com/Starosdev/scrutiny/compare/v1.9.1...v1.10.0) (2026-01-19)
+
+### Features
+
+* **dashboard:** add more sorting options ([#80](https://github.com/Starosdev/scrutiny/issues/80)) ([88ef36e](https://github.com/Starosdev/scrutiny/commit/88ef36e0d227437a9cbc4d8da9ac01bb6a80d5d5)), closes [#72](https://github.com/Starosdev/scrutiny/issues/72)
+* **docker:** add ZFS collector to omnibus image ([#82](https://github.com/Starosdev/scrutiny/issues/82)) ([9ed219d](https://github.com/Starosdev/scrutiny/commit/9ed219d0e9779682f661c7dd073360f52179ee5e))
+* **frontend:** add attribute history dialog for sparkline charts ([a1a67cf](https://github.com/Starosdev/scrutiny/commit/a1a67cf01063ac31c135ba39b9b4b88f994e7ed9)), closes [#71](https://github.com/Starosdev/scrutiny/issues/71)
+
+### Bug Fixes
+
+* **ci:** limit ZFS collector to amd64 only ([46e4938](https://github.com/Starosdev/scrutiny/commit/46e4938b52fdbd98497a4d3ba4e6ea4e432d84ba))
+* **ci:** remove arm/v7 from ZFS collector platforms ([d5ce8be](https://github.com/Starosdev/scrutiny/commit/d5ce8bee221b446592abe9fdd1e960563f44f551))
+* **docker:** enable contrib repo for zfsutils-linux package ([c9fc565](https://github.com/Starosdev/scrutiny/commit/c9fc565b39d529f1f64397784fa4acef3edf9fb1))
+* **frontend:** add debounce to sparkline hover to prevent flickering ([e987360](https://github.com/Starosdev/scrutiny/commit/e987360312be7de732a180bb70d6011ad70b7c52)), closes [#71](https://github.com/Starosdev/scrutiny/issues/71)
+* **frontend:** disable tooltips on sparkline charts ([853d580](https://github.com/Starosdev/scrutiny/commit/853d5802b6cc9812ca2a1f611f7f9ccb5db91bda)), closes [#71](https://github.com/Starosdev/scrutiny/issues/71)
+* **frontend:** prevent tooltip cutoff on sparkline charts ([1377179](https://github.com/Starosdev/scrutiny/commit/13771792c4c8474249bed66618c5430f58124ae3)), closes [#71](https://github.com/Starosdev/scrutiny/issues/71)
+* **frontend:** use ApexCharts native events for tooltip overflow fix ([0a16d4e](https://github.com/Starosdev/scrutiny/commit/0a16d4e127a2128d14bb5385f1d5c49819fa86ee)), closes [#71](https://github.com/Starosdev/scrutiny/issues/71)
+* **frontend:** use fixed tooltip position for sparkline charts ([a81e08a](https://github.com/Starosdev/scrutiny/commit/a81e08a6a9331daf1fb3a04d0005da2b909ca04a)), closes [#71](https://github.com/Starosdev/scrutiny/issues/71)
+
+## [1.9.1](https://github.com/Starosdev/scrutiny/compare/v1.9.0...v1.9.1) (2026-01-19)
+
+### Bug Fixes
+
+* **frontend:** resolve issues related to display zfs pool data ([#87](https://github.com/Starosdev/scrutiny/issues/87)) ([00f9011](https://github.com/Starosdev/scrutiny/commit/00f9011b3c745b91fd8749bb77fbfc8c0012b37a))
+
+## [1.8.0](https://github.com/Starosdev/scrutiny/compare/v1.7.2...v1.8.0) (2026-01-17)
+
+### Features
+
+* **thresholds:** add metadata for all ATA Device Statistics ([6602bf8](https://github.com/Starosdev/scrutiny/commit/6602bf83aea4fbc625a71e1232b732078b511694))
+* **thresholds:** add metadata for all remaining unknown attributes ([163284c](https://github.com/Starosdev/scrutiny/commit/163284c196eca32a4ed25beaefb9c6bc536f91be))
+* **thresholds:** add metadata for Page 3 and Page 5 device statistics ([72a7ea8](https://github.com/Starosdev/scrutiny/commit/72a7ea84ad8d60a1c66d7d9adf42c254bc4dd863))
+* **thresholds:** add metadata for remaining unknown attributes ([7b0acd0](https://github.com/Starosdev/scrutiny/commit/7b0acd0b572a392c9c74c5f61f2860e671b44b3e))
+
+### Bug Fixes
+
+* **frontend:** handle device statistics display in detail view ([1f81689](https://github.com/Starosdev/scrutiny/commit/1f816898da5c628bdd29ef7825e1e38c5e3c9ecc))
+* **smart:** add support for ATA Device Statistics (enterprise SSD metrics) ([79d7841](https://github.com/Starosdev/scrutiny/commit/79d784140d7faee7c979047843d4825316bf3603)), closes [#7](https://github.com/Starosdev/scrutiny/issues/7)
+
+## [1.7.2](https://github.com/Starosdev/scrutiny/compare/v1.7.1...v1.7.2) (2026-01-17)
+
+### Bug Fixes
+
+* **mock:** add ZFS pool management methods to MockDeviceRepo ([af2d4bd](https://github.com/Starosdev/scrutiny/commit/af2d4bdb78c9b932a5ba63b73e274212b4386d8e))
+
 ## [1.7.1](https://github.com/Starosdev/scrutiny/compare/v1.7.0...v1.7.1) (2026-01-09)
 
 ### Bug Fixes

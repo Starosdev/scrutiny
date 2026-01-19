@@ -4,6 +4,7 @@ import {ApexOptions} from 'ng-apexcharts';
 import {AppConfig} from 'app/core/config/app.config';
 import {DetailService} from './detail.service';
 import {DetailSettingsComponent} from 'app/layout/common/detail-settings/detail-settings.component';
+import {AttributeHistoryDialogComponent, AttributeHistoryData} from 'app/layout/common/attribute-history-dialog/attribute-history-dialog.component';
 import {MatDialog as MatDialog} from '@angular/material/dialog';
 import {MatSort} from '@angular/material/sort';
 import {MatTableDataSource as MatTableDataSource} from '@angular/material/table';
@@ -211,7 +212,8 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             if (!attributeMetadata) {
                 return attributeData.value
             } else if (attributeMetadata.display_type === 'raw') {
-                return attributeData.raw_value
+                // Device statistics (devstat_*) don't have raw_value, use value instead
+                return attributeData.raw_value !== undefined ? attributeData.raw_value : attributeData.value
             } else if (attributeMetadata.display_type === 'transformed' && attributeData.transformed_value) {
                 return attributeData.transformed_value
             } else {
@@ -387,30 +389,8 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                     enabled: false
                 }
             },
-            // theme:{
-            //     // @ts-ignore
-            //     // mode:
-            //     mode: 'dark',
-            // },
             tooltip: {
-                fixed: {
-                    enabled: false
-                },
-                x: {
-                    show: true
-                },
-                y: {
-                    title: {
-                        formatter: (seriesName) => {
-                            return '';
-                        }
-                    }
-                },
-                marker: {
-                    show: false
-                },
-                theme: this.determineTheme(this.config)
-
+                enabled: false
             },
             stroke: {
                 width: 2,
@@ -432,7 +412,23 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     // -----------------------------------------------------------------------------------------------------
 
     toHex(decimalNumb: number | string): string {
-        return '0x' + Number(decimalNumb).toString(16).padStart(2, '0').toUpperCase()
+        // Device statistics use string-based IDs like "devstat_7_8"
+        // Only convert numeric values to hex
+        const num = Number(decimalNumb);
+        if (isNaN(num)) {
+            return '';
+        }
+        return '0x' + num.toString(16).padStart(2, '0').toUpperCase()
+    }
+
+    formatAttributeId(attributeId: number | string): string {
+        // For string-based IDs (device statistics), just return the ID
+        if (typeof attributeId === 'string' && isNaN(Number(attributeId))) {
+            return attributeId;
+        }
+        // For numeric IDs, show both decimal and hex
+        const hex = this.toHex(attributeId);
+        return hex ? `${attributeId} (${hex})` : `${attributeId}`;
     }
 
     toggleOnlyCritical(): void {
@@ -539,6 +535,18 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         return null;
+      
+    openHistoryDialog(attribute: SmartAttributeModel, event: Event): void {
+        event.stopPropagation(); // Prevent row expansion when clicking sparkline
+        const dialogData: AttributeHistoryData = {
+            attributeName: this.getAttributeName(attribute),
+            chartData: attribute.chartData,
+            isDark: this.determineTheme(this.config) === 'dark'
+        };
+        this.dialog.open(AttributeHistoryDialogComponent, {
+            width: '600px',
+            data: dialogData
+        });
     }
 
 }
