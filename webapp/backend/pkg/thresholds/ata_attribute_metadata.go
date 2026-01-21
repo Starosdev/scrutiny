@@ -1588,8 +1588,10 @@ var AtaMetadata = map[int]AtaAttributeMetadata{
 // AtaDeviceStatisticsMetadata provides metadata for ATA Device Statistics (GP Log 0x04)
 // These are string-keyed using the format "devstat_<page>_<offset>"
 // Key device statistics pages:
-// - Page 0: General Statistics (power-on hours, logical sectors written/read)
-// - Page 1: Free-fall Statistics
+// - Page 1: General Statistics (power-on hours, logical sectors written/read)
+// - Page 2: Free-fall Statistics
+// - Page 3: Rotating Media Statistics
+// - Page 4: General Errors Statistics
 // - Page 5: Temperature Statistics
 // - Page 7: SSD Statistics (Percentage Used Endurance Indicator)
 type AtaDeviceStatisticsMetadata struct {
@@ -1609,43 +1611,43 @@ var AtaDeviceStatsMetadata = map[string]AtaDeviceStatisticsMetadata{
 		Description: "Contains a vendor specific estimate of the percentage of the device life used based on the actual device usage and the manufacturer's prediction of device life. A value of 100 indicates that the estimated endurance of the device has been consumed, but may not indicate a device failure.",
 		DisplayType: AtaSmartAttributeDisplayTypeRaw,
 	},
-	// Page 0 (General Statistics)
-	"devstat_0_8": {
+	// Page 1 (General Statistics)
+	"devstat_1_8": {
 		DisplayName: "Lifetime Power-On Resets",
 		Ideal:       ObservedThresholdIdealLow,
 		Critical:    false,
 		Description: "Number of power-on reset events since device manufacture.",
 		DisplayType: AtaSmartAttributeDisplayTypeRaw,
 	},
-	"devstat_0_16": {
+	"devstat_1_16": {
 		DisplayName: "Power-on Hours (Device Stats)",
 		Ideal:       "",
 		Critical:    false,
 		Description: "Total accumulated power-on time in hours from Device Statistics.",
 		DisplayType: AtaSmartAttributeDisplayTypeRaw,
 	},
-	"devstat_0_24": {
+	"devstat_1_24": {
 		DisplayName: "Logical Sectors Written",
 		Ideal:       "",
 		Critical:    false,
 		Description: "Total logical sectors written to the device.",
 		DisplayType: AtaSmartAttributeDisplayTypeRaw,
 	},
-	"devstat_0_32": {
+	"devstat_1_32": {
 		DisplayName: "Number of Write Commands",
 		Ideal:       "",
 		Critical:    false,
 		Description: "Total number of write commands processed.",
 		DisplayType: AtaSmartAttributeDisplayTypeRaw,
 	},
-	"devstat_0_40": {
+	"devstat_1_40": {
 		DisplayName: "Logical Sectors Read",
 		Ideal:       "",
 		Critical:    false,
 		Description: "Total logical sectors read from the device.",
 		DisplayType: AtaSmartAttributeDisplayTypeRaw,
 	},
-	"devstat_0_48": {
+	"devstat_1_48": {
 		DisplayName: "Number of Read Commands",
 		Ideal:       "",
 		Critical:    false,
@@ -1693,49 +1695,6 @@ var AtaDeviceStatsMetadata = map[string]AtaDeviceStatisticsMetadata{
 		Ideal:       ObservedThresholdIdealLow,
 		Critical:    false,
 		Description: "Time in minutes the device has operated above the maximum recommended temperature.",
-		DisplayType: AtaSmartAttributeDisplayTypeRaw,
-	},
-	// Page 1 (General Error Statistics)
-	"devstat_1_16": {
-		DisplayName: "Number of Resets Between Command Acceptance and Completion",
-		Ideal:       ObservedThresholdIdealLow,
-		Critical:    false,
-		Description: "Number of times a reset occurred between command acceptance and command completion.",
-		DisplayType: AtaSmartAttributeDisplayTypeRaw,
-	},
-	"devstat_1_24": {
-		DisplayName: "Physical Element Status Changed",
-		Ideal:       "",
-		Critical:    false,
-		Description: "Number of times the physical element status has changed.",
-		DisplayType: AtaSmartAttributeDisplayTypeRaw,
-	},
-	"devstat_1_32": {
-		DisplayName: "Number of Reserved Block Reassignments",
-		Ideal:       ObservedThresholdIdealLow,
-		Critical:    false,
-		Description: "Number of reserved blocks that have been used for reassignment.",
-		DisplayType: AtaSmartAttributeDisplayTypeRaw,
-	},
-	"devstat_1_40": {
-		DisplayName: "Logical Sectors Read",
-		Ideal:       "",
-		Critical:    false,
-		Description: "Total logical sectors read from the device.",
-		DisplayType: AtaSmartAttributeDisplayTypeRaw,
-	},
-	"devstat_1_48": {
-		DisplayName: "Number of Read Commands",
-		Ideal:       "",
-		Critical:    false,
-		Description: "Total number of read commands received by the device.",
-		DisplayType: AtaSmartAttributeDisplayTypeRaw,
-	},
-	"devstat_1_56": {
-		DisplayName: "Number of High Priority Unload Events",
-		Ideal:       ObservedThresholdIdealLow,
-		Critical:    false,
-		Description: "Number of emergency head unloads due to shock or error conditions.",
 		DisplayType: AtaSmartAttributeDisplayTypeRaw,
 	},
 	// Page 2 (Free-Fall Statistics)
