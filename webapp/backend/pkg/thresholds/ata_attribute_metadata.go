@@ -1696,13 +1696,6 @@ var AtaDeviceStatsMetadata = map[string]AtaDeviceStatisticsMetadata{
 		DisplayType: AtaSmartAttributeDisplayTypeRaw,
 	},
 	// Page 1 (General Error Statistics)
-	"devstat_1_8": {
-		DisplayName: "Number of Reported Uncorrectable Errors",
-		Ideal:       ObservedThresholdIdealLow,
-		Critical:    true,
-		Description: "Total number of uncorrectable errors reported to the host.",
-		DisplayType: AtaSmartAttributeDisplayTypeRaw,
-	},
 	"devstat_1_16": {
 		DisplayName: "Number of Resets Between Command Acceptance and Completion",
 		Ideal:       ObservedThresholdIdealLow,
@@ -1755,10 +1748,10 @@ var AtaDeviceStatsMetadata = map[string]AtaDeviceStatisticsMetadata{
 	},
 	// Page 4 (General Errors Statistics)
 	"devstat_4_8": {
-		DisplayName: "Number of Reported I/O Error Log Entries",
+		DisplayName: "Number of Reported Uncorrectable Errors",
 		Ideal:       ObservedThresholdIdealLow,
-		Critical:    false,
-		Description: "Number of I/O errors logged in the device error log.",
+		Critical:    true,
+		Description: "Total number of uncorrectable errors reported to the host.",
 		DisplayType: AtaSmartAttributeDisplayTypeRaw,
 	},
 	"devstat_4_16": {
