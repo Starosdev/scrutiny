@@ -1614,7 +1614,7 @@ var AtaDeviceStatsMetadata = map[string]AtaDeviceStatisticsMetadata{
 	// Page 1 (General Statistics)
 	"devstat_1_8": {
 		DisplayName: "Lifetime Power-On Resets",
-		Ideal:       ObservedThresholdIdealLow,
+		Ideal:       "",
 		Critical:    false,
 		Description: "Number of power-on reset events since device manufacture.",
 		DisplayType: AtaSmartAttributeDisplayTypeRaw,
