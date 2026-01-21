@@ -10,6 +10,11 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatTableModule } from '@angular/material/table';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialogModule } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { MatInputModule } from '@angular/material/input';
+import { FormsModule } from '@angular/forms';
 import { LOCALE_ID } from '@angular/core';
 import { of, Subject } from 'rxjs';
 import { SmartModel } from 'app/core/models/measurements/smart-model';
@@ -17,6 +22,7 @@ import { SmartAttributeModel } from 'app/core/models/measurements/smart-attribut
 import { DeviceModel } from 'app/core/models/device-model';
 import { AppConfig } from 'app/core/config/app.config';
 import { SharedModule } from 'app/shared/shared.module';
+import { DetailSettingsModule } from 'app/layout/common/detail-settings/detail-settings.module';
 
 describe('DetailComponent', () => {
   let component: DetailComponent;
@@ -52,12 +58,18 @@ describe('DetailComponent', () => {
       declarations: [DetailComponent],
       imports: [
         SharedModule,
+        FormsModule,
         MatButtonModule,
         MatIconModule,
         MatMenuModule,
         MatTableModule,
         MatSortModule,
-        MatTooltipModule
+        MatTooltipModule,
+        MatDialogModule,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatInputModule,
+        DetailSettingsModule
       ],
       providers: [
         { provide: DetailService, useValue: mockDetailService },
