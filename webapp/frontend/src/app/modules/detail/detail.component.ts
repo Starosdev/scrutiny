@@ -519,8 +519,31 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     /**
+     * Convert raw attribute value to TB based on the attribute name from smartctl.
+     * Different vendors use different units for attributes 241/242:
+     * - Intel/Crucial/Micron SSDs: 32MiB units (name contains "32MiB")
+     * - Some SSDs: GiB units (name contains "GiB")
+     * - Default: LBA units (multiply by logical block size)
+     */
+    private convertToTB(rawValue: number, attrName: string | undefined): number {
+        const TB = 1024 * 1024 * 1024 * 1024;
+
+        if (attrName?.includes('32MiB')) {
+            // Intel, Crucial/Micron, InnoDisk SSDs use 32 MiB per unit
+            return (rawValue * 32 * 1024 * 1024) / TB;
+        } else if (attrName?.includes('GiB')) {
+            // Some SSDs report in GiB units
+            return rawValue / 1024;
+        } else {
+            // Default: assume LBA units, multiply by logical block size
+            const blockSize = this.smart_results[0]?.logical_block_size || 512;
+            return (rawValue * blockSize) / TB;
+        }
+    }
+
+    /**
      * Calculate TBs written from LBAs (ATA) or data units (NVMe)
-     * Uses logical block size from smartctl data (defaults to 512 bytes if not available)
+     * Uses attribute name from smartctl to determine correct unit conversion
      */
     getTBsWritten(): number | null {
         if (!this.smart_results || this.smart_results.length === 0) {
@@ -532,11 +555,10 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             return null;
         }
 
-        // ATA: Use attribute 241 with logical block size
+        // ATA: Use attribute 241 with unit detection based on attribute name
         const ataAttr = attrs['241'];
         if (ataAttr?.raw_value != null) {
-            const blockSize = this.smart_results[0]?.logical_block_size || 512;
-            return (ataAttr.raw_value * blockSize) / (1024 * 1024 * 1024 * 1024);
+            return this.convertToTB(ataAttr.raw_value, ataAttr.name);
         }
 
         // NVMe: data_units_written is in 512KB (512 * 1000 bytes) units per NVMe spec
@@ -550,7 +572,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     /**
      * Calculate TBs read from LBAs (ATA) or data units (NVMe)
-     * Uses logical block size from smartctl data (defaults to 512 bytes if not available)
+     * Uses attribute name from smartctl to determine correct unit conversion
      */
     getTBsRead(): number | null {
         if (!this.smart_results || this.smart_results.length === 0) {
@@ -562,11 +584,10 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             return null;
         }
 
-        // ATA: Use attribute 242 with logical block size
+        // ATA: Use attribute 242 with unit detection based on attribute name
         const ataAttr = attrs['242'];
         if (ataAttr?.raw_value != null) {
-            const blockSize = this.smart_results[0]?.logical_block_size || 512;
-            return (ataAttr.raw_value * blockSize) / (1024 * 1024 * 1024 * 1024);
+            return this.convertToTB(ataAttr.raw_value, ataAttr.name);
         }
 
         // NVMe: data_units_read is in 512KB (512 * 1000 bytes) units per NVMe spec

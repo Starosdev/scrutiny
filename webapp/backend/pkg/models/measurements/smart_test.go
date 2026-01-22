@@ -79,6 +79,7 @@ func TestSmart_Flatten_ATA(t *testing.T) {
 	require.Equal(t, map[string]string{"device_protocol": "ATA", "device_wwn": "test-wwn"}, tags)
 	require.Equal(t, map[string]interface{}{
 		"attr.1.attribute_id":      "1",
+		"attr.1.name":              "",
 		"attr.1.failure_rate":      float64(0),
 		"attr.1.raw_string":        "0",
 		"attr.1.raw_value":         int64(0),
@@ -91,6 +92,7 @@ func TestSmart_Flatten_ATA(t *testing.T) {
 		"attr.1.worst":             int64(100),
 
 		"attr.2.attribute_id":      "2",
+		"attr.2.name":              "",
 		"attr.2.failure_rate":      float64(0),
 		"attr.2.raw_string":        "108",
 		"attr.2.raw_value":         int64(108),

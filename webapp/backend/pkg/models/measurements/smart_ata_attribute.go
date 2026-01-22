@@ -11,6 +11,7 @@ import (
 
 type SmartAtaAttribute struct {
 	AttributeId int    `json:"attribute_id"`
+	Name        string `json:"name,omitempty"`
 	Value       int64  `json:"value"`
 	Threshold   int64  `json:"thresh"`
 	Worst       int64  `json:"worst"`
@@ -39,6 +40,7 @@ func (sa *SmartAtaAttribute) Flatten() map[string]interface{} {
 
 	return map[string]interface{}{
 		fmt.Sprintf("attr.%s.attribute_id", idString): idString,
+		fmt.Sprintf("attr.%s.name", idString):         sa.Name,
 		fmt.Sprintf("attr.%s.value", idString):        sa.Value,
 		fmt.Sprintf("attr.%s.worst", idString):        sa.Worst,
 		fmt.Sprintf("attr.%s.thresh", idString):       sa.Threshold,
@@ -65,6 +67,8 @@ func (sa *SmartAtaAttribute) Inflate(key string, val interface{}) {
 		if err == nil {
 			sa.AttributeId = attrId
 		}
+	case "name":
+		sa.Name = val.(string)
 	case "value":
 		sa.Value = val.(int64)
 	case "worst":
