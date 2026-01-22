@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.13.1](https://github.com/Starosdev/scrutiny/compare/v1.13.0...v1.13.1) (2026-01-22)
+
+### Bug Fixes
+
+* **zfs:** ensure pool data updates are persisted to database ([#100](https://github.com/Starosdev/scrutiny/issues/100)) ([e37a924](https://github.com/Starosdev/scrutiny/commit/e37a924bf2f85e4f7a39b9bc5254d6e99d0fcb42)), closes [#91](https://github.com/Starosdev/scrutiny/issues/91)
+
 ## [1.13.0](https://github.com/Starosdev/scrutiny/compare/v1.12.1...v1.13.0) (2026-01-22)
 
 ### Features
