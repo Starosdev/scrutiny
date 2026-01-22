@@ -101,9 +101,9 @@ export class ZFSPoolCardComponent implements OnInit {
             case 'none':
                 return 'Never';
             case 'scanning':
-                return `In Progress (${pool.scrub_percent}%)`;
+                return `In Progress (${pool.scrub_percent_complete}%)`;
             case 'finished':
-                return moment(pool.scrub_end).fromNow();
+                return moment(pool.scrub_end_time).fromNow();
             case 'canceled':
                 return 'Canceled';
             default:
