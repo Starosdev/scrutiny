@@ -932,8 +932,8 @@ func TestFromCollectorSmartInfo_ATA_DeviceStatistics_InvalidValue(t *testing.T) 
 		} `json:"table"`
 	}{
 		{
-			Number: 1,
-			Name:   "General Statistics",
+			Number: 7,
+			Name:   "Solid State Device Statistics",
 			Table: []struct {
 				Offset int    `json:"offset"`
 				Name   string `json:"name"`
@@ -948,8 +948,8 @@ func TestFromCollectorSmartInfo_ATA_DeviceStatistics_InvalidValue(t *testing.T) 
 				} `json:"flags"`
 			}{
 				{
-					Offset: 40,
-					Name:   "Number of Mechanical Start Failures",
+					Offset: 8,
+					Name:   "Percentage Used Endurance Indicator",
 					Value:  420_000_000_000, // 420 billion - clearly corrupted data
 					Flags: struct {
 						Value                 int  `json:"value"`
@@ -975,9 +975,9 @@ func TestFromCollectorSmartInfo_ATA_DeviceStatistics_InvalidValue(t *testing.T) 
 		"Device status should be Passed when devstat value is impossibly high (invalid)")
 
 	// The attribute should be marked as invalid, not failed
-	devstat := smartMdl.Attributes["devstat_1_40"].(*measurements.SmartAtaDeviceStatAttribute)
+	devstat := smartMdl.Attributes["devstat_7_8"].(*measurements.SmartAtaDeviceStatAttribute)
 	require.True(t, pkg.AttributeStatusHas(devstat.Status, pkg.AttributeStatusInvalidValue),
-		"devstat_1_40 should be marked as InvalidValue")
+		"devstat_7_8 should be marked as InvalidValue")
 	require.False(t, pkg.AttributeStatusHas(devstat.Status, pkg.AttributeStatusFailedScrutiny),
-		"devstat_1_40 should NOT be marked as FailedScrutiny")
+		"devstat_7_8 should NOT be marked as FailedScrutiny")
 }
