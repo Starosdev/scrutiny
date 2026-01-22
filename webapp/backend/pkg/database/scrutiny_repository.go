@@ -384,42 +384,58 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 
 	// Get parser flux query result
 	//appConfig.GetString("web.influxdb.bucket")
+	// SSD health fields:
+	// - NVMe: attr.percentage_used.value (0-100%, higher = more worn)
+	// - ATA DevStats: attr.devstat_7_8.raw_value (0-100%, higher = more worn)
+	// - ATA Wearout: attr.177.value, attr.233.value, attr.231.value, attr.232.value (0-100%, higher = healthier)
 	queryStr := fmt.Sprintf(`
   	import "influxdata/influxdb/schema"
   	bucketBaseName = "%s"
 
+	// Fields to retrieve for summary (basic metrics + SSD health attributes)
+	summaryFields = (r) =>
+		r["_field"] == "temp" or
+		r["_field"] == "power_on_hours" or
+		r["_field"] == "date" or
+		r["_field"] == "attr.percentage_used.value" or
+		r["_field"] == "attr.devstat_7_8.raw_value" or
+		r["_field"] == "attr.177.value" or
+		r["_field"] == "attr.233.value" or
+		r["_field"] == "attr.231.value" or
+		r["_field"] == "attr.232.value"
+
 	dailyData = from(bucket: bucketBaseName)
 	|> range(start: -10y, stop: now())
 	|> filter(fn: (r) => r["_measurement"] == "smart" )
-	|> filter(fn: (r) => r["_field"] == "temp" or r["_field"] == "power_on_hours" or r["_field"] == "date")
+	|> filter(fn: summaryFields)
 	|> last()
 	|> schema.fieldsAsCols()
 	|> group(columns: ["device_wwn"])
-	
+
 	weeklyData = from(bucket: bucketBaseName + "_weekly")
 	|> range(start: -10y, stop: now())
 	|> filter(fn: (r) => r["_measurement"] == "smart" )
-	|> filter(fn: (r) => r["_field"] == "temp" or r["_field"] == "power_on_hours" or r["_field"] == "date")
+	|> filter(fn: summaryFields)
 	|> last()
 	|> schema.fieldsAsCols()
 	|> group(columns: ["device_wwn"])
-	
+
 	monthlyData = from(bucket: bucketBaseName + "_monthly")
 	|> range(start: -10y, stop: now())
 	|> filter(fn: (r) => r["_measurement"] == "smart" )
-	|> filter(fn: (r) => r["_field"] == "temp" or r["_field"] == "power_on_hours" or r["_field"] == "date")
+	|> filter(fn: summaryFields)
 	|> last()
 	|> schema.fieldsAsCols()
 	|> group(columns: ["device_wwn"])
-	
+
 	yearlyData = from(bucket: bucketBaseName + "_yearly")
 	|> range(start: -10y, stop: now())
 	|> filter(fn: (r) => r["_measurement"] == "smart" )
-	|> filter(fn: (r) => r["_field"] == "temp" or r["_field"] == "power_on_hours" or r["_field"] == "date")
+	|> filter(fn: summaryFields)
 	|> last()
 	|> schema.fieldsAsCols()
 	|> group(columns: ["device_wwn"])
-	
+
 	union(tables: [dailyData, weeklyData, monthlyData, yearlyData])
 	|> sort(columns: ["_time"], desc: false)
 	|> group(columns: ["device_wwn"])
@@ -448,11 +464,43 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 					summaries[deviceWWN.(string)] = &models.DeviceSummary{}
 				}
 
-				summaries[deviceWWN.(string)].SmartResults = &models.SmartSummary{
+				smartSummary := &models.SmartSummary{
 					Temp:          result.Record().Values()["temp"].(int64),
 					PowerOnHours:  result.Record().Values()["power_on_hours"].(int64),
 					CollectorDate: result.Record().Values()["_time"].(time.Time),
 				}
+
+				// Extract SSD health metrics
+				values := result.Record().Values()
+
+				// Check for percentage_used (NVMe) or devstat_7_8 (ATA device statistics)
+				// These represent "percentage used" where higher = more worn
+				if val, ok := values["attr.percentage_used.value"]; ok && val != nil {
+					if intVal, ok := val.(int64); ok {
+						smartSummary.PercentageUsed = &intVal
+					}
+				} else if val, ok := values["attr.devstat_7_8.raw_value"]; ok && val != nil {
+					if intVal, ok := val.(int64); ok {
+						smartSummary.PercentageUsed = &intVal
+					}
+				}
+
+				// Check for ATA wearout attributes (177, 233, 231, 232)
+				// These represent "health remaining" where higher = healthier
+				// Priority order: 177 (Samsung/Crucial), 233 (Intel), 231 (Life Left), 232 (Endurance)
+				var wearoutVal *int64
+				for _, attrId := range []string{"177", "233", "231", "232"} {
+					fieldName := fmt.Sprintf("attr.%s.value", attrId)
+					if val, ok := values[fieldName]; ok && val != nil {
+						if intVal, ok := val.(int64); ok {
+							wearoutVal = &intVal
+							break
+						}
+					}
+				}
+				smartSummary.WearoutValue = wearoutVal
+
+				summaries[deviceWWN.(string)].SmartResults = smartSummary
 			}
 		}
 		if result.Err() != nil {

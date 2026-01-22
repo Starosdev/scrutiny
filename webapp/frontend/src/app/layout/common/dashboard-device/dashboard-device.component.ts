@@ -111,4 +111,59 @@ export class DashboardDeviceComponent implements OnInit {
             }
         });
     }
+
+    /**
+     * Get SSD health value for display.
+     * Returns an object with the value (0-100) and whether it represents "remaining" health
+     * (where higher is better) or "used" percentage (where lower is better).
+     *
+     * - percentage_used (NVMe/ATA devstat): 0-100%, higher = more worn
+     * - wearout_value (ATA 177/233/231/232): 0-100%, higher = healthier
+     */
+    getSSDHealth(): { value: number; isRemaining: boolean } | null {
+        if (!this.deviceSummary?.smart) {
+            return null;
+        }
+
+        // Priority: percentage_used first (more direct metric), then wearout_value
+        if (this.deviceSummary.smart.percentage_used != null) {
+            return {
+                value: this.deviceSummary.smart.percentage_used,
+                isRemaining: false // percentage_used: higher = more worn
+            };
+        }
+
+        if (this.deviceSummary.smart.wearout_value != null) {
+            return {
+                value: this.deviceSummary.smart.wearout_value,
+                isRemaining: true // wearout_value: higher = healthier
+            };
+        }
+
+        return null;
+    }
+
+    /**
+     * Get display label for SSD health metric
+     */
+    getSSDHealthLabel(): string {
+        const health = this.getSSDHealth();
+        if (!health) {
+            return '';
+        }
+        return health.isRemaining ? 'Health' : 'Used';
+    }
+
+    /**
+     * Get formatted display value for SSD health
+     * For "remaining" health, shows as-is (e.g., "95%")
+     * For "used" percentage, shows as-is (e.g., "5%")
+     */
+    getSSDHealthDisplay(): string {
+        const health = this.getSSDHealth();
+        if (!health) {
+            return '--';
+        }
+        return `${health.value}%`;
+    }
 }
