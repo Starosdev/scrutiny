@@ -2,12 +2,13 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
-	"gorm.io/gorm/clause"
+	"gorm.io/gorm"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -16,20 +17,48 @@ import (
 
 // RegisterZFSPool inserts or updates a ZFS pool in the database
 func (sr *scrutinyRepository) RegisterZFSPool(ctx context.Context, pool models.ZFSPool) error {
-	// First, handle the pool itself (upsert)
-	if err := sr.gormClient.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "guid"}},
-		DoUpdates: clause.AssignmentColumns([]string{
-			"name", "host_id", "status", "health",
-			"size", "allocated", "free", "fragmentation", "capacity_percent",
-			"ashift",
-			"scrub_state", "scrub_start_time", "scrub_end_time",
-			"scrub_scanned_bytes", "scrub_issued_bytes", "scrub_total_bytes",
-			"scrub_errors_count", "scrub_percent_complete",
-			"total_read_errors", "total_write_errors", "total_checksum_errors",
-		}),
-	}).Create(&pool).Error; err != nil {
-		return err
+	// Ensure UpdatedAt is set to current time
+	pool.UpdatedAt = time.Now()
+
+	// Check if pool already exists
+	var existing models.ZFSPool
+	result := sr.gormClient.WithContext(ctx).Where("guid = ?", pool.GUID).First(&existing)
+
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		// New pool - create it
+		if err := sr.gormClient.WithContext(ctx).Create(&pool).Error; err != nil {
+			return err
+		}
+	} else if result.Error != nil {
+		return result.Error
+	} else {
+		// Existing pool - update it
+		if err := sr.gormClient.WithContext(ctx).Model(&existing).Updates(map[string]interface{}{
+			"name":                   pool.Name,
+			"host_id":                pool.HostID,
+			"status":                 pool.Status,
+			"health":                 pool.Health,
+			"size":                   pool.Size,
+			"allocated":              pool.Allocated,
+			"free":                   pool.Free,
+			"fragmentation":          pool.Fragmentation,
+			"capacity_percent":       pool.CapacityPercent,
+			"ashift":                 pool.Ashift,
+			"scrub_state":            pool.ScrubState,
+			"scrub_start_time":       pool.ScrubStartTime,
+			"scrub_end_time":         pool.ScrubEndTime,
+			"scrub_scanned_bytes":    pool.ScrubScannedBytes,
+			"scrub_issued_bytes":     pool.ScrubIssuedBytes,
+			"scrub_total_bytes":      pool.ScrubTotalBytes,
+			"scrub_errors_count":     pool.ScrubErrorsCount,
+			"scrub_percent_complete": pool.ScrubPercentComplete,
+			"total_read_errors":      pool.TotalReadErrors,
+			"total_write_errors":     pool.TotalWriteErrors,
+			"total_checksum_errors":  pool.TotalChecksumErrors,
+			"updated_at":             pool.UpdatedAt,
+		}).Error; err != nil {
+			return err
+		}
 	}
 
 	// Handle vdevs - delete existing and recreate
