@@ -166,6 +166,7 @@ func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, tableItems []collecto
 	for _, collectorAttr := range tableItems {
 		attrModel := SmartAtaAttribute{
 			AttributeId: collectorAttr.ID,
+			Name:        collectorAttr.Name,
 			Value:       collectorAttr.Value,
 			Worst:       collectorAttr.Worst,
 			Threshold:   collectorAttr.Thresh,
