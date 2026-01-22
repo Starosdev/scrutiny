@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.12.1](https://github.com/Starosdev/scrutiny/compare/v1.12.0...v1.12.1) (2026-01-22)
+
+### Bug Fixes
+
+* **smart:** prevent false failures from corrupted ATA device statistics ([#98](https://github.com/Starosdev/scrutiny/issues/98)) ([126307f](https://github.com/Starosdev/scrutiny/commit/126307f3301960ef989bf0da1b2bb60cd3f547cd)), closes [#84](https://github.com/Starosdev/scrutiny/issues/84) [#84](https://github.com/Starosdev/scrutiny/issues/84)
+
 ## [1.12.0](https://github.com/Starosdev/scrutiny/compare/v1.11.0...v1.12.0) (2026-01-22)
 
 ### Features
