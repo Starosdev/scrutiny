@@ -24,4 +24,10 @@ type SmartSummary struct {
 	CollectorDate time.Time `json:"collector_date,omitempty"`
 	Temp          int64     `json:"temp,omitempty"`
 	PowerOnHours  int64     `json:"power_on_hours,omitempty"`
+
+	// SSD Health Metrics (nullable - only present for SSDs)
+	// PercentageUsed: NVMe percentage_used or ATA devstat_7_8 (0-100%, higher = more worn)
+	PercentageUsed *int64 `json:"percentage_used,omitempty"`
+	// WearoutValue: ATA attributes 177, 233, 231, 232 (0-100%, higher = healthier)
+	WearoutValue *int64 `json:"wearout_value,omitempty"`
 }
