@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.13.2](https://github.com/Starosdev/scrutiny/compare/v1.13.1...v1.13.2) (2026-01-22)
+
+### Bug Fixes
+
+* **smart:** correct TB written/read calculation for Intel SSDs ([#101](https://github.com/Starosdev/scrutiny/issues/101)) ([ebef580](https://github.com/Starosdev/scrutiny/commit/ebef580da4e35aa403d374bf150c4b81b304fb1c)), closes [#95](https://github.com/Starosdev/scrutiny/issues/95) [#96](https://github.com/Starosdev/scrutiny/issues/96) [#95](https://github.com/Starosdev/scrutiny/issues/95) [#93](https://github.com/Starosdev/scrutiny/issues/93) [#93](https://github.com/Starosdev/scrutiny/issues/93)
+
 ## [1.13.1](https://github.com/Starosdev/scrutiny/compare/v1.13.0...v1.13.1) (2026-01-22)
 
 ### Bug Fixes
