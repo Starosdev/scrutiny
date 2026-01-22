@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.13.0](https://github.com/Starosdev/scrutiny/compare/v1.12.1...v1.13.0) (2026-01-22)
+
+### Features
+
+* **dashboard:** add SSD health metrics to dashboard cards ([#99](https://github.com/Starosdev/scrutiny/issues/99)) ([d615d78](https://github.com/Starosdev/scrutiny/commit/d615d78bc626630b9accdec39c9e8b6eefcc71ce)), closes [#95](https://github.com/Starosdev/scrutiny/issues/95) [#96](https://github.com/Starosdev/scrutiny/issues/96) [#95](https://github.com/Starosdev/scrutiny/issues/95)
+
 ## [1.12.1](https://github.com/Starosdev/scrutiny/compare/v1.12.0...v1.12.1) (2026-01-22)
 
 ### Bug Fixes
