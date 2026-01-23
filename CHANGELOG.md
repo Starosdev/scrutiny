@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.14.0](https://github.com/Starosdev/scrutiny/compare/v1.13.6...v1.14.0) (2026-01-23)
+
+### Features
+
+* **backend:** add SMART attribute overrides support ([#118](https://github.com/Starosdev/scrutiny/issues/118)) ([e113d1f](https://github.com/Starosdev/scrutiny/commit/e113d1f7ab1d2a022e9d12a380abd229aeaad022))
+
 ## [1.13.6](https://github.com/Starosdev/scrutiny/compare/v1.13.5...v1.13.6) (2026-01-23)
 
 ### Bug Fixes
