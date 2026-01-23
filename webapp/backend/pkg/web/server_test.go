@@ -80,6 +80,21 @@ type ServerTestSuite struct {
 	Basepath string
 }
 
+// SetupSuite checks if InfluxDB is available before running integration tests.
+// If InfluxDB is not reachable, the entire test suite is skipped with a helpful message.
+func (suite *ServerTestSuite) SetupSuite() {
+	influxHost := "localhost"
+	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
+		influxHost = "influxdb"
+	}
+
+	client := &http.Client{Timeout: 2 * time.Second}
+	_, err := client.Get(fmt.Sprintf("http://%s:8086/api/v2/setup", influxHost))
+	if err != nil {
+		suite.T().Skip("Skipping integration tests: InfluxDB not available at " + influxHost + ":8086. See CLAUDE.md for setup instructions.")
+	}
+}
+
 func TestServerTestSuite_WithEmptyBasePath(t *testing.T) {
 	emptyBasePathSuite := new(ServerTestSuite)
 	emptyBasePathSuite.Basepath = ""
