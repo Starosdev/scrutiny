@@ -18,6 +18,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
 	"github.com/containrrr/shoutrrr"
 	shoutrrrTypes "github.com/containrrr/shoutrrr/pkg/types"
@@ -32,7 +33,7 @@ const NotifyFailureTypeSmartFailure = "SmartFailure"
 const NotifyFailureTypeScrutinyFailure = "ScrutinyFailure"
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
-func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, c *gin.Context, deviceRepo database.DeviceRepo) bool {
+func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
 	// 1. check if the device is healthy
 	if device.DeviceStatus == pkg.DeviceStatusPassed {
 		logger.Debugf("ShouldNotify: skipping device %s - device status is passed", device.WWN)
@@ -77,6 +78,21 @@ func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs me
 			continue
 		}
 
+		// Check if attribute is ignored by user-configured override
+		if cfg != nil {
+			var protocol string
+			if device.IsScsi() {
+				protocol = pkg.DeviceProtocolScsi
+			} else if device.IsNvme() {
+				protocol = pkg.DeviceProtocolNvme
+			} else {
+				protocol = pkg.DeviceProtocolAta
+			}
+			if result := overrides.Apply(cfg, protocol, attrId, device.WWN); result != nil && result.ShouldIgnore {
+				continue
+			}
+		}
+
 		// If the user only wants to consider critical attributes, we have to check
 		// if the not-passing attribute is critical or not
 		if statusFilterAttributes == pkg.MetricsStatusFilterAttributesCritical {
@@ -105,7 +121,7 @@ func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs me
 			}
 		}
 
-		// Record any attribute that doesn't get skipped by the above two checks
+		// Record any attribute that doesn't get skipped by the above checks
 		failingAttributes = append(failingAttributes, attrId)
 	}
 

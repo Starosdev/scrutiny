@@ -88,6 +88,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 		appConfig.GetBool(fmt.Sprintf("%s.metrics.repeat_notifications", config.DB_USER_SETTINGS_SUBKEY)),
 		c,
 		deviceRepo,
+		appConfig,
 	) {
 		//send notifications
 
