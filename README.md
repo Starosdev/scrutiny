@@ -23,7 +23,7 @@ This is an actively maintained fork of [AnalogJ/scrutiny](https://github.com/Ana
 
 | | Original | This Fork |
 |---|---|---|
-| **Latest Version** | v0.8.1 (Apr 2024) | v1.6.x (Active) |
+| **Latest Version** | v0.8.1 (Apr 2024) | v1.13.x (Active) |
 | **Frontend** | Angular 13 | Angular 21 |
 | **Status** | Minimal updates | Actively maintained |
 | **Community PRs** | Many pending | Merged |
@@ -325,7 +325,9 @@ We use SemVer for versioning. For the versions available, see the tags on this r
 
 **Fork Maintainer:** [@Starosdev](https://github.com/Starosdev) - Maintaining this fork with continued development and community contributions.
 
-This fork exists to keep Scrutiny alive and growing. Full credit for the original vision and architecture goes to AnalogJ. We're just carrying the torch forward.
+This fork exists to keep Scrutiny alive and growing. Full credit for the original vision and architecture goes to AnalogJ.
+
+I started this fork as a learning project, so contributions from more experienced developers are greatly appreciated. Full disclosure: I use Claude AI to assist with development, but all code is manually reviewed by me before merging.
 
 # License
 
