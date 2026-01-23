@@ -35,11 +35,13 @@ const NotifyFailureTypeScrutinyFailure = "ScrutinyFailure"
 func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, c *gin.Context, deviceRepo database.DeviceRepo) bool {
 	// 1. check if the device is healthy
 	if device.DeviceStatus == pkg.DeviceStatusPassed {
+		logger.Debugf("ShouldNotify: skipping device %s - device status is passed", device.WWN)
 		return false
 	}
 
 	// If the device is muted, skip notification regardless of status
 	if device.Muted {
+		logger.Debugf("ShouldNotify: skipping device %s - device is muted", device.WWN)
 		return false
 	}
 
@@ -107,6 +109,8 @@ func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs me
 		failingAttributes = append(failingAttributes, attrId)
 	}
 
+	logger.Debugf("ShouldNotify: device %s has %d failing attributes after filters (device_status=%d)", device.WWN, len(failingAttributes), device.DeviceStatus)
+
 	// If the user doesn't want repeated notifications when the failing value doesn't change, we need to get the last value from the db
 	var lastPoints []measurements.Smart
 	var err error
@@ -129,6 +133,7 @@ func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs me
 			}
 		}
 	}
+	logger.Debugf("ShouldNotify: no qualifying failures found for device %s", device.WWN)
 	return false
 }
 

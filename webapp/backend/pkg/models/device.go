@@ -169,6 +169,9 @@ func (dv *Device) UpdateFromCollectorSmartInfo(info collector.SmartInfo) error {
 
 	if !info.SmartStatus.Passed {
 		dv.DeviceStatus = pkg.DeviceStatusSet(dv.DeviceStatus, pkg.DeviceStatusFailedSmart)
+	} else {
+		// Clear SMART failure flag when manufacturer status passes
+		dv.DeviceStatus = pkg.DeviceStatusClear(dv.DeviceStatus, pkg.DeviceStatusFailedSmart)
 	}
 
 	return nil

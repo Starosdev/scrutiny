@@ -62,6 +62,17 @@ func (sr *scrutinyRepository) UpdateDeviceStatus(ctx context.Context, wwn string
 	return device, sr.gormClient.Model(&device).Updates(device).Error
 }
 
+// ResetDeviceStatus clears all failure flags when device SMART data shows all attributes passing
+func (sr *scrutinyRepository) ResetDeviceStatus(ctx context.Context, wwn string) (models.Device, error) {
+	var device models.Device
+	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).First(&device).Error; err != nil {
+		return device, fmt.Errorf("Could not get device from DB: %v", err)
+	}
+
+	device.DeviceStatus = pkg.DeviceStatusPassed
+	return device, sr.gormClient.Model(&device).Updates(device).Error
+}
+
 func (sr *scrutinyRepository) GetDeviceDetails(ctx context.Context, wwn string) (models.Device, error) {
 	var device models.Device
 
