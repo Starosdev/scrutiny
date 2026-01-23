@@ -15,10 +15,13 @@ export interface ZFSPoolModel {
     capacity_percent: number;
 
     scrub_state: ZFSScrubState;
-    scrub_start: string;
-    scrub_end: string;
-    scrub_percent: number;
-    scrub_errors: number;
+    scrub_start_time?: string;
+    scrub_end_time?: string;
+    scrub_scanned_bytes: number;
+    scrub_issued_bytes: number;
+    scrub_total_bytes: number;
+    scrub_errors_count: number;
+    scrub_percent_complete: number;
 
     total_read_errors: number;
     total_write_errors: number;

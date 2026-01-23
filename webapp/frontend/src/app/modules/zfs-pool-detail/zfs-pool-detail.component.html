@@ -76,13 +76,13 @@
           }
           @case ('scanning') {
             <div class="font-bold text-3xl text-yellow">In Progress</div>
-            <div class="text-sm text-hint mt-2">{{ pool.scrub_percent }}% complete</div>
+            <div class="text-sm text-hint mt-2">{{ pool.scrub_percent_complete }}% complete</div>
           }
           @case ('finished') {
             <div class="font-bold text-3xl text-green">Completed</div>
-            <div class="text-sm text-hint mt-2">{{ pool.scrub_end | date:'MMM dd, yyyy HH:mm' }}</div>
-            @if (pool.scrub_errors > 0) {
-              <div class="text-sm text-red mt-1">{{ pool.scrub_errors }} errors found</div>
+            <div class="text-sm text-hint mt-2">{{ pool.scrub_end_time | date:'MMM dd, yyyy HH:mm' }}</div>
+            @if (pool.scrub_errors_count > 0) {
+              <div class="text-sm text-red mt-1">{{ pool.scrub_errors_count }} errors found</div>
             }
           }
           @case ('canceled') {
