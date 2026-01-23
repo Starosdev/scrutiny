@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.13.3](https://github.com/Starosdev/scrutiny/compare/v1.13.2...v1.13.3) (2026-01-23)
+
+### Bug Fixes
+
+* **frontend:** update zfs pool model scrub property names to match the backend response ([#103](https://github.com/Starosdev/scrutiny/issues/103)) ([edce49b](https://github.com/Starosdev/scrutiny/commit/edce49b4e24da4d8698fb446093278b8fde8cb7e))
+
 ## [1.13.2](https://github.com/Starosdev/scrutiny/compare/v1.13.1...v1.13.2) (2026-01-22)
 
 ### Bug Fixes
