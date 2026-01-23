@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.13.6](https://github.com/Starosdev/scrutiny/compare/v1.13.5...v1.13.6) (2026-01-23)
+
+### Bug Fixes
+
+* **backend:** skip web integration tests when InfluxDB unavailable ([#116](https://github.com/Starosdev/scrutiny/issues/116)) ([ed386d2](https://github.com/Starosdev/scrutiny/commit/ed386d2819b0f0271b6f1471f4be4fa2d1de0b0c)), closes [#78](https://github.com/Starosdev/scrutiny/issues/78)
+
 ## [1.13.5](https://github.com/Starosdev/scrutiny/compare/v1.13.4...v1.13.5) (2026-01-23)
 
 ### Bug Fixes
