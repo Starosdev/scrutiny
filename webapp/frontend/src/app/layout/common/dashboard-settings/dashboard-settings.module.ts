@@ -15,6 +15,9 @@ import {MatTabsModule as MatTabsModule} from '@angular/material/tabs';
 import {MatSliderModule as MatSliderModule} from '@angular/material/slider';
 import {MatSlideToggleModule as MatSlideToggleModule} from '@angular/material/slide-toggle';
 import {MatTooltipModule as MatTooltipModule} from '@angular/material/tooltip';
+import {MatTableModule} from '@angular/material/table';
+import {MatExpansionModule} from '@angular/material/expansion';
+import {MatChipsModule} from '@angular/material/chips';
 
 @NgModule({
     declarations: [
@@ -34,6 +37,9 @@ import {MatTooltipModule as MatTooltipModule} from '@angular/material/tooltip';
         MatTooltipModule,
         MatSliderModule,
         MatSlideToggleModule,
+        MatTableModule,
+        MatExpansionModule,
+        MatChipsModule,
         SharedModule
     ],
     exports     : [

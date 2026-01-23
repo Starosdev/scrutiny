@@ -18,7 +18,11 @@ import (
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo) (measurements.Smart, error) {
 	deviceSmartData := measurements.Smart{}
-	err := deviceSmartData.FromCollectorSmartInfo(sr.appConfig, wwn, collectorSmartData)
+
+	// Get merged overrides (config + database) for SMART attribute processing
+	mergedOverrides := sr.GetMergedOverrides(ctx)
+
+	err := deviceSmartData.FromCollectorSmartInfoWithOverrides(sr.appConfig, wwn, collectorSmartData, mergedOverrides)
 	if err != nil {
 		sr.logger.Errorln("Could not process SMART metrics", err)
 		return measurements.Smart{}, err
