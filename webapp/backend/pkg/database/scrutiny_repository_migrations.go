@@ -632,7 +632,7 @@ func m20201107210306_FromPreInfluxDBSmartResultsCreatePostInfluxDBSmartResults(d
 			}
 		}
 
-		postDeviceSmartData.ProcessNvmeSmartInfo(postNvmeSmartHealthInformation)
+		postDeviceSmartData.ProcessNvmeSmartInfo(nil, postNvmeSmartHealthInformation)
 
 	} else if preDevice.IsScsi() {
 		//info collector.SmartInfo
@@ -688,7 +688,7 @@ func m20201107210306_FromPreInfluxDBSmartResultsCreatePostInfluxDBSmartResults(d
 				postScsiErrorCounterLog.Write.TotalUncorrectedErrors = int64(preScsiAttribute.Value)
 			}
 		}
-		postDeviceSmartData.ProcessScsiSmartInfo(postScsiGrownDefectList, postScsiErrorCounterLog, nil)
+		postDeviceSmartData.ProcessScsiSmartInfo(nil, postScsiGrownDefectList, postScsiErrorCounterLog, nil)
 	} else {
 		return fmt.Errorf("Unknown device protocol: %s", preDevice.DeviceProtocol), postDeviceSmartData
 	}

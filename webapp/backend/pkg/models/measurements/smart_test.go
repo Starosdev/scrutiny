@@ -322,6 +322,7 @@ func TestFromCollectorSmartInfo(t *testing.T) {
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
 	smartDataFile, err := os.Open("../testdata/smart-ata.json")
 	require.NoError(t, err)
@@ -359,6 +360,7 @@ func TestFromCollectorSmartInfo_Fail_Smart(t *testing.T) {
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
 	smartDataFile, err := os.Open("../testdata/smart-fail.json")
 	require.NoError(t, err)
@@ -388,6 +390,7 @@ func TestFromCollectorSmartInfo_Fail_ScrutinySmart(t *testing.T) {
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
 	smartDataFile, err := os.Open("../testdata/smart-fail2.json")
 	require.NoError(t, err)
@@ -417,6 +420,7 @@ func TestFromCollectorSmartInfo_Fail_ScrutinyNonCriticalFailed(t *testing.T) {
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
 	smartDataFile, err := os.Open("../testdata/smart-ata-failed-scrutiny.json")
 	require.NoError(t, err)
@@ -455,6 +459,7 @@ func TestFromCollectorSmartInfo_NVMe_Fail_Scrutiny(t *testing.T) {
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
 	smartDataFile, err := os.Open("../testdata/smart-nvme-failed.json")
 	require.NoError(t, err)
@@ -491,6 +496,7 @@ func TestFromCollectorSmartInfo_Nvme(t *testing.T) {
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
 	smartDataFile, err := os.Open("../testdata/smart-nvme.json")
 	require.NoError(t, err)
@@ -523,6 +529,7 @@ func TestFromCollectorSmartInfo_Scsi(t *testing.T) {
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
 	smartDataFile, err := os.Open("../testdata/smart-scsi.json")
 	require.NoError(t, err)
@@ -558,6 +565,7 @@ func TestFromCollectorSmartInfo_Scsi_SAS_EnvironmentalReports(t *testing.T) {
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
 	smartDataFile, err := os.Open("../testdata/smart-scsi-sas-env-temp.json")
 	require.NoError(t, err)
@@ -593,6 +601,7 @@ func TestFromCollectorSmartInfo_ATA_DeviceStatistics(t *testing.T) {
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
 	smartDataFile, err := os.Open("../testdata/smart-ata-full.json")
 	require.NoError(t, err)
@@ -706,6 +715,7 @@ func TestFromCollectorSmartInfo_ATA_DeviceStatistics_StatusPropagation(t *testin
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
 	// Create minimal smartctl output with a failing devstat attribute
 	smartJson := collector.SmartInfo{
@@ -803,6 +813,7 @@ func TestFromCollectorSmartInfo_ATA_DeviceStatistics_IgnoreList(t *testing.T) {
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
 	// Add devstat_7_8 to the ignore list
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{"devstat_7_8"}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
 	// Create smartctl output with a failing devstat attribute that's ignored
 	smartJson := collector.SmartInfo{
@@ -897,6 +908,7 @@ func TestFromCollectorSmartInfo_ATA_DeviceStatistics_InvalidValue(t *testing.T) 
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
 	// Create smartctl output with an impossibly high value (like reported in issue #84)
 	smartJson := collector.SmartInfo{
