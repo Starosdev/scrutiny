@@ -56,6 +56,9 @@ func (c *configuration) Init() error {
 
 	c.SetDefault("failures.transient.ata", []int{195})
 
+	// SMART attribute overrides - allows users to ignore, force status, or set custom thresholds
+	c.SetDefault("smart.attribute_overrides", []map[string]interface{}{})
+
 	// Metrics settings
 	c.SetDefault("web.metrics.enabled", true)
 

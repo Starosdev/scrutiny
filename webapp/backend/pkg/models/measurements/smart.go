@@ -10,6 +10,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
 )
 
@@ -153,9 +154,9 @@ func (sm *Smart) FromCollectorSmartInfo(cfg config.Interface, wwn string, info c
 			sm.ProcessAtaDeviceStatistics(cfg, info)
 		}
 	} else if sm.DeviceProtocol == pkg.DeviceProtocolNvme {
-		sm.ProcessNvmeSmartInfo(info.NvmeSmartHealthInformationLog)
+		sm.ProcessNvmeSmartInfo(cfg, info.NvmeSmartHealthInformationLog)
 	} else if sm.DeviceProtocol == pkg.DeviceProtocolScsi {
-		sm.ProcessScsiSmartInfo(info.ScsiGrownDefectList, info.ScsiErrorCounterLog, info.ScsiEnvironmentalReports)
+		sm.ProcessScsiSmartInfo(cfg, info.ScsiGrownDefectList, info.ScsiErrorCounterLog, info.ScsiEnvironmentalReports)
 	}
 
 	return nil
@@ -182,7 +183,33 @@ func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, tableItems []collecto
 			}
 		}
 		attrModel.PopulateAttributeStatus()
-		sm.Attributes[strconv.Itoa(collectorAttr.ID)] = &attrModel
+
+		attrIdStr := strconv.Itoa(collectorAttr.ID)
+		var ignored bool
+
+		// Apply user-configured overrides
+		if cfg != nil {
+			if result := overrides.Apply(cfg, pkg.DeviceProtocolAta, attrIdStr, sm.DeviceWWN); result != nil {
+				if result.ShouldIgnore {
+					// Mark as ignored - clear any failure status
+					attrModel.Status = pkg.AttributeStatusPassed
+					attrModel.StatusReason = result.StatusReason
+					ignored = true
+				} else if result.Status != nil {
+					// Force status to user-specified value
+					attrModel.Status = *result.Status
+					attrModel.StatusReason = result.StatusReason
+				} else if result.WarnAbove != nil || result.FailAbove != nil {
+					// Apply custom thresholds
+					if thresholdStatus := overrides.ApplyThresholds(result, attrModel.RawValue); thresholdStatus != nil {
+						attrModel.Status = pkg.AttributeStatusSet(attrModel.Status, *thresholdStatus)
+						attrModel.StatusReason = "Custom threshold exceeded"
+					}
+				}
+			}
+		}
+
+		sm.Attributes[attrIdStr] = &attrModel
 
 		var transient bool
 
@@ -196,7 +223,8 @@ func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, tableItems []collecto
 			}
 		}
 
-		if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !transient {
+		// Only propagate failure if not transient AND not ignored
+		if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !transient && !ignored {
 			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 		}
 	}
@@ -235,11 +263,33 @@ func (sm *Smart) ProcessAtaDeviceStatistics(cfg config.Interface, deviceStatisti
 			}
 
 			attrModel.PopulateAttributeStatus()
+
+			var ignored bool
+
+			// Apply user-configured overrides
+			if cfg != nil {
+				if result := overrides.Apply(cfg, pkg.DeviceProtocolAta, attrId, sm.DeviceWWN); result != nil {
+					if result.ShouldIgnore {
+						attrModel.Status = pkg.AttributeStatusPassed
+						attrModel.StatusReason = result.StatusReason
+						ignored = true
+					} else if result.Status != nil {
+						attrModel.Status = *result.Status
+						attrModel.StatusReason = result.StatusReason
+					} else if result.WarnAbove != nil || result.FailAbove != nil {
+						if thresholdStatus := overrides.ApplyThresholds(result, attrModel.Value); thresholdStatus != nil {
+							attrModel.Status = pkg.AttributeStatusSet(attrModel.Status, *thresholdStatus)
+							attrModel.StatusReason = "Custom threshold exceeded"
+						}
+					}
+				}
+			}
+
 			sm.Attributes[attrId] = &attrModel
 
 			// Propagate failure status to device (matching ProcessAtaSmartInfo behavior)
-			// Skip attributes marked as invalid (corrupted data) or ignored by config
-			if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !isDevstatIgnored(cfg, attrId) {
+			// Skip attributes marked as invalid (corrupted data), ignored by config, or ignored by override
+			if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !isDevstatIgnored(cfg, attrId) && !ignored {
 				sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 			}
 		}
@@ -247,7 +297,7 @@ func (sm *Smart) ProcessAtaDeviceStatistics(cfg config.Interface, deviceStatisti
 }
 
 // generate SmartNvmeAttribute entries from Scrutiny Collector Smart data.
-func (sm *Smart) ProcessNvmeSmartInfo(nvmeSmartHealthInformationLog collector.NvmeSmartHealthInformationLog) {
+func (sm *Smart) ProcessNvmeSmartInfo(cfg config.Interface, nvmeSmartHealthInformationLog collector.NvmeSmartHealthInformationLog) {
 
 	sm.Attributes = map[string]SmartAttribute{
 		"critical_warning":     (&SmartNvmeAttribute{AttributeId: "critical_warning", Value: nvmeSmartHealthInformationLog.CriticalWarning, Threshold: 0}).PopulateAttributeStatus(),
@@ -268,16 +318,38 @@ func (sm *Smart) ProcessNvmeSmartInfo(nvmeSmartHealthInformationLog collector.Nv
 		"critical_comp_time":   (&SmartNvmeAttribute{AttributeId: "critical_comp_time", Value: nvmeSmartHealthInformationLog.CriticalCompTime, Threshold: -1}).PopulateAttributeStatus(),
 	}
 
-	//find analyzed attribute status
-	for _, val := range sm.Attributes {
-		if pkg.AttributeStatusHas(val.GetStatus(), pkg.AttributeStatusFailedScrutiny) {
+	// Apply overrides and find analyzed attribute status
+	for attrId, val := range sm.Attributes {
+		nvmeAttr := val.(*SmartNvmeAttribute)
+		var ignored bool
+
+		// Apply user-configured overrides
+		if cfg != nil {
+			if result := overrides.Apply(cfg, pkg.DeviceProtocolNvme, attrId, sm.DeviceWWN); result != nil {
+				if result.ShouldIgnore {
+					nvmeAttr.Status = pkg.AttributeStatusPassed
+					nvmeAttr.StatusReason = result.StatusReason
+					ignored = true
+				} else if result.Status != nil {
+					nvmeAttr.Status = *result.Status
+					nvmeAttr.StatusReason = result.StatusReason
+				} else if result.WarnAbove != nil || result.FailAbove != nil {
+					if thresholdStatus := overrides.ApplyThresholds(result, nvmeAttr.Value); thresholdStatus != nil {
+						nvmeAttr.Status = pkg.AttributeStatusSet(nvmeAttr.Status, *thresholdStatus)
+						nvmeAttr.StatusReason = "Custom threshold exceeded"
+					}
+				}
+			}
+		}
+
+		if pkg.AttributeStatusHas(nvmeAttr.GetStatus(), pkg.AttributeStatusFailedScrutiny) && !ignored {
 			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 		}
 	}
 }
 
 // generate SmartScsiAttribute entries from Scrutiny Collector Smart data.
-func (sm *Smart) ProcessScsiSmartInfo(defectGrownList int64, scsiErrorCounterLog collector.ScsiErrorCounterLog, temperature map[string]collector.ScsiTemperatureData) {
+func (sm *Smart) ProcessScsiSmartInfo(cfg config.Interface, defectGrownList int64, scsiErrorCounterLog collector.ScsiErrorCounterLog, temperature map[string]collector.ScsiTemperatureData) {
 	sm.Attributes = map[string]SmartAttribute{
 		"temperature": (&SmartNvmeAttribute{AttributeId: "temperature", Value: getScsiTemperature(temperature), Threshold: -1}).PopulateAttributeStatus(),
 
@@ -296,9 +368,36 @@ func (sm *Smart) ProcessScsiSmartInfo(defectGrownList int64, scsiErrorCounterLog
 		"write_total_uncorrected_errors":             (&SmartScsiAttribute{AttributeId: "write_total_uncorrected_errors", Value: scsiErrorCounterLog.Write.TotalUncorrectedErrors, Threshold: 0}).PopulateAttributeStatus(),
 	}
 
-	//find analyzed attribute status
-	for _, val := range sm.Attributes {
-		if pkg.AttributeStatusHas(val.GetStatus(), pkg.AttributeStatusFailedScrutiny) {
+	// Apply overrides and find analyzed attribute status
+	for attrId, val := range sm.Attributes {
+		var ignored bool
+		var attrValue int64
+
+		// Get the value based on attribute type
+		if scsiAttr, ok := val.(*SmartScsiAttribute); ok {
+			attrValue = scsiAttr.Value
+
+			// Apply user-configured overrides
+			if cfg != nil {
+				if result := overrides.Apply(cfg, pkg.DeviceProtocolScsi, attrId, sm.DeviceWWN); result != nil {
+					if result.ShouldIgnore {
+						scsiAttr.Status = pkg.AttributeStatusPassed
+						scsiAttr.StatusReason = result.StatusReason
+						ignored = true
+					} else if result.Status != nil {
+						scsiAttr.Status = *result.Status
+						scsiAttr.StatusReason = result.StatusReason
+					} else if result.WarnAbove != nil || result.FailAbove != nil {
+						if thresholdStatus := overrides.ApplyThresholds(result, attrValue); thresholdStatus != nil {
+							scsiAttr.Status = pkg.AttributeStatusSet(scsiAttr.Status, *thresholdStatus)
+							scsiAttr.StatusReason = "Custom threshold exceeded"
+						}
+					}
+				}
+			}
+		}
+
+		if pkg.AttributeStatusHas(val.GetStatus(), pkg.AttributeStatusFailedScrutiny) && !ignored {
 			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 		}
 	}
