@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.13.4](https://github.com/Starosdev/scrutiny/compare/v1.13.3...v1.13.4) (2026-01-23)
+
+### Bug Fixes
+
+* **frontend:** remove unused Quill dependency (XSS vulnerability) ([#104](https://github.com/Starosdev/scrutiny/issues/104)) ([15e2a62](https://github.com/Starosdev/scrutiny/commit/15e2a62d1bac0f7674da9c4bf82797ec3575730c)), closes [#69](https://github.com/Starosdev/scrutiny/issues/69)
+
 ## [1.13.3](https://github.com/Starosdev/scrutiny/compare/v1.13.2...v1.13.3) (2026-01-23)
 
 ### Bug Fixes
