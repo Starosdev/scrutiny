@@ -89,6 +89,11 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.GET("/settings", handler.GetSettings)   //used to get settings
 			api.POST("/settings", handler.SaveSettings) //used to save settings
 
+			// Attribute Override endpoints (UI-configurable SMART overrides)
+			api.GET("/settings/overrides", handler.GetAttributeOverrides)
+			api.POST("/settings/overrides", handler.SaveAttributeOverride)
+			api.DELETE("/settings/overrides/:id", handler.DeleteAttributeOverride)
+
 			// ZFS Pool API endpoints
 			zfs := api.Group("/zfs")
 			{

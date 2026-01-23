@@ -7,6 +7,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 )
 
 // Create mock using:
@@ -50,4 +51,10 @@ type DeviceRepo interface {
 	// ZFS Pool metrics
 	SaveZFSPoolMetrics(ctx context.Context, pool models.ZFSPool) error
 	GetZFSPoolMetricsHistory(ctx context.Context, guid string, durationKey string) ([]measurements.ZFSPoolMetrics, error)
+
+	// Attribute Override operations
+	GetAttributeOverrides(ctx context.Context) ([]models.AttributeOverride, error)
+	SaveAttributeOverride(ctx context.Context, override models.AttributeOverride) error
+	DeleteAttributeOverride(ctx context.Context, id uint) error
+	GetMergedOverrides(ctx context.Context) []overrides.AttributeOverride
 }

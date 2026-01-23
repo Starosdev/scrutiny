@@ -1,6 +1,8 @@
 package overrides
 
 import (
+	"fmt"
+
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/mitchellh/mapstructure"
@@ -166,4 +168,60 @@ func ApplyThresholds(result *Result, value int64) *pkg.AttributeStatus {
 	}
 
 	return nil
+}
+
+// MergeOverrides combines config file overrides with database overrides.
+// Database overrides take precedence over config file overrides when they
+// match the same protocol+attributeId+wwn combination.
+func MergeOverrides(configOverrides, dbOverrides []AttributeOverride) []AttributeOverride {
+	// Create map keyed by protocol+attributeId+wwn for deduplication
+	merged := make(map[string]AttributeOverride)
+
+	// Add config overrides first (lower priority)
+	for _, o := range configOverrides {
+		key := fmt.Sprintf("%s|%s|%s", o.Protocol, o.AttributeId, o.WWN)
+		merged[key] = o
+	}
+
+	// Add/override with database overrides (higher priority)
+	for _, o := range dbOverrides {
+		key := fmt.Sprintf("%s|%s|%s", o.Protocol, o.AttributeId, o.WWN)
+		merged[key] = o
+	}
+
+	result := make([]AttributeOverride, 0, len(merged))
+	for _, o := range merged {
+		result = append(result, o)
+	}
+	return result
+}
+
+// ApplyWithOverrides checks if an override exists in the provided list and returns the result.
+// This is used when the caller has already merged config and database overrides.
+// Returns nil if no override matches.
+func ApplyWithOverrides(overrideList []AttributeOverride, protocol, attributeId, wwn string) *Result {
+	override := FindOverride(overrideList, protocol, attributeId, wwn)
+
+	if override == nil {
+		return nil
+	}
+
+	result := &Result{}
+
+	switch override.Action {
+	case AttributeOverrideActionIgnore:
+		result.ShouldIgnore = true
+		result.StatusReason = "Attribute ignored by user configuration"
+
+	case AttributeOverrideActionForceStatus:
+		status := override.GetForcedStatus()
+		result.Status = &status
+		result.StatusReason = "Status forced by user configuration"
+	}
+
+	// Custom thresholds (can be combined with force_status or standalone)
+	result.WarnAbove = override.WarnAbove
+	result.FailAbove = override.FailAbove
+
+	return result
 }
