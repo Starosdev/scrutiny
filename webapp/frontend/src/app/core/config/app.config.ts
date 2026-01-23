@@ -38,6 +38,33 @@ export enum MetricsStatusThreshold {
     Both = 3
 }
 
+// Protocol types for SMART attribute overrides
+export type OverrideProtocol = 'ATA' | 'NVMe' | 'SCSI';
+
+// Action types for attribute overrides
+export type OverrideAction = 'ignore' | 'force_status' | '';
+
+// Status types for force_status action
+export type OverrideStatus = 'passed' | 'warn' | 'failed';
+
+// Source of the override
+export type OverrideSource = 'config' | 'ui';
+
+/**
+ * AttributeOverride interface for UI-configurable SMART attribute overrides
+ */
+export interface AttributeOverride {
+    id?: number;
+    protocol: OverrideProtocol;
+    attribute_id: string;
+    wwn?: string;
+    action?: OverrideAction;
+    status?: OverrideStatus;
+    warn_above?: number;
+    fail_above?: number;
+    source?: OverrideSource;
+}
+
 /**
  * AppConfig interface. Update this interface to strictly type your config
  * object.

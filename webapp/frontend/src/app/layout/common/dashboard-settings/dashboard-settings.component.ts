@@ -1,16 +1,21 @@
 import {Component, OnInit} from '@angular/core';
 import {
     AppConfig,
+    AttributeOverride,
     DashboardDisplay,
     DashboardSort,
     MetricsStatusFilterAttributes,
     MetricsStatusThreshold,
+    OverrideAction,
+    OverrideProtocol,
+    OverrideStatus,
     TemperatureUnit,
     LineStroke,
     Theme,
     DevicePoweredOnUnit
 } from 'app/core/config/app.config';
 import {ScrutinyConfigService} from 'app/core/config/scrutiny-config.service';
+import {AttributeOverrideService} from 'app/core/config/attribute-override.service';
 import {Subject} from 'rxjs';
 import {takeUntil} from 'rxjs/operators';
 
@@ -34,11 +39,30 @@ export class DashboardSettingsComponent implements OnInit {
     statusFilterAttributes: number;
     repeatNotifications: boolean;
 
+    // Attribute overrides
+    overrides: AttributeOverride[] = [];
+    displayedColumns: string[] = ['protocol', 'attribute_id', 'action', 'source', 'actions'];
+    protocols: OverrideProtocol[] = ['ATA', 'NVMe', 'SCSI'];
+    actions: {value: OverrideAction, label: string}[] = [
+        {value: 'ignore', label: 'Ignore'},
+        {value: 'force_status', label: 'Force Status'},
+        {value: '', label: 'Custom Threshold'}
+    ];
+    statuses: OverrideStatus[] = ['passed', 'warn', 'failed'];
+
+    // New override form
+    newOverride: Partial<AttributeOverride> = {
+        protocol: 'ATA',
+        attribute_id: '',
+        action: 'ignore'
+    };
+
     // Private
     private _unsubscribeAll: Subject<void>;
 
     constructor(
         private _configService: ScrutinyConfigService,
+        private _overrideService: AttributeOverrideService,
     ) {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
@@ -67,6 +91,61 @@ export class DashboardSettingsComponent implements OnInit {
 
             });
 
+        // Load attribute overrides
+        this.loadOverrides();
+    }
+
+    loadOverrides(): void {
+        this._overrideService.getOverrides()
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(overrides => {
+                this.overrides = overrides;
+            });
+    }
+
+    addOverride(): void {
+        if (!this.newOverride.protocol || !this.newOverride.attribute_id) {
+            return;
+        }
+
+        const override: AttributeOverride = {
+            protocol: this.newOverride.protocol as OverrideProtocol,
+            attribute_id: this.newOverride.attribute_id,
+            action: this.newOverride.action as OverrideAction,
+            wwn: this.newOverride.wwn || '',
+            status: this.newOverride.status as OverrideStatus,
+            warn_above: this.newOverride.warn_above,
+            fail_above: this.newOverride.fail_above
+        };
+
+        this._overrideService.saveOverride(override)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(saved => {
+                this.overrides = [...this.overrides, saved];
+                // Reset form
+                this.newOverride = {
+                    protocol: 'ATA',
+                    attribute_id: '',
+                    action: 'ignore'
+                };
+            });
+    }
+
+    removeOverride(override: AttributeOverride): void {
+        if (!override.id || override.source === 'config') {
+            return;
+        }
+
+        this._overrideService.deleteOverride(override.id)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(() => {
+                this.overrides = this.overrides.filter(o => o.id !== override.id);
+            });
+    }
+
+    getActionLabel(action: string): string {
+        const found = this.actions.find(a => a.value === action);
+        return found ? found.label : 'Custom Threshold';
     }
 
     saveSettings(): void {

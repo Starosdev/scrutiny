@@ -119,7 +119,16 @@ func NewSmartFromInfluxDB(attrs map[string]interface{}) (*Smart, error) {
 }
 
 // Parse Collector SMART data results and create Smart object (and associated SmartAtaAttribute entries)
+// This version uses config-based overrides only (for backwards compatibility)
 func (sm *Smart) FromCollectorSmartInfo(cfg config.Interface, wwn string, info collector.SmartInfo) error {
+	// Parse overrides from config and delegate to the full version
+	configOverrides := overrides.ParseOverrides(cfg)
+	return sm.FromCollectorSmartInfoWithOverrides(cfg, wwn, info, configOverrides)
+}
+
+// FromCollectorSmartInfoWithOverrides parses Collector SMART data with pre-merged overrides.
+// Use this when you have database overrides merged with config overrides.
+func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn string, info collector.SmartInfo, mergedOverrides []overrides.AttributeOverride) error {
 	sm.DeviceWWN = wwn
 	sm.Date = time.Unix(info.LocalTime.TimeT, 0)
 
@@ -148,15 +157,15 @@ func (sm *Smart) FromCollectorSmartInfo(cfg config.Interface, wwn string, info c
 	// process ATA/NVME/SCSI protocol data
 	sm.Attributes = map[string]SmartAttribute{}
 	if sm.DeviceProtocol == pkg.DeviceProtocolAta {
-		sm.ProcessAtaSmartInfo(cfg, info.AtaSmartAttributes.Table)
+		sm.processAtaSmartInfoWithOverrides(cfg, info.AtaSmartAttributes.Table, mergedOverrides)
 		// Also process ATA Device Statistics (GP Log 0x04) for enterprise SSD metrics
 		if len(info.AtaDeviceStatistics.Pages) > 0 {
-			sm.ProcessAtaDeviceStatistics(cfg, info)
+			sm.processAtaDeviceStatisticsWithOverrides(cfg, info, mergedOverrides)
 		}
 	} else if sm.DeviceProtocol == pkg.DeviceProtocolNvme {
-		sm.ProcessNvmeSmartInfo(cfg, info.NvmeSmartHealthInformationLog)
+		sm.processNvmeSmartInfoWithOverrides(cfg, info.NvmeSmartHealthInformationLog, mergedOverrides)
 	} else if sm.DeviceProtocol == pkg.DeviceProtocolScsi {
-		sm.ProcessScsiSmartInfo(cfg, info.ScsiGrownDefectList, info.ScsiErrorCounterLog, info.ScsiEnvironmentalReports)
+		sm.processScsiSmartInfoWithOverrides(cfg, info.ScsiGrownDefectList, info.ScsiErrorCounterLog, info.ScsiEnvironmentalReports, mergedOverrides)
 	}
 
 	return nil
@@ -410,4 +419,213 @@ func getScsiTemperature(s map[string]collector.ScsiTemperatureData) int64 {
 	}
 
 	return temp.Current
+}
+
+// processAtaSmartInfoWithOverrides generates SmartAtaAttribute entries using pre-merged overrides.
+func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, tableItems []collector.AtaSmartAttributesTableItem, mergedOverrides []overrides.AttributeOverride) {
+	for _, collectorAttr := range tableItems {
+		attrModel := SmartAtaAttribute{
+			AttributeId: collectorAttr.ID,
+			Name:        collectorAttr.Name,
+			Value:       collectorAttr.Value,
+			Worst:       collectorAttr.Worst,
+			Threshold:   collectorAttr.Thresh,
+			RawValue:    collectorAttr.Raw.Value,
+			RawString:   collectorAttr.Raw.String,
+			WhenFailed:  collectorAttr.WhenFailed,
+		}
+
+		// Apply metadata transforms
+		if smartMetadata, ok := thresholds.AtaMetadata[collectorAttr.ID]; ok {
+			if smartMetadata.Transform != nil {
+				attrModel.TransformedValue = smartMetadata.Transform(attrModel.Value, attrModel.RawValue, attrModel.RawString)
+			}
+		}
+		attrModel.PopulateAttributeStatus()
+
+		attrIdStr := strconv.Itoa(collectorAttr.ID)
+		var ignored bool
+
+		// Apply merged overrides (config + database)
+		if result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrIdStr, sm.DeviceWWN); result != nil {
+			if result.ShouldIgnore {
+				attrModel.Status = pkg.AttributeStatusPassed
+				attrModel.StatusReason = result.StatusReason
+				ignored = true
+			} else if result.Status != nil {
+				attrModel.Status = *result.Status
+				attrModel.StatusReason = result.StatusReason
+			} else if result.WarnAbove != nil || result.FailAbove != nil {
+				if thresholdStatus := overrides.ApplyThresholds(result, attrModel.RawValue); thresholdStatus != nil {
+					attrModel.Status = pkg.AttributeStatusSet(attrModel.Status, *thresholdStatus)
+					attrModel.StatusReason = "Custom threshold exceeded"
+				}
+			}
+		}
+
+		sm.Attributes[attrIdStr] = &attrModel
+
+		var transient bool
+
+		if cfg != nil {
+			transients := cfg.GetIntSlice("failures.transient.ata")
+			for i := range transients {
+				if collectorAttr.ID == transients[i] {
+					transient = true
+					break
+				}
+			}
+		}
+
+		// Only propagate failure if not transient AND not ignored
+		if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !transient && !ignored {
+			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
+		}
+	}
+}
+
+// processAtaDeviceStatisticsWithOverrides extracts device statistics using pre-merged overrides.
+func (sm *Smart) processAtaDeviceStatisticsWithOverrides(cfg config.Interface, deviceStatistics collector.SmartInfo, mergedOverrides []overrides.AttributeOverride) {
+	for _, page := range deviceStatistics.AtaDeviceStatistics.Pages {
+		for _, stat := range page.Table {
+			if !stat.Flags.Valid {
+				continue
+			}
+
+			attrId := fmt.Sprintf("devstat_%d_%d", page.Number, stat.Offset)
+
+			attrModel := SmartAtaDeviceStatAttribute{
+				AttributeId: attrId,
+				Value:       stat.Value,
+			}
+
+			attrModel.PopulateAttributeStatus()
+
+			var ignored bool
+
+			// Apply merged overrides (config + database)
+			if result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrId, sm.DeviceWWN); result != nil {
+				if result.ShouldIgnore {
+					attrModel.Status = pkg.AttributeStatusPassed
+					attrModel.StatusReason = result.StatusReason
+					ignored = true
+				} else if result.Status != nil {
+					attrModel.Status = *result.Status
+					attrModel.StatusReason = result.StatusReason
+				} else if result.WarnAbove != nil || result.FailAbove != nil {
+					if thresholdStatus := overrides.ApplyThresholds(result, attrModel.Value); thresholdStatus != nil {
+						attrModel.Status = pkg.AttributeStatusSet(attrModel.Status, *thresholdStatus)
+						attrModel.StatusReason = "Custom threshold exceeded"
+					}
+				}
+			}
+
+			sm.Attributes[attrId] = &attrModel
+
+			if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !isDevstatIgnored(cfg, attrId) && !ignored {
+				sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
+			}
+		}
+	}
+}
+
+// processNvmeSmartInfoWithOverrides generates SmartNvmeAttribute entries using pre-merged overrides.
+func (sm *Smart) processNvmeSmartInfoWithOverrides(cfg config.Interface, nvmeSmartHealthInformationLog collector.NvmeSmartHealthInformationLog, mergedOverrides []overrides.AttributeOverride) {
+	sm.Attributes = map[string]SmartAttribute{
+		"critical_warning":     (&SmartNvmeAttribute{AttributeId: "critical_warning", Value: nvmeSmartHealthInformationLog.CriticalWarning, Threshold: 0}).PopulateAttributeStatus(),
+		"temperature":          (&SmartNvmeAttribute{AttributeId: "temperature", Value: nvmeSmartHealthInformationLog.Temperature, Threshold: -1}).PopulateAttributeStatus(),
+		"available_spare":      (&SmartNvmeAttribute{AttributeId: "available_spare", Value: nvmeSmartHealthInformationLog.AvailableSpare, Threshold: nvmeSmartHealthInformationLog.AvailableSpareThreshold}).PopulateAttributeStatus(),
+		"percentage_used":      (&SmartNvmeAttribute{AttributeId: "percentage_used", Value: nvmeSmartHealthInformationLog.PercentageUsed, Threshold: 100}).PopulateAttributeStatus(),
+		"data_units_read":      (&SmartNvmeAttribute{AttributeId: "data_units_read", Value: nvmeSmartHealthInformationLog.DataUnitsRead, Threshold: -1}).PopulateAttributeStatus(),
+		"data_units_written":   (&SmartNvmeAttribute{AttributeId: "data_units_written", Value: nvmeSmartHealthInformationLog.DataUnitsWritten, Threshold: -1}).PopulateAttributeStatus(),
+		"host_reads":           (&SmartNvmeAttribute{AttributeId: "host_reads", Value: nvmeSmartHealthInformationLog.HostReads, Threshold: -1}).PopulateAttributeStatus(),
+		"host_writes":          (&SmartNvmeAttribute{AttributeId: "host_writes", Value: nvmeSmartHealthInformationLog.HostWrites, Threshold: -1}).PopulateAttributeStatus(),
+		"controller_busy_time": (&SmartNvmeAttribute{AttributeId: "controller_busy_time", Value: nvmeSmartHealthInformationLog.ControllerBusyTime, Threshold: -1}).PopulateAttributeStatus(),
+		"power_cycles":         (&SmartNvmeAttribute{AttributeId: "power_cycles", Value: nvmeSmartHealthInformationLog.PowerCycles, Threshold: -1}).PopulateAttributeStatus(),
+		"power_on_hours":       (&SmartNvmeAttribute{AttributeId: "power_on_hours", Value: nvmeSmartHealthInformationLog.PowerOnHours, Threshold: -1}).PopulateAttributeStatus(),
+		"unsafe_shutdowns":     (&SmartNvmeAttribute{AttributeId: "unsafe_shutdowns", Value: nvmeSmartHealthInformationLog.UnsafeShutdowns, Threshold: -1}).PopulateAttributeStatus(),
+		"media_errors":         (&SmartNvmeAttribute{AttributeId: "media_errors", Value: nvmeSmartHealthInformationLog.MediaErrors, Threshold: 0}).PopulateAttributeStatus(),
+		"num_err_log_entries":  (&SmartNvmeAttribute{AttributeId: "num_err_log_entries", Value: nvmeSmartHealthInformationLog.NumErrLogEntries, Threshold: -1}).PopulateAttributeStatus(),
+		"warning_temp_time":    (&SmartNvmeAttribute{AttributeId: "warning_temp_time", Value: nvmeSmartHealthInformationLog.WarningTempTime, Threshold: -1}).PopulateAttributeStatus(),
+		"critical_comp_time":   (&SmartNvmeAttribute{AttributeId: "critical_comp_time", Value: nvmeSmartHealthInformationLog.CriticalCompTime, Threshold: -1}).PopulateAttributeStatus(),
+	}
+
+	// Apply overrides and find analyzed attribute status
+	for attrId, val := range sm.Attributes {
+		nvmeAttr := val.(*SmartNvmeAttribute)
+		var ignored bool
+
+		// Apply merged overrides (config + database)
+		if result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolNvme, attrId, sm.DeviceWWN); result != nil {
+			if result.ShouldIgnore {
+				nvmeAttr.Status = pkg.AttributeStatusPassed
+				nvmeAttr.StatusReason = result.StatusReason
+				ignored = true
+			} else if result.Status != nil {
+				nvmeAttr.Status = *result.Status
+				nvmeAttr.StatusReason = result.StatusReason
+			} else if result.WarnAbove != nil || result.FailAbove != nil {
+				if thresholdStatus := overrides.ApplyThresholds(result, nvmeAttr.Value); thresholdStatus != nil {
+					nvmeAttr.Status = pkg.AttributeStatusSet(nvmeAttr.Status, *thresholdStatus)
+					nvmeAttr.StatusReason = "Custom threshold exceeded"
+				}
+			}
+		}
+
+		if pkg.AttributeStatusHas(nvmeAttr.GetStatus(), pkg.AttributeStatusFailedScrutiny) && !ignored {
+			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
+		}
+	}
+}
+
+// processScsiSmartInfoWithOverrides generates SmartScsiAttribute entries using pre-merged overrides.
+func (sm *Smart) processScsiSmartInfoWithOverrides(cfg config.Interface, defectGrownList int64, scsiErrorCounterLog collector.ScsiErrorCounterLog, temperature map[string]collector.ScsiTemperatureData, mergedOverrides []overrides.AttributeOverride) {
+	sm.Attributes = map[string]SmartAttribute{
+		"temperature": (&SmartNvmeAttribute{AttributeId: "temperature", Value: getScsiTemperature(temperature), Threshold: -1}).PopulateAttributeStatus(),
+
+		"scsi_grown_defect_list":                     (&SmartScsiAttribute{AttributeId: "scsi_grown_defect_list", Value: defectGrownList, Threshold: 0}).PopulateAttributeStatus(),
+		"read_errors_corrected_by_eccfast":           (&SmartScsiAttribute{AttributeId: "read_errors_corrected_by_eccfast", Value: scsiErrorCounterLog.Read.ErrorsCorrectedByEccfast, Threshold: -1}).PopulateAttributeStatus(),
+		"read_errors_corrected_by_eccdelayed":        (&SmartScsiAttribute{AttributeId: "read_errors_corrected_by_eccdelayed", Value: scsiErrorCounterLog.Read.ErrorsCorrectedByEccdelayed, Threshold: -1}).PopulateAttributeStatus(),
+		"read_errors_corrected_by_rereads_rewrites":  (&SmartScsiAttribute{AttributeId: "read_errors_corrected_by_rereads_rewrites", Value: scsiErrorCounterLog.Read.ErrorsCorrectedByRereadsRewrites, Threshold: 0}).PopulateAttributeStatus(),
+		"read_total_errors_corrected":                (&SmartScsiAttribute{AttributeId: "read_total_errors_corrected", Value: scsiErrorCounterLog.Read.TotalErrorsCorrected, Threshold: -1}).PopulateAttributeStatus(),
+		"read_correction_algorithm_invocations":      (&SmartScsiAttribute{AttributeId: "read_correction_algorithm_invocations", Value: scsiErrorCounterLog.Read.CorrectionAlgorithmInvocations, Threshold: -1}).PopulateAttributeStatus(),
+		"read_total_uncorrected_errors":              (&SmartScsiAttribute{AttributeId: "read_total_uncorrected_errors", Value: scsiErrorCounterLog.Read.TotalUncorrectedErrors, Threshold: 0}).PopulateAttributeStatus(),
+		"write_errors_corrected_by_eccfast":          (&SmartScsiAttribute{AttributeId: "write_errors_corrected_by_eccfast", Value: scsiErrorCounterLog.Write.ErrorsCorrectedByEccfast, Threshold: -1}).PopulateAttributeStatus(),
+		"write_errors_corrected_by_eccdelayed":       (&SmartScsiAttribute{AttributeId: "write_errors_corrected_by_eccdelayed", Value: scsiErrorCounterLog.Write.ErrorsCorrectedByEccdelayed, Threshold: -1}).PopulateAttributeStatus(),
+		"write_errors_corrected_by_rereads_rewrites": (&SmartScsiAttribute{AttributeId: "write_errors_corrected_by_rereads_rewrites", Value: scsiErrorCounterLog.Write.ErrorsCorrectedByRereadsRewrites, Threshold: 0}).PopulateAttributeStatus(),
+		"write_total_errors_corrected":               (&SmartScsiAttribute{AttributeId: "write_total_errors_corrected", Value: scsiErrorCounterLog.Write.TotalErrorsCorrected, Threshold: -1}).PopulateAttributeStatus(),
+		"write_correction_algorithm_invocations":     (&SmartScsiAttribute{AttributeId: "write_correction_algorithm_invocations", Value: scsiErrorCounterLog.Write.CorrectionAlgorithmInvocations, Threshold: -1}).PopulateAttributeStatus(),
+		"write_total_uncorrected_errors":             (&SmartScsiAttribute{AttributeId: "write_total_uncorrected_errors", Value: scsiErrorCounterLog.Write.TotalUncorrectedErrors, Threshold: 0}).PopulateAttributeStatus(),
+	}
+
+	// Apply overrides and find analyzed attribute status
+	for attrId, val := range sm.Attributes {
+		var ignored bool
+		var attrValue int64
+
+		if scsiAttr, ok := val.(*SmartScsiAttribute); ok {
+			attrValue = scsiAttr.Value
+
+			// Apply merged overrides (config + database)
+			if result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolScsi, attrId, sm.DeviceWWN); result != nil {
+				if result.ShouldIgnore {
+					scsiAttr.Status = pkg.AttributeStatusPassed
+					scsiAttr.StatusReason = result.StatusReason
+					ignored = true
+				} else if result.Status != nil {
+					scsiAttr.Status = *result.Status
+					scsiAttr.StatusReason = result.StatusReason
+				} else if result.WarnAbove != nil || result.FailAbove != nil {
+					if thresholdStatus := overrides.ApplyThresholds(result, attrValue); thresholdStatus != nil {
+						scsiAttr.Status = pkg.AttributeStatusSet(scsiAttr.Status, *thresholdStatus)
+						scsiAttr.StatusReason = "Custom threshold exceeded"
+					}
+				}
+			}
+		}
+
+		if pkg.AttributeStatusHas(val.GetStatus(), pkg.AttributeStatusFailedScrutiny) && !ignored {
+			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
+		}
+	}
 }

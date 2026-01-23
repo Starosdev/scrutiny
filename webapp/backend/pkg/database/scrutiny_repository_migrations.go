@@ -16,6 +16,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20250221084400"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20251108044508"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260108000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260122000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
@@ -443,6 +444,12 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 					&m20260108000000.ZFSPool{},
 					&m20260108000000.ZFSVdev{},
 				)
+			},
+		},
+		{
+			ID: "m20260122000000", // add attribute_overrides table for UI-configurable SMART overrides
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&m20260122000000.AttributeOverride{})
 			},
 		},
 	})

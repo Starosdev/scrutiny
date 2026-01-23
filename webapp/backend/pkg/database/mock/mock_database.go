@@ -12,6 +12,7 @@ import (
 	models "github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	collector "github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	measurements "github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
+	overrides "github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -456,4 +457,61 @@ func (m *MockDeviceRepo) UpdateZFSPoolMuted(ctx context.Context, guid string, mu
 func (mr *MockDeviceRepoMockRecorder) UpdateZFSPoolMuted(ctx, guid, muted interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateZFSPoolMuted", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateZFSPoolMuted), ctx, guid, muted)
+}
+
+// GetAttributeOverrides mocks base method.
+func (m *MockDeviceRepo) GetAttributeOverrides(ctx context.Context) ([]models.AttributeOverride, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAttributeOverrides", ctx)
+	ret0, _ := ret[0].([]models.AttributeOverride)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAttributeOverrides indicates an expected call of GetAttributeOverrides.
+func (mr *MockDeviceRepoMockRecorder) GetAttributeOverrides(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAttributeOverrides", reflect.TypeOf((*MockDeviceRepo)(nil).GetAttributeOverrides), ctx)
+}
+
+// GetMergedOverrides mocks base method.
+func (m *MockDeviceRepo) GetMergedOverrides(ctx context.Context) []overrides.AttributeOverride {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMergedOverrides", ctx)
+	ret0, _ := ret[0].([]overrides.AttributeOverride)
+	return ret0
+}
+
+// GetMergedOverrides indicates an expected call of GetMergedOverrides.
+func (mr *MockDeviceRepoMockRecorder) GetMergedOverrides(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMergedOverrides", reflect.TypeOf((*MockDeviceRepo)(nil).GetMergedOverrides), ctx)
+}
+
+// SaveAttributeOverride mocks base method.
+func (m *MockDeviceRepo) SaveAttributeOverride(ctx context.Context, override models.AttributeOverride) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveAttributeOverride", ctx, override)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveAttributeOverride indicates an expected call of SaveAttributeOverride.
+func (mr *MockDeviceRepoMockRecorder) SaveAttributeOverride(ctx, override interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveAttributeOverride", reflect.TypeOf((*MockDeviceRepo)(nil).SaveAttributeOverride), ctx, override)
+}
+
+// DeleteAttributeOverride mocks base method.
+func (m *MockDeviceRepo) DeleteAttributeOverride(ctx context.Context, id uint) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteAttributeOverride", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteAttributeOverride indicates an expected call of DeleteAttributeOverride.
+func (mr *MockDeviceRepoMockRecorder) DeleteAttributeOverride(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAttributeOverride", reflect.TypeOf((*MockDeviceRepo)(nil).DeleteAttributeOverride), ctx, id)
 }
