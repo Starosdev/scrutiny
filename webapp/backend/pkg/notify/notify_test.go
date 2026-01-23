@@ -34,6 +34,24 @@ func TestShouldNotify_MustSkipPassingDevices(t *testing.T) {
 	require.False(t, ShouldNotify(logrus.StandardLogger(), device, smartAttrs, statusThreshold, notifyFilterAttributes, true, &gin.Context{}, fakeDatabase, nil))
 }
 
+func TestShouldNotify_MustSkipMutedDevices(t *testing.T) {
+	t.Parallel()
+	//setup
+	device := models.Device{
+		DeviceStatus: pkg.DeviceStatusFailedSmart,
+		Muted:        true,
+	}
+	smartAttrs := measurements.Smart{}
+	statusThreshold := pkg.MetricsStatusThresholdBoth
+	notifyFilterAttributes := pkg.MetricsStatusFilterAttributesAll
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
+	//assert
+	require.False(t, ShouldNotify(logrus.StandardLogger(), device, smartAttrs, statusThreshold, notifyFilterAttributes, true, &gin.Context{}, fakeDatabase, nil))
+}
+
 func TestShouldNotify_MetricsStatusThresholdBoth_FailingSmartDevice(t *testing.T) {
 	t.Parallel()
 	//setupD
