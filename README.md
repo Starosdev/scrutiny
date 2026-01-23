@@ -23,8 +23,8 @@ This is an actively maintained fork of [AnalogJ/scrutiny](https://github.com/Ana
 
 | | Original | This Fork |
 |---|---|---|
-| **Latest Version** | v0.8.1 (Apr 2024) | v1.13.x (Active) |
-| **Frontend** | Angular 13 | Angular 21 |
+| **Latest Version** | v0.8.1 (Apr 2024) | [![GitHub release](https://img.shields.io/github/v/release/Starosdev/scrutiny?label=&style=flat-square)](https://github.com/Starosdev/scrutiny/releases) |
+| **Frontend** | Angular 13 | Modern Angular |
 | **Status** | Minimal updates | Actively maintained |
 | **Community PRs** | Many pending | Merged |
 
