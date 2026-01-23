@@ -19,6 +19,7 @@ type DeviceRepo interface {
 	GetDevices(ctx context.Context) ([]models.Device, error)
 	UpdateDevice(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo) (models.Device, error)
 	UpdateDeviceStatus(ctx context.Context, wwn string, status pkg.DeviceStatus) (models.Device, error)
+	ResetDeviceStatus(ctx context.Context, wwn string) (models.Device, error)
 	GetDeviceDetails(ctx context.Context, wwn string) (models.Device, error)
 	UpdateDeviceArchived(ctx context.Context, wwn string, archived bool) error
 	UpdateDeviceMuted(ctx context.Context, wwn string, muted bool) error

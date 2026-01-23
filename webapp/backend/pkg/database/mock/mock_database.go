@@ -272,6 +272,21 @@ func (mr *MockDeviceRepoMockRecorder) RegisterZFSPool(ctx, pool interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterZFSPool", reflect.TypeOf((*MockDeviceRepo)(nil).RegisterZFSPool), ctx, pool)
 }
 
+// ResetDeviceStatus mocks base method.
+func (m *MockDeviceRepo) ResetDeviceStatus(ctx context.Context, wwn string) (models.Device, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResetDeviceStatus", ctx, wwn)
+	ret0, _ := ret[0].(models.Device)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ResetDeviceStatus indicates an expected call of ResetDeviceStatus.
+func (mr *MockDeviceRepoMockRecorder) ResetDeviceStatus(ctx, wwn interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetDeviceStatus", reflect.TypeOf((*MockDeviceRepo)(nil).ResetDeviceStatus), ctx, wwn)
+}
+
 // SaveSettings mocks base method.
 func (m *MockDeviceRepo) SaveSettings(ctx context.Context, settings models.Settings) error {
 	m.ctrl.T.Helper()
