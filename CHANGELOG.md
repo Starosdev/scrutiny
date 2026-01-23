@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.13.5](https://github.com/Starosdev/scrutiny/compare/v1.13.4...v1.13.5) (2026-01-23)
+
+### Bug Fixes
+
+* **backend:** reset device status when SMART data passes and add notification logging ([#105](https://github.com/Starosdev/scrutiny/issues/105)) ([72d1773](https://github.com/Starosdev/scrutiny/commit/72d1773439f5a3f2b47456d977ec117d83c090af)), closes [#67](https://github.com/Starosdev/scrutiny/issues/67) [#67](https://github.com/Starosdev/scrutiny/issues/67)
+
 ## [1.13.4](https://github.com/Starosdev/scrutiny/compare/v1.13.3...v1.13.4) (2026-01-23)
 
 ### Bug Fixes
