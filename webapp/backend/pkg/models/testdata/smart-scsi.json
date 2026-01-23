@@ -36,7 +36,7 @@
     "current": 34,
     "drive_trip": 68
   },
-  "scsi_grown_defect_list": 56,
+  "scsi_grown_defect_list": 0,
   "power_on_time": {
     "hours": 43549,
     "minutes": 33
