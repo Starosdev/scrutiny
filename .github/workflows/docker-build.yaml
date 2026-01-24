@@ -5,6 +5,13 @@ on:
     branches:
       - master
       - develop
+    paths:
+      - 'webapp/**'
+      - 'collector/**'
+      - 'docker/**'
+      - 'Makefile'
+      - 'go.mod'
+      - 'go.sum'
     tags:
       - 'v*.*.*'
   workflow_dispatch:
@@ -13,6 +20,10 @@ on:
         description: 'Tag suffix (e.g., latest, develop, or version like 1.0.0)'
         required: true
         default: 'latest'
+
+concurrency:
+  group: docker-build-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   REGISTRY: ghcr.io
