@@ -475,6 +475,19 @@ func (n *Notify) GenShoutrrrNotificationParams(shoutrrrUrl string) (string, *sho
 	case "telegram":
 		(*params)["title"] = subject
 	case "zulip":
+		// Zulip has a 60 character limit on topics (enforced by shoutrrr)
+		if len(subject) > 60 {
+			subject = subject[:60]
+		}
+		// Allow users to override the topic via force_topic URL parameter
+		urlTopic := serviceURL.Query()["force_topic"]
+		if len(urlTopic) > 0 && urlTopic[len(urlTopic)-1] != "" {
+			subject = urlTopic[len(urlTopic)-1]
+			// Also truncate force_topic to 60 chars for robustness
+			if len(subject) > 60 {
+				subject = subject[:60]
+			}
+		}
 		(*params)["topic"] = subject
 	}
 
