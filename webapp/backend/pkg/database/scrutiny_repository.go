@@ -526,6 +526,75 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 	return summaries, nil
 }
 
+// GetDevicesLastSeenTimes returns a map of device WWN to the timestamp of their last SMART submission.
+// This queries InfluxDB for the most recent submission time for each device, which is more efficient
+// than calling GetSummary when only timestamps are needed.
+func (sr *scrutinyRepository) GetDevicesLastSeenTimes(ctx context.Context) (map[string]time.Time, error) {
+	lastSeenTimes := map[string]time.Time{}
+
+	// Query to get the last submission time for each device from all buckets
+	queryStr := fmt.Sprintf(`
+import "influxdata/influxdb/schema"
+bucketBaseName = "%s"
+
+dailyData = from(bucket: bucketBaseName)
+|> range(start: -10y, stop: now())
+|> filter(fn: (r) => r["_measurement"] == "smart")
+|> filter(fn: (r) => r["_field"] == "date")
+|> last()
+|> group(columns: ["device_wwn"])
+
+weeklyData = from(bucket: bucketBaseName + "_weekly")
+|> range(start: -10y, stop: now())
+|> filter(fn: (r) => r["_measurement"] == "smart")
+|> filter(fn: (r) => r["_field"] == "date")
+|> last()
+|> group(columns: ["device_wwn"])
+
+monthlyData = from(bucket: bucketBaseName + "_monthly")
+|> range(start: -10y, stop: now())
+|> filter(fn: (r) => r["_measurement"] == "smart")
+|> filter(fn: (r) => r["_field"] == "date")
+|> last()
+|> group(columns: ["device_wwn"])
+
+yearlyData = from(bucket: bucketBaseName + "_yearly")
+|> range(start: -10y, stop: now())
+|> filter(fn: (r) => r["_measurement"] == "smart")
+|> filter(fn: (r) => r["_field"] == "date")
+|> last()
+|> group(columns: ["device_wwn"])
+
+union(tables: [dailyData, weeklyData, monthlyData, yearlyData])
+|> group(columns: ["device_wwn"])
+|> last()
+|> yield(name: "last_seen")
+	`, sr.appConfig.GetString("web.influxdb.bucket"))
+
+	result, err := sr.influxQueryApi.Query(ctx, queryStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query last seen times: %w", err)
+	}
+
+	for result.Next() {
+		values := result.Record().Values()
+		if deviceWWN, ok := values["device_wwn"].(string); ok {
+			if lastTime, ok := values["_time"].(time.Time); ok {
+				// Keep the most recent time if we've seen this device before
+				if existing, exists := lastSeenTimes[deviceWWN]; !exists || lastTime.After(existing) {
+					lastSeenTimes[deviceWWN] = lastTime
+				}
+			}
+		}
+	}
+
+	if result.Err() != nil {
+		return nil, fmt.Errorf("query result error: %w", result.Err())
+	}
+
+	return lastSeenTimes, nil
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Helper Methods
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

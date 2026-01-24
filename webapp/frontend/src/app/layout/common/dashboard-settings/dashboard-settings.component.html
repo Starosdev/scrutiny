@@ -120,6 +120,32 @@
             </mat-form-field>
         </div>
 
+        <!-- Missed Collector Ping Notifications -->
+        <div class="flex flex-col mt-5 gt-md:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Notify on Missed Collector Ping</mat-label>
+                <mat-select [(ngModel)]="notifyOnMissedPing">
+                    <mat-option [value]="true">Enabled</mat-option>
+                    <mat-option [value]="false">Disabled</mat-option>
+                </mat-select>
+                <mat-hint>Alert when a collector stops sending data</mat-hint>
+            </mat-form-field>
+        </div>
+
+        <div class="flex flex-col mt-5 gt-md:flex-row" *ngIf="notifyOnMissedPing">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Missed Ping Timeout (minutes)</mat-label>
+                <input matInput type="number" [(ngModel)]="missedPingTimeoutMinutes" min="1">
+                <mat-hint>Minutes before alerting (default: 60)</mat-hint>
+            </mat-form-field>
+
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">
+                <mat-label>Check Interval (minutes)</mat-label>
+                <input matInput type="number" [(ngModel)]="missedPingCheckIntervalMins" min="1">
+                <mat-hint>How often to check (default: 5)</mat-hint>
+            </mat-form-field>
+        </div>
+
         <!-- SMART Attribute Overrides Section -->
         <mat-expansion-panel class="mt-5">
             <mat-expansion-panel-header>

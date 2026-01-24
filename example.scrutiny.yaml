@@ -159,6 +159,25 @@ failures:
 #    - "script:///file/path/on/disk"
 #    - "https://www.example.com/path"
 
+######################################################################
+# Collector Monitoring (Missed Ping Detection)
+#
+# Scrutiny can monitor for missed collector pings and send notifications
+# when a collector has not sent data within the expected time window.
+# This helps detect issues with collectors, networks, or cron jobs.
+#
+# These settings are configured via the Settings API, not this config file.
+# Use the /api/settings endpoint to configure:
+#
+#   metrics.notify_on_missed_ping: false          # Enable/disable feature
+#   metrics.missed_ping_timeout_minutes: 60       # Minutes before alerting
+#   metrics.missed_ping_check_interval_mins: 5    # How often to check
+#
+# Example API call to enable missed ping notifications:
+#   curl -X POST http://localhost:8080/api/settings \
+#     -H "Content-Type: application/json" \
+#     -d '{"metrics": {"notify_on_missed_ping": true, "missed_ping_timeout_minutes": 60}}'
+
 ########################################################################################################################
 # FEATURES COMING SOON
 #

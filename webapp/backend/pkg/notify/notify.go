@@ -31,6 +31,7 @@ const NotifyFailureTypeEmailTest = "EmailTest"
 const NotifyFailureTypeBothFailure = "SmartFailure" //SmartFailure always takes precedence when Scrutiny & Smart failed.
 const NotifyFailureTypeSmartFailure = "SmartFailure"
 const NotifyFailureTypeScrutinyFailure = "ScrutinyFailure"
+const NotifyFailureTypeMissedPing = "MissedPing"
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
 func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
@@ -492,4 +493,102 @@ func (n *Notify) GenShoutrrrNotificationParams(shoutrrrUrl string) (string, *sho
 	}
 
 	return serviceName, params, nil
+}
+
+// MissedPingPayload represents a notification for a missed collector ping
+type MissedPingPayload struct {
+	HostId         string    `json:"host_id,omitempty"`
+	DeviceWWN      string    `json:"device_wwn"`
+	DeviceName     string    `json:"device_name"`
+	DeviceSerial   string    `json:"device_serial"`
+	DeviceLabel    string    `json:"device_label,omitempty"`
+	LastSeenTime   time.Time `json:"last_seen_time"`
+	TimeoutMinutes int       `json:"timeout_minutes"`
+
+	Date        string `json:"date"`
+	FailureType string `json:"failure_type"`
+	Subject     string `json:"subject"`
+	Message     string `json:"message"`
+}
+
+// NewMissedPingPayload creates a payload for missed collector ping notifications
+func NewMissedPingPayload(device models.Device, lastSeenTime time.Time, timeoutMinutes int) MissedPingPayload {
+	payload := MissedPingPayload{
+		HostId:         strings.TrimSpace(device.HostId),
+		DeviceWWN:      device.WWN,
+		DeviceName:     device.DeviceName,
+		DeviceSerial:   device.SerialNumber,
+		DeviceLabel:    strings.TrimSpace(device.Label),
+		LastSeenTime:   lastSeenTime,
+		TimeoutMinutes: timeoutMinutes,
+		Date:           time.Now().Format(time.RFC3339),
+		FailureType:    NotifyFailureTypeMissedPing,
+	}
+
+	payload.Subject = payload.generateSubject()
+	payload.Message = payload.generateMessage()
+	return payload
+}
+
+func (p *MissedPingPayload) generateSubject() string {
+	deviceIdentifier := p.DeviceName
+	if len(p.DeviceLabel) > 0 {
+		deviceIdentifier = fmt.Sprintf("%s (%s)", p.DeviceLabel, p.DeviceName)
+	}
+	if len(p.HostId) > 0 {
+		return fmt.Sprintf("Scrutiny collector missed ping on [host]device: [%s]%s", p.HostId, deviceIdentifier)
+	}
+	return fmt.Sprintf("Scrutiny collector missed ping on device: %s", deviceIdentifier)
+}
+
+func (p *MissedPingPayload) generateMessage() string {
+	timeSinceLastSeen := time.Since(p.LastSeenTime).Round(time.Minute)
+
+	messageParts := []string{
+		fmt.Sprintf("Scrutiny has not received data from collector for device: %s", p.DeviceName),
+	}
+	if len(p.HostId) > 0 {
+		messageParts = append(messageParts, fmt.Sprintf("Host Id: %s", p.HostId))
+	}
+	messageParts = append(messageParts,
+		fmt.Sprintf("Device WWN: %s", p.DeviceWWN),
+		fmt.Sprintf("Device Serial: %s", p.DeviceSerial),
+	)
+	if len(p.DeviceLabel) > 0 {
+		messageParts = append(messageParts, fmt.Sprintf("Device Label: %s", p.DeviceLabel))
+	}
+	messageParts = append(messageParts,
+		"",
+		fmt.Sprintf("Last seen: %s (%s ago)", p.LastSeenTime.Format(time.RFC3339), timeSinceLastSeen),
+		fmt.Sprintf("Timeout threshold: %d minutes", p.TimeoutMinutes),
+		"",
+		"Please check that the collector is running and can reach the Scrutiny server.",
+	)
+
+	return strings.Join(messageParts, "\n")
+}
+
+// NewMissedPing creates a Notify instance for missed collector ping notifications
+func NewMissedPing(logger logrus.FieldLogger, appconfig config.Interface, device models.Device, lastSeenTime time.Time, timeoutMinutes int) Notify {
+	missedPingPayload := NewMissedPingPayload(device, lastSeenTime, timeoutMinutes)
+
+	// Convert MissedPingPayload to standard Payload for compatibility with Send()
+	payload := Payload{
+		HostId:       missedPingPayload.HostId,
+		DeviceType:   device.DeviceType,
+		DeviceName:   missedPingPayload.DeviceName,
+		DeviceSerial: missedPingPayload.DeviceSerial,
+		DeviceLabel:  missedPingPayload.DeviceLabel,
+		Test:         false,
+		Date:         missedPingPayload.Date,
+		FailureType:  missedPingPayload.FailureType,
+		Subject:      missedPingPayload.Subject,
+		Message:      missedPingPayload.Message,
+	}
+
+	return Notify{
+		Logger:  logger,
+		Config:  appconfig,
+		Payload: payload,
+	}
 }

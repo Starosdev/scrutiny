@@ -2,6 +2,18 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.15.7](https://github.com/Starosdev/scrutiny/compare/v1.15.6...v1.15.7) (2026-01-24)
+
+### Bug Fixes
+
+* **docker:** use exec in service scripts to reduce process overhead ([#131](https://github.com/Starosdev/scrutiny/issues/131)) ([43eba12](https://github.com/Starosdev/scrutiny/commit/43eba12b7e574dede4fd2599a14b856369a8e713)), closes [#111](https://github.com/Starosdev/scrutiny/issues/111)
+
+## [1.15.6](https://github.com/Starosdev/scrutiny/compare/v1.15.5...v1.15.6) (2026-01-24)
+
+### Bug Fixes
+
+* **notify:** handle Zulip 60-character topic limit and add force_topic support ([#132](https://github.com/Starosdev/scrutiny/issues/132)) ([a6b45cd](https://github.com/Starosdev/scrutiny/commit/a6b45cd7d6309e74e2fdf934fc3b9d8165c52b95)), closes [#110](https://github.com/Starosdev/scrutiny/issues/110)
+
 ## [1.15.5](https://github.com/Starosdev/scrutiny/compare/v1.15.4...v1.15.5) (2026-01-24)
 
 ### Bug Fixes

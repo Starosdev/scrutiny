@@ -96,6 +96,10 @@ export interface AppConfig {
         status_filter_attributes?: MetricsStatusFilterAttributes
         status_threshold?: MetricsStatusThreshold
         repeat_notifications?: boolean
+        // Missed collector ping notifications
+        notify_on_missed_ping?: boolean
+        missed_ping_timeout_minutes?: number
+        missed_ping_check_interval_mins?: number
     }
 
 }
@@ -129,7 +133,10 @@ export const appConfig: AppConfig = {
         notify_level: MetricsNotifyLevel.Fail,
         status_filter_attributes: MetricsStatusFilterAttributes.All,
         status_threshold: MetricsStatusThreshold.Both,
-        repeat_notifications: true
+        repeat_notifications: true,
+        notify_on_missed_ping: false,
+        missed_ping_timeout_minutes: 60,
+        missed_ping_check_interval_mins: 5
     }
 };
 

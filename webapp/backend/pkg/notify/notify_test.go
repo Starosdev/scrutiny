@@ -489,3 +489,120 @@ func TestGenShoutrrrNotificationParams_Zulip_ForceTopicTruncation(t *testing.T) 
 	require.Equal(t, 60, len((*params)["topic"]))
 	require.Equal(t, longForceTopic[:60], (*params)["topic"])
 }
+
+// Missed Ping Notification Tests
+
+func TestNewMissedPingPayload_Basic(t *testing.T) {
+	t.Parallel()
+
+	//setup
+	device := models.Device{
+		WWN:          "0x5000cca264eb01d7",
+		SerialNumber: "FAKEWDDJ324KSO",
+		DeviceName:   "/dev/sda",
+	}
+	lastSeen := time.Now().Add(-2 * time.Hour)
+	timeoutMinutes := 60
+
+	//test
+	payload := NewMissedPingPayload(device, lastSeen, timeoutMinutes)
+
+	//assert
+	require.Equal(t, NotifyFailureTypeMissedPing, payload.FailureType)
+	require.Equal(t, "0x5000cca264eb01d7", payload.DeviceWWN)
+	require.Equal(t, "/dev/sda", payload.DeviceName)
+	require.Equal(t, "FAKEWDDJ324KSO", payload.DeviceSerial)
+	require.Equal(t, 60, payload.TimeoutMinutes)
+	require.Equal(t, "Scrutiny collector missed ping on device: /dev/sda", payload.Subject)
+	require.Contains(t, payload.Message, "Scrutiny has not received data from collector for device: /dev/sda")
+	require.Contains(t, payload.Message, "Device WWN: 0x5000cca264eb01d7")
+	require.Contains(t, payload.Message, "Timeout threshold: 60 minutes")
+}
+
+func TestNewMissedPingPayload_WithHostId(t *testing.T) {
+	t.Parallel()
+
+	//setup
+	device := models.Device{
+		WWN:          "0x5000cca264eb01d7",
+		SerialNumber: "FAKEWDDJ324KSO",
+		DeviceName:   "/dev/sda",
+		HostId:       "nas-server-01",
+	}
+	lastSeen := time.Now().Add(-90 * time.Minute)
+	timeoutMinutes := 60
+
+	//test
+	payload := NewMissedPingPayload(device, lastSeen, timeoutMinutes)
+
+	//assert
+	require.Equal(t, "nas-server-01", payload.HostId)
+	require.Equal(t, "Scrutiny collector missed ping on [host]device: [nas-server-01]/dev/sda", payload.Subject)
+	require.Contains(t, payload.Message, "Host Id: nas-server-01")
+}
+
+func TestNewMissedPingPayload_WithDeviceLabel(t *testing.T) {
+	t.Parallel()
+
+	//setup
+	device := models.Device{
+		WWN:          "0x5000cca264eb01d7",
+		SerialNumber: "FAKEWDDJ324KSO",
+		DeviceName:   "/dev/sda",
+		Label:        "Parity Drive 1",
+	}
+	lastSeen := time.Now().Add(-90 * time.Minute)
+	timeoutMinutes := 60
+
+	//test
+	payload := NewMissedPingPayload(device, lastSeen, timeoutMinutes)
+
+	//assert
+	require.Equal(t, "Parity Drive 1", payload.DeviceLabel)
+	require.Equal(t, "Scrutiny collector missed ping on device: Parity Drive 1 (/dev/sda)", payload.Subject)
+	require.Contains(t, payload.Message, "Device Label: Parity Drive 1")
+}
+
+func TestNewMissedPingPayload_WithHostIdAndLabel(t *testing.T) {
+	t.Parallel()
+
+	//setup
+	device := models.Device{
+		WWN:          "0x5000cca264eb01d7",
+		SerialNumber: "FAKEWDDJ324KSO",
+		DeviceName:   "/dev/sda",
+		HostId:       "nas-server-01",
+		Label:        "Parity Drive 1",
+	}
+	lastSeen := time.Now().Add(-90 * time.Minute)
+	timeoutMinutes := 60
+
+	//test
+	payload := NewMissedPingPayload(device, lastSeen, timeoutMinutes)
+
+	//assert
+	require.Equal(t, "Scrutiny collector missed ping on [host]device: [nas-server-01]Parity Drive 1 (/dev/sda)", payload.Subject)
+	require.Contains(t, payload.Message, "Host Id: nas-server-01")
+	require.Contains(t, payload.Message, "Device Label: Parity Drive 1")
+}
+
+func TestMissedPingPayload_MessageContainsLastSeen(t *testing.T) {
+	t.Parallel()
+
+	//setup
+	device := models.Device{
+		WWN:          "0x5000cca264eb01d7",
+		SerialNumber: "FAKEWDDJ324KSO",
+		DeviceName:   "/dev/sda",
+	}
+	lastSeen := time.Now().Add(-90 * time.Minute)
+	timeoutMinutes := 60
+
+	//test
+	payload := NewMissedPingPayload(device, lastSeen, timeoutMinutes)
+
+	//assert
+	require.Contains(t, payload.Message, "Last seen:")
+	require.Contains(t, payload.Message, lastSeen.Format(time.RFC3339))
+	require.Contains(t, payload.Message, "Please check that the collector is running")
+}
