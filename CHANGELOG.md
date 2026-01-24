@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.15.1](https://github.com/Starosdev/scrutiny/compare/v1.15.0...v1.15.1) (2026-01-24)
+
+### Bug Fixes
+
+* **frontend:** improve detail view table layout for issue [#122](https://github.com/Starosdev/scrutiny/issues/122) ([#127](https://github.com/Starosdev/scrutiny/issues/127)) ([b0907f8](https://github.com/Starosdev/scrutiny/commit/b0907f839478455888dc41a70bdb0da7406fe6fe))
+
 ## [1.15.0](https://github.com/Starosdev/scrutiny/compare/v1.14.0...v1.15.0) (2026-01-23)
 
 ### Features
