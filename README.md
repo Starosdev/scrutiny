@@ -299,6 +299,34 @@ Or if you're not using docker, you can pass CLI arguments to the collector durin
 scrutiny-collector-metrics run --debug --log-file /tmp/collector.log
 ```
 
+### Collector Environment Variable Overrides
+
+Any collector configuration key can be overridden via environment variables using the `COLLECTOR_` prefix.
+Dots and dashes in key names become underscores.
+
+| Config Key | Environment Variable |
+| --- | --- |
+| `commands.metrics_scan_args` | `COLLECTOR_COMMANDS_METRICS_SCAN_ARGS` |
+| `commands.metrics_info_args` | `COLLECTOR_COMMANDS_METRICS_INFO_ARGS` |
+| `commands.metrics_smart_args` | `COLLECTOR_COMMANDS_METRICS_SMART_ARGS` |
+| `commands.metrics_smartctl_bin` | `COLLECTOR_COMMANDS_METRICS_SMARTCTL_BIN` |
+| `api.endpoint` | `COLLECTOR_API_ENDPOINT` |
+| `api.timeout` | `COLLECTOR_API_TIMEOUT` |
+| `host.id` | `COLLECTOR_HOST_ID` |
+| `log.level` | `COLLECTOR_LOG_LEVEL` |
+| `log.file` | `COLLECTOR_LOG_FILE` |
+
+Environment variables take precedence over config file values. This is useful for containerized
+deployments where you want to override specific settings without modifying the config file.
+
+Example:
+
+```bash
+docker run -e COLLECTOR_COMMANDS_METRICS_SMART_ARGS="--xall --json -T permissive" \
+  -e COLLECTOR_API_ENDPOINT=http://scrutiny-web:8080 \
+  ghcr.io/starosdev/scrutiny:collector
+```
+
 # Supported Architectures
 
 | Architecture Name | Binaries | Docker |

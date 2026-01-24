@@ -7,6 +7,27 @@
 # When this file is parsed by Scrutiny, all configuration file keys are
 # lowercased automatically. As such, Configuration keys are case-insensitive,
 # and should be lowercase in this file to be consistent with usage.
+#
+######################################################################
+# Environment Variable Overrides
+#
+# Any configuration key can be overridden via environment variables using
+# the COLLECTOR_ prefix. Dots and dashes in key names become underscores.
+#
+# Pattern: COLLECTOR_<KEY_WITH_DOTS_AS_UNDERSCORES>
+#
+# Examples:
+#   commands.metrics_scan_args  -> COLLECTOR_COMMANDS_METRICS_SCAN_ARGS
+#   commands.metrics_info_args  -> COLLECTOR_COMMANDS_METRICS_INFO_ARGS
+#   commands.metrics_smart_args -> COLLECTOR_COMMANDS_METRICS_SMART_ARGS
+#   api.endpoint                -> COLLECTOR_API_ENDPOINT
+#   api.timeout                 -> COLLECTOR_API_TIMEOUT
+#   host.id                     -> COLLECTOR_HOST_ID
+#   log.level                   -> COLLECTOR_LOG_LEVEL
+#   log.file                    -> COLLECTOR_LOG_FILE
+#
+# Environment variables take precedence over config file values.
+######################################################################
 
 
 ######################################################################
@@ -75,7 +96,6 @@ devices:
 # if you need to use a custom base path (for a reverse proxy), you can add a suffix to the endpoint.
 #  See docs/TROUBLESHOOTING_REVERSE_PROXY.md for more info,
 #  timeout: 60 # HTTP timeout in seconds for API requests (default: 60)
-# Can also be set via COLLECTOR_API_TIMEOUT environment variable
 
 # example to show how to override the smartctl command args globally
 #commands:
