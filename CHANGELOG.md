@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.15.2](https://github.com/Starosdev/scrutiny/compare/v1.15.1...v1.15.2) (2026-01-24)
+
+### Bug Fixes
+
+* **backend:** scsi wrongly uses nvme metadata ([#124](https://github.com/Starosdev/scrutiny/issues/124)) ([fac6c3e](https://github.com/Starosdev/scrutiny/commit/fac6c3ecbaad55ae78c31e5f3549222a25bc9ae2))
+
 ## [1.15.1](https://github.com/Starosdev/scrutiny/compare/v1.15.0...v1.15.1) (2026-01-24)
 
 ### Bug Fixes
