@@ -552,8 +552,55 @@ func TestFromCollectorSmartInfo_Scsi(t *testing.T) {
 	require.Equal(t, pkg.DeviceStatusPassed, smartMdl.Status)
 	require.Equal(t, 14, len(smartMdl.Attributes))
 
-	require.Equal(t, int64(56), smartMdl.Attributes["scsi_grown_defect_list"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(0), smartMdl.Attributes["scsi_grown_defect_list"].(*measurements.SmartScsiAttribute).Value)
 	require.Equal(t, int64(300357663), smartMdl.Attributes["read_errors_corrected_by_eccfast"].(*measurements.SmartScsiAttribute).Value) //total_errors_corrected
+}
+
+func TestFromCollectorSmartInfo_Scsi_Fail_Scrutiny(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-scsi-failed.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+	require.Equal(t, "WWN-test", smartMdl.DeviceWWN)
+	require.Equal(t, pkg.DeviceStatusFailedScrutiny, smartMdl.Status)
+	
+	// scsi_grown_defect_list should fail: Ideal="low", Value=5 > Threshold=0
+	require.Equal(t, pkg.AttributeStatusFailedScrutiny, smartMdl.Attributes["scsi_grown_defect_list"].GetStatus(),
+		"scrutiny should detect that %s failed (status: %d, %s)",
+		smartMdl.Attributes["scsi_grown_defect_list"].(*measurements.SmartScsiAttribute).AttributeId,
+		smartMdl.Attributes["scsi_grown_defect_list"].GetStatus(),
+		smartMdl.Attributes["scsi_grown_defect_list"].(*measurements.SmartScsiAttribute).StatusReason,
+	)
+	
+	// read_total_uncorrected_errors should fail: Ideal="low", Value=3 > Threshold=0
+	require.Equal(t, pkg.AttributeStatusFailedScrutiny, smartMdl.Attributes["read_total_uncorrected_errors"].GetStatus(),
+		"scrutiny should detect that %s failed (status: %d, %s)",
+		smartMdl.Attributes["read_total_uncorrected_errors"].(*measurements.SmartScsiAttribute).AttributeId,
+		smartMdl.Attributes["read_total_uncorrected_errors"].GetStatus(),
+		smartMdl.Attributes["read_total_uncorrected_errors"].(*measurements.SmartScsiAttribute).StatusReason,
+	)
+
+	require.Equal(t, 14, len(smartMdl.Attributes))
 }
 
 // TestFromCollectorSmartInfo_Scsi_SAS_EnvironmentalReports tests that for SAS drives
