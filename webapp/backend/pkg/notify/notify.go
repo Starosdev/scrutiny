@@ -128,12 +128,14 @@ func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs me
 	logger.Debugf("ShouldNotify: device %s has %d failing attributes after filters (device_status=%d)", device.WWN, len(failingAttributes), device.DeviceStatus)
 
 	// If the user doesn't want repeated notifications when the failing value doesn't change, we need to get the last value from the db
+	// We use GetPreviousSmartSubmission which returns raw data (not daily-aggregated) so we compare against
+	// the actual previous submission, not the previous day's value.
 	var lastPoints []measurements.Smart
 	var err error
 	if !repeatNotifications {
-		lastPoints, err = deviceRepo.GetSmartAttributeHistory(c, c.Param("wwn"), database.DURATION_KEY_FOREVER, 1, 1, failingAttributes)
-		if err == nil || len(lastPoints) < 1 {
-			logger.Warningln("Could not get the most recent data points from the database. This is expected to happen only if this is the very first submission of data for the device.")
+		lastPoints, err = deviceRepo.GetPreviousSmartSubmission(c, c.Param("wwn"))
+		if err != nil || len(lastPoints) < 1 {
+			logger.Debugln("Could not get the previous submission from the database. This is expected for the first or second submission of data for the device.")
 		}
 	}
 	for _, attrId := range failingAttributes {
