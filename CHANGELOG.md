@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.15.3](https://github.com/Starosdev/scrutiny/compare/v1.15.2...v1.15.3) (2026-01-24)
+
+### Build
+
+* update Go 1.23 and dependencies for CVE fixes ([bb36d66](https://github.com/Starosdev/scrutiny/commit/bb36d665bc3d04d9d8714152158943596d8e232c))
+
 ## [1.15.2](https://github.com/Starosdev/scrutiny/compare/v1.15.1...v1.15.2) (2026-01-24)
 
 ### Bug Fixes
