@@ -452,6 +452,33 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				return tx.AutoMigrate(&m20260122000000.AttributeOverride{})
 			},
 		},
+		{
+			ID: "m20260124000000", // add missed ping notification settings
+			Migrate: func(tx *gorm.DB) error {
+				// Add missed ping notification settings with defaults
+				var defaultSettings = []m20220716214900.Setting{
+					{
+						SettingKeyName:        "metrics.notify_on_missed_ping",
+						SettingKeyDescription: "Enable notifications when collectors miss their scheduled pings (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      false,
+					},
+					{
+						SettingKeyName:        "metrics.missed_ping_timeout_minutes",
+						SettingKeyDescription: "Minutes to wait before considering a collector missed (default: 60)",
+						SettingDataType:       "numeric",
+						SettingValueNumeric:   60,
+					},
+					{
+						SettingKeyName:        "metrics.missed_ping_check_interval_mins",
+						SettingKeyDescription: "How often to check for missed pings in minutes (default: 5)",
+						SettingDataType:       "numeric",
+						SettingValueNumeric:   5,
+					},
+				}
+				return tx.Create(&defaultSettings).Error
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {

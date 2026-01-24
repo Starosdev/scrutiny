@@ -26,5 +26,10 @@ type Settings struct {
 		StatusFilterAttributes int  `json:"status_filter_attributes" mapstructure:"status_filter_attributes"`
 		StatusThreshold        int  `json:"status_threshold" mapstructure:"status_threshold"`
 		RepeatNotifications    bool `json:"repeat_notifications" mapstructure:"repeat_notifications"`
+
+		// Missed collector ping notification settings
+		NotifyOnMissedPing          bool `json:"notify_on_missed_ping" mapstructure:"notify_on_missed_ping"`
+		MissedPingTimeoutMinutes    int  `json:"missed_ping_timeout_minutes" mapstructure:"missed_ping_timeout_minutes"`
+		MissedPingCheckIntervalMins int  `json:"missed_ping_check_interval_mins" mapstructure:"missed_ping_check_interval_mins"`
 	} `json:"metrics" mapstructure:"metrics"`
 }

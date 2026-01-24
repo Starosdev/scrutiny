@@ -204,5 +204,10 @@ func (ae *AppEngine) Start() error {
 		}()
 	}
 
+	// Start the missed ping monitor for collector health monitoring
+	missedPingMonitor := NewMissedPingMonitor(ae)
+	missedPingMonitor.Start()
+	ae.Logger.Info("Missed ping monitor started")
+
 	return r.Run(fmt.Sprintf("%s:%s", ae.Config.GetString("web.listen.host"), ae.Config.GetString("web.listen.port")))
 }
