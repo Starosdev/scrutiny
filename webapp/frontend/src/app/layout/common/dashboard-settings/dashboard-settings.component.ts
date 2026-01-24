@@ -39,6 +39,11 @@ export class DashboardSettingsComponent implements OnInit {
     statusFilterAttributes: number;
     repeatNotifications: boolean;
 
+    // Missed ping settings
+    notifyOnMissedPing: boolean;
+    missedPingTimeoutMinutes: number;
+    missedPingCheckIntervalMins: number;
+
     // Attribute overrides
     overrides: AttributeOverride[] = [];
     displayedColumns: string[] = ['protocol', 'attribute_id', 'action', 'source', 'actions'];
@@ -88,6 +93,11 @@ export class DashboardSettingsComponent implements OnInit {
                 this.statusFilterAttributes = config.metrics.status_filter_attributes;
                 this.statusThreshold = config.metrics.status_threshold;
                 this.repeatNotifications = config.metrics.repeat_notifications;
+
+                // Missed ping settings
+                this.notifyOnMissedPing = config.metrics.notify_on_missed_ping ?? false;
+                this.missedPingTimeoutMinutes = config.metrics.missed_ping_timeout_minutes ?? 60;
+                this.missedPingCheckIntervalMins = config.metrics.missed_ping_check_interval_mins ?? 5;
 
             });
 
@@ -163,7 +173,10 @@ export class DashboardSettingsComponent implements OnInit {
             metrics: {
                 status_filter_attributes: this.statusFilterAttributes as MetricsStatusFilterAttributes,
                 status_threshold: this.statusThreshold as MetricsStatusThreshold,
-                repeat_notifications: this.repeatNotifications
+                repeat_notifications: this.repeatNotifications,
+                notify_on_missed_ping: this.notifyOnMissedPing,
+                missed_ping_timeout_minutes: this.missedPingTimeoutMinutes,
+                missed_ping_check_interval_mins: this.missedPingCheckIntervalMins
             }
         }
         this._configService.config = newSettings
