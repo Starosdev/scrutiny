@@ -27,31 +27,59 @@ type MissedPingMonitor struct {
 	notifiedDevices map[string]time.Time
 	mu              sync.RWMutex
 
-	// Channel to signal shutdown
+	// Persistent repository connection (created once, reused)
+	deviceRepo database.DeviceRepo
+	repoMu     sync.Mutex
+
+	// Channel to signal shutdown and context for cancellation
 	stopCh chan struct{}
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	// WaitGroup to track when the run goroutine has finished
+	wg sync.WaitGroup
 }
 
 // NewMissedPingMonitor creates a new missed ping monitor
 func NewMissedPingMonitor(ae *AppEngine) *MissedPingMonitor {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &MissedPingMonitor{
 		appEngine:       ae,
 		logger:          ae.Logger,
 		notifiedDevices: make(map[string]time.Time),
 		stopCh:          make(chan struct{}),
+		ctx:             ctx,
+		cancel:          cancel,
 	}
 }
 
 // Start begins the background monitoring loop
 func (m *MissedPingMonitor) Start() {
+	m.wg.Add(1)
 	go m.run()
 }
 
-// Stop signals the monitor to stop
+// Stop signals the monitor to stop and waits for it to finish
 func (m *MissedPingMonitor) Stop() {
+	m.logger.Debug("Stopping missed ping monitor...")
+	m.cancel() // Cancel the context first to interrupt any in-flight operations
 	close(m.stopCh)
+	m.wg.Wait() // Wait for the run goroutine to finish
+
+	// Close the persistent repository connection if it exists
+	m.repoMu.Lock()
+	if m.deviceRepo != nil {
+		m.deviceRepo.Close()
+		m.deviceRepo = nil
+	}
+	m.repoMu.Unlock()
+
+	m.logger.Info("Missed ping monitor stopped")
 }
 
 func (m *MissedPingMonitor) run() {
+	defer m.wg.Done()
+
 	// Load initial settings to get check interval
 	checkInterval := m.getCheckInterval()
 	ticker := time.NewTicker(checkInterval)
@@ -62,7 +90,6 @@ func (m *MissedPingMonitor) run() {
 	for {
 		select {
 		case <-m.stopCh:
-			m.logger.Info("Missed ping monitor stopped")
 			return
 		case <-ticker.C:
 			m.checkMissedPings()
@@ -78,17 +105,55 @@ func (m *MissedPingMonitor) run() {
 	}
 }
 
+// getOrCreateRepo returns the persistent repository, creating it if necessary
+func (m *MissedPingMonitor) getOrCreateRepo() (database.DeviceRepo, error) {
+	m.repoMu.Lock()
+	defer m.repoMu.Unlock()
+
+	if m.deviceRepo != nil {
+		return m.deviceRepo, nil
+	}
+
+	repo, err := database.NewScrutinyRepository(m.appEngine.Config, m.logger)
+	if err != nil {
+		return nil, err
+	}
+
+	m.deviceRepo = repo
+	return m.deviceRepo, nil
+}
+
+// resetRepo closes and clears the persistent repository (called on connection errors)
+func (m *MissedPingMonitor) resetRepo() {
+	m.repoMu.Lock()
+	defer m.repoMu.Unlock()
+
+	if m.deviceRepo != nil {
+		m.deviceRepo.Close()
+		m.deviceRepo = nil
+	}
+}
+
 func (m *MissedPingMonitor) getCheckInterval() time.Duration {
-	// Try to load settings from database
-	deviceRepo, err := database.NewScrutinyRepository(m.appEngine.Config, m.logger)
+	// Check if context is already cancelled
+	if m.ctx.Err() != nil {
+		return time.Duration(DefaultMissedPingCheckIntervalMins) * time.Minute
+	}
+
+	// Try to get or create repository
+	deviceRepo, err := m.getOrCreateRepo()
 	if err != nil {
 		m.logger.Warnf("Failed to create repository for settings: %v, using default interval", err)
 		return time.Duration(DefaultMissedPingCheckIntervalMins) * time.Minute
 	}
-	defer deviceRepo.Close()
 
-	settings, err := deviceRepo.LoadSettings(context.Background())
-	if err != nil || settings == nil {
+	settings, err := deviceRepo.LoadSettings(m.ctx)
+	if err != nil {
+		// On error, reset the repo so it will be recreated next time
+		m.resetRepo()
+		return time.Duration(DefaultMissedPingCheckIntervalMins) * time.Minute
+	}
+	if settings == nil {
 		return time.Duration(DefaultMissedPingCheckIntervalMins) * time.Minute
 	}
 
@@ -100,76 +165,100 @@ func (m *MissedPingMonitor) getCheckInterval() time.Duration {
 	return time.Duration(interval) * time.Minute
 }
 
-func (m *MissedPingMonitor) checkMissedPings() {
-	ctx := context.Background()
+// checkMissedPingsData holds the data needed to check for missed pings
+type checkMissedPingsData struct {
+	timeoutMinutes int
+	timeout        time.Duration
+	devices        []models.Device
+	lastSeenTimes  map[string]time.Time
+}
 
-	// Create a new repository for this check
-	deviceRepo, err := database.NewScrutinyRepository(m.appEngine.Config, m.logger)
+// loadCheckData loads all data needed for missed ping checks
+func (m *MissedPingMonitor) loadCheckData() (*checkMissedPingsData, error) {
+	deviceRepo, err := m.getOrCreateRepo()
 	if err != nil {
-		m.logger.Errorf("Failed to create repository for missed ping check: %v", err)
-		return
-	}
-	defer deviceRepo.Close()
-
-	// Load settings
-	settings, err := deviceRepo.LoadSettings(ctx)
-	if err != nil {
-		m.logger.Errorf("Failed to load settings: %v", err)
-		return
+		return nil, err
 	}
 
-	// Check if feature is enabled
+	settings, err := deviceRepo.LoadSettings(m.ctx)
+	if err != nil {
+		m.resetRepo()
+		return nil, err
+	}
+
 	if settings == nil || !settings.Metrics.NotifyOnMissedPing {
-		m.logger.Debug("Missed ping notifications are disabled")
-		return
+		return nil, nil // Feature disabled, not an error
 	}
 
-	// Get timeout threshold
 	timeoutMinutes := settings.Metrics.MissedPingTimeoutMinutes
 	if timeoutMinutes <= 0 {
 		timeoutMinutes = DefaultMissedPingTimeoutMinutes
 	}
-	timeout := time.Duration(timeoutMinutes) * time.Minute
 
-	// Get all devices
-	devices, err := deviceRepo.GetDevices(ctx)
+	devices, err := deviceRepo.GetDevices(m.ctx)
 	if err != nil {
-		m.logger.Errorf("Failed to get devices: %v", err)
+		m.resetRepo()
+		return nil, err
+	}
+
+	lastSeenTimes, err := deviceRepo.GetDevicesLastSeenTimes(m.ctx)
+	if err != nil {
+		m.resetRepo()
+		return nil, err
+	}
+
+	return &checkMissedPingsData{
+		timeoutMinutes: timeoutMinutes,
+		timeout:        time.Duration(timeoutMinutes) * time.Minute,
+		devices:        devices,
+		lastSeenTimes:  lastSeenTimes,
+	}, nil
+}
+
+// processDevice checks a single device for missed pings
+func (m *MissedPingMonitor) processDevice(device models.Device, data *checkMissedPingsData, now time.Time) {
+	if device.Archived || device.Muted {
+		m.logger.Debugf("Skipping device %s - archived: %v, muted: %v", device.WWN, device.Archived, device.Muted)
 		return
 	}
 
-	// Get last seen times for all devices
-	lastSeenTimes, err := deviceRepo.GetDevicesLastSeenTimes(ctx)
+	lastSeen, exists := data.lastSeenTimes[device.WWN]
+	if !exists {
+		m.logger.Debugf("Device %s has no last seen time (newly registered?)", device.WWN)
+		return
+	}
+
+	if now.Sub(lastSeen) > data.timeout {
+		m.handleMissedPing(device, lastSeen, data.timeoutMinutes)
+	} else {
+		m.clearNotificationState(device.WWN)
+	}
+}
+
+func (m *MissedPingMonitor) checkMissedPings() {
+	if m.ctx.Err() != nil {
+		return
+	}
+
+	data, err := m.loadCheckData()
 	if err != nil {
-		m.logger.Errorf("Failed to get device last seen times: %v", err)
+		m.logger.Errorf("Failed to load data for missed ping check: %v", err)
+		return
+	}
+	if data == nil {
+		m.logger.Debug("Missed ping notifications are disabled")
 		return
 	}
 
 	now := time.Now()
+	currentDeviceWWNs := make(map[string]bool, len(data.devices))
 
-	for _, device := range devices {
-		// Skip archived or muted devices
-		if device.Archived || device.Muted {
-			m.logger.Debugf("Skipping device %s - archived: %v, muted: %v", device.WWN, device.Archived, device.Muted)
-			continue
-		}
-
-		lastSeen, exists := lastSeenTimes[device.WWN]
-		if !exists {
-			// Device has never sent data - this might be a newly registered device
-			m.logger.Debugf("Device %s has no last seen time (newly registered?)", device.WWN)
-			continue
-		}
-
-		timeSinceLastSeen := now.Sub(lastSeen)
-
-		if timeSinceLastSeen > timeout {
-			m.handleMissedPing(device, lastSeen, timeoutMinutes)
-		} else {
-			// Device is healthy - clear any previous notification state
-			m.clearNotificationState(device.WWN)
-		}
+	for _, device := range data.devices {
+		currentDeviceWWNs[device.WWN] = true
+		m.processDevice(device, data, now)
 	}
+
+	m.cleanupStaleNotifications(currentDeviceWWNs)
 }
 
 func (m *MissedPingMonitor) handleMissedPing(device models.Device, lastSeen time.Time, timeoutMinutes int) {
@@ -210,4 +299,32 @@ func (m *MissedPingMonitor) clearNotificationState(wwn string) {
 		delete(m.notifiedDevices, wwn)
 		m.logger.Debugf("Cleared missed ping notification state for device %s (device is now healthy)", wwn)
 	}
+}
+
+// cleanupStaleNotifications removes entries from notifiedDevices for devices that no longer exist
+func (m *MissedPingMonitor) cleanupStaleNotifications(currentDeviceWWNs map[string]bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for wwn := range m.notifiedDevices {
+		if !currentDeviceWWNs[wwn] {
+			delete(m.notifiedDevices, wwn)
+			m.logger.Debugf("Cleaned up stale notification state for deleted device %s", wwn)
+		}
+	}
+}
+
+// GetNotifiedDevicesCount returns the number of devices currently in the notified state (for testing)
+func (m *MissedPingMonitor) GetNotifiedDevicesCount() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return len(m.notifiedDevices)
+}
+
+// IsDeviceNotified returns whether a device is currently in the notified state (for testing)
+func (m *MissedPingMonitor) IsDeviceNotified(wwn string) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	_, exists := m.notifiedDevices[wwn]
+	return exists
 }
