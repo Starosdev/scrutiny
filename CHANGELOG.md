@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.15.5](https://github.com/Starosdev/scrutiny/compare/v1.15.4...v1.15.5) (2026-01-24)
+
+### Bug Fixes
+
+* **backend:** use safe type assertions for SMART metrics parsing ([#130](https://github.com/Starosdev/scrutiny/issues/130)) ([2ec3eb1](https://github.com/Starosdev/scrutiny/commit/2ec3eb1160e072f3c58bc5e7c1583648b1dba412)), closes [#107](https://github.com/Starosdev/scrutiny/issues/107)
+
 ## [1.15.4](https://github.com/Starosdev/scrutiny/compare/v1.15.3...v1.15.4) (2026-01-24)
 
 ### Bug Fixes
