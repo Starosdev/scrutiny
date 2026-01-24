@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"os"
 	"path"
 	"testing"
 
@@ -201,5 +202,54 @@ func TestConfiguration_DeviceAllowList(t *testing.T) {
 		// Anything should be allow listed if the key isnt there
 		require.True(t, testConfig.IsAllowlistedDevice("/dev/sda"), "/dev/sda should be allow listed")
 		require.True(t, testConfig.IsAllowlistedDevice("/dev/sdc"), "/dev/sda should be allow listed")
+	})
+}
+
+func TestConfiguration_EnvironmentVariableOverride(t *testing.T) {
+	// Note: not using t.Parallel() because we modify environment variables
+
+	t.Run("env var overrides default", func(t *testing.T) {
+		os.Setenv("COLLECTOR_COMMANDS_METRICS_SCAN_ARGS", "--scan --json -d sat")
+		defer os.Unsetenv("COLLECTOR_COMMANDS_METRICS_SCAN_ARGS")
+
+		testConfig, err := config.Create()
+		require.NoError(t, err)
+
+		require.Equal(t, "--scan --json -d sat", testConfig.GetString("commands.metrics_scan_args"))
+	})
+
+	t.Run("env var overrides nested key", func(t *testing.T) {
+		os.Setenv("COLLECTOR_API_ENDPOINT", "http://custom:9090")
+		defer os.Unsetenv("COLLECTOR_API_ENDPOINT")
+
+		testConfig, err := config.Create()
+		require.NoError(t, err)
+
+		require.Equal(t, "http://custom:9090", testConfig.GetString("api.endpoint"))
+	})
+
+	t.Run("unset env var uses default", func(t *testing.T) {
+		// Ensure env var is not set
+		os.Unsetenv("COLLECTOR_COMMANDS_METRICS_INFO_ARGS")
+
+		testConfig, err := config.Create()
+		require.NoError(t, err)
+
+		require.Equal(t, "--info --json", testConfig.GetString("commands.metrics_info_args"))
+	})
+
+	t.Run("env var overrides config file", func(t *testing.T) {
+		os.Setenv("COLLECTOR_COMMANDS_METRICS_SMART_ARGS", "--xall --json -T verypermissive")
+		defer os.Unsetenv("COLLECTOR_COMMANDS_METRICS_SMART_ARGS")
+
+		testConfig, err := config.Create()
+		require.NoError(t, err)
+
+		// Load config file that sets metrics_smart_args to "--xall --json -T permissive"
+		err = testConfig.ReadConfig(path.Join("testdata", "override_commands.yaml"), testLogger())
+		require.NoError(t, err)
+
+		// Env var should take precedence over config file
+		require.Equal(t, "--xall --json -T verypermissive", testConfig.GetString("commands.metrics_smart_args"))
 	})
 }

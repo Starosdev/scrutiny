@@ -2,6 +2,133 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.15.5](https://github.com/Starosdev/scrutiny/compare/v1.15.4...v1.15.5) (2026-01-24)
+
+### Bug Fixes
+
+* **backend:** use safe type assertions for SMART metrics parsing ([#130](https://github.com/Starosdev/scrutiny/issues/130)) ([2ec3eb1](https://github.com/Starosdev/scrutiny/commit/2ec3eb1160e072f3c58bc5e7c1583648b1dba412)), closes [#107](https://github.com/Starosdev/scrutiny/issues/107)
+
+## [1.15.4](https://github.com/Starosdev/scrutiny/compare/v1.15.3...v1.15.4) (2026-01-24)
+
+### Bug Fixes
+
+* **notify:** correct repeat notification detection to compare against previous submission ([#129](https://github.com/Starosdev/scrutiny/issues/129)) ([9930980](https://github.com/Starosdev/scrutiny/commit/993098092759d9568aba14de4dfa01188296d6a6)), closes [#67](https://github.com/Starosdev/scrutiny/issues/67)
+
+## [1.15.3](https://github.com/Starosdev/scrutiny/compare/v1.15.2...v1.15.3) (2026-01-24)
+
+### Build
+
+* update Go 1.23 and dependencies for CVE fixes ([bb36d66](https://github.com/Starosdev/scrutiny/commit/bb36d665bc3d04d9d8714152158943596d8e232c))
+
+## [1.15.2](https://github.com/Starosdev/scrutiny/compare/v1.15.1...v1.15.2) (2026-01-24)
+
+### Bug Fixes
+
+* **backend:** scsi wrongly uses nvme metadata ([#124](https://github.com/Starosdev/scrutiny/issues/124)) ([fac6c3e](https://github.com/Starosdev/scrutiny/commit/fac6c3ecbaad55ae78c31e5f3549222a25bc9ae2))
+
+## [1.15.1](https://github.com/Starosdev/scrutiny/compare/v1.15.0...v1.15.1) (2026-01-24)
+
+### Bug Fixes
+
+* **frontend:** improve detail view table layout for issue [#122](https://github.com/Starosdev/scrutiny/issues/122) ([#127](https://github.com/Starosdev/scrutiny/issues/127)) ([b0907f8](https://github.com/Starosdev/scrutiny/commit/b0907f839478455888dc41a70bdb0da7406fe6fe))
+
+## [1.15.0](https://github.com/Starosdev/scrutiny/compare/v1.14.0...v1.15.0) (2026-01-23)
+
+### Features
+
+* **frontend:** add UI for configuring SMART attribute overrides ([#120](https://github.com/Starosdev/scrutiny/issues/120)) ([fa9b54d](https://github.com/Starosdev/scrutiny/commit/fa9b54d2839a9d0621fbda32eb23407b0b896c3a)), closes [#97](https://github.com/Starosdev/scrutiny/issues/97)
+
+## [1.14.0](https://github.com/Starosdev/scrutiny/compare/v1.13.6...v1.14.0) (2026-01-23)
+
+### Features
+
+* **backend:** add SMART attribute overrides support ([#118](https://github.com/Starosdev/scrutiny/issues/118)) ([e113d1f](https://github.com/Starosdev/scrutiny/commit/e113d1f7ab1d2a022e9d12a380abd229aeaad022))
+
+## [1.13.6](https://github.com/Starosdev/scrutiny/compare/v1.13.5...v1.13.6) (2026-01-23)
+
+### Bug Fixes
+
+* **backend:** skip web integration tests when InfluxDB unavailable ([#116](https://github.com/Starosdev/scrutiny/issues/116)) ([ed386d2](https://github.com/Starosdev/scrutiny/commit/ed386d2819b0f0271b6f1471f4be4fa2d1de0b0c)), closes [#78](https://github.com/Starosdev/scrutiny/issues/78)
+
+## [1.13.5](https://github.com/Starosdev/scrutiny/compare/v1.13.4...v1.13.5) (2026-01-23)
+
+### Bug Fixes
+
+* **backend:** reset device status when SMART data passes and add notification logging ([#105](https://github.com/Starosdev/scrutiny/issues/105)) ([72d1773](https://github.com/Starosdev/scrutiny/commit/72d1773439f5a3f2b47456d977ec117d83c090af)), closes [#67](https://github.com/Starosdev/scrutiny/issues/67) [#67](https://github.com/Starosdev/scrutiny/issues/67)
+
+## [1.13.4](https://github.com/Starosdev/scrutiny/compare/v1.13.3...v1.13.4) (2026-01-23)
+
+### Bug Fixes
+
+* **frontend:** remove unused Quill dependency (XSS vulnerability) ([#104](https://github.com/Starosdev/scrutiny/issues/104)) ([15e2a62](https://github.com/Starosdev/scrutiny/commit/15e2a62d1bac0f7674da9c4bf82797ec3575730c)), closes [#69](https://github.com/Starosdev/scrutiny/issues/69)
+
+## [1.13.3](https://github.com/Starosdev/scrutiny/compare/v1.13.2...v1.13.3) (2026-01-23)
+
+### Bug Fixes
+
+* **frontend:** update zfs pool model scrub property names to match the backend response ([#103](https://github.com/Starosdev/scrutiny/issues/103)) ([edce49b](https://github.com/Starosdev/scrutiny/commit/edce49b4e24da4d8698fb446093278b8fde8cb7e))
+
+## [1.13.2](https://github.com/Starosdev/scrutiny/compare/v1.13.1...v1.13.2) (2026-01-22)
+
+### Bug Fixes
+
+* **smart:** correct TB written/read calculation for Intel SSDs ([#101](https://github.com/Starosdev/scrutiny/issues/101)) ([ebef580](https://github.com/Starosdev/scrutiny/commit/ebef580da4e35aa403d374bf150c4b81b304fb1c)), closes [#95](https://github.com/Starosdev/scrutiny/issues/95) [#96](https://github.com/Starosdev/scrutiny/issues/96) [#95](https://github.com/Starosdev/scrutiny/issues/95) [#93](https://github.com/Starosdev/scrutiny/issues/93) [#93](https://github.com/Starosdev/scrutiny/issues/93)
+
+## [1.13.1](https://github.com/Starosdev/scrutiny/compare/v1.13.0...v1.13.1) (2026-01-22)
+
+### Bug Fixes
+
+* **zfs:** ensure pool data updates are persisted to database ([#100](https://github.com/Starosdev/scrutiny/issues/100)) ([e37a924](https://github.com/Starosdev/scrutiny/commit/e37a924bf2f85e4f7a39b9bc5254d6e99d0fcb42)), closes [#91](https://github.com/Starosdev/scrutiny/issues/91)
+
+## [1.13.0](https://github.com/Starosdev/scrutiny/compare/v1.12.1...v1.13.0) (2026-01-22)
+
+### Features
+
+* **dashboard:** add SSD health metrics to dashboard cards ([#99](https://github.com/Starosdev/scrutiny/issues/99)) ([d615d78](https://github.com/Starosdev/scrutiny/commit/d615d78bc626630b9accdec39c9e8b6eefcc71ce)), closes [#95](https://github.com/Starosdev/scrutiny/issues/95) [#96](https://github.com/Starosdev/scrutiny/issues/96) [#95](https://github.com/Starosdev/scrutiny/issues/95)
+
+## [1.12.1](https://github.com/Starosdev/scrutiny/compare/v1.12.0...v1.12.1) (2026-01-22)
+
+### Bug Fixes
+
+* **smart:** prevent false failures from corrupted ATA device statistics ([#98](https://github.com/Starosdev/scrutiny/issues/98)) ([126307f](https://github.com/Starosdev/scrutiny/commit/126307f3301960ef989bf0da1b2bb60cd3f547cd)), closes [#84](https://github.com/Starosdev/scrutiny/issues/84) [#84](https://github.com/Starosdev/scrutiny/issues/84)
+
+## [1.12.0](https://github.com/Starosdev/scrutiny/compare/v1.11.0...v1.12.0) (2026-01-22)
+
+### Features
+
+* **detail:** add SSD health metrics to detail component ([#96](https://github.com/Starosdev/scrutiny/issues/96)) ([4713199](https://github.com/Starosdev/scrutiny/commit/4713199cdae5ac0d4c35d9443ad811b735412ade))
+
+## [1.11.0](https://github.com/Starosdev/scrutiny/compare/v1.10.1...v1.11.0) (2026-01-21)
+
+### Features
+
+* written and read TBs ([#74](https://github.com/Starosdev/scrutiny/issues/74)) ([10698c3](https://github.com/Starosdev/scrutiny/commit/10698c32e089fca86f4ab0d2d0ade1b53cdec94b))
+
+## [1.10.1](https://github.com/Starosdev/scrutiny/compare/v1.10.0...v1.10.1) (2026-01-20)
+
+### Bug Fixes
+
+* **mock:** enhance ZFS pool management methods in MockDeviceRepo ([c8b22fd](https://github.com/Starosdev/scrutiny/commit/c8b22fdcd6a8fc4f75a09ddb42453318110d2062))
+
+## [1.10.0](https://github.com/Starosdev/scrutiny/compare/v1.9.1...v1.10.0) (2026-01-19)
+
+### Features
+
+* **dashboard:** add more sorting options ([#80](https://github.com/Starosdev/scrutiny/issues/80)) ([88ef36e](https://github.com/Starosdev/scrutiny/commit/88ef36e0d227437a9cbc4d8da9ac01bb6a80d5d5)), closes [#72](https://github.com/Starosdev/scrutiny/issues/72)
+* **docker:** add ZFS collector to omnibus image ([#82](https://github.com/Starosdev/scrutiny/issues/82)) ([9ed219d](https://github.com/Starosdev/scrutiny/commit/9ed219d0e9779682f661c7dd073360f52179ee5e))
+* **frontend:** add attribute history dialog for sparkline charts ([a1a67cf](https://github.com/Starosdev/scrutiny/commit/a1a67cf01063ac31c135ba39b9b4b88f994e7ed9)), closes [#71](https://github.com/Starosdev/scrutiny/issues/71)
+
+### Bug Fixes
+
+* **ci:** limit ZFS collector to amd64 only ([46e4938](https://github.com/Starosdev/scrutiny/commit/46e4938b52fdbd98497a4d3ba4e6ea4e432d84ba))
+* **ci:** remove arm/v7 from ZFS collector platforms ([d5ce8be](https://github.com/Starosdev/scrutiny/commit/d5ce8bee221b446592abe9fdd1e960563f44f551))
+* **docker:** enable contrib repo for zfsutils-linux package ([c9fc565](https://github.com/Starosdev/scrutiny/commit/c9fc565b39d529f1f64397784fa4acef3edf9fb1))
+* **frontend:** add debounce to sparkline hover to prevent flickering ([e987360](https://github.com/Starosdev/scrutiny/commit/e987360312be7de732a180bb70d6011ad70b7c52)), closes [#71](https://github.com/Starosdev/scrutiny/issues/71)
+* **frontend:** disable tooltips on sparkline charts ([853d580](https://github.com/Starosdev/scrutiny/commit/853d5802b6cc9812ca2a1f611f7f9ccb5db91bda)), closes [#71](https://github.com/Starosdev/scrutiny/issues/71)
+* **frontend:** prevent tooltip cutoff on sparkline charts ([1377179](https://github.com/Starosdev/scrutiny/commit/13771792c4c8474249bed66618c5430f58124ae3)), closes [#71](https://github.com/Starosdev/scrutiny/issues/71)
+* **frontend:** use ApexCharts native events for tooltip overflow fix ([0a16d4e](https://github.com/Starosdev/scrutiny/commit/0a16d4e127a2128d14bb5385f1d5c49819fa86ee)), closes [#71](https://github.com/Starosdev/scrutiny/issues/71)
+* **frontend:** use fixed tooltip position for sparkline charts ([a81e08a](https://github.com/Starosdev/scrutiny/commit/a81e08a6a9331daf1fb3a04d0005da2b909ca04a)), closes [#71](https://github.com/Starosdev/scrutiny/issues/71)
+
 ## [1.9.1](https://github.com/Starosdev/scrutiny/compare/v1.9.0...v1.9.1) (2026-01-19)
 
 ### Bug Fixes

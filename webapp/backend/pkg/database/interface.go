@@ -7,6 +7,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 )
 
 // Create mock using:
@@ -19,6 +20,7 @@ type DeviceRepo interface {
 	GetDevices(ctx context.Context) ([]models.Device, error)
 	UpdateDevice(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo) (models.Device, error)
 	UpdateDeviceStatus(ctx context.Context, wwn string, status pkg.DeviceStatus) (models.Device, error)
+	ResetDeviceStatus(ctx context.Context, wwn string) (models.Device, error)
 	GetDeviceDetails(ctx context.Context, wwn string) (models.Device, error)
 	UpdateDeviceArchived(ctx context.Context, wwn string, archived bool) error
 	UpdateDeviceMuted(ctx context.Context, wwn string, muted bool) error
@@ -27,6 +29,9 @@ type DeviceRepo interface {
 
 	SaveSmartAttributes(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo) (measurements.Smart, error)
 	GetSmartAttributeHistory(ctx context.Context, wwn string, durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) ([]measurements.Smart, error)
+	// GetPreviousSmartSubmission returns the previous raw SMART submission (without daily aggregation)
+	// for use in repeat notification detection. Returns the submission before the most recent one.
+	GetPreviousSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error)
 
 	SaveSmartTemperature(ctx context.Context, wwn string, deviceProtocol string, collectorSmartData collector.SmartInfo, retrieveSCTTemperatureHistory bool) error
 
@@ -49,4 +54,10 @@ type DeviceRepo interface {
 	// ZFS Pool metrics
 	SaveZFSPoolMetrics(ctx context.Context, pool models.ZFSPool) error
 	GetZFSPoolMetricsHistory(ctx context.Context, guid string, durationKey string) ([]measurements.ZFSPoolMetrics, error)
+
+	// Attribute Override operations
+	GetAttributeOverrides(ctx context.Context) ([]models.AttributeOverride, error)
+	SaveAttributeOverride(ctx context.Context, override models.AttributeOverride) error
+	DeleteAttributeOverride(ctx context.Context, id uint) error
+	GetMergedOverrides(ctx context.Context) []overrides.AttributeOverride
 }

@@ -3,6 +3,7 @@
 // maps to webapp/backend/pkg/models/measurements/smart_scsi_attribute.go
 export interface SmartAttributeModel {
     attribute_id: number | string
+    name?: string
     value: number
     thresh: number
     worst?: number

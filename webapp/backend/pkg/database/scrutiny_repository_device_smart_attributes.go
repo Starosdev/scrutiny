@@ -18,7 +18,11 @@ import (
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo) (measurements.Smart, error) {
 	deviceSmartData := measurements.Smart{}
-	err := deviceSmartData.FromCollectorSmartInfo(sr.appConfig, wwn, collectorSmartData)
+
+	// Get merged overrides (config + database) for SMART attribute processing
+	mergedOverrides := sr.GetMergedOverrides(ctx)
+
+	err := deviceSmartData.FromCollectorSmartInfoWithOverrides(sr.appConfig, wwn, collectorSmartData, mergedOverrides)
 	if err != nil {
 		sr.logger.Errorln("Could not process SMART metrics", err)
 		return measurements.Smart{}, err
@@ -81,6 +85,49 @@ func (sr *scrutinyRepository) GetSmartAttributeHistory(ctx context.Context, wwn 
 	//	return
 	//}
 
+}
+
+// GetPreviousSmartSubmission returns the previous raw SMART submission without daily aggregation.
+// This is used for repeat notification detection to compare against the actual previous submission,
+// not the previous day's aggregated value.
+// Returns the second most recent submission (skipping the one just saved).
+func (sr *scrutinyRepository) GetPreviousSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error) {
+	// Query raw data from the metrics bucket (last week) without aggregation
+	// Use offset=1 to skip the most recent entry (which is the one just saved)
+	queryStr := fmt.Sprintf(`
+import "influxdata/influxdb/schema"
+from(bucket: "%s")
+|> range(start: -1w, stop: now())
+|> filter(fn: (r) => r["_measurement"] == "smart")
+|> filter(fn: (r) => r["device_wwn"] == "%s")
+|> schema.fieldsAsCols()
+|> group()
+|> sort(columns: ["_time"], desc: true)
+|> limit(n: 1, offset: 1)
+`, sr.appConfig.GetString("web.influxdb.bucket"), wwn)
+
+	log.Debugln("GetPreviousSmartSubmission query:", queryStr)
+
+	smartResults := []measurements.Smart{}
+
+	result, err := sr.influxQueryApi.Query(ctx, queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	for result.Next() {
+		smartData, err := measurements.NewSmartFromInfluxDB(result.Record().Values())
+		if err != nil {
+			return nil, err
+		}
+		smartResults = append(smartResults, *smartData)
+	}
+
+	if result.Err() != nil {
+		return nil, result.Err()
+	}
+
+	return smartResults, nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

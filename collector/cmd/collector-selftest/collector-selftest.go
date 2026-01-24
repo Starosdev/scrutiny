@@ -2,15 +2,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/analogj/scrutiny/collector/pkg/collector"
-	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
-	"github.com/sirupsen/logrus"
 	"io"
 	"log"
 	"os"
 	"time"
 
+	_ "go.uber.org/automaxprocs"
+
 	utils "github.com/analogj/go-util/utils"
+	"github.com/analogj/scrutiny/collector/pkg/collector"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
+	"github.com/sirupsen/logrus"
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 )
@@ -57,7 +59,7 @@ OPTIONS:
 
 			subtitle := collectorSelfTest + utils.LeftPad2Len(versionInfo, " ", 65-len(collectorSelfTest))
 
-			color.New(color.FgGreen).Fprintf(c.App.Writer, fmt.Sprintf(utils.StripIndent(
+			banner := fmt.Sprintf(utils.StripIndent(
 				`
 			 ___   ___  ____  __  __  ____  ____  _  _  _  _
 			/ __) / __)(  _ \(  )(  )(_  _)(_  _)( \( )( \/ )
@@ -65,7 +67,8 @@ OPTIONS:
 			(___/ \___)(_)\_)(______) (__) (____)(_)\_) (__)
 			%s
 
-			`), subtitle))
+			`), subtitle)
+			color.New(color.FgGreen).Fprintf(c.App.Writer, "%s", banner)
 
 			return nil
 		},

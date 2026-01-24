@@ -16,6 +16,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20250221084400"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20251108044508"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260108000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260122000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
@@ -445,6 +446,12 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				)
 			},
 		},
+		{
+			ID: "m20260122000000", // add attribute_overrides table for UI-configurable SMART overrides
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&m20260122000000.AttributeOverride{})
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {
@@ -632,7 +639,7 @@ func m20201107210306_FromPreInfluxDBSmartResultsCreatePostInfluxDBSmartResults(d
 			}
 		}
 
-		postDeviceSmartData.ProcessNvmeSmartInfo(postNvmeSmartHealthInformation)
+		postDeviceSmartData.ProcessNvmeSmartInfo(nil, postNvmeSmartHealthInformation)
 
 	} else if preDevice.IsScsi() {
 		//info collector.SmartInfo
@@ -688,7 +695,7 @@ func m20201107210306_FromPreInfluxDBSmartResultsCreatePostInfluxDBSmartResults(d
 				postScsiErrorCounterLog.Write.TotalUncorrectedErrors = int64(preScsiAttribute.Value)
 			}
 		}
-		postDeviceSmartData.ProcessScsiSmartInfo(postScsiGrownDefectList, postScsiErrorCounterLog, nil)
+		postDeviceSmartData.ProcessScsiSmartInfo(nil, postScsiGrownDefectList, postScsiErrorCounterLog, nil)
 	} else {
 		return fmt.Errorf("Unknown device protocol: %s", preDevice.DeviceProtocol), postDeviceSmartData
 	}

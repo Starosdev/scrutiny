@@ -67,9 +67,69 @@ log:
   level: INFO
 
 failures:
+  # Transient attributes are ones that may temporarily show failures but recover
+  # These are still evaluated but don't immediately trigger device failure status
   transient:
     ata:
       - 195 # Hardware_ECC_Recovered, see https://superuser.com/a/1511916/169872
+
+  # Ignored attributes are completely excluded from failure evaluation
+  # Use this for attributes that report invalid/corrupted data on your drives
+  # See issue #84: some drives report impossibly high values for certain devstat attributes
+  ignored:
+    ata: []       # numeric SMART attribute IDs, e.g., [1, 9, 199]
+    devstat: []   # string-based device statistics, e.g., ["devstat_1_40", "devstat_1_48"]
+    nvme: []      # NVME attribute IDs, e.g., ["media_errors"]
+    scsi: []      # SCSI attribute IDs, e.g., ["scsi_grown_defect_list"]
+
+######################################################################
+# SMART Attribute Overrides
+#
+# Customize how individual SMART attributes are evaluated.
+# Use this to suppress false positives, force specific statuses,
+# or set custom warning/failure thresholds.
+#
+# Each override requires:
+#   - protocol: ATA, NVMe, or SCSI
+#   - attribute_id: The attribute ID as a string (e.g., "5", "media_errors", "devstat_7_8")
+#
+# Optional fields:
+#   - wwn: Limit the override to a specific device (by WWN)
+#   - action: "ignore" (skip attribute) or "force_status" (set specific status)
+#   - status: For force_status action: "passed", "warn", or "failed"
+#   - warn_above: Custom threshold - warn when raw value exceeds this
+#   - fail_above: Custom threshold - fail when raw value exceeds this (takes precedence)
+#
+#smart:
+#  attribute_overrides:
+#    # Example 1: Ignore a specific attribute that causes false positives
+#    - protocol: ATA
+#      attribute_id: "187"        # Reported_Uncorrect - often false positive on some drives
+#      action: ignore
+#
+#    # Example 2: Ignore attribute only for a specific device
+#    - protocol: ATA
+#      attribute_id: "197"        # Current_Pending_Sector
+#      wwn: "0x5000cca264eb01d7"  # Only apply to this drive
+#      action: ignore
+#
+#    # Example 3: Force an attribute status to passed (suppress alerts)
+#    - protocol: NVMe
+#      attribute_id: "media_errors"
+#      action: force_status
+#      status: passed
+#
+#    # Example 4: Set custom thresholds for Reallocated Sectors Count
+#    - protocol: ATA
+#      attribute_id: "5"
+#      warn_above: 5              # Warn when raw value > 5
+#      fail_above: 10             # Fail when raw value > 10
+#
+#    # Example 5: Device statistics override
+#    - protocol: ATA
+#      attribute_id: "devstat_7_8"  # Percentage Used Endurance Indicator
+#      warn_above: 80
+#      fail_above: 95
 
 # Notification "urls" look like the following. For more information about service specific configuration see
 # Shoutrrr's documentation: https://containrrr.dev/shoutrrr/services/overview/
@@ -82,6 +142,8 @@ failures:
 #  urls:
 #    - "discord://token@webhookid"
 #    - "telegram://token@telegram?channels=channel-1[,channel-2,...]"
+#    # For topic-based groups, append thread ID with colon: channels=chat_id:thread_id
+#    # Example: telegram://token@telegram?channels=-123456789:12345
 #    - "pushover://shoutrrr:apiToken@userKey/?priority=1&devices=device1[,device2, ...]"
 #    - "slack://[botname@]token-a/token-b/token-c"
 #    - "smtp://username:password@host:port/?fromAddress=fromAddress&toAddresses=recipient1[,recipient2,...]"

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	_ "go.uber.org/automaxprocs"
+
 	utils "github.com/analogj/go-util/utils"
 	"github.com/analogj/scrutiny/collector/pkg/config"
 	"github.com/analogj/scrutiny/collector/pkg/errors"
@@ -94,7 +96,7 @@ OPTIONS:
 
 			subtitle := collectorZfs + utils.LeftPad2Len(versionInfo, " ", 65-len(collectorZfs))
 
-			color.New(color.FgGreen).Fprintf(c.App.Writer, fmt.Sprintf(utils.StripIndent(
+			banner := fmt.Sprintf(utils.StripIndent(
 				`
 			 ___   ___  ____  __  __  ____  ____  _  _  _  _
 			/ __) / __)(  _ \(  )(  )(_  _)(_  _)( \( )( \/ )
@@ -102,7 +104,8 @@ OPTIONS:
 			(___/ \___)(_)\_)(______) (__) (____)(_)\_) (__)
 			%s
 
-			`), subtitle))
+			`), subtitle)
+			color.New(color.FgGreen).Fprintf(c.App.Writer, "%s", banner)
 
 			return nil
 		},

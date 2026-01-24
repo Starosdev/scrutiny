@@ -20,7 +20,7 @@
     "scsi_value": 2,
     "name": "3.5 inches"
   },
-  "serial_number": "Z1Z5DWJK0000XXXXXXXX",
+  "serial_number": "Z1Z5DWJK0420XXXXXXXX",
   "device_type": {
     "scsi_value": 0,
     "name": "disk"
@@ -36,20 +36,20 @@
     "current": 34,
     "drive_trip": 68
   },
-  "scsi_grown_defect_list": 0,
+  "scsi_grown_defect_list": 5,
   "power_on_time": {
     "hours": 43549,
     "minutes": 33
   },
   "scsi_error_counter_log": {
     "read": {
-      "errors_corrected_by_eccfast": 300357663,
+      "errors_corrected_by_eccfast": 0,
       "errors_corrected_by_eccdelayed": 0,
       "errors_corrected_by_rereads_rewrites": 0,
-      "total_errors_corrected": 300357663,
+      "total_errors_corrected": 0,
       "correction_algorithm_invocations": 0,
       "gigabytes_processed": "176987.332",
-      "total_uncorrected_errors": 0
+      "total_uncorrected_errors": 3
     },
     "write": {
       "errors_corrected_by_eccfast": 0,

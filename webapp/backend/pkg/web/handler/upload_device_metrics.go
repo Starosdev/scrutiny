@@ -59,6 +59,15 @@ func UploadDeviceMetrics(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 			return
 		}
+	} else if updatedDevice.DeviceStatus != pkg.DeviceStatusPassed {
+		// Clear failure status when current SMART data shows all attributes passing
+		updatedDevice, err = deviceRepo.ResetDeviceStatus(c, c.Param("wwn"))
+		if err != nil {
+			logger.Errorln("An error occurred while resetting device status", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false})
+			return
+		}
+		logger.Infof("Device %s status reset to passed - all SMART attributes now within thresholds", c.Param("wwn"))
 	}
 
 	// save smart temperature data (ignore failures)
@@ -79,6 +88,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 		appConfig.GetBool(fmt.Sprintf("%s.metrics.repeat_notifications", config.DB_USER_SETTINGS_SUBKEY)),
 		c,
 		deviceRepo,
+		appConfig,
 	) {
 		//send notifications
 
@@ -88,7 +98,9 @@ func UploadDeviceMetrics(c *gin.Context) {
 			updatedDevice,
 			false,
 		)
-		_ = liveNotify.Send() //we ignore error message when sending notifications.
+		if err := liveNotify.Send(); err != nil {
+			logger.Warnf("Failed to send notification for device %s: %v", c.Param("wwn"), err)
+		}
 	}
 
 	// Update Prometheus metrics (if enabled)

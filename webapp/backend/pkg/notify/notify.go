@@ -18,6 +18,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
 	"github.com/containrrr/shoutrrr"
 	shoutrrrTypes "github.com/containrrr/shoutrrr/pkg/types"
@@ -32,14 +33,16 @@ const NotifyFailureTypeSmartFailure = "SmartFailure"
 const NotifyFailureTypeScrutinyFailure = "ScrutinyFailure"
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
-func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, c *gin.Context, deviceRepo database.DeviceRepo) bool {
+func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
 	// 1. check if the device is healthy
 	if device.DeviceStatus == pkg.DeviceStatusPassed {
+		logger.Debugf("ShouldNotify: skipping device %s - device status is passed", device.WWN)
 		return false
 	}
 
 	// If the device is muted, skip notification regardless of status
 	if device.Muted {
+		logger.Debugf("ShouldNotify: skipping device %s - device is muted", device.WWN)
 		return false
 	}
 
@@ -75,6 +78,21 @@ func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs me
 			continue
 		}
 
+		// Check if attribute is ignored by user-configured override
+		if cfg != nil {
+			var protocol string
+			if device.IsScsi() {
+				protocol = pkg.DeviceProtocolScsi
+			} else if device.IsNvme() {
+				protocol = pkg.DeviceProtocolNvme
+			} else {
+				protocol = pkg.DeviceProtocolAta
+			}
+			if result := overrides.Apply(cfg, protocol, attrId, device.WWN); result != nil && result.ShouldIgnore {
+				continue
+			}
+		}
+
 		// If the user only wants to consider critical attributes, we have to check
 		// if the not-passing attribute is critical or not
 		if statusFilterAttributes == pkg.MetricsStatusFilterAttributesCritical {
@@ -84,12 +102,18 @@ func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs me
 			} else if device.IsNvme() {
 				critical = thresholds.NmveMetadata[attrId].Critical
 			} else {
-				//this is ATA
-				attrIdInt, err := strconv.Atoi(attrId)
-				if err != nil {
-					continue
+				// ATA: handle both numeric IDs and string-based devstat IDs
+				if strings.HasPrefix(attrId, "devstat_") {
+					if metadata, ok := thresholds.AtaDeviceStatsMetadata[attrId]; ok {
+						critical = metadata.Critical
+					}
+				} else {
+					attrIdInt, err := strconv.Atoi(attrId)
+					if err != nil {
+						continue
+					}
+					critical = thresholds.AtaMetadata[attrIdInt].Critical
 				}
-				critical = thresholds.AtaMetadata[attrIdInt].Critical
 			}
 			// Skip non-critical, non-passing attributes when this setting is on
 			if !critical {
@@ -97,17 +121,21 @@ func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs me
 			}
 		}
 
-		// Record any attribute that doesn't get skipped by the above two checks
+		// Record any attribute that doesn't get skipped by the above checks
 		failingAttributes = append(failingAttributes, attrId)
 	}
 
+	logger.Debugf("ShouldNotify: device %s has %d failing attributes after filters (device_status=%d)", device.WWN, len(failingAttributes), device.DeviceStatus)
+
 	// If the user doesn't want repeated notifications when the failing value doesn't change, we need to get the last value from the db
+	// We use GetPreviousSmartSubmission which returns raw data (not daily-aggregated) so we compare against
+	// the actual previous submission, not the previous day's value.
 	var lastPoints []measurements.Smart
 	var err error
 	if !repeatNotifications {
-		lastPoints, err = deviceRepo.GetSmartAttributeHistory(c, c.Param("wwn"), database.DURATION_KEY_FOREVER, 1, 1, failingAttributes)
-		if err == nil || len(lastPoints) < 1 {
-			logger.Warningln("Could not get the most recent data points from the database. This is expected to happen only if this is the very first submission of data for the device.")
+		lastPoints, err = deviceRepo.GetPreviousSmartSubmission(c, c.Param("wwn"))
+		if err != nil || len(lastPoints) < 1 {
+			logger.Debugln("Could not get the previous submission from the database. This is expected for the first or second submission of data for the device.")
 		}
 	}
 	for _, attrId := range failingAttributes {
@@ -123,6 +151,7 @@ func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs me
 			}
 		}
 	}
+	logger.Debugf("ShouldNotify: no qualifying failures found for device %s", device.WWN)
 	return false
 }
 
@@ -446,6 +475,19 @@ func (n *Notify) GenShoutrrrNotificationParams(shoutrrrUrl string) (string, *sho
 	case "telegram":
 		(*params)["title"] = subject
 	case "zulip":
+		// Zulip has a 60 character limit on topics (enforced by shoutrrr)
+		if len(subject) > 60 {
+			subject = subject[:60]
+		}
+		// Allow users to override the topic via force_topic URL parameter
+		urlTopic := serviceURL.Query()["force_topic"]
+		if len(urlTopic) > 0 && urlTopic[len(urlTopic)-1] != "" {
+			subject = urlTopic[len(urlTopic)-1]
+			// Also truncate force_topic to 60 chars for robustness
+			if len(subject) > 60 {
+				subject = subject[:60]
+			}
+		}
 		(*params)["topic"] = subject
 	}
 
