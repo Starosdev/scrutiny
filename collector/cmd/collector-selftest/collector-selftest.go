@@ -2,15 +2,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/analogj/scrutiny/collector/pkg/collector"
-	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
-	"github.com/sirupsen/logrus"
 	"io"
 	"log"
 	"os"
 	"time"
 
+	_ "go.uber.org/automaxprocs"
+
 	utils "github.com/analogj/go-util/utils"
+	"github.com/analogj/scrutiny/collector/pkg/collector"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
+	"github.com/sirupsen/logrus"
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 )
