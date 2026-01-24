@@ -8,7 +8,7 @@ import {SharedModule} from 'app/shared/shared.module';
 import {MatMenuModule as MatMenuModule} from '@angular/material/menu';
 import {TREO_APP_CONFIG} from '@treo/services/config/config.constants';
 import {DeviceSummaryModel} from 'app/core/models/device-summary-model';
-import moment from 'moment';
+import dayjs from 'dayjs';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { HttpClient, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import {ScrutinyConfigService} from 'app/core/config/scrutiny-config.service';
@@ -73,7 +73,7 @@ describe('DashboardDeviceComponent', () => {
                     device_status: 2,
                 },
                 smart: {
-                    collector_date: moment().subtract(13, 'days').toISOString()
+                    collector_date: dayjs().subtract(13, 'day').toISOString()
                 },
             } as DeviceSummaryModel)).toBe('text-red')
         });
@@ -92,7 +92,7 @@ describe('DashboardDeviceComponent', () => {
                     device_status: 2
                 },
                 smart: {
-                    collector_date: moment().subtract(13, 'days').toISOString()
+                    collector_date: dayjs().subtract(13, 'day').toISOString()
                 },
             } as DeviceSummaryModel)).toBe('text-red')
         });
@@ -111,7 +111,7 @@ describe('DashboardDeviceComponent', () => {
                     device_status: 0
                 },
                 smart: {
-                    collector_date: moment().subtract(13, 'days').toISOString()
+                    collector_date: dayjs().subtract(13, 'day').toISOString()
                 }
             } as DeviceSummaryModel)).toBe('text-green')
         });
@@ -130,7 +130,7 @@ describe('DashboardDeviceComponent', () => {
                     device_status: 0
                 },
                 smart: {
-                    collector_date: moment().subtract(3, 'weeks').toISOString()
+                    collector_date: dayjs().subtract(3, 'week').toISOString()
                 }
             } as DeviceSummaryModel)).toBe('text-yellow')
         });
@@ -149,7 +149,7 @@ describe('DashboardDeviceComponent', () => {
                     device_status: 0
                 },
                 smart: {
-                    collector_date: moment().subtract(5, 'weeks').toISOString()
+                    collector_date: dayjs().subtract(5, 'week').toISOString()
                 }
             } as DeviceSummaryModel)).toBe('text-red')
         });
