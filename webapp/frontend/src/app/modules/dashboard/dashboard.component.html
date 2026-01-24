@@ -122,14 +122,15 @@
                   </div>
                 </div>
 
-                <div>
+                <div class="flex items-center">
                   <button
-                    class="h-8 min-h-8 px-2"
-                    mat-button
+                    class="h-8 min-h-8 px-3"
+                    mat-stroked-button
                     [matMenuTriggerFor]="tempRangeMenu">
-                    <span class="font-medium text-sm text-hint">
+                    <span class="font-medium text-sm capitalize">
                       {{ tempDurationKey }}
                     </span>
+                    <mat-icon class="icon-size-4 ml-1" [svgIcon]="'expand_more'"></mat-icon>
                   </button>
 
                   <mat-menu #tempRangeMenu="matMenu">
@@ -149,6 +150,36 @@
                       day
                     </button>
                   </mat-menu>
+
+                  <button
+                    class="h-8 min-h-8 px-3 ml-2"
+                    mat-stroked-button
+                    [matMenuTriggerFor]="driveFilterMenu">
+                    <mat-icon class="icon-size-4" [svgIcon]="'filter_list'"></mat-icon>
+                    <span class="font-medium text-sm ml-1">Drives</span>
+                    <mat-icon class="icon-size-4 ml-1" [svgIcon]="'expand_more'"></mat-icon>
+                  </button>
+
+                  <mat-menu #driveFilterMenu="matMenu">
+                    <button mat-menu-item (click)="toggleAllDrives(); $event.stopPropagation()">
+                      <mat-checkbox
+                        [checked]="allDrivesVisible"
+                        [indeterminate]="someDrivesVisible && !allDrivesVisible"
+                        (click)="$event.stopPropagation()">
+                        All Drives
+                      </mat-checkbox>
+                    </button>
+                    <mat-divider></mat-divider>
+                    @for (device of summaryData | keyvalue; track device.key) {
+                      <button mat-menu-item (click)="toggleDriveVisibility(device.key); $event.stopPropagation()">
+                        <mat-checkbox
+                          [checked]="visibleDrives[device.key]"
+                          (click)="$event.stopPropagation()">
+                          {{ device.value.device | deviceTitle:config?.dashboard_display }}
+                        </mat-checkbox>
+                      </button>
+                    }
+                  </mat-menu>
                 </div>
               </div>
             </div>
@@ -164,7 +195,9 @@
                   [series]="temperatureOptions.series"
                   [stroke]="temperatureOptions.stroke"
                   [tooltip]="temperatureOptions.tooltip"
-                  [xaxis]="temperatureOptions.xaxis">
+                  [xaxis]="temperatureOptions.xaxis"
+                  [yaxis]="temperatureOptions.yaxis"
+                  [grid]="temperatureOptions.grid">
                 </apx-chart>
               }
             </div>
