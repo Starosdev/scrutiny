@@ -57,7 +57,7 @@ OPTIONS:
 
 			subtitle := collectorSelfTest + utils.LeftPad2Len(versionInfo, " ", 65-len(collectorSelfTest))
 
-			color.New(color.FgGreen).Fprintf(c.App.Writer, fmt.Sprintf(utils.StripIndent(
+			banner := fmt.Sprintf(utils.StripIndent(
 				`
 			 ___   ___  ____  __  __  ____  ____  _  _  _  _
 			/ __) / __)(  _ \(  )(  )(_  _)(_  _)( \( )( \/ )
@@ -65,7 +65,8 @@ OPTIONS:
 			(___/ \___)(_)\_)(______) (__) (____)(_)\_) (__)
 			%s
 
-			`), subtitle))
+			`), subtitle)
+			color.New(color.FgGreen).Fprintf(c.App.Writer, "%s", banner)
 
 			return nil
 		},

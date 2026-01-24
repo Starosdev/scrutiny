@@ -4,7 +4,7 @@
 
 
 ########
-FROM golang:1.20-bookworm AS backendbuild
+FROM golang:1.24-trixie AS backendbuild
 
 WORKDIR /go/src/github.com/analogj/scrutiny
 
@@ -14,11 +14,11 @@ RUN apt-get update && apt-get install -y file && rm -rf /var/lib/apt/lists/*
 RUN make binary-clean binary-collector-zfs
 
 ########
-FROM debian:bookworm-slim AS runtime
+FROM debian:trixie-slim AS runtime
 WORKDIR /opt/scrutiny
 ENV PATH="/opt/scrutiny/bin:${PATH}"
 
-RUN echo "deb http://deb.debian.org/debian bookworm contrib" >> /etc/apt/sources.list.d/contrib.list && \
+RUN echo "deb http://deb.debian.org/debian trixie contrib" >> /etc/apt/sources.list.d/contrib.list && \
     apt-get update && \
     apt-get install -y cron zfsutils-linux ca-certificates tzdata && \
     rm -rf /var/lib/apt/lists/* && \
