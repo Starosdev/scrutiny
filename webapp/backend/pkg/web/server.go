@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/analogj/go-util/utils"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
@@ -204,5 +208,47 @@ func (ae *AppEngine) Start() error {
 		}()
 	}
 
-	return r.Run(fmt.Sprintf("%s:%s", ae.Config.GetString("web.listen.host"), ae.Config.GetString("web.listen.port")))
+	// Start the missed ping monitor for collector health monitoring
+	missedPingMonitor := NewMissedPingMonitor(ae)
+	missedPingMonitor.Start()
+	ae.Logger.Info("Missed ping monitor started")
+
+	// Create HTTP server for graceful shutdown support
+	addr := fmt.Sprintf("%s:%s", ae.Config.GetString("web.listen.host"), ae.Config.GetString("web.listen.port"))
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: r,
+	}
+
+	// Channel to receive shutdown signals
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start server in a goroutine
+	go func() {
+		ae.Logger.Infof("Starting server on %s", addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			ae.Logger.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	// Wait for shutdown signal
+	<-quit
+	ae.Logger.Info("Shutdown signal received, initiating graceful shutdown...")
+
+	// Stop the missed ping monitor first
+	missedPingMonitor.Stop()
+
+	// Create a deadline for shutdown (give 30 seconds for graceful shutdown)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Shutdown the HTTP server gracefully
+	if err := srv.Shutdown(ctx); err != nil {
+		ae.Logger.Errorf("Server forced to shutdown: %v", err)
+		return err
+	}
+
+	ae.Logger.Info("Server shutdown complete")
+	return nil
 }

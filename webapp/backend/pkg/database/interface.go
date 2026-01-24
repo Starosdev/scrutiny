@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
@@ -38,6 +39,10 @@ type DeviceRepo interface {
 	GetSummary(ctx context.Context) (map[string]*models.DeviceSummary, error)
 	GetSmartTemperatureHistory(ctx context.Context, durationKey string) (map[string][]measurements.SmartTemperature, error)
 
+	// GetDevicesLastSeenTimes returns a map of device WWN to the timestamp of their last SMART submission.
+	// This is used for missed collector ping detection.
+	GetDevicesLastSeenTimes(ctx context.Context) (map[string]time.Time, error)
+
 	LoadSettings(ctx context.Context) (*models.Settings, error)
 	SaveSettings(ctx context.Context, settings models.Settings) error
 
@@ -57,7 +62,7 @@ type DeviceRepo interface {
 
 	// Attribute Override operations
 	GetAttributeOverrides(ctx context.Context) ([]models.AttributeOverride, error)
-	SaveAttributeOverride(ctx context.Context, override models.AttributeOverride) error
+	SaveAttributeOverride(ctx context.Context, override *models.AttributeOverride) error
 	DeleteAttributeOverride(ctx context.Context, id uint) error
 	GetMergedOverrides(ctx context.Context) []overrides.AttributeOverride
 }

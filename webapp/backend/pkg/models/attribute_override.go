@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 	"gorm.io/gorm"
 )
@@ -9,7 +11,11 @@ import (
 // stored in the database. This allows users to ignore attributes, force their status,
 // or set custom warning/failure thresholds via the UI.
 type AttributeOverride struct {
-	gorm.Model
+	// Explicit ID field with lowercase JSON tag for frontend compatibility
+	ID        uint           `json:"id" gorm:"primaryKey"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 
 	// Required: Protocol type (ATA, NVMe, SCSI)
 	Protocol string `json:"protocol" gorm:"not null;index:idx_override_lookup"`

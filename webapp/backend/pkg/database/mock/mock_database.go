@@ -7,6 +7,7 @@ package mock_database
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	pkg "github.com/analogj/scrutiny/webapp/backend/pkg"
 	models "github.com/analogj/scrutiny/webapp/backend/pkg/models"
@@ -169,6 +170,21 @@ func (m *MockDeviceRepo) GetSummary(ctx context.Context) (map[string]*models.Dev
 func (mr *MockDeviceRepoMockRecorder) GetSummary(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSummary", reflect.TypeOf((*MockDeviceRepo)(nil).GetSummary), ctx)
+}
+
+// GetDevicesLastSeenTimes mocks base method.
+func (m *MockDeviceRepo) GetDevicesLastSeenTimes(ctx context.Context) (map[string]time.Time, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDevicesLastSeenTimes", ctx)
+	ret0, _ := ret[0].(map[string]time.Time)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDevicesLastSeenTimes indicates an expected call of GetDevicesLastSeenTimes.
+func (mr *MockDeviceRepoMockRecorder) GetDevicesLastSeenTimes(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDevicesLastSeenTimes", reflect.TypeOf((*MockDeviceRepo)(nil).GetDevicesLastSeenTimes), ctx)
 }
 
 // GetZFSPoolDetails mocks base method.
@@ -504,7 +520,7 @@ func (mr *MockDeviceRepoMockRecorder) GetMergedOverrides(ctx interface{}) *gomoc
 }
 
 // SaveAttributeOverride mocks base method.
-func (m *MockDeviceRepo) SaveAttributeOverride(ctx context.Context, override models.AttributeOverride) error {
+func (m *MockDeviceRepo) SaveAttributeOverride(ctx context.Context, override *models.AttributeOverride) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SaveAttributeOverride", ctx, override)
 	ret0, _ := ret[0].(error)
