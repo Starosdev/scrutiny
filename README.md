@@ -38,6 +38,9 @@ This is an actively maintained fork of [AnalogJ/scrutiny](https://github.com/Ana
 - **Day-Resolution Temperature Graphs** - More granular temperature history
 - **SAS Temperature Support** - Proper temperature readings for SAS drives
 - **SCT Temperature History Toggle** - Control SCT ERC settings per drive
+- **S.M.A.R.T Attribute Overrides** - Override manufacturer thresholds via UI or config
+- **Improved Dashboard Layout** - Sidebar navigation moved to top for better attribute visibility
+- **Enhanced Mobile UI** - Optimized layout for mobile devices
 - **Enhanced Seagate Drive Support** - Better timeout handling for Seagate drives
 - **SHA256 Checksums** - Verify release binary integrity
 
@@ -76,6 +79,9 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Custom Device Labels** - Add meaningful names to your drives
 - **Day-Resolution Graphs** - View temperature trends at daily granularity
 - **SAS Drive Support** - Full temperature support for SAS devices
+- **S.M.A.R.T Attribute Overrides** - Override thresholds per device via UI
+- **Improved UI Layout** - Top navigation for better S.M.A.R.T attribute visibility
+- **Mobile-Optimized Interface** - Better experience on mobile devices
 - **API Timeout Configuration** - Adjust timeouts for slow storage systems
 
 # Migration from AnalogJ/scrutiny
@@ -135,6 +141,8 @@ other Docker images:
 
 - `ghcr.io/starosdev/scrutiny:latest-collector` - Contains the Scrutiny data collector, `smartctl` binary and cron-like
   scheduler. You can run one collector on each server.
+- `ghcr.io/starosdev/scrutiny:latest-collector-zfs` - ZFS pool collector for monitoring ZFS health.
+  Run alongside or instead of the standard collector if you use ZFS.
 - `ghcr.io/starosdev/scrutiny:latest-web` - Contains the Web UI and API. Only one container necessary
 - `influxdb:2.2` - InfluxDB image, used by the Web container to persist SMART data. Only one container necessary.
   See [docs/TROUBLESHOOTING_INFLUXDB.md](./docs/TROUBLESHOOTING_INFLUXDB.md)
