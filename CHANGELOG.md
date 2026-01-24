@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.15.4](https://github.com/Starosdev/scrutiny/compare/v1.15.3...v1.15.4) (2026-01-24)
+
+### Bug Fixes
+
+* **notify:** correct repeat notification detection to compare against previous submission ([#129](https://github.com/Starosdev/scrutiny/issues/129)) ([9930980](https://github.com/Starosdev/scrutiny/commit/993098092759d9568aba14de4dfa01188296d6a6)), closes [#67](https://github.com/Starosdev/scrutiny/issues/67)
+
 ## [1.15.3](https://github.com/Starosdev/scrutiny/compare/v1.15.2...v1.15.3) (2026-01-24)
 
 ### Build
