@@ -520,7 +520,7 @@ func (mr *MockDeviceRepoMockRecorder) GetMergedOverrides(ctx interface{}) *gomoc
 }
 
 // SaveAttributeOverride mocks base method.
-func (m *MockDeviceRepo) SaveAttributeOverride(ctx context.Context, override models.AttributeOverride) error {
+func (m *MockDeviceRepo) SaveAttributeOverride(ctx context.Context, override *models.AttributeOverride) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SaveAttributeOverride", ctx, override)
 	ret0, _ := ret[0].(error)

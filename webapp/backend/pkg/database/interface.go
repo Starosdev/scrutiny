@@ -62,7 +62,7 @@ type DeviceRepo interface {
 
 	// Attribute Override operations
 	GetAttributeOverrides(ctx context.Context) ([]models.AttributeOverride, error)
-	SaveAttributeOverride(ctx context.Context, override models.AttributeOverride) error
+	SaveAttributeOverride(ctx context.Context, override *models.AttributeOverride) error
 	DeleteAttributeOverride(ctx context.Context, id uint) error
 	GetMergedOverrides(ctx context.Context) []overrides.AttributeOverride
 }

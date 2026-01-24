@@ -98,7 +98,7 @@ func SaveAttributeOverride(c *gin.Context) {
 	// Source is always "ui" for API-created overrides
 	override.Source = "ui"
 
-	if err := deviceRepo.SaveAttributeOverride(c, override); err != nil {
+	if err := deviceRepo.SaveAttributeOverride(c, &override); err != nil {
 		logger.Errorln("Error saving attribute override:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to save override"})
 		return
