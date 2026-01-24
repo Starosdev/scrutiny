@@ -126,6 +126,21 @@ func (mr *MockDeviceRepoMockRecorder) GetSmartAttributeHistory(ctx, wwn, duratio
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSmartAttributeHistory", reflect.TypeOf((*MockDeviceRepo)(nil).GetSmartAttributeHistory), ctx, wwn, durationKey, selectEntries, selectEntriesOffset, attributes)
 }
 
+// GetPreviousSmartSubmission mocks base method.
+func (m *MockDeviceRepo) GetPreviousSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPreviousSmartSubmission", ctx, wwn)
+	ret0, _ := ret[0].([]measurements.Smart)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPreviousSmartSubmission indicates an expected call of GetPreviousSmartSubmission.
+func (mr *MockDeviceRepoMockRecorder) GetPreviousSmartSubmission(ctx, wwn interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPreviousSmartSubmission", reflect.TypeOf((*MockDeviceRepo)(nil).GetPreviousSmartSubmission), ctx, wwn)
+}
+
 // GetSmartTemperatureHistory mocks base method.
 func (m *MockDeviceRepo) GetSmartTemperatureHistory(ctx context.Context, durationKey string) (map[string][]measurements.SmartTemperature, error) {
 	m.ctrl.T.Helper()

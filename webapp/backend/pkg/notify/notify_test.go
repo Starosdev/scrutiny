@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
-	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	mock_database "github.com/analogj/scrutiny/webapp/backend/pkg/database/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
@@ -226,7 +225,7 @@ func TestShouldNotify_NoRepeat_DatabaseFailure(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
-	fakeDatabase.EXPECT().GetSmartAttributeHistory(&gin.Context{}, "", database.DURATION_KEY_FOREVER, 1, 1, []string{"5"}).Return([]measurements.Smart{}, errors.New("")).Times(1)
+	fakeDatabase.EXPECT().GetPreviousSmartSubmission(&gin.Context{}, "").Return([]measurements.Smart{}, errors.New("")).Times(1)
 
 	//assert
 	require.True(t, ShouldNotify(logrus.StandardLogger(), device, smartAttrs, statusThreshold, notifyFilterAttributes, false, &gin.Context{}, fakeDatabase, nil))
@@ -248,7 +247,7 @@ func TestShouldNotify_NoRepeat_NoDatabaseData(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
-	fakeDatabase.EXPECT().GetSmartAttributeHistory(&gin.Context{}, "", database.DURATION_KEY_FOREVER, 1, 1, []string{"5"}).Return([]measurements.Smart{}, nil).Times(1)
+	fakeDatabase.EXPECT().GetPreviousSmartSubmission(&gin.Context{}, "").Return([]measurements.Smart{}, nil).Times(1)
 
 	//assert
 	require.True(t, ShouldNotify(logrus.StandardLogger(), device, smartAttrs, statusThreshold, notifyFilterAttributes, false, &gin.Context{}, fakeDatabase, nil))
@@ -270,7 +269,7 @@ func TestShouldNotify_NoRepeat(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
-	fakeDatabase.EXPECT().GetSmartAttributeHistory(&gin.Context{}, "", database.DURATION_KEY_FOREVER, 1, 1, []string{"5"}).Return([]measurements.Smart{smartAttrs}, nil).Times(1)
+	fakeDatabase.EXPECT().GetPreviousSmartSubmission(&gin.Context{}, "").Return([]measurements.Smart{smartAttrs}, nil).Times(1)
 
 	//assert
 	require.False(t, ShouldNotify(logrus.StandardLogger(), device, smartAttrs, statusThreshold, notifyFilterAttributes, false, &gin.Context{}, fakeDatabase, nil))
