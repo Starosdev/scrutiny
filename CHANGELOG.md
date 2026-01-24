@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.15.7](https://github.com/Starosdev/scrutiny/compare/v1.15.6...v1.15.7) (2026-01-24)
+
+### Bug Fixes
+
+* **docker:** use exec in service scripts to reduce process overhead ([#131](https://github.com/Starosdev/scrutiny/issues/131)) ([43eba12](https://github.com/Starosdev/scrutiny/commit/43eba12b7e574dede4fd2599a14b856369a8e713)), closes [#111](https://github.com/Starosdev/scrutiny/issues/111)
+
 ## [1.15.6](https://github.com/Starosdev/scrutiny/compare/v1.15.5...v1.15.6) (2026-01-24)
 
 ### Bug Fixes
