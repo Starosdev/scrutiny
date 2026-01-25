@@ -5,6 +5,18 @@ on:
     branches:
       - master
       - beta
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type (only used for manual trigger)'
+        required: true
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - patch
+          - minor
+          - major
 
 permissions:
   contents: write
@@ -29,6 +41,29 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: Force release commit (manual trigger only)
+        if: github.event_name == 'workflow_dispatch' && inputs.release_type != 'auto'
+        env:
+          GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          case "${{ inputs.release_type }}" in
+            patch)
+              COMMIT_MSG="fix: manual release trigger"
+              ;;
+            minor)
+              COMMIT_MSG="feat: manual release trigger"
+              ;;
+            major)
+              COMMIT_MSG="feat!: manual release trigger (BREAKING CHANGE)"
+              ;;
+          esac
+
+          git commit --allow-empty -m "$COMMIT_MSG"
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref_name }}
 
       - name: Semantic Release
         id: semantic
