@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.15.8](https://github.com/Starosdev/scrutiny/compare/v1.15.7...v1.15.8) (2026-01-25)
+
+### Refactoring
+
+* migrate from moment.js to dayjs for date handling ([#147](https://github.com/Starosdev/scrutiny/issues/147)) ([ab6584d](https://github.com/Starosdev/scrutiny/commit/ab6584db48f761f332074672d2c11cfeaff36ed6))
+
 ## [1.15.7](https://github.com/Starosdev/scrutiny/compare/v1.15.6...v1.15.7) (2026-01-24)
 
 ### Bug Fixes
