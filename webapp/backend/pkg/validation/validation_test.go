@@ -38,6 +38,27 @@ func TestValidateWWN(t *testing.T) {
 			wwn:     "0xFFFFFFFFFFFFFFFF",
 			wantErr: false,
 		},
+		// Valid UUID formats (NVMe devices)
+		{
+			name:    "valid UUID lowercase",
+			wwn:     "a4c8e8ed-11a0-4c97-9bba-306440f1b944",
+			wantErr: false,
+		},
+		{
+			name:    "valid UUID uppercase",
+			wwn:     "A4C8E8ED-11A0-4C97-9BBA-306440F1B944",
+			wantErr: false,
+		},
+		{
+			name:    "valid UUID mixed case",
+			wwn:     "a4c8e8ED-11A0-4c97-9BBA-306440f1b944",
+			wantErr: false,
+		},
+		{
+			name:    "valid UUID all zeros",
+			wwn:     "00000000-0000-0000-0000-000000000000",
+			wantErr: false,
+		},
 		// Invalid WWN formats
 		{
 			name:    "empty string",
