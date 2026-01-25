@@ -5,6 +5,7 @@ import (
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -15,6 +16,11 @@ func UploadZFSPoolMetrics(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 
 	guid := c.Param("guid")
+	if err := validation.ValidateGUID(guid); err != nil {
+		logger.Warnf("Invalid GUID format: %s", guid)
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
 
 	var pool models.ZFSPool
 	err := c.BindJSON(&pool)

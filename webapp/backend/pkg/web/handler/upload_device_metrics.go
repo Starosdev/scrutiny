@@ -10,6 +10,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/metrics"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/notify"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -23,8 +24,11 @@ func UploadDeviceMetrics(c *gin.Context) {
 
 	//appConfig := c.MustGet("CONFIG").(config.Interface)
 
-	if c.Param("wwn") == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false})
+	wwn := c.Param("wwn")
+	if err := validation.ValidateWWN(wwn); err != nil {
+		logger.Warnf("Invalid WWN format: %s", wwn)
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
 	}
 
 	var collectorSmartData collector.SmartInfo
@@ -36,7 +40,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 	}
 
 	//update the device information if necessary
-	updatedDevice, err := deviceRepo.UpdateDevice(c, c.Param("wwn"), collectorSmartData)
+	updatedDevice, err := deviceRepo.UpdateDevice(c, wwn, collectorSmartData)
 	if err != nil {
 		logger.Errorln("An error occurred while updating device data from smartctl metrics:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
@@ -44,7 +48,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 	}
 
 	// insert smart info
-	smartData, err := deviceRepo.SaveSmartAttributes(c, c.Param("wwn"), collectorSmartData)
+	smartData, err := deviceRepo.SaveSmartAttributes(c, wwn, collectorSmartData)
 	if err != nil {
 		logger.Errorln("An error occurred while saving smartctl metrics", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
@@ -53,7 +57,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 
 	if smartData.Status != pkg.DeviceStatusPassed {
 		//there is a failure detected by Scrutiny, update the device status on the homepage.
-		updatedDevice, err = deviceRepo.UpdateDeviceStatus(c, c.Param("wwn"), smartData.Status)
+		updatedDevice, err = deviceRepo.UpdateDeviceStatus(c, wwn, smartData.Status)
 		if err != nil {
 			logger.Errorln("An error occurred while updating device status", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"success": false})
@@ -61,17 +65,17 @@ func UploadDeviceMetrics(c *gin.Context) {
 		}
 	} else if updatedDevice.DeviceStatus != pkg.DeviceStatusPassed {
 		// Clear failure status when current SMART data shows all attributes passing
-		updatedDevice, err = deviceRepo.ResetDeviceStatus(c, c.Param("wwn"))
+		updatedDevice, err = deviceRepo.ResetDeviceStatus(c, wwn)
 		if err != nil {
 			logger.Errorln("An error occurred while resetting device status", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 			return
 		}
-		logger.Infof("Device %s status reset to passed - all SMART attributes now within thresholds", c.Param("wwn"))
+		logger.Infof("Device %s status reset to passed - all SMART attributes now within thresholds", wwn)
 	}
 
 	// save smart temperature data (ignore failures)
-	err = deviceRepo.SaveSmartTemperature(c, c.Param("wwn"), updatedDevice.DeviceProtocol, collectorSmartData, appConfig.GetBool(fmt.Sprintf("%s.collector.retrieve_sct_temperature_history", config.DB_USER_SETTINGS_SUBKEY)))
+	err = deviceRepo.SaveSmartTemperature(c, wwn, updatedDevice.DeviceProtocol, collectorSmartData, appConfig.GetBool(fmt.Sprintf("%s.collector.retrieve_sct_temperature_history", config.DB_USER_SETTINGS_SUBKEY)))
 	if err != nil {
 		logger.Errorln("An error occurred while saving smartctl temp data", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
@@ -99,14 +103,14 @@ func UploadDeviceMetrics(c *gin.Context) {
 			false,
 		)
 		if err := liveNotify.Send(); err != nil {
-			logger.Warnf("Failed to send notification for device %s: %v", c.Param("wwn"), err)
+			logger.Warnf("Failed to send notification for device %s: %v", wwn, err)
 		}
 	}
 
 	// Update Prometheus metrics (if enabled)
 	if collectorVal, exists := c.Get("METRICS_COLLECTOR"); exists {
 		if collector, ok := collectorVal.(*metrics.Collector); ok && collector != nil {
-			collector.UpdateDeviceMetrics(c.Param("wwn"), updatedDevice, smartData)
+			collector.UpdateDeviceMetrics(wwn, updatedDevice, smartData)
 		}
 	}
 
