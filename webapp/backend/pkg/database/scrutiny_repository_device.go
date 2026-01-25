@@ -3,11 +3,13 @@ package database
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"gorm.io/gorm/clause"
-	"time"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,6 +118,11 @@ func (sr *scrutinyRepository) UpdateDeviceLabel(ctx context.Context, wwn string,
 }
 
 func (sr *scrutinyRepository) DeleteDevice(ctx context.Context, wwn string) error {
+	// Validate WWN format before using in delete predicate (defense-in-depth, DeleteAPI doesn't support params)
+	if err := validation.ValidateWWN(wwn); err != nil {
+		return fmt.Errorf("invalid WWN: %w", err)
+	}
+
 	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).Delete(&models.Device{}).Error; err != nil {
 		return err
 	}

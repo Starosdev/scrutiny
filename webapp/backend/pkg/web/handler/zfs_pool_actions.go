@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -14,6 +15,11 @@ func ArchiveZFSPool(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 
 	guid := c.Param("guid")
+	if err := validation.ValidateGUID(guid); err != nil {
+		logger.Warnf("Invalid GUID format: %s", guid)
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
 
 	err := deviceRepo.UpdateZFSPoolArchived(c, guid, true)
 	if err != nil {
@@ -31,6 +37,11 @@ func UnarchiveZFSPool(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 
 	guid := c.Param("guid")
+	if err := validation.ValidateGUID(guid); err != nil {
+		logger.Warnf("Invalid GUID format: %s", guid)
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
 
 	err := deviceRepo.UpdateZFSPoolArchived(c, guid, false)
 	if err != nil {
@@ -48,6 +59,11 @@ func MuteZFSPool(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 
 	guid := c.Param("guid")
+	if err := validation.ValidateGUID(guid); err != nil {
+		logger.Warnf("Invalid GUID format: %s", guid)
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
 
 	err := deviceRepo.UpdateZFSPoolMuted(c, guid, true)
 	if err != nil {
@@ -65,6 +81,11 @@ func UnmuteZFSPool(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 
 	guid := c.Param("guid")
+	if err := validation.ValidateGUID(guid); err != nil {
+		logger.Warnf("Invalid GUID format: %s", guid)
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
 
 	err := deviceRepo.UpdateZFSPoolMuted(c, guid, false)
 	if err != nil {
@@ -82,6 +103,11 @@ func UpdateZFSPoolLabel(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 
 	guid := c.Param("guid")
+	if err := validation.ValidateGUID(guid); err != nil {
+		logger.Warnf("Invalid GUID format: %s", guid)
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
 
 	var payload struct {
 		Label string `json:"label"`
@@ -108,6 +134,11 @@ func DeleteZFSPool(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 
 	guid := c.Param("guid")
+	if err := validation.ValidateGUID(guid); err != nil {
+		logger.Warnf("Invalid GUID format: %s", guid)
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
 
 	err := deviceRepo.DeleteZFSPool(c, guid)
 	if err != nil {
