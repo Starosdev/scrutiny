@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -14,6 +15,11 @@ func GetZFSPoolDetails(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 
 	guid := c.Param("guid")
+	if err := validation.ValidateGUID(guid); err != nil {
+		logger.Warnf("Invalid GUID format: %s", guid)
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
 
 	// Get the pool details with vdev hierarchy
 	pool, err := deviceRepo.GetZFSPoolDetails(c, guid)

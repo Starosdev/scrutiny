@@ -43,12 +43,12 @@ func (sr *scrutinyRepository) GetSmartAttributeHistory(ctx context.Context, wwn 
 
 	// Get parser flux query result
 	//appConfig.GetString("web.influxdb.bucket")
-	queryStr := sr.aggregateSmartAttributesQuery(wwn, durationKey, selectEntries, selectEntriesOffset, attributes)
+	queryStr, params := sr.aggregateSmartAttributesQuery(wwn, durationKey, selectEntries, selectEntriesOffset, attributes)
 	log.Infoln(queryStr)
 
 	smartResults := []measurements.Smart{}
 
-	result, err := sr.influxQueryApi.Query(ctx, queryStr)
+	result, err := sr.influxQueryApi.QueryWithParams(ctx, queryStr, params)
 	if err == nil {
 		// Use Next() to iterate over query result lines
 		for result.Next() {
@@ -65,7 +65,7 @@ func (sr *scrutinyRepository) GetSmartAttributeHistory(ctx context.Context, wwn 
 
 		}
 		if result.Err() != nil {
-			fmt.Printf("Query error: %s\n", result.Err().Error())
+			sr.logger.Errorf("Query error: %s", result.Err().Error())
 		}
 	} else {
 		return nil, err
@@ -94,23 +94,28 @@ func (sr *scrutinyRepository) GetSmartAttributeHistory(ctx context.Context, wwn 
 func (sr *scrutinyRepository) GetPreviousSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error) {
 	// Query raw data from the metrics bucket (last week) without aggregation
 	// Use offset=1 to skip the most recent entry (which is the one just saved)
-	queryStr := fmt.Sprintf(`
+	queryStr := `
 import "influxdata/influxdb/schema"
-from(bucket: "%s")
+from(bucket: params.bucket)
 |> range(start: -1w, stop: now())
 |> filter(fn: (r) => r["_measurement"] == "smart")
-|> filter(fn: (r) => r["device_wwn"] == "%s")
+|> filter(fn: (r) => r["device_wwn"] == params.wwn)
 |> schema.fieldsAsCols()
 |> group()
 |> sort(columns: ["_time"], desc: true)
 |> limit(n: 1, offset: 1)
-`, sr.appConfig.GetString("web.influxdb.bucket"), wwn)
+`
+
+	params := map[string]interface{}{
+		"bucket": sr.appConfig.GetString("web.influxdb.bucket"),
+		"wwn":    wwn,
+	}
 
 	log.Debugln("GetPreviousSmartSubmission query:", queryStr)
 
 	smartResults := []measurements.Smart{}
 
-	result, err := sr.influxQueryApi.Query(ctx, queryStr)
+	result, err := sr.influxQueryApi.QueryWithParams(ctx, queryStr, params)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +150,7 @@ func (sr *scrutinyRepository) saveDatapoint(influxWriteApi api.WriteAPIBlocking,
 	return influxWriteApi.WritePoint(ctx, p)
 }
 
-func (sr *scrutinyRepository) aggregateSmartAttributesQuery(wwn string, durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) string {
+func (sr *scrutinyRepository) aggregateSmartAttributesQuery(wwn string, durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) (string, map[string]interface{}) {
 
 	/*
 
@@ -153,28 +158,28 @@ func (sr *scrutinyRepository) aggregateSmartAttributesQuery(wwn string, duration
 		weekData = from(bucket: "metrics")
 		|> range(start: -1w, stop: now())
 		|> filter(fn: (r) => r["_measurement"] == "smart" )
-		|> filter(fn: (r) => r["device_wwn"] == "0x5000c5002df89099" )
+		|> filter(fn: (r) => r["device_wwn"] == params.wwn )
 		|> tail(n: 10, offset: 0)
 		|> schema.fieldsAsCols()
 
 		monthData = from(bucket: "metrics_weekly")
 		|> range(start: -1mo, stop: -1w)
 		|> filter(fn: (r) => r["_measurement"] == "smart" )
-		|> filter(fn: (r) => r["device_wwn"] == "0x5000c5002df89099" )
+		|> filter(fn: (r) => r["device_wwn"] == params.wwn )
 		|> tail(n: 10, offset: 0)
 		|> schema.fieldsAsCols()
 
 		yearData = from(bucket: "metrics_monthly")
 		|> range(start: -1y, stop: -1mo)
 		|> filter(fn: (r) => r["_measurement"] == "smart" )
-		|> filter(fn: (r) => r["device_wwn"] == "0x5000c5002df89099" )
+		|> filter(fn: (r) => r["device_wwn"] == params.wwn )
 		|> tail(n: 10, offset: 0)
 		|> schema.fieldsAsCols()
 
 		foreverData = from(bucket: "metrics_yearly")
 		|> range(start: -10y, stop: -1y)
 		|> filter(fn: (r) => r["_measurement"] == "smart" )
-		|> filter(fn: (r) => r["device_wwn"] == "0x5000c5002df89099" )
+		|> filter(fn: (r) => r["device_wwn"] == params.wwn )
 		|> tail(n: 10, offset: 0)
 		|> schema.fieldsAsCols()
 
@@ -186,6 +191,11 @@ func (sr *scrutinyRepository) aggregateSmartAttributesQuery(wwn string, duration
 
 	*/
 
+	// Build params map for parameterized query (prevents Flux injection)
+	params := map[string]interface{}{
+		"wwn": wwn,
+	}
+
 	partialQueryStr := []string{
 		`import "influxdata/influxdb/schema"`,
 	}
@@ -195,7 +205,7 @@ func (sr *scrutinyRepository) aggregateSmartAttributesQuery(wwn string, duration
 	if len(nestedDurationKeys) == 1 {
 		//there's only one bucket being queried, no need to union, just aggregate the dataset and return
 		subqueryParts := []string{
-			sr.generateSmartAttributesSubquery(wwn, nestedDurationKeys[0], 0, 0, attributes),
+			sr.generateSmartAttributesSubquery(nestedDurationKeys[0], 0, 0, attributes),
 			fmt.Sprintf(`%sData`, nestedDurationKeys[0]),
 			`|> sort(columns: ["_time"], desc: true)`,
 		}
@@ -205,7 +215,7 @@ func (sr *scrutinyRepository) aggregateSmartAttributesQuery(wwn string, duration
 		}
 		subqueryParts = append(subqueryParts, `|> yield()`)
 		partialQueryStr = append(partialQueryStr, subqueryParts...)
-		return strings.Join(partialQueryStr, "\n")
+		return strings.Join(partialQueryStr, "\n"), params
 	}
 
 	subQueries := []string{}
@@ -215,9 +225,9 @@ func (sr *scrutinyRepository) aggregateSmartAttributesQuery(wwn string, duration
 		if selectEntries > 0 {
 			// We only need the last `n + offset` # of entries from each table to guarantee we can
 			// get the last `n` # of entries starting from `offset` of the union
-			subQueries = append(subQueries, sr.generateSmartAttributesSubquery(wwn, nestedDurationKey, selectEntries+selectEntriesOffset, 0, attributes))
+			subQueries = append(subQueries, sr.generateSmartAttributesSubquery(nestedDurationKey, selectEntries+selectEntriesOffset, 0, attributes))
 		} else {
-			subQueries = append(subQueries, sr.generateSmartAttributesSubquery(wwn, nestedDurationKey, 0, 0, attributes))
+			subQueries = append(subQueries, sr.generateSmartAttributesSubquery(nestedDurationKey, 0, 0, attributes))
 		}
 	}
 	partialQueryStr = append(partialQueryStr, subQueries...)
@@ -233,10 +243,12 @@ func (sr *scrutinyRepository) aggregateSmartAttributesQuery(wwn string, duration
 	}
 	partialQueryStr = append(partialQueryStr, `|> yield(name: "last")`)
 
-	return strings.Join(partialQueryStr, "\n")
+	return strings.Join(partialQueryStr, "\n"), params
 }
 
-func (sr *scrutinyRepository) generateSmartAttributesSubquery(wwn string, durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) string {
+// generateSmartAttributesSubquery generates a subquery for SMART attributes.
+// The wwn filter uses params.wwn for parameterized query safety (prevents Flux injection).
+func (sr *scrutinyRepository) generateSmartAttributesSubquery(durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) string {
 	bucketName := sr.lookupBucketName(durationKey)
 	durationRange := sr.lookupDuration(durationKey)
 
@@ -244,7 +256,7 @@ func (sr *scrutinyRepository) generateSmartAttributesSubquery(wwn string, durati
 		fmt.Sprintf(`%sData = from(bucket: "%s")`, durationKey, bucketName),
 		fmt.Sprintf(`|> range(start: %s, stop: %s)`, durationRange[0], durationRange[1]),
 		`|> filter(fn: (r) => r["_measurement"] == "smart" )`,
-		fmt.Sprintf(`|> filter(fn: (r) => r["device_wwn"] == "%s" )`, wwn),
+		`|> filter(fn: (r) => r["device_wwn"] == params.wwn )`,
 	}
 
 	partialQueryStr = append(partialQueryStr, fmt.Sprintf(`|> aggregateWindow(every: %s, fn: last, createEmpty: false)`, RESOLUTION_1_DAY))

@@ -11,11 +11,24 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 )
 
+// HealthCheckStatus represents the status of a single health check
+type HealthCheckStatus struct {
+	Status    string `json:"status"`           // "ok" or "error"
+	LatencyMs int64  `json:"latency_ms"`       // Response time in milliseconds
+	Error     string `json:"error,omitempty"`  // Error message if status is "error"
+}
+
+// HealthCheckResult contains the results of all health checks
+type HealthCheckResult struct {
+	Status string                       `json:"status"` // "healthy" or "unhealthy"
+	Checks map[string]HealthCheckStatus `json:"checks"`
+}
+
 // Create mock using:
 // mockgen -source=webapp/backend/pkg/database/interface.go -destination=webapp/backend/pkg/database/mock/mock_database.go
 type DeviceRepo interface {
 	Close() error
-	HealthCheck(ctx context.Context) error
+	HealthCheck(ctx context.Context) (*HealthCheckResult, error)
 
 	RegisterDevice(ctx context.Context, dev models.Device) error
 	GetDevices(ctx context.Context) ([]models.Device, error)

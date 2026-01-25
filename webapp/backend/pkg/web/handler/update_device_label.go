@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -11,6 +12,13 @@ import (
 func UpdateDeviceLabel(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
+
+	wwn := c.Param("wwn")
+	if err := validation.ValidateWWN(wwn); err != nil {
+		logger.Warnf("Invalid WWN format: %s", wwn)
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
 
 	var request struct {
 		Label string `json:"label"`
@@ -21,7 +29,7 @@ func UpdateDeviceLabel(c *gin.Context) {
 		return
 	}
 
-	err := deviceRepo.UpdateDeviceLabel(c, c.Param("wwn"), request.Label)
+	err := deviceRepo.UpdateDeviceLabel(c, wwn, request.Label)
 	if err != nil {
 		logger.Errorln("An error occurred while updating device label", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})

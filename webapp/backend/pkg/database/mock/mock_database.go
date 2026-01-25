@@ -10,6 +10,7 @@ import (
 	time "time"
 
 	pkg "github.com/analogj/scrutiny/webapp/backend/pkg"
+	database "github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	models "github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	collector "github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	measurements "github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
@@ -248,11 +249,12 @@ func (mr *MockDeviceRepoMockRecorder) GetZFSPoolsSummary(ctx interface{}) *gomoc
 }
 
 // HealthCheck mocks base method.
-func (m *MockDeviceRepo) HealthCheck(ctx context.Context) error {
+func (m *MockDeviceRepo) HealthCheck(ctx context.Context) (*database.HealthCheckResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HealthCheck", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*database.HealthCheckResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // HealthCheck indicates an expected call of HealthCheck.
