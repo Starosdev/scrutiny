@@ -25,14 +25,11 @@ import (
 )
 
 const (
-	// 60seconds * 60minutes * 24hours * 15 days
-	RETENTION_PERIOD_15_DAYS_IN_SECONDS = 1_296_000
-
-	// 60seconds * 60minutes * 24hours * 7 days * 9 weeks
-	RETENTION_PERIOD_9_WEEKS_IN_SECONDS = 5_443_200
-
-	// 60seconds * 60minutes * 24hours * 7 days * (52 + 52 + 4)weeks
-	RETENTION_PERIOD_25_MONTHS_IN_SECONDS = 65_318_400
+	// Default retention periods (in seconds) - can be overridden via config
+	// These constants are kept for backwards compatibility and migration code
+	DEFAULT_RETENTION_PERIOD_15_DAYS_IN_SECONDS = 1_296_000   // 60*60*24*15
+	DEFAULT_RETENTION_PERIOD_9_WEEKS_IN_SECONDS = 5_443_200   // 60*60*24*7*9
+	DEFAULT_RETENTION_PERIOD_25_MONTHS_IN_SECONDS = 65_318_400 // 60*60*24*7*(52+52+4)
 
 	DURATION_KEY_DAY     = "day"
 	DURATION_KEY_WEEK    = "week"
@@ -308,9 +305,9 @@ func (sr *scrutinyRepository) EnsureBuckets(ctx context.Context, org *domain.Org
 
 		// in tests, we may not want to set a retention policy. If "false", we can set data with old timestamps,
 		// then manually run the down sampling scripts. This should be true for production environments.
-		mainBucketRetentionRule = domain.RetentionRule{EverySeconds: RETENTION_PERIOD_15_DAYS_IN_SECONDS}
-		weeklyBucketRetentionRule = domain.RetentionRule{EverySeconds: RETENTION_PERIOD_9_WEEKS_IN_SECONDS}
-		monthlyBucketRetentionRule = domain.RetentionRule{EverySeconds: RETENTION_PERIOD_25_MONTHS_IN_SECONDS}
+		mainBucketRetentionRule = domain.RetentionRule{EverySeconds: int64(sr.appConfig.GetInt("web.influxdb.retention.daily"))}
+		weeklyBucketRetentionRule = domain.RetentionRule{EverySeconds: int64(sr.appConfig.GetInt("web.influxdb.retention.weekly"))}
+		monthlyBucketRetentionRule = domain.RetentionRule{EverySeconds: int64(sr.appConfig.GetInt("web.influxdb.retention.monthly"))}
 	}
 
 	mainBucket := sr.appConfig.GetString("web.influxdb.bucket")

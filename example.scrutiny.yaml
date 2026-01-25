@@ -51,6 +51,15 @@ web:
 #    org: 'my-org'
 #    bucket: 'bucket'
     retention_policy: true
+    # Retention periods for InfluxDB buckets (in seconds)
+    # These control how long metrics data is kept in each downsampling bucket
+    # See docs/DOWNSAMPLING.md for details on the bucket structure
+    #
+    # retention:
+    #   daily: 1296000    # 15 days (default) - raw metrics bucket
+    #   weekly: 5443200   # 9 weeks (default) - weekly aggregated data
+    #   monthly: 65318400 # 25 months (default) - monthly aggregated data
+    #   # yearly bucket has infinite retention (not configurable)
 
   # Prometheus metrics endpoint configuration
   metrics:

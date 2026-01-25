@@ -54,6 +54,14 @@ func (c *configuration) Init() error {
 	c.SetDefault("web.influxdb.tls.insecure_skip_verify", false)
 	c.SetDefault("web.influxdb.retention_policy", true)
 
+	// InfluxDB retention period settings (in seconds)
+	// daily bucket: 15 days = 60*60*24*15 = 1,296,000 seconds
+	c.SetDefault("web.influxdb.retention.daily", 1_296_000)
+	// weekly bucket: 9 weeks = 60*60*24*7*9 = 5,443,200 seconds
+	c.SetDefault("web.influxdb.retention.weekly", 5_443_200)
+	// monthly bucket: 25 months = 60*60*24*7*(52+52+4) = 65,318,400 seconds
+	c.SetDefault("web.influxdb.retention.monthly", 65_318_400)
+
 	c.SetDefault("failures.transient.ata", []int{195})
 
 	// SMART attribute overrides - allows users to ignore, force status, or set custom thresholds
