@@ -91,7 +91,7 @@ func (sr *scrutinyRepository) GetSmartTemperatureHistory(ctx context.Context, du
 			}
 		}
 		if result.Err() != nil {
-			fmt.Printf("Query error: %s\n", result.Err().Error())
+			sr.logger.Errorf("Query error: %s", result.Err().Error())
 		}
 	} else {
 		return nil, err
