@@ -1,5 +1,5 @@
 import {Component, EventEmitter, Input, OnInit, Output} from '@angular/core';
-import moment from 'moment';
+import dayjs from 'dayjs';
 import {takeUntil} from 'rxjs/operators';
 import {AppConfig} from 'app/core/config/app.config';
 import {ScrutinyConfigService} from 'app/core/config/scrutiny-config.service';
@@ -59,10 +59,10 @@ export class DashboardDeviceComponent implements OnInit {
         if (deviceStatus === 'failed') {
             return 'text-red' // if the device has failed, always highlight in red
         } else if (deviceStatus === 'passed') {
-            if (moment().subtract(14, 'days').isBefore(deviceSummary.smart.collector_date)) {
+            if (dayjs().subtract(14, 'day').isBefore(dayjs(deviceSummary.smart.collector_date))) {
                 // this device was updated in the last 2 weeks.
                 return 'text-green'
-            } else if (moment().subtract(1, 'months').isBefore(deviceSummary.smart.collector_date)) {
+            } else if (dayjs().subtract(1, 'month').isBefore(dayjs(deviceSummary.smart.collector_date))) {
                 // this device was updated in the last month
                 return 'text-yellow'
             } else {
