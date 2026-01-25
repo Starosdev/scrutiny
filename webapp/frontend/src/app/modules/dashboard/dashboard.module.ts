@@ -12,6 +12,7 @@ import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule as MatTableModule } from '@angular/material/table';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { MatTooltipModule as MatTooltipModule } from '@angular/material/tooltip'
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { DashboardSettingsModule } from 'app/layout/common/dashboard-settings/dashboard-settings.module';
 import { DashboardDeviceModule } from 'app/layout/common/dashboard-device/dashboard-device.module';
 
@@ -29,6 +30,7 @@ import { DashboardDeviceModule } from 'app/layout/common/dashboard-device/dashbo
         MatProgressBarModule,
         MatSortModule,
         MatTableModule,
+        MatCheckboxModule,
         NgApexchartsModule,
         SharedModule,
         DashboardSettingsModule,
