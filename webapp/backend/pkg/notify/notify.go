@@ -393,8 +393,6 @@ func (n *Notify) SendScriptNotification(scriptUrl string) error {
 }
 
 func (n *Notify) SendShoutrrrNotification(shoutrrrUrl string) error {
-
-	fmt.Printf("Sending Notifications to %v", shoutrrrUrl)
 	n.Logger.Infof("Sending notifications to %v", shoutrrrUrl)
 
 	sender, err := shoutrrr.CreateSender(shoutrrrUrl)

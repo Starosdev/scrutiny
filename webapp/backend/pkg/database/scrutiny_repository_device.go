@@ -76,7 +76,7 @@ func (sr *scrutinyRepository) ResetDeviceStatus(ctx context.Context, wwn string)
 func (sr *scrutinyRepository) GetDeviceDetails(ctx context.Context, wwn string) (models.Device, error) {
 	var device models.Device
 
-	fmt.Println("GetDeviceDetails from GORM")
+	sr.logger.Debugln("GetDeviceDetails from GORM")
 
 	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).First(&device).Error; err != nil {
 		return models.Device{}, err

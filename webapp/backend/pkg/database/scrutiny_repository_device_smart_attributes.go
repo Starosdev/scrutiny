@@ -65,7 +65,7 @@ func (sr *scrutinyRepository) GetSmartAttributeHistory(ctx context.Context, wwn 
 
 		}
 		if result.Err() != nil {
-			fmt.Printf("Query error: %s\n", result.Err().Error())
+			sr.logger.Errorf("Query error: %s", result.Err().Error())
 		}
 	} else {
 		return nil, err

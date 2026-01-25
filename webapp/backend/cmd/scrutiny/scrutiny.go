@@ -111,7 +111,7 @@ OPTIONS:
 						err = config.ReadConfig(c.String("config"), bootstrapLogger) // Find and read the config file
 						if err != nil {                                              // Handle errors reading the config file
 							//ignore "could not find config file"
-							fmt.Printf("Could not find config file at specified path: %s", c.String("config"))
+							bootstrapLogger.Printf("Could not find config file at specified path: %s", c.String("config"))
 							return err
 						}
 					}

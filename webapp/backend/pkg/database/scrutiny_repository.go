@@ -504,7 +504,7 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 			}
 		}
 		if result.Err() != nil {
-			fmt.Printf("Query error: %s\n", result.Err().Error())
+			sr.logger.Errorf("Query error: %s", result.Err().Error())
 		}
 	} else {
 		return nil, err
@@ -512,12 +512,7 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 
 	deviceTempHistory, err := sr.GetSmartTemperatureHistory(ctx, DURATION_KEY_FOREVER)
 	if err != nil {
-		sr.logger.Printf("========================>>>>>>>>======================")
-		sr.logger.Printf("========================>>>>>>>>======================")
-		sr.logger.Printf("========================>>>>>>>>======================")
-		sr.logger.Printf("========================>>>>>>>>======================")
-		sr.logger.Printf("========================>>>>>>>>======================")
-		sr.logger.Printf("Error: %v", err)
+		sr.logger.Errorf("Error getting temperature history: %v", err)
 	}
 	for wwn, tempHistory := range deviceTempHistory {
 		summaries[wwn].TempHistory = tempHistory
