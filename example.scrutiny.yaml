@@ -7,6 +7,39 @@
 # When this file is parsed by Scrutiny, all configuration file keys are
 # lowercased automatically. As such, Configuration keys are case-insensitive,
 # and should be lowercase in this file to be consistent with usage.
+#
+######################################################################
+# Environment Variable Overrides
+#
+# Any configuration key can be overridden via environment variables using
+# the SCRUTINY_ prefix. Dots and dashes in key names become underscores.
+#
+# Pattern: SCRUTINY_<KEY_WITH_DOTS_AS_UNDERSCORES>
+#
+# Examples:
+#   web.listen.port                       -> SCRUTINY_WEB_LISTEN_PORT
+#   web.listen.host                       -> SCRUTINY_WEB_LISTEN_HOST
+#   web.listen.basepath                   -> SCRUTINY_WEB_LISTEN_BASEPATH
+#   web.database.location                 -> SCRUTINY_WEB_DATABASE_LOCATION
+#   web.database.journal_mode             -> SCRUTINY_WEB_DATABASE_JOURNAL_MODE
+#   web.src.frontend.path                 -> SCRUTINY_WEB_SRC_FRONTEND_PATH
+#   web.influxdb.scheme                   -> SCRUTINY_WEB_INFLUXDB_SCHEME
+#   web.influxdb.host                     -> SCRUTINY_WEB_INFLUXDB_HOST
+#   web.influxdb.port                     -> SCRUTINY_WEB_INFLUXDB_PORT
+#   web.influxdb.org                      -> SCRUTINY_WEB_INFLUXDB_ORG
+#   web.influxdb.bucket                   -> SCRUTINY_WEB_INFLUXDB_BUCKET
+#   web.influxdb.token                    -> SCRUTINY_WEB_INFLUXDB_TOKEN
+#   web.influxdb.init_username            -> SCRUTINY_WEB_INFLUXDB_INIT_USERNAME
+#   web.influxdb.init_password            -> SCRUTINY_WEB_INFLUXDB_INIT_PASSWORD
+#   web.influxdb.tls.insecure_skip_verify -> SCRUTINY_WEB_INFLUXDB_TLS_INSECURE_SKIP_VERIFY
+#   web.influxdb.retention_policy         -> SCRUTINY_WEB_INFLUXDB_RETENTION_POLICY
+#   web.metrics.enabled                   -> SCRUTINY_WEB_METRICS_ENABLED
+#   log.level                             -> SCRUTINY_LOG_LEVEL
+#   log.file                              -> SCRUTINY_LOG_FILE
+#   notify.urls                           -> SCRUTINY_NOTIFY_URLS (comma-separated)
+#
+# Environment variables take precedence over config file values.
+######################################################################
 
 
 ######################################################################

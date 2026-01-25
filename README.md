@@ -284,6 +284,46 @@ Or if you're not using docker, you can pass CLI arguments to the web server duri
 scrutiny start --debug --log-file /tmp/web.log
 ```
 
+### Web Server Environment Variable Overrides
+
+Any web server configuration key can be overridden via environment variables using the `SCRUTINY_` prefix.
+Dots and dashes in key names become underscores.
+
+| Config Key | Environment Variable | Default Value |
+| --- | --- | --- |
+| `web.listen.port` | `SCRUTINY_WEB_LISTEN_PORT` | `8080` |
+| `web.listen.host` | `SCRUTINY_WEB_LISTEN_HOST` | `0.0.0.0` |
+| `web.listen.basepath` | `SCRUTINY_WEB_LISTEN_BASEPATH` | `` |
+| `web.database.location` | `SCRUTINY_WEB_DATABASE_LOCATION` | `/opt/scrutiny/config/scrutiny.db` |
+| `web.database.journal_mode` | `SCRUTINY_WEB_DATABASE_JOURNAL_MODE` | `WAL` |
+| `web.src.frontend.path` | `SCRUTINY_WEB_SRC_FRONTEND_PATH` | `/opt/scrutiny/web` |
+| `web.influxdb.scheme` | `SCRUTINY_WEB_INFLUXDB_SCHEME` | `http` |
+| `web.influxdb.host` | `SCRUTINY_WEB_INFLUXDB_HOST` | `localhost` |
+| `web.influxdb.port` | `SCRUTINY_WEB_INFLUXDB_PORT` | `8086` |
+| `web.influxdb.org` | `SCRUTINY_WEB_INFLUXDB_ORG` | `scrutiny` |
+| `web.influxdb.bucket` | `SCRUTINY_WEB_INFLUXDB_BUCKET` | `metrics` |
+| `web.influxdb.token` | `SCRUTINY_WEB_INFLUXDB_TOKEN` | `scrutiny-default-admin-token` |
+| `web.influxdb.init_username` | `SCRUTINY_WEB_INFLUXDB_INIT_USERNAME` | `admin` |
+| `web.influxdb.init_password` | `SCRUTINY_WEB_INFLUXDB_INIT_PASSWORD` | `password12345` |
+| `web.influxdb.tls.insecure_skip_verify` | `SCRUTINY_WEB_INFLUXDB_TLS_INSECURE_SKIP_VERIFY` | `false` |
+| `web.influxdb.retention_policy` | `SCRUTINY_WEB_INFLUXDB_RETENTION_POLICY` | `true` |
+| `web.metrics.enabled` | `SCRUTINY_WEB_METRICS_ENABLED` | `true` |
+| `log.level` | `SCRUTINY_LOG_LEVEL` | `INFO` |
+| `log.file` | `SCRUTINY_LOG_FILE` | `` |
+| `notify.urls` | `SCRUTINY_NOTIFY_URLS` | `` |
+
+Environment variables take precedence over config file values. This is useful for containerized
+deployments where you want to override specific settings without modifying the config file.
+
+Example:
+
+```bash
+docker run -e SCRUTINY_WEB_LISTEN_PORT=9090 \
+  -e SCRUTINY_WEB_INFLUXDB_HOST=influxdb.local \
+  -e SCRUTINY_LOG_LEVEL=DEBUG \
+  ghcr.io/starosdev/scrutiny:web
+```
+
 ## Collector
 
 You can use environmental variables to enable debug logging and/or log files for the collector:
@@ -304,17 +344,18 @@ scrutiny-collector-metrics run --debug --log-file /tmp/collector.log
 Any collector configuration key can be overridden via environment variables using the `COLLECTOR_` prefix.
 Dots and dashes in key names become underscores.
 
-| Config Key | Environment Variable |
-| --- | --- |
-| `commands.metrics_scan_args` | `COLLECTOR_COMMANDS_METRICS_SCAN_ARGS` |
-| `commands.metrics_info_args` | `COLLECTOR_COMMANDS_METRICS_INFO_ARGS` |
-| `commands.metrics_smart_args` | `COLLECTOR_COMMANDS_METRICS_SMART_ARGS` |
-| `commands.metrics_smartctl_bin` | `COLLECTOR_COMMANDS_METRICS_SMARTCTL_BIN` |
-| `api.endpoint` | `COLLECTOR_API_ENDPOINT` |
-| `api.timeout` | `COLLECTOR_API_TIMEOUT` |
-| `host.id` | `COLLECTOR_HOST_ID` |
-| `log.level` | `COLLECTOR_LOG_LEVEL` |
-| `log.file` | `COLLECTOR_LOG_FILE` |
+| Config Key | Environment Variable | Default Value |
+| --- | --- | --- |
+| `host.id` | `COLLECTOR_HOST_ID` | `` |
+| `api.endpoint` | `COLLECTOR_API_ENDPOINT` | `http://localhost:8080` |
+| `api.timeout` | `COLLECTOR_API_TIMEOUT` | `60` |
+| `commands.metrics_smartctl_bin` | `COLLECTOR_COMMANDS_METRICS_SMARTCTL_BIN` | `smartctl` |
+| `commands.metrics_scan_args` | `COLLECTOR_COMMANDS_METRICS_SCAN_ARGS` | `--scan --json` |
+| `commands.metrics_info_args` | `COLLECTOR_COMMANDS_METRICS_INFO_ARGS` | `--info --json` |
+| `commands.metrics_smart_args` | `COLLECTOR_COMMANDS_METRICS_SMART_ARGS` | `--xall --json` |
+| `commands.metrics_smartctl_wait` | `COLLECTOR_COMMANDS_METRICS_SMARTCTL_WAIT` | `0` |
+| `log.level` | `COLLECTOR_LOG_LEVEL` | `INFO` |
+| `log.file` | `COLLECTOR_LOG_FILE` | `` |
 
 Environment variables take precedence over config file values. This is useful for containerized
 deployments where you want to override specific settings without modifying the config file.
