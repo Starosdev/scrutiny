@@ -1,6 +1,9 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import moment from 'moment';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import { Subject } from 'rxjs';
+
+dayjs.extend(relativeTime);
 import { MatDialog } from '@angular/material/dialog';
 import { ZFSPoolModel, ZFSPoolStatus } from 'app/core/models/zfs-pool-model';
 import { AppConfig } from 'app/core/config/app.config';
@@ -67,9 +70,9 @@ export class ZFSPoolCardComponent implements OnInit {
         if (poolStatus === 'failed') {
             return 'text-red';
         } else if (poolStatus === 'passed') {
-            if (moment().subtract(14, 'days').isBefore(pool.updated_at)) {
+            if (dayjs().subtract(14, 'day').isBefore(dayjs(pool.updated_at))) {
                 return 'text-green';
-            } else if (moment().subtract(1, 'months').isBefore(pool.updated_at)) {
+            } else if (dayjs().subtract(1, 'month').isBefore(dayjs(pool.updated_at))) {
                 return 'text-yellow';
             } else {
                 return 'text-red';
@@ -103,7 +106,7 @@ export class ZFSPoolCardComponent implements OnInit {
             case 'scanning':
                 return `In Progress (${pool.scrub_percent_complete}%)`;
             case 'finished':
-                return moment(pool.scrub_end_time).fromNow();
+                return dayjs(pool.scrub_end_time).fromNow();
             case 'canceled':
                 return 'Canceled';
             default:
