@@ -157,7 +157,14 @@ func (suite *ServerTestSuite) TestHealthRoute() {
 
 	//assert
 	require.Equal(suite.T(), 200, w.Code)
-	require.Equal(suite.T(), "{\"success\":true}", w.Body.String())
+
+	// Parse the JSON response to check the new structured format
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(suite.T(), err, "response should be valid JSON")
+	require.Equal(suite.T(), true, response["success"], "success should be true")
+	require.Equal(suite.T(), "healthy", response["status"], "status should be healthy")
+	require.NotNil(suite.T(), response["checks"], "checks should be present")
 }
 
 func (suite *ServerTestSuite) TestHealthRoute_MissingFrontend() {
@@ -211,6 +218,13 @@ func (suite *ServerTestSuite) TestHealthRoute_MissingFrontend() {
 
 	//assert
 	require.Equal(suite.T(), 500, w.Code)
+
+	// Parse the JSON response to check the new structured format
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(suite.T(), err, "response should be valid JSON")
+	require.Equal(suite.T(), false, response["success"], "success should be false")
+	require.Equal(suite.T(), "unhealthy", response["status"], "status should be unhealthy")
 	require.Contains(suite.T(), w.Body.String(), "Frontend files not found")
 }
 
