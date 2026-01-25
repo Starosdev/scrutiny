@@ -241,27 +241,72 @@ func (sr *scrutinyRepository) Close() error {
 	return nil
 }
 
-func (sr *scrutinyRepository) HealthCheck(ctx context.Context) error {
-	//check influxdb
+func (sr *scrutinyRepository) HealthCheck(ctx context.Context) (*HealthCheckResult, error) {
+	result := &HealthCheckResult{
+		Status: "healthy",
+		Checks: make(map[string]HealthCheckStatus),
+	}
+
+	// Check InfluxDB health with latency measurement
+	influxStart := time.Now()
 	status, err := sr.influxClient.Health(ctx)
+	influxLatency := time.Since(influxStart).Milliseconds()
+
 	if err != nil {
-		return fmt.Errorf("influxdb healthcheck failed: %w", err)
-	}
-	if status.Status != "pass" {
-		return fmt.Errorf("influxdb healthcheckf failed: status=%s", status.Status)
+		result.Status = "unhealthy"
+		result.Checks["influxdb"] = HealthCheckStatus{
+			Status:    "error",
+			LatencyMs: influxLatency,
+			Error:     err.Error(),
+		}
+	} else if status.Status != "pass" {
+		result.Status = "unhealthy"
+		result.Checks["influxdb"] = HealthCheckStatus{
+			Status:    "error",
+			LatencyMs: influxLatency,
+			Error:     fmt.Sprintf("influxdb status: %s", status.Status),
+		}
+	} else {
+		result.Checks["influxdb"] = HealthCheckStatus{
+			Status:    "ok",
+			LatencyMs: influxLatency,
+		}
 	}
 
-	//check sqlite db.
-	database, err := sr.gormClient.DB()
-	if err != nil {
-		return fmt.Errorf("sqlite healthcheck failed: %w", err)
-	}
-	err = database.Ping()
-	if err != nil {
-		return fmt.Errorf("sqlite healthcheck failed during ping: %w", err)
-	}
-	return nil
+	// Check SQLite health with actual query execution (not just ping)
+	sqliteStart := time.Now()
+	// Execute a simple query to verify database is responsive
+	var count int64
+	err = sr.gormClient.WithContext(ctx).Table("settings").Count(&count).Error
+	sqliteLatency := time.Since(sqliteStart).Milliseconds()
 
+	if err != nil {
+		result.Status = "unhealthy"
+		result.Checks["sqlite"] = HealthCheckStatus{
+			Status:    "error",
+			LatencyMs: sqliteLatency,
+			Error:     err.Error(),
+		}
+	} else {
+		result.Checks["sqlite"] = HealthCheckStatus{
+			Status:    "ok",
+			LatencyMs: sqliteLatency,
+		}
+	}
+
+	// Return error only if critically unhealthy (for backwards compatibility with existing callers)
+	if result.Status == "unhealthy" {
+		// Build error message from failed checks
+		var errMsgs []string
+		for name, check := range result.Checks {
+			if check.Status == "error" {
+				errMsgs = append(errMsgs, fmt.Sprintf("%s: %s", name, check.Error))
+			}
+		}
+		return result, fmt.Errorf("health check failed: %s", strings.Join(errMsgs, "; "))
+	}
+
+	return result, nil
 }
 
 func InfluxSetupComplete(influxEndpoint string, tlsConfig *tls.Config) (bool, error) {
