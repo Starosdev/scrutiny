@@ -96,9 +96,9 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 
 				//calculate bucket oldest dates
 				today := time.Now()
-				dailyBucketMax := today.Add(-RETENTION_PERIOD_15_DAYS_IN_SECONDS * time.Second)     //15 days
-				weeklyBucketMax := today.Add(-RETENTION_PERIOD_9_WEEKS_IN_SECONDS * time.Second)    //9 weeks
-				monthlyBucketMax := today.Add(-RETENTION_PERIOD_25_MONTHS_IN_SECONDS * time.Second) //25 weeks
+				dailyBucketMax := today.Add(-DEFAULT_RETENTION_PERIOD_15_DAYS_IN_SECONDS * time.Second)     //15 days
+				weeklyBucketMax := today.Add(-DEFAULT_RETENTION_PERIOD_9_WEEKS_IN_SECONDS * time.Second)    //9 weeks
+				monthlyBucketMax := today.Add(-DEFAULT_RETENTION_PERIOD_25_MONTHS_IN_SECONDS * time.Second) //25 months
 
 				for _, preDevice := range preDevices {
 					sr.logger.Debugf("====================================")
