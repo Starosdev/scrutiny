@@ -18,25 +18,44 @@ func HealthCheck(c *gin.Context) {
 	appConfig := c.MustGet("CONFIG").(config.Interface)
 	logger.Infof("Checking Influxdb & Sqlite health")
 
-	//check sqlite and influxdb health
-	err := deviceRepo.HealthCheck(c)
-	if err != nil {
-		logger.Errorln("An error occurred during healthcheck", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
-		return
-	}
+	// Check sqlite and influxdb health with detailed status
+	healthResult, err := deviceRepo.HealthCheck(c)
 
-	// check if the /web folder is populated with expected frontend files
+	// Check if the /web folder is populated with expected frontend files
 	frontendPath := appConfig.GetString("web.src.frontend.path")
 	indexPath := filepath.Join(frontendPath, "index.html")
-	if !utils.FileExists(indexPath) {
-		errMsg := fmt.Sprintf("Frontend files not found. Expected index.html at: %s", indexPath)
-		logger.Errorln(errMsg)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": errMsg})
+	frontendOk := utils.FileExists(indexPath)
+
+	// Add frontend check to the health result
+	if healthResult != nil {
+		if frontendOk {
+			healthResult.Checks["frontend"] = database.HealthCheckStatus{
+				Status:    "ok",
+				LatencyMs: 0,
+			}
+		} else {
+			healthResult.Status = "unhealthy"
+			healthResult.Checks["frontend"] = database.HealthCheckStatus{
+				Status:    "error",
+				LatencyMs: 0,
+				Error:     fmt.Sprintf("Frontend files not found. Expected index.html at: %s", indexPath),
+			}
+		}
+	}
+
+	if err != nil || !frontendOk {
+		logger.Errorln("An error occurred during healthcheck", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"status":  healthResult.Status,
+			"checks":  healthResult.Checks,
+		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
+		"status":  healthResult.Status,
+		"checks":  healthResult.Checks,
 	})
 }
