@@ -13,7 +13,7 @@ if [ -z "$PREV_TAG" ]; then
     exit 1
 fi
 
-echo "Generating release notes for $PREV_TAG..$NEW_TAG"
+echo "Generating release notes for $PREV_TAG..$NEW_TAG" >&2
 
 # Get the date of the previous tag
 PREV_DATE=$(git log -1 --format=%aI "$PREV_TAG" 2>/dev/null || echo "1970-01-01T00:00:00Z")
@@ -110,5 +110,14 @@ if [ ${#OTHER[@]} -gt 0 ]; then
     echo "### Other Changes"
     echo ""
     printf '%s\n' "${OTHER[@]}"
+    echo ""
+fi
+
+# If no PRs were categorized, add a note about direct commits
+TOTAL=$((${#FEATURES[@]} + ${#FIXES[@]} + ${#REFACTORS[@]} + ${#DOCS[@]} + ${#DEPS[@]} + ${#CICD[@]} + ${#OTHER[@]}))
+if [ "$TOTAL" -eq 0 ]; then
+    echo "### Changes"
+    echo ""
+    echo "See [commit history](https://github.com/$REPO/compare/$PREV_TAG...$NEW_TAG) for details."
     echo ""
 fi
