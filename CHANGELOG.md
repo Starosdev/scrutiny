@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.16.3](https://github.com/Starosdev/scrutiny/compare/v1.16.2...v1.16.3) (2026-01-26)
+
+### Bug Fixes
+
+* **database:** revert parameterized queries for InfluxDB OSS compatibility ([#157](https://github.com/Starosdev/scrutiny/issues/157)) ([6deb0bc](https://github.com/Starosdev/scrutiny/commit/6deb0bc414f1c4274111b40bc7d3f28446c15228)), closes [#155](https://github.com/Starosdev/scrutiny/issues/155)
+
 ## [1.16.2](https://github.com/Starosdev/scrutiny/compare/v1.16.1...v1.16.2) (2026-01-26)
 
 ### Bug Fixes
