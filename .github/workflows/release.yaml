@@ -81,6 +81,38 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
 
+      - name: Get previous tag
+        id: prev_tag
+        if: steps.semantic.outputs.new_release_published == 'true'
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 v${{ steps.semantic.outputs.new_release_version }}^ 2>/dev/null || echo "")
+          echo "tag=$PREV_TAG" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes from PRs
+        id: release_notes
+        if: steps.semantic.outputs.new_release_published == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
+        run: |
+          chmod +x .github/scripts/generate-release-notes.sh
+          NOTES=$(.github/scripts/generate-release-notes.sh "${{ steps.prev_tag.outputs.tag }}" "v${{ steps.semantic.outputs.new_release_version }}")
+          # Write to file to preserve newlines
+          echo "$NOTES" > /tmp/release-notes.md
+
+      - name: Update release notes
+        if: steps.semantic.outputs.new_release_published == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
+        run: |
+          if [ -f /tmp/release-notes.md ] && [ -s /tmp/release-notes.md ]; then
+            gh release edit "v${{ steps.semantic.outputs.new_release_version }}" \
+              --repo ${{ github.repository }} \
+              --notes-file /tmp/release-notes.md
+            echo "Release notes updated successfully"
+          else
+            echo "No release notes generated, keeping default"
+          fi
+
   build:
     name: Build Binaries
     needs: release
