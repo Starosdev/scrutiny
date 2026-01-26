@@ -279,27 +279,23 @@ func (sr *scrutinyRepository) SaveZFSPoolMetrics(ctx context.Context, pool model
 }
 
 // GetZFSPoolMetricsHistory retrieves historical metrics for a ZFS pool
+// Note: GUID is validated at the handler level before reaching this function.
 func (sr *scrutinyRepository) GetZFSPoolMetricsHistory(ctx context.Context, guid string, durationKey string) ([]measurements.ZFSPoolMetrics, error) {
 	// Map duration key to actual duration and bucket
 	bucketName := sr.lookupBucketName(durationKey)
 	duration := sr.lookupDuration(durationKey)
 
-	// Use parameterized query to prevent Flux injection
 	queryStr := fmt.Sprintf(`
 		from(bucket: "%s")
 		|> range(start: %s, stop: %s)
 		|> filter(fn: (r) => r["_measurement"] == "zfs_pool")
-		|> filter(fn: (r) => r["pool_guid"] == params.guid)
+		|> filter(fn: (r) => r["pool_guid"] == "%s")
 		|> aggregateWindow(every: 1h, fn: last, createEmpty: false)
 		|> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
 		|> sort(columns: ["_time"], desc: false)
-	`, bucketName, duration[0], duration[1])
+	`, bucketName, duration[0], duration[1], guid)
 
-	params := map[string]interface{}{
-		"guid": guid,
-	}
-
-	result, err := sr.influxQueryApi.QueryWithParams(ctx, queryStr, params)
+	result, err := sr.influxQueryApi.Query(ctx, queryStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query ZFS pool metrics: %v", err)
 	}
