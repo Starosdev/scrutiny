@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.16.2](https://github.com/Starosdev/scrutiny/compare/v1.16.1...v1.16.2) (2026-01-26)
+
+### Bug Fixes
+
+* **ci:** improve release notes script output ([accb28d](https://github.com/Starosdev/scrutiny/commit/accb28d794eb9bd9f3433d6744ebc68f9a07f2b9))
+
 ## [1.16.1](https://github.com/Starosdev/scrutiny/compare/v1.16.0...v1.16.1) (2026-01-26)
 
 ### Bug Fixes
