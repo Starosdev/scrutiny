@@ -59,6 +59,52 @@ func TestValidateWWN(t *testing.T) {
 			wwn:     "00000000-0000-0000-0000-000000000000",
 			wantErr: false,
 		},
+		// Valid serial number formats (NVMe/SCSI fallback)
+		{
+			name:    "valid serial number NVMe typical",
+			wwn:     "BTNH93710FS91P0B",
+			wantErr: false,
+		},
+		{
+			name:    "valid serial number with numbers",
+			wwn:     "S466NX0M776250H",
+			wantErr: false,
+		},
+		{
+			name:    "valid serial number short",
+			wwn:     "yes",
+			wantErr: false,
+		},
+		{
+			name:    "valid serial number SCSI",
+			wwn:     "Z1Z5DWJK0000XXXXXXXX",
+			wantErr: false,
+		},
+		{
+			name:    "valid serial number with hyphen",
+			wwn:     "S3YZ-NB0KB-00864E",
+			wantErr: false,
+		},
+		{
+			name:    "valid serial number with underscore",
+			wwn:     "Volume_1",
+			wantErr: false,
+		},
+		{
+			name:    "valid serial number single char",
+			wwn:     "A",
+			wantErr: false,
+		},
+		{
+			name:    "valid serial number max length 64",
+			wwn:     "1234567890123456789012345678901234567890123456789012345678901234",
+			wantErr: false,
+		},
+		{
+			name:    "valid serial number all digits",
+			wwn:     "12345678901234567890",
+			wantErr: false,
+		},
 		// Invalid WWN formats
 		{
 			name:    "empty string",
@@ -66,29 +112,34 @@ func TestValidateWWN(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "missing 0x prefix",
+			name:    "serial number too long (65 chars)",
+			wwn:     "12345678901234567890123456789012345678901234567890123456789012345",
+			wantErr: true,
+		},
+		{
+			name:    "hex-like string without prefix (valid as serial)",
 			wwn:     "5000cca264eb01d7",
-			wantErr: true,
+			wantErr: false,
 		},
 		{
-			name:    "only 0x prefix",
+			name:    "short alphanumeric (valid as serial)",
 			wwn:     "0x",
-			wantErr: true,
+			wantErr: false,
 		},
 		{
-			name:    "too short",
+			name:    "hex prefix with short value (valid as serial)",
 			wwn:     "0x5000cca264eb01",
-			wantErr: true,
+			wantErr: false,
 		},
 		{
-			name:    "too long",
+			name:    "hex prefix with long value (valid as serial)",
 			wwn:     "0x5000cca264eb01d7a",
-			wantErr: true,
+			wantErr: false,
 		},
 		{
-			name:    "invalid hex character",
+			name:    "hex prefix with non-hex character (valid as serial)",
 			wwn:     "0x5000cca264eb01dg",
-			wantErr: true,
+			wantErr: false,
 		},
 		// Injection attempts
 		{
@@ -124,6 +175,26 @@ func TestValidateWWN(t *testing.T) {
 		{
 			name:    "flux-style injection",
 			wwn:     `" or true) or (r["`,
+			wantErr: true,
+		},
+		{
+			name:    "serial with space",
+			wwn:     "SERIAL WITH SPACE",
+			wantErr: true,
+		},
+		{
+			name:    "serial with dot",
+			wwn:     "SERIAL.NUMBER",
+			wantErr: true,
+		},
+		{
+			name:    "serial with slash",
+			wwn:     "SERIAL/NUMBER",
+			wantErr: true,
+		},
+		{
+			name:    "serial with parenthesis",
+			wwn:     "SERIAL(NUMBER)",
 			wantErr: true,
 		},
 	}
