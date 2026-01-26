@@ -279,6 +279,7 @@ func (sr *scrutinyRepository) SaveZFSPoolMetrics(ctx context.Context, pool model
 }
 
 // GetZFSPoolMetricsHistory retrieves historical metrics for a ZFS pool
+// Note: GUID is validated at the handler level before reaching this function.
 func (sr *scrutinyRepository) GetZFSPoolMetricsHistory(ctx context.Context, guid string, durationKey string) ([]measurements.ZFSPoolMetrics, error) {
 	// Map duration key to actual duration and bucket
 	bucketName := sr.lookupBucketName(durationKey)
