@@ -285,17 +285,22 @@ func (sr *scrutinyRepository) GetZFSPoolMetricsHistory(ctx context.Context, guid
 	bucketName := sr.lookupBucketName(durationKey)
 	duration := sr.lookupDuration(durationKey)
 
+	// Use parameterized query to prevent Flux injection
 	queryStr := fmt.Sprintf(`
 		from(bucket: "%s")
 		|> range(start: %s, stop: %s)
 		|> filter(fn: (r) => r["_measurement"] == "zfs_pool")
-		|> filter(fn: (r) => r["pool_guid"] == "%s")
+		|> filter(fn: (r) => r["pool_guid"] == params.guid)
 		|> aggregateWindow(every: 1h, fn: last, createEmpty: false)
 		|> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
 		|> sort(columns: ["_time"], desc: false)
-	`, bucketName, duration[0], duration[1], guid)
+	`, bucketName, duration[0], duration[1])
 
-	result, err := sr.influxQueryApi.Query(ctx, queryStr)
+	params := map[string]interface{}{
+		"guid": guid,
+	}
+
+	result, err := sr.influxQueryApi.QueryWithParams(ctx, queryStr, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query ZFS pool metrics: %v", err)
 	}
