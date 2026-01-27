@@ -632,6 +632,25 @@ union(tables: [dailyData, weeklyData, monthlyData, yearlyData])
 	return lastSeenTimes, nil
 }
 
+// GetAvailableInfluxDBBuckets returns a list of bucket names available in InfluxDB.
+// This is used for diagnostics to verify required buckets exist.
+func (sr *scrutinyRepository) GetAvailableInfluxDBBuckets(ctx context.Context) ([]string, error) {
+	org := sr.appConfig.GetString("web.influxdb.org")
+
+	// Query InfluxDB for all buckets in the organization
+	buckets, err := sr.influxClient.BucketsAPI().FindBucketsByOrgName(ctx, org)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query InfluxDB buckets: %w", err)
+	}
+
+	bucketNames := make([]string, 0, len(*buckets))
+	for _, bucket := range *buckets {
+		bucketNames = append(bucketNames, bucket.Name)
+	}
+
+	return bucketNames, nil
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Helper Methods
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

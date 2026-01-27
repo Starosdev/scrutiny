@@ -9,14 +9,16 @@ var (
 	// wwnRegex validates WWN format:
 	// - Hex format: 0x followed by exactly 16 hexadecimal characters (e.g., 0x5000cca264eb01d7)
 	// - UUID format: 8-4-4-4-12 hexadecimal with dashes (e.g., a4c8e8ed-11a0-4c97-9bba-306440f1b944)
-	wwnRegex = regexp.MustCompile(`^(0x[0-9a-fA-F]{16}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$`)
+	// - Serial number: alphanumeric with optional hyphens/underscores, 1-64 chars (e.g., BTNH93710FS91P0B)
+	//   NVMe and SCSI devices often use serial numbers as WWN fallbacks when WWN is unavailable
+	wwnRegex = regexp.MustCompile(`^(0x[0-9a-fA-F]{16}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[a-zA-Z0-9_-]{1,64})$`)
 
 	// guidRegex validates ZFS pool GUID format: either decimal (up to 20 digits) or hex (0x prefix)
 	// Examples: 12345678901234567890, 0xABCD1234
 	guidRegex = regexp.MustCompile(`^(0x[0-9a-fA-F]{1,16}|[0-9]{1,20})$`)
 
 	// ErrInvalidWWN is returned when WWN format validation fails
-	ErrInvalidWWN = errors.New("invalid WWN format: must be 0x followed by 16 hex characters, or UUID format")
+	ErrInvalidWWN = errors.New("invalid WWN format: must be 0x followed by 16 hex characters, UUID format, or alphanumeric serial number")
 
 	// ErrInvalidGUID is returned when GUID format validation fails
 	ErrInvalidGUID = errors.New("invalid GUID format: must be a decimal number or hexadecimal with 0x prefix")
@@ -26,7 +28,9 @@ var (
 // Valid formats:
 //   - Hex: 0x followed by exactly 16 hexadecimal characters (e.g., 0x5000cca264eb01d7)
 //   - UUID: Standard UUID format with dashes (e.g., a4c8e8ed-11a0-4c97-9bba-306440f1b944)
+//   - Serial: Alphanumeric with optional hyphens/underscores, 1-64 chars (e.g., BTNH93710FS91P0B)
 //
+// NVMe and SCSI devices often use serial numbers as WWN fallbacks when WWN is unavailable.
 // This validation prevents Flux query injection attacks by ensuring only safe characters.
 func ValidateWWN(wwn string) error {
 	if !wwnRegex.MatchString(wwn) {

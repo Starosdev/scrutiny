@@ -24,9 +24,10 @@ import (
 )
 
 type AppEngine struct {
-	Config           config.Interface
-	Logger           *logrus.Entry
-	MetricsCollector *metrics.Collector
+	Config            config.Interface
+	Logger            *logrus.Entry
+	MetricsCollector  *metrics.Collector
+	MissedPingMonitor *MissedPingMonitor
 }
 
 func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
@@ -47,6 +48,11 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 	r.Use(middleware.LoggerMiddleware(logger))
 	r.Use(middleware.RepositoryMiddleware(ae.Config, logger))
 	r.Use(middleware.ConfigMiddleware(ae.Config))
+
+	// Add missed ping monitor middleware if available
+	if ae.MissedPingMonitor != nil {
+		r.Use(middleware.MissedPingMonitorMiddleware(ae.MissedPingMonitor))
+	}
 
 	// Initialize metrics collector if enabled
 	if ae.Config.GetBool("web.metrics.enabled") {
@@ -69,7 +75,8 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 		{
 			api.GET("/health", handler.HealthCheck)
 			api.HEAD("/health", handler.HealthCheck)
-			api.POST("/health/notify", handler.SendTestNotification) //check if notifications are configured correctly
+			api.POST("/health/notify", handler.SendTestNotification)        //check if notifications are configured correctly
+			api.GET("/health/missed-ping-status", handler.GetMissedPingStatus) //get missed ping monitor diagnostic status
 
 			api.POST("/devices/register", handler.RegisterDevices)         //used by Collector to register new devices and retrieve filtered list
 			api.GET("/summary", handler.GetDevicesSummary)                 //used by Dashboard
@@ -211,6 +218,7 @@ func (ae *AppEngine) Start() error {
 	// Start the missed ping monitor for collector health monitoring
 	missedPingMonitor := NewMissedPingMonitor(ae)
 	missedPingMonitor.Start()
+	ae.MissedPingMonitor = missedPingMonitor // Store reference for handler access
 	ae.Logger.Info("Missed ping monitor started")
 
 	// Create HTTP server for graceful shutdown support
@@ -237,7 +245,9 @@ func (ae *AppEngine) Start() error {
 	ae.Logger.Info("Shutdown signal received, initiating graceful shutdown...")
 
 	// Stop the missed ping monitor first
-	missedPingMonitor.Stop()
+	if ae.MissedPingMonitor != nil {
+		ae.MissedPingMonitor.Stop()
+	}
 
 	// Create a deadline for shutdown (give 30 seconds for graceful shutdown)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
