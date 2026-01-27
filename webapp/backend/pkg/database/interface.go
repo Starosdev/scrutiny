@@ -56,6 +56,10 @@ type DeviceRepo interface {
 	// This is used for missed collector ping detection.
 	GetDevicesLastSeenTimes(ctx context.Context) (map[string]time.Time, error)
 
+	// GetAvailableInfluxDBBuckets returns a list of bucket names available in InfluxDB.
+	// This is used for diagnostics to verify required buckets exist.
+	GetAvailableInfluxDBBuckets(ctx context.Context) ([]string, error)
+
 	LoadSettings(ctx context.Context) (*models.Settings, error)
 	SaveSettings(ctx context.Context, settings models.Settings) error
 

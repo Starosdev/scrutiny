@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -38,6 +39,13 @@ type MissedPingMonitor struct {
 
 	// WaitGroup to track when the run goroutine has finished
 	wg sync.WaitGroup
+
+	// Status tracking for diagnostics
+	lastCheckTime time.Time
+	nextCheckTime time.Time
+	lastError     error
+	lastErrorTime time.Time
+	statusMu      sync.RWMutex // Separate mutex for status fields
 }
 
 // NewMissedPingMonitor creates a new missed ping monitor
@@ -87,6 +95,11 @@ func (m *MissedPingMonitor) run() {
 
 	m.logger.Infof("Missed ping monitor started with check interval: %v", checkInterval)
 
+	// Set initial next check time
+	m.statusMu.Lock()
+	m.nextCheckTime = time.Now().Add(checkInterval)
+	m.statusMu.Unlock()
+
 	for {
 		select {
 		case <-m.stopCh:
@@ -101,6 +114,11 @@ func (m *MissedPingMonitor) run() {
 				checkInterval = newInterval
 				m.logger.Debugf("Missed ping check interval updated to: %v", checkInterval)
 			}
+
+			// Update next check time
+			m.statusMu.Lock()
+			m.nextCheckTime = time.Now().Add(checkInterval)
+			m.statusMu.Unlock()
 		}
 	}
 }
@@ -177,12 +195,14 @@ type checkMissedPingsData struct {
 func (m *MissedPingMonitor) loadCheckData() (*checkMissedPingsData, error) {
 	deviceRepo, err := m.getOrCreateRepo()
 	if err != nil {
+		m.logger.Errorf("Failed to get/create repository: %v", err)
 		return nil, err
 	}
 
 	settings, err := deviceRepo.LoadSettings(m.ctx)
 	if err != nil {
 		m.resetRepo()
+		m.logger.Errorf("Failed to load settings from database: %v", err)
 		return nil, err
 	}
 
@@ -198,14 +218,18 @@ func (m *MissedPingMonitor) loadCheckData() (*checkMissedPingsData, error) {
 	devices, err := deviceRepo.GetDevices(m.ctx)
 	if err != nil {
 		m.resetRepo()
+		m.logger.Errorf("Failed to load devices from database: %v", err)
 		return nil, err
 	}
 
 	lastSeenTimes, err := deviceRepo.GetDevicesLastSeenTimes(m.ctx)
 	if err != nil {
 		m.resetRepo()
+		m.logger.Errorf("Failed to query last seen times from InfluxDB: %v (Check InfluxDB connection and bucket configuration)", err)
 		return nil, err
 	}
+
+	m.logger.Debugf("Loaded missed ping check data: %d devices, timeout=%dm", len(devices), timeoutMinutes)
 
 	return &checkMissedPingsData{
 		timeoutMinutes: timeoutMinutes,
@@ -240,15 +264,36 @@ func (m *MissedPingMonitor) checkMissedPings() {
 		return
 	}
 
+	// Update last check time
+	m.statusMu.Lock()
+	m.lastCheckTime = time.Now()
+	m.statusMu.Unlock()
+
 	data, err := m.loadCheckData()
 	if err != nil {
 		m.logger.Errorf("Failed to load data for missed ping check: %v", err)
+
+		// Store error for diagnostics
+		m.statusMu.Lock()
+		m.lastError = err
+		m.lastErrorTime = time.Now()
+		m.statusMu.Unlock()
 		return
 	}
 	if data == nil {
-		m.logger.Debug("Missed ping notifications are disabled")
+		m.logger.Info("Missed ping notifications are disabled")
+
+		// Clear error since feature is intentionally disabled
+		m.statusMu.Lock()
+		m.lastError = nil
+		m.statusMu.Unlock()
 		return
 	}
+
+	// Clear previous error on successful data load
+	m.statusMu.Lock()
+	m.lastError = nil
+	m.statusMu.Unlock()
 
 	now := time.Now()
 	currentDeviceWWNs := make(map[string]bool, len(data.devices))
@@ -311,6 +356,164 @@ func (m *MissedPingMonitor) cleanupStaleNotifications(currentDeviceWWNs map[stri
 			delete(m.notifiedDevices, wwn)
 			m.logger.Debugf("Cleaned up stale notification state for deleted device %s", wwn)
 		}
+	}
+}
+
+// GetStatus returns a comprehensive snapshot of the monitor's current status for diagnostics
+func (m *MissedPingMonitor) GetStatus(ctx context.Context) (*models.MissedPingStatusData, error) {
+	// Get status timing information
+	m.statusMu.RLock()
+	lastCheck := m.lastCheckTime
+	nextCheck := m.nextCheckTime
+	lastErr := m.lastError
+	lastErrTime := m.lastErrorTime
+	m.statusMu.RUnlock()
+
+	// Load current settings
+	deviceRepo, err := m.getOrCreateRepo()
+	if err != nil {
+		return nil, fmt.Errorf("failed to access repository: %w", err)
+	}
+
+	settings, err := deviceRepo.LoadSettings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load settings: %w", err)
+	}
+
+	// Set defaults if not configured
+	timeoutMinutes := DefaultMissedPingTimeoutMinutes
+	checkInterval := DefaultMissedPingCheckIntervalMins
+	enabled := false
+
+	if settings != nil {
+		enabled = settings.Metrics.NotifyOnMissedPing
+		if settings.Metrics.MissedPingTimeoutMinutes > 0 {
+			timeoutMinutes = settings.Metrics.MissedPingTimeoutMinutes
+		}
+		if settings.Metrics.MissedPingCheckIntervalMins > 0 {
+			checkInterval = settings.Metrics.MissedPingCheckIntervalMins
+		}
+	}
+
+	// Get device counts
+	devices, err := deviceRepo.GetDevices(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get devices: %w", err)
+	}
+
+	totalDevices := len(devices)
+	monitoredDevices := 0
+	for _, device := range devices {
+		if !device.Archived && !device.Muted {
+			monitoredDevices++
+		}
+	}
+
+	// Get last seen times from InfluxDB
+	lastSeenTimes, _ := deviceRepo.GetDevicesLastSeenTimes(ctx)
+
+	// Get notified devices info
+	m.mu.RLock()
+	notifiedDevices := make([]string, 0, len(m.notifiedDevices))
+	notifiedDetails := make([]models.NotifiedDeviceInfo, 0, len(m.notifiedDevices))
+
+	for wwn, notifyTime := range m.notifiedDevices {
+		notifiedDevices = append(notifiedDevices, wwn)
+
+		// Find device details
+		var deviceName string
+		for _, device := range devices {
+			if device.WWN == wwn {
+				deviceName = device.DeviceName
+				break
+			}
+		}
+
+		// Get last seen time from InfluxDB
+		var lastSeenTime time.Time
+		if lst, ok := lastSeenTimes[wwn]; ok {
+			lastSeenTime = lst
+		}
+
+		notifiedDetails = append(notifiedDetails, models.NotifiedDeviceInfo{
+			WWN:              wwn,
+			DeviceName:       deviceName,
+			NotificationTime: notifyTime.Format(time.RFC3339),
+			LastSeenTime:     lastSeenTime.Format(time.RFC3339),
+		})
+	}
+	m.mu.RUnlock()
+
+	// Validate InfluxDB buckets
+	influxStatus := m.validateInfluxDBBuckets(ctx, deviceRepo)
+
+	status := &models.MissedPingStatusData{
+		Enabled:                enabled,
+		TimeoutMinutes:         timeoutMinutes,
+		CheckIntervalMinutes:   checkInterval,
+		LastCheckTime:          lastCheck.Format(time.RFC3339),
+		NextCheckTime:          nextCheck.Format(time.RFC3339),
+		MonitorRunning:         m.ctx.Err() == nil,
+		TotalDevices:           totalDevices,
+		MonitoredDevices:       monitoredDevices,
+		NotifiedDevices:        notifiedDevices,
+		NotifiedDevicesDetails: notifiedDetails,
+		InfluxDBStatus:         influxStatus,
+	}
+
+	if lastErr != nil {
+		status.LastError = lastErr.Error()
+		status.LastErrorTime = lastErrTime.Format(time.RFC3339)
+	}
+
+	return status, nil
+}
+
+// validateInfluxDBBuckets checks if all required InfluxDB buckets exist
+func (m *MissedPingMonitor) validateInfluxDBBuckets(ctx context.Context, repo database.DeviceRepo) models.InfluxDBStatusInfo {
+	// Get base bucket name from config
+	baseBucket := m.appEngine.Config.GetString("web.influxdb.bucket")
+
+	// Expected buckets (same as used in GetDevicesLastSeenTimes query)
+	expectedBuckets := []string{
+		baseBucket,
+		baseBucket + "_weekly",
+		baseBucket + "_monthly",
+		baseBucket + "_yearly",
+	}
+
+	// Query available buckets from InfluxDB
+	availableBuckets, err := repo.GetAvailableInfluxDBBuckets(ctx)
+	if err != nil {
+		return models.InfluxDBStatusInfo{
+			Available:      false,
+			BucketsFound:   []string{},
+			BucketsMissing: expectedBuckets,
+			Error:          err.Error(),
+		}
+	}
+
+	// Check which buckets exist
+	bucketSet := make(map[string]bool)
+	for _, bucket := range availableBuckets {
+		bucketSet[bucket] = true
+	}
+
+	bucketsFound := []string{}
+	bucketsMissing := []string{}
+
+	for _, expected := range expectedBuckets {
+		if bucketSet[expected] {
+			bucketsFound = append(bucketsFound, expected)
+		} else {
+			bucketsMissing = append(bucketsMissing, expected)
+		}
+	}
+
+	return models.InfluxDBStatusInfo{
+		Available:      len(bucketsMissing) == 0,
+		BucketsFound:   bucketsFound,
+		BucketsMissing: bucketsMissing,
 	}
 }
 
