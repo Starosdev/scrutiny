@@ -4,11 +4,11 @@ services:
     image: ghcr.io/starosdev/scrutiny:latest
     cap_add:
       - SYS_RAWIO
+      - SYS_ADMIN  # Required for NVMe devices
     ports:
       - "8080:8080"
     volumes:
       - ./config/prod:/opt/scrutiny/config
       - ./influxdb/prod:/opt/scrutiny/influxdb
-    privileged: true
     environment:
       - TZ=America/Los_Angeles
