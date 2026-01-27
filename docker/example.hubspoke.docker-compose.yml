@@ -39,6 +39,7 @@ services:
     image: 'ghcr.io/starosdev/scrutiny:latest-collector'
     cap_add:
       - SYS_RAWIO
+      - SYS_ADMIN  # Required for NVMe devices
     volumes:
       - '/run/udev:/run/udev:ro'
     environment:

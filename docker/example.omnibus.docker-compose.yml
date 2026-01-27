@@ -7,6 +7,7 @@ services:
     image: ghcr.io/starosdev/scrutiny:latest-omnibus
     cap_add:
       - SYS_RAWIO
+      - SYS_ADMIN  # Required for NVMe devices
     ports:
       - "8080:8080" # webapp
       - "8086:8086" # influxDB admin
