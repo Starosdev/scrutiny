@@ -307,10 +307,18 @@ Dots and dashes in key names become underscores.
 | `web.influxdb.init_password` | `SCRUTINY_WEB_INFLUXDB_INIT_PASSWORD` | `password12345` |
 | `web.influxdb.tls.insecure_skip_verify` | `SCRUTINY_WEB_INFLUXDB_TLS_INSECURE_SKIP_VERIFY` | `false` |
 | `web.influxdb.retention_policy` | `SCRUTINY_WEB_INFLUXDB_RETENTION_POLICY` | `true` |
+| `web.influxdb.retention.daily` | `SCRUTINY_WEB_INFLUXDB_RETENTION_DAILY` | `1296000` (15 days) |
+| `web.influxdb.retention.weekly` | `SCRUTINY_WEB_INFLUXDB_RETENTION_WEEKLY` | `5443200` (9 weeks) |
+| `web.influxdb.retention.monthly` | `SCRUTINY_WEB_INFLUXDB_RETENTION_MONTHLY` | `65318400` (25 months) |
 | `web.metrics.enabled` | `SCRUTINY_WEB_METRICS_ENABLED` | `true` |
 | `log.level` | `SCRUTINY_LOG_LEVEL` | `INFO` |
 | `log.file` | `SCRUTINY_LOG_FILE` | `` |
 | `notify.urls` | `SCRUTINY_NOTIFY_URLS` | `` |
+| `failures.transient.ata` | `SCRUTINY_FAILURES_TRANSIENT_ATA` | `[195]` |
+| `failures.ignored.ata` | `SCRUTINY_FAILURES_IGNORED_ATA` | `[]` |
+| `failures.ignored.devstat` | `SCRUTINY_FAILURES_IGNORED_DEVSTAT` | `[]` |
+| `failures.ignored.nvme` | `SCRUTINY_FAILURES_IGNORED_NVME` | `[]` |
+| `failures.ignored.scsi` | `SCRUTINY_FAILURES_IGNORED_SCSI` | `[]` |
 
 Environment variables take precedence over config file values. This is useful for containerized
 deployments where you want to override specific settings without modifying the config file.
@@ -354,6 +362,7 @@ Dots and dashes in key names become underscores.
 | `commands.metrics_info_args` | `COLLECTOR_COMMANDS_METRICS_INFO_ARGS` | `--info --json` |
 | `commands.metrics_smart_args` | `COLLECTOR_COMMANDS_METRICS_SMART_ARGS` | `--xall --json` |
 | `commands.metrics_smartctl_wait` | `COLLECTOR_COMMANDS_METRICS_SMARTCTL_WAIT` | `0` |
+| `allow_listed_devices` | `COLLECTOR_ALLOW_LISTED_DEVICES` | `[]` |
 | `log.level` | `COLLECTOR_LOG_LEVEL` | `INFO` |
 | `log.file` | `COLLECTOR_LOG_FILE` | `` |
 
@@ -367,6 +376,16 @@ docker run -e COLLECTOR_COMMANDS_METRICS_SMART_ARGS="--xall --json -T permissive
   -e COLLECTOR_API_ENDPOINT=http://scrutiny-web:8080 \
   ghcr.io/starosdev/scrutiny:collector
 ```
+
+### Docker-Only Environment Variables
+
+These environment variables are only available when running the collector in Docker containers (handled by the entrypoint script, not Viper configuration):
+
+| Environment Variable | Default Value | Description |
+| --- | --- | --- |
+| `COLLECTOR_CRON_SCHEDULE` | `0 0 * * *` | Cron schedule for SMART data collection |
+| `COLLECTOR_RUN_STARTUP` | `false` | Run collector immediately on container start |
+| `COLLECTOR_RUN_STARTUP_SLEEP` | `1` | Delay in seconds before startup collection |
 
 # Supported Architectures
 

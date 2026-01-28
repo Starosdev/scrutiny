@@ -17,14 +17,17 @@
 # Pattern: COLLECTOR_<KEY_WITH_DOTS_AS_UNDERSCORES>
 #
 # Examples:
-#   commands.metrics_scan_args  -> COLLECTOR_COMMANDS_METRICS_SCAN_ARGS
-#   commands.metrics_info_args  -> COLLECTOR_COMMANDS_METRICS_INFO_ARGS
-#   commands.metrics_smart_args -> COLLECTOR_COMMANDS_METRICS_SMART_ARGS
-#   api.endpoint                -> COLLECTOR_API_ENDPOINT
-#   api.timeout                 -> COLLECTOR_API_TIMEOUT
-#   host.id                     -> COLLECTOR_HOST_ID
-#   log.level                   -> COLLECTOR_LOG_LEVEL
-#   log.file                    -> COLLECTOR_LOG_FILE
+#   commands.metrics_smartctl_bin -> COLLECTOR_COMMANDS_METRICS_SMARTCTL_BIN
+#   commands.metrics_scan_args    -> COLLECTOR_COMMANDS_METRICS_SCAN_ARGS
+#   commands.metrics_info_args    -> COLLECTOR_COMMANDS_METRICS_INFO_ARGS
+#   commands.metrics_smart_args   -> COLLECTOR_COMMANDS_METRICS_SMART_ARGS
+#   commands.metrics_smartctl_wait -> COLLECTOR_COMMANDS_METRICS_SMARTCTL_WAIT
+#   api.endpoint                  -> COLLECTOR_API_ENDPOINT
+#   api.timeout                   -> COLLECTOR_API_TIMEOUT
+#   host.id                       -> COLLECTOR_HOST_ID
+#   allow_listed_devices          -> COLLECTOR_ALLOW_LISTED_DEVICES
+#   log.level                     -> COLLECTOR_LOG_LEVEL
+#   log.file                      -> COLLECTOR_LOG_FILE
 #
 # Environment variables take precedence over config file values.
 ######################################################################
