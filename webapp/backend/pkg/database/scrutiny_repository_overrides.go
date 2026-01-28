@@ -16,6 +16,15 @@ func (sr *scrutinyRepository) GetAttributeOverrides(ctx context.Context) ([]mode
 	return dbOverrides, nil
 }
 
+// GetAttributeOverrideByID retrieves a single attribute override by its ID
+func (sr *scrutinyRepository) GetAttributeOverrideByID(ctx context.Context, id uint) (*models.AttributeOverride, error) {
+	var override models.AttributeOverride
+	if err := sr.gormClient.WithContext(ctx).First(&override, id).Error; err != nil {
+		return nil, err
+	}
+	return &override, nil
+}
+
 // GetMergedOverrides retrieves overrides from both config file and database,
 // merging them with database overrides taking precedence over config overrides.
 func (sr *scrutinyRepository) GetMergedOverrides(ctx context.Context) []overrides.AttributeOverride {

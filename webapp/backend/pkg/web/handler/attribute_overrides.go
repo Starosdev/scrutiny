@@ -104,6 +104,9 @@ func SaveAttributeOverride(c *gin.Context) {
 		return
 	}
 
+	// Recalculate device status for affected devices
+	recalculateDeviceStatusForOverride(c, logger, deviceRepo, &override)
+
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": override})
 }
 
@@ -119,11 +122,48 @@ func DeleteAttributeOverride(c *gin.Context) {
 		return
 	}
 
+	// Fetch override before deletion to know which devices to recalculate
+	override, err := deviceRepo.GetAttributeOverrideByID(c, uint(id))
+	if err != nil {
+		logger.Warnf("Could not fetch override before deletion: %v", err)
+		// Continue with deletion even if we can't fetch it
+	}
+
 	if err := deviceRepo.DeleteAttributeOverride(c, uint(id)); err != nil {
 		logger.Errorln("Error deleting attribute override:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to delete override"})
 		return
 	}
 
+	// Recalculate device status for affected devices (if we were able to fetch the override)
+	if override != nil {
+		recalculateDeviceStatusForOverride(c, logger, deviceRepo, override)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// recalculateDeviceStatusForOverride triggers device status recalculation for devices
+// affected by an attribute override change.
+func recalculateDeviceStatusForOverride(c *gin.Context, logger *logrus.Entry, deviceRepo database.DeviceRepo, override *models.AttributeOverride) {
+	if override.WWN != "" {
+		// Override applies to specific device
+		if err := deviceRepo.RecalculateDeviceStatusFromHistory(c, override.WWN); err != nil {
+			logger.Warnf("Failed to recalculate status for device %s: %v", override.WWN, err)
+		}
+	} else {
+		// Override applies to all devices of this protocol - recalculate all
+		devices, err := deviceRepo.GetDevices(c)
+		if err != nil {
+			logger.Warnf("Failed to get devices for status recalculation: %v", err)
+			return
+		}
+		for _, device := range devices {
+			if device.DeviceProtocol == override.Protocol {
+				if err := deviceRepo.RecalculateDeviceStatusFromHistory(c, device.WWN); err != nil {
+					logger.Warnf("Failed to recalculate status for device %s: %v", device.WWN, err)
+				}
+			}
+		}
+	}
 }
