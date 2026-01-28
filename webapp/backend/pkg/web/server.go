@@ -197,7 +197,15 @@ func (ae *AppEngine) Start() error {
 			filepath.Dir(ae.Config.GetString("web.database.location"))))
 	}
 
+	// Create the missed ping monitor BEFORE Setup() so middleware can be registered
+	missedPingMonitor := NewMissedPingMonitor(ae)
+	ae.MissedPingMonitor = missedPingMonitor // Store reference before Setup()
+
 	r := ae.Setup(ae.Logger)
+
+	// Start the missed ping monitor after router is set up
+	missedPingMonitor.Start()
+	ae.Logger.Info("Missed ping monitor started")
 
 	// Load initial metrics data asynchronously at startup (if metrics enabled)
 	if ae.Config.GetBool("web.metrics.enabled") && ae.MetricsCollector != nil {
@@ -214,12 +222,6 @@ func (ae *AppEngine) Start() error {
 			}
 		}()
 	}
-
-	// Start the missed ping monitor for collector health monitoring
-	missedPingMonitor := NewMissedPingMonitor(ae)
-	missedPingMonitor.Start()
-	ae.MissedPingMonitor = missedPingMonitor // Store reference for handler access
-	ae.Logger.Info("Missed ping monitor started")
 
 	// Create HTTP server for graceful shutdown support
 	addr := fmt.Sprintf("%s:%s", ae.Config.GetString("web.listen.host"), ae.Config.GetString("web.listen.port"))
