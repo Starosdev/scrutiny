@@ -39,6 +39,7 @@ type DeviceRepo interface {
 	UpdateDeviceArchived(ctx context.Context, wwn string, archived bool) error
 	UpdateDeviceMuted(ctx context.Context, wwn string, muted bool) error
 	UpdateDeviceLabel(ctx context.Context, wwn string, label string) error
+	UpdateDeviceSmartDisplayMode(ctx context.Context, wwn string, mode string) error
 	DeleteDevice(ctx context.Context, wwn string) error
 
 	SaveSmartAttributes(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo) (measurements.Smart, error)

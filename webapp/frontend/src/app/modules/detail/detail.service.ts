@@ -64,4 +64,13 @@ export class DetailService {
     setLabel(wwn: string, label: string): Observable<any> {
         return this._httpClient.post(getBasePath() + `/api/device/${wwn}/label`, { label });
     }
+
+    /**
+     * Set device SMART display mode (user preference for attribute value display)
+     * @param wwn Device WWN
+     * @param mode Display mode: "scrutiny", "raw", or "normalized"
+     */
+    setSmartDisplayMode(wwn: string, mode: string): Observable<any> {
+        return this._httpClient.post(getBasePath() + `/api/device/${wwn}/smart-display-mode`, { smart_display_mode: mode });
+    }
 }

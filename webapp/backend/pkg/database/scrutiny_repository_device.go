@@ -117,6 +117,22 @@ func (sr *scrutinyRepository) UpdateDeviceLabel(ctx context.Context, wwn string,
 	return sr.gormClient.Model(&device).Where("wwn = ?", wwn).Update("label", label).Error
 }
 
+// Update Device Smart Display Mode (user preference for attribute value display)
+func (sr *scrutinyRepository) UpdateDeviceSmartDisplayMode(ctx context.Context, wwn string, mode string) error {
+	// Validate mode is one of the allowed values
+	validModes := map[string]bool{"scrutiny": true, "raw": true, "normalized": true}
+	if !validModes[mode] {
+		return fmt.Errorf("invalid smart_display_mode: %s (must be 'scrutiny', 'raw', or 'normalized')", mode)
+	}
+
+	var device models.Device
+	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).First(&device).Error; err != nil {
+		return fmt.Errorf("Could not get device from DB: %v", err)
+	}
+
+	return sr.gormClient.Model(&device).Where("wwn = ?", wwn).Update("smart_display_mode", mode).Error
+}
+
 func (sr *scrutinyRepository) DeleteDevice(ctx context.Context, wwn string) error {
 	// Validate WWN format before using in delete predicate (defense-in-depth, DeleteAPI doesn't support params)
 	if err := validation.ValidateWWN(wwn); err != nil {

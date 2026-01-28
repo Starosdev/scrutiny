@@ -74,6 +74,9 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     // data: any;
     expandedAttribute: SmartAttributeModel | null;
 
+    // User preference for attribute value display: "scrutiny" (default), "raw", or "normalized"
+    displayMode: 'scrutiny' | 'raw' | 'normalized' = 'scrutiny';
+
     metadata: { [p: string]: AttributeMetadataModel } | { [p: number]: AttributeMetadataModel };
     device: DeviceModel;
     // tslint:disable-next-line:variable-name
@@ -120,6 +123,8 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.smart_results = respWrapper.data.smart_results
                 this.metadata = respWrapper.metadata;
 
+                // Initialize display mode from device preference (default to 'scrutiny')
+                this.displayMode = (this.device.smart_display_mode as 'scrutiny' | 'raw' | 'normalized') || 'scrutiny';
 
                 // Store the table data
                 this.smartAttributeDataSource.data = this._generateSmartAttributeTableDataSource(this.smart_results);
@@ -207,20 +212,33 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     getAttributeValue(attributeData: SmartAttributeModel): number {
-        if (this.isAta()) {
-            const attributeMetadata = this.metadata[attributeData.attribute_id]
-            if (!attributeMetadata) {
-                return attributeData.value
-            } else if (attributeMetadata.display_type === 'raw') {
-                // Device statistics (devstat_*) don't have raw_value, use value instead
-                return attributeData.raw_value !== undefined ? attributeData.raw_value : attributeData.value
-            } else if (attributeMetadata.display_type === 'transformed' && attributeData.transformed_value) {
-                return attributeData.transformed_value
-            } else {
-                return attributeData.value
-            }
-        } else {
+        // For non-ATA devices, always return value (no raw/normalized distinction)
+        if (!this.isAta()) {
             return attributeData.value
+        }
+
+        const attributeMetadata = this.metadata[attributeData.attribute_id]
+
+        // EXCEPTION: Transformed attributes (like temperature) always use transformed value
+        // because raw value is packed bytes that aren't human-readable
+        if (attributeMetadata?.display_type === 'transformed' && attributeData.transformed_value) {
+            return attributeData.transformed_value
+        }
+
+        // Apply display mode preference
+        switch (this.displayMode) {
+            case 'raw':
+                // Device statistics (devstat_*) don't have raw_value, use value instead
+                return attributeData.raw_value ?? attributeData.value
+            case 'normalized':
+                return attributeData.value
+            case 'scrutiny':
+            default:
+                // Current behavior - use metadata display_type
+                if (attributeMetadata?.display_type === 'raw') {
+                    return attributeData.raw_value ?? attributeData.value
+                }
+                return attributeData.value
         }
     }
 
@@ -341,6 +359,30 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         return this.device?.device_protocol === 'NVMe'
     }
 
+    /**
+     * Set the SMART attribute display mode and persist to backend
+     * @param mode Display mode: "scrutiny", "raw", or "normalized"
+     */
+    setDisplayMode(mode: 'scrutiny' | 'raw' | 'normalized'): void {
+        this.displayMode = mode;
+
+        // Clear cached chart data to force regeneration with new display mode values
+        if (this.smart_results?.length > 0) {
+            const attrs = this.smart_results[0]?.attrs;
+            if (attrs) {
+                for (const attrId in attrs) {
+                    delete attrs[attrId].chartData;
+                }
+            }
+        }
+
+        // Regenerate table data with new display mode
+        this.smartAttributeDataSource.data = this._generateSmartAttributeTableDataSource(this.smart_results);
+
+        // Persist preference to backend
+        this._detailService.setSmartDisplayMode(this.device.wwn, mode).subscribe();
+    }
+
     private _generateSmartAttributeTableDataSource(smartResults: SmartModel[]): SmartAttributeModel[] {
         const smartAttributeDataSource: SmartAttributeModel[] = [];
 
@@ -358,7 +400,12 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         } else {
             // ATA
             attributes = latestSmartResult.attrs
-            this.smartAttributeTableColumns = ['status', 'id', 'name', 'value', 'thresh', 'ideal', 'failure', 'history'];
+            // Only show 'worst' column in scrutiny or normalized mode (worst is meaningless for raw values)
+            if (this.displayMode === 'raw') {
+                this.smartAttributeTableColumns = ['status', 'id', 'name', 'value', 'thresh', 'ideal', 'failure', 'history'];
+            } else {
+                this.smartAttributeTableColumns = ['status', 'id', 'name', 'value', 'worst', 'thresh', 'ideal', 'failure', 'history'];
+            }
         }
 
         for (const attrId in attributes) {
