@@ -2,6 +2,29 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.17.0](https://github.com/Starosdev/scrutiny/compare/v1.16.3...v1.17.0) (2026-01-27)
+
+### Features
+
+* **api:** improve health check depth with structured response ([#139](https://github.com/Starosdev/scrutiny/issues/139)) ([#153](https://github.com/Starosdev/scrutiny/issues/153)) ([494f8f9](https://github.com/Starosdev/scrutiny/commit/494f8f98050316515ed0fe7126e967d2bd87c0ed))
+* **backend:** add container CPU quota awareness with automaxprocs ([#133](https://github.com/Starosdev/scrutiny/issues/133)) ([45a8838](https://github.com/Starosdev/scrutiny/commit/45a88385bdc95a8198c51c145fd7b98c7344ce58)), closes [#72](https://github.com/Starosdev/scrutiny/issues/72) [#82](https://github.com/Starosdev/scrutiny/issues/82) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#74](https://github.com/Starosdev/scrutiny/issues/74)
+* **config:** make InfluxDB retention periods configurable ([#138](https://github.com/Starosdev/scrutiny/issues/138)) ([#152](https://github.com/Starosdev/scrutiny/issues/152)) ([b4c25b1](https://github.com/Starosdev/scrutiny/commit/b4c25b114184a1af510c402dd5940d4ba444016a))
+* **diagnostics:** add comprehensive diagnostics for missed ping monitoring ([#160](https://github.com/Starosdev/scrutiny/issues/160)) ([4a30a50](https://github.com/Starosdev/scrutiny/commit/4a30a5047c7eb3094835f7dcef698fc30ea0898b)), closes [#126](https://github.com/Starosdev/scrutiny/issues/126) [#126](https://github.com/Starosdev/scrutiny/issues/126)
+* **frontend:** improve temperature graph UX ([#40](https://github.com/Starosdev/scrutiny/issues/40)) ([#145](https://github.com/Starosdev/scrutiny/issues/145)) ([23912a5](https://github.com/Starosdev/scrutiny/commit/23912a5152317e89ad399b65edbc74d8516c818a))
+* **notify:** add missed collector ping notifications ([#140](https://github.com/Starosdev/scrutiny/issues/140)) ([c2d8bb4](https://github.com/Starosdev/scrutiny/commit/c2d8bb45013a9a7a1cef6fd378d9881466c3ab17)), closes [#72](https://github.com/Starosdev/scrutiny/issues/72) [#82](https://github.com/Starosdev/scrutiny/issues/82) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#74](https://github.com/Starosdev/scrutiny/issues/74)
+
+### Bug Fixes
+
+* **api:** return attribute override ID after save for UI deletion ([#142](https://github.com/Starosdev/scrutiny/issues/142)) ([5ef3d0f](https://github.com/Starosdev/scrutiny/commit/5ef3d0fdc5fbf12c213416a1cd38923a5e632a52)), closes [#141](https://github.com/Starosdev/scrutiny/issues/141)
+* **docker:** add SYS_ADMIN capability for NVMe device support ([#159](https://github.com/Starosdev/scrutiny/issues/159)) ([bfddd96](https://github.com/Starosdev/scrutiny/commit/bfddd967588a78cac129fd0f92638883430f3eff)), closes [#26](https://github.com/Starosdev/scrutiny/issues/26) [#209](https://github.com/Starosdev/scrutiny/issues/209)
+* **security:** prevent Flux query injection via parameterized queries ([#149](https://github.com/Starosdev/scrutiny/issues/149)) ([0fcb6f5](https://github.com/Starosdev/scrutiny/commit/0fcb6f5c920ef327879581a0765cc00791d6c2d8)), closes [#135](https://github.com/Starosdev/scrutiny/issues/135) [#135](https://github.com/Starosdev/scrutiny/issues/135)
+* **validation:** accept serial numbers as WWN fallback for NVMe/SCSI devices ([#158](https://github.com/Starosdev/scrutiny/issues/158)) ([c4daf08](https://github.com/Starosdev/scrutiny/commit/c4daf082b684272733f3735ae4382c5ed4dbc4d8)), closes [#144](https://github.com/Starosdev/scrutiny/issues/144) [#133](https://github.com/Starosdev/scrutiny/issues/133) [#72](https://github.com/Starosdev/scrutiny/issues/72) [#82](https://github.com/Starosdev/scrutiny/issues/82) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#74](https://github.com/Starosdev/scrutiny/issues/74)
+
+### Refactoring
+
+* **backend:** replace fmt.Printf with structured logging ([#136](https://github.com/Starosdev/scrutiny/issues/136)) ([#150](https://github.com/Starosdev/scrutiny/issues/150)) ([4369e9a](https://github.com/Starosdev/scrutiny/commit/4369e9a953de3436efd9677f61f6431b1cd5dec2))
+* migrate from moment.js to dayjs for date handling ([#147](https://github.com/Starosdev/scrutiny/issues/147)) ([b6463cc](https://github.com/Starosdev/scrutiny/commit/b6463ccf701196e116ab3f13a6425d95a806755a))
+
 ## [1.16.3](https://github.com/Starosdev/scrutiny/compare/v1.16.2...v1.16.3) (2026-01-26)
 
 ### Bug Fixes

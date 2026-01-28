@@ -33,10 +33,18 @@
 #   web.influxdb.init_password            -> SCRUTINY_WEB_INFLUXDB_INIT_PASSWORD
 #   web.influxdb.tls.insecure_skip_verify -> SCRUTINY_WEB_INFLUXDB_TLS_INSECURE_SKIP_VERIFY
 #   web.influxdb.retention_policy         -> SCRUTINY_WEB_INFLUXDB_RETENTION_POLICY
+#   web.influxdb.retention.daily          -> SCRUTINY_WEB_INFLUXDB_RETENTION_DAILY
+#   web.influxdb.retention.weekly         -> SCRUTINY_WEB_INFLUXDB_RETENTION_WEEKLY
+#   web.influxdb.retention.monthly        -> SCRUTINY_WEB_INFLUXDB_RETENTION_MONTHLY
 #   web.metrics.enabled                   -> SCRUTINY_WEB_METRICS_ENABLED
 #   log.level                             -> SCRUTINY_LOG_LEVEL
 #   log.file                              -> SCRUTINY_LOG_FILE
 #   notify.urls                           -> SCRUTINY_NOTIFY_URLS (comma-separated)
+#   failures.transient.ata                -> SCRUTINY_FAILURES_TRANSIENT_ATA
+#   failures.ignored.ata                  -> SCRUTINY_FAILURES_IGNORED_ATA
+#   failures.ignored.devstat              -> SCRUTINY_FAILURES_IGNORED_DEVSTAT
+#   failures.ignored.nvme                 -> SCRUTINY_FAILURES_IGNORED_NVME
+#   failures.ignored.scsi                 -> SCRUTINY_FAILURES_IGNORED_SCSI
 #
 # Environment variables take precedence over config file values.
 ######################################################################
