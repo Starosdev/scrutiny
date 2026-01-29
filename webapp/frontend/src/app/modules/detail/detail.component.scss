@@ -16,8 +16,20 @@ detail {
     $is-dark: map-get($theme, is-dark);
 
     detail {
-    }
+        @if $is-dark {
+            // Fix #165: Ensure S.M.A.R.T table data rows have sufficient
+            // contrast in dark mode against bg-card (#27303F).
+            .mat-cell {
+                color: map-get($foreground, text);
+            }
 
+            // ID column uses text-secondary (cool-gray-400, ~3.5:1 contrast).
+            // Lighten to cool-gray-300 (#CFD8E3, ~6.6:1 contrast).
+            .mat-cell .text-secondary {
+                color: treo-color('cool-gray', 300);
+            }
+        }
+    }
 
 }
 
