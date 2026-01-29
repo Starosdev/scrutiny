@@ -19,14 +19,19 @@ detail {
         @if $is-dark {
             // Fix #165: Ensure S.M.A.R.T table data rows have sufficient
             // contrast in dark mode against bg-card (#27303F).
+            // Use !important to override Angular Material's internal theming.
             .mat-cell {
-                color: map-get($foreground, text);
+                color: map-get($foreground, text) !important;
+
+                // Target all spans within cells for consistent contrast
+                span {
+                    color: map-get($foreground, text) !important;
+                }
             }
 
-            // ID column uses text-secondary (cool-gray-400, ~3.5:1 contrast).
-            // Lighten to cool-gray-300 (#CFD8E3, ~6.6:1 contrast).
+            // ID column uses text-secondary - lighten to cool-gray-300 for better contrast
             .mat-cell .text-secondary {
-                color: treo-color('cool-gray', 300);
+                color: treo-color('cool-gray', 300) !important;
             }
         }
     }
