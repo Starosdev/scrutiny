@@ -17,4 +17,16 @@
             color: #0694a2 !important
         }
     }
+
+    // Fix #165: SMART table text contrast in dark mode
+    // Use class selectors for cross-browser compatibility
+    // Exclude status badges (green-200, red-200, yellow-200) which need dark text on light bg
+    .mat-mdc-cell > span:not(.green-200):not(.red-200):not(.yellow-200) {
+        color: #FFFFFF !important;
+    }
+
+    // ID column uses text-secondary class
+    .mat-mdc-cell .text-secondary {
+        color: #CFD8E3 !important;
+    }
 }
