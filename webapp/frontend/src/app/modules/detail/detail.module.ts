@@ -4,6 +4,7 @@ import { SharedModule } from 'app/shared/shared.module';
 import { DetailComponent } from 'app/modules/detail/detail.component';
 import { detailRoutes } from 'app/modules/detail/detail.routing';
 import { MatButtonModule as MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule as MatMenuModule } from '@angular/material/menu';
@@ -23,6 +24,7 @@ import {AttributeHistoryDialogModule} from 'app/layout/common/attribute-history-
     imports     : [
         RouterModule.forChild(detailRoutes),
         MatButtonModule,
+        MatButtonToggleModule,
         MatDividerModule,
         MatTooltipModule,
         MatIconModule,

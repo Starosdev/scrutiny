@@ -36,16 +36,17 @@ ENV S6_SERVICES_READYTIME=1000
 SHELL ["/usr/bin/sh", "-c"]
 
 RUN sed -i 's/Components: main/Components: main contrib/' /etc/apt/sources.list.d/debian.sources \
+    && echo "deb http://deb.debian.org/debian trixie-backports main" > /etc/apt/sources.list.d/backports.list \
     && apt-get update && DEBIAN_FRONTEND=noninteractive \
     apt-get install -y --no-install-recommends \
     ca-certificates \
     cron \
     curl \
-    smartmontools \
     tzdata \
     procps \
     xz-utils \
     zfsutils-linux \
+    && apt-get install -y --no-install-recommends -t trixie-backports smartmontools \
     && rm -rf /var/lib/apt/lists/* \
     && update-ca-certificates \
     && case ${TARGETARCH} in \

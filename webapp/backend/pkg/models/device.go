@@ -41,8 +41,9 @@ type Device struct {
 	DeviceType     string `json:"device_type"`     //device type is used for querying with -d/t flag, should only be used by collector.
 
 	// User provided metadata
-	Label  string `json:"label"`
-	HostId string `json:"host_id"`
+	Label            string `json:"label"`
+	HostId           string `json:"host_id"`
+	SmartDisplayMode string `json:"smart_display_mode" gorm:"default:'scrutiny'"` // "scrutiny", "raw", or "normalized"
 
 	// Data set by Scrutiny
 	DeviceStatus pkg.DeviceStatus `json:"device_status"`

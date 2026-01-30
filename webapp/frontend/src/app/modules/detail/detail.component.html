@@ -207,8 +207,21 @@
         <div class="flex flex-auto w-full p-4">
             <div class="flex flex-col flex-auto w-full bg-card shadow-md rounded ">
                 <div class="p-6">
-                    <div class="font-bold text-md text-secondary uppercase tracking-wider">S.M.A.R.T {{device?.device_protocol}} Attributes</div>
-                    <div class="text-sm text-hint font-medium">{{this.smartAttributeDataSource.data.length}} visible, {{getHiddenAttributes()}} hidden</div>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-bold text-md text-secondary uppercase tracking-wider">S.M.A.R.T {{device?.device_protocol}} Attributes</div>
+                            <div class="text-sm text-hint font-medium">{{this.smartAttributeDataSource.data.length}} visible, {{getHiddenAttributes()}} hidden</div>
+                        </div>
+                        <!-- Display Mode Toggle - only for ATA devices -->
+                        <mat-button-toggle-group *ngIf="isAta()"
+                                                 [value]="displayMode"
+                                                 (change)="setDisplayMode($event.value)"
+                                                 class="display-mode-toggle">
+                            <mat-button-toggle value="scrutiny">Scrutiny</mat-button-toggle>
+                            <mat-button-toggle value="raw">Raw</mat-button-toggle>
+                            <mat-button-toggle value="normalized">Normalized</mat-button-toggle>
+                        </mat-button-toggle-group>
+                    </div>
                 </div>
                 <div class="overflow-auto">
                     <table class="w-full bg-transparent"
