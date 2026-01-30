@@ -41,6 +41,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
 
     // Private
     private _unsubscribeAll: Subject<void>;
+    private readonly systemPrefersDark: boolean;
     @ViewChild('tempChart', { static: false }) tempChart: ChartComponent;
 
     /**
@@ -61,7 +62,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
     {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
-
+        this.systemPrefersDark = globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
     }
 
     // -----------------------------------------------------------------------------------------------------
@@ -184,6 +185,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
         }
         return deviceTemperatureSeries
     }
+
+    private determineTheme(config: AppConfig): string {
+        if (config?.theme === 'system') {
+            return this.systemPrefersDark ? 'dark' : 'light';
+        }
+        return config?.theme || 'light';
+    }
+
+    private isDarkMode(): boolean {
+        return this.determineTheme(this.config) === 'dark';
+    }
+
     /**
      * Prepare the chart data from the data
      *
@@ -242,7 +255,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
                 labels: {
                     datetimeUTC: false,
                     style: {
-                        fontSize: '11px'
+                        fontSize: '11px',
+                        colors: this.isDarkMode() ? '#9ca3af' : '#6b7280'
                     },
                     datetimeFormatter: {
                         year: 'yyyy',
@@ -258,18 +272,20 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
                         return `${Math.round(value)}${temperatureUnit}`;
                     },
                     style: {
-                        fontSize: '11px'
+                        fontSize: '11px',
+                        colors: this.isDarkMode() ? '#9ca3af' : '#6b7280'
                     }
                 },
                 title: {
                     text: `Temperature (${temperatureUnit})`,
                     style: {
-                        fontSize: '12px'
+                        fontSize: '12px',
+                        color: this.isDarkMode() ? '#9ca3af' : '#6b7280'
                     }
                 }
             },
             grid: {
-                borderColor: '#e0e0e0',
+                borderColor: this.isDarkMode() ? '#374151' : '#e0e0e0',
                 strokeDashArray: 4,
                 yaxis: {
                     lines: {
