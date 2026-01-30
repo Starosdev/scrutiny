@@ -1,6 +1,7 @@
 import {
     AfterViewInit,
     ChangeDetectionStrategy,
+    ChangeDetectorRef,
     Component,
     OnDestroy,
     OnInit,
@@ -53,6 +54,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
     constructor(
         private _dashboardService: DashboardService,
         private _configService: ScrutinyConfigService,
+        private _changeDetectorRef: ChangeDetectorRef,
         public dialog: MatDialog,
         private router: Router,
     )
@@ -334,12 +336,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
         for (const wwn in this.visibleDrives) {
             this.visibleDrives[wwn] = newState;
         }
-        this.tempChart.updateSeries(this._deviceDataTemperatureSeries());
+        this.tempChart?.updateSeries(this._deviceDataTemperatureSeries());
+        this._changeDetectorRef.markForCheck();
     }
 
     toggleDriveVisibility(wwn: string): void {
         this.visibleDrives[wwn] = !this.visibleDrives[wwn];
-        this.tempChart.updateSeries(this._deviceDataTemperatureSeries());
+        this.tempChart?.updateSeries(this._deviceDataTemperatureSeries());
+        this._changeDetectorRef.markForCheck();
     }
 
     /*
@@ -361,8 +365,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
                     this.summaryData[wwn].temp_history = tempHistoryData[wwn] || []
                 }
 
-                // Prepare the chart series data
-                this.tempChart.updateSeries(this._deviceDataTemperatureSeries())
+                // Prepare the chart series data (filtered by visibility)
+                this.tempChart.updateSeries(this._deviceDataTemperatureSeries());
             });
     }
 
