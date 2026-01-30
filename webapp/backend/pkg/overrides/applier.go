@@ -149,7 +149,9 @@ func Apply(cfg config.Interface, protocol, attributeId, wwn string) *Result {
 }
 
 // ApplyThresholds evaluates custom thresholds against a value.
-// Returns the status to set based on thresholds, or nil if no threshold exceeded.
+// Returns the status to set based on thresholds.
+// When custom thresholds are defined but not exceeded, returns AttributeStatusPassed
+// to override any default Scrutiny threshold failures.
 // FailAbove takes precedence over WarnAbove.
 func ApplyThresholds(result *Result, value int64) *pkg.AttributeStatus {
 	if result == nil {
@@ -164,6 +166,13 @@ func ApplyThresholds(result *Result, value int64) *pkg.AttributeStatus {
 
 	if result.WarnAbove != nil && value > *result.WarnAbove {
 		status := pkg.AttributeStatusWarningScrutiny
+		return &status
+	}
+
+	// When custom thresholds are defined but not exceeded, return passed
+	// This allows custom thresholds to override Scrutiny's default thresholds
+	if result.WarnAbove != nil || result.FailAbove != nil {
+		status := pkg.AttributeStatusPassed
 		return &status
 	}
 
