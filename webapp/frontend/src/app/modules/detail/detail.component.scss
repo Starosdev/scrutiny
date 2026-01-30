@@ -58,38 +58,3 @@ tr.attribute-row:not(.attribute-expanded-row):active {
     // vertical-align: middle;
 }
 
-// Scroll shadow indicators for table overflow
-.table-scroll-container {
-    position: relative;
-    // Scroll shadow on right edge when content overflows
-    background:
-        // Left shadow (appears when scrolled right)
-        linear-gradient(to right, white 30%, rgba(255, 255, 255, 0)),
-        linear-gradient(to right, rgba(255, 255, 255, 0), white 70%),
-        // Shadow indicators
-        linear-gradient(to right, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)),
-        linear-gradient(to left, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0));
-    background-position: left center, right center, left center, right center;
-    background-repeat: no-repeat;
-    background-size: 20px 100%, 20px 100%, 10px 100%, 10px 100%;
-    background-attachment: local, local, scroll, scroll;
-}
-
-// Dark mode support for scroll shadows
-@include treo-theme {
-    $is-dark: map-get($theme, is-dark);
-
-    @if $is-dark {
-        detail .table-scroll-container {
-            background:
-                linear-gradient(to right, #1e293b 30%, rgba(30, 41, 59, 0)),
-                linear-gradient(to right, rgba(30, 41, 59, 0), #1e293b 70%),
-                linear-gradient(to right, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0)),
-                linear-gradient(to left, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0));
-            background-position: left center, right center, left center, right center;
-            background-repeat: no-repeat;
-            background-size: 20px 100%, 20px 100%, 10px 100%, 10px 100%;
-            background-attachment: local, local, scroll, scroll;
-        }
-    }
-}

@@ -165,7 +165,7 @@
                       <mat-checkbox
                         [checked]="allDrivesVisible"
                         [indeterminate]="someDrivesVisible && !allDrivesVisible"
-                        (click)="$event.stopPropagation()">
+                        (click)="toggleAllDrives(); $event.stopPropagation()">
                         All Drives
                       </mat-checkbox>
                     </button>
@@ -174,7 +174,7 @@
                       <button mat-menu-item (click)="toggleDriveVisibility(device.key); $event.stopPropagation()">
                         <mat-checkbox
                           [checked]="visibleDrives[device.key]"
-                          (click)="$event.stopPropagation()">
+                          (click)="toggleDriveVisibility(device.key); $event.stopPropagation()">
                           {{ device.value.device | deviceTitle:config?.dashboard_display }}
                         </mat-checkbox>
                       </button>
