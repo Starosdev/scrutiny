@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.19.0](https://github.com/Starosdev/scrutiny/compare/v1.18.0...v1.19.0) (2026-01-30)
+
+### Features
+
+* dark mode toggle, temperature chart visibility, and override recalculation ([#165](https://github.com/Starosdev/scrutiny/issues/165), [#171](https://github.com/Starosdev/scrutiny/issues/171), [#164](https://github.com/Starosdev/scrutiny/issues/164)) ([#173](https://github.com/Starosdev/scrutiny/issues/173)) ([eec5bc4](https://github.com/Starosdev/scrutiny/commit/eec5bc4959458abfdc4b88a342adf07cbcf5f8cc)), closes [#126](https://github.com/Starosdev/scrutiny/issues/126) [#126](https://github.com/Starosdev/scrutiny/issues/126) [#163](https://github.com/Starosdev/scrutiny/issues/163) [#163](https://github.com/Starosdev/scrutiny/issues/163) [#128](https://github.com/Starosdev/scrutiny/issues/128) [#163](https://github.com/Starosdev/scrutiny/issues/163)
+
 ## [1.18.0](https://github.com/Starosdev/scrutiny/compare/v1.17.2...v1.18.0) (2026-01-30)
 
 ### Features
