@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.17.1](https://github.com/Starosdev/scrutiny/compare/v1.17.0...v1.17.1) (2026-01-30)
+
+### Bug Fixes
+
+* **diagnostics:** fix missed ping monitor initialization and interface ([#126](https://github.com/Starosdev/scrutiny/issues/126)) ([a8375e6](https://github.com/Starosdev/scrutiny/commit/a8375e6467034ec4004288100123f420a5d143a8))
+
 ## [1.17.0](https://github.com/Starosdev/scrutiny/compare/v1.16.3...v1.17.0) (2026-01-27)
 
 ### Features
