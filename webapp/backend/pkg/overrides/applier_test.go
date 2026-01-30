@@ -208,20 +208,28 @@ func TestApplyThresholds(t *testing.T) {
 		name           string
 		result         *Result
 		value          int64
-		expectStatus   *pkg.AttributeStatus
+		expectNil      bool
 		expectStatusIs pkg.AttributeStatus
 	}{
 		{
-			name:         "nil result returns nil",
-			result:       nil,
-			value:        100,
-			expectStatus: nil,
+			name:      "nil result returns nil",
+			result:    nil,
+			value:     100,
+			expectNil: true,
 		},
 		{
-			name:         "value below warn threshold",
-			result:       &Result{WarnAbove: &warnThreshold, FailAbove: &failThreshold},
-			value:        3,
-			expectStatus: nil,
+			name:           "value below warn threshold returns passed",
+			result:         &Result{WarnAbove: &warnThreshold, FailAbove: &failThreshold},
+			value:          3,
+			expectNil:      false,
+			expectStatusIs: pkg.AttributeStatusPassed,
+		},
+		{
+			name:           "value at warn threshold returns passed",
+			result:         &Result{WarnAbove: &warnThreshold, FailAbove: &failThreshold},
+			value:          5, // exactly at warn, > means it needs to exceed
+			expectNil:      false,
+			expectStatusIs: pkg.AttributeStatusPassed,
 		},
 		{
 			name:           "value exceeds warn threshold",
@@ -248,26 +256,46 @@ func TestApplyThresholds(t *testing.T) {
 			expectStatusIs: pkg.AttributeStatusFailedScrutiny,
 		},
 		{
-			name:           "only warn threshold set",
+			name:           "only warn threshold set - below returns passed",
+			result:         &Result{WarnAbove: &warnThreshold},
+			value:          3,
+			expectNil:      false,
+			expectStatusIs: pkg.AttributeStatusPassed,
+		},
+		{
+			name:           "only warn threshold set - above returns warning",
 			result:         &Result{WarnAbove: &warnThreshold},
 			value:          7,
 			expectStatusIs: pkg.AttributeStatusWarningScrutiny,
 		},
 		{
-			name:           "only fail threshold set",
+			name:           "only fail threshold set - below returns passed",
+			result:         &Result{FailAbove: &failThreshold},
+			value:          5,
+			expectNil:      false,
+			expectStatusIs: pkg.AttributeStatusPassed,
+		},
+		{
+			name:           "only fail threshold set - above returns failed",
 			result:         &Result{FailAbove: &failThreshold},
 			value:          15,
 			expectStatusIs: pkg.AttributeStatusFailedScrutiny,
+		},
+		{
+			name:      "no thresholds set returns nil",
+			result:    &Result{},
+			value:     100,
+			expectNil: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ApplyThresholds(tt.result, tt.value)
-			if tt.expectStatus == nil && got == nil {
-				return
-			}
-			if tt.expectStatus == nil && got != nil {
+			if tt.expectNil {
+				assert.Nil(t, got)
+			} else {
+				assert.NotNil(t, got)
 				assert.Equal(t, tt.expectStatusIs, *got)
 			}
 		})
