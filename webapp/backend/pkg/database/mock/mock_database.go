@@ -246,21 +246,6 @@ func (mr *MockDeviceRepoMockRecorder) GetSummary(ctx interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSummary", reflect.TypeOf((*MockDeviceRepo)(nil).GetSummary), ctx)
 }
 
-// GetDevicesLastSeenTimes mocks base method.
-func (m *MockDeviceRepo) GetDevicesLastSeenTimes(ctx context.Context) (map[string]time.Time, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDevicesLastSeenTimes", ctx)
-	ret0, _ := ret[0].(map[string]time.Time)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetDevicesLastSeenTimes indicates an expected call of GetDevicesLastSeenTimes.
-func (mr *MockDeviceRepoMockRecorder) GetDevicesLastSeenTimes(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDevicesLastSeenTimes", reflect.TypeOf((*MockDeviceRepo)(nil).GetDevicesLastSeenTimes), ctx)
-}
-
 // GetZFSPoolDetails mocks base method.
 func (m *MockDeviceRepo) GetZFSPoolDetails(ctx context.Context, guid string) (models.ZFSPool, error) {
 	m.ctrl.T.Helper()
