@@ -522,6 +522,20 @@ func (mr *MockDeviceRepoMockRecorder) UpdateDeviceStatus(ctx, wwn, status interf
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDeviceStatus", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateDeviceStatus), ctx, wwn, status)
 }
 
+// UpdateDeviceSmartDisplayMode mocks base method.
+func (m *MockDeviceRepo) UpdateDeviceSmartDisplayMode(ctx context.Context, wwn string, mode string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateDeviceSmartDisplayMode", ctx, wwn, mode)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateDeviceSmartDisplayMode indicates an expected call of UpdateDeviceSmartDisplayMode.
+func (mr *MockDeviceRepoMockRecorder) UpdateDeviceSmartDisplayMode(ctx, wwn, mode interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDeviceSmartDisplayMode", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateDeviceSmartDisplayMode), ctx, wwn, mode)
+}
+
 // UpdateZFSPoolArchived mocks base method.
 func (m *MockDeviceRepo) UpdateZFSPoolArchived(ctx context.Context, guid string, archived bool) error {
 	m.ctrl.T.Helper()
