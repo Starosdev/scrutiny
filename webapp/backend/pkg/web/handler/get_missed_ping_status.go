@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
@@ -10,7 +11,7 @@ import (
 
 // MissedPingMonitor interface to avoid import cycle
 type MissedPingMonitor interface {
-	GetStatus(ctx interface{}) (*models.MissedPingStatusData, error)
+	GetStatus(ctx context.Context) (*models.MissedPingStatusData, error)
 }
 
 // GetMissedPingStatus returns the current status of the missed ping monitor for diagnostics
