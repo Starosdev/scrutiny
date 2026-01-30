@@ -8,6 +8,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"gorm.io/gorm/clause"
 )
@@ -73,6 +74,70 @@ func (sr *scrutinyRepository) ResetDeviceStatus(ctx context.Context, wwn string)
 
 	device.DeviceStatus = pkg.DeviceStatusPassed
 	return device, sr.gormClient.Model(&device).Updates(device).Error
+}
+
+// RecalculateDeviceStatusFromHistory re-evaluates device status from stored SMART data
+// with current overrides applied. Used when overrides are added/modified/deleted.
+func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Context, wwn string) error {
+	// 1. Get device to know its protocol and current status
+	device, err := sr.GetDeviceDetails(ctx, wwn)
+	if err != nil {
+		return fmt.Errorf("could not get device: %w", err)
+	}
+
+	// 2. Get latest SMART data from InfluxDB (limit 1)
+	smartHistory, err := sr.GetSmartAttributeHistory(ctx, wwn, "week", 1, 0, nil)
+	if err != nil {
+		return fmt.Errorf("could not get SMART history: %w", err)
+	}
+	if len(smartHistory) == 0 {
+		// No SMART data yet, nothing to recalculate
+		return nil
+	}
+	latestSmart := smartHistory[0]
+
+	// 3. Get merged overrides (config + database)
+	mergedOverrides := sr.GetMergedOverrides(ctx)
+
+	// 4. Re-evaluate each attribute with overrides applied
+	newStatus := pkg.DeviceStatusPassed
+	for attrId, attr := range latestSmart.Attributes {
+		attrStatus := attr.GetStatus()
+
+		// Apply override logic
+		if result := overrides.ApplyWithOverrides(mergedOverrides, device.DeviceProtocol, attrId, wwn); result != nil {
+			if result.ShouldIgnore {
+				// Attribute is ignored - don't count its failure
+				continue
+			}
+			if result.Status != nil {
+				// Force status overrides the stored status
+				attrStatus = *result.Status
+			}
+		}
+
+		// If attribute still has failure status, propagate to device
+		if pkg.AttributeStatusHas(attrStatus, pkg.AttributeStatusFailedScrutiny) {
+			newStatus = pkg.DeviceStatusSet(newStatus, pkg.DeviceStatusFailedScrutiny)
+		}
+	}
+
+	// 5. Update device status if changed
+	if newStatus == pkg.DeviceStatusPassed && device.DeviceStatus != pkg.DeviceStatusPassed {
+		_, err = sr.ResetDeviceStatus(ctx, wwn)
+		if err != nil {
+			return fmt.Errorf("could not reset device status: %w", err)
+		}
+		sr.logger.Infof("Device %s status recalculated to passed after override change", wwn)
+	} else if newStatus != pkg.DeviceStatusPassed && device.DeviceStatus == pkg.DeviceStatusPassed {
+		_, err = sr.UpdateDeviceStatus(ctx, wwn, newStatus)
+		if err != nil {
+			return fmt.Errorf("could not update device status: %w", err)
+		}
+		sr.logger.Infof("Device %s status recalculated to failed after override change", wwn)
+	}
+
+	return nil
 }
 
 func (sr *scrutinyRepository) GetDeviceDetails(ctx context.Context, wwn string) (models.Device, error) {

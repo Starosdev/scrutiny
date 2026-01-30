@@ -97,6 +97,21 @@ func (mr *MockDeviceRepoMockRecorder) DeleteZFSPool(ctx, guid interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteZFSPool", reflect.TypeOf((*MockDeviceRepo)(nil).DeleteZFSPool), ctx, guid)
 }
 
+// GetAttributeOverrideByID mocks base method.
+func (m *MockDeviceRepo) GetAttributeOverrideByID(ctx context.Context, id uint) (*models.AttributeOverride, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAttributeOverrideByID", ctx, id)
+	ret0, _ := ret[0].(*models.AttributeOverride)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAttributeOverrideByID indicates an expected call of GetAttributeOverrideByID.
+func (mr *MockDeviceRepoMockRecorder) GetAttributeOverrideByID(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAttributeOverrideByID", reflect.TypeOf((*MockDeviceRepo)(nil).GetAttributeOverrideByID), ctx, id)
+}
+
 // GetAttributeOverrides mocks base method.
 func (m *MockDeviceRepo) GetAttributeOverrides(ctx context.Context) ([]models.AttributeOverride, error) {
 	m.ctrl.T.Helper()
@@ -334,6 +349,20 @@ func (m *MockDeviceRepo) LoadSettings(ctx context.Context) (*models.Settings, er
 func (mr *MockDeviceRepoMockRecorder) LoadSettings(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadSettings", reflect.TypeOf((*MockDeviceRepo)(nil).LoadSettings), ctx)
+}
+
+// RecalculateDeviceStatusFromHistory mocks base method.
+func (m *MockDeviceRepo) RecalculateDeviceStatusFromHistory(ctx context.Context, wwn string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RecalculateDeviceStatusFromHistory", ctx, wwn)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RecalculateDeviceStatusFromHistory indicates an expected call of RecalculateDeviceStatusFromHistory.
+func (mr *MockDeviceRepoMockRecorder) RecalculateDeviceStatusFromHistory(ctx, wwn interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecalculateDeviceStatusFromHistory", reflect.TypeOf((*MockDeviceRepo)(nil).RecalculateDeviceStatusFromHistory), ctx, wwn)
 }
 
 // RegisterDevice mocks base method.

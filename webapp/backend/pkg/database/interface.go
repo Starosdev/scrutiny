@@ -41,6 +41,9 @@ type DeviceRepo interface {
 	UpdateDeviceLabel(ctx context.Context, wwn string, label string) error
 	UpdateDeviceSmartDisplayMode(ctx context.Context, wwn string, mode string) error
 	DeleteDevice(ctx context.Context, wwn string) error
+	// RecalculateDeviceStatusFromHistory re-evaluates device status from stored SMART data
+	// with current overrides applied. Used when overrides are added/modified/deleted.
+	RecalculateDeviceStatusFromHistory(ctx context.Context, wwn string) error
 
 	SaveSmartAttributes(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo) (measurements.Smart, error)
 	GetSmartAttributeHistory(ctx context.Context, wwn string, durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) ([]measurements.Smart, error)
@@ -80,6 +83,7 @@ type DeviceRepo interface {
 
 	// Attribute Override operations
 	GetAttributeOverrides(ctx context.Context) ([]models.AttributeOverride, error)
+	GetAttributeOverrideByID(ctx context.Context, id uint) (*models.AttributeOverride, error)
 	SaveAttributeOverride(ctx context.Context, override *models.AttributeOverride) error
 	DeleteAttributeOverride(ctx context.Context, id uint) error
 	GetMergedOverrides(ctx context.Context) []overrides.AttributeOverride

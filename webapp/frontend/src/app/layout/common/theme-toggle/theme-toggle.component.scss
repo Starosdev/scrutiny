@@ -1,0 +1,25 @@
+@import 'treo';
+
+theme-toggle {
+    display: flex;
+    align-items: center;
+
+    .theme-toggle-button {
+        width: 44px;
+        height: 44px;
+
+        mat-icon {
+            @include treo-icon-size(24);
+        }
+    }
+}
+
+@include treo-theme {
+    $foreground: map-get($theme, foreground);
+
+    theme-toggle {
+        .theme-toggle-button {
+            color: map-get($foreground, text);
+        }
+    }
+}
