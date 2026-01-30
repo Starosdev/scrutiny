@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.18.0](https://github.com/Starosdev/scrutiny/compare/v1.17.2...v1.18.0) (2026-01-30)
+
+### Features
+
+* **ui:** SMART display mode toggle and Docker fixes ([#163](https://github.com/Starosdev/scrutiny/issues/163)) ([#172](https://github.com/Starosdev/scrutiny/issues/172)) ([ac74f3d](https://github.com/Starosdev/scrutiny/commit/ac74f3d213efde7177078ca328e48e54d4c38c47)), closes [#128](https://github.com/Starosdev/scrutiny/issues/128) [#164](https://github.com/Starosdev/scrutiny/issues/164) [#164](https://github.com/Starosdev/scrutiny/issues/164)
+
 ## [1.17.2](https://github.com/Starosdev/scrutiny/compare/v1.17.1...v1.17.2) (2026-01-30)
 
 ### Bug Fixes
