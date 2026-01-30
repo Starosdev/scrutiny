@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.17.2](https://github.com/Starosdev/scrutiny/compare/v1.17.1...v1.17.2) (2026-01-30)
+
+### Bug Fixes
+
+* **ui:** dark mode improvements and drive filter toggle ([#165](https://github.com/Starosdev/scrutiny/issues/165)) ([#170](https://github.com/Starosdev/scrutiny/issues/170)) ([bc39a72](https://github.com/Starosdev/scrutiny/commit/bc39a723018b4052a2110b1184b9062625d7e072))
+
 ## [1.17.1](https://github.com/Starosdev/scrutiny/compare/v1.17.0...v1.17.1) (2026-01-30)
 
 ### Bug Fixes
