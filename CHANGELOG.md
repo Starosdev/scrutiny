@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.19.2](https://github.com/Starosdev/scrutiny/compare/v1.19.1...v1.19.2) (2026-01-31)
+
+### Bug Fixes
+
+* **overrides:** force_status=failed bypasses threshold filter ([#164](https://github.com/Starosdev/scrutiny/issues/164)) ([#175](https://github.com/Starosdev/scrutiny/issues/175)) ([dc7b914](https://github.com/Starosdev/scrutiny/commit/dc7b914aadaf0dd87f9d87c7d0284b1e7ae0301c))
+
 ## [1.19.1](https://github.com/Starosdev/scrutiny/compare/v1.19.0...v1.19.1) (2026-01-31)
 
 ### Bug Fixes
