@@ -18,6 +18,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260108000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260122000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260129000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260131000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
@@ -485,6 +486,13 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 			Migrate: func(tx *gorm.DB) error {
 				// adding column (smart_display_mode)
 				return tx.AutoMigrate(m20260129000000.Device{})
+			},
+		},
+		{
+			ID: "m20260131000000", // add has_forced_failure to device data
+			Migrate: func(tx *gorm.DB) error {
+				// adding column (has_forced_failure)
+				return tx.AutoMigrate(m20260131000000.Device{})
 			},
 		},
 	})

@@ -35,6 +35,12 @@ export class DeviceStatusPipe implements PipeTransform {
             return 'unknown'
         }
 
+        // If user has forced a failure via override, always show as failed
+        // regardless of threshold setting
+        if (deviceModel.has_forced_failure) {
+            return includeReason ? 'failed: override' : 'failed'
+        }
+
         let statusNameLookup = DEVICE_STATUS_NAMES
         if (includeReason) {
             statusNameLookup = DEVICE_STATUS_NAMES_WITH_REASON

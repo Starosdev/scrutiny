@@ -101,6 +101,7 @@ func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Con
 
 	// 4. Re-evaluate each attribute with overrides applied
 	newStatus := pkg.DeviceStatusPassed
+	hasForcedFailure := false
 	for attrId, attr := range latestSmart.Attributes {
 		attrStatus := attr.GetStatus()
 
@@ -113,6 +114,10 @@ func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Con
 			if result.Status != nil {
 				// Force status overrides the stored status
 				attrStatus = *result.Status
+				// Track if user explicitly forced a failure status
+				if pkg.AttributeStatusHas(*result.Status, pkg.AttributeStatusFailedScrutiny) {
+					hasForcedFailure = true
+				}
 			}
 		}
 
@@ -135,6 +140,14 @@ func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Con
 			return fmt.Errorf("could not update device status: %w", err)
 		}
 		sr.logger.Infof("Device %s status recalculated to failed after override change", wwn)
+	}
+
+	// 6. Update has_forced_failure flag if changed
+	if hasForcedFailure != device.HasForcedFailure {
+		if err := sr.UpdateDeviceHasForcedFailure(ctx, wwn, hasForcedFailure); err != nil {
+			return fmt.Errorf("could not update has_forced_failure: %w", err)
+		}
+		sr.logger.Infof("Device %s has_forced_failure updated to %v after override change", wwn, hasForcedFailure)
 	}
 
 	return nil
@@ -196,6 +209,13 @@ func (sr *scrutinyRepository) UpdateDeviceSmartDisplayMode(ctx context.Context, 
 	}
 
 	return sr.gormClient.Model(&device).Where("wwn = ?", wwn).Update("smart_display_mode", mode).Error
+}
+
+// UpdateDeviceHasForcedFailure updates the has_forced_failure flag for a device.
+// This flag indicates when an override with action=force_status, status=failed was applied.
+// When true, the frontend should show the device as failed regardless of threshold setting.
+func (sr *scrutinyRepository) UpdateDeviceHasForcedFailure(ctx context.Context, wwn string, hasForcedFailure bool) error {
+	return sr.gormClient.WithContext(ctx).Model(&models.Device{}).Where("wwn = ?", wwn).Update("has_forced_failure", hasForcedFailure).Error
 }
 
 func (sr *scrutinyRepository) DeleteDevice(ctx context.Context, wwn string) error {

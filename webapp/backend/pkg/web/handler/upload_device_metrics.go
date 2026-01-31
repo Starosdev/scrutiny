@@ -55,6 +55,11 @@ func UploadDeviceMetrics(c *gin.Context) {
 		return
 	}
 
+	// Update device's forced failure flag based on override processing
+	if err := deviceRepo.UpdateDeviceHasForcedFailure(c, wwn, smartData.HasForcedFailure); err != nil {
+		logger.Warnf("Failed to update has_forced_failure for device %s: %v", wwn, err)
+	}
+
 	if smartData.Status != pkg.DeviceStatusPassed {
 		//there is a failure detected by Scrutiny, update the device status on the homepage.
 		updatedDevice, err = deviceRepo.UpdateDeviceStatus(c, wwn, smartData.Status)
