@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.19.1](https://github.com/Starosdev/scrutiny/compare/v1.19.0...v1.19.1) (2026-01-31)
+
+### Bug Fixes
+
+* **notify:** fix missed ping notifications not being sent ([#126](https://github.com/Starosdev/scrutiny/issues/126)) ([#174](https://github.com/Starosdev/scrutiny/issues/174)) ([f5bc135](https://github.com/Starosdev/scrutiny/commit/f5bc135f280254e0f8d878ddd76d425faac2cb43))
+
 ## [1.19.0](https://github.com/Starosdev/scrutiny/compare/v1.18.0...v1.19.0) (2026-01-30)
 
 ### Features
