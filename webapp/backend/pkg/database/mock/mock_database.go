@@ -565,6 +565,20 @@ func (mr *MockDeviceRepoMockRecorder) UpdateDeviceSmartDisplayMode(ctx, wwn, mod
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDeviceSmartDisplayMode", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateDeviceSmartDisplayMode), ctx, wwn, mode)
 }
 
+// UpdateDeviceHasForcedFailure mocks base method.
+func (m *MockDeviceRepo) UpdateDeviceHasForcedFailure(ctx context.Context, wwn string, hasForcedFailure bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateDeviceHasForcedFailure", ctx, wwn, hasForcedFailure)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateDeviceHasForcedFailure indicates an expected call of UpdateDeviceHasForcedFailure.
+func (mr *MockDeviceRepoMockRecorder) UpdateDeviceHasForcedFailure(ctx, wwn, hasForcedFailure interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDeviceHasForcedFailure", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateDeviceHasForcedFailure), ctx, wwn, hasForcedFailure)
+}
+
 // UpdateZFSPoolArchived mocks base method.
 func (m *MockDeviceRepo) UpdateZFSPoolArchived(ctx context.Context, guid string, archived bool) error {
 	m.ctrl.T.Helper()

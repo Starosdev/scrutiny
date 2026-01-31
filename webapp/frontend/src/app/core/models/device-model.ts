@@ -26,4 +26,5 @@ export interface DeviceModel {
     smart_display_mode?: string; // "scrutiny", "raw", or "normalized"
 
     device_status: number;
+    has_forced_failure?: boolean;
 }

@@ -46,7 +46,8 @@ type Device struct {
 	SmartDisplayMode string `json:"smart_display_mode" gorm:"default:'scrutiny'"` // "scrutiny", "raw", or "normalized"
 
 	// Data set by Scrutiny
-	DeviceStatus pkg.DeviceStatus `json:"device_status"`
+	DeviceStatus     pkg.DeviceStatus `json:"device_status"`
+	HasForcedFailure bool             `json:"has_forced_failure" gorm:"default:false"` // True when override with action=force_status, status=failed is applied
 }
 
 func (dv *Device) IsAta() bool {
