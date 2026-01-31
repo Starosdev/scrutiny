@@ -284,8 +284,8 @@ func (n *Notify) Send() error {
 	n.Logger.Debugf("Configured notification services: %v", configUrls)
 
 	if len(configUrls) == 0 {
-		n.Logger.Infof("No notification endpoints configured. Skipping failure notification.")
-		return nil
+		n.Logger.Warnf("No notification endpoints configured. Cannot send notification.")
+		return errors.New("no notification endpoints configured")
 	}
 
 	//remove http:// https:// and script:// prefixed urls

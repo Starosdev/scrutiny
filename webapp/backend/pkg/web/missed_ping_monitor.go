@@ -327,6 +327,11 @@ func (m *MissedPingMonitor) handleMissedPing(device models.Device, lastSeen time
 	// Send notification
 	notification := notify.NewMissedPing(m.logger, m.appEngine.Config, device, lastSeen, timeoutMinutes)
 	if err := notification.Send(); err != nil {
+		if err.Error() == "no notification endpoints configured" {
+			m.logger.Warnf("Missed ping detected for device %s but no notification endpoints are configured. Configure notify.urls in scrutiny.yaml to receive alerts.", device.WWN)
+			// Don't mark as notified - will retry when endpoints are configured
+			return
+		}
 		m.logger.Errorf("Failed to send missed ping notification for device %s: %v", device.WWN, err)
 		return
 	}
@@ -447,10 +452,16 @@ func (m *MissedPingMonitor) GetStatus(ctx context.Context) (*models.MissedPingSt
 	// Validate InfluxDB buckets
 	influxStatus := m.validateInfluxDBBuckets(ctx, deviceRepo)
 
+	// Check notification configuration
+	notifyUrls := m.appEngine.Config.GetStringSlice("notify.urls")
+	notifyConfigured := len(notifyUrls) > 0
+
 	status := &models.MissedPingStatusData{
 		Enabled:                enabled,
 		TimeoutMinutes:         timeoutMinutes,
 		CheckIntervalMinutes:   checkInterval,
+		NotifyConfigured:       notifyConfigured,
+		NotifyEndpointCount:    len(notifyUrls),
 		LastCheckTime:          lastCheck.Format(time.RFC3339),
 		NextCheckTime:          nextCheck.Format(time.RFC3339),
 		MonitorRunning:         m.ctx.Err() == nil,

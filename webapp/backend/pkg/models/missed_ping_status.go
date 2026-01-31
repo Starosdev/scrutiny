@@ -7,6 +7,10 @@ type MissedPingStatusData struct {
 	TimeoutMinutes       int  `json:"timeout_minutes"`
 	CheckIntervalMinutes int  `json:"check_interval_minutes"`
 
+	// Notification configuration
+	NotifyConfigured    bool `json:"notify_configured"`
+	NotifyEndpointCount int  `json:"notify_endpoint_count"`
+
 	// Operational status
 	LastCheckTime  string `json:"last_check_time"`  // RFC3339
 	NextCheckTime  string `json:"next_check_time"`  // RFC3339

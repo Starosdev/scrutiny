@@ -14,11 +14,15 @@ import (
 )
 
 func createTestAppEngine(t *testing.T) (*AppEngine, *gomock.Controller) {
+	return createTestAppEngineWithNotifyUrls(t, []string{})
+}
+
+func createTestAppEngineWithNotifyUrls(t *testing.T, notifyUrls []string) (*AppEngine, *gomock.Controller) {
 	mockCtrl := gomock.NewController(t)
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
 
 	// Common config expectations
-	fakeConfig.EXPECT().GetStringSlice("notify.urls").Return([]string{}).AnyTimes()
+	fakeConfig.EXPECT().GetStringSlice("notify.urls").Return(notifyUrls).AnyTimes()
 	fakeConfig.EXPECT().GetString("notify.urls").Return("").AnyTimes()
 
 	logger := logrus.New()
@@ -170,6 +174,27 @@ func TestMissedPingMonitor_ClearNotificationState(t *testing.T) {
 	monitor.clearNotificationState("non-existent")
 }
 
+func TestMissedPingMonitor_HandleMissedPing_NoEndpointsConfigured(t *testing.T) {
+	t.Parallel()
+
+	ae, mockCtrl := createTestAppEngine(t)
+	defer mockCtrl.Finish()
+
+	monitor := NewMissedPingMonitor(ae)
+
+	device := models.Device{
+		WWN:        "test-wwn",
+		DeviceName: "/dev/sda",
+	}
+	lastSeen := time.Now().Add(-2 * time.Hour)
+	timeoutMinutes := 60
+
+	// When no notification endpoints are configured, device should NOT be marked as notified
+	// This allows retrying when endpoints are later configured
+	monitor.handleMissedPing(device, lastSeen, timeoutMinutes)
+	require.False(t, monitor.IsDeviceNotified("test-wwn"))
+}
+
 func TestMissedPingMonitor_HandleMissedPing_Deduplication(t *testing.T) {
 	t.Parallel()
 
@@ -185,18 +210,23 @@ func TestMissedPingMonitor_HandleMissedPing_Deduplication(t *testing.T) {
 	lastSeen := time.Now().Add(-2 * time.Hour)
 	timeoutMinutes := 60
 
-	// First call should add to notifiedDevices (but notification will fail since no URLs configured)
-	monitor.handleMissedPing(device, lastSeen, timeoutMinutes)
-	require.True(t, monitor.IsDeviceNotified("test-wwn"))
+	// Simulate a successful notification by directly adding to notifiedDevices
+	firstNotifyTime := time.Now()
+	monitor.mu.Lock()
+	monitor.notifiedDevices["test-wwn"] = firstNotifyTime
+	monitor.mu.Unlock()
 
-	firstNotifyTime := monitor.notifiedDevices["test-wwn"]
+	require.True(t, monitor.IsDeviceNotified("test-wwn"))
 
 	// Second call within timeout period should be skipped (deduplication)
 	time.Sleep(10 * time.Millisecond)
 	monitor.handleMissedPing(device, lastSeen, timeoutMinutes)
 
 	// The notification time should not have changed
-	require.Equal(t, firstNotifyTime, monitor.notifiedDevices["test-wwn"])
+	monitor.mu.RLock()
+	storedTime := monitor.notifiedDevices["test-wwn"]
+	monitor.mu.RUnlock()
+	require.Equal(t, firstNotifyTime, storedTime)
 }
 
 func TestMissedPingMonitor_ProcessDevice_SkipsArchived(t *testing.T) {
@@ -336,8 +366,9 @@ func TestMissedPingMonitor_ProcessDevice_TriggersNotification(t *testing.T) {
 
 	monitor.processDevice(device, data, time.Now())
 
-	// Should be notified since device exceeded timeout
-	require.True(t, monitor.IsDeviceNotified("stale-device"))
+	// Device should NOT be marked as notified when no notification endpoints are configured
+	// This ensures the system will retry when endpoints are later configured
+	require.False(t, monitor.IsDeviceNotified("stale-device"))
 }
 
 func TestMissedPingMonitor_GetCheckInterval_Default(t *testing.T) {

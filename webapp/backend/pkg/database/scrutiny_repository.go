@@ -570,6 +570,8 @@ func (sr *scrutinyRepository) GetDevicesLastSeenTimes(ctx context.Context) (map[
 	lastSeenTimes := map[string]time.Time{}
 
 	// Query to get the last submission time for each device from all buckets
+	// Note: We use "temp" field since it's always present in SMART data.
+	// The "date" field doesn't exist - Date is stored as the point timestamp (_time).
 	queryStr := fmt.Sprintf(`
 import "influxdata/influxdb/schema"
 bucketBaseName = "%s"
@@ -577,28 +579,28 @@ bucketBaseName = "%s"
 dailyData = from(bucket: bucketBaseName)
 |> range(start: -10y, stop: now())
 |> filter(fn: (r) => r["_measurement"] == "smart")
-|> filter(fn: (r) => r["_field"] == "date")
+|> filter(fn: (r) => r["_field"] == "temp")
 |> last()
 |> group(columns: ["device_wwn"])
 
 weeklyData = from(bucket: bucketBaseName + "_weekly")
 |> range(start: -10y, stop: now())
 |> filter(fn: (r) => r["_measurement"] == "smart")
-|> filter(fn: (r) => r["_field"] == "date")
+|> filter(fn: (r) => r["_field"] == "temp")
 |> last()
 |> group(columns: ["device_wwn"])
 
 monthlyData = from(bucket: bucketBaseName + "_monthly")
 |> range(start: -10y, stop: now())
 |> filter(fn: (r) => r["_measurement"] == "smart")
-|> filter(fn: (r) => r["_field"] == "date")
+|> filter(fn: (r) => r["_field"] == "temp")
 |> last()
 |> group(columns: ["device_wwn"])
 
 yearlyData = from(bucket: bucketBaseName + "_yearly")
 |> range(start: -10y, stop: now())
 |> filter(fn: (r) => r["_measurement"] == "smart")
-|> filter(fn: (r) => r["_field"] == "date")
+|> filter(fn: (r) => r["_field"] == "temp")
 |> last()
 |> group(columns: ["device_wwn"])
 
