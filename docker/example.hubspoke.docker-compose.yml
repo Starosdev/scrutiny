@@ -54,3 +54,16 @@ services:
     devices:
       - "/dev/sda"
       - "/dev/sdb"
+
+  # ZFS Pool Collector (optional - only needed if you use ZFS)
+  # See docs/ZFS_POOL_MONITORING.md for details
+  # collector-zfs:
+  #   restart: unless-stopped
+  #   image: 'ghcr.io/starosdev/scrutiny:latest-collector-zfs'
+  #   environment:
+  #     COLLECTOR_ZFS_API_ENDPOINT: 'http://web:8080'
+  #     COLLECTOR_ZFS_HOST_ID: 'zfs-host'
+  #     COLLECTOR_ZFS_RUN_STARTUP: 'true'
+  #   depends_on:
+  #     web:
+  #       condition: service_healthy
