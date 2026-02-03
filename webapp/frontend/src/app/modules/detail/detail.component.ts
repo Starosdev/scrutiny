@@ -360,6 +360,21 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     /**
+     * Check if collector version is older than server version
+     */
+    isCollectorOutdated(): boolean {
+        const collectorVersion = this.device?.collector_version;
+        const serverVersion = this.config?.server_version;
+
+        if (!collectorVersion || !serverVersion) {
+            return false;
+        }
+
+        // Simple semver comparison - works when format is consistent (x.y.z)
+        return collectorVersion < serverVersion;
+    }
+
+    /**
      * Set the SMART attribute display mode and persist to backend
      * @param mode Display mode: "scrutiny", "raw", or "normalized"
      */

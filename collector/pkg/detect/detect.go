@@ -12,6 +12,7 @@ import (
 	"github.com/analogj/scrutiny/collector/pkg/config"
 	"github.com/analogj/scrutiny/collector/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
 	"github.com/sirupsen/logrus"
 )
 
@@ -146,9 +147,10 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 		}
 
 		detectedDevice := models.Device{
-			HostId:     d.Config.GetString("host.id"),
-			DeviceType: scannedDevice.Type,
-			DeviceName: strings.TrimPrefix(deviceFile, DevicePrefix()),
+			HostId:           d.Config.GetString("host.id"),
+			CollectorVersion: version.VERSION,
+			DeviceType:       scannedDevice.Type,
+			DeviceName:       strings.TrimPrefix(deviceFile, DevicePrefix()),
 		}
 
 		//find (or create) a slice to contain the devices in this group
@@ -175,9 +177,10 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 			if overrideDevice.DeviceType != nil {
 				for _, overrideDeviceType := range overrideDevice.DeviceType {
 					overrideDeviceGroup = append(overrideDeviceGroup, models.Device{
-						HostId:     d.Config.GetString("host.id"),
-						DeviceType: overrideDeviceType,
-						DeviceName: strings.TrimPrefix(overrideDeviceFile, DevicePrefix()),
+						HostId:           d.Config.GetString("host.id"),
+						CollectorVersion: version.VERSION,
+						DeviceType:       overrideDeviceType,
+						DeviceName:       strings.TrimPrefix(overrideDeviceFile, DevicePrefix()),
 					})
 				}
 			} else {
@@ -199,9 +202,10 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 				}
 
 				overrideDeviceGroup = append(overrideDeviceGroup, models.Device{
-					HostId:     d.Config.GetString("host.id"),
-					DeviceType: deviceType,
-					DeviceName: strings.TrimPrefix(overrideDeviceFile, DevicePrefix()),
+					HostId:           d.Config.GetString("host.id"),
+					CollectorVersion: version.VERSION,
+					DeviceType:       deviceType,
+					DeviceName:       strings.TrimPrefix(overrideDeviceFile, DevicePrefix()),
 				})
 			}
 

@@ -1,12 +1,24 @@
-package models
+package m20260202000000
+
+import (
+	"github.com/analogj/scrutiny/webapp/backend/pkg"
+	"time"
+)
 
 type Device struct {
-	WWN string `json:"wwn"`
+	//GORM attributes, see: http://gorm.io/docs/conventions.html
+	Archived  bool `json:"archived"`
+	Muted     bool `json:"muted"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time
+
+	WWN string `json:"wwn" gorm:"primary_key"`
 
 	DeviceName     string `json:"device_name"`
-	DeviceUUID	   string `json:"device_uuid"`
-	DeviceSerialID	   string `json:"device_serial_id"`
-	DeviceLabel	   string `json:"device_label"`
+	DeviceUUID     string `json:"device_uuid"`
+	DeviceSerialID string `json:"device_serial_id"`
+	DeviceLabel    string `json:"device_label"`
 
 	Manufacturer   string `json:"manufacturer"`
 	ModelName      string `json:"model_name"`
@@ -25,10 +37,9 @@ type Device struct {
 	Label            string `json:"label"`
 	HostId           string `json:"host_id"`
 	CollectorVersion string `json:"collector_version"`
-}
+	SmartDisplayMode string `json:"smart_display_mode" gorm:"default:'scrutiny'"` // "scrutiny", "raw", or "normalized"
 
-type DeviceWrapper struct {
-	Success bool     `json:"success,omitempty"`
-	Errors  []error  `json:"errors,omitempty"`
-	Data    []Device `json:"data"`
+	// Data set by Scrutiny
+	DeviceStatus     pkg.DeviceStatus `json:"device_status"`
+	HasForcedFailure bool             `json:"has_forced_failure" gorm:"default:false"` // True when override with action=force_status, status=failed is applied
 }

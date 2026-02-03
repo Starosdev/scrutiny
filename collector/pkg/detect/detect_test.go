@@ -9,6 +9,7 @@ import (
 	mock_config "github.com/analogj/scrutiny/collector/pkg/config/mock"
 	"github.com/analogj/scrutiny/collector/pkg/detect"
 	"github.com/analogj/scrutiny/collector/pkg/models"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -73,8 +74,8 @@ func TestDetect_SmartctlScan_Megaraid(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 2, len(scannedDevices))
 	require.Equal(t, []models.Device{
-		{DeviceName: "bus/0", DeviceType: "megaraid,0"},
-		{DeviceName: "bus/0", DeviceType: "megaraid,1"},
+		{DeviceName: "bus/0", DeviceType: "megaraid,0", CollectorVersion: version.VERSION},
+		{DeviceName: "bus/0", DeviceType: "megaraid,1", CollectorVersion: version.VERSION},
 	}, scannedDevices)
 }
 
@@ -106,7 +107,7 @@ func TestDetect_SmartctlScan_Nvme(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, len(scannedDevices))
 	require.Equal(t, []models.Device{
-		{DeviceName: "nvme0", DeviceType: "nvme"},
+		{DeviceName: "nvme0", DeviceType: "nvme", CollectorVersion: version.VERSION},
 	}, scannedDevices)
 }
 

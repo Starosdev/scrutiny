@@ -23,6 +23,7 @@ export interface DeviceModel {
 
     label: string;
     host_id: string;
+    collector_version?: string;
     smart_display_mode?: string; // "scrutiny", "raw", or "normalized"
 
     device_status: number;

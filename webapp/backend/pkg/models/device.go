@@ -43,6 +43,7 @@ type Device struct {
 	// User provided metadata
 	Label            string `json:"label"`
 	HostId           string `json:"host_id"`
+	CollectorVersion string `json:"collector_version"`
 	SmartDisplayMode string `json:"smart_display_mode" gorm:"default:'scrutiny'"` // "scrutiny", "raw", or "normalized"
 
 	// Data set by Scrutiny

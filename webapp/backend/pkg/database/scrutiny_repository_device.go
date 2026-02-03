@@ -22,7 +22,7 @@ import (
 func (sr *scrutinyRepository) RegisterDevice(ctx context.Context, dev models.Device) error {
 	if err := sr.gormClient.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "wwn"}},
-		DoUpdates: clause.AssignmentColumns([]string{"host_id", "device_name", "device_type", "device_uuid", "device_serial_id", "device_label"}),
+		DoUpdates: clause.AssignmentColumns([]string{"host_id", "device_name", "device_type", "device_uuid", "device_serial_id", "device_label", "collector_version"}),
 	}).Create(&dev).Error; err != nil {
 		return err
 	}

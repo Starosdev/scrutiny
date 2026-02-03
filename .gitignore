@@ -84,3 +84,6 @@ scrutiny-dev
 
 # Local plans (not committed)
 docs/plans/
+
+# Session progress tracking
+OVERRIDE_FIX_PROGRESS.md
