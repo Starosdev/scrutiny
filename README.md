@@ -142,7 +142,7 @@ other Docker images:
 - `ghcr.io/starosdev/scrutiny:latest-collector` - Contains the Scrutiny data collector, `smartctl` binary and cron-like
   scheduler. You can run one collector on each server.
 - `ghcr.io/starosdev/scrutiny:latest-collector-zfs` - ZFS pool collector for monitoring ZFS health.
-  Run alongside or instead of the standard collector if you use ZFS.
+  Run alongside or instead of the standard collector if you use ZFS. See [docs/ZFS_POOL_MONITORING.md](./docs/ZFS_POOL_MONITORING.md) for setup instructions.
 - `ghcr.io/starosdev/scrutiny:latest-web` - Contains the Web UI and API. Only one container necessary
 - `influxdb:2.2` - InfluxDB image, used by the Web container to persist SMART data. Only one container necessary.
   See [docs/TROUBLESHOOTING_INFLUXDB.md](./docs/TROUBLESHOOTING_INFLUXDB.md)
@@ -195,12 +195,13 @@ docker exec scrutiny /opt/scrutiny/bin/scrutiny-collector-metrics run
 # Configuration
 By default Scrutiny looks for its YAML configuration files in `/opt/scrutiny/config`
 
-There are two configuration files available:
+There are three configuration files available:
 
 - Webapp/API config via `scrutiny.yaml` - [example.scrutiny.yaml](example.scrutiny.yaml).
 - Collector config via `collector.yaml` - [example.collector.yaml](example.collector.yaml).
+- ZFS Collector config via `collector-zfs.yaml` - [example.collector-zfs.yaml](example.collector-zfs.yaml). See [docs/ZFS_POOL_MONITORING.md](./docs/ZFS_POOL_MONITORING.md) for setup instructions.
 
-Neither file is required, however if provided, it allows you to configure how Scrutiny functions.
+None of these files are required, however if provided, they allow you to configure how Scrutiny functions.
 
 ## Cron Schedule
 Unfortunately the Cron schedule cannot be configured via the `collector.yaml` (as the collector binary needs to be triggered by a scheduler/cron).

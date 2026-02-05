@@ -15,6 +15,11 @@ services:
       - /run/udev:/run/udev:ro
       - ./config:/opt/scrutiny/config
       - ./influxdb:/opt/scrutiny/influxdb
+    # environment:
+      # Enable ZFS pool monitoring (uncomment to enable)
+      # See docs/ZFS_POOL_MONITORING.md for details
+      # COLLECTOR_ZFS_CRON_SCHEDULE: "*/15 * * * *"
+      # COLLECTOR_ZFS_RUN_STARTUP: "true"
     devices:
       - "/dev/sda"
       - "/dev/sdb"

@@ -1042,3 +1042,122 @@ func TestFromCollectorSmartInfo_ATA_DeviceStatistics_InvalidValue(t *testing.T) 
 	require.False(t, pkg.AttributeStatusHas(devstat.Status, pkg.AttributeStatusFailedScrutiny),
 		"devstat_7_8 should NOT be marked as FailedScrutiny")
 }
+
+// TestFromCollectorSmartInfo_ATA_TemperatureFallback tests that for ATA drives
+// where the standard temperature field is 0, the temperature is correctly parsed
+// from attribute 194 (Temperature). Fixes GitHub issue #179.
+func TestFromCollectorSmartInfo_ATA_TemperatureFallback(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	// Create smartctl output where temperature.current is 0 but attribute 194 has valid temp
+	smartJson := collector.SmartInfo{
+		Device: struct {
+			Name     string `json:"name"`
+			InfoName string `json:"info_name"`
+			Type     string `json:"type"`
+			Protocol string `json:"protocol"`
+		}{Protocol: "ATA"},
+		LocalTime: struct {
+			TimeT   int64  `json:"time_t"`
+			Asctime string `json:"asctime"`
+		}{TimeT: time.Now().Unix()},
+		SmartStatus: struct {
+			Passed bool `json:"passed"`
+		}{Passed: true},
+		Temperature: struct {
+			Current int64 `json:"current"`
+		}{Current: 0}, // Temperature not populated in standard field
+	}
+
+	// Add attribute 194 with temperature value in the raw value (lowest byte)
+	// Temperature 42C stored as raw value with additional data in upper bytes
+	smartJson.AtaSmartAttributes.Table = []collector.AtaSmartAttributesTableItem{
+		{
+			ID:   194,
+			Name: "Temperature_Celsius",
+			Raw: struct {
+				Value  int64  `json:"value"`
+				String string `json:"string"`
+			}{
+				Value:  42, // Temperature in lowest byte
+				String: "42",
+			},
+		},
+	}
+
+	//test
+	smartMdl := measurements.Smart{}
+	err := smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+	require.Equal(t, "WWN-test", smartMdl.DeviceWWN)
+
+	// The temperature.current in the JSON is 0, but attribute 194 raw value is 42
+	// The fix should correctly extract 42 from attribute 194
+	require.Equal(t, int64(42), smartMdl.Temp, "Temperature should be parsed from attribute 194 when standard temperature is 0")
+}
+
+// TestFromCollectorSmartInfo_ATA_TemperatureFallback_BitMask tests that the bit-mask
+// is correctly applied when extracting temperature from attribute 194.
+// Some drives store additional data in upper bytes of the raw value.
+func TestFromCollectorSmartInfo_ATA_TemperatureFallback_BitMask(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	// Create smartctl output where temperature.current is 0
+	smartJson := collector.SmartInfo{
+		Device: struct {
+			Name     string `json:"name"`
+			InfoName string `json:"info_name"`
+			Type     string `json:"type"`
+			Protocol string `json:"protocol"`
+		}{Protocol: "ATA"},
+		LocalTime: struct {
+			TimeT   int64  `json:"time_t"`
+			Asctime string `json:"asctime"`
+		}{TimeT: time.Now().Unix()},
+		SmartStatus: struct {
+			Passed bool `json:"passed"`
+		}{Passed: true},
+		Temperature: struct {
+			Current int64 `json:"current"`
+		}{Current: 0},
+	}
+
+	// Add attribute 194 with temperature value encoded with additional data in upper bytes
+	// This simulates drives that store min/max temps in the raw value: 0x002B00310032 = 43/49/50
+	// Lowest byte (0x32 = 50) is the current temperature
+	smartJson.AtaSmartAttributes.Table = []collector.AtaSmartAttributesTableItem{
+		{
+			ID:   194,
+			Name: "Temperature_Celsius",
+			Raw: struct {
+				Value  int64  `json:"value"`
+				String string `json:"string"`
+			}{
+				Value:  0x002B00310032, // Current=50, some value=49, some value=43
+				String: "50 (Min/Max 43/49)",
+			},
+		},
+	}
+
+	//test
+	smartMdl := measurements.Smart{}
+	err := smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+
+	// The bit-mask (& 0xFF) should extract only the lowest byte (50)
+	require.Equal(t, int64(50), smartMdl.Temp, "Temperature should be extracted from lowest byte using bit-mask")
+}

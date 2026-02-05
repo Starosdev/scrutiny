@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.20.0](https://github.com/Starosdev/scrutiny/compare/v1.19.2...v1.20.0) (2026-02-05)
+
+### Features
+
+* manual release trigger ([00a55c3](https://github.com/Starosdev/scrutiny/commit/00a55c3cbfe1fb1a9df14a8cbcaa40c700158cf4))
+
 ## [1.19.2](https://github.com/Starosdev/scrutiny/compare/v1.19.1...v1.19.2) (2026-01-31)
 
 ### Bug Fixes
