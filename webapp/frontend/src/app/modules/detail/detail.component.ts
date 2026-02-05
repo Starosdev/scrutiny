@@ -582,30 +582,55 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     /**
      * Convert raw attribute value to TB based on the attribute name from smartctl.
-     * Different vendors use different units for attributes 241/242:
+     * Different vendors use different units for attributes 241/242/246/249:
      * - Intel/Crucial/Micron SSDs: 32MiB units (name contains "32MiB")
-     * - Some SSDs: GiB units (name contains "GiB")
+     * - Some SSDs: GiB units (name contains "GiB" or "1GiB")
+     * - Crucial/Micron: Host Sector Writes (attribute 246)
+     * - Budget SSDs (e.g., Patriot): Report GiB despite "Total_LBAs" name
      * - Default: LBA units (multiply by logical block size)
      */
     private convertToTB(rawValue: number, attrName: string | undefined): number {
         const TB = 1024 * 1024 * 1024 * 1024;
+        const ONE_GB = 1024 * 1024 * 1024;
+        const blockSize = this.smart_results[0]?.logical_block_size || 512;
 
-        if (attrName?.includes('32MiB')) {
-            // Intel, Crucial/Micron, InnoDisk SSDs use 32 MiB per unit
-            return (rawValue * 32 * 1024 * 1024) / TB;
-        } else if (attrName?.includes('GiB')) {
-            // Some SSDs report in GiB units
-            return rawValue / 1024;
-        } else {
-            // Default: assume LBA units, multiply by logical block size
-            const blockSize = this.smart_results[0]?.logical_block_size || 512;
+        if (!attrName) {
+            // No name available, assume LBA units
             return (rawValue * blockSize) / TB;
         }
+
+        if (attrName.includes('32MiB')) {
+            // Intel, Crucial/Micron, InnoDisk SSDs use 32 MiB per unit
+            return (rawValue * 32 * 1024 * 1024) / TB;
+        } else if (attrName.includes('GiB') || attrName.includes('1GiB')) {
+            // Some SSDs report in GiB units (including attribute 249)
+            return rawValue / 1024;
+        } else if (attrName.includes('Sector') || attrName.includes('Host_Writes') || attrName.includes('Host_Reads')) {
+            // Host Sector Writes/Reads (attribute 246) - sectors = LBAs
+            return (rawValue * blockSize) / TB;
+        }
+
+        // HEURISTIC: Detect budget SSDs that report GiB despite "Total_LBAs" name
+        // If raw value would result in < 1 GB when treated as LBAs, assume it's already in GiB
+        // Example: Patriot Burst Elite reports 8629 meaning 8629 GiB, not 8629 LBAs (4.4 MB)
+        // Any drive with meaningful usage would have written more than 1 GB
+        const bytesIfLBA = rawValue * blockSize;
+        if (bytesIfLBA < ONE_GB && rawValue > 0) {
+            // Value too small to be LBAs - assume it's already in GiB
+            return rawValue / 1024;
+        }
+
+        // Default: assume LBA units, multiply by logical block size
+        return (rawValue * blockSize) / TB;
     }
 
     /**
      * Calculate TBs written from LBAs (ATA) or data units (NVMe)
      * Uses attribute name from smartctl to determine correct unit conversion
+     * Checks multiple ATA attributes in order of preference:
+     * - 241: Total LBAs Written (standard)
+     * - 246: Total Host Sector Writes (Crucial/Micron)
+     * - 249: NAND Writes in 1GiB (some vendors)
      */
     getTBsWritten(): number | null {
         if (!this.smart_results || this.smart_results.length === 0) {
@@ -617,10 +642,23 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             return null;
         }
 
-        // ATA: Use attribute 241 with unit detection based on attribute name
+        // ATA: Check multiple write attributes in order of preference
+        // 241 = Total LBAs Written (standard)
         const ataAttr = attrs['241'];
         if (ataAttr?.raw_value != null) {
             return this.convertToTB(ataAttr.raw_value, ataAttr.name);
+        }
+
+        // 246 = Total Host Sector Writes (Crucial/Micron)
+        const hostSectorAttr = attrs['246'];
+        if (hostSectorAttr?.raw_value != null) {
+            return this.convertToTB(hostSectorAttr.raw_value, hostSectorAttr.name);
+        }
+
+        // 249 = NAND Writes in 1GiB (some vendors)
+        const nandWriteAttr = attrs['249'];
+        if (nandWriteAttr?.raw_value != null) {
+            return this.convertToTB(nandWriteAttr.raw_value, nandWriteAttr.name);
         }
 
         // NVMe: data_units_written is in 512KB (512 * 1000 bytes) units per NVMe spec
@@ -635,6 +673,9 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     /**
      * Calculate TBs read from LBAs (ATA) or data units (NVMe)
      * Uses attribute name from smartctl to determine correct unit conversion
+     * Checks multiple ATA attributes in order of preference:
+     * - 242: Total LBAs Read (standard)
+     * - 244: Total LBAs Read Expanded (upper bytes for large values)
      */
     getTBsRead(): number | null {
         if (!this.smart_results || this.smart_results.length === 0) {
@@ -646,10 +687,17 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             return null;
         }
 
-        // ATA: Use attribute 242 with unit detection based on attribute name
+        // ATA: Check multiple read attributes in order of preference
+        // 242 = Total LBAs Read (standard)
         const ataAttr = attrs['242'];
         if (ataAttr?.raw_value != null) {
             return this.convertToTB(ataAttr.raw_value, ataAttr.name);
+        }
+
+        // 244 = Total LBAs Read Expanded (for drives with large read counts)
+        const expandedAttr = attrs['244'];
+        if (expandedAttr?.raw_value != null) {
+            return this.convertToTB(expandedAttr.raw_value, expandedAttr.name);
         }
 
         // NVMe: data_units_read is in 512KB (512 * 1000 bytes) units per NVMe spec

@@ -153,6 +153,20 @@ func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn s
 			sm.Temp = temp.Current
 		}
 	}
+	// For ATA drives, if standard temperature field is 0, check attribute 194 (Temperature)
+	if sm.Temp == 0 && info.Device.Protocol == pkg.DeviceProtocolAta {
+		for _, attr := range info.AtaSmartAttributes.Table {
+			if attr.ID == 194 && attr.Raw.Value > 0 {
+				// Apply same bit-mask as the Transform function (lowest byte contains temp in Celsius)
+				extractedTemp := attr.Raw.Value & 0xFF
+				// Sanity check: temperature should be reasonable (0-100C range)
+				if extractedTemp > 0 && extractedTemp < 100 {
+					sm.Temp = extractedTemp
+				}
+				break
+			}
+		}
+	}
 	sm.PowerCycleCount = info.PowerCycleCount
 	sm.PowerOnHours = info.PowerOnTime.Hours
 	// Store logical block size from smartctl (default to 512 if not provided)
