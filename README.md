@@ -260,7 +260,25 @@ curl -X POST http://localhost:8080/api/health/notify
 ```
 
 # Debug mode & Log Files
-Scrutiny provides various methods to change the log level to debug and generate log files.
+Scrutiny provides various methods to change the log level and generate log files.
+The web server and collector have **independent** log configurations and can be set separately.
+
+## Valid Log Levels
+
+The following log levels are supported (case-insensitive), listed from highest to lowest severity:
+
+| Level | Description |
+| --- | --- |
+| `PANIC` | Calls panic after logging |
+| `FATAL` | Calls os.Exit(1) after logging |
+| `ERROR` | Error conditions |
+| `WARN` | Warning conditions (also accepts `WARNING`) |
+| `INFO` | General operational messages **(default)** |
+| `DEBUG` | Verbose diagnostic information |
+| `TRACE` | Very fine-grained diagnostic information |
+
+Setting a level includes all messages at that level **and above** (higher severity).
+For example, setting `WARN` will show WARN, ERROR, FATAL, and PANIC messages, but not INFO, DEBUG, or TRACE.
 
 ## Web Server/API
 

@@ -89,6 +89,10 @@ devices:
 #      metrics_smart_args: '--xall --json -T permissive' # used to retrieve smart data for each device.
 
 
+# Valid log levels (case-insensitive, highest to lowest severity):
+#   PANIC, FATAL, ERROR, WARN, INFO (default), DEBUG, TRACE
+# Setting a level includes all messages at that level and above.
+# Example: WARN shows WARN, ERROR, FATAL, and PANIC messages.
 #log:
 #  file: '' #absolute or relative paths allowed, eg. web.log
 #  level: INFO
