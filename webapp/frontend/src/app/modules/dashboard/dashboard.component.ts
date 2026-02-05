@@ -319,6 +319,33 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
         return deviceSummaries
     }
 
+    /**
+     * Get the collector version for a host group (from first device in group)
+     */
+    getCollectorVersionForHost(hostGroupWWNs: string[]): string | null {
+        for (const wwn of hostGroupWWNs) {
+            const version = this.summaryData[wwn]?.device?.collector_version;
+            if (version) {
+                return version;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Check if host's collector version is older than server version
+     */
+    isHostCollectorOutdated(hostGroupWWNs: string[]): boolean {
+        const collectorVersion = this.getCollectorVersionForHost(hostGroupWWNs);
+        const serverVersion = this.config?.server_version;
+
+        if (!collectorVersion || !serverVersion) {
+            return false;
+        }
+
+        return collectorVersion < serverVersion;
+    }
+
     openDialog(): void {
         const dialogRef = this.dialog.open(DashboardSettingsComponent, {width: '600px',});
 

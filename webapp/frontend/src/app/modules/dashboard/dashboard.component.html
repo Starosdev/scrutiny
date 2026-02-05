@@ -83,7 +83,17 @@
         @for (hostId of hostGroups | keyvalue; track hostId) {
           <div class="flex flex-wrap w-full">
             @if (hostId.key) {
-              <h3 class="ml-4">{{ hostId.key }}</h3>
+              <div class="flex items-center ml-4 gap-3">
+                <h3 class="m-0">{{ hostId.key }}</h3>
+                @if (getCollectorVersionForHost(hostId.value); as version) {
+                  <span
+                    class="text-sm px-2 py-0.5 rounded-full text-white"
+                    [class.bg-yellow-600]="isHostCollectorOutdated(hostId.value)"
+                    [class.bg-gray-500]="!isHostCollectorOutdated(hostId.value)">
+                    collector v{{ version }}
+                  </span>
+                }
+              </div>
             }
 
             <div class="flex flex-wrap w-full">

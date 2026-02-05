@@ -102,6 +102,8 @@ export interface AppConfig {
         missed_ping_check_interval_mins?: number
     }
 
+    // Server version (populated from API response, not stored in settings)
+    server_version?: string;
 }
 
 /**

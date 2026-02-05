@@ -53,7 +53,8 @@ export class ScrutinyConfigService {
         } else {
             return this._httpClient.get(getBasePath() + '/api/settings').pipe(
                 map((response: any) => {
-                    return response.settings
+                    // Merge server_version into settings
+                    return { ...response.settings, server_version: response.server_version };
                 }),
                 tap((settings: AppConfig) => {
                     this._config.next(settings);

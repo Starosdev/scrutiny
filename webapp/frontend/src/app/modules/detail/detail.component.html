@@ -106,6 +106,22 @@
             </div>
           }
 
+          @if (device?.collector_version) {
+            <div class="my-2 col-span-1">
+              <div [class.text-yellow-500]="isCollectorOutdated()">
+                {{device?.collector_version}}
+                @if (isCollectorOutdated()) {
+                  <mat-icon
+                    class="text-sm align-middle ml-1"
+                    [svgIcon]="'warning'"
+                    [matTooltip]="'Collector is outdated. Server version: ' + config?.server_version">
+                  </mat-icon>
+                }
+              </div>
+              <div class="text-secondary text-md">Collector Version</div>
+            </div>
+          }
+
           @if (device?.device_uuid) {
             <div class="my-2 col-span-1">
               <div>{{device?.device_uuid}}</div>
