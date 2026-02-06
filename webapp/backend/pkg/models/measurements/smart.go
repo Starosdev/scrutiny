@@ -153,8 +153,9 @@ func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn s
 			sm.Temp = temp.Current
 		}
 	}
-	// For ATA drives, if standard temperature field is 0, check attribute 194 (Temperature)
-	if sm.Temp == 0 && info.Device.Protocol == pkg.DeviceProtocolAta {
+	// For ATA drives, if standard temperature is unreasonable, check attribute 194 (Temperature)
+	// Covers: zero (not reported), negative (e.g., -53 from corrupted device statistics), or >150C
+	if (sm.Temp <= 0 || sm.Temp > 150) && info.Device.Protocol == pkg.DeviceProtocolAta {
 		for _, attr := range info.AtaSmartAttributes.Table {
 			if attr.ID == 194 && attr.Raw.Value > 0 {
 				// Apply same bit-mask as the Transform function (lowest byte contains temp in Celsius)

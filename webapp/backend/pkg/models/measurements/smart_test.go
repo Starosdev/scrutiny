@@ -1161,3 +1161,57 @@ func TestFromCollectorSmartInfo_ATA_TemperatureFallback_BitMask(t *testing.T) {
 	// The bit-mask (& 0xFF) should extract only the lowest byte (50)
 	require.Equal(t, int64(50), smartMdl.Temp, "Temperature should be extracted from lowest byte using bit-mask")
 }
+
+// TestFromCollectorSmartInfo_ATA_TemperatureFallback_NegativeTemp tests that negative
+// temperature values from temperature.current trigger the fallback to attribute 194.
+// Some drives (e.g., Patriot Burst Elite) report -53C due to corrupted device statistics.
+func TestFromCollectorSmartInfo_ATA_TemperatureFallback_NegativeTemp(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartJson := collector.SmartInfo{
+		Device: struct {
+			Name     string `json:"name"`
+			InfoName string `json:"info_name"`
+			Type     string `json:"type"`
+			Protocol string `json:"protocol"`
+		}{Protocol: "ATA"},
+		LocalTime: struct {
+			TimeT   int64  `json:"time_t"`
+			Asctime string `json:"asctime"`
+		}{TimeT: time.Now().Unix()},
+		SmartStatus: struct {
+			Passed bool `json:"passed"`
+		}{Passed: true},
+		Temperature: struct {
+			Current int64 `json:"current"`
+		}{Current: -53}, // Negative temperature from corrupted device statistics
+	}
+
+	smartJson.AtaSmartAttributes.Table = []collector.AtaSmartAttributesTableItem{
+		{
+			ID:   194,
+			Name: "Temperature_Celsius",
+			Raw: struct {
+				Value  int64  `json:"value"`
+				String string `json:"string"`
+			}{
+				Value:  45,
+				String: "45",
+			},
+		},
+	}
+
+	//test
+	smartMdl := measurements.Smart{}
+	err := smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+	require.Equal(t, int64(45), smartMdl.Temp,
+		"Negative temperature should trigger fallback to attribute 194")
+}

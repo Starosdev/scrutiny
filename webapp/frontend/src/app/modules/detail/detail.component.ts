@@ -586,7 +586,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
      * - Intel/Crucial/Micron SSDs: 32MiB units (name contains "32MiB")
      * - Some SSDs: GiB units (name contains "GiB" or "1GiB")
      * - Crucial/Micron: Host Sector Writes (attribute 246)
-     * - Budget SSDs (e.g., Patriot): Report GiB despite "Total_LBAs" name
+     * - Budget SSDs (e.g., Patriot): Use 32 MiB units despite "Total_LBAs" name
      * - Default: LBA units (multiply by logical block size)
      */
     private convertToTB(rawValue: number, attrName: string | undefined): number {
@@ -610,14 +610,13 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             return (rawValue * blockSize) / TB;
         }
 
-        // HEURISTIC: Detect budget SSDs that report GiB despite "Total_LBAs" name
-        // If raw value would result in < 1 GB when treated as LBAs, assume it's already in GiB
-        // Example: Patriot Burst Elite reports 8629 meaning 8629 GiB, not 8629 LBAs (4.4 MB)
-        // Any drive with meaningful usage would have written more than 1 GB
+        // HEURISTIC: Detect budget SSDs (e.g., Patriot Burst Elite with Silicon Motion controller)
+        // that use 32 MiB units despite generic "Total_LBAs" attribute name.
+        // If raw value * blockSize < 1 GB, the value is too small to be actual LBAs.
+        // Verified by cross-referencing with ATA Device Statistics (devstat_1_24).
         const bytesIfLBA = rawValue * blockSize;
         if (bytesIfLBA < ONE_GB && rawValue > 0) {
-            // Value too small to be LBAs - assume it's already in GiB
-            return rawValue / 1024;
+            return (rawValue * 32 * 1024 * 1024) / TB;
         }
 
         // Default: assume LBA units, multiply by logical block size
@@ -642,7 +641,17 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             return null;
         }
 
-        // ATA: Check multiple write attributes in order of preference
+        const TB = 1024 * 1024 * 1024 * 1024;
+        const blockSize = this.smart_results[0]?.logical_block_size || 512;
+
+        // PRIORITY 1: ATA Device Statistics - devstat_1_24 (Logical Sectors Written)
+        // Standardized logical sector units per ACS spec, no unit guessing needed
+        const devstatWritten = attrs['devstat_1_24'];
+        if (devstatWritten?.value != null && devstatWritten.value > 0) {
+            return (devstatWritten.value * blockSize) / TB;
+        }
+
+        // PRIORITY 2: ATA SMART attributes with name-based unit detection
         // 241 = Total LBAs Written (standard)
         const ataAttr = attrs['241'];
         if (ataAttr?.raw_value != null) {
@@ -687,7 +696,17 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             return null;
         }
 
-        // ATA: Check multiple read attributes in order of preference
+        const TB = 1024 * 1024 * 1024 * 1024;
+        const blockSize = this.smart_results[0]?.logical_block_size || 512;
+
+        // PRIORITY 1: ATA Device Statistics - devstat_1_40 (Logical Sectors Read)
+        // Standardized logical sector units per ACS spec, no unit guessing needed
+        const devstatRead = attrs['devstat_1_40'];
+        if (devstatRead?.value != null && devstatRead.value > 0) {
+            return (devstatRead.value * blockSize) / TB;
+        }
+
+        // PRIORITY 2: ATA SMART attributes with name-based unit detection
         // 242 = Total LBAs Read (standard)
         const ataAttr = attrs['242'];
         if (ataAttr?.raw_value != null) {
