@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.20.1](https://github.com/Starosdev/scrutiny/compare/v1.20.0...v1.20.1) (2026-02-06)
+
+### Bug Fixes
+
+* **smart:** Patriot Burst Elite temperature and data unit fixes ([#183](https://github.com/Starosdev/scrutiny/issues/183)) ([f6cb42f](https://github.com/Starosdev/scrutiny/commit/f6cb42ff0bb92353e6e1da4096007bdfd65eec20)), closes [#179](https://github.com/Starosdev/scrutiny/issues/179) [#179](https://github.com/Starosdev/scrutiny/issues/179)
+
 ## [1.20.0](https://github.com/Starosdev/scrutiny/compare/v1.19.2...v1.20.0) (2026-02-05)
 
 ### Features
