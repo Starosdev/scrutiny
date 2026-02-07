@@ -1,0 +1,125 @@
+name: SonarQube Analysis
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: sonarqube-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-backend:
+    name: Backend Tests + Coverage
+    runs-on: ubuntu-latest
+    container: ghcr.io/packagrio/packagr:latest-golang
+    services:
+      influxdb:
+        image: influxdb:2.2
+        env:
+          DOCKER_INFLUXDB_INIT_MODE: setup
+          DOCKER_INFLUXDB_INIT_USERNAME: admin
+          DOCKER_INFLUXDB_INIT_PASSWORD: password12345
+          DOCKER_INFLUXDB_INIT_ORG: scrutiny
+          DOCKER_INFLUXDB_INIT_BUCKET: metrics
+          DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: my-super-secret-auth-token
+        ports:
+          - 8086:8086
+    env:
+      STATIC: true
+    steps:
+      - name: Install Git
+        run: |
+          apt-get update && apt-get install -y software-properties-common
+          add-apt-repository ppa:git-core/ppa && apt-get update && apt-get install -y git
+          git --version
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Backend Tests with Coverage
+        run: make binary-clean binary-test-coverage
+      - name: Upload Backend Coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-backend
+          path: ${{ github.workspace }}/coverage.txt
+          retention-days: 1
+
+  test-frontend:
+    name: Frontend Tests + Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run Frontend Tests with Coverage
+        run: make binary-frontend-test-coverage
+      - name: Upload Frontend Coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-frontend
+          path: ${{ github.workspace }}/webapp/frontend/coverage/lcov.info
+          retention-days: 1
+          if-no-files-found: ignore
+
+  sonarqube:
+    name: SonarQube Scan
+    needs: [test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Backend Coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-backend
+          path: .
+
+      - name: Download Frontend Coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-frontend
+          path: webapp/frontend/coverage
+        continue-on-error: true
+
+      - name: Fix frontend coverage paths
+        run: |
+          if [ -f webapp/frontend/coverage/lcov.info ]; then
+            sed -i 's|SF:src/|SF:webapp/frontend/src/|g' webapp/frontend/coverage/lcov.info
+          fi
+
+      - name: Verify coverage files
+        run: |
+          echo "=== Backend coverage ==="
+          ls -la coverage.txt || echo "No backend coverage file"
+          head -5 coverage.txt || true
+          echo ""
+          echo "=== Frontend coverage ==="
+          ls -la webapp/frontend/coverage/lcov.info || echo "No frontend coverage file"
+          head -5 webapp/frontend/coverage/lcov.info || true
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep 'const VERSION' webapp/backend/pkg/version/version.go | grep -oP '"[^"]+"' | tr -d '"')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        with:
+          args: >
+            -Dsonar.projectVersion=${{ steps.version.outputs.version }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}

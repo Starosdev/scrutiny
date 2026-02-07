@@ -10,7 +10,6 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/influxdata/influxdb-client-go/v2/api"
-	log "github.com/sirupsen/logrus"
 )
 
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,7 +43,7 @@ func (sr *scrutinyRepository) GetSmartAttributeHistory(ctx context.Context, wwn 
 	// Get parser flux query result
 	// Note: WWN is validated at the handler level before reaching this function
 	queryStr := sr.aggregateSmartAttributesQuery(wwn, durationKey, selectEntries, selectEntriesOffset, attributes)
-	log.Infoln(queryStr)
+	sr.logger.Infoln(queryStr)
 
 	smartResults := []measurements.Smart{}
 
@@ -52,12 +51,7 @@ func (sr *scrutinyRepository) GetSmartAttributeHistory(ctx context.Context, wwn 
 	if err == nil {
 		// Use Next() to iterate over query result lines
 		for result.Next() {
-			// Observe when there is new grouping key producing new table
-			if result.TableChanged() {
-				//fmt.Printf("table: %s\n", result.TableMetadata().String())
-			}
-
-			smartData, err := measurements.NewSmartFromInfluxDB(result.Record().Values())
+			smartData, err := measurements.NewSmartFromInfluxDB(result.Record().Values(), sr.logger)
 			if err != nil {
 				return nil, err
 			}
@@ -107,7 +101,7 @@ from(bucket: "%s")
 |> limit(n: 1, offset: 1)
 `, sr.appConfig.GetString("web.influxdb.bucket"), wwn)
 
-	log.Debugln("GetPreviousSmartSubmission query:", queryStr)
+	sr.logger.Debugln("GetPreviousSmartSubmission query:", queryStr)
 
 	smartResults := []measurements.Smart{}
 
@@ -117,7 +111,7 @@ from(bucket: "%s")
 	}
 
 	for result.Next() {
-		smartData, err := measurements.NewSmartFromInfluxDB(result.Record().Values())
+		smartData, err := measurements.NewSmartFromInfluxDB(result.Record().Values(), sr.logger)
 		if err != nil {
 			return nil, err
 		}

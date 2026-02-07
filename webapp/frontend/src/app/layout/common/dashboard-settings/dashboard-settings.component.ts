@@ -44,6 +44,10 @@ export class DashboardSettingsComponent implements OnInit {
     missedPingTimeoutMinutes: number;
     missedPingCheckIntervalMins: number;
 
+    // Heartbeat settings
+    heartbeatEnabled: boolean;
+    heartbeatIntervalHours: number;
+
     // Attribute overrides
     overrides: AttributeOverride[] = [];
     displayedColumns: string[] = ['protocol', 'attribute_id', 'action', 'source', 'actions'];
@@ -98,6 +102,10 @@ export class DashboardSettingsComponent implements OnInit {
                 this.notifyOnMissedPing = config.metrics.notify_on_missed_ping ?? false;
                 this.missedPingTimeoutMinutes = config.metrics.missed_ping_timeout_minutes ?? 60;
                 this.missedPingCheckIntervalMins = config.metrics.missed_ping_check_interval_mins ?? 5;
+
+                // Heartbeat settings
+                this.heartbeatEnabled = config.metrics.heartbeat_enabled ?? false;
+                this.heartbeatIntervalHours = config.metrics.heartbeat_interval_hours ?? 24;
 
             });
 
@@ -176,7 +184,9 @@ export class DashboardSettingsComponent implements OnInit {
                 repeat_notifications: this.repeatNotifications,
                 notify_on_missed_ping: this.notifyOnMissedPing,
                 missed_ping_timeout_minutes: this.missedPingTimeoutMinutes,
-                missed_ping_check_interval_mins: this.missedPingCheckIntervalMins
+                missed_ping_check_interval_mins: this.missedPingCheckIntervalMins,
+                heartbeat_enabled: this.heartbeatEnabled,
+                heartbeat_interval_hours: this.heartbeatIntervalHours
             }
         }
         this._configService.config = newSettings

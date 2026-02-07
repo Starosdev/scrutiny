@@ -32,6 +32,7 @@ const NotifyFailureTypeBothFailure = "SmartFailure" //SmartFailure always takes 
 const NotifyFailureTypeSmartFailure = "SmartFailure"
 const NotifyFailureTypeScrutinyFailure = "ScrutinyFailure"
 const NotifyFailureTypeMissedPing = "MissedPing"
+const NotifyFailureTypeHeartbeat = "Heartbeat"
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
 func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
@@ -337,12 +338,6 @@ func (n *Notify) Send() error {
 		n.Logger.Error("One or more notifications failed to send successfully. See logs for more information.")
 		return err
 	}
-	////wg.Wait()
-	//if waitTimeout(&wg, time.Minute) { //wait for 1 minute
-	//	fmt.Println("Timed out while sending notifications")
-	//} else {
-	//}
-	//return nil
 }
 
 func (n *Notify) SendWebhookNotification(webhookUrl string) error {
@@ -582,6 +577,68 @@ func NewMissedPing(logger logrus.FieldLogger, appconfig config.Interface, device
 		FailureType:  missedPingPayload.FailureType,
 		Subject:      missedPingPayload.Subject,
 		Message:      missedPingPayload.Message,
+	}
+
+	return Notify{
+		Logger:  logger,
+		Config:  appconfig,
+		Payload: payload,
+	}
+}
+
+// HeartbeatPayload represents a periodic "all clear" heartbeat notification
+type HeartbeatPayload struct {
+	MonitoredDevices int    `json:"monitored_devices"`
+	TotalDevices     int    `json:"total_devices"`
+	Date             string `json:"date"`
+	FailureType      string `json:"failure_type"`
+	Subject          string `json:"subject"`
+	Message          string `json:"message"`
+}
+
+// NewHeartbeatPayload creates a payload for heartbeat notifications
+func NewHeartbeatPayload(monitoredCount, totalCount int) HeartbeatPayload {
+	payload := HeartbeatPayload{
+		MonitoredDevices: monitoredCount,
+		TotalDevices:     totalCount,
+		Date:             time.Now().Format(time.RFC3339),
+		FailureType:      NotifyFailureTypeHeartbeat,
+	}
+
+	payload.Subject = payload.generateSubject()
+	payload.Message = payload.generateMessage()
+	return payload
+}
+
+func (p *HeartbeatPayload) generateSubject() string {
+	return fmt.Sprintf("Scrutiny heartbeat: All %d drives healthy", p.MonitoredDevices)
+}
+
+func (p *HeartbeatPayload) generateMessage() string {
+	messageParts := []string{
+		fmt.Sprintf("Scrutiny periodic health check: All %d monitored drives are healthy.", p.MonitoredDevices),
+		"",
+		fmt.Sprintf("Monitored devices: %d", p.MonitoredDevices),
+		fmt.Sprintf("Total devices (including archived/muted): %d", p.TotalDevices),
+		fmt.Sprintf("Date: %s", p.Date),
+		"",
+		"This is an automated heartbeat notification confirming that Scrutiny is running and all drives are healthy.",
+	}
+
+	return strings.Join(messageParts, "\n")
+}
+
+// NewHeartbeat creates a Notify instance for heartbeat notifications
+func NewHeartbeat(logger logrus.FieldLogger, appconfig config.Interface, monitoredCount, totalCount int) Notify {
+	heartbeatPayload := NewHeartbeatPayload(monitoredCount, totalCount)
+
+	// Convert HeartbeatPayload to standard Payload for compatibility with Send()
+	payload := Payload{
+		Test:        false,
+		Date:        heartbeatPayload.Date,
+		FailureType: heartbeatPayload.FailureType,
+		Subject:     heartbeatPayload.Subject,
+		Message:     heartbeatPayload.Message,
 	}
 
 	return Notify{

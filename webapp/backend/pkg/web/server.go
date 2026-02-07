@@ -28,6 +28,7 @@ type AppEngine struct {
 	Logger            *logrus.Entry
 	MetricsCollector  *metrics.Collector
 	MissedPingMonitor *MissedPingMonitor
+	HeartbeatMonitor  *HeartbeatMonitor
 }
 
 func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
@@ -208,6 +209,12 @@ func (ae *AppEngine) Start() error {
 	missedPingMonitor.Start()
 	ae.Logger.Info("Missed ping monitor started")
 
+	// Create and start the heartbeat monitor
+	heartbeatMonitor := NewHeartbeatMonitor(ae)
+	ae.HeartbeatMonitor = heartbeatMonitor
+	heartbeatMonitor.Start()
+	ae.Logger.Info("Heartbeat monitor started")
+
 	// Load initial metrics data asynchronously at startup (if metrics enabled)
 	if ae.Config.GetBool("web.metrics.enabled") && ae.MetricsCollector != nil {
 		go func() {
@@ -226,9 +233,18 @@ func (ae *AppEngine) Start() error {
 
 	// Create HTTP server for graceful shutdown support
 	addr := fmt.Sprintf("%s:%s", ae.Config.GetString("web.listen.host"), ae.Config.GetString("web.listen.port"))
+
+	readTimeout := ae.Config.GetInt("web.listen.read_timeout_seconds")
+	writeTimeout := ae.Config.GetInt("web.listen.write_timeout_seconds")
+	idleTimeout := ae.Config.GetInt("web.listen.idle_timeout_seconds")
+	ae.Logger.Infof("HTTP server timeouts: read=%ds, write=%ds, idle=%ds", readTimeout, writeTimeout, idleTimeout)
+
 	srv := &http.Server{
-		Addr:    addr,
-		Handler: r,
+		Addr:         addr,
+		Handler:      r,
+		ReadTimeout:  time.Duration(readTimeout) * time.Second,
+		WriteTimeout: time.Duration(writeTimeout) * time.Second,
+		IdleTimeout:  time.Duration(idleTimeout) * time.Second,
 	}
 
 	// Channel to receive shutdown signals
@@ -247,9 +263,12 @@ func (ae *AppEngine) Start() error {
 	<-quit
 	ae.Logger.Info("Shutdown signal received, initiating graceful shutdown...")
 
-	// Stop the missed ping monitor first
+	// Stop background monitors
 	if ae.MissedPingMonitor != nil {
 		ae.MissedPingMonitor.Stop()
+	}
+	if ae.HeartbeatMonitor != nil {
+		ae.HeartbeatMonitor.Stop()
 	}
 
 	// Create a deadline for shutdown (give 30 seconds for graceful shutdown)

@@ -85,6 +85,27 @@ jobs:
           fail_ci_if_error: false
           verbose: true
 
+  lint-backend:
+    name: Lint Backend (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.0'
+      - name: Sync vendor
+        run: go mod vendor
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+          only-new-issues: true
+
   build:
     name: Build ${{ matrix.cfg.goos }}/${{ matrix.cfg.goarch }}
     runs-on: ${{ matrix.cfg.on }}

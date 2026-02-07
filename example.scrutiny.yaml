@@ -68,6 +68,12 @@ web:
     # basepath: `/scrutiny`
     # leave empty unless behind a path prefixed proxy
     basepath: ''
+    # HTTP server timeouts (in seconds) to protect against slow/stalled connections.
+    # Set to 0 to disable a specific timeout (not recommended for production).
+    # Env: SCRUTINY_WEB_LISTEN_READ_TIMEOUT_SECONDS, etc.
+    # read_timeout_seconds: 10
+    # write_timeout_seconds: 30
+    # idle_timeout_seconds: 60
   database:
     # can also set absolute path here
     location: /opt/scrutiny/config/scrutiny.db
@@ -231,6 +237,28 @@ failures:
 #   curl -X POST http://localhost:8080/api/settings \
 #     -H "Content-Type: application/json" \
 #     -d '{"metrics": {"notify_on_missed_ping": true, "missed_ping_timeout_minutes": 60}}'
+
+######################################################################
+# Heartbeat Notifications (Periodic Health Check)
+#
+# Scrutiny can send periodic "all clear" heartbeat notifications to
+# confirm the monitoring system is running and all drives are healthy.
+# Useful for integration with uptime monitoring tools like Uptime Kuma.
+#
+# Heartbeat notifications are only sent when ALL monitored drives are
+# healthy. If any drive has failures, the heartbeat is suppressed
+# (failure notifications take priority).
+#
+# These settings are configured via the Settings API, not this config file.
+# Use the /api/settings endpoint to configure:
+#
+#   metrics.heartbeat_enabled: false          # Enable/disable feature
+#   metrics.heartbeat_interval_hours: 24      # Hours between heartbeats
+#
+# Example API call to enable daily heartbeat notifications:
+#   curl -X POST http://localhost:8080/api/settings \
+#     -H "Content-Type: application/json" \
+#     -d '{"metrics": {"heartbeat_enabled": true, "heartbeat_interval_hours": 24}}'
 
 ########################################################################################################################
 # FEATURES COMING SOON

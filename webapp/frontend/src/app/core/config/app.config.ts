@@ -100,6 +100,9 @@ export interface AppConfig {
         notify_on_missed_ping?: boolean
         missed_ping_timeout_minutes?: number
         missed_ping_check_interval_mins?: number
+        // Heartbeat notifications
+        heartbeat_enabled?: boolean
+        heartbeat_interval_hours?: number
     }
 
     // Server version (populated from API response, not stored in settings)
@@ -138,7 +141,9 @@ export const appConfig: AppConfig = {
         repeat_notifications: true,
         notify_on_missed_ping: false,
         missed_ping_timeout_minutes: 60,
-        missed_ping_check_interval_mins: 5
+        missed_ping_check_interval_mins: 5,
+        heartbeat_enabled: false,
+        heartbeat_interval_hours: 24
     }
 };
 

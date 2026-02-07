@@ -119,8 +119,6 @@ func (sa *SmartAtaAttribute) PopulateAttributeStatus() *SmartAtaAttribute {
 
 // compare the attribute (raw, normalized, transformed) value to observed thresholds, and update status if necessary
 func (sa *SmartAtaAttribute) ValidateThreshold(smartMetadata thresholds.AtaAttributeMetadata) {
-	//TODO: multiple rules
-	// try to predict the failure rates for observed thresholds that have 0 failure rate and error bars.
 	// - if the attribute is critical
 	//		- the failure rate is over 10 - set to failed
 	//		- the attribute does not match any threshold, set to warn
@@ -145,16 +143,23 @@ func (sa *SmartAtaAttribute) ValidateThreshold(smartMetadata thresholds.AtaAttri
 			(obsThresh.Low < value && value <= obsThresh.High) {
 			sa.FailureRate = obsThresh.AnnualFailureRate
 
+			// When AnnualFailureRate is 0 but ErrorInterval has real values,
+			// estimate the failure rate from the midpoint of the error interval.
+			if sa.FailureRate == 0 && len(obsThresh.ErrorInterval) == 2 &&
+				(obsThresh.ErrorInterval[0] != 0 || obsThresh.ErrorInterval[1] != 0) {
+				sa.FailureRate = (obsThresh.ErrorInterval[0] + obsThresh.ErrorInterval[1]) / 2.0
+			}
+
 			if smartMetadata.Critical {
-				if obsThresh.AnnualFailureRate >= 0.10 {
+				if sa.FailureRate >= 0.10 {
 					sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusFailedScrutiny)
 					sa.StatusReason += "Observed Failure Rate for Critical Attribute is greater than 10%"
 				}
 			} else {
-				if obsThresh.AnnualFailureRate >= 0.20 {
+				if sa.FailureRate >= 0.20 {
 					sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusFailedScrutiny)
 					sa.StatusReason += "Observed Failure Rate for Non-Critical Attribute is greater than 20%"
-				} else if obsThresh.AnnualFailureRate >= 0.10 {
+				} else if sa.FailureRate >= 0.10 {
 					sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusWarningScrutiny)
 					sa.StatusReason += "Observed Failure Rate for Non-Critical Attribute is greater than 10%"
 				}

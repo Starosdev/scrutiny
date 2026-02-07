@@ -83,6 +83,7 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Improved UI Layout** - Top navigation for better S.M.A.R.T attribute visibility
 - **Mobile-Optimized Interface** - Better experience on mobile devices
 - **API Timeout Configuration** - Adjust timeouts for slow storage systems
+- **Heartbeat Notifications** - Periodic "all clear" alerts for uptime monitoring integration
 
 # Migration from AnalogJ/scrutiny
 
@@ -247,6 +248,14 @@ Check the `notify.urls` section of [example.scrutiny.yml](example.scrutiny.yaml)
 
 For more information and troubleshooting, see the [TROUBLESHOOTING_NOTIFICATIONS.md](./docs/TROUBLESHOOTING_NOTIFICATIONS.md) file
 
+### Heartbeat Notifications
+
+Scrutiny can send periodic "all clear" heartbeat notifications to confirm the monitoring system is running and all drives are healthy. This is useful for integration with uptime monitoring tools like Uptime Kuma.
+
+- **Disabled by default** -- enable via Settings in the web UI or the `/api/settings` API
+- **Configurable interval** -- defaults to every 24 hours
+- **Suppressed during failures** -- heartbeat is not sent if any drive has active failures (failure notifications take priority)
+
 ### Per-Device Notification Control
 
 You can mute notifications for specific devices through the web UI. This is useful for drives that are known to have issues but are being monitored before replacement.
@@ -313,6 +322,9 @@ Dots and dashes in key names become underscores.
 | `web.listen.port` | `SCRUTINY_WEB_LISTEN_PORT` | `8080` |
 | `web.listen.host` | `SCRUTINY_WEB_LISTEN_HOST` | `0.0.0.0` |
 | `web.listen.basepath` | `SCRUTINY_WEB_LISTEN_BASEPATH` | `` |
+| `web.listen.read_timeout_seconds` | `SCRUTINY_WEB_LISTEN_READ_TIMEOUT_SECONDS` | `10` |
+| `web.listen.write_timeout_seconds` | `SCRUTINY_WEB_LISTEN_WRITE_TIMEOUT_SECONDS` | `30` |
+| `web.listen.idle_timeout_seconds` | `SCRUTINY_WEB_LISTEN_IDLE_TIMEOUT_SECONDS` | `60` |
 | `web.database.location` | `SCRUTINY_WEB_DATABASE_LOCATION` | `/opt/scrutiny/config/scrutiny.db` |
 | `web.database.journal_mode` | `SCRUTINY_WEB_DATABASE_JOURNAL_MODE` | `WAL` |
 | `web.src.frontend.path` | `SCRUTINY_WEB_SRC_FRONTEND_PATH` | `/opt/scrutiny/web` |
