@@ -491,12 +491,6 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 	if err == nil {
 		// Use Next() to iterate over query result lines
 		for result.Next() {
-			// Observe when there is new grouping key producing new table
-			if result.TableChanged() {
-				//fmt.Printf("table: %s\n", result.TableMetadata().String())
-			}
-			// read result
-
 			//get summary data from Influxdb.
 			//result.Record().Values()
 			if deviceWWN, ok := result.Record().Values()["device_wwn"]; ok {
@@ -606,6 +600,7 @@ yearlyData = from(bucket: bucketBaseName + "_yearly")
 
 union(tables: [dailyData, weeklyData, monthlyData, yearlyData])
 |> group(columns: ["device_wwn"])
+|> sort(columns: ["_time"], desc: false)
 |> last()
 |> yield(name: "last_seen")
 	`, sr.appConfig.GetString("web.influxdb.bucket"))

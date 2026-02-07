@@ -12,6 +12,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/golang/mock/gomock"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -214,7 +215,7 @@ func TestNewSmartFromInfluxDB_ATA(t *testing.T) {
 	}
 
 	//test
-	smart, err := measurements.NewSmartFromInfluxDB(attrs)
+	smart, err := measurements.NewSmartFromInfluxDB(attrs, logrus.New())
 
 	//assert
 	require.NoError(t, err)
@@ -258,7 +259,7 @@ func TestNewSmartFromInfluxDB_NVMe(t *testing.T) {
 	}
 
 	//test
-	smart, err := measurements.NewSmartFromInfluxDB(attrs)
+	smart, err := measurements.NewSmartFromInfluxDB(attrs, logrus.New())
 
 	//assert
 	require.NoError(t, err)
@@ -297,7 +298,7 @@ func TestNewSmartFromInfluxDB_SCSI(t *testing.T) {
 	}
 
 	//test
-	smart, err := measurements.NewSmartFromInfluxDB(attrs)
+	smart, err := measurements.NewSmartFromInfluxDB(attrs, logrus.New())
 
 	//assert
 	require.NoError(t, err)
@@ -740,7 +741,7 @@ func TestNewSmartFromInfluxDB_WithDeviceStatistics(t *testing.T) {
 	}
 
 	//test
-	smart, err := measurements.NewSmartFromInfluxDB(attrs)
+	smart, err := measurements.NewSmartFromInfluxDB(attrs, logrus.New())
 
 	//assert
 	require.NoError(t, err)
