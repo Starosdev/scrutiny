@@ -68,6 +68,12 @@ web:
     # basepath: `/scrutiny`
     # leave empty unless behind a path prefixed proxy
     basepath: ''
+    # HTTP server timeouts (in seconds) to protect against slow/stalled connections.
+    # Set to 0 to disable a specific timeout (not recommended for production).
+    # Env: SCRUTINY_WEB_LISTEN_READ_TIMEOUT_SECONDS, etc.
+    # read_timeout_seconds: 10
+    # write_timeout_seconds: 30
+    # idle_timeout_seconds: 60
   database:
     # can also set absolute path here
     location: /opt/scrutiny/config/scrutiny.db

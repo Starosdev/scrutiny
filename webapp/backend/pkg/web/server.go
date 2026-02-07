@@ -233,9 +233,18 @@ func (ae *AppEngine) Start() error {
 
 	// Create HTTP server for graceful shutdown support
 	addr := fmt.Sprintf("%s:%s", ae.Config.GetString("web.listen.host"), ae.Config.GetString("web.listen.port"))
+
+	readTimeout := ae.Config.GetInt("web.listen.read_timeout_seconds")
+	writeTimeout := ae.Config.GetInt("web.listen.write_timeout_seconds")
+	idleTimeout := ae.Config.GetInt("web.listen.idle_timeout_seconds")
+	ae.Logger.Infof("HTTP server timeouts: read=%ds, write=%ds, idle=%ds", readTimeout, writeTimeout, idleTimeout)
+
 	srv := &http.Server{
-		Addr:    addr,
-		Handler: r,
+		Addr:         addr,
+		Handler:      r,
+		ReadTimeout:  time.Duration(readTimeout) * time.Second,
+		WriteTimeout: time.Duration(writeTimeout) * time.Second,
+		IdleTimeout:  time.Duration(idleTimeout) * time.Second,
 	}
 
 	// Channel to receive shutdown signals
