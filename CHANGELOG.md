@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.20.3](https://github.com/Starosdev/scrutiny/compare/v1.20.2...v1.20.3) (2026-02-07)
+
+### Bug Fixes
+
+* **logging:** consolidate all logging through injected logrus logger ([#185](https://github.com/Starosdev/scrutiny/issues/185)) ([6e268b0](https://github.com/Starosdev/scrutiny/commit/6e268b05622062c615869544b430e2e8f3656e4c)), closes [#136](https://github.com/Starosdev/scrutiny/issues/136)
+
 ## [1.20.2](https://github.com/Starosdev/scrutiny/compare/v1.20.1...v1.20.2) (2026-02-07)
 
 ### Bug Fixes
