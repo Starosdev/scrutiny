@@ -93,6 +93,11 @@
                     collector v{{ version }}
                   </span>
                 }
+                @if (config?.server_version) {
+                  <span class="gt-sm:hidden text-sm px-2 py-0.5 rounded-full text-white bg-gray-500">
+                    server v{{ config.server_version }}
+                  </span>
+                }
               </div>
             }
 
