@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.22.0](https://github.com/Starosdev/scrutiny/compare/v1.21.0...v1.22.0) (2026-02-07)
+
+### Features
+
+* **server:** add configurable HTTP server timeouts ([#187](https://github.com/Starosdev/scrutiny/issues/187)) ([#193](https://github.com/Starosdev/scrutiny/issues/193)) ([ea6282d](https://github.com/Starosdev/scrutiny/commit/ea6282d73a102b6fbc48c3936bf2fd18636d8eed))
+
 ## [1.21.0](https://github.com/Starosdev/scrutiny/compare/v1.20.3...v1.21.0) (2026-02-07)
 
 ### Features
