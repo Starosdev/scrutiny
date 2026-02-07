@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.23.0](https://github.com/Starosdev/scrutiny/compare/v1.22.0...v1.23.0) (2026-02-07)
+
+### Features
+
+* **smart:** infer failure rate from error interval ([#197](https://github.com/Starosdev/scrutiny/issues/197)) ([e56967a](https://github.com/Starosdev/scrutiny/commit/e56967a60684145972f6c93a6621e6d1a83484e7)), closes [#186](https://github.com/Starosdev/scrutiny/issues/186)
+
 ## [1.22.0](https://github.com/Starosdev/scrutiny/compare/v1.21.0...v1.22.0) (2026-02-07)
 
 ### Features
