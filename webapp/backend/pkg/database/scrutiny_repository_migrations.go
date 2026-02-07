@@ -502,6 +502,27 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				return tx.AutoMigrate(m20260202000000.Device{})
 			},
 		},
+		{
+			ID: "m20260207000000", // add heartbeat notification settings
+			Migrate: func(tx *gorm.DB) error {
+				// Add heartbeat notification settings with defaults
+				var defaultSettings = []m20220716214900.Setting{
+					{
+						SettingKeyName:        "metrics.heartbeat_enabled",
+						SettingKeyDescription: "Enable periodic heartbeat notifications when all drives are healthy (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      false,
+					},
+					{
+						SettingKeyName:        "metrics.heartbeat_interval_hours",
+						SettingKeyDescription: "Hours between heartbeat notifications (default: 24)",
+						SettingDataType:       "numeric",
+						SettingValueNumeric:   24,
+					},
+				}
+				return tx.Create(&defaultSettings).Error
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {

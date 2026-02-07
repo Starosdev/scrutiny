@@ -83,6 +83,7 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Improved UI Layout** - Top navigation for better S.M.A.R.T attribute visibility
 - **Mobile-Optimized Interface** - Better experience on mobile devices
 - **API Timeout Configuration** - Adjust timeouts for slow storage systems
+- **Heartbeat Notifications** - Periodic "all clear" alerts for uptime monitoring integration
 
 # Migration from AnalogJ/scrutiny
 
@@ -246,6 +247,14 @@ Scrutiny supports sending SMART device failure notifications via the following s
 Check the `notify.urls` section of [example.scrutiny.yml](example.scrutiny.yaml) for examples.
 
 For more information and troubleshooting, see the [TROUBLESHOOTING_NOTIFICATIONS.md](./docs/TROUBLESHOOTING_NOTIFICATIONS.md) file
+
+### Heartbeat Notifications
+
+Scrutiny can send periodic "all clear" heartbeat notifications to confirm the monitoring system is running and all drives are healthy. This is useful for integration with uptime monitoring tools like Uptime Kuma.
+
+- **Disabled by default** -- enable via Settings in the web UI or the `/api/settings` API
+- **Configurable interval** -- defaults to every 24 hours
+- **Suppressed during failures** -- heartbeat is not sent if any drive has active failures (failure notifications take priority)
 
 ### Per-Device Notification Control
 
