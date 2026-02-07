@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.21.0](https://github.com/Starosdev/scrutiny/compare/v1.20.3...v1.21.0) (2026-02-07)
+
+### Features
+
+* **notify:** add periodic heartbeat notifications ([#188](https://github.com/Starosdev/scrutiny/issues/188)) ([#192](https://github.com/Starosdev/scrutiny/issues/192)) ([ceed239](https://github.com/Starosdev/scrutiny/commit/ceed239b6ead6321d2c671b4f77fecf8de294d3a))
+
 ## [1.20.3](https://github.com/Starosdev/scrutiny/compare/v1.20.2...v1.20.3) (2026-02-07)
 
 ### Bug Fixes
