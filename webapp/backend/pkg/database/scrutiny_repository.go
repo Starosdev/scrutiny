@@ -606,6 +606,7 @@ yearlyData = from(bucket: bucketBaseName + "_yearly")
 
 union(tables: [dailyData, weeklyData, monthlyData, yearlyData])
 |> group(columns: ["device_wwn"])
+|> sort(columns: ["_time"], desc: false)
 |> last()
 |> yield(name: "last_seen")
 	`, sr.appConfig.GetString("web.influxdb.bucket"))
