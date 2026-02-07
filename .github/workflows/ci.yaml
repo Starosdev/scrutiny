@@ -91,6 +91,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -102,6 +104,7 @@ jobs:
         with:
           version: latest
           args: --timeout=5m
+          only-new-issues: true
 
   build:
     name: Build ${{ matrix.cfg.goos }}/${{ matrix.cfg.goarch }}
