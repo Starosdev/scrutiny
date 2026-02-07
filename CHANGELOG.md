@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.20.2](https://github.com/Starosdev/scrutiny/compare/v1.20.1...v1.20.2) (2026-02-07)
+
+### Bug Fixes
+
+* **ui:** version display clipped on mobile viewports ([#184](https://github.com/Starosdev/scrutiny/issues/184)) ([893fae7](https://github.com/Starosdev/scrutiny/commit/893fae773b52f1359b28c630a95dead4d84d570c)), closes [#167](https://github.com/Starosdev/scrutiny/issues/167)
+
 ## [1.20.1](https://github.com/Starosdev/scrutiny/compare/v1.20.0...v1.20.1) (2026-02-06)
 
 ### Bug Fixes
