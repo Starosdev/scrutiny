@@ -322,6 +322,9 @@ Dots and dashes in key names become underscores.
 | `web.listen.port` | `SCRUTINY_WEB_LISTEN_PORT` | `8080` |
 | `web.listen.host` | `SCRUTINY_WEB_LISTEN_HOST` | `0.0.0.0` |
 | `web.listen.basepath` | `SCRUTINY_WEB_LISTEN_BASEPATH` | `` |
+| `web.listen.read_timeout_seconds` | `SCRUTINY_WEB_LISTEN_READ_TIMEOUT_SECONDS` | `10` |
+| `web.listen.write_timeout_seconds` | `SCRUTINY_WEB_LISTEN_WRITE_TIMEOUT_SECONDS` | `30` |
+| `web.listen.idle_timeout_seconds` | `SCRUTINY_WEB_LISTEN_IDLE_TIMEOUT_SECONDS` | `60` |
 | `web.database.location` | `SCRUTINY_WEB_DATABASE_LOCATION` | `/opt/scrutiny/config/scrutiny.db` |
 | `web.database.journal_mode` | `SCRUTINY_WEB_DATABASE_JOURNAL_MODE` | `WAL` |
 | `web.src.frontend.path` | `SCRUTINY_WEB_SRC_FRONTEND_PATH` | `/opt/scrutiny/web` |
