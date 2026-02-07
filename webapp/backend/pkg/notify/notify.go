@@ -337,12 +337,6 @@ func (n *Notify) Send() error {
 		n.Logger.Error("One or more notifications failed to send successfully. See logs for more information.")
 		return err
 	}
-	////wg.Wait()
-	//if waitTimeout(&wg, time.Minute) { //wait for 1 minute
-	//	fmt.Println("Timed out while sending notifications")
-	//} else {
-	//}
-	//return nil
 }
 
 func (n *Notify) SendWebhookNotification(webhookUrl string) error {

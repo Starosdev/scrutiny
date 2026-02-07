@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"time"
 
@@ -25,10 +24,13 @@ var goarch string
 
 func main() {
 
+	// Create a bootstrap logger early so all startup errors use structured logging
+	bootstrapLogger := logrus.WithFields(logrus.Fields{"type": "web"})
+	bootstrapLogger.Logger.SetLevel(logrus.InfoLevel)
+
 	config, err := config.Create()
 	if err != nil {
-		fmt.Printf("FATAL: %+v\n", err)
-		os.Exit(1)
+		bootstrapLogger.Fatalf("FATAL: %+v", err)
 	}
 
 	configFilePath := "/opt/scrutiny/config/scrutiny.yaml"
@@ -37,16 +39,12 @@ func main() {
 		configFilePath = configFilePathAlternative
 	}
 
-	// Create a bootstrap logger for config loading (before config-based logger is available)
-	bootstrapLogger := logrus.WithFields(logrus.Fields{"type": "web"})
-	bootstrapLogger.Logger.SetLevel(logrus.InfoLevel)
-
 	//we're going to load the config file manually, since we need to validate it.
 	err = config.ReadConfig(configFilePath, bootstrapLogger) // Find and read the config file
 	if _, ok := err.(errors.ConfigFileMissingError); ok {    // Handle errors reading the config file
 		//ignore "could not find config file"
 	} else if err != nil {
-		log.Print(color.HiRedString("CONFIG ERROR: %v", err))
+		bootstrapLogger.Error(color.HiRedString("CONFIG ERROR: %v", err))
 		os.Exit(1)
 	}
 
@@ -164,7 +162,7 @@ OPTIONS:
 
 	err = app.Run(os.Args)
 	if err != nil {
-		log.Fatal(color.HiRedString("ERROR: %v", err))
+		bootstrapLogger.Fatal(color.HiRedString("ERROR: %v", err))
 	}
 
 }

@@ -2,7 +2,6 @@ package measurements
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
+	"github.com/sirupsen/logrus"
 )
 
 type Smart struct {
@@ -55,7 +55,7 @@ func (sm *Smart) Flatten() (tags map[string]string, fields map[string]interface{
 	return tags, fields
 }
 
-func NewSmartFromInfluxDB(attrs map[string]interface{}) (*Smart, error) {
+func NewSmartFromInfluxDB(attrs map[string]interface{}, logger logrus.FieldLogger) (*Smart, error) {
 	//go though the massive map returned from influxdb. If a key is associated with the Smart struct, assign it. If it starts with "attr.*" group it by attributeId, and pass to attribute inflate.
 
 	sm := Smart{
@@ -73,19 +73,19 @@ func NewSmartFromInfluxDB(attrs map[string]interface{}) (*Smart, error) {
 			if intVal, ok := val.(int64); ok {
 				sm.Temp = intVal
 			} else {
-				log.Printf("unable to parse temp information: %v", val)
+				logger.Warnf("unable to parse temp information: %v", val)
 			}
 		case "power_on_hours":
 			if intVal, ok := val.(int64); ok {
 				sm.PowerOnHours = intVal
 			} else {
-				log.Printf("unable to parse power_on_hours information: %v", val)
+				logger.Warnf("unable to parse power_on_hours information: %v", val)
 			}
 		case "power_cycle_count":
 			if intVal, ok := val.(int64); ok {
 				sm.PowerCycleCount = intVal
 			} else {
-				log.Printf("unable to parse power_cycle_count information: %v", val)
+				logger.Warnf("unable to parse power_cycle_count information: %v", val)
 			}
 		case "logical_block_size":
 			if intVal, ok := val.(int64); ok {
@@ -126,7 +126,7 @@ func NewSmartFromInfluxDB(attrs map[string]interface{}) (*Smart, error) {
 
 	}
 
-	log.Printf("Found Smart Device (%s) Attributes (%v)", sm.DeviceWWN, len(sm.Attributes))
+	logger.Debugf("Found Smart Device (%s) Attributes (%v)", sm.DeviceWWN, len(sm.Attributes))
 
 	return &sm, nil
 }
