@@ -167,6 +167,7 @@ func (dv *Device) IsNvme() bool {
 // This function is called every time the collector sends SMART data to the API.
 // It can be used to update device data that can change over time.
 func (dv *Device) UpdateFromCollectorSmartInfo(info collector.SmartInfo) error {
+	dv.ModelName = info.ModelName
 	dv.Firmware = info.FirmwareVersion
 	dv.DeviceProtocol = info.Device.Protocol
 
