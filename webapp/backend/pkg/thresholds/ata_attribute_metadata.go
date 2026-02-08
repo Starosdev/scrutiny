@@ -258,10 +258,49 @@ var AtaMetadata = map[int]AtaAttributeMetadata{
 
 		ID:          9,
 		DisplayName: "Power-On Hours",
-		DisplayType: AtaSmartAttributeDisplayTypeNormalized,
+		DisplayType: AtaSmartAttributeDisplayTypeTransformed,
 		Ideal:       "",
 		Critical:    false,
 		Description: "Count of hours in power-on state. The raw value of this attribute shows total count of hours (or minutes, or seconds, depending on manufacturer) in power-on state. By default, the total expected lifetime of a hard disk in perfect condition is defined as 5 years (running every day and night on all days). This is equal to 1825 days in 24/7 mode or 43800 hours. On some pre-2005 drives, this raw value may advance erratically and/or \"wrap around\" (reset to zero periodically).",
+		Transform: func(normValue int64, rawValue int64, rawString string) int64 {
+			// smartctl "h+m+s" format (e.g., "1730h+05m+02.453s")
+			if strings.Contains(rawString, "h+") {
+				hIdx := strings.Index(rawString, "h+")
+				if hIdx > 0 {
+					hours, err := strconv.ParseInt(rawString[:hIdx], 10, 64)
+					if err == nil {
+						return hours
+					}
+				}
+			}
+
+			// smartctl parsed format with parenthetical hours
+			// e.g., "103800 (1730 hours)" when smartctl detects minutes encoding
+			if strings.Contains(rawString, "hours)") {
+				parenStart := strings.Index(rawString, "(")
+				if parenStart >= 0 {
+					inner := rawString[parenStart+1:]
+					spaceIdx := strings.Index(inner, " ")
+					if spaceIdx > 0 {
+						hours, err := strconv.ParseInt(inner[:spaceIdx], 10, 64)
+						if err == nil {
+							return hours
+						}
+					}
+				}
+			}
+
+			// Packed 48-bit raw value with extra data in upper bytes.
+			// Some manufacturers store additional data (e.g., temperature, flags) in
+			// the upper bytes. The actual power-on hours are in the lower 32 bits.
+			if rawValue > 0xFFFFFFFF {
+				return rawValue & 0xFFFFFFFF
+			}
+
+			// Standard: raw value is already in hours
+			return rawValue
+		},
+		TransformValueUnit: "hours",
 	},
 	10: {
 		ID:          10,
