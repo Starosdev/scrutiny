@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.23.2](https://github.com/Starosdev/scrutiny/compare/v1.23.1...v1.23.2) (2026-02-08)
+
+### Bug Fixes
+
+* **smart:** handle manufacturer-specific Power-On Hours encoding ([#199](https://github.com/Starosdev/scrutiny/issues/199)) ([5229fc5](https://github.com/Starosdev/scrutiny/commit/5229fc5f5befe7ae5b9039246a6a3efcfc88e569)), closes [#191](https://github.com/Starosdev/scrutiny/issues/191) [#191](https://github.com/Starosdev/scrutiny/issues/191)
+
 ## [1.23.1](https://github.com/Starosdev/scrutiny/compare/v1.23.0...v1.23.1) (2026-02-08)
 
 ### Bug Fixes
