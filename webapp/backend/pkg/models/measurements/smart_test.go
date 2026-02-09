@@ -350,6 +350,9 @@ func TestFromCollectorSmartInfo(t *testing.T) {
 	require.Equal(t, int64(163210330144), smartMdl.Attributes["194"].(*measurements.SmartAtaAttribute).RawValue)
 	require.Equal(t, int64(32), smartMdl.Attributes["194"].(*measurements.SmartAtaAttribute).TransformedValue)
 
+	//check that power-on hours was correctly transformed
+	require.Equal(t, int64(1730), smartMdl.Attributes["9"].(*measurements.SmartAtaAttribute).TransformedValue)
+
 	//ensure that Scrutiny warning for a non critical attribute does not set device status to failed.
 	require.Equal(t, pkg.AttributeStatusWarningScrutiny, smartMdl.Attributes["3"].GetStatus())
 

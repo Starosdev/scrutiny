@@ -2,6 +2,18 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.23.2](https://github.com/Starosdev/scrutiny/compare/v1.23.1...v1.23.2) (2026-02-08)
+
+### Bug Fixes
+
+* **smart:** handle manufacturer-specific Power-On Hours encoding ([#199](https://github.com/Starosdev/scrutiny/issues/199)) ([5229fc5](https://github.com/Starosdev/scrutiny/commit/5229fc5f5befe7ae5b9039246a6a3efcfc88e569)), closes [#191](https://github.com/Starosdev/scrutiny/issues/191) [#191](https://github.com/Starosdev/scrutiny/issues/191)
+
+## [1.23.1](https://github.com/Starosdev/scrutiny/compare/v1.23.0...v1.23.1) (2026-02-08)
+
+### Bug Fixes
+
+* **smart:** persist model name for SAS/SCSI drives ([#198](https://github.com/Starosdev/scrutiny/issues/198)) ([599f1b6](https://github.com/Starosdev/scrutiny/commit/599f1b617aaf05bed87f138e44c8180140325fd2)), closes [#190](https://github.com/Starosdev/scrutiny/issues/190) [#190](https://github.com/Starosdev/scrutiny/issues/190)
+
 ## [1.23.0](https://github.com/Starosdev/scrutiny/compare/v1.22.0...v1.23.0) (2026-02-07)
 
 ### Features
