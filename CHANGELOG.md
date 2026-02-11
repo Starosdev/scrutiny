@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.23.3](https://github.com/Starosdev/scrutiny/compare/v1.23.2...v1.23.3) (2026-02-11)
+
+### Bug Fixes
+
+* **ui:** hide threshold for non-normalized ATA attributes ([#214](https://github.com/Starosdev/scrutiny/issues/214)) ([69fe7d4](https://github.com/Starosdev/scrutiny/commit/69fe7d40d462fcf413600157e883e61ea456118c)), closes [#181](https://github.com/Starosdev/scrutiny/issues/181)
+
 ## [1.23.2](https://github.com/Starosdev/scrutiny/compare/v1.23.1...v1.23.2) (2026-02-08)
 
 ### Bug Fixes
