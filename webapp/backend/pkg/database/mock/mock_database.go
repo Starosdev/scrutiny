@@ -201,6 +201,36 @@ func (mr *MockDeviceRepoMockRecorder) GetMergedOverrides(ctx interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMergedOverrides", reflect.TypeOf((*MockDeviceRepo)(nil).GetMergedOverrides), ctx)
 }
 
+// GetPerformanceBaseline mocks base method.
+func (m *MockDeviceRepo) GetPerformanceBaseline(ctx context.Context, wwn string, count int) (*measurements.PerformanceBaseline, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPerformanceBaseline", ctx, wwn, count)
+	ret0, _ := ret[0].(*measurements.PerformanceBaseline)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPerformanceBaseline indicates an expected call of GetPerformanceBaseline.
+func (mr *MockDeviceRepoMockRecorder) GetPerformanceBaseline(ctx, wwn, count interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPerformanceBaseline", reflect.TypeOf((*MockDeviceRepo)(nil).GetPerformanceBaseline), ctx, wwn, count)
+}
+
+// GetPerformanceHistory mocks base method.
+func (m *MockDeviceRepo) GetPerformanceHistory(ctx context.Context, wwn, durationKey string) ([]measurements.Performance, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPerformanceHistory", ctx, wwn, durationKey)
+	ret0, _ := ret[0].([]measurements.Performance)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPerformanceHistory indicates an expected call of GetPerformanceHistory.
+func (mr *MockDeviceRepoMockRecorder) GetPerformanceHistory(ctx, wwn, durationKey interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPerformanceHistory", reflect.TypeOf((*MockDeviceRepo)(nil).GetPerformanceHistory), ctx, wwn, durationKey)
+}
+
 // GetPreviousSmartSubmission mocks base method.
 func (m *MockDeviceRepo) GetPreviousSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error) {
 	m.ctrl.T.Helper()
@@ -420,6 +450,20 @@ func (m *MockDeviceRepo) SaveAttributeOverride(ctx context.Context, override *mo
 func (mr *MockDeviceRepoMockRecorder) SaveAttributeOverride(ctx, override interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveAttributeOverride", reflect.TypeOf((*MockDeviceRepo)(nil).SaveAttributeOverride), ctx, override)
+}
+
+// SavePerformanceResults mocks base method.
+func (m *MockDeviceRepo) SavePerformanceResults(ctx context.Context, wwn string, perfData measurements.Performance) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SavePerformanceResults", ctx, wwn, perfData)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SavePerformanceResults indicates an expected call of SavePerformanceResults.
+func (mr *MockDeviceRepoMockRecorder) SavePerformanceResults(ctx, wwn, perfData interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SavePerformanceResults", reflect.TypeOf((*MockDeviceRepo)(nil).SavePerformanceResults), ctx, wwn, perfData)
 }
 
 // SaveSettings mocks base method.

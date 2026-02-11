@@ -58,6 +58,12 @@ func (c *configuration) Init() error {
 	
 	//c.SetDefault("collect.short.command", "-a -o on -S on")
 
+	c.SetDefault("commands.performance_fio_bin", "fio")
+	c.SetDefault("performance.enabled", false)
+	c.SetDefault("performance.profile", "quick")
+	c.SetDefault("performance.allow_direct_device_io", false)
+	c.SetDefault("performance.temp_file_size", "256M")
+
 	c.SetDefault("allow_listed_devices", []string{})
 
 	//if you want to load a non-standard location system config file (~/drawbridge.yml), use ReadConfig
