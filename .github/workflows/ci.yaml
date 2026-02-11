@@ -26,7 +26,6 @@ jobs:
   test-backend:
     name: Test Backend
     runs-on: ubuntu-latest
-    container: ghcr.io/packagrio/packagr:latest-golang
     # Service containers to run with `build` (Required for end-to-end testing)
     services:
       influxdb:
@@ -43,13 +42,12 @@ jobs:
     env:
       STATIC: true
     steps:
-      - name: Git
-        run: |
-          apt-get update && apt-get install -y software-properties-common
-          add-apt-repository ppa:git-core/ppa && apt-get update && apt-get install -y git
-          git --version
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
       - name: Test Backend
         run: |
           make binary-clean binary-test-coverage
@@ -96,7 +94,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.0'
+          go-version-file: go.mod
       - name: Sync vendor
         run: go mod vendor
       - name: golangci-lint
@@ -133,7 +131,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.0'
+          go-version-file: go.mod
       - name: Build Binaries
         run: |
           make binary-clean binary-all

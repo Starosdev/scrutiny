@@ -192,7 +192,7 @@ failures:
 #      fail_above: 95
 
 # Notification "urls" look like the following. For more information about service specific configuration see
-# Shoutrrr's documentation: https://containrrr.dev/shoutrrr/services/overview/
+# Shoutrrr's documentation: https://nicholas-fedor.github.io/shoutrrr/
 #
 # note, usernames and passwords containing special characters will need to be urlencoded.
 # if your username is: "myname@example.com" and your password is "124@34$1"
