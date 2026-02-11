@@ -152,3 +152,94 @@ func TestValidateThreshold_NonCriticalAttribute_InferredRate_TriggersFailure(t *
 	require.InDelta(t, 0.22, sa.FailureRate, 0.001)
 	require.True(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
 }
+
+// Attribute 177 (Wear Leveling Count) Threshold Tests
+
+func TestValidateThreshold_Attr177_NewDrive_NormalizedValue100_Passes(t *testing.T) {
+	sa := SmartAtaAttribute{AttributeId: 177, Value: 100, RawValue: 0}
+	metadata := thresholds.AtaMetadata[177]
+
+	sa.ValidateThreshold(metadata)
+
+	require.Less(t, sa.FailureRate, 0.10)
+	require.False(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
+	require.False(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusWarningScrutiny))
+}
+
+func TestValidateThreshold_Attr177_LightWear_NormalizedValue85_Passes(t *testing.T) {
+	sa := SmartAtaAttribute{AttributeId: 177, Value: 85, RawValue: 500}
+	metadata := thresholds.AtaMetadata[177]
+
+	sa.ValidateThreshold(metadata)
+
+	require.Less(t, sa.FailureRate, 0.10)
+	require.False(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
+}
+
+func TestValidateThreshold_Attr177_ModerateWear_NormalizedValue40_Passes(t *testing.T) {
+	sa := SmartAtaAttribute{AttributeId: 177, Value: 40, RawValue: 3000}
+	metadata := thresholds.AtaMetadata[177]
+
+	sa.ValidateThreshold(metadata)
+
+	require.Less(t, sa.FailureRate, 0.10)
+	require.False(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
+}
+
+func TestValidateThreshold_Attr177_SevereWear_NormalizedValue15_Fails(t *testing.T) {
+	sa := SmartAtaAttribute{AttributeId: 177, Value: 15, RawValue: 8000}
+	metadata := thresholds.AtaMetadata[177]
+
+	sa.ValidateThreshold(metadata)
+
+	require.GreaterOrEqual(t, sa.FailureRate, 0.10)
+	require.True(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
+}
+
+func TestValidateThreshold_Attr177_FullyWorn_NormalizedValue0_Fails(t *testing.T) {
+	sa := SmartAtaAttribute{AttributeId: 177, Value: 0, RawValue: 10000}
+	metadata := thresholds.AtaMetadata[177]
+
+	sa.ValidateThreshold(metadata)
+
+	require.GreaterOrEqual(t, sa.FailureRate, 0.10)
+	require.True(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
+}
+
+func TestValidateThreshold_Attr177_BoundaryValue25_Passes(t *testing.T) {
+	sa := SmartAtaAttribute{AttributeId: 177, Value: 25, RawValue: 5000}
+	metadata := thresholds.AtaMetadata[177]
+
+	sa.ValidateThreshold(metadata)
+
+	require.Less(t, sa.FailureRate, 0.10)
+	require.False(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
+}
+
+func TestValidateThreshold_Attr177_BoundaryValue24_Fails(t *testing.T) {
+	sa := SmartAtaAttribute{AttributeId: 177, Value: 24, RawValue: 5500}
+	metadata := thresholds.AtaMetadata[177]
+
+	sa.ValidateThreshold(metadata)
+
+	require.GreaterOrEqual(t, sa.FailureRate, 0.10)
+	require.True(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
+}
+
+func TestValidateThreshold_Attr177_AboveNormal_NormalizedValue110_Passes(t *testing.T) {
+	sa := SmartAtaAttribute{AttributeId: 177, Value: 110, RawValue: 0}
+	metadata := thresholds.AtaMetadata[177]
+
+	sa.ValidateThreshold(metadata)
+
+	require.Less(t, sa.FailureRate, 0.10)
+	require.False(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
+}
+
+func TestValidateThreshold_Attr177_NoBucketWarning_Eliminated(t *testing.T) {
+	sa := SmartAtaAttribute{AttributeId: 177, Value: 92, RawValue: 200}
+	sa.PopulateAttributeStatus()
+
+	require.False(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusWarningScrutiny))
+	require.False(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
+}
