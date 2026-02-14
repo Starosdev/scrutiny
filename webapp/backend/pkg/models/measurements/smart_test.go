@@ -1232,7 +1232,7 @@ func TestCorrectedTemperature_NormalATA(t *testing.T) {
 	}
 	info.Device.Protocol = "ATA"
 
-	require.Equal(t, int64(35), measurements.CorrectedTemperature(info))
+	require.Equal(t, int64(35), measurements.CorrectedTemperature(&info))
 }
 
 func TestCorrectedTemperature_NormalNVMe(t *testing.T) {
@@ -1243,7 +1243,7 @@ func TestCorrectedTemperature_NormalNVMe(t *testing.T) {
 	}
 	info.Device.Protocol = "NVMe"
 
-	require.Equal(t, int64(42), measurements.CorrectedTemperature(info))
+	require.Equal(t, int64(42), measurements.CorrectedTemperature(&info))
 }
 
 func TestCorrectedTemperature_NegativeATA_FallbackToAttr194(t *testing.T) {
@@ -1264,7 +1264,7 @@ func TestCorrectedTemperature_NegativeATA_FallbackToAttr194(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, int64(45), measurements.CorrectedTemperature(info),
+	require.Equal(t, int64(45), measurements.CorrectedTemperature(&info),
 		"Negative temperature should fall back to attribute 194")
 }
 
@@ -1286,7 +1286,7 @@ func TestCorrectedTemperature_ZeroATA_FallbackToAttr194(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, int64(42), measurements.CorrectedTemperature(info),
+	require.Equal(t, int64(42), measurements.CorrectedTemperature(&info),
 		"Zero temperature should fall back to attribute 194")
 }
 
@@ -1308,7 +1308,7 @@ func TestCorrectedTemperature_ATA_BitMask(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, int64(50), measurements.CorrectedTemperature(info),
+	require.Equal(t, int64(50), measurements.CorrectedTemperature(&info),
 		"Should extract lowest byte via 0xFF bitmask")
 }
 
@@ -1330,7 +1330,7 @@ func TestCorrectedTemperature_OverTemp_FallbackToAttr194(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, int64(38), measurements.CorrectedTemperature(info),
+	require.Equal(t, int64(38), measurements.CorrectedTemperature(&info),
 		">150C should trigger fallback to attribute 194")
 }
 
@@ -1342,7 +1342,7 @@ func TestCorrectedTemperature_ATA_NoAttr194_KeepsOriginal(t *testing.T) {
 	}
 	info.Device.Protocol = "ATA"
 
-	require.Equal(t, int64(-53), measurements.CorrectedTemperature(info),
+	require.Equal(t, int64(-53), measurements.CorrectedTemperature(&info),
 		"Without attribute 194, should return the original value")
 }
 
@@ -1357,6 +1357,6 @@ func TestCorrectedTemperature_SCSI_FallbackToEnvironmentalReports(t *testing.T) 
 	}
 	info.Device.Protocol = "SCSI"
 
-	require.Equal(t, int64(38), measurements.CorrectedTemperature(info),
+	require.Equal(t, int64(38), measurements.CorrectedTemperature(&info),
 		"SCSI should fall back to scsi_environmental_reports")
 }

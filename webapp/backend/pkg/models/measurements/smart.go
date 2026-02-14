@@ -146,7 +146,7 @@ func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn s
 	sm.Date = time.Unix(info.LocalTime.TimeT, 0)
 
 	//smart metrics
-	sm.Temp = CorrectedTemperature(info)
+	sm.Temp = CorrectedTemperature(&info)
 	sm.PowerCycleCount = info.PowerCycleCount
 	sm.PowerOnHours = info.PowerOnTime.Hours
 	// Store logical block size from smartctl (default to 512 if not provided)

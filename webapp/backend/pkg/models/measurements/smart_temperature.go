@@ -41,7 +41,7 @@ func (st *SmartTemperature) Inflate(key string, val interface{}) {
 // in the standard temperature.current field. This function applies fallbacks:
 //   - SCSI/SAS: falls back to scsi_environmental_reports.temperature_1.current
 //   - ATA: falls back to attribute 194 raw value (lowest byte via 0xFF bitmask)
-func CorrectedTemperature(info collector.SmartInfo) int64 {
+func CorrectedTemperature(info *collector.SmartInfo) int64 {
 	temp := info.Temperature.Current
 
 	// For SCSI/SAS drives, if standard temperature field is 0, check scsi_environmental_reports
