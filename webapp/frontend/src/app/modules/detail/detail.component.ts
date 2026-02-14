@@ -278,12 +278,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             if (!attributeMetadata || attributeMetadata.display_type === 'normalized') {
                 return attributeData.thresh
             } else {
-                // if(this.data.metadata[attribute_data.attribute_id].observed_thresholds){
-                //
-                // } else {
-                // }
-                // return ''
-                return attributeData.thresh
+                return ''
             }
         } else {
             return (attributeData.thresh === -1 ? '' : attributeData.thresh)
