@@ -141,8 +141,8 @@ docker run -p 8080:8080 -p 8086:8086 --restart unless-stopped \
 
 ### Hub/Spoke Deployment
 
-In addition to the Omnibus image (available under the `latest` tag) you can deploy in Hub/Spoke mode, which requires 3
-other Docker images:
+In addition to the Omnibus image (available under the `latest` tag) you can deploy in Hub/Spoke mode using
+the following Docker images:
 
 - `ghcr.io/starosdev/scrutiny:latest-collector` - Contains the Scrutiny data collector, `smartctl` binary and cron-like
   scheduler. You can run one collector on each server.
@@ -260,7 +260,7 @@ The performance collector is available as a separate Docker image:
 docker run --restart unless-stopped \
   --device=/dev/sda \
   --device=/dev/sdb \
-  -e COLLECTOR_API_ENDPOINT=http://SCRUTINY_WEB_IPADDRESS:8080 \
+  -e COLLECTOR_PERF_API_ENDPOINT=http://SCRUTINY_WEB_IPADDRESS:8080 \
   --name scrutiny-perf-collector \
   ghcr.io/starosdev/scrutiny:latest-collector-performance
 ```
@@ -496,10 +496,10 @@ The performance collector checks `COLLECTOR_PERF_` prefixed variables first, the
 | `host.id` | `COLLECTOR_PERF_HOST_ID` or `COLLECTOR_HOST_ID` | `` |
 | `api.endpoint` | `COLLECTOR_PERF_API_ENDPOINT` or `COLLECTOR_API_ENDPOINT` | `http://localhost:8080` |
 | `performance.profile` | `COLLECTOR_PERF_PROFILE` | `quick` |
-| `performance.enabled` | `COLLECTOR_PERFORMANCE_ENABLED` | `true` |
+| `performance.enabled` | `COLLECTOR_PERFORMANCE_ENABLED` | `false` |
 | `performance.temp_file_size` | `COLLECTOR_PERFORMANCE_TEMP_FILE_SIZE` | `256M` |
 | `commands.performance_fio_bin` | `COLLECTOR_COMMANDS_PERFORMANCE_FIO_BIN` | `fio` |
-| `log.level` | `COLLECTOR_PERF_DEBUG` or `COLLECTOR_DEBUG` | `INFO` |
+| `log.level` | `COLLECTOR_LOG_LEVEL` | `INFO` |
 | `log.file` | `COLLECTOR_PERF_LOG_FILE` or `COLLECTOR_LOG_FILE` | `` |
 
 ### Performance Collector Docker-Only Environment Variables

@@ -20,11 +20,11 @@
 # Examples:
 #   api.endpoint                  -> COLLECTOR_PERF_API_ENDPOINT or COLLECTOR_API_ENDPOINT
 #   host.id                       -> COLLECTOR_PERF_HOST_ID or COLLECTOR_HOST_ID
-#   performance.profile           -> COLLECTOR_PERF_PROFILE
+#   performance.profile           -> COLLECTOR_PERF_PROFILE or COLLECTOR_PERFORMANCE_PROFILE
 #   performance.enabled           -> COLLECTOR_PERFORMANCE_ENABLED
 #   performance.temp_file_size    -> COLLECTOR_PERFORMANCE_TEMP_FILE_SIZE
 #   commands.performance_fio_bin  -> COLLECTOR_COMMANDS_PERFORMANCE_FIO_BIN
-#   log.level                     -> COLLECTOR_PERF_LOG_FILE or COLLECTOR_LOG_LEVEL
+#   log.level                     -> COLLECTOR_LOG_LEVEL (or use --debug / COLLECTOR_PERF_DEBUG)
 #   log.file                      -> COLLECTOR_PERF_LOG_FILE or COLLECTOR_LOG_FILE
 #
 # Environment variables take precedence over config file values.
