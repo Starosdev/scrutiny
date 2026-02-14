@@ -146,28 +146,7 @@ func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn s
 	sm.Date = time.Unix(info.LocalTime.TimeT, 0)
 
 	//smart metrics
-	sm.Temp = info.Temperature.Current
-	// For SCSI/SAS drives, if standard temperature field is 0, check scsi_environmental_reports
-	if sm.Temp == 0 && len(info.ScsiEnvironmentalReports) > 0 {
-		if temp, ok := info.ScsiEnvironmentalReports["temperature_1"]; ok {
-			sm.Temp = temp.Current
-		}
-	}
-	// For ATA drives, if standard temperature is unreasonable, check attribute 194 (Temperature)
-	// Covers: zero (not reported), negative (e.g., -53 from corrupted device statistics), or >150C
-	if (sm.Temp <= 0 || sm.Temp > 150) && info.Device.Protocol == pkg.DeviceProtocolAta {
-		for _, attr := range info.AtaSmartAttributes.Table {
-			if attr.ID == 194 && attr.Raw.Value > 0 {
-				// Apply same bit-mask as the Transform function (lowest byte contains temp in Celsius)
-				extractedTemp := attr.Raw.Value & 0xFF
-				// Sanity check: temperature should be reasonable (0-100C range)
-				if extractedTemp > 0 && extractedTemp < 100 {
-					sm.Temp = extractedTemp
-				}
-				break
-			}
-		}
-	}
+	sm.Temp = CorrectedTemperature(&info)
 	sm.PowerCycleCount = info.PowerCycleCount
 	sm.PowerOnHours = info.PowerOnTime.Hours
 	// Store logical block size from smartctl (default to 512 if not provided)
