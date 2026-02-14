@@ -36,17 +36,13 @@ func (sr *scrutinyRepository) GetPerformanceHistory(ctx context.Context, wwn str
 		from(bucket: "%s")
 		|> range(start: %s, stop: %s)
 		|> filter(fn: (r) => r["_measurement"] == "performance")
-		|> filter(fn: (r) => r["device_wwn"] == params.wwn)
+		|> filter(fn: (r) => r["device_wwn"] == "%s")
 		|> aggregateWindow(every: 1h, fn: last, createEmpty: false)
 		|> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
 		|> sort(columns: ["_time"], desc: false)
-	`, bucketName, duration[0], duration[1])
+	`, bucketName, duration[0], duration[1], wwn)
 
-	params := map[string]interface{}{
-		"wwn": wwn,
-	}
-
-	result, err := sr.influxQueryApi.QueryWithParams(ctx, queryStr, params)
+	result, err := sr.influxQueryApi.Query(ctx, queryStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query performance metrics: %v", err)
 	}
@@ -80,17 +76,13 @@ func (sr *scrutinyRepository) GetPerformanceBaseline(ctx context.Context, wwn st
 		from(bucket: "%s")
 		|> range(start: -30d)
 		|> filter(fn: (r) => r["_measurement"] == "performance")
-		|> filter(fn: (r) => r["device_wwn"] == params.wwn)
+		|> filter(fn: (r) => r["device_wwn"] == "%s")
 		|> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
 		|> sort(columns: ["_time"], desc: true)
 		|> limit(n: %d)
-	`, bucketName, count)
+	`, bucketName, wwn, count)
 
-	params := map[string]interface{}{
-		"wwn": wwn,
-	}
-
-	result, err := sr.influxQueryApi.QueryWithParams(ctx, queryStr, params)
+	result, err := sr.influxQueryApi.Query(ctx, queryStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query performance baseline: %v", err)
 	}

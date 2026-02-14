@@ -96,8 +96,13 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     performanceHistory: PerformanceModel[] = [];
     performanceBaseline: PerformanceBaselineModel | null = null;
     hasPerformanceData = false;
+    performanceEverLoaded = false;
     perfDurationKey = 'week';
     performanceLoading = false;
+    hasThroughputData = false;
+    hasIopsData = false;
+    hasLatencyData = false;
+    hasEnoughSamplesForCharts = false;
     throughputChartOptions: Partial<ApexOptions>;
     iopsChartOptions: Partial<ApexOptions>;
     latencyChartOptions: Partial<ApexOptions>;
@@ -772,9 +777,20 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                         this.performanceHistory = resp.data.history;
                         this.performanceBaseline = resp.data.baseline;
                         this.hasPerformanceData = true;
+                        this.performanceEverLoaded = true;
+                        this.hasThroughputData = resp.data.history.some(p => p.seq_read_bw_bytes > 0 || p.seq_write_bw_bytes > 0);
+                        this.hasIopsData = resp.data.history.some(p => p.rand_read_iops > 0 || p.rand_write_iops > 0);
+                        this.hasLatencyData = resp.data.history.some(p => p.rand_read_lat_ns_avg > 0);
+                        this.hasEnoughSamplesForCharts = resp.data.history.length >= 2;
                         this._preparePerformanceCharts();
                     } else {
                         this.hasPerformanceData = false;
+                        this.performanceHistory = [];
+                        this.performanceBaseline = null;
+                        this.hasThroughputData = false;
+                        this.hasIopsData = false;
+                        this.hasLatencyData = false;
+                        this.hasEnoughSamplesForCharts = false;
                     }
                 },
                 error: () => {
