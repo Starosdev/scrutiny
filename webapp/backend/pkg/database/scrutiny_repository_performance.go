@@ -12,7 +12,7 @@ import (
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // SavePerformanceResults saves performance benchmark results to InfluxDB
-func (sr *scrutinyRepository) SavePerformanceResults(ctx context.Context, wwn string, perfData measurements.Performance) error {
+func (sr *scrutinyRepository) SavePerformanceResults(ctx context.Context, wwn string, perfData *measurements.Performance) error {
 	perfData.DeviceWWN = wwn
 
 	tags, fields := perfData.Flatten()

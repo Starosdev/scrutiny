@@ -75,7 +75,7 @@ func UploadDevicePerformance(c *gin.Context) {
 		TestDurationSec:   req.TestDurationSec,
 	}
 
-	if err := deviceRepo.SavePerformanceResults(c, wwn, perfData); err != nil {
+	if err := deviceRepo.SavePerformanceResults(c, wwn, &perfData); err != nil {
 		logger.Errorln("An error occurred while saving performance results", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return

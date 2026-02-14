@@ -158,7 +158,8 @@ OPTIONS:
 					settingsData, settingsErr := json.MarshalIndent(config.AllSettings(), "", "\t")
 					collectorLogger.Debug(string(settingsData), settingsErr)
 
-					perfCollector, err := performance.CreateCollector(
+					var perfCollector *performance.Collector
+					perfCollector, err = performance.CreateCollector(
 						config,
 						collectorLogger,
 						config.GetString("api.endpoint"),

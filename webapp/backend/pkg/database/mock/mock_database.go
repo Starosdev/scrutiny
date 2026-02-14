@@ -453,7 +453,7 @@ func (mr *MockDeviceRepoMockRecorder) SaveAttributeOverride(ctx, override interf
 }
 
 // SavePerformanceResults mocks base method.
-func (m *MockDeviceRepo) SavePerformanceResults(ctx context.Context, wwn string, perfData measurements.Performance) error {
+func (m *MockDeviceRepo) SavePerformanceResults(ctx context.Context, wwn string, perfData *measurements.Performance) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SavePerformanceResults", ctx, wwn, perfData)
 	ret0, _ := ret[0].(error)

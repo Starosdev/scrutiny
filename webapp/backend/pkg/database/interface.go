@@ -90,7 +90,7 @@ type DeviceRepo interface {
 	GetMergedOverrides(ctx context.Context) []overrides.AttributeOverride
 
 	// Performance benchmark operations
-	SavePerformanceResults(ctx context.Context, wwn string, perfData measurements.Performance) error
+	SavePerformanceResults(ctx context.Context, wwn string, perfData *measurements.Performance) error
 	GetPerformanceHistory(ctx context.Context, wwn string, durationKey string) ([]measurements.Performance, error)
 	GetPerformanceBaseline(ctx context.Context, wwn string, count int) (*measurements.PerformanceBaseline, error)
 }
