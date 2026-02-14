@@ -18,6 +18,9 @@ import {SmartModel} from 'app/core/models/measurements/smart-model';
 import {SmartAttributeModel} from 'app/core/models/measurements/smart-attribute-model';
 import {AttributeMetadataModel} from 'app/core/models/thresholds/attribute-metadata-model';
 import {DeviceStatusPipe} from 'app/shared/device-status.pipe';
+import {PerformanceModel, PerformanceBaselineModel, PerformanceResponseWrapper} from 'app/core/models/measurements/performance-model';
+import {LatencyPipe} from 'app/shared/latency.pipe';
+import {FileSizePipe} from 'app/shared/file-size.pipe';
 
 // from Constants.go - these must match
 const AttributeStatusPassed = 0
@@ -89,6 +92,16 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     @ViewChild('smartAttributeTable', {read: MatSort})
     smartAttributeTableMatSort: MatSort;
 
+    // Performance benchmarks
+    performanceHistory: PerformanceModel[] = [];
+    performanceBaseline: PerformanceBaselineModel | null = null;
+    hasPerformanceData = false;
+    perfDurationKey = 'week';
+    performanceLoading = false;
+    throughputChartOptions: Partial<ApexOptions>;
+    iopsChartOptions: Partial<ApexOptions>;
+    latencyChartOptions: Partial<ApexOptions>;
+
     // Private
     private _unsubscribeAll: Subject<void>;
     private systemPrefersDark: boolean;
@@ -131,6 +144,9 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
                 // Prepare the chart data
                 this._prepareChartData();
+
+                // Load performance data (lazy, non-blocking)
+                this._loadPerformanceData(this.device.wwn, this.perfDurationKey);
             });
     }
 
@@ -739,5 +755,214 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             width: '600px',
             data: dialogData
         });
+    }
+
+    // -----------------------------------------------------------------------------------------------------
+    // @ Performance benchmarks
+    // -----------------------------------------------------------------------------------------------------
+
+    private _loadPerformanceData(wwn: string, duration: string): void {
+        this.performanceLoading = true;
+        this._detailService.getPerformanceData(wwn, duration)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe({
+                next: (resp: PerformanceResponseWrapper) => {
+                    this.performanceLoading = false;
+                    if (resp.success && resp.data?.history && resp.data.history.length > 0) {
+                        this.performanceHistory = resp.data.history;
+                        this.performanceBaseline = resp.data.baseline;
+                        this.hasPerformanceData = true;
+                        this._preparePerformanceCharts();
+                    } else {
+                        this.hasPerformanceData = false;
+                    }
+                },
+                error: () => {
+                    this.performanceLoading = false;
+                    this.hasPerformanceData = false;
+                }
+            });
+    }
+
+    changePerformanceDuration(durationKey: string): void {
+        this.perfDurationKey = durationKey;
+        this._loadPerformanceData(this.device.wwn, durationKey);
+    }
+
+    getLatestPerformance(): PerformanceModel | null {
+        return this.performanceHistory?.length > 0 ? this.performanceHistory[this.performanceHistory.length - 1] : null;
+    }
+
+    getBaselineDelta(currentValue: number, baselineValue: number, higherIsBetter: boolean): {
+        percent: number; status: 'good' | 'warn' | 'bad' | 'neutral'
+    } | null {
+        if (!baselineValue || baselineValue === 0 || currentValue == null) {
+            return null;
+        }
+        const pct = ((currentValue - baselineValue) / baselineValue) * 100;
+        const delta = higherIsBetter ? pct : -pct;
+        let status: 'good' | 'warn' | 'bad' | 'neutral';
+        if (Math.abs(delta) < 5) {
+            status = 'neutral';
+        } else if (delta > 0) {
+            status = 'good';
+        } else if (delta > -15) {
+            status = 'warn';
+        } else {
+            status = 'bad';
+        }
+        return { percent: Math.round(pct * 10) / 10, status };
+    }
+
+    private _preparePerformanceCharts(): void {
+        const isDark = this.determineTheme(this.config) === 'dark';
+        const labelColor = isDark ? '#9ca3af' : '#6b7280';
+        const gridColor = isDark ? '#374151' : '#e0e0e0';
+        const siUnits = this.config?.file_size_si_units;
+        const fileSizePipe = new FileSizePipe();
+
+        const baseChart = {
+            animations: { speed: 400, animateGradually: { enabled: false } },
+            fontFamily: 'inherit',
+            foreColor: 'inherit',
+            width: '100%',
+            height: '100%',
+            type: 'area' as const,
+            sparkline: { enabled: false },
+            toolbar: { show: false }
+        };
+
+        const baseGrid = {
+            borderColor: gridColor,
+            strokeDashArray: 4,
+            yaxis: { lines: { show: true } },
+            xaxis: { lines: { show: false } },
+            padding: { left: 10, right: 10 }
+        };
+
+        const baseXAxis = {
+            type: 'datetime' as const,
+            labels: {
+                datetimeUTC: false,
+                style: { fontSize: '11px', colors: labelColor }
+            }
+        };
+
+        // Throughput chart (sequential read/write)
+        const readBwData = this.performanceHistory.map(p => ({
+            x: new Date(p.date).getTime(), y: p.seq_read_bw_bytes
+        }));
+        const writeBwData = this.performanceHistory.map(p => ({
+            x: new Date(p.date).getTime(), y: p.seq_write_bw_bytes
+        }));
+
+        this.throughputChartOptions = {
+            chart: baseChart,
+            colors: ['#667eea', '#e66a7a'],
+            fill: { colors: ['#b2bef4', '#f4b2ba'], opacity: 0.5, type: 'gradient' },
+            series: [
+                { name: 'Sequential Read', data: readBwData },
+                { name: 'Sequential Write', data: writeBwData }
+            ],
+            stroke: { curve: 'smooth', width: 2 },
+            tooltip: {
+                theme: 'dark', shared: true, intersect: false,
+                x: { format: 'MMM dd, yyyy HH:mm' },
+                y: { formatter: (val) => fileSizePipe.transform(val, siUnits) + '/s' }
+            },
+            xaxis: baseXAxis,
+            yaxis: {
+                labels: {
+                    formatter: (val) => fileSizePipe.transform(val, siUnits) + '/s',
+                    style: { fontSize: '11px', colors: labelColor }
+                }
+            },
+            grid: baseGrid,
+            legend: { show: true, position: 'top', horizontalAlign: 'right' }
+        };
+
+        // IOPS chart (random read/write + mixed)
+        const readIopsData = this.performanceHistory.map(p => ({
+            x: new Date(p.date).getTime(), y: p.rand_read_iops
+        }));
+        const writeIopsData = this.performanceHistory.map(p => ({
+            x: new Date(p.date).getTime(), y: p.rand_write_iops
+        }));
+        const mixedSeries = this.performanceHistory.some(p => p.mixed_rw_iops > 0);
+        const iopsSeries: any[] = [
+            { name: 'Random Read', data: readIopsData },
+            { name: 'Random Write', data: writeIopsData }
+        ];
+        const iopsColors = ['#667eea', '#e66a7a'];
+        const iopsFillColors = ['#b2bef4', '#f4b2ba'];
+        if (mixedSeries) {
+            iopsSeries.push({
+                name: 'Mixed R/W',
+                data: this.performanceHistory.map(p => ({
+                    x: new Date(p.date).getTime(), y: p.mixed_rw_iops
+                }))
+            });
+            iopsColors.push('#66c0ea');
+            iopsFillColors.push('#b2dff4');
+        }
+
+        this.iopsChartOptions = {
+            chart: baseChart,
+            colors: iopsColors,
+            fill: { colors: iopsFillColors, opacity: 0.5, type: 'gradient' },
+            series: iopsSeries,
+            stroke: { curve: 'smooth', width: 2 },
+            tooltip: {
+                theme: 'dark', shared: true, intersect: false,
+                x: { format: 'MMM dd, yyyy HH:mm' },
+                y: { formatter: (val) => val != null ? val.toLocaleString() + ' IOPS' : '--' }
+            },
+            xaxis: baseXAxis,
+            yaxis: {
+                labels: {
+                    formatter: (val) => val >= 1000 ? (val / 1000).toFixed(1) + 'K' : String(Math.round(val)),
+                    style: { fontSize: '11px', colors: labelColor }
+                }
+            },
+            grid: baseGrid,
+            legend: { show: true, position: 'top', horizontalAlign: 'right' }
+        };
+
+        // Latency chart (read avg / p95 / p99)
+        const readLatAvgData = this.performanceHistory.map(p => ({
+            x: new Date(p.date).getTime(), y: p.rand_read_lat_ns_avg
+        }));
+        const readLatP95Data = this.performanceHistory.map(p => ({
+            x: new Date(p.date).getTime(), y: p.rand_read_lat_ns_p95
+        }));
+        const readLatP99Data = this.performanceHistory.map(p => ({
+            x: new Date(p.date).getTime(), y: p.rand_read_lat_ns_p99
+        }));
+
+        this.latencyChartOptions = {
+            chart: baseChart,
+            colors: ['#667eea', '#e6a23c', '#e66a7a'],
+            fill: { colors: ['#b2bef4', '#f4dbb2', '#f4b2ba'], opacity: 0.5, type: 'gradient' },
+            series: [
+                { name: 'Avg Latency', data: readLatAvgData },
+                { name: 'P95 Latency', data: readLatP95Data },
+                { name: 'P99 Latency', data: readLatP99Data }
+            ],
+            stroke: { curve: 'smooth', width: 2 },
+            tooltip: {
+                theme: 'dark', shared: true, intersect: false,
+                x: { format: 'MMM dd, yyyy HH:mm' },
+                y: { formatter: (val) => LatencyPipe.formatLatency(val) }
+            },
+            xaxis: baseXAxis,
+            yaxis: {
+                labels: {
+                    formatter: (val) => LatencyPipe.formatLatency(val, 0),
+                    style: { fontSize: '11px', colors: labelColor }
+                }
+            },
+            grid: baseGrid,
+            legend: { show: true, position: 'top', horizontalAlign: 'right' }
+        };
     }
 }
