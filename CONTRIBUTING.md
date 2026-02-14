@@ -252,4 +252,6 @@ npx ng test --watch=false --code-coverage             # Run with coverage
 | `/api/device/:wwn/archive` | POST | Archive a device |
 | `/api/device/:wwn/unarchive` | POST | Unarchive a device |
 | `/api/device/:wwn` | DELETE | Delete a device |
+| `/api/device/:wwn/performance` | GET | Get performance benchmark history |
+| `/api/device/:wwn/performance` | POST | Upload performance benchmark results (used by collector) |
 | `/api/settings` | GET/POST | Application settings |

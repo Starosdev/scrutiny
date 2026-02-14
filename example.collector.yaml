@@ -114,6 +114,30 @@ devices:
 
 
 ########################################################################################################################
+# Performance Benchmarking (collector-performance binary)
+#
+# These settings configure the fio-based performance benchmark collector.
+# The performance collector is a separate binary (scrutiny-collector-performance)
+# that must be run independently from the SMART metrics collector.
+#
+# Environment variable overrides:
+#   performance.enabled         -> COLLECTOR_PERFORMANCE_ENABLED
+#   performance.profile         -> COLLECTOR_PERFORMANCE_PROFILE
+#   performance.temp_file_size  -> COLLECTOR_PERFORMANCE_TEMP_FILE_SIZE
+#   commands.performance_fio_bin -> COLLECTOR_COMMANDS_PERFORMANCE_FIO_BIN
+#
+########################################################################################################################
+
+#performance:
+#  enabled: false             # Set to true to enable performance benchmarking
+#  profile: 'quick'           # 'quick' (~60s per device) or 'comprehensive' (~300s per device)
+#  allow_direct_device_io: false  # WARNING: not yet supported, reserved for future use
+#  temp_file_size: '256M'     # Size of temp file for benchmarks (used in quick profile)
+
+#commands:
+#  performance_fio_bin: 'fio'  # Path to fio binary
+
+########################################################################################################################
 # FEATURES COMING SOON
 #
 # The following commented out sections are a preview of additional configuration options that will be available soon.
