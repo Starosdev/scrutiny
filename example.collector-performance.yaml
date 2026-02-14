@@ -1,0 +1,78 @@
+# Commented Scrutiny Performance Collector Configuration File
+#
+# The default location for this file is /opt/scrutiny/config/collector-performance.yaml
+# If this file is not found, the collector will fall back to /opt/scrutiny/config/collector.yaml
+#
+# In some cases to improve clarity default values are specified,
+# uncommented. Other example values are commented out.
+#
+# When this file is parsed by Scrutiny, all configuration file keys are
+# lowercased automatically. As such, Configuration keys are case-insensitive,
+# and should be lowercase in this file to be consistent with usage.
+#
+######################################################################
+# Environment Variable Overrides
+#
+# Any configuration key can be overridden via environment variables.
+# The performance collector checks COLLECTOR_PERF_ prefixed vars first,
+# then falls back to COLLECTOR_ prefixed vars.
+#
+# Examples:
+#   api.endpoint                  -> COLLECTOR_PERF_API_ENDPOINT or COLLECTOR_API_ENDPOINT
+#   host.id                       -> COLLECTOR_PERF_HOST_ID or COLLECTOR_HOST_ID
+#   performance.profile           -> COLLECTOR_PERF_PROFILE
+#   performance.enabled           -> COLLECTOR_PERFORMANCE_ENABLED
+#   performance.temp_file_size    -> COLLECTOR_PERFORMANCE_TEMP_FILE_SIZE
+#   commands.performance_fio_bin  -> COLLECTOR_COMMANDS_PERFORMANCE_FIO_BIN
+#   log.level                     -> COLLECTOR_PERF_LOG_FILE or COLLECTOR_LOG_LEVEL
+#   log.file                      -> COLLECTOR_PERF_LOG_FILE or COLLECTOR_LOG_FILE
+#
+# Environment variables take precedence over config file values.
+######################################################################
+
+version: 1
+
+# The host id is a label used for identifying groups of disks running on the same host.
+# Primarily used for hub/spoke deployments (can be left empty if using all-in-one image).
+host:
+  id: ""
+
+api:
+  endpoint: 'http://localhost:8080'
+#  timeout: 300  # HTTP timeout in seconds (default: 300, longer than metrics collector due to benchmark duration)
+
+# Valid log levels (case-insensitive, highest to lowest severity):
+#   PANIC, FATAL, ERROR, WARN, INFO (default), DEBUG, TRACE
+# Setting a level includes all messages at that level and above.
+#log:
+#  file: '' #absolute or relative paths allowed, eg. performance.log
+#  level: INFO
+
+######################################################################
+# Performance Benchmarking
+#
+# These settings configure the fio-based performance benchmarks.
+# The performance collector requires fio to be installed on the system.
+######################################################################
+
+performance:
+  enabled: true
+  profile: 'quick'            # 'quick' (~60s per device) or 'comprehensive' (~300s per device)
+#  temp_file_size: '256M'     # Size of temp file for benchmarks (used in quick profile)
+
+# Benchmark Profiles:
+#
+#   quick (default):
+#     - ~60 seconds per device
+#     - 256MB test file (configurable via temp_file_size)
+#     - 1 parallel job
+#     - Tests: sequential read, sequential write, random read, random write
+#
+#   comprehensive:
+#     - ~300 seconds per device
+#     - 1GB test file (fixed)
+#     - 4 parallel jobs
+#     - Tests: sequential read, sequential write, random read, random write, mixed R/W (70/30)
+
+#commands:
+#  performance_fio_bin: 'fio'  # Path to fio binary (default: 'fio' from PATH)

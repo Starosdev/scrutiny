@@ -21,7 +21,7 @@
 
 This fork exists to keep Scrutiny alive and growing. The original [AnalogJ/scrutiny](https://github.com/AnalogJ/scrutiny) project development slowed significantly in 2024, while community contributions and feature requests continued to grow. This fork picks up where the original left off, merging pending community PRs and adding new features.
 
-Full credit for the original vision and architecture goes to [AnalogJ](https://github.com/AnalogJ). I started this fork as a learning project, so contributions from more experienced developers are greatly appreciated. Full disclosure: I use AI tools to assist with development, but all code is manually reviewed by me before merging.
+Full credit for the original vision and architecture goes to [AnalogJ](https://github.com/AnalogJ). I started this fork as a learning project, so contributions from more experienced developers are greatly appreciated. Full disclosure: I use Claude to assist with development, but all code is manually reviewed by me before merging.
 
 | | Original | This Fork |
 |---|---|---|
@@ -148,6 +148,8 @@ other Docker images:
   scheduler. You can run one collector on each server.
 - `ghcr.io/starosdev/scrutiny:latest-collector-zfs` - ZFS pool collector for monitoring ZFS health.
   Run alongside or instead of the standard collector if you use ZFS. See [docs/ZFS_POOL_MONITORING.md](./docs/ZFS_POOL_MONITORING.md) for setup instructions.
+- `ghcr.io/starosdev/scrutiny:latest-collector-performance` - Performance benchmark collector using fio.
+  Runs periodic benchmarks and tracks throughput, IOPS, and latency over time. See [Performance Benchmarking](#performance-benchmarking) for details.
 - `ghcr.io/starosdev/scrutiny:latest-web` - Contains the Web UI and API. Only one container necessary
 - `influxdb:2.2` - InfluxDB image, used by the Web container to persist SMART data. Only one container necessary.
   See [docs/TROUBLESHOOTING_INFLUXDB.md](./docs/TROUBLESHOOTING_INFLUXDB.md)
@@ -200,11 +202,12 @@ docker exec scrutiny /opt/scrutiny/bin/scrutiny-collector-metrics run
 # Configuration
 By default Scrutiny looks for its YAML configuration files in `/opt/scrutiny/config`
 
-There are three configuration files available:
+There are four configuration files available:
 
 - Webapp/API config via `scrutiny.yaml` - [example.scrutiny.yaml](example.scrutiny.yaml).
 - Collector config via `collector.yaml` - [example.collector.yaml](example.collector.yaml).
 - ZFS Collector config via `collector-zfs.yaml` - [example.collector-zfs.yaml](example.collector-zfs.yaml). See [docs/ZFS_POOL_MONITORING.md](./docs/ZFS_POOL_MONITORING.md) for setup instructions.
+- Performance Collector config via `collector-performance.yaml` - [example.collector-performance.yaml](example.collector-performance.yaml). Falls back to `collector.yaml` if not found.
 
 None of these files are required, however if provided, they allow you to configure how Scrutiny functions.
 
@@ -468,6 +471,56 @@ These environment variables are only available when running the collector in Doc
 | `COLLECTOR_CRON_SCHEDULE` | `0 0 * * *` | Cron schedule for SMART data collection |
 | `COLLECTOR_RUN_STARTUP` | `false` | Run collector immediately on container start |
 | `COLLECTOR_RUN_STARTUP_SLEEP` | `1` | Delay in seconds before startup collection |
+
+## Performance Collector
+
+The performance collector is a separate binary (`scrutiny-collector-performance`) that runs fio benchmarks. It can use its own config file (`collector-performance.yaml`) or fall back to the main `collector.yaml`.
+
+```bash
+DEBUG=true
+COLLECTOR_PERF_LOG_FILE=/tmp/performance.log
+```
+
+Or via CLI:
+
+```bash
+scrutiny-collector-performance run --debug --log-file /tmp/performance.log --profile quick
+```
+
+### Performance Collector Environment Variable Overrides
+
+The performance collector checks `COLLECTOR_PERF_` prefixed variables first, then falls back to `COLLECTOR_` prefixed variables.
+
+| Config Key | Environment Variable | Default Value |
+| --- | --- | --- |
+| `host.id` | `COLLECTOR_PERF_HOST_ID` or `COLLECTOR_HOST_ID` | `` |
+| `api.endpoint` | `COLLECTOR_PERF_API_ENDPOINT` or `COLLECTOR_API_ENDPOINT` | `http://localhost:8080` |
+| `performance.profile` | `COLLECTOR_PERF_PROFILE` | `quick` |
+| `performance.enabled` | `COLLECTOR_PERFORMANCE_ENABLED` | `true` |
+| `performance.temp_file_size` | `COLLECTOR_PERFORMANCE_TEMP_FILE_SIZE` | `256M` |
+| `commands.performance_fio_bin` | `COLLECTOR_COMMANDS_PERFORMANCE_FIO_BIN` | `fio` |
+| `log.level` | `COLLECTOR_PERF_DEBUG` or `COLLECTOR_DEBUG` | `INFO` |
+| `log.file` | `COLLECTOR_PERF_LOG_FILE` or `COLLECTOR_LOG_FILE` | `` |
+
+### Performance Collector Docker-Only Environment Variables
+
+| Environment Variable | Default Value | Description |
+| --- | --- | --- |
+| `COLLECTOR_PERF_CRON_SCHEDULE` | `0 2 * * 0` | Cron schedule (default: Sunday 2 AM) |
+| `COLLECTOR_PERF_RUN_STARTUP` | `false` | Run benchmark immediately on container start |
+| `COLLECTOR_PERF_RUN_STARTUP_SLEEP` | `1` | Delay in seconds before startup run |
+
+Example:
+
+```bash
+docker run --restart unless-stopped \
+  --device=/dev/sda \
+  --device=/dev/sdb \
+  -e COLLECTOR_PERF_API_ENDPOINT=http://scrutiny-web:8080 \
+  -e COLLECTOR_PERF_PROFILE=quick \
+  -e COLLECTOR_PERF_CRON_SCHEDULE="0 2 * * 0" \
+  ghcr.io/starosdev/scrutiny:latest-collector-performance
+```
 
 # Supported Architectures
 

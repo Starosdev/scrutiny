@@ -67,3 +67,24 @@ services:
   #   depends_on:
   #     web:
   #       condition: service_healthy
+
+  # Performance Benchmark Collector (optional - for fio-based drive benchmarking)
+  # Runs fio benchmarks on drives and tracks throughput, IOPS, and latency over time.
+  # Default schedule: Sunday 2 AM. Requires device access and mounted filesystems.
+  # collector-performance:
+  #   restart: unless-stopped
+  #   image: 'ghcr.io/starosdev/scrutiny:latest-collector-performance'
+  #   volumes:
+  #     - '/run/udev:/run/udev:ro'
+  #   environment:
+  #     COLLECTOR_PERF_API_ENDPOINT: 'http://web:8080'
+  #     COLLECTOR_PERF_HOST_ID: 'scrutiny-collector-hostname'
+  #     COLLECTOR_PERF_CRON_SCHEDULE: '0 2 * * 0'  # Sunday at 2 AM
+  #     COLLECTOR_PERF_RUN_STARTUP: 'false'
+  #     COLLECTOR_PERF_PROFILE: 'quick'  # 'quick' (~60s/device) or 'comprehensive' (~300s/device)
+  #   depends_on:
+  #     web:
+  #       condition: service_healthy
+  #   devices:
+  #     - "/dev/sda"
+  #     - "/dev/sdb"
