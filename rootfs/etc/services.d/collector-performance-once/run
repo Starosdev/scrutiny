@@ -1,0 +1,29 @@
+#!/command/with-contenv bash
+
+# Only run if performance collection is enabled
+if [ -z "${COLLECTOR_PERF_CRON_SCHEDULE}" ] && [ "${COLLECTOR_PERF_RUN_STARTUP}" != "true" ]; then
+    echo 'INFO: Performance collector not enabled'
+    s6-svc -D /run/service/collector-performance-once
+    exit 0
+fi
+
+# ensure not run before
+if [ -f /tmp/perf-collector-init-performed ]; then
+    echo 'INFO: Performance collector init already performed'
+    s6-svc -D /run/service/collector-performance-once
+    exit 0
+fi
+
+echo "waiting for scrutiny service to start"
+s6-svwait -u /run/service/scrutiny
+
+# wait until scrutiny is "Ready"
+until $(curl --output /dev/null --silent --head --fail http://localhost:8080/api/health); do echo "scrutiny api not ready" && sleep 5; done
+
+echo "starting performance collector (run-once mode)"
+/opt/scrutiny/bin/scrutiny-collector-performance run
+
+touch /tmp/perf-collector-init-performed
+s6-svc -D /run/service/collector-performance-once
+
+exit 0

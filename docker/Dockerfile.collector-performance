@@ -1,0 +1,34 @@
+########################################################################################################################
+# Performance Collector Image
+########################################################################################################################
+
+
+########
+FROM golang:1.24-trixie AS backendbuild
+
+WORKDIR /go/src/github.com/analogj/scrutiny
+
+COPY . /go/src/github.com/analogj/scrutiny
+
+RUN apt-get update && apt-get install -y file && rm -rf /var/lib/apt/lists/*
+RUN make binary-clean binary-collector-performance
+
+########
+FROM debian:trixie-slim AS runtime
+WORKDIR /opt/scrutiny
+ENV PATH="/opt/scrutiny/bin:${PATH}"
+
+RUN apt-get update && \
+    apt-get install -y cron ca-certificates tzdata fio && \
+    rm -rf /var/lib/apt/lists/* && \
+    update-ca-certificates
+
+COPY /docker/entrypoint-collector-performance.sh /entrypoint-collector-performance.sh
+COPY /rootfs/etc/cron.d/scrutiny-performance /etc/cron.d/scrutiny-performance
+COPY --from=backendbuild /go/src/github.com/analogj/scrutiny/scrutiny-collector-performance /opt/scrutiny/bin/
+RUN chmod +x /opt/scrutiny/bin/scrutiny-collector-performance && \
+    chmod +x /entrypoint-collector-performance.sh && \
+    chmod 0644 /etc/cron.d/scrutiny-performance && \
+    rm -f /etc/cron.daily/apt /etc/cron.daily/dpkg /etc/cron.daily/passwd
+
+CMD ["/entrypoint-collector-performance.sh"]

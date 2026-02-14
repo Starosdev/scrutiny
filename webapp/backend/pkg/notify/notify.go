@@ -33,6 +33,7 @@ const NotifyFailureTypeSmartFailure = "SmartFailure"
 const NotifyFailureTypeScrutinyFailure = "ScrutinyFailure"
 const NotifyFailureTypeMissedPing = "MissedPing"
 const NotifyFailureTypeHeartbeat = "Heartbeat"
+const NotifyFailureTypePerformanceDegradation = "PerformanceDegradation"
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
 func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
@@ -639,6 +640,106 @@ func NewHeartbeat(logger logrus.FieldLogger, appconfig config.Interface, monitor
 		FailureType: heartbeatPayload.FailureType,
 		Subject:     heartbeatPayload.Subject,
 		Message:     heartbeatPayload.Message,
+	}
+
+	return Notify{
+		Logger:  logger,
+		Config:  appconfig,
+		Payload: payload,
+	}
+}
+
+// PerformanceDegradationPayload represents a notification for performance degradation
+type PerformanceDegradationPayload struct {
+	HostId       string  `json:"host_id,omitempty"`
+	DeviceWWN    string  `json:"device_wwn"`
+	DeviceName   string  `json:"device_name"`
+	DeviceSerial string  `json:"device_serial"`
+	DeviceLabel  string  `json:"device_label,omitempty"`
+	Metric       string  `json:"metric"`
+	Date         string  `json:"date"`
+	FailureType  string  `json:"failure_type"`
+	Subject      string  `json:"subject"`
+	Message      string  `json:"message"`
+	BaselineAvg  float64 `json:"baseline_avg"`
+	CurrentValue float64 `json:"current_value"`
+	DeviationPct float64 `json:"deviation_pct"`
+}
+
+// NewPerformanceDegradationPayload creates a payload for performance degradation notifications
+func NewPerformanceDegradationPayload(device *models.Device, metric string, baselineAvg, currentValue, deviationPct float64) PerformanceDegradationPayload {
+	payload := PerformanceDegradationPayload{
+		HostId:       strings.TrimSpace(device.HostId),
+		DeviceWWN:    device.WWN,
+		DeviceName:   device.DeviceName,
+		DeviceSerial: device.SerialNumber,
+		DeviceLabel:  strings.TrimSpace(device.Label),
+		Metric:       metric,
+		BaselineAvg:  baselineAvg,
+		CurrentValue: currentValue,
+		DeviationPct: deviationPct,
+		Date:         time.Now().Format(time.RFC3339),
+		FailureType:  NotifyFailureTypePerformanceDegradation,
+	}
+
+	payload.Subject = payload.generateSubject()
+	payload.Message = payload.generateMessage()
+	return payload
+}
+
+func (p *PerformanceDegradationPayload) generateSubject() string {
+	deviceIdentifier := p.DeviceName
+	if len(p.DeviceLabel) > 0 {
+		deviceIdentifier = fmt.Sprintf("%s (%s)", p.DeviceLabel, p.DeviceName)
+	}
+	if len(p.HostId) > 0 {
+		return fmt.Sprintf("Scrutiny performance degradation detected on [host]device: [%s]%s", p.HostId, deviceIdentifier)
+	}
+	return fmt.Sprintf("Scrutiny performance degradation detected on device: %s", deviceIdentifier)
+}
+
+func (p *PerformanceDegradationPayload) generateMessage() string {
+	messageParts := []string{
+		fmt.Sprintf("Scrutiny performance degradation notification for device: %s", p.DeviceName),
+	}
+	if len(p.HostId) > 0 {
+		messageParts = append(messageParts, fmt.Sprintf("Host Id: %s", p.HostId))
+	}
+	messageParts = append(messageParts,
+		fmt.Sprintf("Device WWN: %s", p.DeviceWWN),
+		fmt.Sprintf("Device Serial: %s", p.DeviceSerial),
+	)
+	if len(p.DeviceLabel) > 0 {
+		messageParts = append(messageParts, fmt.Sprintf("Device Label: %s", p.DeviceLabel))
+	}
+	messageParts = append(messageParts,
+		"",
+		fmt.Sprintf("Degraded Metric: %s", p.Metric),
+		fmt.Sprintf("Baseline Average: %.2f", p.BaselineAvg),
+		fmt.Sprintf("Current Value: %.2f", p.CurrentValue),
+		fmt.Sprintf("Deviation: %.1f%%", p.DeviationPct),
+		"",
+		fmt.Sprintf("Date: %s", p.Date),
+	)
+
+	return strings.Join(messageParts, "\n")
+}
+
+// NewPerformanceDegradation creates a Notify instance for performance degradation notifications
+func NewPerformanceDegradation(logger logrus.FieldLogger, appconfig config.Interface, device *models.Device, metric string, baselineAvg, currentValue, deviationPct float64) Notify {
+	degradationPayload := NewPerformanceDegradationPayload(device, metric, baselineAvg, currentValue, deviationPct)
+
+	payload := Payload{
+		HostId:       degradationPayload.HostId,
+		DeviceType:   device.DeviceType,
+		DeviceName:   degradationPayload.DeviceName,
+		DeviceSerial: degradationPayload.DeviceSerial,
+		DeviceLabel:  degradationPayload.DeviceLabel,
+		Test:         false,
+		Date:         degradationPayload.Date,
+		FailureType:  degradationPayload.FailureType,
+		Subject:      degradationPayload.Subject,
+		Message:      degradationPayload.Message,
 	}
 
 	return Notify{

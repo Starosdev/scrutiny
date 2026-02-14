@@ -4,6 +4,7 @@ import {BehaviorSubject, Observable} from 'rxjs';
 import {tap} from 'rxjs/operators';
 import {getBasePath} from 'app/app.routing';
 import {DeviceDetailsResponseWrapper} from 'app/core/models/device-details-response-wrapper';
+import {PerformanceResponseWrapper} from 'app/core/models/measurements/performance-model';
 
 @Injectable({
     providedIn: 'root'
@@ -72,5 +73,13 @@ export class DetailService {
      */
     setSmartDisplayMode(wwn: string, mode: string): Observable<any> {
         return this._httpClient.post(getBasePath() + `/api/device/${wwn}/smart-display-mode`, { smart_display_mode: mode });
+    }
+
+    getPerformanceData(wwn: string, duration: string = 'week'): Observable<PerformanceResponseWrapper> {
+        const params = { duration };
+        return this._httpClient.get<PerformanceResponseWrapper>(
+            getBasePath() + `/api/device/${wwn}/performance`,
+            { params }
+        );
     }
 }
