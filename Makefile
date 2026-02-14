@@ -162,6 +162,11 @@ docker-collector-zfs:
 	@echo "building ZFS collector docker image"
 	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.collector-zfs -t analogj/scrutiny-dev:collector-zfs .
 
+.PHONY: docker-collector-performance
+docker-collector-performance:
+	@echo "building performance collector docker image"
+	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.collector-performance -t analogj/scrutiny-dev:collector-performance .
+
 .PHONY: docker-web
 docker-web:
 	@echo "building web docker image"

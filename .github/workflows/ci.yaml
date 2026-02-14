@@ -145,3 +145,4 @@ jobs:
             scrutiny-web-*
             scrutiny-collector-metrics-*
             scrutiny-collector-zfs-*
+            scrutiny-collector-performance-*
