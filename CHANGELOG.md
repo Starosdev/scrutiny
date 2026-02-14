@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.24.0](https://github.com/Starosdev/scrutiny/compare/v1.23.3...v1.24.0) (2026-02-14)
+
+### Features
+
+* **performance:** hard drive performance benchmarking [WIP] ([#220](https://github.com/Starosdev/scrutiny/issues/220)) ([1755e77](https://github.com/Starosdev/scrutiny/commit/1755e777445556da60d3161233dcf88a41f9ba0f)), closes [#205](https://github.com/Starosdev/scrutiny/issues/205) [#205](https://github.com/Starosdev/scrutiny/issues/205) [#205](https://github.com/Starosdev/scrutiny/issues/205) [#205](https://github.com/Starosdev/scrutiny/issues/205) [#205](https://github.com/Starosdev/scrutiny/issues/205)
+
 ## [1.23.3](https://github.com/Starosdev/scrutiny/compare/v1.23.2...v1.23.3) (2026-02-11)
 
 ### Bug Fixes
