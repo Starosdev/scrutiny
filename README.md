@@ -19,7 +19,9 @@
 
 # Why This Fork?
 
-This is an actively maintained fork of [AnalogJ/scrutiny](https://github.com/AnalogJ/scrutiny). The original project development slowed significantly in 2024, while community contributions and feature requests continued to grow. This fork picks up where the original left off, merging pending community PRs and adding new features.
+This fork exists to keep Scrutiny alive and growing. The original [AnalogJ/scrutiny](https://github.com/AnalogJ/scrutiny) project development slowed significantly in 2024, while community contributions and feature requests continued to grow. This fork picks up where the original left off, merging pending community PRs and adding new features.
+
+Full credit for the original vision and architecture goes to [AnalogJ](https://github.com/AnalogJ). I started this fork as a learning project, so contributions from more experienced developers are greatly appreciated. Full disclosure: I use AI tools to assist with development, but all code is manually reviewed by me before merging.
 
 | | Original | This Fork |
 |---|---|---|
@@ -41,6 +43,7 @@ This is an actively maintained fork of [AnalogJ/scrutiny](https://github.com/Ana
 - **S.M.A.R.T Attribute Overrides** - Override manufacturer thresholds via UI or config
 - **Improved Dashboard Layout** - Sidebar navigation moved to top for better attribute visibility
 - **Enhanced Mobile UI** - Optimized layout for mobile devices
+- **Performance Benchmarking** - Run fio benchmarks and track drive throughput, IOPS, and latency over time
 - **Enhanced Seagate Drive Support** - Better timeout handling for Seagate drives
 - **SHA256 Checksums** - Verify release binary integrity
 
@@ -83,6 +86,7 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Improved UI Layout** - Top navigation for better S.M.A.R.T attribute visibility
 - **Mobile-Optimized Interface** - Better experience on mobile devices
 - **API Timeout Configuration** - Adjust timeouts for slow storage systems
+- **Performance Benchmarking** - fio-based benchmarks for throughput, IOPS, and latency with historical tracking
 - **Heartbeat Notifications** - Periodic "all clear" alerts for uptime monitoring integration
 
 # Migration from AnalogJ/scrutiny
@@ -223,6 +227,53 @@ scrape_configs:
       - targets: ['scrutiny:8080']
     metrics_path: '/api/metrics'
 ```
+
+## Performance Benchmarking
+
+Scrutiny can run periodic [fio](https://fio.readthedocs.io/) benchmarks on your drives and track performance over time. This helps detect drive degradation before S.M.A.R.T failures appear -- a drive that is suddenly 50% slower may be failing even if S.M.A.R.T attributes look normal.
+
+### What's Measured
+
+| Metric | Description |
+| ------ | ----------- |
+| Sequential Read/Write | Throughput in bytes/sec (large block sequential I/O) |
+| Random Read/Write IOPS | Input/output operations per second (4K random I/O) |
+| Read/Write Latency | Average, P50, P95, P99 latency in nanoseconds |
+| Mixed Read/Write IOPS | Combined random read+write performance |
+
+### How It Works
+
+1. The **performance collector** (`scrutiny-collector-performance`) runs fio benchmarks on configured devices
+2. Results are uploaded to the Scrutiny API and stored as time-series data in InfluxDB
+3. The **web UI** displays performance history charts and summary cards on the device detail page
+4. A **baseline** is computed from the last 5 results, and current results are compared against it
+5. **Degradation detection** flags warnings (>20% throughput drop or >30% latency increase) and failures (>40% / >60%)
+
+### Deployment
+
+The performance collector is available as a separate Docker image:
+
+```bash
+docker run --restart unless-stopped \
+  --device=/dev/sda \
+  --device=/dev/sdb \
+  -e COLLECTOR_API_ENDPOINT=http://SCRUTINY_WEB_IPADDRESS:8080 \
+  --name scrutiny-perf-collector \
+  ghcr.io/starosdev/scrutiny:latest-collector-performance
+```
+
+The collector requires direct device access (not virtualized). Running benchmarks will temporarily increase I/O on the target drives, so schedule accordingly.
+
+### Viewing Results
+
+Performance data appears on the device detail page when benchmark results are available. The UI shows:
+
+- **Summary cards** with latest values and baseline comparison badges
+- **Throughput chart** -- sequential read/write bandwidth over time
+- **IOPS chart** -- random read/write and mixed IOPS over time
+- **Latency chart** -- read latency (average, P95, P99) over time
+
+Use the duration selector to view day, week, month, or year ranges.
 
 ## Notifications
 
@@ -448,13 +499,9 @@ We use SemVer for versioning. For the versions available, see the tags on this r
 
 # Credits
 
-**Original Author:** Jason Kulatunga ([@AnalogJ](https://github.com/AnalogJ)) - Created Scrutiny and built the foundation this fork builds upon.
+**Original Author:** Jason Kulatunga ([@AnalogJ](https://github.com/AnalogJ)) -- Created Scrutiny and built the foundation this fork builds upon.
 
-**Fork Maintainer:** [@Starosdev](https://github.com/Starosdev) - Maintaining this fork with continued development and community contributions.
-
-This fork exists to keep Scrutiny alive and growing. Full credit for the original vision and architecture goes to AnalogJ.
-
-I started this fork as a learning project, so contributions from more experienced developers are greatly appreciated. Full disclosure: I use Claude AI to assist with development, but all code is manually reviewed by me before merging.
+**Fork Maintainer:** [@Starosdev](https://github.com/Starosdev) -- Maintaining this fork with continued development and community contributions.
 
 # License
 
