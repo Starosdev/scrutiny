@@ -26,7 +26,6 @@ import (
 	_ "github.com/glebarez/sqlite"
 	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/influxdata/influxdb-client-go/v2/api/http"
-	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -145,7 +144,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 								smartTags,
 								smartFields,
 								postSmartResults.Date, ctx)
-							if ignorePastRetentionPolicyError(err) != nil {
+							if sr.ignorePastRetentionPolicyError(err) != nil {
 								return err
 							}
 
@@ -155,7 +154,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 								tempTags,
 								tempFields,
 								postSmartResults.Date, ctx)
-							if ignorePastRetentionPolicyError(err) != nil {
+							if sr.ignorePastRetentionPolicyError(err) != nil {
 								return err
 							}
 						}
@@ -174,7 +173,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 								smartFields,
 								postSmartResults.Date, ctx)
 
-							if ignorePastRetentionPolicyError(err) != nil {
+							if sr.ignorePastRetentionPolicyError(err) != nil {
 								return err
 							}
 
@@ -184,7 +183,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 								tempTags,
 								tempFields,
 								postSmartResults.Date, ctx)
-							if ignorePastRetentionPolicyError(err) != nil {
+							if sr.ignorePastRetentionPolicyError(err) != nil {
 								return err
 							}
 						}
@@ -202,7 +201,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 								smartTags,
 								smartFields,
 								postSmartResults.Date, ctx)
-							if ignorePastRetentionPolicyError(err) != nil {
+							if sr.ignorePastRetentionPolicyError(err) != nil {
 								return err
 							}
 
@@ -212,7 +211,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 								tempTags,
 								tempFields,
 								postSmartResults.Date, ctx)
-							if ignorePastRetentionPolicyError(err) != nil {
+							if sr.ignorePastRetentionPolicyError(err) != nil {
 								return err
 							}
 						}
@@ -229,7 +228,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 								smartTags,
 								smartFields,
 								postSmartResults.Date, ctx)
-							if ignorePastRetentionPolicyError(err) != nil {
+							if sr.ignorePastRetentionPolicyError(err) != nil {
 								return err
 							}
 
@@ -239,7 +238,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 								tempTags,
 								tempFields,
 								postSmartResults.Date, ctx)
-							if ignorePastRetentionPolicyError(err) != nil {
+							if sr.ignorePastRetentionPolicyError(err) != nil {
 								return err
 							}
 						}
@@ -503,6 +502,27 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				return tx.AutoMigrate(m20260202000000.Device{})
 			},
 		},
+		{
+			ID: "m20260207000000", // add heartbeat notification settings
+			Migrate: func(tx *gorm.DB) error {
+				// Add heartbeat notification settings with defaults
+				var defaultSettings = []m20220716214900.Setting{
+					{
+						SettingKeyName:        "metrics.heartbeat_enabled",
+						SettingKeyDescription: "Enable periodic heartbeat notifications when all drives are healthy (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      false,
+					},
+					{
+						SettingKeyName:        "metrics.heartbeat_interval_hours",
+						SettingKeyDescription: "Hours between heartbeat notifications (default: 24)",
+						SettingDataType:       "numeric",
+						SettingValueNumeric:   24,
+					},
+				}
+				return tx.Create(&defaultSettings).Error
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {
@@ -563,11 +583,11 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 
 // When adding data to influxdb, an error may be returned if the data point is outside the range of the retention policy.
 // This function will ignore retention policy errors, and allow the migration to continue.
-func ignorePastRetentionPolicyError(err error) error {
+func (sr *scrutinyRepository) ignorePastRetentionPolicyError(err error) error {
 	var influxDbWriteError *http.Error
 	if errors.As(err, &influxDbWriteError) {
 		if influxDbWriteError.StatusCode == 422 {
-			log.Infoln("ignoring error: attempted to writePoint past retention period duration")
+			sr.logger.Infoln("ignoring error: attempted to writePoint past retention period duration")
 			return nil
 		}
 	}

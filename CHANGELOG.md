@@ -2,6 +2,66 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.24.0](https://github.com/Starosdev/scrutiny/compare/v1.23.3...v1.24.0) (2026-02-14)
+
+### Features
+
+* **performance:** hard drive performance benchmarking [WIP] ([#220](https://github.com/Starosdev/scrutiny/issues/220)) ([1755e77](https://github.com/Starosdev/scrutiny/commit/1755e777445556da60d3161233dcf88a41f9ba0f)), closes [#205](https://github.com/Starosdev/scrutiny/issues/205) [#205](https://github.com/Starosdev/scrutiny/issues/205) [#205](https://github.com/Starosdev/scrutiny/issues/205) [#205](https://github.com/Starosdev/scrutiny/issues/205) [#205](https://github.com/Starosdev/scrutiny/issues/205)
+
+## [1.23.3](https://github.com/Starosdev/scrutiny/compare/v1.23.2...v1.23.3) (2026-02-11)
+
+### Bug Fixes
+
+* **ui:** hide threshold for non-normalized ATA attributes ([#214](https://github.com/Starosdev/scrutiny/issues/214)) ([69fe7d4](https://github.com/Starosdev/scrutiny/commit/69fe7d40d462fcf413600157e883e61ea456118c)), closes [#181](https://github.com/Starosdev/scrutiny/issues/181)
+
+## [1.23.2](https://github.com/Starosdev/scrutiny/compare/v1.23.1...v1.23.2) (2026-02-08)
+
+### Bug Fixes
+
+* **smart:** handle manufacturer-specific Power-On Hours encoding ([#199](https://github.com/Starosdev/scrutiny/issues/199)) ([5229fc5](https://github.com/Starosdev/scrutiny/commit/5229fc5f5befe7ae5b9039246a6a3efcfc88e569)), closes [#191](https://github.com/Starosdev/scrutiny/issues/191) [#191](https://github.com/Starosdev/scrutiny/issues/191)
+
+## [1.23.1](https://github.com/Starosdev/scrutiny/compare/v1.23.0...v1.23.1) (2026-02-08)
+
+### Bug Fixes
+
+* **smart:** persist model name for SAS/SCSI drives ([#198](https://github.com/Starosdev/scrutiny/issues/198)) ([599f1b6](https://github.com/Starosdev/scrutiny/commit/599f1b617aaf05bed87f138e44c8180140325fd2)), closes [#190](https://github.com/Starosdev/scrutiny/issues/190) [#190](https://github.com/Starosdev/scrutiny/issues/190)
+
+## [1.23.0](https://github.com/Starosdev/scrutiny/compare/v1.22.0...v1.23.0) (2026-02-07)
+
+### Features
+
+* **smart:** infer failure rate from error interval ([#197](https://github.com/Starosdev/scrutiny/issues/197)) ([e56967a](https://github.com/Starosdev/scrutiny/commit/e56967a60684145972f6c93a6621e6d1a83484e7)), closes [#186](https://github.com/Starosdev/scrutiny/issues/186)
+
+## [1.22.0](https://github.com/Starosdev/scrutiny/compare/v1.21.0...v1.22.0) (2026-02-07)
+
+### Features
+
+* **server:** add configurable HTTP server timeouts ([#187](https://github.com/Starosdev/scrutiny/issues/187)) ([#193](https://github.com/Starosdev/scrutiny/issues/193)) ([ea6282d](https://github.com/Starosdev/scrutiny/commit/ea6282d73a102b6fbc48c3936bf2fd18636d8eed))
+
+## [1.21.0](https://github.com/Starosdev/scrutiny/compare/v1.20.3...v1.21.0) (2026-02-07)
+
+### Features
+
+* **notify:** add periodic heartbeat notifications ([#188](https://github.com/Starosdev/scrutiny/issues/188)) ([#192](https://github.com/Starosdev/scrutiny/issues/192)) ([ceed239](https://github.com/Starosdev/scrutiny/commit/ceed239b6ead6321d2c671b4f77fecf8de294d3a))
+
+## [1.20.3](https://github.com/Starosdev/scrutiny/compare/v1.20.2...v1.20.3) (2026-02-07)
+
+### Bug Fixes
+
+* **logging:** consolidate all logging through injected logrus logger ([#185](https://github.com/Starosdev/scrutiny/issues/185)) ([6e268b0](https://github.com/Starosdev/scrutiny/commit/6e268b05622062c615869544b430e2e8f3656e4c)), closes [#136](https://github.com/Starosdev/scrutiny/issues/136)
+
+## [1.20.2](https://github.com/Starosdev/scrutiny/compare/v1.20.1...v1.20.2) (2026-02-07)
+
+### Bug Fixes
+
+* **ui:** version display clipped on mobile viewports ([#184](https://github.com/Starosdev/scrutiny/issues/184)) ([893fae7](https://github.com/Starosdev/scrutiny/commit/893fae773b52f1359b28c630a95dead4d84d570c)), closes [#167](https://github.com/Starosdev/scrutiny/issues/167)
+
+## [1.20.1](https://github.com/Starosdev/scrutiny/compare/v1.20.0...v1.20.1) (2026-02-06)
+
+### Bug Fixes
+
+* **smart:** Patriot Burst Elite temperature and data unit fixes ([#183](https://github.com/Starosdev/scrutiny/issues/183)) ([f6cb42f](https://github.com/Starosdev/scrutiny/commit/f6cb42ff0bb92353e6e1da4096007bdfd65eec20)), closes [#179](https://github.com/Starosdev/scrutiny/issues/179) [#179](https://github.com/Starosdev/scrutiny/issues/179)
+
 ## [1.20.0](https://github.com/Starosdev/scrutiny/compare/v1.19.2...v1.20.0) (2026-02-05)
 
 ### Features

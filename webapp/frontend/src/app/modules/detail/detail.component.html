@@ -476,7 +476,7 @@
                         <div class="truncate">Normalized</div>
                       </div>
                       <div class="w-1/4 items-center font-medium">{{attribute.value}}</div>
-                      <div class="w-1/4 items-center text-secondary">{{getAttributeWorst(attribute) || '--' }}/{{getAttributeThreshold(attribute)}}</div>
+                      <div class="w-1/4 items-center text-secondary">{{getAttributeWorst(attribute) || '--' }}/{{getAttributeThreshold(attribute) || '--'}}</div>
                       <div class="w-1/4 items-center text-secondary">--</div>
                     </div>
 
@@ -531,6 +531,233 @@
       </div>
     </div>
   </div>
+
+  <!-- Performance Benchmarks -->
+  @if (performanceEverLoaded) {
+    <div class="flex flex-auto w-full p-4">
+      <div class="flex flex-col flex-auto w-full">
+
+        <!-- Header + Duration Selector -->
+        <div class="flex flex-col flex-auto bg-card shadow-md rounded overflow-hidden mb-4">
+          <div class="flex flex-col p-6 pr-4 pb-4">
+            <div class="flex items-center justify-between">
+              <div class="flex flex-col">
+                <div class="font-bold text-md text-secondary uppercase tracking-wider mr-4">
+                  Performance Benchmarks
+                </div>
+                <div class="text-sm text-hint font-medium">
+                  Throughput, IOPS, and latency trends
+                  @if (performanceBaseline?.sample_count) {
+                    &ndash; Baseline from {{ performanceBaseline.sample_count }} {{ performanceBaseline.sample_count === 1 ? 'sample' : 'samples' }}
+                  }
+                </div>
+              </div>
+
+              <div class="flex items-center">
+                <button
+                  class="h-8 min-h-8 px-3"
+                  mat-stroked-button
+                  [matMenuTriggerFor]="perfRangeMenu"
+                  [disabled]="performanceLoading">
+                  <span class="font-medium text-sm capitalize">{{ perfDurationKey }}</span>
+                  <mat-icon class="icon-size-4 ml-1" [svgIcon]="'expand_more'"></mat-icon>
+                </button>
+
+                <mat-menu #perfRangeMenu="matMenu">
+                  <button mat-menu-item (click)="changePerformanceDuration('year')">year</button>
+                  <button mat-menu-item (click)="changePerformanceDuration('month')">month</button>
+                  <button mat-menu-item (click)="changePerformanceDuration('week')">week</button>
+                  <button mat-menu-item (click)="changePerformanceDuration('day')">day</button>
+                </mat-menu>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        @if (performanceLoading) {
+          <mat-progress-bar mode="indeterminate" class="w-full mb-4"></mat-progress-bar>
+        }
+
+        @if (hasPerformanceData) {
+          <!-- Summary Cards (only show metrics with non-zero values) -->
+          @if (getLatestPerformance(); as latest) {
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+              @if (latest.seq_read_bw_bytes > 0) {
+                <treo-card class="p-4">
+                  <div class="font-semibold text-xs text-hint uppercase tracking-wider">Seq Read</div>
+                  <div class="font-bold text-2xl my-2">{{ latest.seq_read_bw_bytes | fileSize:config?.file_size_si_units }}/s</div>
+                  @if (performanceBaseline?.sample_count > 1) {
+                    @if (getBaselineDelta(latest.seq_read_bw_bytes, performanceBaseline?.seq_read_bw_bytes, true); as delta) {
+                      <div class="text-xs text-hint">
+                        <span [ngClass]="{'text-green-600': delta.status === 'good', 'text-yellow-600': delta.status === 'warn', 'text-red-600': delta.status === 'bad'}">
+                          {{ delta.percent > 0 ? '+' : '' }}{{ delta.percent }}%
+                        </span> vs baseline
+                      </div>
+                    }
+                  }
+                </treo-card>
+              }
+
+              @if (latest.seq_write_bw_bytes > 0) {
+                <treo-card class="p-4">
+                  <div class="font-semibold text-xs text-hint uppercase tracking-wider">Seq Write</div>
+                  <div class="font-bold text-2xl my-2">{{ latest.seq_write_bw_bytes | fileSize:config?.file_size_si_units }}/s</div>
+                  @if (performanceBaseline?.sample_count > 1) {
+                    @if (getBaselineDelta(latest.seq_write_bw_bytes, performanceBaseline?.seq_write_bw_bytes, true); as delta) {
+                      <div class="text-xs text-hint">
+                        <span [ngClass]="{'text-green-600': delta.status === 'good', 'text-yellow-600': delta.status === 'warn', 'text-red-600': delta.status === 'bad'}">
+                          {{ delta.percent > 0 ? '+' : '' }}{{ delta.percent }}%
+                        </span> vs baseline
+                      </div>
+                    }
+                  }
+                </treo-card>
+              }
+
+              @if (latest.rand_read_iops > 0) {
+                <treo-card class="p-4">
+                  <div class="font-semibold text-xs text-hint uppercase tracking-wider">Rand Read IOPS</div>
+                  <div class="font-bold text-2xl my-2">{{ latest.rand_read_iops | number:'1.0-0' }}</div>
+                  @if (performanceBaseline?.sample_count > 1) {
+                    @if (getBaselineDelta(latest.rand_read_iops, performanceBaseline?.rand_read_iops, true); as delta) {
+                      <div class="text-xs text-hint">
+                        <span [ngClass]="{'text-green-600': delta.status === 'good', 'text-yellow-600': delta.status === 'warn', 'text-red-600': delta.status === 'bad'}">
+                          {{ delta.percent > 0 ? '+' : '' }}{{ delta.percent }}%
+                        </span> vs baseline
+                      </div>
+                    }
+                  }
+                </treo-card>
+              }
+
+              @if (latest.rand_write_iops > 0) {
+                <treo-card class="p-4">
+                  <div class="font-semibold text-xs text-hint uppercase tracking-wider">Rand Write IOPS</div>
+                  <div class="font-bold text-2xl my-2">{{ latest.rand_write_iops | number:'1.0-0' }}</div>
+                  @if (performanceBaseline?.sample_count > 1) {
+                    @if (getBaselineDelta(latest.rand_write_iops, performanceBaseline?.rand_write_iops, true); as delta) {
+                      <div class="text-xs text-hint">
+                        <span [ngClass]="{'text-green-600': delta.status === 'good', 'text-yellow-600': delta.status === 'warn', 'text-red-600': delta.status === 'bad'}">
+                          {{ delta.percent > 0 ? '+' : '' }}{{ delta.percent }}%
+                        </span> vs baseline
+                      </div>
+                    }
+                  }
+                </treo-card>
+              }
+
+              @if (latest.rand_read_lat_ns_avg > 0) {
+                <treo-card class="p-4">
+                  <div class="font-semibold text-xs text-hint uppercase tracking-wider">Read Latency</div>
+                  <div class="font-bold text-2xl my-2">{{ latest.rand_read_lat_ns_avg | latency }}</div>
+                  @if (performanceBaseline?.sample_count > 1) {
+                    @if (getBaselineDelta(latest.rand_read_lat_ns_avg, performanceBaseline?.rand_read_lat_ns_avg, false); as delta) {
+                      <div class="text-xs text-hint">
+                        <span [ngClass]="{'text-green-600': delta.status === 'good', 'text-yellow-600': delta.status === 'warn', 'text-red-600': delta.status === 'bad'}">
+                          {{ delta.percent > 0 ? '+' : '' }}{{ delta.percent }}%
+                        </span> vs baseline
+                      </div>
+                    }
+                  }
+                </treo-card>
+              }
+
+              @if (latest.rand_write_lat_ns_avg > 0) {
+                <treo-card class="p-4">
+                  <div class="font-semibold text-xs text-hint uppercase tracking-wider">Write Latency</div>
+                  <div class="font-bold text-2xl my-2">{{ latest.rand_write_lat_ns_avg | latency }}</div>
+                  @if (performanceBaseline?.sample_count > 1) {
+                    @if (getBaselineDelta(latest.rand_write_lat_ns_avg, performanceBaseline?.rand_write_lat_ns_avg, false); as delta) {
+                      <div class="text-xs text-hint">
+                        <span [ngClass]="{'text-green-600': delta.status === 'good', 'text-yellow-600': delta.status === 'warn', 'text-red-600': delta.status === 'bad'}">
+                          {{ delta.percent > 0 ? '+' : '' }}{{ delta.percent }}%
+                        </span> vs baseline
+                      </div>
+                    }
+                  }
+                </treo-card>
+              }
+            </div>
+          }
+
+          <!-- Charts (only show when 2+ samples exist and data is non-zero) -->
+          @if (hasEnoughSamplesForCharts) {
+            @if (throughputChartOptions && hasThroughputData) {
+              <treo-card class="p-6 mb-4">
+                <div class="font-semibold text-lg mb-4">Sequential Throughput</div>
+                <div class="h-64">
+                  <apx-chart
+                    class="flex-auto w-full h-full"
+                    [chart]="throughputChartOptions.chart"
+                    [colors]="throughputChartOptions.colors"
+                    [fill]="throughputChartOptions.fill"
+                    [series]="throughputChartOptions.series"
+                    [stroke]="throughputChartOptions.stroke"
+                    [tooltip]="throughputChartOptions.tooltip"
+                    [xaxis]="throughputChartOptions.xaxis"
+                    [yaxis]="throughputChartOptions.yaxis"
+                    [grid]="throughputChartOptions.grid"
+                    [legend]="throughputChartOptions.legend">
+                  </apx-chart>
+                </div>
+              </treo-card>
+            }
+
+            @if (iopsChartOptions && hasIopsData) {
+              <treo-card class="p-6 mb-4">
+                <div class="font-semibold text-lg mb-4">Random IOPS</div>
+                <div class="h-64">
+                  <apx-chart
+                    class="flex-auto w-full h-full"
+                    [chart]="iopsChartOptions.chart"
+                    [colors]="iopsChartOptions.colors"
+                    [fill]="iopsChartOptions.fill"
+                    [series]="iopsChartOptions.series"
+                    [stroke]="iopsChartOptions.stroke"
+                    [tooltip]="iopsChartOptions.tooltip"
+                    [xaxis]="iopsChartOptions.xaxis"
+                    [yaxis]="iopsChartOptions.yaxis"
+                    [grid]="iopsChartOptions.grid"
+                    [legend]="iopsChartOptions.legend">
+                  </apx-chart>
+                </div>
+              </treo-card>
+            }
+
+            @if (latencyChartOptions && hasLatencyData) {
+              <treo-card class="p-6">
+                <div class="font-semibold text-lg mb-4">Read Latency</div>
+                <div class="h-64">
+                  <apx-chart
+                    class="flex-auto w-full h-full"
+                    [chart]="latencyChartOptions.chart"
+                    [colors]="latencyChartOptions.colors"
+                    [fill]="latencyChartOptions.fill"
+                    [series]="latencyChartOptions.series"
+                    [stroke]="latencyChartOptions.stroke"
+                    [tooltip]="latencyChartOptions.tooltip"
+                    [xaxis]="latencyChartOptions.xaxis"
+                    [yaxis]="latencyChartOptions.yaxis"
+                    [grid]="latencyChartOptions.grid"
+                    [legend]="latencyChartOptions.legend">
+                  </apx-chart>
+                </div>
+              </treo-card>
+            }
+          } @else {
+            <div class="text-sm text-hint text-center py-4">
+              Trend charts will appear after 2 or more benchmark samples are collected.
+            </div>
+          }
+        } @else if (!performanceLoading) {
+          <div class="text-sm text-hint text-center py-8">
+            No benchmark data available for this time period. Try selecting a different duration.
+          </div>
+        }
+
+      </div>
+    </div>
+  }
 
 </div>
 </div>

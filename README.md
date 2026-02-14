@@ -19,7 +19,9 @@
 
 # Why This Fork?
 
-This is an actively maintained fork of [AnalogJ/scrutiny](https://github.com/AnalogJ/scrutiny). The original project development slowed significantly in 2024, while community contributions and feature requests continued to grow. This fork picks up where the original left off, merging pending community PRs and adding new features.
+This fork exists to keep Scrutiny alive and growing. The original [AnalogJ/scrutiny](https://github.com/AnalogJ/scrutiny) project development slowed significantly in 2024, while community contributions and feature requests continued to grow. This fork picks up where the original left off, merging pending community PRs and adding new features.
+
+Full credit for the original vision and architecture goes to [AnalogJ](https://github.com/AnalogJ). I started this fork as a learning project, so contributions from more experienced developers are greatly appreciated. Full disclosure: I use Claude to assist with development, but all code is manually reviewed by me before merging.
 
 | | Original | This Fork |
 |---|---|---|
@@ -41,6 +43,7 @@ This is an actively maintained fork of [AnalogJ/scrutiny](https://github.com/Ana
 - **S.M.A.R.T Attribute Overrides** - Override manufacturer thresholds via UI or config
 - **Improved Dashboard Layout** - Sidebar navigation moved to top for better attribute visibility
 - **Enhanced Mobile UI** - Optimized layout for mobile devices
+- **Performance Benchmarking** - Run fio benchmarks and track drive throughput, IOPS, and latency over time
 - **Enhanced Seagate Drive Support** - Better timeout handling for Seagate drives
 - **SHA256 Checksums** - Verify release binary integrity
 
@@ -83,6 +86,8 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Improved UI Layout** - Top navigation for better S.M.A.R.T attribute visibility
 - **Mobile-Optimized Interface** - Better experience on mobile devices
 - **API Timeout Configuration** - Adjust timeouts for slow storage systems
+- **Performance Benchmarking** - fio-based benchmarks for throughput, IOPS, and latency with historical tracking
+- **Heartbeat Notifications** - Periodic "all clear" alerts for uptime monitoring integration
 
 # Migration from AnalogJ/scrutiny
 
@@ -136,13 +141,15 @@ docker run -p 8080:8080 -p 8086:8086 --restart unless-stopped \
 
 ### Hub/Spoke Deployment
 
-In addition to the Omnibus image (available under the `latest` tag) you can deploy in Hub/Spoke mode, which requires 3
-other Docker images:
+In addition to the Omnibus image (available under the `latest` tag) you can deploy in Hub/Spoke mode using
+the following Docker images:
 
 - `ghcr.io/starosdev/scrutiny:latest-collector` - Contains the Scrutiny data collector, `smartctl` binary and cron-like
   scheduler. You can run one collector on each server.
 - `ghcr.io/starosdev/scrutiny:latest-collector-zfs` - ZFS pool collector for monitoring ZFS health.
   Run alongside or instead of the standard collector if you use ZFS. See [docs/ZFS_POOL_MONITORING.md](./docs/ZFS_POOL_MONITORING.md) for setup instructions.
+- `ghcr.io/starosdev/scrutiny:latest-collector-performance` - Performance benchmark collector using fio.
+  Runs periodic benchmarks and tracks throughput, IOPS, and latency over time. See [Performance Benchmarking](#performance-benchmarking) for details.
 - `ghcr.io/starosdev/scrutiny:latest-web` - Contains the Web UI and API. Only one container necessary
 - `influxdb:2.2` - InfluxDB image, used by the Web container to persist SMART data. Only one container necessary.
   See [docs/TROUBLESHOOTING_INFLUXDB.md](./docs/TROUBLESHOOTING_INFLUXDB.md)
@@ -195,11 +202,12 @@ docker exec scrutiny /opt/scrutiny/bin/scrutiny-collector-metrics run
 # Configuration
 By default Scrutiny looks for its YAML configuration files in `/opt/scrutiny/config`
 
-There are three configuration files available:
+There are four configuration files available:
 
 - Webapp/API config via `scrutiny.yaml` - [example.scrutiny.yaml](example.scrutiny.yaml).
 - Collector config via `collector.yaml` - [example.collector.yaml](example.collector.yaml).
 - ZFS Collector config via `collector-zfs.yaml` - [example.collector-zfs.yaml](example.collector-zfs.yaml). See [docs/ZFS_POOL_MONITORING.md](./docs/ZFS_POOL_MONITORING.md) for setup instructions.
+- Performance Collector config via `collector-performance.yaml` - [example.collector-performance.yaml](example.collector-performance.yaml). Falls back to `collector.yaml` if not found.
 
 None of these files are required, however if provided, they allow you to configure how Scrutiny functions.
 
@@ -222,6 +230,53 @@ scrape_configs:
       - targets: ['scrutiny:8080']
     metrics_path: '/api/metrics'
 ```
+
+## Performance Benchmarking
+
+Scrutiny can run periodic [fio](https://fio.readthedocs.io/) benchmarks on your drives and track performance over time. This helps detect drive degradation before S.M.A.R.T failures appear -- a drive that is suddenly 50% slower may be failing even if S.M.A.R.T attributes look normal.
+
+### What's Measured
+
+| Metric | Description |
+| ------ | ----------- |
+| Sequential Read/Write | Throughput in bytes/sec (large block sequential I/O) |
+| Random Read/Write IOPS | Input/output operations per second (4K random I/O) |
+| Read/Write Latency | Average, P50, P95, P99 latency in nanoseconds |
+| Mixed Read/Write IOPS | Combined random read+write performance |
+
+### How It Works
+
+1. The **performance collector** (`scrutiny-collector-performance`) runs fio benchmarks on configured devices
+2. Results are uploaded to the Scrutiny API and stored as time-series data in InfluxDB
+3. The **web UI** displays performance history charts and summary cards on the device detail page
+4. A **baseline** is computed from the last 5 results, and current results are compared against it
+5. **Degradation detection** flags warnings (>20% throughput drop or >30% latency increase) and failures (>40% / >60%)
+
+### Deployment
+
+The performance collector is available as a separate Docker image:
+
+```bash
+docker run --restart unless-stopped \
+  --device=/dev/sda \
+  --device=/dev/sdb \
+  -e COLLECTOR_PERF_API_ENDPOINT=http://SCRUTINY_WEB_IPADDRESS:8080 \
+  --name scrutiny-perf-collector \
+  ghcr.io/starosdev/scrutiny:latest-collector-performance
+```
+
+The collector requires direct device access (not virtualized). Running benchmarks will temporarily increase I/O on the target drives, so schedule accordingly.
+
+### Viewing Results
+
+Performance data appears on the device detail page when benchmark results are available. The UI shows:
+
+- **Summary cards** with latest values and baseline comparison badges
+- **Throughput chart** -- sequential read/write bandwidth over time
+- **IOPS chart** -- random read/write and mixed IOPS over time
+- **Latency chart** -- read latency (average, P95, P99) over time
+
+Use the duration selector to view day, week, month, or year ranges.
 
 ## Notifications
 
@@ -246,6 +301,14 @@ Scrutiny supports sending SMART device failure notifications via the following s
 Check the `notify.urls` section of [example.scrutiny.yml](example.scrutiny.yaml) for examples.
 
 For more information and troubleshooting, see the [TROUBLESHOOTING_NOTIFICATIONS.md](./docs/TROUBLESHOOTING_NOTIFICATIONS.md) file
+
+### Heartbeat Notifications
+
+Scrutiny can send periodic "all clear" heartbeat notifications to confirm the monitoring system is running and all drives are healthy. This is useful for integration with uptime monitoring tools like Uptime Kuma.
+
+- **Disabled by default** -- enable via Settings in the web UI or the `/api/settings` API
+- **Configurable interval** -- defaults to every 24 hours
+- **Suppressed during failures** -- heartbeat is not sent if any drive has active failures (failure notifications take priority)
 
 ### Per-Device Notification Control
 
@@ -313,6 +376,9 @@ Dots and dashes in key names become underscores.
 | `web.listen.port` | `SCRUTINY_WEB_LISTEN_PORT` | `8080` |
 | `web.listen.host` | `SCRUTINY_WEB_LISTEN_HOST` | `0.0.0.0` |
 | `web.listen.basepath` | `SCRUTINY_WEB_LISTEN_BASEPATH` | `` |
+| `web.listen.read_timeout_seconds` | `SCRUTINY_WEB_LISTEN_READ_TIMEOUT_SECONDS` | `10` |
+| `web.listen.write_timeout_seconds` | `SCRUTINY_WEB_LISTEN_WRITE_TIMEOUT_SECONDS` | `30` |
+| `web.listen.idle_timeout_seconds` | `SCRUTINY_WEB_LISTEN_IDLE_TIMEOUT_SECONDS` | `60` |
 | `web.database.location` | `SCRUTINY_WEB_DATABASE_LOCATION` | `/opt/scrutiny/config/scrutiny.db` |
 | `web.database.journal_mode` | `SCRUTINY_WEB_DATABASE_JOURNAL_MODE` | `WAL` |
 | `web.src.frontend.path` | `SCRUTINY_WEB_SRC_FRONTEND_PATH` | `/opt/scrutiny/web` |
@@ -406,6 +472,56 @@ These environment variables are only available when running the collector in Doc
 | `COLLECTOR_RUN_STARTUP` | `false` | Run collector immediately on container start |
 | `COLLECTOR_RUN_STARTUP_SLEEP` | `1` | Delay in seconds before startup collection |
 
+## Performance Collector
+
+The performance collector is a separate binary (`scrutiny-collector-performance`) that runs fio benchmarks. It can use its own config file (`collector-performance.yaml`) or fall back to the main `collector.yaml`.
+
+```bash
+DEBUG=true
+COLLECTOR_PERF_LOG_FILE=/tmp/performance.log
+```
+
+Or via CLI:
+
+```bash
+scrutiny-collector-performance run --debug --log-file /tmp/performance.log --profile quick
+```
+
+### Performance Collector Environment Variable Overrides
+
+The performance collector checks `COLLECTOR_PERF_` prefixed variables first, then falls back to `COLLECTOR_` prefixed variables.
+
+| Config Key | Environment Variable | Default Value |
+| --- | --- | --- |
+| `host.id` | `COLLECTOR_PERF_HOST_ID` or `COLLECTOR_HOST_ID` | `` |
+| `api.endpoint` | `COLLECTOR_PERF_API_ENDPOINT` or `COLLECTOR_API_ENDPOINT` | `http://localhost:8080` |
+| `performance.profile` | `COLLECTOR_PERF_PROFILE` | `quick` |
+| `performance.enabled` | `COLLECTOR_PERFORMANCE_ENABLED` | `false` |
+| `performance.temp_file_size` | `COLLECTOR_PERFORMANCE_TEMP_FILE_SIZE` | `256M` |
+| `commands.performance_fio_bin` | `COLLECTOR_COMMANDS_PERFORMANCE_FIO_BIN` | `fio` |
+| `log.level` | `COLLECTOR_LOG_LEVEL` | `INFO` |
+| `log.file` | `COLLECTOR_PERF_LOG_FILE` or `COLLECTOR_LOG_FILE` | `` |
+
+### Performance Collector Docker-Only Environment Variables
+
+| Environment Variable | Default Value | Description |
+| --- | --- | --- |
+| `COLLECTOR_PERF_CRON_SCHEDULE` | `0 2 * * 0` | Cron schedule (default: Sunday 2 AM) |
+| `COLLECTOR_PERF_RUN_STARTUP` | `false` | Run benchmark immediately on container start |
+| `COLLECTOR_PERF_RUN_STARTUP_SLEEP` | `1` | Delay in seconds before startup run |
+
+Example:
+
+```bash
+docker run --restart unless-stopped \
+  --device=/dev/sda \
+  --device=/dev/sdb \
+  -e COLLECTOR_PERF_API_ENDPOINT=http://scrutiny-web:8080 \
+  -e COLLECTOR_PERF_PROFILE=quick \
+  -e COLLECTOR_PERF_CRON_SCHEDULE="0 2 * * 0" \
+  ghcr.io/starosdev/scrutiny:latest-collector-performance
+```
+
 # Supported Architectures
 
 | Architecture Name | Binaries | Docker |
@@ -436,13 +552,9 @@ We use SemVer for versioning. For the versions available, see the tags on this r
 
 # Credits
 
-**Original Author:** Jason Kulatunga ([@AnalogJ](https://github.com/AnalogJ)) - Created Scrutiny and built the foundation this fork builds upon.
+**Original Author:** Jason Kulatunga ([@AnalogJ](https://github.com/AnalogJ)) -- Created Scrutiny and built the foundation this fork builds upon.
 
-**Fork Maintainer:** [@Starosdev](https://github.com/Starosdev) - Maintaining this fork with continued development and community contributions.
-
-This fork exists to keep Scrutiny alive and growing. Full credit for the original vision and architecture goes to AnalogJ.
-
-I started this fork as a learning project, so contributions from more experienced developers are greatly appreciated. Full disclosure: I use Claude AI to assist with development, but all code is manually reviewed by me before merging.
+**Fork Maintainer:** [@Starosdev](https://github.com/Starosdev) -- Maintaining this fork with continued development and community contributions.
 
 # License
 

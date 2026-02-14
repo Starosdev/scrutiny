@@ -9,7 +9,7 @@ import (
 	"github.com/analogj/go-util/utils"
 	"github.com/analogj/scrutiny/collector/pkg/errors"
 	"github.com/analogj/scrutiny/collector/pkg/models"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -57,6 +57,12 @@ func (c *configuration) Init() error {
 	c.AutomaticEnv()
 	
 	//c.SetDefault("collect.short.command", "-a -o on -S on")
+
+	c.SetDefault("commands.performance_fio_bin", "fio")
+	c.SetDefault("performance.enabled", false)
+	c.SetDefault("performance.profile", "quick")
+	c.SetDefault("performance.allow_direct_device_io", false)
+	c.SetDefault("performance.temp_file_size", "256M")
 
 	c.SetDefault("allow_listed_devices", []string{})
 

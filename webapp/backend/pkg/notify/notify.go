@@ -20,8 +20,8 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
-	"github.com/containrrr/shoutrrr"
-	shoutrrrTypes "github.com/containrrr/shoutrrr/pkg/types"
+	"github.com/nicholas-fedor/shoutrrr"
+	shoutrrrTypes "github.com/nicholas-fedor/shoutrrr/pkg/types"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -32,6 +32,8 @@ const NotifyFailureTypeBothFailure = "SmartFailure" //SmartFailure always takes 
 const NotifyFailureTypeSmartFailure = "SmartFailure"
 const NotifyFailureTypeScrutinyFailure = "ScrutinyFailure"
 const NotifyFailureTypeMissedPing = "MissedPing"
+const NotifyFailureTypeHeartbeat = "Heartbeat"
+const NotifyFailureTypePerformanceDegradation = "PerformanceDegradation"
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
 func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
@@ -337,12 +339,6 @@ func (n *Notify) Send() error {
 		n.Logger.Error("One or more notifications failed to send successfully. See logs for more information.")
 		return err
 	}
-	////wg.Wait()
-	//if waitTimeout(&wg, time.Minute) { //wait for 1 minute
-	//	fmt.Println("Timed out while sending notifications")
-	//} else {
-	//}
-	//return nil
 }
 
 func (n *Notify) SendWebhookNotification(webhookUrl string) error {
@@ -582,6 +578,168 @@ func NewMissedPing(logger logrus.FieldLogger, appconfig config.Interface, device
 		FailureType:  missedPingPayload.FailureType,
 		Subject:      missedPingPayload.Subject,
 		Message:      missedPingPayload.Message,
+	}
+
+	return Notify{
+		Logger:  logger,
+		Config:  appconfig,
+		Payload: payload,
+	}
+}
+
+// HeartbeatPayload represents a periodic "all clear" heartbeat notification
+type HeartbeatPayload struct {
+	MonitoredDevices int    `json:"monitored_devices"`
+	TotalDevices     int    `json:"total_devices"`
+	Date             string `json:"date"`
+	FailureType      string `json:"failure_type"`
+	Subject          string `json:"subject"`
+	Message          string `json:"message"`
+}
+
+// NewHeartbeatPayload creates a payload for heartbeat notifications
+func NewHeartbeatPayload(monitoredCount, totalCount int) HeartbeatPayload {
+	payload := HeartbeatPayload{
+		MonitoredDevices: monitoredCount,
+		TotalDevices:     totalCount,
+		Date:             time.Now().Format(time.RFC3339),
+		FailureType:      NotifyFailureTypeHeartbeat,
+	}
+
+	payload.Subject = payload.generateSubject()
+	payload.Message = payload.generateMessage()
+	return payload
+}
+
+func (p *HeartbeatPayload) generateSubject() string {
+	return fmt.Sprintf("Scrutiny heartbeat: All %d drives healthy", p.MonitoredDevices)
+}
+
+func (p *HeartbeatPayload) generateMessage() string {
+	messageParts := []string{
+		fmt.Sprintf("Scrutiny periodic health check: All %d monitored drives are healthy.", p.MonitoredDevices),
+		"",
+		fmt.Sprintf("Monitored devices: %d", p.MonitoredDevices),
+		fmt.Sprintf("Total devices (including archived/muted): %d", p.TotalDevices),
+		fmt.Sprintf("Date: %s", p.Date),
+		"",
+		"This is an automated heartbeat notification confirming that Scrutiny is running and all drives are healthy.",
+	}
+
+	return strings.Join(messageParts, "\n")
+}
+
+// NewHeartbeat creates a Notify instance for heartbeat notifications
+func NewHeartbeat(logger logrus.FieldLogger, appconfig config.Interface, monitoredCount, totalCount int) Notify {
+	heartbeatPayload := NewHeartbeatPayload(monitoredCount, totalCount)
+
+	// Convert HeartbeatPayload to standard Payload for compatibility with Send()
+	payload := Payload{
+		Test:        false,
+		Date:        heartbeatPayload.Date,
+		FailureType: heartbeatPayload.FailureType,
+		Subject:     heartbeatPayload.Subject,
+		Message:     heartbeatPayload.Message,
+	}
+
+	return Notify{
+		Logger:  logger,
+		Config:  appconfig,
+		Payload: payload,
+	}
+}
+
+// PerformanceDegradationPayload represents a notification for performance degradation
+type PerformanceDegradationPayload struct {
+	HostId       string  `json:"host_id,omitempty"`
+	DeviceWWN    string  `json:"device_wwn"`
+	DeviceName   string  `json:"device_name"`
+	DeviceSerial string  `json:"device_serial"`
+	DeviceLabel  string  `json:"device_label,omitempty"`
+	Metric       string  `json:"metric"`
+	Date         string  `json:"date"`
+	FailureType  string  `json:"failure_type"`
+	Subject      string  `json:"subject"`
+	Message      string  `json:"message"`
+	BaselineAvg  float64 `json:"baseline_avg"`
+	CurrentValue float64 `json:"current_value"`
+	DeviationPct float64 `json:"deviation_pct"`
+}
+
+// NewPerformanceDegradationPayload creates a payload for performance degradation notifications
+func NewPerformanceDegradationPayload(device *models.Device, metric string, baselineAvg, currentValue, deviationPct float64) PerformanceDegradationPayload {
+	payload := PerformanceDegradationPayload{
+		HostId:       strings.TrimSpace(device.HostId),
+		DeviceWWN:    device.WWN,
+		DeviceName:   device.DeviceName,
+		DeviceSerial: device.SerialNumber,
+		DeviceLabel:  strings.TrimSpace(device.Label),
+		Metric:       metric,
+		BaselineAvg:  baselineAvg,
+		CurrentValue: currentValue,
+		DeviationPct: deviationPct,
+		Date:         time.Now().Format(time.RFC3339),
+		FailureType:  NotifyFailureTypePerformanceDegradation,
+	}
+
+	payload.Subject = payload.generateSubject()
+	payload.Message = payload.generateMessage()
+	return payload
+}
+
+func (p *PerformanceDegradationPayload) generateSubject() string {
+	deviceIdentifier := p.DeviceName
+	if len(p.DeviceLabel) > 0 {
+		deviceIdentifier = fmt.Sprintf("%s (%s)", p.DeviceLabel, p.DeviceName)
+	}
+	if len(p.HostId) > 0 {
+		return fmt.Sprintf("Scrutiny performance degradation detected on [host]device: [%s]%s", p.HostId, deviceIdentifier)
+	}
+	return fmt.Sprintf("Scrutiny performance degradation detected on device: %s", deviceIdentifier)
+}
+
+func (p *PerformanceDegradationPayload) generateMessage() string {
+	messageParts := []string{
+		fmt.Sprintf("Scrutiny performance degradation notification for device: %s", p.DeviceName),
+	}
+	if len(p.HostId) > 0 {
+		messageParts = append(messageParts, fmt.Sprintf("Host Id: %s", p.HostId))
+	}
+	messageParts = append(messageParts,
+		fmt.Sprintf("Device WWN: %s", p.DeviceWWN),
+		fmt.Sprintf("Device Serial: %s", p.DeviceSerial),
+	)
+	if len(p.DeviceLabel) > 0 {
+		messageParts = append(messageParts, fmt.Sprintf("Device Label: %s", p.DeviceLabel))
+	}
+	messageParts = append(messageParts,
+		"",
+		fmt.Sprintf("Degraded Metric: %s", p.Metric),
+		fmt.Sprintf("Baseline Average: %.2f", p.BaselineAvg),
+		fmt.Sprintf("Current Value: %.2f", p.CurrentValue),
+		fmt.Sprintf("Deviation: %.1f%%", p.DeviationPct),
+		"",
+		fmt.Sprintf("Date: %s", p.Date),
+	)
+
+	return strings.Join(messageParts, "\n")
+}
+
+// NewPerformanceDegradation creates a Notify instance for performance degradation notifications
+func NewPerformanceDegradation(logger logrus.FieldLogger, appconfig config.Interface, device *models.Device, metric string, baselineAvg, currentValue, deviationPct float64) Notify {
+	degradationPayload := NewPerformanceDegradationPayload(device, metric, baselineAvg, currentValue, deviationPct)
+
+	payload := Payload{
+		HostId:       degradationPayload.HostId,
+		DeviceType:   device.DeviceType,
+		DeviceName:   degradationPayload.DeviceName,
+		DeviceSerial: degradationPayload.DeviceSerial,
+		DeviceLabel:  degradationPayload.DeviceLabel,
+		Test:         false,
+		Date:         degradationPayload.Date,
+		FailureType:  degradationPayload.FailureType,
+		Subject:      degradationPayload.Subject,
+		Message:      degradationPayload.Message,
 	}
 
 	return Notify{

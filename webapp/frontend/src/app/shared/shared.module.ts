@@ -7,6 +7,7 @@ import { TemperaturePipe } from './temperature.pipe';
 import { DeviceTitlePipe } from './device-title.pipe';
 import { DeviceStatusPipe } from './device-status.pipe';
 import { DeviceHoursPipe } from './device-hours.pipe';
+import { LatencyPipe } from './latency.pipe';
 
 @NgModule({
     declarations: [
@@ -15,7 +16,8 @@ import { DeviceHoursPipe } from './device-hours.pipe';
         TemperaturePipe,
         DeviceTitlePipe,
         DeviceStatusPipe,
-        DeviceHoursPipe
+        DeviceHoursPipe,
+        LatencyPipe
     ],
     imports: [
         CommonModule,
@@ -31,7 +33,8 @@ import { DeviceHoursPipe } from './device-hours.pipe';
         DeviceTitlePipe,
         DeviceStatusPipe,
         TemperaturePipe,
-        DeviceHoursPipe
+        DeviceHoursPipe,
+        LatencyPipe
     ]
 })
 export class SharedModule

@@ -28,6 +28,7 @@ type AppEngine struct {
 	Logger            *logrus.Entry
 	MetricsCollector  *metrics.Collector
 	MissedPingMonitor *MissedPingMonitor
+	HeartbeatMonitor  *HeartbeatMonitor
 }
 
 func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
@@ -97,6 +98,8 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.POST("/device/:wwn/label", handler.UpdateDeviceLabel)                         //used by UI to set device label
 			api.POST("/device/:wwn/smart-display-mode", handler.UpdateDeviceSmartDisplayMode) //used by UI to set SMART attribute display mode
 			api.DELETE("/device/:wwn", handler.DeleteDevice)                                  //used by UI to delete device
+			api.POST("/device/:wwn/performance", handler.UploadDevicePerformance)            // used by Collector to upload performance benchmarks
+			api.GET("/device/:wwn/performance", handler.GetDevicePerformance)                // used by UI to view performance history
 
 			api.GET("/settings", handler.GetSettings)   //used to get settings
 			api.POST("/settings", handler.SaveSettings) //used to save settings
@@ -208,6 +211,12 @@ func (ae *AppEngine) Start() error {
 	missedPingMonitor.Start()
 	ae.Logger.Info("Missed ping monitor started")
 
+	// Create and start the heartbeat monitor
+	heartbeatMonitor := NewHeartbeatMonitor(ae)
+	ae.HeartbeatMonitor = heartbeatMonitor
+	heartbeatMonitor.Start()
+	ae.Logger.Info("Heartbeat monitor started")
+
 	// Load initial metrics data asynchronously at startup (if metrics enabled)
 	if ae.Config.GetBool("web.metrics.enabled") && ae.MetricsCollector != nil {
 		go func() {
@@ -226,9 +235,18 @@ func (ae *AppEngine) Start() error {
 
 	// Create HTTP server for graceful shutdown support
 	addr := fmt.Sprintf("%s:%s", ae.Config.GetString("web.listen.host"), ae.Config.GetString("web.listen.port"))
+
+	readTimeout := ae.Config.GetInt("web.listen.read_timeout_seconds")
+	writeTimeout := ae.Config.GetInt("web.listen.write_timeout_seconds")
+	idleTimeout := ae.Config.GetInt("web.listen.idle_timeout_seconds")
+	ae.Logger.Infof("HTTP server timeouts: read=%ds, write=%ds, idle=%ds", readTimeout, writeTimeout, idleTimeout)
+
 	srv := &http.Server{
-		Addr:    addr,
-		Handler: r,
+		Addr:         addr,
+		Handler:      r,
+		ReadTimeout:  time.Duration(readTimeout) * time.Second,
+		WriteTimeout: time.Duration(writeTimeout) * time.Second,
+		IdleTimeout:  time.Duration(idleTimeout) * time.Second,
 	}
 
 	// Channel to receive shutdown signals
@@ -247,9 +265,12 @@ func (ae *AppEngine) Start() error {
 	<-quit
 	ae.Logger.Info("Shutdown signal received, initiating graceful shutdown...")
 
-	// Stop the missed ping monitor first
+	// Stop background monitors
 	if ae.MissedPingMonitor != nil {
 		ae.MissedPingMonitor.Stop()
+	}
+	if ae.HeartbeatMonitor != nil {
+		ae.HeartbeatMonitor.Stop()
 	}
 
 	// Create a deadline for shutdown (give 30 seconds for graceful shutdown)

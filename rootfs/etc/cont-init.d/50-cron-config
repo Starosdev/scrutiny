@@ -27,3 +27,17 @@ else
     # Disable ZFS cron if no schedule set (comment out the cron line)
     sed -i 's|^{COLLECTOR_ZFS_CRON_SCHEDULE}|# ZFS collector disabled (set COLLECTOR_ZFS_CRON_SCHEDULE to enable)|g' /etc/cron.d/scrutiny-zfs
 fi
+
+# Performance Collector cron schedule (disabled by default - requires fio)
+COLLECTOR_PERF_CRON_SCHEDULE=${COLLECTOR_PERF_CRON_SCHEDULE:-""}
+
+if [ -n "${COLLECTOR_PERF_CRON_SCHEDULE}" ]; then
+    # strip quotes if present
+    [[ "${COLLECTOR_PERF_CRON_SCHEDULE}" == \"*\" || "${COLLECTOR_PERF_CRON_SCHEDULE}" == \'*\' ]] && COLLECTOR_PERF_CRON_SCHEDULE="${COLLECTOR_PERF_CRON_SCHEDULE:1:-1}"
+
+    # replace placeholder with correct value
+    sed -i 's|{COLLECTOR_PERF_CRON_SCHEDULE}|'"${COLLECTOR_PERF_CRON_SCHEDULE}"'|g' /etc/cron.d/scrutiny-performance
+else
+    # Disable performance cron if no schedule set (comment out the cron line)
+    sed -i 's|^{COLLECTOR_PERF_CRON_SCHEDULE}|# Performance collector disabled (set COLLECTOR_PERF_CRON_SCHEDULE to enable)|g' /etc/cron.d/scrutiny-performance
+fi

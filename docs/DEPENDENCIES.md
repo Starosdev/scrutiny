@@ -57,7 +57,7 @@ Last updated: 2026-01-08
 | Package | Version | Latest | Gap | Priority |
 |---------|---------|--------|-----|----------|
 | github.com/analogj/go-util | v0.0.0-20190301 | v0.0.0-20210417 | 2 years | Low |
-| github.com/containrrr/shoutrrr | v0.8.0 | v0.8.0 | Current | - |
+| github.com/nicholas-fedor/shoutrrr | v0.8.17 | v0.12.0 | Go 1.24 compatible | - |
 | github.com/fatih/color | v1.15.0 | v1.18.0 | 3 minor | Low |
 | github.com/gin-gonic/gin | v1.6.3 | v1.11.0 | 4 minor | High |
 | github.com/glebarez/sqlite | v1.4.5 | v1.11.0 | 6 minor | Medium |

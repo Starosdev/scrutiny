@@ -31,5 +31,9 @@ type Settings struct {
 		NotifyOnMissedPing          bool `json:"notify_on_missed_ping" mapstructure:"notify_on_missed_ping"`
 		MissedPingTimeoutMinutes    int  `json:"missed_ping_timeout_minutes" mapstructure:"missed_ping_timeout_minutes"`
 		MissedPingCheckIntervalMins int  `json:"missed_ping_check_interval_mins" mapstructure:"missed_ping_check_interval_mins"`
+
+		// Heartbeat notification settings
+		HeartbeatEnabled       bool `json:"heartbeat_enabled" mapstructure:"heartbeat_enabled"`
+		HeartbeatIntervalHours int  `json:"heartbeat_interval_hours" mapstructure:"heartbeat_interval_hours"`
 	} `json:"metrics" mapstructure:"metrics"`
 }

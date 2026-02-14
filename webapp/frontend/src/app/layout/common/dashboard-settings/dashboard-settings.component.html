@@ -147,6 +147,25 @@
             </mat-form-field>
         </div>
 
+        <div class="flex flex-col mt-5 gt-md:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Heartbeat Notifications</mat-label>
+                <mat-select [(ngModel)]="heartbeatEnabled">
+                    <mat-option [value]="true">Enabled</mat-option>
+                    <mat-option [value]="false">Disabled</mat-option>
+                </mat-select>
+                <mat-hint>Periodic "all drives healthy" notification</mat-hint>
+            </mat-form-field>
+        </div>
+
+        <div class="flex flex-col mt-5 gt-md:flex-row" *ngIf="heartbeatEnabled">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Heartbeat Interval (hours)</mat-label>
+                <input matInput type="number" [(ngModel)]="heartbeatIntervalHours" min="1">
+                <mat-hint>Hours between heartbeat notifications (default: 24)</mat-hint>
+            </mat-form-field>
+        </div>
+
         <!-- SMART Attribute Overrides Section -->
         <mat-expansion-panel class="mt-5">
             <mat-expansion-panel-header>

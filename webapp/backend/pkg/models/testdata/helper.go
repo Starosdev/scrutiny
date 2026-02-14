@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
+
+	"github.com/sirupsen/logrus"
 	"os"
 	"time"
 
@@ -30,12 +31,12 @@ func main() {
 	// send a post request to register devices
 	file, err := os.Open(devices)
 	if err != nil {
-		log.Fatalf("ERROR %v", err)
+		logrus.Fatalf("ERROR %v", err)
 	}
 	defer file.Close()
 	_, err = SendPostRequest("http://localhost:8080/api/devices/register", file)
 	if err != nil {
-		log.Fatalf("ERROR %v", err)
+		logrus.Fatalf("ERROR %v", err)
 	}
 	//
 
@@ -44,12 +45,12 @@ func main() {
 			for daysToSubtract := 0; daysToSubtract <= 30; daysToSubtract++ { //add 4 weeks worth of data
 				smartDataReader, err := readSmartDataFileFixTimestamp(daysToSubtract, smartDataFileName)
 				if err != nil {
-					log.Fatalf("ERROR %v", err)
+					logrus.Fatalf("ERROR %v", err)
 				}
 
 				_, err = SendPostRequest(fmt.Sprintf("http://localhost:8080/api/device/%s/smart", diskId), smartDataReader)
 				if err != nil {
-					log.Fatalf("ERROR %v", err)
+					logrus.Fatalf("ERROR %v", err)
 				}
 			}
 
@@ -66,7 +67,7 @@ func SendPostRequest(url string, file io.Reader) ([]byte, error) {
 	}
 	defer response.Body.Close()
 
-	log.Printf("%v\n", response.Status)
+	logrus.Infof("%v", response.Status)
 
 	return ioutil.ReadAll(response.Body)
 }
