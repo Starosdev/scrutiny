@@ -183,8 +183,10 @@ func (c *Collector) Benchmark(device models.Device, profile string) (*models.Per
 	seqReadOut, err := c.runFio(fioBin, c.buildFioArgs("read", "1M", profile, targetPath))
 	if err != nil {
 		c.logger.Warnf("Sequential read test failed for %s: %v", device.DeviceName, err)
-	} else if fioResult, err := models.ParseFioOutput(seqReadOut); err == nil && len(fioResult.Jobs) > 0 {
-		result.SeqReadBwBytes, _, _, _, _, _ = models.ExtractReadStats(&fioResult.Jobs[0])
+	} else {
+		if fioResult, parseErr := models.ParseFioOutput(seqReadOut); parseErr == nil && len(fioResult.Jobs) > 0 {
+			result.SeqReadBwBytes, _, _, _, _, _ = models.ExtractReadStats(&fioResult.Jobs[0])
+		}
 	}
 
 	// Sequential write test
@@ -192,8 +194,10 @@ func (c *Collector) Benchmark(device models.Device, profile string) (*models.Per
 	seqWriteOut, err := c.runFio(fioBin, c.buildFioArgs("write", "1M", profile, targetPath))
 	if err != nil {
 		c.logger.Warnf("Sequential write test failed for %s: %v", device.DeviceName, err)
-	} else if fioResult, err := models.ParseFioOutput(seqWriteOut); err == nil && len(fioResult.Jobs) > 0 {
-		result.SeqWriteBwBytes, _, _, _, _, _ = models.ExtractWriteStats(&fioResult.Jobs[0])
+	} else {
+		if fioResult, parseErr := models.ParseFioOutput(seqWriteOut); parseErr == nil && len(fioResult.Jobs) > 0 {
+			result.SeqWriteBwBytes, _, _, _, _, _ = models.ExtractWriteStats(&fioResult.Jobs[0])
+		}
 	}
 
 	// Random read test (IOPS + latency)
@@ -201,8 +205,10 @@ func (c *Collector) Benchmark(device models.Device, profile string) (*models.Per
 	randReadOut, err := c.runFio(fioBin, c.buildFioArgs("randread", "4K", profile, targetPath))
 	if err != nil {
 		c.logger.Warnf("Random read test failed for %s: %v", device.DeviceName, err)
-	} else if fioResult, err := models.ParseFioOutput(randReadOut); err == nil && len(fioResult.Jobs) > 0 {
-		_, result.RandReadIOPS, result.RandReadLatAvgNs, result.RandReadLatP50Ns, result.RandReadLatP95Ns, result.RandReadLatP99Ns = models.ExtractReadStats(&fioResult.Jobs[0])
+	} else {
+		if fioResult, parseErr := models.ParseFioOutput(randReadOut); parseErr == nil && len(fioResult.Jobs) > 0 {
+			_, result.RandReadIOPS, result.RandReadLatAvgNs, result.RandReadLatP50Ns, result.RandReadLatP95Ns, result.RandReadLatP99Ns = models.ExtractReadStats(&fioResult.Jobs[0])
+		}
 	}
 
 	// Random write test (IOPS + latency)
@@ -210,8 +216,10 @@ func (c *Collector) Benchmark(device models.Device, profile string) (*models.Per
 	randWriteOut, err := c.runFio(fioBin, c.buildFioArgs("randwrite", "4K", profile, targetPath))
 	if err != nil {
 		c.logger.Warnf("Random write test failed for %s: %v", device.DeviceName, err)
-	} else if fioResult, err := models.ParseFioOutput(randWriteOut); err == nil && len(fioResult.Jobs) > 0 {
-		_, result.RandWriteIOPS, result.RandWriteLatAvgNs, result.RandWriteLatP50Ns, result.RandWriteLatP95Ns, result.RandWriteLatP99Ns = models.ExtractWriteStats(&fioResult.Jobs[0])
+	} else {
+		if fioResult, parseErr := models.ParseFioOutput(randWriteOut); parseErr == nil && len(fioResult.Jobs) > 0 {
+			_, result.RandWriteIOPS, result.RandWriteLatAvgNs, result.RandWriteLatP50Ns, result.RandWriteLatP95Ns, result.RandWriteLatP99Ns = models.ExtractWriteStats(&fioResult.Jobs[0])
+		}
 	}
 
 	// Mixed random R/W test (comprehensive profile only)

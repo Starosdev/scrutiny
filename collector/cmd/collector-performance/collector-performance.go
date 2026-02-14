@@ -145,7 +145,9 @@ OPTIONS:
 						config.Set("performance.profile", c.String("profile"))
 					}
 
-					collectorLogger, logFile, err := CreateLogger(config)
+					var collectorLogger *logrus.Entry
+				var logFile *os.File
+				collectorLogger, logFile, err = CreateLogger(config)
 					if logFile != nil {
 						defer logFile.Close()
 					}

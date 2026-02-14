@@ -651,20 +651,19 @@ func NewHeartbeat(logger logrus.FieldLogger, appconfig config.Interface, monitor
 
 // PerformanceDegradationPayload represents a notification for performance degradation
 type PerformanceDegradationPayload struct {
+	BaselineAvg  float64 `json:"baseline_avg"`
+	CurrentValue float64 `json:"current_value"`
+	DeviationPct float64 `json:"deviation_pct"`
 	HostId       string  `json:"host_id,omitempty"`
 	DeviceWWN    string  `json:"device_wwn"`
 	DeviceName   string  `json:"device_name"`
 	DeviceSerial string  `json:"device_serial"`
 	DeviceLabel  string  `json:"device_label,omitempty"`
 	Metric       string  `json:"metric"`
-	BaselineAvg  float64 `json:"baseline_avg"`
-	CurrentValue float64 `json:"current_value"`
-	DeviationPct float64 `json:"deviation_pct"`
-
-	Date        string `json:"date"`
-	FailureType string `json:"failure_type"`
-	Subject     string `json:"subject"`
-	Message     string `json:"message"`
+	Date         string  `json:"date"`
+	FailureType  string  `json:"failure_type"`
+	Subject      string  `json:"subject"`
+	Message      string  `json:"message"`
 }
 
 // NewPerformanceDegradationPayload creates a payload for performance degradation notifications

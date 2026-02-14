@@ -6,37 +6,25 @@ import (
 
 // Performance represents time-series performance benchmark metrics stored in InfluxDB
 type Performance struct {
-	Date           time.Time `json:"date"`
-	DeviceWWN      string    `json:"device_wwn"`      // tag
-	DeviceProtocol string    `json:"device_protocol"` // tag
-	Profile        string    `json:"profile"`         // tag: "quick" or "comprehensive"
-
-	// Sequential throughput (bytes/sec)
-	SeqReadBwBytes  float64 `json:"seq_read_bw_bytes"`
-	SeqWriteBwBytes float64 `json:"seq_write_bw_bytes"`
-
-	// Random IOPS
-	RandReadIOPS  float64 `json:"rand_read_iops"`
-	RandWriteIOPS float64 `json:"rand_write_iops"`
-
-	// Random read latency (nanoseconds)
-	RandReadLatAvgNs float64 `json:"rand_read_lat_ns_avg"`
-	RandReadLatP50Ns float64 `json:"rand_read_lat_ns_p50"`
-	RandReadLatP95Ns float64 `json:"rand_read_lat_ns_p95"`
-	RandReadLatP99Ns float64 `json:"rand_read_lat_ns_p99"`
-
-	// Random write latency (nanoseconds)
-	RandWriteLatAvgNs float64 `json:"rand_write_lat_ns_avg"`
-	RandWriteLatP50Ns float64 `json:"rand_write_lat_ns_p50"`
-	RandWriteLatP95Ns float64 `json:"rand_write_lat_ns_p95"`
-	RandWriteLatP99Ns float64 `json:"rand_write_lat_ns_p99"`
-
-	// Mixed random read/write IOPS (comprehensive profile only)
-	MixedRwIOPS float64 `json:"mixed_rw_iops"`
-
-	// Metadata
-	FioVersion      string  `json:"fio_version"`
-	TestDurationSec float64 `json:"test_duration_sec"`
+	Date              time.Time `json:"date"`
+	SeqReadBwBytes    float64   `json:"seq_read_bw_bytes"`
+	SeqWriteBwBytes   float64   `json:"seq_write_bw_bytes"`
+	RandReadIOPS      float64   `json:"rand_read_iops"`
+	RandWriteIOPS     float64   `json:"rand_write_iops"`
+	RandReadLatAvgNs  float64   `json:"rand_read_lat_ns_avg"`
+	RandReadLatP50Ns  float64   `json:"rand_read_lat_ns_p50"`
+	RandReadLatP95Ns  float64   `json:"rand_read_lat_ns_p95"`
+	RandReadLatP99Ns  float64   `json:"rand_read_lat_ns_p99"`
+	RandWriteLatAvgNs float64   `json:"rand_write_lat_ns_avg"`
+	RandWriteLatP50Ns float64   `json:"rand_write_lat_ns_p50"`
+	RandWriteLatP95Ns float64   `json:"rand_write_lat_ns_p95"`
+	RandWriteLatP99Ns float64   `json:"rand_write_lat_ns_p99"`
+	MixedRwIOPS       float64   `json:"mixed_rw_iops"`
+	TestDurationSec   float64   `json:"test_duration_sec"`
+	DeviceWWN         string    `json:"device_wwn"`      // tag
+	DeviceProtocol    string    `json:"device_protocol"` // tag
+	Profile           string    `json:"profile"`         // tag
+	FioVersion        string    `json:"fio_version"`
 }
 
 // Flatten converts the Performance struct to tags and fields for InfluxDB
@@ -136,7 +124,7 @@ type PerformanceBaseline struct {
 	RandWriteIOPS     float64 `json:"rand_write_iops"`
 	RandReadLatAvgNs  float64 `json:"rand_read_lat_ns_avg"`
 	RandWriteLatAvgNs float64 `json:"rand_write_lat_ns_avg"`
-	SampleCount       int     `json:"sample_count"`
+	SampleCount       int     `json:"sample_count"` // already optimal: int at end after float64s
 }
 
 // DegradationStatus represents whether a metric has degraded relative to its baseline
@@ -144,11 +132,11 @@ type DegradationStatus struct {
 	BaselineAvg  float64 `json:"baseline_avg"`
 	Current      float64 `json:"current"`
 	DeviationPct float64 `json:"deviation_pct"`
-	Status       string  `json:"status"` // "passed", "warning", "failed"
+	Status       string  `json:"status"`
 }
 
 // DegradationReport contains per-metric degradation analysis
 type DegradationReport struct {
-	Detected bool                         `json:"detected"`
 	Metrics  map[string]DegradationStatus `json:"metrics,omitempty"`
+	Detected bool                         `json:"detected"`
 }

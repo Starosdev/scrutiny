@@ -7,14 +7,11 @@ import (
 
 // PerformanceResult is the JSON payload sent from collector to backend
 type PerformanceResult struct {
-	Date            int64   `json:"date"`
-	Profile         string  `json:"profile"`
-	DeviceProtocol  string  `json:"device_protocol"`
-	SeqReadBwBytes  float64 `json:"seq_read_bw_bytes"`
-	SeqWriteBwBytes float64 `json:"seq_write_bw_bytes"`
-	RandReadIOPS    float64 `json:"rand_read_iops"`
-	RandWriteIOPS   float64 `json:"rand_write_iops"`
-
+	Date              int64   `json:"date"`
+	SeqReadBwBytes    float64 `json:"seq_read_bw_bytes"`
+	SeqWriteBwBytes   float64 `json:"seq_write_bw_bytes"`
+	RandReadIOPS      float64 `json:"rand_read_iops"`
+	RandWriteIOPS     float64 `json:"rand_write_iops"`
 	RandReadLatAvgNs  float64 `json:"rand_read_lat_ns_avg"`
 	RandReadLatP50Ns  float64 `json:"rand_read_lat_ns_p50"`
 	RandReadLatP95Ns  float64 `json:"rand_read_lat_ns_p95"`
@@ -23,10 +20,11 @@ type PerformanceResult struct {
 	RandWriteLatP50Ns float64 `json:"rand_write_lat_ns_p50"`
 	RandWriteLatP95Ns float64 `json:"rand_write_lat_ns_p95"`
 	RandWriteLatP99Ns float64 `json:"rand_write_lat_ns_p99"`
-
-	MixedRwIOPS     float64 `json:"mixed_rw_iops"`
-	FioVersion      string  `json:"fio_version"`
-	TestDurationSec float64 `json:"test_duration_sec"`
+	MixedRwIOPS       float64 `json:"mixed_rw_iops"`
+	TestDurationSec   float64 `json:"test_duration_sec"`
+	Profile           string  `json:"profile"`
+	DeviceProtocol    string  `json:"device_protocol"`
+	FioVersion        string  `json:"fio_version"`
 }
 
 // FioOutput represents the top-level fio JSON output
@@ -37,18 +35,18 @@ type FioOutput struct {
 
 // FioJob represents a single fio job result
 type FioJob struct {
-	JobName     string       `json:"jobname"`
-	Read        FioIOStats   `json:"read"`
-	Write       FioIOStats   `json:"write"`
-	JobRuntime  int64        `json:"job_runtime"` // milliseconds
+	Read       FioIOStats `json:"read"`
+	Write      FioIOStats `json:"write"`
+	JobName    string     `json:"jobname"`
+	JobRuntime int64      `json:"job_runtime"` // milliseconds
 }
 
 // FioIOStats represents read or write statistics from a fio job
 type FioIOStats struct {
-	BwBytes float64       `json:"bw_bytes"`
-	IOPS    float64       `json:"iops"`
-	LatNs   FioLatency    `json:"lat_ns"`
-	ClatNs  FioClatency   `json:"clat_ns"`
+	LatNs   FioLatency  `json:"lat_ns"`
+	ClatNs  FioClatency `json:"clat_ns"`
+	BwBytes float64     `json:"bw_bytes"`
+	IOPS    float64     `json:"iops"`
 }
 
 // FioLatency represents latency statistics
@@ -59,9 +57,9 @@ type FioLatency struct {
 
 // FioClatency represents completion latency with percentiles
 type FioClatency struct {
-	Mean       float64                `json:"mean"`
-	StdDev     float64                `json:"stddev"`
-	Percentile map[string]float64     `json:"percentile"`
+	Percentile map[string]float64 `json:"percentile"`
+	Mean       float64            `json:"mean"`
+	StdDev     float64            `json:"stddev"`
 }
 
 // ParseFioOutput parses fio JSON output and returns the first job's stats
