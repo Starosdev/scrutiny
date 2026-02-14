@@ -7,6 +7,9 @@ import (
 
 // PerformanceResult is the JSON payload sent from collector to backend
 type PerformanceResult struct {
+	Profile           string  `json:"profile"`
+	DeviceProtocol    string  `json:"device_protocol"`
+	FioVersion        string  `json:"fio_version"`
 	Date              int64   `json:"date"`
 	SeqReadBwBytes    float64 `json:"seq_read_bw_bytes"`
 	SeqWriteBwBytes   float64 `json:"seq_write_bw_bytes"`
@@ -22,9 +25,6 @@ type PerformanceResult struct {
 	RandWriteLatP99Ns float64 `json:"rand_write_lat_ns_p99"`
 	MixedRwIOPS       float64 `json:"mixed_rw_iops"`
 	TestDurationSec   float64 `json:"test_duration_sec"`
-	Profile           string  `json:"profile"`
-	DeviceProtocol    string  `json:"device_protocol"`
-	FioVersion        string  `json:"fio_version"`
 }
 
 // FioOutput represents the top-level fio JSON output
@@ -35,16 +35,16 @@ type FioOutput struct {
 
 // FioJob represents a single fio job result
 type FioJob struct {
+	JobName    string     `json:"jobname"`
 	Read       FioIOStats `json:"read"`
 	Write      FioIOStats `json:"write"`
-	JobName    string     `json:"jobname"`
 	JobRuntime int64      `json:"job_runtime"` // milliseconds
 }
 
 // FioIOStats represents read or write statistics from a fio job
 type FioIOStats struct {
-	LatNs   FioLatency  `json:"lat_ns"`
 	ClatNs  FioClatency `json:"clat_ns"`
+	LatNs   FioLatency  `json:"lat_ns"`
 	BwBytes float64     `json:"bw_bytes"`
 	IOPS    float64     `json:"iops"`
 }

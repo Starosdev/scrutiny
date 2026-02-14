@@ -14,6 +14,9 @@ import (
 
 // performanceRequest is the JSON payload sent by the collector
 type performanceRequest struct {
+	Profile           string  `json:"profile"`
+	DeviceProtocol    string  `json:"device_protocol"`
+	FioVersion        string  `json:"fio_version"`
 	Date              int64   `json:"date"`
 	SeqReadBwBytes    float64 `json:"seq_read_bw_bytes"`
 	SeqWriteBwBytes   float64 `json:"seq_write_bw_bytes"`
@@ -29,9 +32,6 @@ type performanceRequest struct {
 	RandWriteLatP99Ns float64 `json:"rand_write_lat_ns_p99"`
 	MixedRwIOPS       float64 `json:"mixed_rw_iops"`
 	TestDurationSec   float64 `json:"test_duration_sec"`
-	Profile           string  `json:"profile"`
-	DeviceProtocol    string  `json:"device_protocol"`
-	FioVersion        string  `json:"fio_version"`
 }
 
 // UploadDevicePerformance receives performance benchmark results from the collector
@@ -94,7 +94,7 @@ func UploadDevicePerformance(c *gin.Context) {
 		return
 	}
 
-	report := calculateDegradation(perfData, baseline)
+	report := calculateDegradation(&perfData, baseline)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success":     true,
@@ -103,7 +103,7 @@ func UploadDevicePerformance(c *gin.Context) {
 }
 
 // calculateDegradation compares current results against a baseline and reports degradation
-func calculateDegradation(current measurements.Performance, baseline *measurements.PerformanceBaseline) measurements.DegradationReport {
+func calculateDegradation(current *measurements.Performance, baseline *measurements.PerformanceBaseline) measurements.DegradationReport {
 	report := measurements.DegradationReport{
 		Metrics: make(map[string]measurements.DegradationStatus),
 	}

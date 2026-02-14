@@ -113,13 +113,13 @@ func (sr *scrutinyRepository) GetPerformanceBaseline(ctx context.Context, wwn st
 		SampleCount: len(results),
 	}
 
-	for _, r := range results {
-		baseline.SeqReadBwBytes += r.SeqReadBwBytes
-		baseline.SeqWriteBwBytes += r.SeqWriteBwBytes
-		baseline.RandReadIOPS += r.RandReadIOPS
-		baseline.RandWriteIOPS += r.RandWriteIOPS
-		baseline.RandReadLatAvgNs += r.RandReadLatAvgNs
-		baseline.RandWriteLatAvgNs += r.RandWriteLatAvgNs
+	for i := range results {
+		baseline.SeqReadBwBytes += results[i].SeqReadBwBytes
+		baseline.SeqWriteBwBytes += results[i].SeqWriteBwBytes
+		baseline.RandReadIOPS += results[i].RandReadIOPS
+		baseline.RandWriteIOPS += results[i].RandWriteIOPS
+		baseline.RandReadLatAvgNs += results[i].RandReadLatAvgNs
+		baseline.RandWriteLatAvgNs += results[i].RandWriteLatAvgNs
 	}
 
 	n := float64(len(results))

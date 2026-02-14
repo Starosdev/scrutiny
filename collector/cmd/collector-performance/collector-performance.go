@@ -155,8 +155,8 @@ OPTIONS:
 						return err
 					}
 
-					settingsData, err := json.MarshalIndent(config.AllSettings(), "", "\t")
-					collectorLogger.Debug(string(settingsData), err)
+					settingsData, settingsErr := json.MarshalIndent(config.AllSettings(), "", "\t")
+					collectorLogger.Debug(string(settingsData), settingsErr)
 
 					perfCollector, err := performance.CreateCollector(
 						config,

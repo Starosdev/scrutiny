@@ -651,9 +651,6 @@ func NewHeartbeat(logger logrus.FieldLogger, appconfig config.Interface, monitor
 
 // PerformanceDegradationPayload represents a notification for performance degradation
 type PerformanceDegradationPayload struct {
-	BaselineAvg  float64 `json:"baseline_avg"`
-	CurrentValue float64 `json:"current_value"`
-	DeviationPct float64 `json:"deviation_pct"`
 	HostId       string  `json:"host_id,omitempty"`
 	DeviceWWN    string  `json:"device_wwn"`
 	DeviceName   string  `json:"device_name"`
@@ -664,10 +661,13 @@ type PerformanceDegradationPayload struct {
 	FailureType  string  `json:"failure_type"`
 	Subject      string  `json:"subject"`
 	Message      string  `json:"message"`
+	BaselineAvg  float64 `json:"baseline_avg"`
+	CurrentValue float64 `json:"current_value"`
+	DeviationPct float64 `json:"deviation_pct"`
 }
 
 // NewPerformanceDegradationPayload creates a payload for performance degradation notifications
-func NewPerformanceDegradationPayload(device models.Device, metric string, baselineAvg, currentValue, deviationPct float64) PerformanceDegradationPayload {
+func NewPerformanceDegradationPayload(device *models.Device, metric string, baselineAvg, currentValue, deviationPct float64) PerformanceDegradationPayload {
 	payload := PerformanceDegradationPayload{
 		HostId:       strings.TrimSpace(device.HostId),
 		DeviceWWN:    device.WWN,
@@ -726,7 +726,7 @@ func (p *PerformanceDegradationPayload) generateMessage() string {
 }
 
 // NewPerformanceDegradation creates a Notify instance for performance degradation notifications
-func NewPerformanceDegradation(logger logrus.FieldLogger, appconfig config.Interface, device models.Device, metric string, baselineAvg, currentValue, deviationPct float64) Notify {
+func NewPerformanceDegradation(logger logrus.FieldLogger, appconfig config.Interface, device *models.Device, metric string, baselineAvg, currentValue, deviationPct float64) Notify {
 	degradationPayload := NewPerformanceDegradationPayload(device, metric, baselineAvg, currentValue, deviationPct)
 
 	payload := Payload{

@@ -91,15 +91,15 @@ func (c *Collector) Run() error {
 	c.logger.Infof("Using benchmark profile: %s", profile)
 
 	// Benchmark each registered device
-	for _, device := range registeredDevices {
-		result, err := c.Benchmark(device, profile)
+	for i := range registeredDevices {
+		result, err := c.Benchmark(&registeredDevices[i], profile)
 		if err != nil {
-			c.logger.Errorf("Failed to benchmark device %s (%s): %v", device.DeviceName, device.WWN, err)
+			c.logger.Errorf("Failed to benchmark device %s (%s): %v", registeredDevices[i].DeviceName, registeredDevices[i].WWN, err)
 			continue
 		}
 
-		if err := c.Publish(device.WWN, result); err != nil {
-			c.logger.Errorf("Failed to publish results for %s: %v", device.WWN, err)
+		if err := c.Publish(registeredDevices[i].WWN, result); err != nil {
+			c.logger.Errorf("Failed to publish results for %s: %v", registeredDevices[i].WWN, err)
 		}
 	}
 
@@ -152,7 +152,7 @@ func (c *Collector) RegisterDevices(devices []models.Device) ([]models.Device, e
 }
 
 // Benchmark runs fio tests against a device and returns aggregated results
-func (c *Collector) Benchmark(device models.Device, profile string) (*models.PerformanceResult, error) {
+func (c *Collector) Benchmark(device *models.Device, profile string) (*models.PerformanceResult, error) {
 	c.logger.Infof("Benchmarking device %s (%s)", device.DeviceName, device.WWN)
 
 	fioBin := c.config.GetString("commands.performance_fio_bin")
@@ -269,7 +269,7 @@ func (c *Collector) Publish(wwn string, result *models.PerformanceResult) error 
 
 // resolveTargetPath determines the fio target file path for benchmarking.
 // Returns the path, a cleanup function (if a temp file was created), and any error.
-func (c *Collector) resolveTargetPath(device models.Device) (string, func(), error) {
+func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), error) {
 	// For safety, we always use a temp file on the device's filesystem.
 	// Direct device I/O is not supported in this version to prevent data loss.
 	fullDeviceName := fmt.Sprintf("%s%s", detect.DevicePrefix(), device.DeviceName)

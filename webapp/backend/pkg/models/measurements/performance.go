@@ -7,6 +7,10 @@ import (
 // Performance represents time-series performance benchmark metrics stored in InfluxDB
 type Performance struct {
 	Date              time.Time `json:"date"`
+	DeviceWWN         string    `json:"device_wwn"`      // tag
+	DeviceProtocol    string    `json:"device_protocol"` // tag
+	Profile           string    `json:"profile"`         // tag
+	FioVersion        string    `json:"fio_version"`
 	SeqReadBwBytes    float64   `json:"seq_read_bw_bytes"`
 	SeqWriteBwBytes   float64   `json:"seq_write_bw_bytes"`
 	RandReadIOPS      float64   `json:"rand_read_iops"`
@@ -21,10 +25,6 @@ type Performance struct {
 	RandWriteLatP99Ns float64   `json:"rand_write_lat_ns_p99"`
 	MixedRwIOPS       float64   `json:"mixed_rw_iops"`
 	TestDurationSec   float64   `json:"test_duration_sec"`
-	DeviceWWN         string    `json:"device_wwn"`      // tag
-	DeviceProtocol    string    `json:"device_protocol"` // tag
-	Profile           string    `json:"profile"`         // tag
-	FioVersion        string    `json:"fio_version"`
 }
 
 // Flatten converts the Performance struct to tags and fields for InfluxDB
@@ -129,10 +129,10 @@ type PerformanceBaseline struct {
 
 // DegradationStatus represents whether a metric has degraded relative to its baseline
 type DegradationStatus struct {
+	Status       string  `json:"status"`
 	BaselineAvg  float64 `json:"baseline_avg"`
 	Current      float64 `json:"current"`
 	DeviationPct float64 `json:"deviation_pct"`
-	Status       string  `json:"status"`
 }
 
 // DegradationReport contains per-metric degradation analysis
