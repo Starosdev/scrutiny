@@ -58,6 +58,7 @@ api:
 performance:
   enabled: true
   profile: 'quick'            # 'quick' (~60s per device) or 'comprehensive' (~300s per device)
+#  allow_direct_device_io: false  # Benchmark raw block device (/dev/sdX) directly. WARNING: writes are destructive!
 #  temp_file_size: '256M'     # Size of temp file for benchmarks (used in quick profile)
 
 # Benchmark Profiles:
