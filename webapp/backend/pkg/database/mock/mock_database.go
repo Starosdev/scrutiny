@@ -496,7 +496,7 @@ func (mr *MockDeviceRepoMockRecorder) SaveSmartAttributes(ctx, wwn, collectorSma
 }
 
 // SaveSmartTemperature mocks base method.
-func (m *MockDeviceRepo) SaveSmartTemperature(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo, retrieveSCTTemperatureHistory bool) error {
+func (m *MockDeviceRepo) SaveSmartTemperature(ctx context.Context, wwn string, collectorSmartData *collector.SmartInfo, retrieveSCTTemperatureHistory bool) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SaveSmartTemperature", ctx, wwn, collectorSmartData, retrieveSCTTemperatureHistory)
 	ret0, _ := ret[0].(error)
