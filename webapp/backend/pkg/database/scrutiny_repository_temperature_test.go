@@ -7,6 +7,38 @@ import (
 	"testing"
 )
 
+func Test_aggregateTempQuery_Day(t *testing.T) {
+	t.Parallel()
+
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetString("web.influxdb.bucket").Return("metrics").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.org").Return("scrutiny").AnyTimes()
+
+	deviceRepo := scrutinyRepository{
+		appConfig: fakeConfig,
+	}
+
+	aggregationType := DURATION_KEY_DAY
+
+	//test
+	influxDbScript := deviceRepo.aggregateTempQuery(aggregationType)
+
+	//assert
+	require.Equal(t, `import "influxdata/influxdb/schema"
+dayData = from(bucket: "metrics")
+|> range(start: -1d, stop: now())
+|> filter(fn: (r) => r["_measurement"] == "temp" )
+|> group(columns: ["device_wwn"])
+|> toInt()
+
+dayData
+|> schema.fieldsAsCols()
+|> yield()`, influxDbScript)
+}
+
 func Test_aggregateTempQuery_Week(t *testing.T) {
 	t.Parallel()
 

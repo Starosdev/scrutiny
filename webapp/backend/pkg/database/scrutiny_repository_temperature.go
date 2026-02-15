@@ -142,15 +142,17 @@ func (sr *scrutinyRepository) aggregateTempQuery(durationKey string) string {
 		durationResolution := sr.lookupResolution(nestedDurationKey)
 
 		subQueryNames = append(subQueryNames, fmt.Sprintf(`%sData`, nestedDurationKey))
-		partialQueryStr = append(partialQueryStr, []string{
+		subQuery := []string{
 			fmt.Sprintf(`%sData = from(bucket: "%s")`, nestedDurationKey, bucketName),
 			fmt.Sprintf(`|> range(start: %s, stop: %s)`, durationRange[0], durationRange[1]),
 			`|> filter(fn: (r) => r["_measurement"] == "temp" )`,
-			fmt.Sprintf(`|> aggregateWindow(every: %s, fn: mean, createEmpty: false)`, durationResolution),
-			`|> group(columns: ["device_wwn"])`,
-			`|> toInt()`,
-			"",
-		}...)
+		}
+		if durationResolution != "" {
+			subQuery = append(subQuery,
+				fmt.Sprintf(`|> aggregateWindow(every: %s, fn: mean, createEmpty: false)`, durationResolution))
+		}
+		subQuery = append(subQuery, `|> group(columns: ["device_wwn"])`, `|> toInt()`, "")
+		partialQueryStr = append(partialQueryStr, subQuery...)
 	}
 
 	if len(subQueryNames) == 1 {
