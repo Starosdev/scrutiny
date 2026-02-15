@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.24.4](https://github.com/Starosdev/scrutiny/compare/v1.24.3...v1.24.4) (2026-02-15)
+
+### Bug Fixes
+
+* **ci:** replace packagr container with actions/setup-go in release workflow ([#231](https://github.com/Starosdev/scrutiny/issues/231)) ([0a641d0](https://github.com/Starosdev/scrutiny/commit/0a641d01ded8c6203b46cfce0c06ad15635fe525)), closes [#227](https://github.com/Starosdev/scrutiny/issues/227)
+
 ## [1.24.3](https://github.com/Starosdev/scrutiny/compare/v1.24.2...v1.24.3) (2026-02-15)
 
 ### Bug Fixes
