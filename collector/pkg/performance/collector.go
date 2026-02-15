@@ -270,9 +270,12 @@ func (c *Collector) Publish(wwn string, result *models.PerformanceResult) error 
 // resolveTargetPath determines the fio target file path for benchmarking.
 // Returns the path, a cleanup function (if a temp file was created), and any error.
 func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), error) {
-	// For safety, we always use a temp file on the device's filesystem.
-	// Direct device I/O is not supported in this version to prevent data loss.
 	fullDeviceName := fmt.Sprintf("%s%s", detect.DevicePrefix(), device.DeviceName)
+
+	if c.config.GetBool("performance.allow_direct_device_io") {
+		c.logger.Warnf("Direct device I/O enabled -- benchmarking raw device %s (writes are destructive!)", fullDeviceName)
+		return fullDeviceName, nil, nil
+	}
 
 	// Try to find mount point for the device
 	mountPoint, err := findMountPoint(fullDeviceName)

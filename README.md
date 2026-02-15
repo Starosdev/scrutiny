@@ -497,6 +497,7 @@ The performance collector checks `COLLECTOR_PERF_` prefixed variables first, the
 | `api.endpoint` | `COLLECTOR_PERF_API_ENDPOINT` or `COLLECTOR_API_ENDPOINT` | `http://localhost:8080` |
 | `performance.profile` | `COLLECTOR_PERF_PROFILE` | `quick` |
 | `performance.enabled` | `COLLECTOR_PERFORMANCE_ENABLED` | `false` |
+| `performance.allow_direct_device_io` | `COLLECTOR_PERFORMANCE_ALLOW_DIRECT_DEVICE_IO` | `false` |
 | `performance.temp_file_size` | `COLLECTOR_PERFORMANCE_TEMP_FILE_SIZE` | `256M` |
 | `commands.performance_fio_bin` | `COLLECTOR_COMMANDS_PERFORMANCE_FIO_BIN` | `fio` |
 | `log.level` | `COLLECTOR_LOG_LEVEL` | `INFO` |
