@@ -1,8 +1,9 @@
 <div
   [ngClass]="{
-    'border-green': getPoolStatus(poolSummary) == 'passed',
-    'border-red': getPoolStatus(poolSummary) == 'failed',
-    'border-yellow': getPoolStatus(poolSummary) == 'unknown',
+    'border-green': !poolSummary.archived && getPoolStatus(poolSummary) == 'passed',
+    'border-red': !poolSummary.archived && getPoolStatus(poolSummary) == 'failed',
+    'border-yellow': !poolSummary.archived && getPoolStatus(poolSummary) == 'unknown',
+    'border-gray': poolSummary.archived,
     'text-disabled': poolSummary.archived
   }"
   class="relative flex flex-col flex-auto p-6 pr-3 pb-3 bg-card rounded border-l-4 shadow-md overflow-hidden"

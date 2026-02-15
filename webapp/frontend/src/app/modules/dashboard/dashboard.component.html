@@ -109,7 +109,7 @@
                 );
                 track deviceSummary
               ) {
-                @if (showArchived || !$any(deviceSummary).device.archived) {
+                @if (showArchived ? $any(deviceSummary).device.archived : !$any(deviceSummary).device.archived) {
                   <app-dashboard-device
                     class="flex gt-sm:w-1/2 min-w-80 p-4"
                     [deviceSummary]="deviceSummary"
