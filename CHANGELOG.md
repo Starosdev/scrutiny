@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.24.3](https://github.com/Starosdev/scrutiny/compare/v1.24.2...v1.24.3) (2026-02-15)
+
+### Bug Fixes
+
+* **collector:** skip write benchmarks when targeting raw block devices ([#230](https://github.com/Starosdev/scrutiny/issues/230)) ([8b48a02](https://github.com/Starosdev/scrutiny/commit/8b48a0272067e75097bbd12d5527b281c112a6fa)), closes [#226](https://github.com/Starosdev/scrutiny/issues/226)
+
 ## [1.24.2](https://github.com/Starosdev/scrutiny/compare/v1.24.1...v1.24.2) (2026-02-15)
 
 ### Bug Fixes
