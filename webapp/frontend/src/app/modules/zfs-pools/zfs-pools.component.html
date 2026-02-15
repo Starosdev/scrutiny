@@ -56,7 +56,7 @@
 
             <div class="flex flex-wrap w-full">
               @for (poolSummary of poolSummariesForHostGroup(hostId.value); track poolSummary) {
-                @if (showArchived || !poolSummary.archived) {
+                @if (showArchived ? poolSummary.archived : !poolSummary.archived) {
                   <app-zfs-pool-card
                     class="flex gt-sm:w-1/2 min-w-80 p-4"
                     [poolSummary]="poolSummary"
