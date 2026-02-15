@@ -237,6 +237,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
                 curve: this.config.line_stroke,
                 width: 2
             },
+            markers: {
+                size: 0,
+                hover: {
+                    sizeOffset: 4
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
             tooltip: {
                 theme: 'dark',
                 shared: true,
