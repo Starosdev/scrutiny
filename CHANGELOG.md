@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.24.5](https://github.com/Starosdev/scrutiny/compare/v1.24.4...v1.24.5) (2026-02-15)
+
+### Bug Fixes
+
+* **ci:** enhance release notes script to include PR body summaries ([7f8489f](https://github.com/Starosdev/scrutiny/commit/7f8489feb992b5ac24d879b89a0835c5d076ce78))
+
 ## [1.24.4](https://github.com/Starosdev/scrutiny/compare/v1.24.3...v1.24.4) (2026-02-15)
 
 ### Bug Fixes
