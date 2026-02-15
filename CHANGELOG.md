@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.24.1](https://github.com/Starosdev/scrutiny/compare/v1.24.0...v1.24.1) (2026-02-15)
+
+### Bug Fixes
+
+* **collector:** wire up allow_direct_device_io for performance benchmarks ([#219](https://github.com/Starosdev/scrutiny/issues/219)) ([#226](https://github.com/Starosdev/scrutiny/issues/226)) ([3a61f2c](https://github.com/Starosdev/scrutiny/commit/3a61f2cdd9e029100e059b34b2a1ec8b4eea46ba))
+
 ## [1.24.0](https://github.com/Starosdev/scrutiny/compare/v1.23.3...v1.24.0) (2026-02-14)
 
 ### Features
