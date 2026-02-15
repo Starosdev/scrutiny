@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.25.0](https://github.com/Starosdev/scrutiny/compare/v1.24.5...v1.25.0) (2026-02-15)
+
+### Features
+
+* **frontend:** improve archived disk display with filter toggle and gray border ([#218](https://github.com/Starosdev/scrutiny/issues/218))  ([0eb08ff](https://github.com/Starosdev/scrutiny/commit/0eb08ff0c15f6c8a1f11ce886b028b68865ebfaf))
+
 ## [1.24.5](https://github.com/Starosdev/scrutiny/compare/v1.24.4...v1.24.5) (2026-02-15)
 
 ### Bug Fixes
