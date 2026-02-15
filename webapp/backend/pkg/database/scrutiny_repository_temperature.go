@@ -14,7 +14,7 @@ import (
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Temperature Data
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-func (sr *scrutinyRepository) SaveSmartTemperature(ctx context.Context, wwn string, deviceProtocol string, collectorSmartData collector.SmartInfo, retrieveSCTTemperatureHistory bool) error {
+func (sr *scrutinyRepository) SaveSmartTemperature(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo, retrieveSCTTemperatureHistory bool) error {
 	if len(collectorSmartData.AtaSctTemperatureHistory.Table) > 0 && retrieveSCTTemperatureHistory {
 
 		for ndx, temp := range collectorSmartData.AtaSctTemperatureHistory.Table {
