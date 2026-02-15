@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.24.2](https://github.com/Starosdev/scrutiny/compare/v1.24.1...v1.24.2) (2026-02-15)
+
+### Bug Fixes
+
+* **dashboard:** fix temperature chart tooltip issues ([#222](https://github.com/Starosdev/scrutiny/issues/222)) ([#229](https://github.com/Starosdev/scrutiny/issues/229)) ([58abbcc](https://github.com/Starosdev/scrutiny/commit/58abbcc48874a77d50cc3d8f61887e87ac6872bf))
+
 ## [1.24.1](https://github.com/Starosdev/scrutiny/compare/v1.24.0...v1.24.1) (2026-02-15)
 
 ### Bug Fixes
