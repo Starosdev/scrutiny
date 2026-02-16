@@ -2,6 +2,13 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.26.0](https://github.com/Starosdev/scrutiny/compare/v1.25.0...v1.26.0) (2026-02-16)
+
+### Features
+
+* **frontend:** improve archived disk display with filter toggle and gray border ([#218](https://github.com/Starosdev/scrutiny/issues/218)) ([1338a20](https://github.com/Starosdev/scrutiny/commit/1338a204f1ffe46f31dcae672b1919283021c86c))
+* **smart:** add delta-based detection for cumulative counter attributes and inline override actions ([21efe55](https://github.com/Starosdev/scrutiny/commit/21efe5529f5986d2cdb725e9916184de12d75e63)), closes [#217](https://github.com/Starosdev/scrutiny/issues/217)
+
 ## [1.25.0](https://github.com/Starosdev/scrutiny/compare/v1.24.5...v1.25.0) (2026-02-15)
 
 ### Features
