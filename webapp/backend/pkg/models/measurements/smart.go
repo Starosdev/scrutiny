@@ -625,6 +625,78 @@ func (sm *Smart) processNvmeSmartInfoWithOverrides(cfg config.Interface, nvmeSma
 	}
 }
 
+// ApplyDeltaEvaluation suppresses warnings/failures for cumulative counter attributes
+// (like UltraDMA CRC Error Count) when the value hasn't increased since the previous measurement.
+// This prevents false positives from historical errors that are no longer actively occurring.
+// previousValues maps attribute ID strings to their previous raw values.
+// Only applies to ATA attributes with UseDeltaEvaluation=true in their metadata.
+func (sm *Smart) ApplyDeltaEvaluation(previousValues map[string]int64) {
+	if sm.DeviceProtocol != pkg.DeviceProtocolAta || len(previousValues) == 0 {
+		return
+	}
+
+	deltaApplied := false
+
+	for _, attr := range sm.Attributes {
+		ataAttr, ok := attr.(*SmartAtaAttribute)
+		if !ok {
+			continue
+		}
+
+		metadata, ok := thresholds.AtaMetadata[ataAttr.AttributeId]
+		if !ok || !metadata.UseDeltaEvaluation {
+			continue
+		}
+
+		// Only suppress Scrutiny-evaluated warnings/failures, never manufacturer SMART failures
+		if pkg.AttributeStatusHas(ataAttr.Status, pkg.AttributeStatusFailedSmart) {
+			continue
+		}
+
+		// Only act on attributes that are currently warning or failing
+		if ataAttr.Status == pkg.AttributeStatusPassed {
+			continue
+		}
+
+		attrIdStr := strconv.Itoa(ataAttr.AttributeId)
+		prevValue, hasPrevious := previousValues[attrIdStr]
+		if !hasPrevious {
+			continue
+		}
+
+		// If the raw value hasn't changed, suppress the warning
+		if ataAttr.RawValue == prevValue {
+			ataAttr.Status = pkg.AttributeStatusPassed
+			ataAttr.StatusReason = "Cumulative counter unchanged since last measurement"
+			deltaApplied = true
+		}
+	}
+
+	// If we suppressed any attribute statuses, recalculate device status
+	if deltaApplied {
+		sm.recalculateDeviceStatus()
+	}
+}
+
+// recalculateDeviceStatus re-aggregates device status from individual attribute statuses.
+// Preserves manufacturer SMART failure status, only recalculates Scrutiny status.
+func (sm *Smart) recalculateDeviceStatus() {
+	// Preserve manufacturer SMART failure if set
+	newStatus := pkg.DeviceStatusPassed
+	if pkg.DeviceStatusHas(sm.Status, pkg.DeviceStatusFailedSmart) {
+		newStatus = pkg.DeviceStatusSet(newStatus, pkg.DeviceStatusFailedSmart)
+	}
+
+	for _, attr := range sm.Attributes {
+		if pkg.AttributeStatusHas(attr.GetStatus(), pkg.AttributeStatusFailedScrutiny) {
+			newStatus = pkg.DeviceStatusSet(newStatus, pkg.DeviceStatusFailedScrutiny)
+			break
+		}
+	}
+
+	sm.Status = newStatus
+}
+
 // processScsiSmartInfoWithOverrides generates SmartScsiAttribute entries using pre-merged overrides.
 func (sm *Smart) processScsiSmartInfoWithOverrides(cfg config.Interface, defectGrownList int64, scsiErrorCounterLog collector.ScsiErrorCounterLog, temperature map[string]collector.ScsiTemperatureData, mergedOverrides []overrides.AttributeOverride) {
 	sm.Attributes = map[string]SmartAttribute{

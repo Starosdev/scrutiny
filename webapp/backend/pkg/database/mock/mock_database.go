@@ -246,6 +246,21 @@ func (mr *MockDeviceRepoMockRecorder) GetPreviousSmartSubmission(ctx, wwn interf
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPreviousSmartSubmission", reflect.TypeOf((*MockDeviceRepo)(nil).GetPreviousSmartSubmission), ctx, wwn)
 }
 
+// GetLatestSmartSubmission mocks base method.
+func (m *MockDeviceRepo) GetLatestSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLatestSmartSubmission", ctx, wwn)
+	ret0, _ := ret[0].([]measurements.Smart)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLatestSmartSubmission indicates an expected call of GetLatestSmartSubmission.
+func (mr *MockDeviceRepoMockRecorder) GetLatestSmartSubmission(ctx, wwn interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestSmartSubmission", reflect.TypeOf((*MockDeviceRepo)(nil).GetLatestSmartSubmission), ctx, wwn)
+}
+
 // GetSmartAttributeHistory mocks base method.
 func (m *MockDeviceRepo) GetSmartAttributeHistory(ctx context.Context, wwn, durationKey string, selectEntries, selectEntriesOffset int, attributes []string) ([]measurements.Smart, error) {
 	m.ctrl.T.Helper()
