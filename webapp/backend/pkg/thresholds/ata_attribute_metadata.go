@@ -16,6 +16,14 @@ type AtaAttributeMetadata struct {
 	Critical    bool   `json:"critical"`
 	Description string `json:"description"`
 
+	// UseDeltaEvaluation indicates this attribute is a cumulative counter where
+	// the trend matters more than the absolute value. When true, Scrutiny will
+	// suppress warnings if the value hasn't increased since the last measurement.
+	// Useful for attributes like UltraDMA CRC Error Count (199) where errors
+	// accumulate from transient issues (e.g., loose cables) but the count persists
+	// even after the root cause is fixed.
+	UseDeltaEvaluation bool `json:"use_delta_evaluation,omitempty"`
+
 	Transform          func(int64, int64, string) int64 `json:"-"` //this should be a method to extract/tranform the normalized or raw data to a chartable format. Str
 	TransformValueUnit string                           `json:"transform_value_unit,omitempty"`
 	ObservedThresholds []ObservedThreshold              `json:"observed_thresholds,omitempty"` //these thresholds must match the DisplayType
@@ -1278,12 +1286,13 @@ var AtaMetadata = map[int]AtaAttributeMetadata{
 		},
 	},
 	199: {
-		ID:          199,
-		DisplayName: "UltraDMA CRC Error Count",
-		DisplayType: AtaSmartAttributeDisplayTypeRaw,
-		Ideal:       ObservedThresholdIdealLow,
-		Critical:    false,
-		Description: "The count of errors in data transfer via the interface cable as determined by ICRC (Interface Cyclic Redundancy Check).",
+		ID:                 199,
+		DisplayName:        "UltraDMA CRC Error Count",
+		DisplayType:        AtaSmartAttributeDisplayTypeRaw,
+		Ideal:              ObservedThresholdIdealLow,
+		Critical:           false,
+		UseDeltaEvaluation: true,
+		Description:        "The count of errors in data transfer via the interface cable as determined by ICRC (Interface Cyclic Redundancy Check).",
 		ObservedThresholds: []ObservedThreshold{
 			{
 				Low:               0,

@@ -85,7 +85,7 @@ func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Con
 		return fmt.Errorf("could not get device: %w", err)
 	}
 
-	// 2. Get latest SMART data from InfluxDB (limit 1)
+	// 2. Get latest SMART entry from InfluxDB (delta evaluation is already baked into stored data)
 	smartHistory, err := sr.GetSmartAttributeHistory(ctx, wwn, "week", 1, 0, nil)
 	if err != nil {
 		return fmt.Errorf("could not get SMART history: %w", err)
@@ -126,6 +126,11 @@ func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Con
 			newStatus = pkg.DeviceStatusSet(newStatus, pkg.DeviceStatusFailedScrutiny)
 		}
 	}
+
+	// Note: Delta evaluation for cumulative counter attributes (e.g., attribute 199) is already
+	// reflected in the stored InfluxDB data. When SaveSmartAttributes writes to InfluxDB, the
+	// delta-suppressed status is persisted, so no additional delta evaluation is needed here.
+	// Re-applying it would overwrite the override-computed newStatus above.
 
 	// 5. Update device status if changed
 	if newStatus == pkg.DeviceStatusPassed && device.DeviceStatus != pkg.DeviceStatusPassed {
