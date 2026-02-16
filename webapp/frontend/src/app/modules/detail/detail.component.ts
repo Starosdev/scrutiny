@@ -21,6 +21,8 @@ import {DeviceStatusPipe} from 'app/shared/device-status.pipe';
 import {PerformanceModel, PerformanceBaselineModel, PerformanceResponseWrapper} from 'app/core/models/measurements/performance-model';
 import {LatencyPipe} from 'app/shared/latency.pipe';
 import {FileSizePipe} from 'app/shared/file-size.pipe';
+import {AttributeOverrideService} from 'app/core/config/attribute-override.service';
+import {AttributeOverride, OverrideProtocol} from 'app/core/config/app.config';
 
 // from Constants.go - these must match
 const AttributeStatusPassed = 0
@@ -57,6 +59,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         private _detailService: DetailService,
         public dialog: MatDialog,
         private _configService: ScrutinyConfigService,
+        private _overrideService: AttributeOverrideService,
         @Inject(LOCALE_ID) public locale: string
     ) {
         // Set the private defaults
@@ -73,6 +76,8 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     config: AppConfig;
 
+    activeOverrides: AttributeOverride[] = [];
+    private _overrideMap: Map<string, AttributeOverride> = new Map();
     onlyCritical = true;
     // data: any;
     expandedAttribute: SmartAttributeModel | null;
@@ -128,6 +133,14 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             .subscribe((config: AppConfig) => {
 
                 this.config = config;
+            });
+
+        // Load attribute overrides
+        this._overrideService.getOverrides()
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(overrides => {
+                this.activeOverrides = overrides;
+                this._buildOverrideMap();
             });
 
         // Get the data
@@ -423,19 +436,19 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         const latestSmartResult = smartResults[0];
         let attributes: { [p: string]: SmartAttributeModel } = {}
         if (this.isScsi()) {
-            this.smartAttributeTableColumns = ['status', 'name', 'value', 'thresh', 'history'];
+            this.smartAttributeTableColumns = ['status', 'name', 'value', 'thresh', 'history', 'actions'];
             attributes = latestSmartResult.attrs
         } else if (this.isNvme()) {
-            this.smartAttributeTableColumns = ['status', 'name', 'value', 'thresh', 'ideal', 'history'];
+            this.smartAttributeTableColumns = ['status', 'name', 'value', 'thresh', 'ideal', 'history', 'actions'];
             attributes = latestSmartResult.attrs
         } else {
             // ATA
             attributes = latestSmartResult.attrs
             // Only show 'worst' column in scrutiny or normalized mode (worst is meaningless for raw values)
             if (this.displayMode === 'raw') {
-                this.smartAttributeTableColumns = ['status', 'id', 'name', 'value', 'thresh', 'ideal', 'failure', 'history'];
+                this.smartAttributeTableColumns = ['status', 'id', 'name', 'value', 'thresh', 'ideal', 'failure', 'history', 'actions'];
             } else {
-                this.smartAttributeTableColumns = ['status', 'id', 'name', 'value', 'worst', 'thresh', 'ideal', 'failure', 'history'];
+                this.smartAttributeTableColumns = ['status', 'id', 'name', 'value', 'worst', 'thresh', 'ideal', 'failure', 'history', 'actions'];
             }
         }
 
@@ -551,6 +564,83 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     toggleOnlyCritical(): void {
         this.onlyCritical = !this.onlyCritical
         this.smartAttributeDataSource.data = this._generateSmartAttributeTableDataSource(this.smart_results);
+    }
+
+    // -----------------------------------------------------------------------------------------------------
+    // @ Attribute override methods
+    // -----------------------------------------------------------------------------------------------------
+
+    getOverrideForAttribute(attrId: string | number): AttributeOverride | null {
+        const protocol = this.device?.device_protocol;
+        const attrIdStr = String(attrId);
+        // Prefer device-specific override, fall back to global
+        return this._overrideMap.get(`${protocol}:${attrIdStr}:${this.device?.wwn}`)
+            || this._overrideMap.get(`${protocol}:${attrIdStr}:`)
+            || null;
+    }
+
+    private _buildOverrideMap(): void {
+        this._overrideMap.clear();
+        // Insert global overrides first, then device-specific so they take priority
+        for (const o of this.activeOverrides) {
+            const key = `${o.protocol}:${o.attribute_id}:${o.wwn || ''}`;
+            this._overrideMap.set(key, o);
+        }
+    }
+
+    ignoreAttribute(attr: SmartAttributeModel): void {
+        const override: AttributeOverride = {
+            protocol: this.device.device_protocol as OverrideProtocol,
+            attribute_id: String(attr.attribute_id),
+            wwn: this.device.wwn,
+            action: 'ignore'
+        };
+        this._overrideService.saveOverride(override)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe({
+                next: () => this._refreshAfterOverrideChange(),
+                error: (err) => console.error('Failed to save override:', err)
+            });
+    }
+
+    forcePassedAttribute(attr: SmartAttributeModel): void {
+        const override: AttributeOverride = {
+            protocol: this.device.device_protocol as OverrideProtocol,
+            attribute_id: String(attr.attribute_id),
+            wwn: this.device.wwn,
+            action: 'force_status',
+            status: 'passed'
+        };
+        this._overrideService.saveOverride(override)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe({
+                next: () => this._refreshAfterOverrideChange(),
+                error: (err) => console.error('Failed to save override:', err)
+            });
+    }
+
+    removeOverride(attr: SmartAttributeModel): void {
+        const override = this.getOverrideForAttribute(attr.attribute_id);
+        if (override?.id) {
+            this._overrideService.deleteOverride(override.id)
+                .pipe(takeUntil(this._unsubscribeAll))
+                .subscribe({
+                    next: () => this._refreshAfterOverrideChange(),
+                    error: (err) => console.error('Failed to remove override:', err)
+                });
+        }
+    }
+
+    private _refreshAfterOverrideChange(): void {
+        this._overrideService.getOverrides()
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(overrides => {
+                this.activeOverrides = overrides;
+                this._buildOverrideMap();
+            });
+        this._detailService.getData(this.device.wwn)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe();
     }
 
     openSettingsDialog(): void {

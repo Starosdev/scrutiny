@@ -23,12 +23,14 @@ import { DeviceModel } from 'app/core/models/device-model';
 import { AppConfig } from 'app/core/config/app.config';
 import { SharedModule } from 'app/shared/shared.module';
 import { DetailSettingsModule } from 'app/layout/common/detail-settings/detail-settings.module';
+import { AttributeOverrideService } from 'app/core/config/attribute-override.service';
 
 describe('DetailComponent', () => {
   let component: DetailComponent;
   let fixture: ComponentFixture<DetailComponent>;
   let mockDetailService: jasmine.SpyObj<DetailService>;
   let mockConfigService: jasmine.SpyObj<ScrutinyConfigService>;
+  let mockOverrideService: jasmine.SpyObj<AttributeOverrideService>;
   let mockDialog: jasmine.SpyObj<MatDialog>;
   let configSubject: Subject<AppConfig>;
   let dataSubject: Subject<any>;
@@ -52,6 +54,8 @@ describe('DetailComponent', () => {
     mockConfigService = jasmine.createSpyObj('ScrutinyConfigService', [], {
       config$: of(defaultConfig)
     });
+    mockOverrideService = jasmine.createSpyObj('AttributeOverrideService', ['getOverrides', 'saveOverride', 'deleteOverride']);
+    mockOverrideService.getOverrides.and.returnValue(of([]));
     mockDialog = jasmine.createSpyObj('MatDialog', ['open']);
 
     TestBed.configureTestingModule({
@@ -75,6 +79,7 @@ describe('DetailComponent', () => {
         { provide: DetailService, useValue: mockDetailService },
         { provide: ScrutinyConfigService, useValue: mockConfigService },
         { provide: MatDialog, useValue: mockDialog },
+        { provide: AttributeOverrideService, useValue: mockOverrideService },
         { provide: LOCALE_ID, useValue: 'en-US' }
       ],
       schemas: [NO_ERRORS_SCHEMA]
