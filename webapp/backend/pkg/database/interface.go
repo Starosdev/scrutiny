@@ -51,8 +51,11 @@ type DeviceRepo interface {
 	// GetPreviousSmartSubmission returns the previous raw SMART submission (without daily aggregation)
 	// for use in repeat notification detection. Returns the submission before the most recent one.
 	GetPreviousSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error)
+	// GetLatestSmartSubmission returns the most recent raw SMART submission (without daily aggregation)
+	// for use in delta evaluation before writing a new submission.
+	GetLatestSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error)
 
-	SaveSmartTemperature(ctx context.Context, wwn string, deviceProtocol string, collectorSmartData collector.SmartInfo, retrieveSCTTemperatureHistory bool) error
+	SaveSmartTemperature(ctx context.Context, wwn string, collectorSmartData *collector.SmartInfo, retrieveSCTTemperatureHistory bool) error
 
 	GetSummary(ctx context.Context) (map[string]*models.DeviceSummary, error)
 	GetSmartTemperatureHistory(ctx context.Context, durationKey string) (map[string][]measurements.SmartTemperature, error)

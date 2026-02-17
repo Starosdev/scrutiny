@@ -2,6 +2,49 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.26.0](https://github.com/Starosdev/scrutiny/compare/v1.25.0...v1.26.0) (2026-02-16)
+
+### Features
+
+* **frontend:** improve archived disk display with filter toggle and gray border ([#218](https://github.com/Starosdev/scrutiny/issues/218)) ([1338a20](https://github.com/Starosdev/scrutiny/commit/1338a204f1ffe46f31dcae672b1919283021c86c))
+* **smart:** add delta-based detection for cumulative counter attributes and inline override actions ([21efe55](https://github.com/Starosdev/scrutiny/commit/21efe5529f5986d2cdb725e9916184de12d75e63)), closes [#217](https://github.com/Starosdev/scrutiny/issues/217)
+
+## [1.25.0](https://github.com/Starosdev/scrutiny/compare/v1.24.5...v1.25.0) (2026-02-15)
+
+### Features
+
+* **frontend:** improve archived disk display with filter toggle and gray border ([#218](https://github.com/Starosdev/scrutiny/issues/218))  ([0eb08ff](https://github.com/Starosdev/scrutiny/commit/0eb08ff0c15f6c8a1f11ce886b028b68865ebfaf))
+
+## [1.24.5](https://github.com/Starosdev/scrutiny/compare/v1.24.4...v1.24.5) (2026-02-15)
+
+### Bug Fixes
+
+* **ci:** enhance release notes script to include PR body summaries ([7f8489f](https://github.com/Starosdev/scrutiny/commit/7f8489feb992b5ac24d879b89a0835c5d076ce78))
+
+## [1.24.4](https://github.com/Starosdev/scrutiny/compare/v1.24.3...v1.24.4) (2026-02-15)
+
+### Bug Fixes
+
+* **ci:** replace packagr container with actions/setup-go in release workflow ([#231](https://github.com/Starosdev/scrutiny/issues/231)) ([0a641d0](https://github.com/Starosdev/scrutiny/commit/0a641d01ded8c6203b46cfce0c06ad15635fe525)), closes [#227](https://github.com/Starosdev/scrutiny/issues/227)
+
+## [1.24.3](https://github.com/Starosdev/scrutiny/compare/v1.24.2...v1.24.3) (2026-02-15)
+
+### Bug Fixes
+
+* **collector:** skip write benchmarks when targeting raw block devices ([#230](https://github.com/Starosdev/scrutiny/issues/230)) ([8b48a02](https://github.com/Starosdev/scrutiny/commit/8b48a0272067e75097bbd12d5527b281c112a6fa)), closes [#226](https://github.com/Starosdev/scrutiny/issues/226)
+
+## [1.24.2](https://github.com/Starosdev/scrutiny/compare/v1.24.1...v1.24.2) (2026-02-15)
+
+### Bug Fixes
+
+* **dashboard:** fix temperature chart tooltip issues ([#222](https://github.com/Starosdev/scrutiny/issues/222)) ([#229](https://github.com/Starosdev/scrutiny/issues/229)) ([58abbcc](https://github.com/Starosdev/scrutiny/commit/58abbcc48874a77d50cc3d8f61887e87ac6872bf))
+
+## [1.24.1](https://github.com/Starosdev/scrutiny/compare/v1.24.0...v1.24.1) (2026-02-15)
+
+### Bug Fixes
+
+* **collector:** wire up allow_direct_device_io for performance benchmarks ([#219](https://github.com/Starosdev/scrutiny/issues/219)) ([#226](https://github.com/Starosdev/scrutiny/issues/226)) ([3a61f2c](https://github.com/Starosdev/scrutiny/commit/3a61f2cdd9e029100e059b34b2a1ec8b4eea46ba))
+
 ## [1.24.0](https://github.com/Starosdev/scrutiny/compare/v1.23.3...v1.24.0) (2026-02-14)
 
 ### Features

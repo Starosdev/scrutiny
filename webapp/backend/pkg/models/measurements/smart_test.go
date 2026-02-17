@@ -1219,3 +1219,144 @@ func TestFromCollectorSmartInfo_ATA_TemperatureFallback_NegativeTemp(t *testing.
 	require.Equal(t, int64(45), smartMdl.Temp,
 		"Negative temperature should trigger fallback to attribute 194")
 }
+
+// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CorrectedTemperature tests
+// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+func TestCorrectedTemperature_NormalATA(t *testing.T) {
+	info := collector.SmartInfo{
+		Temperature: struct {
+			Current int64 `json:"current"`
+		}{Current: 35},
+	}
+	info.Device.Protocol = "ATA"
+
+	require.Equal(t, int64(35), measurements.CorrectedTemperature(&info))
+}
+
+func TestCorrectedTemperature_NormalNVMe(t *testing.T) {
+	info := collector.SmartInfo{
+		Temperature: struct {
+			Current int64 `json:"current"`
+		}{Current: 42},
+	}
+	info.Device.Protocol = "NVMe"
+
+	require.Equal(t, int64(42), measurements.CorrectedTemperature(&info))
+}
+
+func TestCorrectedTemperature_NegativeATA_FallbackToAttr194(t *testing.T) {
+	info := collector.SmartInfo{
+		Temperature: struct {
+			Current int64 `json:"current"`
+		}{Current: -53},
+	}
+	info.Device.Protocol = "ATA"
+	info.AtaSmartAttributes.Table = []collector.AtaSmartAttributesTableItem{
+		{
+			ID:   194,
+			Name: "Temperature_Celsius",
+			Raw: struct {
+				Value  int64  `json:"value"`
+				String string `json:"string"`
+			}{Value: 45, String: "45"},
+		},
+	}
+
+	require.Equal(t, int64(45), measurements.CorrectedTemperature(&info),
+		"Negative temperature should fall back to attribute 194")
+}
+
+func TestCorrectedTemperature_ZeroATA_FallbackToAttr194(t *testing.T) {
+	info := collector.SmartInfo{
+		Temperature: struct {
+			Current int64 `json:"current"`
+		}{Current: 0},
+	}
+	info.Device.Protocol = "ATA"
+	info.AtaSmartAttributes.Table = []collector.AtaSmartAttributesTableItem{
+		{
+			ID:   194,
+			Name: "Temperature_Celsius",
+			Raw: struct {
+				Value  int64  `json:"value"`
+				String string `json:"string"`
+			}{Value: 42, String: "42"},
+		},
+	}
+
+	require.Equal(t, int64(42), measurements.CorrectedTemperature(&info),
+		"Zero temperature should fall back to attribute 194")
+}
+
+func TestCorrectedTemperature_ATA_BitMask(t *testing.T) {
+	info := collector.SmartInfo{
+		Temperature: struct {
+			Current int64 `json:"current"`
+		}{Current: 0},
+	}
+	info.Device.Protocol = "ATA"
+	info.AtaSmartAttributes.Table = []collector.AtaSmartAttributesTableItem{
+		{
+			ID:   194,
+			Name: "Temperature_Celsius",
+			Raw: struct {
+				Value  int64  `json:"value"`
+				String string `json:"string"`
+			}{Value: 0x002B00310032, String: "50 (Min/Max 43/49)"},
+		},
+	}
+
+	require.Equal(t, int64(50), measurements.CorrectedTemperature(&info),
+		"Should extract lowest byte via 0xFF bitmask")
+}
+
+func TestCorrectedTemperature_OverTemp_FallbackToAttr194(t *testing.T) {
+	info := collector.SmartInfo{
+		Temperature: struct {
+			Current int64 `json:"current"`
+		}{Current: 200},
+	}
+	info.Device.Protocol = "ATA"
+	info.AtaSmartAttributes.Table = []collector.AtaSmartAttributesTableItem{
+		{
+			ID:   194,
+			Name: "Temperature_Celsius",
+			Raw: struct {
+				Value  int64  `json:"value"`
+				String string `json:"string"`
+			}{Value: 38, String: "38"},
+		},
+	}
+
+	require.Equal(t, int64(38), measurements.CorrectedTemperature(&info),
+		">150C should trigger fallback to attribute 194")
+}
+
+func TestCorrectedTemperature_ATA_NoAttr194_KeepsOriginal(t *testing.T) {
+	info := collector.SmartInfo{
+		Temperature: struct {
+			Current int64 `json:"current"`
+		}{Current: -53},
+	}
+	info.Device.Protocol = "ATA"
+
+	require.Equal(t, int64(-53), measurements.CorrectedTemperature(&info),
+		"Without attribute 194, should return the original value")
+}
+
+func TestCorrectedTemperature_SCSI_FallbackToEnvironmentalReports(t *testing.T) {
+	info := collector.SmartInfo{
+		Temperature: struct {
+			Current int64 `json:"current"`
+		}{Current: 0},
+		ScsiEnvironmentalReports: map[string]collector.ScsiTemperatureData{
+			"temperature_1": {Current: 38},
+		},
+	}
+	info.Device.Protocol = "SCSI"
+
+	require.Equal(t, int64(38), measurements.CorrectedTemperature(&info),
+		"SCSI should fall back to scsi_environmental_reports")
+}

@@ -176,6 +176,8 @@ func (c *Collector) Benchmark(device *models.Device, profile string) (*models.Pe
 		result.FioVersion = strings.TrimSpace(string(versionOut))
 	}
 
+	directIO := c.config.GetBool("performance.allow_direct_device_io")
+
 	startTime := time.Now()
 
 	// Sequential read test
@@ -189,14 +191,18 @@ func (c *Collector) Benchmark(device *models.Device, profile string) (*models.Pe
 		}
 	}
 
-	// Sequential write test
-	c.logger.Debugf("Running sequential write test on %s", device.DeviceName)
-	seqWriteOut, err := c.runFio(fioBin, c.buildFioArgs("write", "1M", profile, targetPath))
-	if err != nil {
-		c.logger.Warnf("Sequential write test failed for %s: %v", device.DeviceName, err)
+	// Sequential write test (skipped for raw block devices to prevent data loss)
+	if directIO {
+		c.logger.Infof("Skipping sequential write test on %s (direct device I/O -- writes disabled for safety)", device.DeviceName)
 	} else {
-		if fioResult, parseErr := models.ParseFioOutput(seqWriteOut); parseErr == nil && len(fioResult.Jobs) > 0 {
-			result.SeqWriteBwBytes, _, _, _, _, _ = models.ExtractWriteStats(&fioResult.Jobs[0])
+		c.logger.Debugf("Running sequential write test on %s", device.DeviceName)
+		seqWriteOut, seqWriteErr := c.runFio(fioBin, c.buildFioArgs("write", "1M", profile, targetPath))
+		if seqWriteErr != nil {
+			c.logger.Warnf("Sequential write test failed for %s: %v", device.DeviceName, seqWriteErr)
+		} else {
+			if fioResult, parseErr := models.ParseFioOutput(seqWriteOut); parseErr == nil && len(fioResult.Jobs) > 0 {
+				result.SeqWriteBwBytes, _, _, _, _, _ = models.ExtractWriteStats(&fioResult.Jobs[0])
+			}
 		}
 	}
 
@@ -211,25 +217,33 @@ func (c *Collector) Benchmark(device *models.Device, profile string) (*models.Pe
 		}
 	}
 
-	// Random write test (IOPS + latency)
-	c.logger.Debugf("Running random write test on %s", device.DeviceName)
-	randWriteOut, err := c.runFio(fioBin, c.buildFioArgs("randwrite", "4K", profile, targetPath))
-	if err != nil {
-		c.logger.Warnf("Random write test failed for %s: %v", device.DeviceName, err)
+	// Random write test (skipped for raw block devices to prevent data loss)
+	if directIO {
+		c.logger.Infof("Skipping random write test on %s (direct device I/O -- writes disabled for safety)", device.DeviceName)
 	} else {
-		if fioResult, parseErr := models.ParseFioOutput(randWriteOut); parseErr == nil && len(fioResult.Jobs) > 0 {
-			_, result.RandWriteIOPS, result.RandWriteLatAvgNs, result.RandWriteLatP50Ns, result.RandWriteLatP95Ns, result.RandWriteLatP99Ns = models.ExtractWriteStats(&fioResult.Jobs[0])
+		c.logger.Debugf("Running random write test on %s", device.DeviceName)
+		randWriteOut, randWriteErr := c.runFio(fioBin, c.buildFioArgs("randwrite", "4K", profile, targetPath))
+		if randWriteErr != nil {
+			c.logger.Warnf("Random write test failed for %s: %v", device.DeviceName, randWriteErr)
+		} else {
+			if fioResult, parseErr := models.ParseFioOutput(randWriteOut); parseErr == nil && len(fioResult.Jobs) > 0 {
+				_, result.RandWriteIOPS, result.RandWriteLatAvgNs, result.RandWriteLatP50Ns, result.RandWriteLatP95Ns, result.RandWriteLatP99Ns = models.ExtractWriteStats(&fioResult.Jobs[0])
+			}
 		}
 	}
 
-	// Mixed random R/W test (comprehensive profile only)
-	if profile == "comprehensive" {
+	// Mixed random R/W test (comprehensive profile only, skipped for raw block devices)
+	if directIO {
+		if profile == "comprehensive" {
+			c.logger.Infof("Skipping mixed R/W test on %s (direct device I/O -- writes disabled for safety)", device.DeviceName)
+		}
+	} else if profile == "comprehensive" {
 		c.logger.Debugf("Running mixed random R/W test on %s", device.DeviceName)
 		mixedArgs := c.buildFioArgs("randrw", "4K", profile, targetPath)
 		mixedArgs = append(mixedArgs, "--rwmixread=70")
-		mixedOut, err := c.runFio(fioBin, mixedArgs)
-		if err != nil {
-			c.logger.Warnf("Mixed R/W test failed for %s: %v", device.DeviceName, err)
+		mixedOut, mixedErr := c.runFio(fioBin, mixedArgs)
+		if mixedErr != nil {
+			c.logger.Warnf("Mixed R/W test failed for %s: %v", device.DeviceName, mixedErr)
 		} else if fioResult, err := models.ParseFioOutput(mixedOut); err == nil && len(fioResult.Jobs) > 0 {
 			result.MixedRwIOPS = fioResult.Jobs[0].Read.IOPS + fioResult.Jobs[0].Write.IOPS
 		}
@@ -270,9 +284,12 @@ func (c *Collector) Publish(wwn string, result *models.PerformanceResult) error 
 // resolveTargetPath determines the fio target file path for benchmarking.
 // Returns the path, a cleanup function (if a temp file was created), and any error.
 func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), error) {
-	// For safety, we always use a temp file on the device's filesystem.
-	// Direct device I/O is not supported in this version to prevent data loss.
 	fullDeviceName := fmt.Sprintf("%s%s", detect.DevicePrefix(), device.DeviceName)
+
+	if c.config.GetBool("performance.allow_direct_device_io") {
+		c.logger.Infof("Direct device I/O enabled -- benchmarking raw device %s (read-only, write tests skipped)", fullDeviceName)
+		return fullDeviceName, nil, nil
+	}
 
 	// Try to find mount point for the device
 	mountPoint, err := findMountPoint(fullDeviceName)

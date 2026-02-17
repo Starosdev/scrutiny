@@ -27,10 +27,35 @@ func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, wwn strin
 		return measurements.Smart{}, err
 	}
 
+	// Apply delta-based evaluation for cumulative counter attributes (e.g., UltraDMA CRC Error Count).
+	// Fetch the most recent existing SMART submission to compare values. Uses GetLatestSmartSubmission
+	// (offset=0) because this is called BEFORE the current data is written to InfluxDB.
+	// If a cumulative counter hasn't increased, suppress the warning since the underlying issue
+	// may have been resolved.
+	previousSmartData, prevErr := sr.GetLatestSmartSubmission(ctx, wwn)
+	if prevErr != nil || len(previousSmartData) < 1 {
+		sr.logger.Debugln("No previous SMART submission available for delta evaluation (expected for first submission)")
+	} else {
+		previousValues := extractPreviousRawValues(&previousSmartData[0])
+		deviceSmartData.ApplyDeltaEvaluation(previousValues)
+	}
+
 	tags, fields := deviceSmartData.Flatten()
 
 	// write point immediately
 	return deviceSmartData, sr.saveDatapoint(sr.influxWriteApi, "smart", tags, fields, deviceSmartData.Date, ctx)
+}
+
+// extractPreviousRawValues extracts raw values from a previous SMART submission into a map
+// keyed by attribute ID string, for use in delta-based evaluation.
+func extractPreviousRawValues(previousSmart *measurements.Smart) map[string]int64 {
+	values := make(map[string]int64)
+	for attrId, attr := range previousSmart.Attributes {
+		if ataAttr, ok := attr.(*measurements.SmartAtaAttribute); ok {
+			values[attrId] = ataAttr.RawValue
+		}
+	}
+	return values
 }
 
 // GetSmartAttributeHistory MUST return in sorted order, where newest entries are at the beginning of the list, and oldest are at the end.
@@ -102,6 +127,47 @@ from(bucket: "%s")
 `, sr.appConfig.GetString("web.influxdb.bucket"), wwn)
 
 	sr.logger.Debugln("GetPreviousSmartSubmission query:", queryStr)
+
+	smartResults := []measurements.Smart{}
+
+	result, err := sr.influxQueryApi.Query(ctx, queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	for result.Next() {
+		smartData, err := measurements.NewSmartFromInfluxDB(result.Record().Values(), sr.logger)
+		if err != nil {
+			return nil, err
+		}
+		smartResults = append(smartResults, *smartData)
+	}
+
+	if result.Err() != nil {
+		return nil, result.Err()
+	}
+
+	return smartResults, nil
+}
+
+// GetLatestSmartSubmission returns the most recent raw SMART submission without daily aggregation.
+// This is used for delta evaluation BEFORE writing the current data to InfluxDB, so offset=0
+// returns the actual most recent existing entry (which is the previous submission).
+// Note: WWN is validated at the handler level before reaching this function.
+func (sr *scrutinyRepository) GetLatestSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error) {
+	queryStr := fmt.Sprintf(`
+import "influxdata/influxdb/schema"
+from(bucket: "%s")
+|> range(start: -1w, stop: now())
+|> filter(fn: (r) => r["_measurement"] == "smart")
+|> filter(fn: (r) => r["device_wwn"] == "%s")
+|> schema.fieldsAsCols()
+|> group()
+|> sort(columns: ["_time"], desc: true)
+|> limit(n: 1, offset: 0)
+`, sr.appConfig.GetString("web.influxdb.bucket"), wwn)
+
+	sr.logger.Debugln("GetLatestSmartSubmission query:", queryStr)
 
 	smartResults := []measurements.Smart{}
 

@@ -131,7 +131,7 @@ devices:
 #performance:
 #  enabled: false             # Set to true to enable performance benchmarking
 #  profile: 'quick'           # 'quick' (~60s per device) or 'comprehensive' (~300s per device)
-#  allow_direct_device_io: false  # WARNING: not yet supported, reserved for future use
+#  allow_direct_device_io: false  # Benchmark raw block device (/dev/sdX) directly. Read-only (write tests skipped for safety).
 #  temp_file_size: '256M'     # Size of temp file for benchmarks (used in quick profile)
 
 #commands:

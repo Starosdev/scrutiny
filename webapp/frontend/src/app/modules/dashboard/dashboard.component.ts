@@ -186,6 +186,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
         return deviceTemperatureSeries
     }
 
+    private _patchSharedTooltip(chartContext: any): void {
+        try {
+            const tooltip = chartContext.w.globals.tooltip;
+            if (tooltip?.tooltipUtil) {
+                tooltip.tooltipUtil.isInitialSeriesSameLen = () => true;
+                tooltip.tooltipUtil.isXoverlap = () => true;
+            }
+        } catch (e) {
+            // Silently fail if ApexCharts internals change
+        }
+    }
+
     private determineTheme(config: AppConfig): string {
         if (config?.theme === 'system') {
             return this.systemPrefersDark ? 'dark' : 'light';
@@ -224,6 +236,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
                 },
                 toolbar: {
                     show: false
+                },
+                events: {
+                    mounted: (chartContext) => {
+                        this._patchSharedTooltip(chartContext);
+                    },
+                    updated: (chartContext) => {
+                        this._patchSharedTooltip(chartContext);
+                    }
                 }
             },
             colors : ['#667eea', '#9066ea', '#66c0ea', '#66ead2', '#d266ea', '#66ea90'],
@@ -237,21 +257,34 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
                 curve: this.config.line_stroke,
                 width: 2
             },
+            markers: {
+                size: 0,
+                hover: {
+                    sizeOffset: 4
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
             tooltip: {
                 theme: 'dark',
                 shared: true,
                 intersect: false,
-                x    : {
+                x: {
                     format: 'MMM dd, yyyy HH:mm:ss'
                 },
-                y    : {
+                y: {
                     formatter: (value) => {
+                        if (value === null || value === undefined) { return null; }
                         return TemperaturePipe.formatTemperature(value, this.config.temperature_unit, true) as string;
                     }
                 }
             },
             xaxis: {
                 type: 'datetime',
+                tooltip: {
+                    enabled: false
+                },
                 labels: {
                     datetimeUTC: false,
                     style: {

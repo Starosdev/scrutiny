@@ -117,48 +117,38 @@ jobs:
     name: Build Binaries
     needs: release
     if: needs.release.outputs.new_release_published == 'true'
-    runs-on: ubuntu-latest
-    container: ghcr.io/packagrio/packagr:latest-golang
-    services:
-      influxdb:
-        image: influxdb:2.2
-        env:
-          DOCKER_INFLUXDB_INIT_MODE: setup
-          DOCKER_INFLUXDB_INIT_USERNAME: admin
-          DOCKER_INFLUXDB_INIT_PASSWORD: password12345
-          DOCKER_INFLUXDB_INIT_ORG: scrutiny
-          DOCKER_INFLUXDB_INIT_BUCKET: metrics
-          DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: my-super-secret-auth-token
-        ports:
-          - 8086:8086
+    runs-on: ${{ matrix.cfg.on }}
     env:
       STATIC: true
     strategy:
+      fail-fast: false
       matrix:
         cfg:
-          - { goos: linux, goarch: amd64 }
-          - { goos: linux, goarch: arm, goarm: 5 }
-          - { goos: linux, goarch: arm, goarm: 6 }
-          - { goos: linux, goarch: arm, goarm: 7 }
-          - { goos: linux, goarch: arm64 }
-          - { goos: darwin, goarch: amd64 }
-          - { goos: darwin, goarch: arm64 }
-          - { goos: freebsd, goarch: amd64 }
-          - { goos: windows, goarch: amd64 }
-          - { goos: windows, goarch: arm64 }
+          - { on: ubuntu-latest,  goos: linux,   goarch: amd64 }
+          - { on: ubuntu-latest,  goos: linux,   goarch: arm,   goarm: 5 }
+          - { on: ubuntu-latest,  goos: linux,   goarch: arm,   goarm: 6 }
+          - { on: ubuntu-latest,  goos: linux,   goarch: arm,   goarm: 7 }
+          - { on: ubuntu-latest,  goos: linux,   goarch: arm64 }
+          - { on: macos-latest,   goos: darwin,  goarch: amd64 }
+          - { on: macos-latest,   goos: darwin,  goarch: arm64 }
+          - { on: macos-latest,   goos: freebsd, goarch: amd64 }
+          - { on: windows-latest, goos: windows, goarch: amd64 }
+          - { on: windows-latest, goos: windows, goarch: arm64 }
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: v${{ needs.release.outputs.new_release_version }}
-
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
       - name: Build Binaries
         env:
           GOOS: ${{ matrix.cfg.goos }}
           GOARCH: ${{ matrix.cfg.goarch }}
           GOARM: ${{ matrix.cfg.goarm }}
         run: make binary-clean binary-all
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
