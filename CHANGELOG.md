@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.27.1](https://github.com/Starosdev/scrutiny/compare/v1.27.0...v1.27.1) (2026-02-18)
+
+### Bug Fixes
+
+* **ci:** use setup-go action in SonarQube workflow ([38b2dea](https://github.com/Starosdev/scrutiny/commit/38b2deacd5e01bc6776ce073249359fb0382a26d))
+
 ## [1.27.0](https://github.com/Starosdev/scrutiny/compare/v1.26.0...v1.27.0) (2026-02-18)
 
 ### Features
