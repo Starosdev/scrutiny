@@ -2,6 +2,24 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.27.0](https://github.com/Starosdev/scrutiny/compare/v1.26.0...v1.27.0) (2026-02-18)
+
+### Features
+
+* **ui:** add hint text for device status threshold setting ([5886a98](https://github.com/Starosdev/scrutiny/commit/5886a98caf06dfd7e2a981de355d29a1c82f017f))
+* **ui:** display collector version on dashboard and link version to repo ([95c6a55](https://github.com/Starosdev/scrutiny/commit/95c6a5588e43cbcb3122b78065bb593ec8a63634))
+* **ui:** display collector version on device detail page ([#176](https://github.com/Starosdev/scrutiny/issues/176)) ([a4be0df](https://github.com/Starosdev/scrutiny/commit/a4be0df8881453e51cca9c89a0e0f9d8d11cecab))
+
+### Bug Fixes
+
+* **ci:** replace packagr container with actions/setup-go for test-backend ([#211](https://github.com/Starosdev/scrutiny/issues/211)) ([73c4e19](https://github.com/Starosdev/scrutiny/commit/73c4e19f856893de67eb9ade4e6bd6a274a60d9b))
+* **smart:** correct data read/write display for Patriot Burst Elite SSD ([573a5bb](https://github.com/Starosdev/scrutiny/commit/573a5bb0c332fc9c7af28bf202582c693b97654d)), closes [#179](https://github.com/Starosdev/scrutiny/issues/179)
+* **smart:** correct temperature and data unit detection for Patriot Burst Elite ([d078058](https://github.com/Starosdev/scrutiny/commit/d0780580b744d26c8ebeca3c32a8037f88505b41)), closes [#179](https://github.com/Starosdev/scrutiny/issues/179)
+* **smart:** sort by time before selecting last seen timestamp ([8e9daac](https://github.com/Starosdev/scrutiny/commit/8e9daac9108c3d7ca762c0883adab68f2b758696)), closes [#181](https://github.com/Starosdev/scrutiny/issues/181)
+* **smart:** use per-attribute thresholds for devstat and fix blank raw_value display ([e3ef071](https://github.com/Starosdev/scrutiny/commit/e3ef07145aaf9a361007a1451405d2e4185df4e3)), closes [#215](https://github.com/Starosdev/scrutiny/issues/215)
+* **thresholds:** add observed thresholds for wear leveling count (attr 177) ([#203](https://github.com/Starosdev/scrutiny/issues/203)) ([2c8ddb1](https://github.com/Starosdev/scrutiny/commit/2c8ddb19220919f62840fc5d0c29459a6de0b169))
+* **ui:** version display clipped on mobile viewports ([eeb805e](https://github.com/Starosdev/scrutiny/commit/eeb805e57143e3e2526f18a1128ad7571fe82dac)), closes [#167](https://github.com/Starosdev/scrutiny/issues/167)
+
 ## [1.26.0](https://github.com/Starosdev/scrutiny/compare/v1.25.0...v1.26.0) (2026-02-16)
 
 ### Features
