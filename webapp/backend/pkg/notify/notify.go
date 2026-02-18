@@ -34,6 +34,7 @@ const NotifyFailureTypeScrutinyFailure = "ScrutinyFailure"
 const NotifyFailureTypeMissedPing = "MissedPing"
 const NotifyFailureTypeHeartbeat = "Heartbeat"
 const NotifyFailureTypePerformanceDegradation = "PerformanceDegradation"
+const NotifyFailureTypeReport = "Report"
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
 func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
@@ -754,7 +755,7 @@ func NewReport(logger logrus.FieldLogger, appconfig config.Interface, subject, m
 	payload := Payload{
 		Test:        false,
 		Date:        time.Now().Format(time.RFC3339),
-		FailureType: "Report",
+		FailureType: NotifyFailureTypeReport,
 		Subject:     subject,
 		Message:     message,
 	}

@@ -30,10 +30,13 @@ type Scheduler struct {
 	deviceRepo database.DeviceRepo
 	repoMu     sync.Mutex
 
-	stopCh chan struct{}
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
+	stopCh  chan struct{}
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
+	started bool
+	stopped bool
+	mu      sync.Mutex // guards started/stopped flags
 
 	// Last run timestamps (in-memory only)
 	lastDailyRun   time.Time
@@ -60,12 +63,26 @@ func NewScheduler(appConfig config.Interface, logger logrus.FieldLogger, repoFac
 
 // Start begins the scheduler goroutine
 func (s *Scheduler) Start() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.started {
+		return
+	}
+	s.started = true
 	s.wg.Add(1)
 	go s.run()
 }
 
 // Stop gracefully shuts down the scheduler
 func (s *Scheduler) Stop() {
+	s.mu.Lock()
+	if s.stopped {
+		s.mu.Unlock()
+		return
+	}
+	s.stopped = true
+	s.mu.Unlock()
+
 	s.logger.Debug("Stopping report scheduler...")
 	s.cancel()
 	close(s.stopCh)

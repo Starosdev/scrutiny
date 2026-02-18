@@ -213,27 +213,26 @@ func (ae *AppEngine) Start() error {
 			filepath.Dir(ae.Config.GetString("web.database.location"))))
 	}
 
-	// Create the missed ping monitor BEFORE Setup() so middleware can be registered
+	// Create monitors BEFORE Setup() so middleware can register them in gin context
 	missedPingMonitor := NewMissedPingMonitor(ae)
-	ae.MissedPingMonitor = missedPingMonitor // Store reference before Setup()
+	ae.MissedPingMonitor = missedPingMonitor
+
+	reportScheduler := reports.NewScheduler(ae.Config, ae.Logger, func() (database.DeviceRepo, error) {
+		return database.NewScrutinyRepository(ae.Config, ae.Logger)
+	})
+	ae.ReportScheduler = reportScheduler
 
 	r := ae.Setup(ae.Logger)
 
-	// Start the missed ping monitor after router is set up
+	// Start background monitors after router is set up
 	missedPingMonitor.Start()
 	ae.Logger.Info("Missed ping monitor started")
 
-	// Create and start the heartbeat monitor
 	heartbeatMonitor := NewHeartbeatMonitor(ae)
 	ae.HeartbeatMonitor = heartbeatMonitor
 	heartbeatMonitor.Start()
 	ae.Logger.Info("Heartbeat monitor started")
 
-	// Create and start the report scheduler
-	reportScheduler := reports.NewScheduler(ae.Config, ae.Logger, func() (database.DeviceRepo, error) {
-		return database.NewScrutinyRepository(ae.Config, ae.Logger)
-	})
-	ae.ReportScheduler = reportScheduler
 	reportScheduler.Start()
 	ae.Logger.Info("Report scheduler started")
 

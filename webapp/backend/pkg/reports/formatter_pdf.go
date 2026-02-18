@@ -25,6 +25,9 @@ func PDFFilename(periodType string, generatedAt time.Time) string {
 
 // GeneratePDF creates a PDF report and saves it to outputPath
 func GeneratePDF(report *ReportData, outputPath string, version string) error {
+	if report == nil {
+		return fmt.Errorf("report data is nil")
+	}
 	dir := filepath.Dir(outputPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create PDF output directory: %w", err)
@@ -64,7 +67,7 @@ func GeneratePDF(report *ReportData, outputPath string, version string) error {
 }
 
 func writeHeader(pdf *fpdf.Fpdf, report *ReportData) {
-	periodLabel := strings.ToUpper(report.PeriodType[:1]) + report.PeriodType[1:]
+	periodLabel := capitalizePeriod(report.PeriodType)
 
 	pdf.SetFont("Helvetica", "B", 20)
 	pdf.SetTextColor(33, 37, 41)
@@ -140,7 +143,7 @@ func writeDeviceTable(pdf *fpdf.Fpdf, report *ReportData) {
 
 		name := d.DisplayName()
 		if len(name) > 22 {
-			name = name[:22] + ".."
+			name = name[:22] + "..."
 		}
 
 		pdf.CellFormat(colWidths[0], 6, name, "1", 0, "L", false, 0, "")
@@ -258,7 +261,7 @@ func writeAlertTable(pdf *fpdf.Fpdf, alerts []AlertEntry) {
 		pdf.CellFormat(colWidths[0], 6, alert.AttributeID, "1", 0, "L", false, 0, "")
 		name := alert.AttributeName
 		if len(name) > 25 {
-			name = name[:25] + ".."
+			name = name[:25] + "..."
 		}
 		pdf.CellFormat(colWidths[1], 6, name, "1", 0, "L", false, 0, "")
 		pdf.CellFormat(colWidths[2], 6, alert.Status, "1", 0, "C", false, 0, "")

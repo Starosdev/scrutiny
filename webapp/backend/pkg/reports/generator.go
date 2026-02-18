@@ -13,6 +13,8 @@ import (
 type SummaryProvider interface {
 	GetSummary(ctx context.Context) (map[string]*models.DeviceSummary, error)
 	GetSmartTemperatureHistory(ctx context.Context, durationKey string) (map[string][]measurements.SmartTemperature, error)
+	GetSmartAttributeHistory(ctx context.Context, wwn string, durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) ([]measurements.Smart, error)
+	GetZFSPoolsSummary(ctx context.Context) (map[string]*models.ZFSPool, error)
 }
 
 // Generator builds ReportData by querying the database
@@ -48,6 +50,10 @@ func (g *Generator) Generate(ctx context.Context, periodType string, start, end 
 		}
 
 		deviceReport := buildDeviceReport(summary, tempHistory[wwn])
+
+		// Populate active failures from latest SMART attribute data
+		g.populateAlerts(ctx, &deviceReport, wwn, durationKey)
+
 		report.Devices = append(report.Devices, deviceReport)
 
 		report.TotalDevices++
@@ -63,7 +69,77 @@ func (g *Generator) Generate(ctx context.Context, periodType string, start, end 
 	report.ArchivedDevices = archivedCount
 	report.WarningDevices = report.TotalDevices - report.PassedDevices - report.FailedDevices
 
+	// Populate ZFS pool data
+	g.populateZFSPools(ctx, report)
+
 	return report, nil
+}
+
+func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, wwn string, durationKey string) {
+	smartHistory, err := g.repo.GetSmartAttributeHistory(ctx, wwn, durationKey, 1, 0, nil)
+	if err != nil || len(smartHistory) == 0 {
+		return
+	}
+
+	latest := smartHistory[0]
+	for attrID, attr := range latest.Attributes {
+		status := attr.GetStatus()
+		if status == pkg.AttributeStatusPassed {
+			continue
+		}
+
+		entry := AlertEntry{
+			AttributeID: attrID,
+			Value:       attr.GetTransformedValue(),
+		}
+
+		if pkg.AttributeStatusHas(status, pkg.AttributeStatusFailedSmart) {
+			entry.Status = "failed"
+			entry.StatusReason = "smart"
+			dr.ActiveFailures = append(dr.ActiveFailures, entry)
+		} else if pkg.AttributeStatusHas(status, pkg.AttributeStatusFailedScrutiny) {
+			entry.Status = "failed"
+			entry.StatusReason = "scrutiny"
+			dr.ActiveFailures = append(dr.ActiveFailures, entry)
+		} else if pkg.AttributeStatusHas(status, pkg.AttributeStatusWarningScrutiny) {
+			entry.Status = "warning"
+			entry.StatusReason = "scrutiny"
+			dr.ActiveFailures = append(dr.ActiveFailures, entry)
+		}
+	}
+}
+
+func (g *Generator) populateZFSPools(ctx context.Context, report *ReportData) {
+	poolsSummary, err := g.repo.GetZFSPoolsSummary(ctx)
+	if err != nil {
+		return
+	}
+
+	for _, pool := range poolsSummary {
+		if pool == nil {
+			continue
+		}
+
+		poolReport := ZFSPoolReport{
+			Name:           pool.Name,
+			GUID:           pool.GUID,
+			Health:         pool.Health,
+			Capacity:       pool.CapacityPercent,
+			ErrorsRead:     pool.TotalReadErrors,
+			ErrorsWrite:    pool.TotalWriteErrors,
+			ErrorsChecksum: pool.TotalChecksumErrors,
+		}
+
+		if pool.ScrubState != "" {
+			poolReport.ScrubStatus = string(pool.ScrubState)
+		}
+		if pool.ScrubEndTime != nil {
+			t := *pool.ScrubEndTime
+			poolReport.LastScrubDate = &t
+		}
+
+		report.ZFSPools = append(report.ZFSPools, poolReport)
+	}
 }
 
 func buildDeviceReport(summary *models.DeviceSummary, temps []measurements.SmartTemperature) DeviceReport {

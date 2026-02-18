@@ -8,7 +8,10 @@ import (
 // FormatTextReport generates a plain text subject and message body for notification backends.
 // Returns (subject, message).
 func FormatTextReport(report *ReportData) (string, string) {
-	periodLabel := strings.ToUpper(report.PeriodType[:1]) + report.PeriodType[1:]
+	if report == nil {
+		return "Scrutiny Report", "No report data available."
+	}
+	periodLabel := capitalizePeriod(report.PeriodType)
 	dateStr := report.GeneratedAt.Format("2006-01-02")
 
 	subject := formatSubject(report, periodLabel)
@@ -44,7 +47,17 @@ func TruncateForNotification(message string, maxLen int) string {
 	if len(message) <= maxLen {
 		return message
 	}
+	if maxLen <= 3 {
+		return message[:maxLen]
+	}
 	return message[:maxLen-3] + "..."
+}
+
+func capitalizePeriod(periodType string) string {
+	if periodType == "" {
+		return "Report"
+	}
+	return strings.ToUpper(periodType[:1]) + periodType[1:]
 }
 
 func formatSubject(report *ReportData, periodLabel string) string {

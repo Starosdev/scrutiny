@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -21,12 +21,13 @@ type reportFileEntry struct {
 
 func ListReports(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
-	appConfig := c.MustGet("CONFIG").(config.Interface)
+	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 
-	// Load settings to get PDF path
-	pdfPath := appConfig.GetString("web.reports.pdf_path")
-	if pdfPath == "" {
-		pdfPath = "/opt/scrutiny/reports"
+	// Load settings from DB to get PDF path (consistent with scheduler)
+	pdfPath := "/opt/scrutiny/reports"
+	settings, err := deviceRepo.LoadSettings(c)
+	if err == nil && settings != nil && settings.Metrics.ReportPDFPath != "" {
+		pdfPath = settings.Metrics.ReportPDFPath
 	}
 
 	entries, err := os.ReadDir(pdfPath)

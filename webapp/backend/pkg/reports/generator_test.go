@@ -14,8 +14,10 @@ import (
 
 // mockSummaryProvider is a minimal mock for testing the generator
 type mockSummaryProvider struct {
-	summary     map[string]*models.DeviceSummary
-	tempHistory map[string][]measurements.SmartTemperature
+	summary        map[string]*models.DeviceSummary
+	tempHistory    map[string][]measurements.SmartTemperature
+	smartHistory   map[string][]measurements.Smart
+	zfsPoolSummary map[string]*models.ZFSPool
 }
 
 func (m *mockSummaryProvider) GetSummary(ctx context.Context) (map[string]*models.DeviceSummary, error) {
@@ -24,6 +26,22 @@ func (m *mockSummaryProvider) GetSummary(ctx context.Context) (map[string]*model
 
 func (m *mockSummaryProvider) GetSmartTemperatureHistory(ctx context.Context, durationKey string) (map[string][]measurements.SmartTemperature, error) {
 	return m.tempHistory, nil
+}
+
+func (m *mockSummaryProvider) GetSmartAttributeHistory(ctx context.Context, wwn string, durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) ([]measurements.Smart, error) {
+	if m.smartHistory != nil {
+		if h, ok := m.smartHistory[wwn]; ok {
+			return h, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *mockSummaryProvider) GetZFSPoolsSummary(ctx context.Context) (map[string]*models.ZFSPool, error) {
+	if m.zfsPoolSummary != nil {
+		return m.zfsPoolSummary, nil
+	}
+	return map[string]*models.ZFSPool{}, nil
 }
 
 func TestGenerateReport_BasicSummary(t *testing.T) {
@@ -145,4 +163,38 @@ func TestGenerateReport_ArchivedDevicesExcluded(t *testing.T) {
 	assert.Equal(t, 1, report.TotalDevices)
 	assert.Equal(t, 1, report.ArchivedDevices)
 	assert.Len(t, report.Devices, 1)
+}
+
+func TestGenerateReport_ZFSPoolsPopulated(t *testing.T) {
+	now := time.Now()
+	scrubEnd := now.Add(-24 * time.Hour)
+	mock := &mockSummaryProvider{
+		summary:     map[string]*models.DeviceSummary{},
+		tempHistory: map[string][]measurements.SmartTemperature{},
+		zfsPoolSummary: map[string]*models.ZFSPool{
+			"guid1": {
+				GUID:                "guid1",
+				Name:                "tank",
+				Health:              "ONLINE",
+				CapacityPercent:     65.5,
+				TotalReadErrors:     0,
+				TotalWriteErrors:    0,
+				TotalChecksumErrors: 0,
+				ScrubState:          "completed",
+				ScrubEndTime:        &scrubEnd,
+			},
+		},
+	}
+
+	gen := NewGenerator(mock)
+	report, err := gen.Generate(context.Background(), "daily", now.Add(-24*time.Hour), now)
+	require.NoError(t, err)
+
+	require.Len(t, report.ZFSPools, 1)
+	pool := report.ZFSPools[0]
+	assert.Equal(t, "tank", pool.Name)
+	assert.Equal(t, "ONLINE", pool.Health)
+	assert.Equal(t, 65.5, pool.Capacity)
+	assert.Equal(t, "completed", pool.ScrubStatus)
+	assert.NotNil(t, pool.LastScrubDate)
 }
