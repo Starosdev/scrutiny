@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.27.2](https://github.com/Starosdev/scrutiny/compare/v1.27.1...v1.27.2) (2026-02-18)
+
+### Bug Fixes
+
+* **zfs:** address Reddit user feedback - scrub parsing, resolver errors, dark theme, vdev spacing ([9253cdb](https://github.com/Starosdev/scrutiny/commit/9253cdb8163f0b3dfc609de8a850b32e7ce784d1)), closes [#212](https://github.com/Starosdev/scrutiny/issues/212)
+
 ## [1.27.1](https://github.com/Starosdev/scrutiny/compare/v1.27.0...v1.27.1) (2026-02-18)
 
 ### Bug Fixes
