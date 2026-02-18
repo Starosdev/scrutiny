@@ -96,18 +96,25 @@ func (sa *SmartAtaDeviceStatAttribute) PopulateAttributeStatus() *SmartAtaDevice
 		return sa
 	}
 
-	// For critical metrics, check if value exceeds threshold
-	if metadata.Critical {
-		// Default threshold is 100 (e.g., percentage used at end of life)
-		threshold := int64(100)
-		if sa.Threshold > 0 {
-			threshold = sa.Threshold
-		}
+	// Determine the effective threshold: prefer metadata, then drive-reported
+	threshold := metadata.Threshold
+	if threshold == 0 && sa.Threshold > 0 {
+		threshold = sa.Threshold
+	}
 
+	if threshold > 0 {
+		// Tier 1: Fixed threshold available (e.g., devstat_7_8 percentage used = 100)
 		if metadata.Ideal == thresholds.ObservedThresholdIdealLow && sa.Value >= threshold {
 			sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusFailedScrutiny)
 			sa.StatusReason = "Device statistic exceeds recommended threshold"
+		} else if metadata.Ideal == thresholds.ObservedThresholdIdealHigh && sa.Value <= threshold {
+			sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusFailedScrutiny)
+			sa.StatusReason = "Device statistic below recommended threshold"
 		}
+	} else if metadata.Critical && metadata.Ideal == thresholds.ObservedThresholdIdealLow && sa.Value > 0 {
+		// Tier 2: No fixed threshold, but critical error count is non-zero
+		sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusWarningScrutiny)
+		sa.StatusReason = "Critical device statistic has non-zero error count"
 	}
 
 	return sa

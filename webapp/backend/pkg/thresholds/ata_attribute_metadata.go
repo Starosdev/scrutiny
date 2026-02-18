@@ -1692,6 +1692,7 @@ type AtaDeviceStatisticsMetadata struct {
 	Critical    bool   `json:"critical"`
 	Description string `json:"description"`
 	DisplayType string `json:"display_type"`
+	Threshold   int64  `json:"threshold"` // Fixed threshold for this attribute. 0 means no fixed threshold (use for error counts).
 }
 
 var AtaDeviceStatsMetadata = map[string]AtaDeviceStatisticsMetadata{
@@ -1702,6 +1703,7 @@ var AtaDeviceStatsMetadata = map[string]AtaDeviceStatisticsMetadata{
 		Critical:    true,
 		Description: "Contains a vendor specific estimate of the percentage of the device life used based on the actual device usage and the manufacturer's prediction of device life. A value of 100 indicates that the estimated endurance of the device has been consumed, but may not indicate a device failure.",
 		DisplayType: AtaSmartAttributeDisplayTypeRaw,
+		Threshold:   100,
 	},
 	// Page 1 (General Statistics)
 	"devstat_1_8": {
