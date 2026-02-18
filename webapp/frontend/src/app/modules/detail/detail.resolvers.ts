@@ -1,6 +1,7 @@
 import {Injectable} from '@angular/core';
-import { ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
-import {Observable} from 'rxjs';
+import { ActivatedRouteSnapshot, Router, RouterStateSnapshot } from '@angular/router';
+import {Observable, of} from 'rxjs';
+import {catchError} from 'rxjs/operators';
 import {DetailService} from 'app/modules/detail/detail.service';
 import {DeviceDetailsResponseWrapper} from 'app/core/models/device-details-response-wrapper';
 
@@ -8,13 +9,9 @@ import {DeviceDetailsResponseWrapper} from 'app/core/models/device-details-respo
     providedIn: 'root'
 })
 export class DetailResolver  {
-    /**
-     * Constructor
-     *
-     * @param {FinanceService} _detailService
-     */
     constructor(
-        private _detailService: DetailService
+        private _detailService: DetailService,
+        private _router: Router
     )
     {
     }
@@ -23,13 +20,13 @@ export class DetailResolver  {
     // @ Public methods
     // -----------------------------------------------------------------------------------------------------
 
-    /**
-     * Resolver
-     *
-     * @param route
-     * @param state
-     */
     resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<DeviceDetailsResponseWrapper> {
-        return this._detailService.getData(route.params.wwn);
+        return this._detailService.getData(route.params.wwn).pipe(
+            catchError((error) => {
+                console.error('Failed to load device details:', error);
+                this._router.navigate(['/']);
+                return of(null);
+            })
+        );
     }
 }

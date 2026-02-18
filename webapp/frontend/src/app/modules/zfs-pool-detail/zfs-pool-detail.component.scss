@@ -10,5 +10,10 @@
                 border-left-color: var(--primary-color, #667eea);
             }
         }
+
+        mat-divider {
+            margin-left: 16px;
+            margin-right: 16px;
+        }
     }
 }

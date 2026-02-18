@@ -12,19 +12,19 @@
   <div class="absolute bottom-0 right-0 w-24 h-24 -m-6">
     @if (getPoolStatus(poolSummary) == 'passed') {
       <mat-icon
-        class="icon-size-96 opacity-12 text-green"
+        class="icon-size-96 opacity-12 text-green-600 dark:text-green-400"
         [svgIcon]="'heroicons_outline:check-circle'"
       ></mat-icon>
     }
     @if (getPoolStatus(poolSummary) == 'failed') {
       <mat-icon
-        class="icon-size-96 opacity-12 text-red"
+        class="icon-size-96 opacity-12 text-red-600 dark:text-red-400"
         [svgIcon]="'heroicons_outline:exclamation-circle'"
       ></mat-icon>
     }
     @if (getPoolStatus(poolSummary) == 'unknown') {
       <mat-icon
-        class="icon-size-96 opacity-12 text-yellow"
+        class="icon-size-96 opacity-12 text-yellow-600 dark:text-yellow-400"
         [svgIcon]="'heroicons_outline:question-mark-circle'"
       ></mat-icon>
     }
@@ -176,6 +176,11 @@
       <div class="mt-2 font-medium text-3xl leading-none">
         {{ getScrubStatusText(poolSummary) }}
       </div>
+      @if (poolSummary.scrub_state === 'finished' && poolSummary.scrub_issued_bytes > 0) {
+        <div class="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
+          {{ poolSummary.scrub_issued_bytes | fileSize:config?.file_size_si_units }} repaired
+        </div>
+      }
     </div>
 
     <!-- Errors -->
@@ -184,7 +189,7 @@
         <div class="font-semibold text-xs text-hint uppercase tracking-wider">
           Errors
         </div>
-        <div class="mt-2 font-medium text-3xl leading-none text-red">
+        <div class="mt-2 font-medium text-3xl leading-none text-red-600 dark:text-red-400">
           {{ getTotalErrors(poolSummary) }}
         </div>
       </div>
