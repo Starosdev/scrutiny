@@ -201,3 +201,73 @@ func TestSmartAtaDeviceStatAttribute_PopulateAttributeStatus_InvalidValue_NonCri
 	require.True(t, pkg.AttributeStatusHas(attr.Status, pkg.AttributeStatusInvalidValue),
 		"Non-critical attributes with impossibly high values should also be marked invalid")
 }
+
+func TestSmartAtaDeviceStatAttribute_PopulateAttributeStatus_MetadataThreshold(t *testing.T) {
+	// Test that devstat_7_8 uses the metadata threshold (100) even without struct Threshold set
+	attr := SmartAtaDeviceStatAttribute{
+		AttributeId: "devstat_7_8",
+		Value:       100,
+		// Threshold NOT set (0) - should use metadata Threshold: 100
+	}
+
+	attr.PopulateAttributeStatus()
+
+	require.True(t, pkg.AttributeStatusHas(attr.Status, pkg.AttributeStatusFailedScrutiny),
+		"devstat_7_8 at 100%% should fail via metadata threshold")
+}
+
+func TestSmartAtaDeviceStatAttribute_PopulateAttributeStatus_ErrorCount_NonZero(t *testing.T) {
+	// Discussion #215: devstat_4_8 with value 452 was incorrectly marked as FAILED
+	// because of a hardcoded threshold of 100. Error counts should WARN, not FAIL.
+	attr := SmartAtaDeviceStatAttribute{
+		AttributeId: "devstat_4_8", // Number of Reported Uncorrectable Errors (Critical, Ideal: low)
+		Value:       452,
+	}
+
+	attr.PopulateAttributeStatus()
+
+	require.True(t, pkg.AttributeStatusHas(attr.Status, pkg.AttributeStatusWarningScrutiny),
+		"Non-zero error count on critical devstat should warn")
+	require.False(t, pkg.AttributeStatusHas(attr.Status, pkg.AttributeStatusFailedScrutiny),
+		"Error count devstat should NOT fail without a fixed threshold")
+	require.Contains(t, attr.StatusReason, "non-zero error count")
+}
+
+func TestSmartAtaDeviceStatAttribute_PopulateAttributeStatus_ErrorCount_Zero(t *testing.T) {
+	// devstat_4_8 with value 0 should pass
+	attr := SmartAtaDeviceStatAttribute{
+		AttributeId: "devstat_4_8",
+		Value:       0,
+	}
+
+	attr.PopulateAttributeStatus()
+
+	require.Equal(t, pkg.AttributeStatusPassed, attr.Status)
+}
+
+func TestSmartAtaDeviceStatAttribute_PopulateAttributeStatus_ReallocatedSectors_NonZero(t *testing.T) {
+	// devstat_3_32 with non-zero value should warn (not fail)
+	attr := SmartAtaDeviceStatAttribute{
+		AttributeId: "devstat_3_32", // Number of Reallocated Logical Sectors (Critical, Ideal: low)
+		Value:       5,
+	}
+
+	attr.PopulateAttributeStatus()
+
+	require.True(t, pkg.AttributeStatusHas(attr.Status, pkg.AttributeStatusWarningScrutiny),
+		"Non-zero reallocated sectors should warn")
+	require.False(t, pkg.AttributeStatusHas(attr.Status, pkg.AttributeStatusFailedScrutiny),
+		"Reallocated sectors should NOT fail without a fixed threshold")
+}
+
+func TestSmartAtaDeviceStatAttribute_PopulateAttributeStatus_MechanicalFailures_Zero(t *testing.T) {
+	// devstat_3_48 with value 0 should pass
+	attr := SmartAtaDeviceStatAttribute{
+		AttributeId: "devstat_3_48", // Number of Mechanical Start Failures (Critical, Ideal: low)
+		Value:       0,
+	}
+
+	attr.PopulateAttributeStatus()
+
+	require.Equal(t, pkg.AttributeStatusPassed, attr.Status)
+}
