@@ -748,3 +748,20 @@ func NewPerformanceDegradation(logger logrus.FieldLogger, appconfig config.Inter
 		Payload: payload,
 	}
 }
+
+// NewReport creates a Notify instance for scheduled report delivery
+func NewReport(logger logrus.FieldLogger, appconfig config.Interface, subject, message string) Notify {
+	payload := Payload{
+		Test:        false,
+		Date:        time.Now().Format(time.RFC3339),
+		FailureType: "Report",
+		Subject:     subject,
+		Message:     message,
+	}
+
+	return Notify{
+		Logger:  logger,
+		Config:  appconfig,
+		Payload: payload,
+	}
+}
