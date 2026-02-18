@@ -287,20 +287,23 @@ func (d *Detect) parseScrubStatus(pool *models.ZFSPool, output string) {
 	// Look for scan: line
 	// Examples:
 	// scan: scrub repaired 0B in 00:10:30 with 0 errors on Sun Jan  5 00:34:31 2026
+	// scan: scrub repaired 0B in 1 days 00:12:08 with 0 errors on Mon Jan 12 00:36:38 2026
 	// scan: scrub in progress since Sun Jan  5 00:24:01 2026
 	// scan: scrub canceled on Sun Jan  5 00:30:00 2026
+	// scan: resilver repaired 1.5K in 00:05:30 with 0 errors on Tue Jan  6 12:00:00 2026
+	// scan: resilver in progress since Tue Jan  6 11:54:30 2026
 	// scan: none requested
 
-	scrubInProgress := regexp.MustCompile(`scan:\s+scrub in progress since (.+)`)
-	scrubFinished := regexp.MustCompile(`scan:\s+scrub repaired \S+ in (\S+) with (\d+) errors on (.+)`)
-	scrubCanceled := regexp.MustCompile(`scan:\s+scrub canceled on (.+)`)
-	scrubProgress := regexp.MustCompile(`(\d+(?:\.\d+)?)\s*%\s+done`)
+	scanInProgress := regexp.MustCompile(`scan:\s+(?:scrub|resilver) in progress since (.+)`)
+	scanFinished := regexp.MustCompile(`scan:\s+(?:scrub|resilver) repaired (\S+) in (.+?) with (\d+) errors on (.+)`)
+	scanCanceled := regexp.MustCompile(`scan:\s+(?:scrub|resilver) canceled on (.+)`)
+	scanProgress := regexp.MustCompile(`(\d+(?:\.\d+)?)\s*%\s+done`)
 
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		if matches := scrubInProgress.FindStringSubmatch(line); matches != nil {
+		if matches := scanInProgress.FindStringSubmatch(line); matches != nil {
 			pool.ScrubState = models.ZFSScrubStateScanning
 			if t, err := d.parseZFSDate(matches[1]); err == nil {
 				pool.ScrubStartTime = &t
@@ -308,17 +311,18 @@ func (d *Detect) parseScrubStatus(pool *models.ZFSPool, output string) {
 			continue
 		}
 
-		if matches := scrubFinished.FindStringSubmatch(line); matches != nil {
+		if matches := scanFinished.FindStringSubmatch(line); matches != nil {
 			pool.ScrubState = models.ZFSScrubStateFinished
-			pool.ScrubErrorsCount, _ = strconv.ParseInt(matches[2], 10, 64)
-			if t, err := d.parseZFSDate(matches[3]); err == nil {
+			pool.ScrubIssuedBytes = parseZFSBytes(matches[1])
+			pool.ScrubErrorsCount, _ = strconv.ParseInt(matches[3], 10, 64)
+			if t, err := d.parseZFSDate(matches[4]); err == nil {
 				pool.ScrubEndTime = &t
 			}
 			pool.ScrubPercentComplete = 100.0
 			continue
 		}
 
-		if matches := scrubCanceled.FindStringSubmatch(line); matches != nil {
+		if matches := scanCanceled.FindStringSubmatch(line); matches != nil {
 			pool.ScrubState = models.ZFSScrubStateCanceled
 			if t, err := d.parseZFSDate(matches[1]); err == nil {
 				pool.ScrubEndTime = &t
@@ -326,13 +330,49 @@ func (d *Detect) parseScrubStatus(pool *models.ZFSPool, output string) {
 			continue
 		}
 
-		// Parse progress percentage if scrubbing
+		// Parse progress percentage if scanning
 		if pool.ScrubState == models.ZFSScrubStateScanning {
-			if matches := scrubProgress.FindStringSubmatch(line); matches != nil {
+			if matches := scanProgress.FindStringSubmatch(line); matches != nil {
 				pool.ScrubPercentComplete, _ = strconv.ParseFloat(matches[1], 64)
 			}
 		}
 	}
+}
+
+// parseZFSBytes parses a ZFS human-readable byte string like "0B", "1.5K", "2.3M", "4.7G", "1.2T"
+// into a byte count. Returns 0 if parsing fails.
+func parseZFSBytes(s string) int64 {
+	s = strings.TrimSpace(s)
+	if s == "" || s == "0" || s == "0B" {
+		return 0
+	}
+
+	multipliers := map[byte]int64{
+		'B': 1,
+		'K': 1024,
+		'M': 1024 * 1024,
+		'G': 1024 * 1024 * 1024,
+		'T': 1024 * 1024 * 1024 * 1024,
+		'P': 1024 * 1024 * 1024 * 1024 * 1024,
+		'E': 1024 * 1024 * 1024 * 1024 * 1024 * 1024,
+	}
+
+	suffix := s[len(s)-1]
+	mult, ok := multipliers[suffix]
+	if !ok {
+		val, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return 0
+		}
+		return val
+	}
+
+	numStr := s[:len(s)-1]
+	val, err := strconv.ParseFloat(numStr, 64)
+	if err != nil {
+		return 0
+	}
+	return int64(val * float64(mult))
 }
 
 // parseZFSDate parses a date string from ZFS output

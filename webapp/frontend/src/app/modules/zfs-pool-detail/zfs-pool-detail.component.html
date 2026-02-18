@@ -75,18 +75,23 @@
             <div class="font-bold text-3xl text-hint">Never</div>
           }
           @case ('scanning') {
-            <div class="font-bold text-3xl text-yellow">In Progress</div>
+            <div class="font-bold text-3xl text-yellow-600 dark:text-yellow-400">In Progress</div>
             <div class="text-sm text-hint mt-2">{{ pool.scrub_percent_complete }}% complete</div>
           }
           @case ('finished') {
-            <div class="font-bold text-3xl text-green">Completed</div>
+            <div class="font-bold text-3xl text-green-600 dark:text-green-400">Completed</div>
             <div class="text-sm text-hint mt-2">{{ pool.scrub_end_time | date:'MMM dd, yyyy HH:mm' }}</div>
             @if (pool.scrub_errors_count > 0) {
-              <div class="text-sm text-red mt-1">{{ pool.scrub_errors_count }} errors found</div>
+              <div class="text-sm text-red-600 dark:text-red-400 mt-1">{{ pool.scrub_errors_count }} errors found</div>
+            }
+            @if (pool.scrub_issued_bytes > 0) {
+              <div class="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
+                {{ pool.scrub_issued_bytes | fileSize:config?.file_size_si_units }} repaired
+              </div>
             }
           }
           @case ('canceled') {
-            <div class="font-bold text-3xl text-yellow">Canceled</div>
+            <div class="font-bold text-3xl text-yellow-600 dark:text-yellow-400">Canceled</div>
           }
         }
       </treo-card>
@@ -95,19 +100,19 @@
     <!-- Error Summary -->
     @if (pool.total_read_errors > 0 || pool.total_write_errors > 0 || pool.total_checksum_errors > 0) {
       <treo-card class="p-6 mb-8">
-        <div class="font-semibold text-lg text-red mb-4">Error Summary</div>
+        <div class="font-semibold text-lg text-red-600 dark:text-red-400 mb-4">Error Summary</div>
         <div class="grid grid-cols-3 gap-4">
           <div>
             <div class="font-semibold text-xs text-hint uppercase tracking-wider">Read Errors</div>
-            <div class="font-bold text-2xl text-red">{{ pool.total_read_errors }}</div>
+            <div class="font-bold text-2xl text-red-600 dark:text-red-400">{{ pool.total_read_errors }}</div>
           </div>
           <div>
             <div class="font-semibold text-xs text-hint uppercase tracking-wider">Write Errors</div>
-            <div class="font-bold text-2xl text-red">{{ pool.total_write_errors }}</div>
+            <div class="font-bold text-2xl text-red-600 dark:text-red-400">{{ pool.total_write_errors }}</div>
           </div>
           <div>
             <div class="font-semibold text-xs text-hint uppercase tracking-wider">Checksum Errors</div>
-            <div class="font-bold text-2xl text-red">{{ pool.total_checksum_errors }}</div>
+            <div class="font-bold text-2xl text-red-600 dark:text-red-400">{{ pool.total_checksum_errors }}</div>
           </div>
         </div>
       </treo-card>
@@ -118,7 +123,10 @@
       <div class="font-semibold text-lg mb-4">Virtual Device Tree</div>
       @if (pool.vdevs && pool.vdevs.length > 0) {
         <div class="vdev-tree">
-          @for (vdev of pool.vdevs; track vdev.id) {
+          @for (vdev of pool.vdevs; track vdev.id; let i = $index) {
+            @if (i > 0) {
+              <mat-divider class="my-2"></mat-divider>
+            }
             <ng-container *ngTemplateOutlet="vdevNode; context: { vdev: vdev, depth: 0 }"></ng-container>
           }
         </div>
@@ -156,8 +164,8 @@
 <!-- Vdev Node Template -->
 <ng-template #vdevNode let-vdev="vdev" let-depth="depth">
   <div
-    class="vdev-item flex items-center py-2 px-4 rounded hover:bg-hover"
-    [style.padding-left.px]="depth * 24 + 16">
+    class="vdev-item flex items-center py-3 px-4 rounded hover:bg-hover"
+    [style.padding-left.px]="depth * 32 + 16">
     <mat-icon
       class="icon-size-20 mr-3"
       [svgIcon]="getVdevIcon(vdev.type)">
@@ -176,7 +184,7 @@
         <div class="text-xs text-hint">{{ vdev.path }}</div>
       }
       @if (hasErrors(vdev)) {
-        <div class="text-xs text-red mt-1">
+        <div class="text-xs text-red-600 dark:text-red-400 mt-1">
           R: {{ vdev.read_errors }} / W: {{ vdev.write_errors }} / C: {{ vdev.checksum_errors }}
         </div>
       }
