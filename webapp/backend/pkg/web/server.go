@@ -17,11 +17,14 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/errors"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/metrics"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/reports"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/web/handler"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/web/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
+
+const configKeyMetricsEnabled = "web.metrics.enabled"
 
 type AppEngine struct {
 	Config            config.Interface
@@ -29,6 +32,31 @@ type AppEngine struct {
 	MetricsCollector  *metrics.Collector
 	MissedPingMonitor *MissedPingMonitor
 	HeartbeatMonitor  *HeartbeatMonitor
+	ReportScheduler   *reports.Scheduler
+}
+
+func (ae *AppEngine) registerMiddleware(r *gin.Engine, logger *logrus.Entry) {
+	r.Use(middleware.LoggerMiddleware(logger))
+	r.Use(middleware.RepositoryMiddleware(ae.Config, logger))
+	r.Use(middleware.ConfigMiddleware(ae.Config))
+
+	if ae.MissedPingMonitor != nil {
+		r.Use(middleware.MissedPingMonitorMiddleware(ae.MissedPingMonitor))
+	}
+	if ae.ReportScheduler != nil {
+		r.Use(middleware.ReportSchedulerMiddleware(ae.ReportScheduler))
+	}
+
+	if ae.Config.GetBool(configKeyMetricsEnabled) {
+		if ae.MetricsCollector == nil {
+			ae.MetricsCollector = metrics.NewCollector(logger)
+		}
+		r.Use(middleware.MetricsMiddleware(ae.MetricsCollector))
+		logger.Info("Prometheus metrics endpoint enabled")
+	} else {
+		logger.Info("Prometheus metrics endpoint disabled")
+	}
+	r.Use(gin.Recovery())
 }
 
 func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
@@ -43,29 +71,9 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 	mime.AddExtensionType(".otf", "font/otf")
 	mime.AddExtensionType(".svg", "image/svg+xml")
 	mime.AddExtensionType(".json", "application/json")
-	
+
 	r := gin.New()
-
-	r.Use(middleware.LoggerMiddleware(logger))
-	r.Use(middleware.RepositoryMiddleware(ae.Config, logger))
-	r.Use(middleware.ConfigMiddleware(ae.Config))
-
-	// Add missed ping monitor middleware if available
-	if ae.MissedPingMonitor != nil {
-		r.Use(middleware.MissedPingMonitorMiddleware(ae.MissedPingMonitor))
-	}
-
-	// Initialize metrics collector if enabled
-	if ae.Config.GetBool("web.metrics.enabled") {
-		if ae.MetricsCollector == nil {
-			ae.MetricsCollector = metrics.NewCollector(logger)
-		}
-		r.Use(middleware.MetricsMiddleware(ae.MetricsCollector))
-		logger.Info("Prometheus metrics endpoint enabled")
-	} else {
-		logger.Info("Prometheus metrics endpoint disabled")
-	}
-	r.Use(gin.Recovery())
+	ae.registerMiddleware(r, logger)
 
 	basePath := ae.Config.GetString("web.listen.basepath")
 	logger.Debugf("basepath: %s", basePath)
@@ -84,7 +92,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.GET("/summary/temp", handler.GetDevicesSummaryTempHistory) //used by Dashboard (Temperature history dropdown)
 
 			// Prometheus metrics endpoint (only registered if enabled)
-			if ae.Config.GetBool("web.metrics.enabled") {
+			if ae.Config.GetBool(configKeyMetricsEnabled) {
 				api.GET("/metrics", handler.GetMetrics)
 			}
 
@@ -108,6 +116,10 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.GET("/settings/overrides", handler.GetAttributeOverrides)
 			api.POST("/settings/overrides", handler.SaveAttributeOverride)
 			api.DELETE("/settings/overrides/:id", handler.DeleteAttributeOverride)
+
+			// Scheduled report endpoints
+			api.GET("/reports/generate", handler.GenerateReport)
+			api.GET("/reports/history", handler.ListReports)
 
 			// ZFS Pool API endpoints
 			zfs := api.Group("/zfs")
@@ -217,21 +229,15 @@ func (ae *AppEngine) Start() error {
 	heartbeatMonitor.Start()
 	ae.Logger.Info("Heartbeat monitor started")
 
-	// Load initial metrics data asynchronously at startup (if metrics enabled)
-	if ae.Config.GetBool("web.metrics.enabled") && ae.MetricsCollector != nil {
-		go func() {
-			deviceRepo, err := database.NewScrutinyRepository(ae.Config, ae.Logger)
-			if err != nil {
-				ae.Logger.Errorln("Failed to create repository for loading metrics:", err)
-				return
-			}
-			defer deviceRepo.Close()
+	// Create and start the report scheduler
+	reportScheduler := reports.NewScheduler(ae.Config, ae.Logger, func() (database.DeviceRepo, error) {
+		return database.NewScrutinyRepository(ae.Config, ae.Logger)
+	})
+	ae.ReportScheduler = reportScheduler
+	reportScheduler.Start()
+	ae.Logger.Info("Report scheduler started")
 
-			if err := ae.MetricsCollector.LoadInitialData(deviceRepo, context.Background()); err != nil {
-				ae.Logger.Errorln("Failed to load initial metrics data:", err)
-			}
-		}()
-	}
+	ae.loadInitialMetrics()
 
 	// Create HTTP server for graceful shutdown support
 	addr := fmt.Sprintf("%s:%s", ae.Config.GetString("web.listen.host"), ae.Config.GetString("web.listen.port"))
@@ -265,13 +271,7 @@ func (ae *AppEngine) Start() error {
 	<-quit
 	ae.Logger.Info("Shutdown signal received, initiating graceful shutdown...")
 
-	// Stop background monitors
-	if ae.MissedPingMonitor != nil {
-		ae.MissedPingMonitor.Stop()
-	}
-	if ae.HeartbeatMonitor != nil {
-		ae.HeartbeatMonitor.Stop()
-	}
+	ae.stopBackgroundMonitors()
 
 	// Create a deadline for shutdown (give 30 seconds for graceful shutdown)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -285,4 +285,34 @@ func (ae *AppEngine) Start() error {
 
 	ae.Logger.Info("Server shutdown complete")
 	return nil
+}
+
+func (ae *AppEngine) loadInitialMetrics() {
+	if !ae.Config.GetBool(configKeyMetricsEnabled) || ae.MetricsCollector == nil {
+		return
+	}
+	go func() {
+		deviceRepo, err := database.NewScrutinyRepository(ae.Config, ae.Logger)
+		if err != nil {
+			ae.Logger.Errorln("Failed to create repository for loading metrics:", err)
+			return
+		}
+		defer deviceRepo.Close()
+
+		if err := ae.MetricsCollector.LoadInitialData(deviceRepo, context.Background()); err != nil {
+			ae.Logger.Errorln("Failed to load initial metrics data:", err)
+		}
+	}()
+}
+
+func (ae *AppEngine) stopBackgroundMonitors() {
+	if ae.MissedPingMonitor != nil {
+		ae.MissedPingMonitor.Stop()
+	}
+	if ae.HeartbeatMonitor != nil {
+		ae.HeartbeatMonitor.Stop()
+	}
+	if ae.ReportScheduler != nil {
+		ae.ReportScheduler.Stop()
+	}
 }
