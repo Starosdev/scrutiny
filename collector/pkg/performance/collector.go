@@ -290,25 +290,43 @@ func (c *Collector) Publish(wwn string, result *models.PerformanceResult) error 
 func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), bool, error) {
 	fullDeviceName := fmt.Sprintf("%s%s", detect.DevicePrefix(), device.DeviceName)
 
-	// Explicit opt-in takes precedence
+	// For NVMe devices on Linux, resolve the namespace block device.
+	// smartctl reports the controller (/dev/nvme0) which is a character device,
+	// but fio needs the namespace block device (/dev/nvme0n1) for I/O.
+	// The DeviceName prefix check avoids false matches on macOS where NVMe
+	// drives are named "disk0" (not "nvme0") and don't need namespace resolution.
+	effectiveDevicePath := fullDeviceName
+	if device.DeviceProtocol == "NVMe" && strings.HasPrefix(device.DeviceName, "nvme") {
+		namespaceDev, err := resolveNVMeBlockDevice(fullDeviceName)
+		if err != nil {
+			return "", nil, false, fmt.Errorf(
+				"NVMe device %s: could not find namespace block device: %v. "+
+					"For containers, pass --device=/dev/%sn1 in addition to --device=/dev/%s",
+				device.DeviceName, err, device.DeviceName, device.DeviceName)
+		}
+		c.logger.Infof("NVMe device %s: resolved namespace block device %s", device.DeviceName, namespaceDev)
+		effectiveDevicePath = namespaceDev
+	}
+
+	// Explicit opt-in takes precedence (now uses namespace device for NVMe)
 	if c.config.GetBool("performance.allow_direct_device_io") {
-		c.logger.Infof("Direct device I/O enabled -- benchmarking raw device %s (read-only, write tests skipped)", fullDeviceName)
-		return fullDeviceName, nil, true, nil
+		c.logger.Infof("Direct device I/O enabled -- benchmarking %s (read-only, write tests skipped)", effectiveDevicePath)
+		return effectiveDevicePath, nil, true, nil
 	}
 
 	// Try to find mount point for the device
-	mountPoint, err := findMountPoint(fullDeviceName)
+	mountPoint, err := findMountPoint(effectiveDevicePath)
 	if err != nil {
-		c.logger.Warnf("Could not find mount point for %s: %v -- falling back to direct device I/O (read-only)", fullDeviceName, err)
-		return fullDeviceName, nil, true, nil
+		c.logger.Warnf("Could not find mount point for %s: %v -- falling back to direct device I/O (read-only)", effectiveDevicePath, err)
+		return effectiveDevicePath, nil, true, nil
 	}
 
 	// Validate the mount point is suitable for benchmarking
 	requiredSize := c.getRequiredTestFileSize()
 	suitable, reason := isMountPointSuitable(mountPoint, requiredSize)
 	if !suitable {
-		c.logger.Warnf("Mount point %s for device %s is not suitable: %s -- falling back to direct device I/O (read-only)", mountPoint, fullDeviceName, reason)
-		return fullDeviceName, nil, true, nil
+		c.logger.Warnf("Mount point %s for device %s is not suitable: %s -- falling back to direct device I/O (read-only)", mountPoint, effectiveDevicePath, reason)
+		return effectiveDevicePath, nil, true, nil
 	}
 
 	tempFile := fmt.Sprintf("%s/.scrutiny_perf_bench", mountPoint)
