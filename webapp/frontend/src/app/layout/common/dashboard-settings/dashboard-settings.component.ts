@@ -48,6 +48,19 @@ export class DashboardSettingsComponent implements OnInit {
     heartbeatEnabled: boolean;
     heartbeatIntervalHours: number;
 
+    // Report settings
+    reportEnabled: boolean;
+    reportDailyEnabled: boolean;
+    reportDailyTime: string;
+    reportWeeklyEnabled: boolean;
+    reportWeeklyDay: number;
+    reportWeeklyTime: string;
+    reportMonthlyEnabled: boolean;
+    reportMonthlyDay: number;
+    reportMonthlyTime: string;
+    reportPDFEnabled: boolean;
+    reportPDFPath: string;
+
     // Attribute overrides
     overrides: AttributeOverride[] = [];
     displayedColumns: string[] = ['protocol', 'attribute_id', 'action', 'source', 'actions'];
@@ -106,6 +119,19 @@ export class DashboardSettingsComponent implements OnInit {
                 // Heartbeat settings
                 this.heartbeatEnabled = config.metrics.heartbeat_enabled ?? false;
                 this.heartbeatIntervalHours = config.metrics.heartbeat_interval_hours ?? 24;
+
+                // Report settings
+                this.reportEnabled = config.metrics.report_enabled ?? false;
+                this.reportDailyEnabled = config.metrics.report_daily_enabled ?? false;
+                this.reportDailyTime = config.metrics.report_daily_time ?? '08:00';
+                this.reportWeeklyEnabled = config.metrics.report_weekly_enabled ?? false;
+                this.reportWeeklyDay = config.metrics.report_weekly_day ?? 1;
+                this.reportWeeklyTime = config.metrics.report_weekly_time ?? '08:00';
+                this.reportMonthlyEnabled = config.metrics.report_monthly_enabled ?? false;
+                this.reportMonthlyDay = config.metrics.report_monthly_day ?? 1;
+                this.reportMonthlyTime = config.metrics.report_monthly_time ?? '08:00';
+                this.reportPDFEnabled = config.metrics.report_pdf_enabled ?? false;
+                this.reportPDFPath = config.metrics.report_pdf_path ?? '/opt/scrutiny/reports';
 
             });
 
@@ -186,7 +212,18 @@ export class DashboardSettingsComponent implements OnInit {
                 missed_ping_timeout_minutes: this.missedPingTimeoutMinutes,
                 missed_ping_check_interval_mins: this.missedPingCheckIntervalMins,
                 heartbeat_enabled: this.heartbeatEnabled,
-                heartbeat_interval_hours: this.heartbeatIntervalHours
+                heartbeat_interval_hours: this.heartbeatIntervalHours,
+                report_enabled: this.reportEnabled,
+                report_daily_enabled: this.reportDailyEnabled,
+                report_daily_time: this.reportDailyTime,
+                report_weekly_enabled: this.reportWeeklyEnabled,
+                report_weekly_day: this.reportWeeklyDay,
+                report_weekly_time: this.reportWeeklyTime,
+                report_monthly_enabled: this.reportMonthlyEnabled,
+                report_monthly_day: this.reportMonthlyDay,
+                report_monthly_time: this.reportMonthlyTime,
+                report_pdf_enabled: this.reportPDFEnabled,
+                report_pdf_path: this.reportPDFPath
             }
         }
         this._configService.config = newSettings
