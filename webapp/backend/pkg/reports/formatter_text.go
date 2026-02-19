@@ -19,10 +19,12 @@ func FormatTextReport(report *ReportData) (string, string) {
 	var parts []string
 
 	// Header and device summary
-	parts = append(parts, fmt.Sprintf("Scrutiny %s Report - %s", periodLabel, dateStr))
-	parts = append(parts, "")
-	parts = append(parts, fmt.Sprintf("Devices: %d total | %d passed | %d warning | %d failed",
-		report.TotalDevices, report.PassedDevices, report.WarningDevices, report.FailedDevices))
+	parts = append(parts,
+		fmt.Sprintf("Scrutiny %s Report - %s", periodLabel, dateStr),
+		"",
+		fmt.Sprintf("Devices: %d total | %d passed | %d warning | %d failed",
+			report.TotalDevices, report.PassedDevices, report.WarningDevices, report.FailedDevices),
+	)
 	if report.ArchivedDevices > 0 {
 		parts = append(parts, fmt.Sprintf("  (%d archived, excluded from report)", report.ArchivedDevices))
 	}
@@ -75,8 +77,7 @@ func appendAlertSection(parts []string, report *ReportData, status string, heade
 	if len(alerts) == 0 {
 		return parts
 	}
-	parts = append(parts, "")
-	parts = append(parts, header)
+	parts = append(parts, "", header)
 	for _, entry := range alerts {
 		parts = append(parts, fmt.Sprintf("  - %s: %s", entry.deviceName, entry.alertLine))
 	}
@@ -91,9 +92,11 @@ func appendTempSummary(parts []string, devices []DeviceReport) []string {
 	if hottest == nil {
 		return parts
 	}
-	parts = append(parts, "")
-	parts = append(parts, "Temperature Summary:")
-	parts = append(parts, fmt.Sprintf("  Highest: %s at %dC (avg %.0fC)", hottest.DisplayName(), hottest.TempCurrent, hottest.TempAvg))
+	parts = append(parts,
+		"",
+		"Temperature Summary:",
+		fmt.Sprintf("  Highest: %s at %dC (avg %.0fC)", hottest.DisplayName(), hottest.TempCurrent, hottest.TempAvg),
+	)
 	if coldest != nil && coldest.TempCurrent != hottest.TempCurrent {
 		parts = append(parts, fmt.Sprintf("  Lowest: %s at %dC (avg %.0fC)", coldest.DisplayName(), coldest.TempCurrent, coldest.TempAvg))
 	}
@@ -104,15 +107,14 @@ func appendZFSSection(parts []string, pools []ZFSPoolReport) []string {
 	if len(pools) == 0 {
 		return parts
 	}
-	parts = append(parts, "")
-	parts = append(parts, "ZFS Pools:")
-	for _, pool := range pools {
-		parts = append(parts, formatZFSPoolLine(pool))
+	parts = append(parts, "", "ZFS Pools:")
+	for i := range pools {
+		parts = append(parts, formatZFSPoolLine(&pools[i]))
 	}
 	return parts
 }
 
-func formatZFSPoolLine(pool ZFSPoolReport) string {
+func formatZFSPoolLine(pool *ZFSPoolReport) string {
 	details := fmt.Sprintf("capacity: %.1f%%", pool.Capacity)
 	if pool.ErrorsRead > 0 || pool.ErrorsWrite > 0 || pool.ErrorsChecksum > 0 {
 		details += fmt.Sprintf(", errors: %d read / %d write / %d checksum",
@@ -128,7 +130,8 @@ type alertLine struct {
 
 func collectAlerts(report *ReportData, status string) []alertLine {
 	var results []alertLine
-	for _, device := range report.Devices {
+	for i := range report.Devices {
+		device := &report.Devices[i]
 		for _, alert := range device.ActiveFailures {
 			if alert.Status != status {
 				continue

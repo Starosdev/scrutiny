@@ -15,8 +15,8 @@ import (
 type reportFileEntry struct {
 	Name    string `json:"name"`
 	Path    string `json:"path"`
-	Size    int64  `json:"size"`
 	ModTime string `json:"mod_time"`
+	Size    int64  `json:"size"`
 }
 
 func ListReports(c *gin.Context) {

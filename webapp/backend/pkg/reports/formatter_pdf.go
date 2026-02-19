@@ -134,7 +134,8 @@ func writeDeviceTable(pdf *fpdf.Fpdf, report *ReportData) {
 	pdf.Ln(-1)
 
 	pdf.SetFont("Helvetica", "", 8)
-	for _, d := range report.Devices {
+	for i := range report.Devices {
+		d := &report.Devices[i]
 		if d.Status > 0 {
 			pdf.SetTextColor(220, 53, 69)
 		} else {

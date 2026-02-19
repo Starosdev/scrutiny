@@ -23,29 +23,25 @@ const (
 
 // Scheduler runs report generation on configured schedules
 type Scheduler struct {
-	appConfig config.Interface
-	logger    logrus.FieldLogger
-
-	// Persistent repository connection
+	appConfig  config.Interface
+	logger     logrus.FieldLogger
 	deviceRepo database.DeviceRepo
-	repoMu     sync.Mutex
+	ctx        context.Context
+	cancel     context.CancelFunc
+	stopCh     chan struct{}
+	repoFactory func() (database.DeviceRepo, error)
 
-	stopCh  chan struct{}
-	ctx     context.Context
-	cancel  context.CancelFunc
-	wg      sync.WaitGroup
-	started bool
-	stopped bool
-	mu      sync.Mutex // guards started/stopped flags
-
-	// Last run timestamps (in-memory only)
 	lastDailyRun   time.Time
 	lastWeeklyRun  time.Time
 	lastMonthlyRun time.Time
-	runMu          sync.RWMutex
 
-	// Factory for creating DeviceRepo
-	repoFactory func() (database.DeviceRepo, error)
+	repoMu sync.Mutex
+	wg     sync.WaitGroup
+	mu     sync.Mutex   // guards started/stopped flags
+	runMu  sync.RWMutex // guards last run timestamps
+
+	started bool
+	stopped bool
 }
 
 // NewScheduler creates a new report scheduler

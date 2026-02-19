@@ -61,16 +61,16 @@ func (ae *AppEngine) registerMiddleware(r *gin.Engine, logger *logrus.Entry) {
 
 func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 	// Register additional MIME types for proper file serving
-	mime.AddExtensionType(".js", "application/javascript")
-	mime.AddExtensionType(".mjs", "application/javascript")
-	mime.AddExtensionType(".css", "text/css")
-	mime.AddExtensionType(".woff", "font/woff")
-	mime.AddExtensionType(".woff2", "font/woff2")
-	mime.AddExtensionType(".ttf", "font/ttf")
-	mime.AddExtensionType(".eot", "application/vnd.ms-fontobject")
-	mime.AddExtensionType(".otf", "font/otf")
-	mime.AddExtensionType(".svg", "image/svg+xml")
-	mime.AddExtensionType(".json", "application/json")
+	_ = mime.AddExtensionType(".js", "application/javascript")
+	_ = mime.AddExtensionType(".mjs", "application/javascript")
+	_ = mime.AddExtensionType(".css", "text/css")
+	_ = mime.AddExtensionType(".woff", "font/woff")
+	_ = mime.AddExtensionType(".woff2", "font/woff2")
+	_ = mime.AddExtensionType(".ttf", "font/ttf")
+	_ = mime.AddExtensionType(".eot", "application/vnd.ms-fontobject")
+	_ = mime.AddExtensionType(".otf", "font/otf")
+	_ = mime.AddExtensionType(".svg", "image/svg+xml")
+	_ = mime.AddExtensionType(".json", "application/json")
 
 	r := gin.New()
 	ae.registerMiddleware(r, logger)

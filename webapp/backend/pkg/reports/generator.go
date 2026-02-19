@@ -57,11 +57,12 @@ func (g *Generator) Generate(ctx context.Context, periodType string, start, end 
 		report.Devices = append(report.Devices, deviceReport)
 
 		report.TotalDevices++
-		if summary.Device.DeviceStatus == pkg.DeviceStatusPassed {
+		switch {
+		case summary.Device.DeviceStatus == pkg.DeviceStatusPassed:
 			report.PassedDevices++
-		} else if pkg.DeviceStatusHas(summary.Device.DeviceStatus, pkg.DeviceStatusFailedSmart) || pkg.DeviceStatusHas(summary.Device.DeviceStatus, pkg.DeviceStatusFailedScrutiny) {
+		case pkg.DeviceStatusHas(summary.Device.DeviceStatus, pkg.DeviceStatusFailedSmart) || pkg.DeviceStatusHas(summary.Device.DeviceStatus, pkg.DeviceStatusFailedScrutiny):
 			report.FailedDevices++
-		} else {
+		default:
 			report.PassedDevices++
 		}
 	}
@@ -93,15 +94,16 @@ func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, wwn st
 			Value:       attr.GetTransformedValue(),
 		}
 
-		if pkg.AttributeStatusHas(status, pkg.AttributeStatusFailedSmart) {
+		switch {
+		case pkg.AttributeStatusHas(status, pkg.AttributeStatusFailedSmart):
 			entry.Status = "failed"
 			entry.StatusReason = "smart"
 			dr.ActiveFailures = append(dr.ActiveFailures, entry)
-		} else if pkg.AttributeStatusHas(status, pkg.AttributeStatusFailedScrutiny) {
+		case pkg.AttributeStatusHas(status, pkg.AttributeStatusFailedScrutiny):
 			entry.Status = "failed"
 			entry.StatusReason = "scrutiny"
 			dr.ActiveFailures = append(dr.ActiveFailures, entry)
-		} else if pkg.AttributeStatusHas(status, pkg.AttributeStatusWarningScrutiny) {
+		case pkg.AttributeStatusHas(status, pkg.AttributeStatusWarningScrutiny):
 			entry.Status = "warning"
 			entry.StatusReason = "scrutiny"
 			dr.ActiveFailures = append(dr.ActiveFailures, entry)

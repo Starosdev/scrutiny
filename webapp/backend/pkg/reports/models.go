@@ -11,14 +11,14 @@ type ReportData struct {
 	PeriodEnd   time.Time `json:"period_end"`
 	PeriodType  string    `json:"period_type"` // "daily", "weekly", "monthly"
 
+	Devices  []DeviceReport  `json:"devices"`
+	ZFSPools []ZFSPoolReport `json:"zfs_pools"`
+
 	TotalDevices    int `json:"total_devices"`
 	PassedDevices   int `json:"passed_devices"`
 	WarningDevices  int `json:"warning_devices"`
 	FailedDevices   int `json:"failed_devices"`
 	ArchivedDevices int `json:"archived_devices"`
-
-	Devices  []DeviceReport  `json:"devices"`
-	ZFSPools []ZFSPoolReport `json:"zfs_pools"`
 }
 
 // NewReportData creates a ReportData with the given period
@@ -60,23 +60,21 @@ type DeviceReport struct {
 	Protocol string `json:"protocol"` // ATA, NVMe, SCSI
 	HostID   string `json:"host_id"`
 	Label    string `json:"label"`
-	Status   int    `json:"status"` // bitwise: 0=pass, 1=smart fail, 2=scrutiny fail, 3=both
 
-	TempCurrent int64   `json:"temp_current"`
-	TempMin     int64   `json:"temp_min"`
-	TempMax     int64   `json:"temp_max"`
-	TempAvg     float64 `json:"temp_avg"`
-
-	PowerOnHours    int64 `json:"power_on_hours"`
-	PowerCycleCount int64 `json:"power_cycle_count"`
-
-	PercentageUsed *int64 `json:"percentage_used,omitempty"`
-	WearoutValue   *int64 `json:"wearout_value,omitempty"`
+	PercentageUsed *int64              `json:"percentage_used,omitempty"`
+	WearoutValue   *int64              `json:"wearout_value,omitempty"`
+	Performance    *PerformanceSummary `json:"performance,omitempty"`
 
 	NewAlerts      []AlertEntry `json:"new_alerts"`
 	ActiveFailures []AlertEntry `json:"active_failures"`
 
-	Performance *PerformanceSummary `json:"performance,omitempty"`
+	TempAvg         float64 `json:"temp_avg"`
+	TempCurrent     int64   `json:"temp_current"`
+	TempMin         int64   `json:"temp_min"`
+	TempMax         int64   `json:"temp_max"`
+	PowerOnHours    int64   `json:"power_on_hours"`
+	PowerCycleCount int64   `json:"power_cycle_count"`
+	Status          int     `json:"status"` // bitwise: 0=pass, 1=smart fail, 2=scrutiny fail, 3=both
 }
 
 func (d *DeviceReport) DisplayName() string {
@@ -105,30 +103,30 @@ func (d *DeviceReport) StatusString() string {
 type AlertEntry struct {
 	AttributeID   string `json:"attribute_id"`
 	AttributeName string `json:"attribute_name"`
-	Status        string `json:"status"` // "warning", "failed"
+	Status        string `json:"status"`        // "warning", "failed"
+	StatusReason  string `json:"status_reason"` // "smart" or "scrutiny"
 	Value         int64  `json:"value"`
 	Threshold     int64  `json:"threshold"`
-	StatusReason  string `json:"status_reason"` // "smart" or "scrutiny"
 }
 
 // PerformanceSummary contains benchmark results for a device
 type PerformanceSummary struct {
+	BaselineDeviation *float64 `json:"baseline_deviation,omitempty"`
 	SeqReadBW         float64  `json:"seq_read_bw"`
 	SeqWriteBW        float64  `json:"seq_write_bw"`
 	RandReadIOPS      float64  `json:"rand_read_iops"`
 	RandWriteIOPS     float64  `json:"rand_write_iops"`
-	BaselineDeviation *float64 `json:"baseline_deviation,omitempty"`
 }
 
 // ZFSPoolReport contains health data for a ZFS pool
 type ZFSPoolReport struct {
+	LastScrubDate  *time.Time `json:"last_scrub_date,omitempty"`
 	Name           string     `json:"name"`
 	GUID           string     `json:"guid"`
 	Health         string     `json:"health"`
+	ScrubStatus    string     `json:"scrub_status"`
 	Capacity       float64    `json:"capacity"`
 	ErrorsRead     int64      `json:"errors_read"`
 	ErrorsWrite    int64      `json:"errors_write"`
 	ErrorsChecksum int64      `json:"errors_checksum"`
-	ScrubStatus    string     `json:"scrub_status"`
-	LastScrubDate  *time.Time `json:"last_scrub_date,omitempty"`
 }
