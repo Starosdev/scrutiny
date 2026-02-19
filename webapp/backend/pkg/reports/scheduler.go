@@ -259,6 +259,18 @@ func (s *Scheduler) GenerateOnDemand(ctx context.Context, periodType string) (*R
 	return gen.Generate(ctx, periodType, start, now)
 }
 
+// SendTestReport generates a report and sends it via the notification system.
+func (s *Scheduler) SendTestReport(ctx context.Context, periodType string) (*ReportData, error) {
+	report, err := s.GenerateOnDemand(ctx, periodType)
+	if err != nil {
+		return nil, err
+	}
+
+	subject, message := FormatTextReport(report)
+	s.sendNotification(subject, message)
+	return report, nil
+}
+
 // GenerateOnDemandPDF generates a PDF and returns the file path.
 func (s *Scheduler) GenerateOnDemandPDF(ctx context.Context, periodType string) (string, error) {
 	report, err := s.GenerateOnDemand(ctx, periodType)
