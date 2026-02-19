@@ -22,7 +22,11 @@ func isMountPointSuitable(mountPoint string, requiredBytes uint64) (bool, string
 	if err := syscall.Statfs(mountPoint, &stat); err != nil {
 		return false, fmt.Sprintf("could not check available space: %v", err)
 	}
-	availableBytes := stat.Bavail * uint64(stat.Bsize)
+	bsize := stat.Bsize
+	if bsize <= 0 {
+		return false, fmt.Sprintf("unexpected block size %d for mount point %s", bsize, mountPoint)
+	}
+	availableBytes := stat.Bavail * uint64(bsize) //nolint:gosec // bsize validated positive above
 	if availableBytes < requiredBytes {
 		return false, fmt.Sprintf("insufficient space: %d bytes available, %d bytes required", availableBytes, requiredBytes)
 	}
