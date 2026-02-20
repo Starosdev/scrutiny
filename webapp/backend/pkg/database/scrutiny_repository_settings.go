@@ -3,11 +3,17 @@ package database
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/mitchellh/mapstructure"
 	"strings"
 )
+
+// settingsMu protects Viper appConfig access in LoadSettings/SaveSettings.
+// Must be package-level because multiple scrutinyRepository instances share the same Viper instance.
+var settingsMu sync.Mutex
 
 // LoadSettings will retrieve settings from the database, store them in the AppConfig object, and return a Settings struct
 func (sr *scrutinyRepository) LoadSettings(ctx context.Context) (*models.Settings, error) {
@@ -15,6 +21,9 @@ func (sr *scrutinyRepository) LoadSettings(ctx context.Context) (*models.Setting
 	if err := sr.gormClient.WithContext(ctx).Find(&settingsEntries).Error; err != nil {
 		return nil, fmt.Errorf("Could not get settings from DB: %v", err)
 	}
+
+	settingsMu.Lock()
+	defer settingsMu.Unlock()
 
 	// store retrieved settings in the AppConfig obj
 	for _, settingsEntry := range settingsEntries {
@@ -79,6 +88,9 @@ func (sr *scrutinyRepository) SetSettingValue(ctx context.Context, key string, v
 // curl -d '{"metrics": { "notify_level": 5, "status_filter_attributes": 5, "status_threshold": 5 }}' -H "Content-Type: application/json" -X POST http://localhost:9090/api/settings
 // SaveSettings will update settings in AppConfig object, then save the settings to the database.
 func (sr *scrutinyRepository) SaveSettings(ctx context.Context, settings models.Settings) error {
+	settingsMu.Lock()
+	defer settingsMu.Unlock()
+
 	//save the entries to the appconfig
 	settingsMap := &map[string]interface{}{}
 	err := mapstructure.Decode(settings, &settingsMap)

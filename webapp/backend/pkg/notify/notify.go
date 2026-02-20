@@ -395,14 +395,31 @@ func (n *Notify) SendScriptNotification(scriptUrl string) error {
 func (n *Notify) SendShoutrrrNotification(shoutrrrUrl string) error {
 	n.Logger.Infof("Sending notifications to %v", shoutrrrUrl)
 
-	sender, err := shoutrrr.CreateSender(shoutrrrUrl)
+	// Determine if we should use HTML for this SMTP notification.
+	// We must inject usehtml=Yes into the URL (not just params) because shoutrrr's
+	// getHeaders() reads the original service config, not the per-send cloned config.
+	serviceName := ""
+	if serviceURL, err := url.Parse(shoutrrrUrl); err == nil {
+		serviceName = serviceURL.Scheme
+	}
+	useHTML := serviceName == "smtp" && n.Payload.HTMLMessage != ""
+	senderUrl := shoutrrrUrl
+	if useHTML {
+		if strings.Contains(senderUrl, "?") {
+			senderUrl += "&usehtml=Yes"
+		} else {
+			senderUrl += "?usehtml=Yes"
+		}
+	}
+
+	sender, err := shoutrrr.CreateSender(senderUrl)
 	if err != nil {
 		n.Logger.Errorf("An error occurred while sending notifications %v: %v", shoutrrrUrl, err)
 		return err
 	}
 
 	//sender.SetLogger(n.Logger.)
-	serviceName, params, err := n.GenShoutrrrNotificationParams(shoutrrrUrl)
+	_, params, err := n.GenShoutrrrNotificationParams(shoutrrrUrl)
 	n.Logger.Debugf("notification data for %s: (%s)\n%v", serviceName, shoutrrrUrl, params)
 
 	if err != nil {
@@ -410,10 +427,9 @@ func (n *Notify) SendShoutrrrNotification(shoutrrrUrl string) error {
 		return err
 	}
 
-	// For SMTP, use HTML message if available
+	// For SMTP with HTML, send the HTML version; other services get plain text
 	message := n.Payload.Message
-	if serviceName == "smtp" && n.Payload.HTMLMessage != "" {
-		(*params)["usehtml"] = "Yes"
+	if useHTML {
 		message = n.Payload.HTMLMessage
 	}
 
