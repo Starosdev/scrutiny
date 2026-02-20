@@ -172,6 +172,9 @@ type Payload struct {
 	FailureType string `json:"failure_type"` //EmailTest, BothFail, SmartFail, ScrutinyFail
 	Subject     string `json:"subject"`
 	Message     string `json:"message"`
+
+	// HTMLMessage is an optional HTML version of Message, used for SMTP emails.
+	HTMLMessage string `json:"-"`
 }
 
 func NewPayload(device models.Device, test bool, currentTime ...time.Time) Payload {
@@ -407,7 +410,14 @@ func (n *Notify) SendShoutrrrNotification(shoutrrrUrl string) error {
 		return err
 	}
 
-	errs := sender.Send(n.Payload.Message, params)
+	// For SMTP, use HTML message if available
+	message := n.Payload.Message
+	if serviceName == "smtp" && n.Payload.HTMLMessage != "" {
+		(*params)["usehtml"] = "Yes"
+		message = n.Payload.HTMLMessage
+	}
+
+	errs := sender.Send(message, params)
 	if len(errs) > 0 {
 		var errstrings []string
 
@@ -588,6 +598,60 @@ func NewMissedPing(logger logrus.FieldLogger, appconfig config.Interface, device
 	}
 }
 
+// MissedPingDigestDevice represents a single device in a missed ping digest
+type MissedPingDigestDevice struct {
+	WWN          string
+	DeviceName   string
+	SerialNumber string
+	HostId       string
+	Label        string
+	LastSeen     time.Time
+}
+
+// NewMissedPingDigest creates a Notify instance for a batched missed ping digest
+func NewMissedPingDigest(logger logrus.FieldLogger, appconfig config.Interface, devices []MissedPingDigestDevice, timeoutMinutes int) Notify {
+	count := len(devices)
+	subject := fmt.Sprintf("Scrutiny: %d device(s) missed collector pings", count)
+
+	var parts []string
+	parts = append(parts,
+		fmt.Sprintf("Scrutiny has not received data from %d device(s) within the %d-minute timeout.", count, timeoutMinutes),
+		"",
+		"Affected devices:",
+	)
+	for _, d := range devices {
+		ago := time.Since(d.LastSeen).Round(time.Minute)
+		line := fmt.Sprintf("  - %s (serial: %s) - last seen %s ago", d.DeviceName, d.SerialNumber, ago)
+		if d.Label != "" {
+			line = fmt.Sprintf("  - %s [%s] (serial: %s) - last seen %s ago", d.Label, d.DeviceName, d.SerialNumber, ago)
+		}
+		if d.HostId != "" {
+			line += fmt.Sprintf(" [host: %s]", d.HostId)
+		}
+		parts = append(parts, line)
+	}
+	parts = append(parts,
+		"",
+		"Please check that the collector(s) are running and can reach the Scrutiny server.",
+	)
+
+	message := strings.Join(parts, "\n")
+
+	payload := Payload{
+		Test:        false,
+		Date:        time.Now().Format(time.RFC3339),
+		FailureType: NotifyFailureTypeMissedPing,
+		Subject:     subject,
+		Message:     message,
+	}
+
+	return Notify{
+		Logger:  logger,
+		Config:  appconfig,
+		Payload: payload,
+	}
+}
+
 // HeartbeatPayload represents a periodic "all clear" heartbeat notification
 type HeartbeatPayload struct {
 	MonitoredDevices int    `json:"monitored_devices"`
@@ -750,14 +814,16 @@ func NewPerformanceDegradation(logger logrus.FieldLogger, appconfig config.Inter
 	}
 }
 
-// NewReport creates a Notify instance for scheduled report delivery
-func NewReport(logger logrus.FieldLogger, appconfig config.Interface, subject, message string) Notify {
+// NewReport creates a Notify instance for scheduled report delivery.
+// htmlMessage is optional -- when non-empty, SMTP recipients get an HTML email.
+func NewReport(logger logrus.FieldLogger, appconfig config.Interface, subject, message, htmlMessage string) Notify {
 	payload := Payload{
 		Test:        false,
 		Date:        time.Now().Format(time.RFC3339),
 		FailureType: NotifyFailureTypeReport,
 		Subject:     subject,
 		Message:     message,
+		HTMLMessage: htmlMessage,
 	}
 
 	return Notify{

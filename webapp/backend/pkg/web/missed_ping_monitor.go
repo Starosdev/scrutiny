@@ -239,23 +239,48 @@ func (m *MissedPingMonitor) loadCheckData() (*checkMissedPingsData, error) {
 	}, nil
 }
 
-// processDevice checks a single device for missed pings
-func (m *MissedPingMonitor) processDevice(device models.Device, data *checkMissedPingsData, now time.Time) {
+// checkDevice checks a single device for missed pings and returns digest data if missed.
+// Returns nil if the device is not missed (healthy, skipped, or already notified recently).
+func (m *MissedPingMonitor) checkDevice(device models.Device, data *checkMissedPingsData, now time.Time) *notify.MissedPingDigestDevice {
 	if device.Archived || device.Muted {
 		m.logger.Debugf("Skipping device %s - archived: %v, muted: %v", device.WWN, device.Archived, device.Muted)
-		return
+		return nil
 	}
 
 	lastSeen, exists := data.lastSeenTimes[device.WWN]
 	if !exists {
 		m.logger.Debugf("Device %s has no last seen time (newly registered?)", device.WWN)
-		return
+		return nil
 	}
 
-	if now.Sub(lastSeen) > data.timeout {
-		m.handleMissedPing(device, lastSeen, data.timeoutMinutes)
-	} else {
+	if now.Sub(lastSeen) <= data.timeout {
 		m.clearNotificationState(device.WWN)
+		return nil
+	}
+
+	// Device has missed pings -- check dedup before including in digest
+	m.mu.RLock()
+	lastNotified, alreadyNotified := m.notifiedDevices[device.WWN]
+	m.mu.RUnlock()
+
+	if alreadyNotified {
+		timeSinceNotification := time.Since(lastNotified)
+		if timeSinceNotification < time.Duration(data.timeoutMinutes)*time.Minute {
+			m.logger.Debugf("Already notified about device %s %v ago, skipping", device.WWN, timeSinceNotification.Round(time.Minute))
+			return nil
+		}
+	}
+
+	m.logger.Warnf("Device %s (%s) has not sent data for %v (threshold: %d minutes)",
+		device.WWN, device.DeviceName, time.Since(lastSeen).Round(time.Minute), data.timeoutMinutes)
+
+	return &notify.MissedPingDigestDevice{
+		WWN:          device.WWN,
+		DeviceName:   device.DeviceName,
+		SerialNumber: device.SerialNumber,
+		HostId:       device.HostId,
+		Label:        device.Label,
+		LastSeen:     lastSeen,
 	}
 }
 
@@ -297,48 +322,42 @@ func (m *MissedPingMonitor) checkMissedPings() {
 
 	now := time.Now()
 	currentDeviceWWNs := make(map[string]bool, len(data.devices))
+	var missed []notify.MissedPingDigestDevice
 
 	for _, device := range data.devices {
 		currentDeviceWWNs[device.WWN] = true
-		m.processDevice(device, data, now)
+		if md := m.checkDevice(device, data, now); md != nil {
+			missed = append(missed, *md)
+		}
+	}
+
+	if len(missed) > 0 {
+		m.sendMissedPingDigest(missed, data.timeoutMinutes)
 	}
 
 	m.cleanupStaleNotifications(currentDeviceWWNs)
 }
 
-func (m *MissedPingMonitor) handleMissedPing(device models.Device, lastSeen time.Time, timeoutMinutes int) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Check if we've already notified about this device recently
-	// We don't want to spam notifications - only notify once per timeout period
-	if lastNotified, exists := m.notifiedDevices[device.WWN]; exists {
-		timeSinceNotification := time.Since(lastNotified)
-		// Don't re-notify for at least the timeout period
-		if timeSinceNotification < time.Duration(timeoutMinutes)*time.Minute {
-			m.logger.Debugf("Already notified about device %s %v ago, skipping", device.WWN, timeSinceNotification.Round(time.Minute))
-			return
-		}
-	}
-
-	m.logger.Warnf("Device %s (%s) has not sent data for %v (threshold: %d minutes)",
-		device.WWN, device.DeviceName, time.Since(lastSeen).Round(time.Minute), timeoutMinutes)
-
-	// Send notification
-	notification := notify.NewMissedPing(m.logger, m.appEngine.Config, device, lastSeen, timeoutMinutes)
+func (m *MissedPingMonitor) sendMissedPingDigest(devices []notify.MissedPingDigestDevice, timeoutMinutes int) {
+	notification := notify.NewMissedPingDigest(m.logger, m.appEngine.Config, devices, timeoutMinutes)
 	if err := notification.Send(); err != nil {
 		if err.Error() == "no notification endpoints configured" {
-			m.logger.Warnf("Missed ping detected for device %s but no notification endpoints are configured. Configure notify.urls in scrutiny.yaml to receive alerts.", device.WWN)
-			// Don't mark as notified - will retry when endpoints are configured
+			m.logger.Warnf("Missed pings detected for %d device(s) but no notification endpoints are configured.", len(devices))
 			return
 		}
-		m.logger.Errorf("Failed to send missed ping notification for device %s: %v", device.WWN, err)
+		m.logger.Errorf("Failed to send missed ping digest notification: %v", err)
 		return
 	}
 
-	// Record that we've notified about this device
-	m.notifiedDevices[device.WWN] = time.Now()
-	m.logger.Infof("Sent missed ping notification for device %s", device.WWN)
+	// Mark all devices as notified
+	m.mu.Lock()
+	now := time.Now()
+	for _, d := range devices {
+		m.notifiedDevices[d.WWN] = now
+	}
+	m.mu.Unlock()
+
+	m.logger.Infof("Sent missed ping digest notification for %d device(s)", len(devices))
 }
 
 func (m *MissedPingMonitor) clearNotificationState(wwn string) {

@@ -71,6 +71,13 @@ type DeviceRepo interface {
 	LoadSettings(ctx context.Context) (*models.Settings, error)
 	SaveSettings(ctx context.Context, settings models.Settings) error
 
+	// GetSettingValue retrieves a single setting value by key name.
+	// Returns the string representation of the value, or empty string if not found.
+	GetSettingValue(ctx context.Context, key string) (string, error)
+	// SetSettingValue sets a single setting value by key name.
+	// Creates the entry if it doesn't exist, updates it if it does.
+	SetSettingValue(ctx context.Context, key string, value string) error
+
 	// ZFS Pool operations
 	RegisterZFSPool(ctx context.Context, pool models.ZFSPool) error
 	GetZFSPools(ctx context.Context) ([]models.ZFSPool, error)
