@@ -652,6 +652,7 @@ func NewMissedPingDigest(logger logrus.FieldLogger, appconfig config.Interface, 
 	)
 
 	message := strings.Join(parts, "\n")
+	htmlMessage := formatHTMLMissedPingDigest(devices, count, timeoutMinutes)
 
 	payload := Payload{
 		Test:        false,
@@ -659,6 +660,7 @@ func NewMissedPingDigest(logger logrus.FieldLogger, appconfig config.Interface, 
 		FailureType: NotifyFailureTypeMissedPing,
 		Subject:     subject,
 		Message:     message,
+		HTMLMessage: htmlMessage,
 	}
 
 	return Notify{
@@ -666,6 +668,86 @@ func NewMissedPingDigest(logger logrus.FieldLogger, appconfig config.Interface, 
 		Config:  appconfig,
 		Payload: payload,
 	}
+}
+
+func formatHTMLMissedPingDigest(devices []MissedPingDigestDevice, count, timeoutMinutes int) string {
+	var b strings.Builder
+
+	b.WriteString(`<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4;padding:20px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:4px;overflow:hidden;">
+`)
+
+	// Warning banner
+	fmt.Fprintf(&b, `<tr><td style="background-color:#e6a817;padding:20px 30px;">
+<h1 style="margin:0;color:#ffffff;font-size:22px;">Missed Collector Pings</h1>
+<p style="margin:4px 0 0;color:#ffffffcc;font-size:13px;">%d device(s) unreachable &middot; %d-minute timeout</p>
+</td></tr>
+`, count, timeoutMinutes)
+
+	// Summary message
+	fmt.Fprintf(&b, `<tr><td style="padding:20px 30px 10px;">
+<p style="margin:0;color:#495057;font-size:13px;">Scrutiny has not received data from <strong>%d device(s)</strong> within the %d-minute timeout. Please check that the collector(s) are running and can reach the Scrutiny server.</p>
+</td></tr>
+`, count, timeoutMinutes)
+
+	// Device table
+	b.WriteString(`<tr><td style="padding:10px 30px 0;">
+<table width="100%" cellpadding="5" cellspacing="0" style="font-size:11px;border-collapse:collapse;">
+<tr style="background-color:#f0f0f0;">
+<th align="left" style="padding:6px;border:1px solid #dee2e6;">Device</th>
+<th align="left" style="padding:6px;border:1px solid #dee2e6;">Serial</th>
+<th align="left" style="padding:6px;border:1px solid #dee2e6;">Host</th>
+<th align="left" style="padding:6px;border:1px solid #dee2e6;">Last Seen</th>
+</tr>`)
+
+	for _, d := range devices {
+		ago := time.Since(d.LastSeen).Round(time.Minute)
+		name := d.DeviceName
+		if d.Label != "" {
+			name = fmt.Sprintf("%s (%s)", d.Label, d.DeviceName)
+		}
+		host := d.HostId
+		if host == "" {
+			host = "-"
+		}
+		serial := d.SerialNumber
+		if serial == "" {
+			serial = "-"
+		}
+
+		fmt.Fprintf(&b, `<tr>
+<td style="padding:5px 6px;border:1px solid #dee2e6;color:#dc3545;"><strong>%s</strong></td>
+<td style="padding:5px 6px;border:1px solid #dee2e6;color:#495057;">%s</td>
+<td style="padding:5px 6px;border:1px solid #dee2e6;color:#495057;">%s</td>
+<td style="padding:5px 6px;border:1px solid #dee2e6;color:#495057;">%s ago</td>
+</tr>`, htmlEscape(name), htmlEscape(serial), htmlEscape(host), ago)
+	}
+
+	b.WriteString(`</table></td></tr>`)
+
+	// Footer
+	fmt.Fprintf(&b, `<tr><td style="padding:15px 30px;background-color:#f8f9fa;border-top:1px solid #dee2e6;">
+<p style="margin:0;color:#6c757d;font-size:11px;">Generated %s by Scrutiny</p>
+</td></tr>`, time.Now().Format("Jan 2, 2006 15:04 MST"))
+
+	b.WriteString(`</table>
+</td></tr></table>
+</body></html>`)
+
+	return b.String()
+}
+
+func htmlEscape(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, "\"", "&quot;")
+	return s
 }
 
 // HeartbeatPayload represents a periodic "all clear" heartbeat notification
