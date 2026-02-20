@@ -42,5 +42,5 @@ func isBlockDevice(path string) (bool, error) {
 		return false, fmt.Errorf("could not get syscall.Stat_t for %s", path)
 	}
 
-	return stat.Mode&syscall.S_IFBLK != 0, nil
+	return stat.Mode&syscall.S_IFMT == syscall.S_IFBLK, nil
 }
