@@ -13,6 +13,7 @@ import (
 type ReportScheduler interface {
 	GenerateOnDemand(ctx context.Context, periodType string) (*reports.ReportData, error)
 	GenerateOnDemandPDF(ctx context.Context, periodType string) (string, error)
+	SendTestReport(ctx context.Context, periodType string) (*reports.ReportData, error)
 }
 
 func GenerateReport(c *gin.Context) {
@@ -38,7 +39,16 @@ func GenerateReport(c *gin.Context) {
 		return
 	}
 
-	report, err := scheduler.GenerateOnDemand(c.Request.Context(), period)
+	sendNotification := c.DefaultQuery("test", "") == "true"
+
+	var report *reports.ReportData
+	var err error
+	if sendNotification {
+		logger.Info("Test report requested, generating and sending via notification system")
+		report, err = scheduler.SendTestReport(c.Request.Context(), period)
+	} else {
+		report, err = scheduler.GenerateOnDemand(c.Request.Context(), period)
+	}
 	if err != nil {
 		logger.Errorf("Failed to generate report: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
@@ -47,14 +57,11 @@ func GenerateReport(c *gin.Context) {
 
 	subject, message := reports.FormatTextReport(report)
 
-	if c.DefaultQuery("test", "") == "true" {
-		logger.Info("Test report requested, sending via notification system")
-	}
-
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"subject": subject,
-		"message": message,
-		"data":    report,
+		"success":           true,
+		"subject":           subject,
+		"message":           message,
+		"data":              report,
+		"notification_sent": sendNotification,
 	})
 }

@@ -54,6 +54,9 @@ services:
     devices:
       - "/dev/sda"
       - "/dev/sdb"
+      # NVMe: pass both controller (for SMART) and namespace (for performance benchmarks)
+      # - "/dev/nvme0"
+      # - "/dev/nvme0n1"
 
   # ZFS Pool Collector (optional - only needed if you use ZFS)
   # See docs/ZFS_POOL_MONITORING.md for details
@@ -88,3 +91,6 @@ services:
   #   devices:
   #     - "/dev/sda"
   #     - "/dev/sdb"
+  #     # NVMe: pass both controller and namespace for performance benchmarks
+  #     # - "/dev/nvme0"
+  #     # - "/dev/nvme0n1"
