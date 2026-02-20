@@ -4,9 +4,32 @@ All notable changes to Scrutiny will be documented in this file.
 
 ## [1.27.3](https://github.com/Starosdev/scrutiny/compare/v1.27.2...v1.27.3) (2026-02-20)
 
+### Features
+
+* **reports:** scheduled reports with daily/weekly/monthly scheduling [WIP] ([#241](https://github.com/Starosdev/scrutiny/pull/241)), closes [#235](https://github.com/Starosdev/scrutiny/issues/235)
+  * Report generation with text, HTML, and PDF output formats
+  * Configurable schedules via Settings UI (daily time, weekly day+time, monthly day+time)
+  * HTML email reports with device status, temperature summary, and ZFS pool health
+  * PDF report generation saved to configurable path
+  * On-demand report generation and test notifications via API
+  * Scheduler timestamps persisted in SQLite to survive restarts
+* **notify:** consolidated missed ping digest notifications ([#245](https://github.com/Starosdev/scrutiny/pull/245))
+  * Multiple missed devices batched into a single notification instead of one per device
+  * HTML email template for missed ping digest with device table
+* **notify:** HTML email support for SMTP notifications ([#245](https://github.com/Starosdev/scrutiny/pull/245))
+  * Reports and missed ping digests send rich HTML emails via SMTP
+  * Non-SMTP services (Discord, Slack, script, etc.) continue to receive plain text
+
 ### Bug Fixes
 
 * **notify:** upgrade shoutrrr to v0.13.2 to fix SMTP zero-timeout bug ([397bb82](https://github.com/Starosdev/scrutiny/commit/397bb8238736ceec47e670d6b80128ea09a5ae55)), closes [#240](https://github.com/Starosdev/scrutiny/issues/240)
+* **notify:** fix concurrent map crash when report scheduler and missed ping monitor run simultaneously ([ca04372](https://github.com/Starosdev/scrutiny/commit/ca04372))
+* **notify:** fix HTML email rendering in shoutrrr SMTP by setting UseHTML in sender URL ([ca04372](https://github.com/Starosdev/scrutiny/commit/ca04372))
+* **collector:** auto-detect tmpfs mount points and fallback to direct device I/O for performance benchmarks ([5c45f78](https://github.com/Starosdev/scrutiny/commit/5c45f78))
+* **collector:** resolve NVMe controller to namespace block device for fio benchmarks ([f42517c](https://github.com/Starosdev/scrutiny/commit/f42517c))
+* **collector:** resolve gosec G115 integer overflow lint warning ([74f38a9](https://github.com/Starosdev/scrutiny/commit/74f38a9))
+* **collector:** correct block device detection and remove stale nolint directives ([bab9ded](https://github.com/Starosdev/scrutiny/commit/bab9ded))
+* **docker:** update Go base image to 1.25 to match go.mod ([e84fed8](https://github.com/Starosdev/scrutiny/commit/e84fed8))
 
 ## [1.27.2](https://github.com/Starosdev/scrutiny/compare/v1.27.1...v1.27.2) (2026-02-18)
 

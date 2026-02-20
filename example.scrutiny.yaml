@@ -239,6 +239,40 @@ failures:
 #     -d '{"metrics": {"notify_on_missed_ping": true, "missed_ping_timeout_minutes": 60}}'
 
 ######################################################################
+# Scheduled Reports [WIP]
+#
+# Scrutiny can generate and email periodic health reports summarizing
+# device status, temperature, alerts, and ZFS pool health. Reports are
+# sent via your configured notify.urls (HTML for SMTP, plain text for
+# other services like Discord, Slack, etc.).
+#
+# NOTE: This feature is a work in progress. It is functional and tested
+# but the UI and report content may change. Feedback is welcome!
+#
+# These settings are configured via the Settings API, not this config file.
+# Use the /api/settings endpoint to configure:
+#
+#   metrics.report_enabled: false             # Master toggle
+#   metrics.report_daily_enabled: false       # Enable daily reports
+#   metrics.report_daily_time: "03:00"        # Time to send (24h format)
+#   metrics.report_weekly_enabled: false      # Enable weekly reports
+#   metrics.report_weekly_day: 1              # Day of week (0=Sun ... 6=Sat)
+#   metrics.report_weekly_time: "03:00"       # Time to send
+#   metrics.report_monthly_enabled: false     # Enable monthly reports
+#   metrics.report_monthly_day: 1             # Day of month (1-28)
+#   metrics.report_monthly_time: "03:00"      # Time to send
+#   metrics.report_pdf_enabled: false         # Also save PDF to disk
+#   metrics.report_pdf_path: "/opt/scrutiny/reports"  # PDF output directory
+#
+# Example API call to enable daily reports at 7 AM:
+#   curl -X POST http://localhost:8080/api/settings \
+#     -H "Content-Type: application/json" \
+#     -d '{"metrics": {"report_enabled": true, "report_daily_enabled": true, "report_daily_time": "07:00"}}'
+#
+# On-demand report generation:
+#   curl -X POST 'http://localhost:8080/api/reports/generate?period=daily&test=true'
+
+######################################################################
 # Heartbeat Notifications (Periodic Health Check)
 #
 # Scrutiny can send periodic "all clear" heartbeat notifications to
