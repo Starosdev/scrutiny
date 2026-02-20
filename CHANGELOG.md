@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.27.3](https://github.com/Starosdev/scrutiny/compare/v1.27.2...v1.27.3) (2026-02-20)
+
+### Bug Fixes
+
+* **notify:** upgrade shoutrrr to v0.13.2 to fix SMTP zero-timeout bug ([397bb82](https://github.com/Starosdev/scrutiny/commit/397bb8238736ceec47e670d6b80128ea09a5ae55)), closes [#240](https://github.com/Starosdev/scrutiny/issues/240)
+
 ## [1.27.2](https://github.com/Starosdev/scrutiny/compare/v1.27.1...v1.27.2) (2026-02-18)
 
 ### Bug Fixes
