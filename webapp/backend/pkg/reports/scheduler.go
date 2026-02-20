@@ -19,6 +19,10 @@ import (
 
 const (
 	DefaultReportCheckInterval = 1 * time.Minute
+
+	settingLastDailyRun   = "metrics.report_last_daily_run"
+	settingLastWeeklyRun  = "metrics.report_last_weekly_run"
+	settingLastMonthlyRun = "metrics.report_last_monthly_run"
 )
 
 // Scheduler runs report generation on configured schedules
@@ -97,6 +101,8 @@ func (s *Scheduler) Stop() {
 func (s *Scheduler) run() {
 	defer s.wg.Done()
 
+	s.loadLastRunTimestamps()
+
 	ticker := time.NewTicker(DefaultReportCheckInterval)
 	defer ticker.Stop()
 
@@ -143,6 +149,7 @@ func (s *Scheduler) checkAndRun() {
 			s.runMu.Lock()
 			s.lastDailyRun = now
 			s.runMu.Unlock()
+			s.saveLastRunTimestamp(settingLastDailyRun, now)
 		}
 	}
 
@@ -152,6 +159,7 @@ func (s *Scheduler) checkAndRun() {
 			s.runMu.Lock()
 			s.lastWeeklyRun = now
 			s.runMu.Unlock()
+			s.saveLastRunTimestamp(settingLastWeeklyRun, now)
 		}
 	}
 
@@ -161,6 +169,7 @@ func (s *Scheduler) checkAndRun() {
 			s.runMu.Lock()
 			s.lastMonthlyRun = now
 			s.runMu.Unlock()
+			s.saveLastRunTimestamp(settingLastMonthlyRun, now)
 		}
 	}
 }
@@ -192,7 +201,8 @@ func (s *Scheduler) runReport(periodType string, now time.Time, pdfEnabled bool,
 	}
 
 	subject, message := FormatTextReport(report)
-	s.sendNotification(subject, message)
+	htmlMessage := FormatHTMLReport(report)
+	s.sendNotification(subject, message, htmlMessage)
 
 	if pdfEnabled {
 		outputDir := pdfPath
@@ -212,10 +222,51 @@ func (s *Scheduler) runReport(periodType string, now time.Time, pdfEnabled bool,
 	s.logger.Infof("Completed %s report generation", periodType)
 }
 
-func (s *Scheduler) sendNotification(subject, message string) {
-	reportNotify := notify.NewReport(s.logger, s.appConfig, subject, message)
+func (s *Scheduler) sendNotification(subject, message, htmlMessage string) {
+	reportNotify := notify.NewReport(s.logger, s.appConfig, subject, message, htmlMessage)
 	if err := reportNotify.Send(); err != nil {
 		s.logger.Errorf("Failed to send report notification: %v", err)
+	}
+}
+
+func (s *Scheduler) loadLastRunTimestamps() {
+	repo, err := s.getRepo()
+	if err != nil {
+		s.logger.Warnf("Report scheduler: could not load last-run timestamps: %v", err)
+		return
+	}
+
+	load := func(key string) time.Time {
+		val, err := repo.GetSettingValue(s.ctx, key)
+		if err != nil || val == "" {
+			return time.Time{}
+		}
+		t, err := time.Parse(time.RFC3339, val)
+		if err != nil {
+			s.logger.Warnf("Report scheduler: invalid timestamp for %s: %q", key, val)
+			return time.Time{}
+		}
+		return t
+	}
+
+	s.runMu.Lock()
+	s.lastDailyRun = load(settingLastDailyRun)
+	s.lastWeeklyRun = load(settingLastWeeklyRun)
+	s.lastMonthlyRun = load(settingLastMonthlyRun)
+	s.runMu.Unlock()
+
+	s.logger.Infof("Report scheduler loaded last-run timestamps: daily=%v, weekly=%v, monthly=%v",
+		s.lastDailyRun, s.lastWeeklyRun, s.lastMonthlyRun)
+}
+
+func (s *Scheduler) saveLastRunTimestamp(key string, t time.Time) {
+	repo, err := s.getRepo()
+	if err != nil {
+		s.logger.Errorf("Report scheduler: could not save last-run timestamp: %v", err)
+		return
+	}
+	if err := repo.SetSettingValue(s.ctx, key, t.Format(time.RFC3339)); err != nil {
+		s.logger.Errorf("Report scheduler: failed to persist %s: %v", key, err)
 	}
 }
 
@@ -267,7 +318,8 @@ func (s *Scheduler) SendTestReport(ctx context.Context, periodType string) (*Rep
 	}
 
 	subject, message := FormatTextReport(report)
-	s.sendNotification(subject, message)
+	htmlMessage := FormatHTMLReport(report)
+	s.sendNotification(subject, message, htmlMessage)
 	return report, nil
 }
 

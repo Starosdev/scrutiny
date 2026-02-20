@@ -597,6 +597,32 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				return tx.Create(&defaultSettings).Error
 			},
 		},
+		{
+			ID: "m20260219000000", // add scheduler last-run timestamp settings
+			Migrate: func(tx *gorm.DB) error {
+				var defaultSettings = []m20220716214900.Setting{
+					{
+						SettingKeyName:        "metrics.report_last_daily_run",
+						SettingKeyDescription: "Timestamp of last daily report run (internal, do not edit)",
+						SettingDataType:       "string",
+						SettingValueString:    "",
+					},
+					{
+						SettingKeyName:        "metrics.report_last_weekly_run",
+						SettingKeyDescription: "Timestamp of last weekly report run (internal, do not edit)",
+						SettingDataType:       "string",
+						SettingValueString:    "",
+					},
+					{
+						SettingKeyName:        "metrics.report_last_monthly_run",
+						SettingKeyDescription: "Timestamp of last monthly report run (internal, do not edit)",
+						SettingDataType:       "string",
+						SettingValueString:    "",
+					},
+				}
+				return tx.Create(&defaultSettings).Error
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {

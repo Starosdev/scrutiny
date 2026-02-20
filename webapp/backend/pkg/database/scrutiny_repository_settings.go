@@ -38,6 +38,43 @@ func (sr *scrutinyRepository) LoadSettings(ctx context.Context) (*models.Setting
 	return &settings, nil
 }
 
+// GetSettingValue retrieves a single setting value by key name.
+func (sr *scrutinyRepository) GetSettingValue(ctx context.Context, key string) (string, error) {
+	var entry models.SettingEntry
+	result := sr.gormClient.WithContext(ctx).Where("setting_key_name = ?", key).First(&entry)
+	if result.Error != nil {
+		return "", result.Error
+	}
+	if entry.SettingDataType == "string" {
+		return entry.SettingValueString, nil
+	}
+	if entry.SettingDataType == "numeric" {
+		return fmt.Sprintf("%d", entry.SettingValueNumeric), nil
+	}
+	if entry.SettingDataType == "bool" {
+		return fmt.Sprintf("%t", entry.SettingValueBool), nil
+	}
+	return entry.SettingValueString, nil
+}
+
+// SetSettingValue sets a single setting value by key name (upsert).
+func (sr *scrutinyRepository) SetSettingValue(ctx context.Context, key string, value string) error {
+	var entry models.SettingEntry
+	result := sr.gormClient.WithContext(ctx).Where("setting_key_name = ?", key).First(&entry)
+	if result.Error != nil {
+		// Entry doesn't exist, create it
+		entry = models.SettingEntry{
+			SettingKeyName:     key,
+			SettingDataType:    "string",
+			SettingValueString: value,
+		}
+		return sr.gormClient.WithContext(ctx).Create(&entry).Error
+	}
+	// Entry exists, update the string value
+	entry.SettingValueString = value
+	return sr.gormClient.WithContext(ctx).Model(&entry).Update("setting_value_string", value).Error
+}
+
 // testing
 // curl -d '{"metrics": { "notify_level": 5, "status_filter_attributes": 5, "status_threshold": 5 }}' -H "Content-Type: application/json" -X POST http://localhost:9090/api/settings
 // SaveSettings will update settings in AppConfig object, then save the settings to the database.
