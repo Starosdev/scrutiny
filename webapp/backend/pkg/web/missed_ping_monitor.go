@@ -241,7 +241,7 @@ func (m *MissedPingMonitor) loadCheckData() (*checkMissedPingsData, error) {
 
 // checkDevice checks a single device for missed pings and returns digest data if missed.
 // Returns nil if the device is not missed (healthy, skipped, or already notified recently).
-func (m *MissedPingMonitor) checkDevice(device models.Device, data *checkMissedPingsData, now time.Time) *notify.MissedPingDigestDevice {
+func (m *MissedPingMonitor) checkDevice(device *models.Device, data *checkMissedPingsData, now time.Time) *notify.MissedPingDigestDevice {
 	if device.Archived || device.Muted {
 		m.logger.Debugf("Skipping device %s - archived: %v, muted: %v", device.WWN, device.Archived, device.Muted)
 		return nil
@@ -326,7 +326,7 @@ func (m *MissedPingMonitor) checkMissedPings() {
 
 	for _, device := range data.devices {
 		currentDeviceWWNs[device.WWN] = true
-		if md := m.checkDevice(device, data, now); md != nil {
+		if md := m.checkDevice(&device, data, now); md != nil {
 			missed = append(missed, *md)
 		}
 	}

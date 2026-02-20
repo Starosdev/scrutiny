@@ -197,7 +197,7 @@ func TestMissedPingMonitor_CheckDevice_ReturnsMissedWhenNoEndpoints(t *testing.T
 			"test-wwn": lastSeen,
 		},
 	}
-	result := monitor.checkDevice(device, data, time.Now())
+	result := monitor.checkDevice(&device, data, time.Now())
 	require.NotNil(t, result)
 	require.Equal(t, "test-wwn", result.WWN)
 }
@@ -234,7 +234,7 @@ func TestMissedPingMonitor_CheckDevice_Deduplication(t *testing.T) {
 			"test-wwn": lastSeen,
 		},
 	}
-	result := monitor.checkDevice(device, data, time.Now())
+	result := monitor.checkDevice(&device, data, time.Now())
 
 	// Should return nil (skipped due to dedup) and notification time should not have changed
 	require.Nil(t, result)
@@ -266,7 +266,7 @@ func TestMissedPingMonitor_CheckDevice_SkipsArchived(t *testing.T) {
 		},
 	}
 
-	result := monitor.checkDevice(device, data, time.Now())
+	result := monitor.checkDevice(&device, data, time.Now())
 
 	// Should return nil since device is archived
 	require.Nil(t, result)
@@ -294,7 +294,7 @@ func TestMissedPingMonitor_CheckDevice_SkipsMuted(t *testing.T) {
 		},
 	}
 
-	result := monitor.checkDevice(device, data, time.Now())
+	result := monitor.checkDevice(&device, data, time.Now())
 
 	// Should return nil since device is muted
 	require.Nil(t, result)
@@ -319,7 +319,7 @@ func TestMissedPingMonitor_CheckDevice_SkipsNewlyRegistered(t *testing.T) {
 		lastSeenTimes:  map[string]time.Time{},
 	}
 
-	result := monitor.checkDevice(device, data, time.Now())
+	result := monitor.checkDevice(&device, data, time.Now())
 
 	// Should return nil since device has no last seen time
 	require.Nil(t, result)
@@ -350,7 +350,7 @@ func TestMissedPingMonitor_CheckDevice_ClearsHealthyDevice(t *testing.T) {
 		},
 	}
 
-	result := monitor.checkDevice(device, data, time.Now())
+	result := monitor.checkDevice(&device, data, time.Now())
 
 	// Should return nil (device is healthy) and clear notification state
 	require.Nil(t, result)
@@ -380,7 +380,7 @@ func TestMissedPingMonitor_CheckDevice_ReturnsMissedDevice(t *testing.T) {
 		},
 	}
 
-	result := monitor.checkDevice(device, data, time.Now())
+	result := monitor.checkDevice(&device, data, time.Now())
 
 	// Should return a digest device entry (notification not sent yet, just collected)
 	require.NotNil(t, result)

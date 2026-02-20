@@ -600,12 +600,12 @@ func NewMissedPing(logger logrus.FieldLogger, appconfig config.Interface, device
 
 // MissedPingDigestDevice represents a single device in a missed ping digest
 type MissedPingDigestDevice struct {
+	LastSeen     time.Time
 	WWN          string
 	DeviceName   string
 	SerialNumber string
 	HostId       string
 	Label        string
-	LastSeen     time.Time
 }
 
 // NewMissedPingDigest creates a Notify instance for a batched missed ping digest

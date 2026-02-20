@@ -28,14 +28,14 @@ func FormatHTMLReport(report *ReportData) string {
 	bannerLabel := strings.ToUpper(status)
 	periodLabel := capitalizePeriod(report.PeriodType)
 
-	b.WriteString(fmt.Sprintf(`<tr><td style="background-color:%s;padding:20px 30px;">
+	fmt.Fprintf(&b, `<tr><td style="background-color:%s;padding:20px 30px;">
 <h1 style="margin:0;color:#ffffff;font-size:22px;">Scrutiny %s Report</h1>
 <p style="margin:4px 0 0;color:#ffffffcc;font-size:13px;">%s to %s &middot; Status: %s</p>
 </td></tr>
 `, bannerColor, periodLabel,
 		report.PeriodStart.Format("Jan 2, 2006"),
 		report.PeriodEnd.Format("Jan 2, 2006"),
-		bannerLabel))
+		bannerLabel)
 
 	// Summary counts
 	b.WriteString(`<tr><td style="padding:20px 30px;">
@@ -48,7 +48,7 @@ func FormatHTMLReport(report *ReportData) string {
 	b.WriteString(`</tr></table>`)
 
 	if report.ArchivedDevices > 0 {
-		b.WriteString(fmt.Sprintf(`<p style="margin:8px 0 0;color:#6c757d;font-size:12px;">%d archived device(s) excluded from report</p>`, report.ArchivedDevices))
+		fmt.Fprintf(&b, `<p style="margin:8px 0 0;color:#6c757d;font-size:12px;">%d archived device(s) excluded from report</p>`, report.ArchivedDevices)
 	}
 	b.WriteString(`</td></tr>`)
 
@@ -70,9 +70,9 @@ func FormatHTMLReport(report *ReportData) string {
 	}
 
 	// Footer
-	b.WriteString(fmt.Sprintf(`<tr><td style="padding:15px 30px;background-color:#f8f9fa;border-top:1px solid #dee2e6;">
+	fmt.Fprintf(&b, `<tr><td style="padding:15px 30px;background-color:#f8f9fa;border-top:1px solid #dee2e6;">
 <p style="margin:0;color:#6c757d;font-size:11px;">Generated %s by Scrutiny</p>
-</td></tr>`, report.GeneratedAt.Format("Jan 2, 2006 15:04 MST")))
+</td></tr>`, report.GeneratedAt.Format("Jan 2, 2006 15:04 MST"))
 
 	b.WriteString(`</table>
 </td></tr></table>
@@ -93,10 +93,10 @@ func statusColor(status string) string {
 }
 
 func writeSummaryCell(b *strings.Builder, label string, count int, color string) {
-	b.WriteString(fmt.Sprintf(`<td width="25%%" align="center" style="padding:10px 0;">
+	fmt.Fprintf(b, `<td width="25%%" align="center" style="padding:10px 0;">
 <div style="font-size:24px;font-weight:bold;color:%s;">%d</div>
 <div style="font-size:11px;color:#6c757d;text-transform:uppercase;">%s</div>
-</td>`, color, count, label))
+</td>`, color, count, label)
 }
 
 func writeAlertHTMLSection(b *strings.Builder, report *ReportData, status, header, color string) {
@@ -105,15 +105,15 @@ func writeAlertHTMLSection(b *strings.Builder, report *ReportData, status, heade
 		return
 	}
 
-	b.WriteString(fmt.Sprintf(`<tr><td style="padding:10px 30px 0;">
+	fmt.Fprintf(b, `<tr><td style="padding:10px 30px 0;">
 <h3 style="margin:0 0 8px;color:%s;font-size:14px;">%s</h3>
-<table width="100%%" cellpadding="4" cellspacing="0" style="font-size:12px;border-collapse:collapse;">`, color, header))
+<table width="100%%" cellpadding="4" cellspacing="0" style="font-size:12px;border-collapse:collapse;">`, color, header)
 
 	for _, entry := range alerts {
-		b.WriteString(fmt.Sprintf(`<tr>
+		fmt.Fprintf(b, `<tr>
 <td style="border-bottom:1px solid #eee;color:#212529;"><strong>%s</strong></td>
 <td style="border-bottom:1px solid #eee;color:#495057;">%s</td>
-</tr>`, escapeHTML(entry.deviceName), escapeHTML(entry.alertLine)))
+</tr>`, escapeHTML(entry.deviceName), escapeHTML(entry.alertLine))
 	}
 
 	b.WriteString(`</table></td></tr>`)
@@ -144,13 +144,13 @@ func writeDeviceHTMLTable(b *strings.Builder, report *ReportData) {
 		}
 
 		alertCount := len(d.ActiveFailures) + len(d.NewAlerts)
-		b.WriteString(fmt.Sprintf(`<tr>
+		fmt.Fprintf(b, `<tr>
 <td style="padding:5px 6px;border:1px solid #dee2e6;color:%s;">%s</td>
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;color:%s;">%s</td>
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;">%dC</td>
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;">%d</td>
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;">%d</td>
-</tr>`, rowColor, escapeHTML(name), rowColor, d.StatusString(), d.TempCurrent, d.PowerOnHours, alertCount))
+</tr>`, rowColor, escapeHTML(name), rowColor, d.StatusString(), d.TempCurrent, d.PowerOnHours, alertCount)
 	}
 
 	b.WriteString(`</table></td></tr>`)
@@ -169,12 +169,12 @@ func writeTempHTMLSummary(b *strings.Builder, devices []DeviceReport) {
 <h3 style="margin:0 0 8px;color:#212529;font-size:14px;">Temperature Summary</h3>
 <table cellpadding="3" cellspacing="0" style="font-size:12px;">`)
 
-	b.WriteString(fmt.Sprintf(`<tr><td style="color:#6c757d;">Highest:</td><td><strong>%s</strong> at %dC (avg %.0fC)</td></tr>`,
-		escapeHTML(hottest.DisplayName()), hottest.TempCurrent, hottest.TempAvg))
+	fmt.Fprintf(b, `<tr><td style="color:#6c757d;">Highest:</td><td><strong>%s</strong> at %dC (avg %.0fC)</td></tr>`,
+		escapeHTML(hottest.DisplayName()), hottest.TempCurrent, hottest.TempAvg)
 
 	if coldest != nil && coldest.TempCurrent != hottest.TempCurrent {
-		b.WriteString(fmt.Sprintf(`<tr><td style="color:#6c757d;">Lowest:</td><td><strong>%s</strong> at %dC (avg %.0fC)</td></tr>`,
-			escapeHTML(coldest.DisplayName()), coldest.TempCurrent, coldest.TempAvg))
+		fmt.Fprintf(b, `<tr><td style="color:#6c757d;">Lowest:</td><td><strong>%s</strong> at %dC (avg %.0fC)</td></tr>`,
+			escapeHTML(coldest.DisplayName()), coldest.TempCurrent, coldest.TempAvg)
 	}
 
 	b.WriteString(`</table></td></tr>`)
@@ -204,12 +204,12 @@ func writeZFSHTMLSection(b *strings.Builder, pools []ZFSPoolReport) {
 			errors = "0"
 		}
 
-		b.WriteString(fmt.Sprintf(`<tr>
+		fmt.Fprintf(b, `<tr>
 <td style="padding:5px 6px;border:1px solid #dee2e6;">%s</td>
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;color:%s;">%s</td>
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;">%.1f%%</td>
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;">%s</td>
-</tr>`, escapeHTML(pool.Name), healthColor, pool.Health, pool.Capacity, errors))
+</tr>`, escapeHTML(pool.Name), healthColor, pool.Health, pool.Capacity, errors)
 	}
 
 	b.WriteString(`</table></td></tr>`)
