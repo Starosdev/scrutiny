@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -156,7 +157,7 @@ func (c *Collector) Benchmark(device *models.Device, profile string) (*models.Pe
 	c.logger.Infof("Benchmarking device %s (%s)", device.DeviceName, device.WWN)
 
 	fioBin := c.config.GetString("commands.performance_fio_bin")
-	targetPath, cleanup, err := c.resolveTargetPath(device)
+	targetPath, cleanup, directIO, err := c.resolveTargetPath(device)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve benchmark target: %w", err)
 	}
@@ -175,8 +176,6 @@ func (c *Collector) Benchmark(device *models.Device, profile string) (*models.Pe
 	if err == nil {
 		result.FioVersion = strings.TrimSpace(string(versionOut))
 	}
-
-	directIO := c.config.GetBool("performance.allow_direct_device_io")
 
 	startTime := time.Now()
 
@@ -252,6 +251,10 @@ func (c *Collector) Benchmark(device *models.Device, profile string) (*models.Pe
 	result.TestDurationSec = time.Since(startTime).Seconds()
 	c.logger.Infof("Benchmarking complete for %s (%.1fs)", device.DeviceName, result.TestDurationSec)
 
+	if result.SeqReadBwBytes == 0 && result.RandReadIOPS == 0 {
+		return nil, fmt.Errorf("all read benchmarks produced zero results for %s -- skipping (device may be inaccessible)", device.DeviceName)
+	}
+
 	return result, nil
 }
 
@@ -282,19 +285,48 @@ func (c *Collector) Publish(wwn string, result *models.PerformanceResult) error 
 }
 
 // resolveTargetPath determines the fio target file path for benchmarking.
-// Returns the path, a cleanup function (if a temp file was created), and any error.
-func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), error) {
+// Returns the path, a cleanup function (if a temp file was created), whether
+// direct device I/O is being used (write tests should be skipped), and any error.
+func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), bool, error) {
 	fullDeviceName := fmt.Sprintf("%s%s", detect.DevicePrefix(), device.DeviceName)
 
+	// For NVMe devices on Linux, resolve the namespace block device.
+	// smartctl reports the controller (/dev/nvme0) which is a character device,
+	// but fio needs the namespace block device (/dev/nvme0n1) for I/O.
+	// The DeviceName prefix check avoids false matches on macOS where NVMe
+	// drives are named "disk0" (not "nvme0") and don't need namespace resolution.
+	effectiveDevicePath := fullDeviceName
+	if device.DeviceProtocol == "NVMe" && strings.HasPrefix(device.DeviceName, "nvme") {
+		namespaceDev, err := resolveNVMeBlockDevice(fullDeviceName)
+		if err != nil {
+			return "", nil, false, fmt.Errorf(
+				"NVMe device %s: could not find namespace block device: %v. "+
+					"For containers, pass --device=/dev/%sn1 in addition to --device=/dev/%s",
+				device.DeviceName, err, device.DeviceName, device.DeviceName)
+		}
+		c.logger.Infof("NVMe device %s: resolved namespace block device %s", device.DeviceName, namespaceDev)
+		effectiveDevicePath = namespaceDev
+	}
+
+	// Explicit opt-in takes precedence (now uses namespace device for NVMe)
 	if c.config.GetBool("performance.allow_direct_device_io") {
-		c.logger.Infof("Direct device I/O enabled -- benchmarking raw device %s (read-only, write tests skipped)", fullDeviceName)
-		return fullDeviceName, nil, nil
+		c.logger.Infof("Direct device I/O enabled -- benchmarking %s (read-only, write tests skipped)", effectiveDevicePath)
+		return effectiveDevicePath, nil, true, nil
 	}
 
 	// Try to find mount point for the device
-	mountPoint, err := findMountPoint(fullDeviceName)
+	mountPoint, err := findMountPoint(effectiveDevicePath)
 	if err != nil {
-		return "", nil, fmt.Errorf("could not find mount point for %s: %w", fullDeviceName, err)
+		c.logger.Warnf("Could not find mount point for %s: %v -- falling back to direct device I/O (read-only)", effectiveDevicePath, err)
+		return effectiveDevicePath, nil, true, nil
+	}
+
+	// Validate the mount point is suitable for benchmarking
+	requiredSize := c.getRequiredTestFileSize()
+	suitable, reason := isMountPointSuitable(mountPoint, requiredSize)
+	if !suitable {
+		c.logger.Warnf("Mount point %s for device %s is not suitable: %s -- falling back to direct device I/O (read-only)", mountPoint, effectiveDevicePath, reason)
+		return effectiveDevicePath, nil, true, nil
 	}
 
 	tempFile := fmt.Sprintf("%s/.scrutiny_perf_bench", mountPoint)
@@ -302,7 +334,54 @@ func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), er
 		os.Remove(tempFile)
 	}
 
-	return tempFile, cleanup, nil
+	return tempFile, cleanup, false, nil
+}
+
+// getRequiredTestFileSize returns the number of bytes needed for the benchmark
+// test file based on the current profile and config.
+func (c *Collector) getRequiredTestFileSize() uint64 {
+	profile := c.config.GetString("performance.profile")
+	if profile == "comprehensive" {
+		return 1024 * 1024 * 1024 // 1G fixed for comprehensive
+	}
+	sizeStr := c.config.GetString("performance.temp_file_size")
+	if sizeStr == "" {
+		sizeStr = "256M"
+	}
+	size, err := parseSizeToBytes(sizeStr)
+	if err != nil {
+		return 256 * 1024 * 1024 // fallback to 256M
+	}
+	return size
+}
+
+// parseSizeToBytes converts a human-readable size string (e.g., "256M", "1G") to bytes.
+func parseSizeToBytes(sizeStr string) (uint64, error) {
+	sizeStr = strings.TrimSpace(strings.ToUpper(sizeStr))
+	if len(sizeStr) == 0 {
+		return 0, fmt.Errorf("empty size string")
+	}
+	suffix := sizeStr[len(sizeStr)-1]
+	if suffix >= '0' && suffix <= '9' {
+		return strconv.ParseUint(sizeStr, 10, 64)
+	}
+	numStr := sizeStr[:len(sizeStr)-1]
+	num, err := strconv.ParseUint(numStr, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid size: %s", sizeStr)
+	}
+	switch suffix {
+	case 'K':
+		return num * 1024, nil
+	case 'M':
+		return num * 1024 * 1024, nil
+	case 'G':
+		return num * 1024 * 1024 * 1024, nil
+	case 'T':
+		return num * 1024 * 1024 * 1024 * 1024, nil
+	default:
+		return 0, fmt.Errorf("unknown size suffix: %c", suffix)
+	}
 }
 
 // buildFioArgs constructs fio command arguments for a given test

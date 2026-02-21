@@ -174,7 +174,7 @@ func TestMissedPingMonitor_ClearNotificationState(t *testing.T) {
 	monitor.clearNotificationState("non-existent")
 }
 
-func TestMissedPingMonitor_HandleMissedPing_NoEndpointsConfigured(t *testing.T) {
+func TestMissedPingMonitor_CheckDevice_ReturnsMissedWhenNoEndpoints(t *testing.T) {
 	t.Parallel()
 
 	ae, mockCtrl := createTestAppEngine(t)
@@ -189,13 +189,20 @@ func TestMissedPingMonitor_HandleMissedPing_NoEndpointsConfigured(t *testing.T) 
 	lastSeen := time.Now().Add(-2 * time.Hour)
 	timeoutMinutes := 60
 
-	// When no notification endpoints are configured, device should NOT be marked as notified
-	// This allows retrying when endpoints are later configured
-	monitor.handleMissedPing(device, lastSeen, timeoutMinutes)
-	require.False(t, monitor.IsDeviceNotified("test-wwn"))
+	// checkDevice should return a digest device when the device has missed pings
+	data := &checkMissedPingsData{
+		timeoutMinutes: timeoutMinutes,
+		timeout:        time.Duration(timeoutMinutes) * time.Minute,
+		lastSeenTimes: map[string]time.Time{
+			"test-wwn": lastSeen,
+		},
+	}
+	result := monitor.checkDevice(&device, data, time.Now())
+	require.NotNil(t, result)
+	require.Equal(t, "test-wwn", result.WWN)
 }
 
-func TestMissedPingMonitor_HandleMissedPing_Deduplication(t *testing.T) {
+func TestMissedPingMonitor_CheckDevice_Deduplication(t *testing.T) {
 	t.Parallel()
 
 	ae, mockCtrl := createTestAppEngine(t)
@@ -220,16 +227,24 @@ func TestMissedPingMonitor_HandleMissedPing_Deduplication(t *testing.T) {
 
 	// Second call within timeout period should be skipped (deduplication)
 	time.Sleep(10 * time.Millisecond)
-	monitor.handleMissedPing(device, lastSeen, timeoutMinutes)
+	data := &checkMissedPingsData{
+		timeoutMinutes: timeoutMinutes,
+		timeout:        time.Duration(timeoutMinutes) * time.Minute,
+		lastSeenTimes: map[string]time.Time{
+			"test-wwn": lastSeen,
+		},
+	}
+	result := monitor.checkDevice(&device, data, time.Now())
 
-	// The notification time should not have changed
+	// Should return nil (skipped due to dedup) and notification time should not have changed
+	require.Nil(t, result)
 	monitor.mu.RLock()
 	storedTime := monitor.notifiedDevices["test-wwn"]
 	monitor.mu.RUnlock()
 	require.Equal(t, firstNotifyTime, storedTime)
 }
 
-func TestMissedPingMonitor_ProcessDevice_SkipsArchived(t *testing.T) {
+func TestMissedPingMonitor_CheckDevice_SkipsArchived(t *testing.T) {
 	t.Parallel()
 
 	ae, mockCtrl := createTestAppEngine(t)
@@ -251,13 +266,13 @@ func TestMissedPingMonitor_ProcessDevice_SkipsArchived(t *testing.T) {
 		},
 	}
 
-	monitor.processDevice(device, data, time.Now())
+	result := monitor.checkDevice(&device, data, time.Now())
 
-	// Should NOT be notified since device is archived
-	require.False(t, monitor.IsDeviceNotified("archived-device"))
+	// Should return nil since device is archived
+	require.Nil(t, result)
 }
 
-func TestMissedPingMonitor_ProcessDevice_SkipsMuted(t *testing.T) {
+func TestMissedPingMonitor_CheckDevice_SkipsMuted(t *testing.T) {
 	t.Parallel()
 
 	ae, mockCtrl := createTestAppEngine(t)
@@ -275,17 +290,17 @@ func TestMissedPingMonitor_ProcessDevice_SkipsMuted(t *testing.T) {
 		timeoutMinutes: 60,
 		timeout:        60 * time.Minute,
 		lastSeenTimes: map[string]time.Time{
-			"muted-device": time.Now().Add(-2 * time.Hour), // Would trigger notification if not muted
+			"muted-device": time.Now().Add(-2 * time.Hour),
 		},
 	}
 
-	monitor.processDevice(device, data, time.Now())
+	result := monitor.checkDevice(&device, data, time.Now())
 
-	// Should NOT be notified since device is muted
-	require.False(t, monitor.IsDeviceNotified("muted-device"))
+	// Should return nil since device is muted
+	require.Nil(t, result)
 }
 
-func TestMissedPingMonitor_ProcessDevice_SkipsNewlyRegistered(t *testing.T) {
+func TestMissedPingMonitor_CheckDevice_SkipsNewlyRegistered(t *testing.T) {
 	t.Parallel()
 
 	ae, mockCtrl := createTestAppEngine(t)
@@ -301,16 +316,16 @@ func TestMissedPingMonitor_ProcessDevice_SkipsNewlyRegistered(t *testing.T) {
 	data := &checkMissedPingsData{
 		timeoutMinutes: 60,
 		timeout:        60 * time.Minute,
-		lastSeenTimes:  map[string]time.Time{}, // No last seen time for this device
+		lastSeenTimes:  map[string]time.Time{},
 	}
 
-	monitor.processDevice(device, data, time.Now())
+	result := monitor.checkDevice(&device, data, time.Now())
 
-	// Should NOT be notified since device has no last seen time
-	require.False(t, monitor.IsDeviceNotified("new-device"))
+	// Should return nil since device has no last seen time
+	require.Nil(t, result)
 }
 
-func TestMissedPingMonitor_ProcessDevice_ClearsHealthyDevice(t *testing.T) {
+func TestMissedPingMonitor_CheckDevice_ClearsHealthyDevice(t *testing.T) {
 	t.Parallel()
 
 	ae, mockCtrl := createTestAppEngine(t)
@@ -331,17 +346,18 @@ func TestMissedPingMonitor_ProcessDevice_ClearsHealthyDevice(t *testing.T) {
 		timeoutMinutes: 60,
 		timeout:        60 * time.Minute,
 		lastSeenTimes: map[string]time.Time{
-			"healthy-device": time.Now().Add(-5 * time.Minute), // Within timeout, device is healthy
+			"healthy-device": time.Now().Add(-5 * time.Minute),
 		},
 	}
 
-	monitor.processDevice(device, data, time.Now())
+	result := monitor.checkDevice(&device, data, time.Now())
 
-	// Should be cleared since device is now healthy
+	// Should return nil (device is healthy) and clear notification state
+	require.Nil(t, result)
 	require.False(t, monitor.IsDeviceNotified("healthy-device"))
 }
 
-func TestMissedPingMonitor_ProcessDevice_TriggersNotification(t *testing.T) {
+func TestMissedPingMonitor_CheckDevice_ReturnsMissedDevice(t *testing.T) {
 	t.Parallel()
 
 	ae, mockCtrl := createTestAppEngine(t)
@@ -360,15 +376,17 @@ func TestMissedPingMonitor_ProcessDevice_TriggersNotification(t *testing.T) {
 		timeoutMinutes: 60,
 		timeout:        60 * time.Minute,
 		lastSeenTimes: map[string]time.Time{
-			"stale-device": time.Now().Add(-2 * time.Hour), // Exceeds timeout
+			"stale-device": time.Now().Add(-2 * time.Hour),
 		},
 	}
 
-	monitor.processDevice(device, data, time.Now())
+	result := monitor.checkDevice(&device, data, time.Now())
 
-	// Device should NOT be marked as notified when no notification endpoints are configured
-	// This ensures the system will retry when endpoints are later configured
-	require.False(t, monitor.IsDeviceNotified("stale-device"))
+	// Should return a digest device entry (notification not sent yet, just collected)
+	require.NotNil(t, result)
+	require.Equal(t, "stale-device", result.WWN)
+	require.Equal(t, "/dev/sda", result.DeviceName)
+	require.Equal(t, "ABC123", result.SerialNumber)
 }
 
 func TestMissedPingMonitor_GetCheckInterval_Default(t *testing.T) {
