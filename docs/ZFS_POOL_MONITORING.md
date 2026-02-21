@@ -16,7 +16,7 @@ Scrutiny can monitor ZFS pool health alongside individual drive S.M.A.R.T metric
 
 ### Omnibus Image
 
-If you are using the omnibus image (`ghcr.io/starosdev/scrutiny:latest-omnibus`), add these environment variables to enable ZFS monitoring:
+If you are using the omnibus image (`ghcr.io/starosdev/scrutiny:latest-omnibus`), add these environment variables to enable ZFS monitoring, and /dev/zfs to the disks:
 
 ```yaml
 version: '3.5'
@@ -28,6 +28,10 @@ services:
       # Enable ZFS pool monitoring
       COLLECTOR_ZFS_CRON_SCHEDULE: "*/15 * * * *"
       COLLECTOR_ZFS_RUN_STARTUP: "true"
+    devices:
+      - /dev/sda:/dev/sda
+      - #rest of your disks
+      - /dev/zfs:/dev/zfs
     # ... rest of your config
 ```
 
