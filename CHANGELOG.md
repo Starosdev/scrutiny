@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.29.1](https://github.com/Starosdev/scrutiny/compare/v1.29.0...v1.29.1) (2026-02-21)
+
+### Bug Fixes
+
+* **web:** add retry logic for database initialization to prevent Docker crash-loops ([9d393c6](https://github.com/Starosdev/scrutiny/commit/9d393c657e1481ef56f9d755aecbc2e8305445fb)), closes [#258](https://github.com/Starosdev/scrutiny/issues/258)
+
 ## [1.29.0](https://github.com/Starosdev/scrutiny/compare/v1.28.1...v1.29.0) (2026-02-21)
 
 ### Features
