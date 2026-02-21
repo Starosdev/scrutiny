@@ -50,3 +50,48 @@ type Settings struct {
 		ReportPDFPath        string `json:"report_pdf_path" mapstructure:"report_pdf_path"`
 	} `json:"metrics" mapstructure:"metrics"`
 }
+
+// defaultStr sets *p to def if *p is empty.
+func defaultStr(p *string, def string) {
+	if *p == "" {
+		*p = def
+	}
+}
+
+// defaultInt sets *p to def if *p is zero.
+func defaultInt(p *int, def int) {
+	if *p == 0 {
+		*p = def
+	}
+}
+
+// ApplyDefaults fills in zero-value fields with known-good defaults.
+// This prevents the API from returning empty strings that break the frontend
+// (e.g. theme="" produces invalid CSS class "treo-theme-", layout="" matches
+// no template case). Called after loading settings from the database.
+func (s *Settings) ApplyDefaults() {
+	// Top-level string settings
+	defaultStr(&s.Theme, "system")
+	defaultStr(&s.Layout, "material")
+	defaultStr(&s.DashboardDisplay, "name")
+	defaultStr(&s.DashboardSort, "status")
+	defaultStr(&s.TemperatureUnit, "celsius")
+	defaultStr(&s.LineStroke, "smooth")
+	defaultStr(&s.PoweredOnHoursUnit, "humanize")
+
+	// Metrics: numeric fields where 0 is not a valid value.
+	// Note: StatusFilterAttributes defaults to 0 (All), which is the zero value, so no check needed.
+	defaultInt(&s.Metrics.NotifyLevel, 2)            // MetricsNotifyLevelFail
+	defaultInt(&s.Metrics.StatusThreshold, 3)         // MetricsStatusThresholdBoth
+	defaultInt(&s.Metrics.MissedPingTimeoutMinutes, 60)
+	defaultInt(&s.Metrics.MissedPingCheckIntervalMins, 5)
+	defaultInt(&s.Metrics.HeartbeatIntervalHours, 24)
+
+	// Metrics: scheduled report defaults
+	defaultStr(&s.Metrics.ReportDailyTime, "08:00")
+	defaultInt(&s.Metrics.ReportWeeklyDay, 1)  // Monday
+	defaultStr(&s.Metrics.ReportWeeklyTime, "08:00")
+	defaultInt(&s.Metrics.ReportMonthlyDay, 1) // 1st of the month
+	defaultStr(&s.Metrics.ReportMonthlyTime, "08:00")
+	defaultStr(&s.Metrics.ReportPDFPath, "/opt/scrutiny/reports")
+}

@@ -44,6 +44,11 @@ func (sr *scrutinyRepository) LoadSettings(ctx context.Context) (*models.Setting
 	if err != nil {
 		return nil, err
 	}
+
+	// Fill in any missing or empty settings with known-good defaults.
+	// This handles DB entries with empty string values and missing entries alike.
+	settings.ApplyDefaults()
+
 	return &settings, nil
 }
 
