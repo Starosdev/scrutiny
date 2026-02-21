@@ -51,7 +51,12 @@ func (sr *scrutinyRepository) UpdateDevice(ctx context.Context, wwn string, coll
 	if err != nil {
 		return device, err
 	}
-	return device, sr.gormClient.Model(&device).Updates(device).Error
+	if err := sr.gormClient.Model(&device).Updates(device).Error; err != nil {
+		return device, err
+	}
+	// Explicitly update device_status to handle zero values, since GORM's Updates(struct)
+	// silently skips zero-value fields and DeviceStatusPassed is 0.
+	return device, sr.gormClient.Model(&device).Update("device_status", device.DeviceStatus).Error
 }
 
 // Update Device Status
@@ -73,7 +78,12 @@ func (sr *scrutinyRepository) ResetDeviceStatus(ctx context.Context, wwn string)
 	}
 
 	device.DeviceStatus = pkg.DeviceStatusPassed
-	return device, sr.gormClient.Model(&device).Updates(device).Error
+	// Use map-based update because GORM's Updates(struct) silently skips zero-value fields,
+	// and DeviceStatusPassed is 0. Without this, the device_status column is never actually
+	// reset in the database.
+	return device, sr.gormClient.Model(&device).Updates(map[string]interface{}{
+		"device_status": pkg.DeviceStatusPassed,
+	}).Error
 }
 
 // RecalculateDeviceStatusFromHistory re-evaluates device status from stored SMART data
