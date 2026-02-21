@@ -2,6 +2,36 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.28.0](https://github.com/Starosdev/scrutiny/compare/v1.27.3...v1.28.0) (2026-02-21)
+
+### Features
+
+* **notify:** add HTML email template for missed ping digest ([bd4da67](https://github.com/Starosdev/scrutiny/commit/bd4da674a62283039696ba2ffa994bd0c1110205))
+* **notify:** persist scheduler timestamps, batch missed pings, add HTML emails ([390db81](https://github.com/Starosdev/scrutiny/commit/390db81178da4d56b91bf3092debf00aab1845e8))
+* **reports:** add API endpoints and integrate scheduler into server ([447cd22](https://github.com/Starosdev/scrutiny/commit/447cd22be82fa84f657f0d6e00de416250e555b6))
+* **reports:** add go-pdf/fpdf dependency for PDF report generation ([3dadfe5](https://github.com/Starosdev/scrutiny/commit/3dadfe5649ec75a068e48c299ac7dc09b65367c1))
+* **reports:** add NewReport notification factory for scheduled reports ([b9fd8e2](https://github.com/Starosdev/scrutiny/commit/b9fd8e2a0ae428fe3493b21242dcc27b3b35fa1e))
+* **reports:** add PDF report formatter using go-pdf/fpdf ([51819f8](https://github.com/Starosdev/scrutiny/commit/51819f82d4041e31083aa5f5ae974e33009ef08c))
+* **reports:** add report data models ([e277163](https://github.com/Starosdev/scrutiny/commit/e2771632f718c3b609a67f4e07d4eb439458c887))
+* **reports:** add report generator with DeviceRepo queries ([24a19ee](https://github.com/Starosdev/scrutiny/commit/24a19ee37a9bf1b21762aa1aad707ad8f5b68e60))
+* **reports:** add report scheduler with daily/weekly/monthly scheduling ([f2f156e](https://github.com/Starosdev/scrutiny/commit/f2f156e554cb56ecec2b2e384ae51758014807a9))
+* **reports:** add report settings model and database migration ([919bc68](https://github.com/Starosdev/scrutiny/commit/919bc681a4f64144d8064489ed0853e75ae793ad))
+* **reports:** add scheduled reports settings UI ([eb67015](https://github.com/Starosdev/scrutiny/commit/eb670156cccdc7ddafb107dc61cd374ba410c88b))
+* **reports:** add test notification support to report API ([bbaab7c](https://github.com/Starosdev/scrutiny/commit/bbaab7cbf55a8f368199d3d80ba9c61d3dcff31f))
+* **reports:** add text report formatter ([844277e](https://github.com/Starosdev/scrutiny/commit/844277e8f41686c2ab1d53e2dc32ab233f138291))
+
+### Bug Fixes
+
+* **collector:** auto-detect tmpfs mount points and fallback to direct device I/O ([5c45f78](https://github.com/Starosdev/scrutiny/commit/5c45f78a297810f4f95d30c4bcae9ee4e1062e59))
+* **collector:** correct block device detection and remove stale nolint ([bab9ded](https://github.com/Starosdev/scrutiny/commit/bab9dedf240e50cd191c0119c83d0159dd9f420d))
+* **collector:** resolve gosec G115 integer overflow lint warning ([74f38a9](https://github.com/Starosdev/scrutiny/commit/74f38a97268d415db690a6f13038bd23edcca773))
+* **collector:** resolve NVMe controller to namespace block device for fio ([f42517c](https://github.com/Starosdev/scrutiny/commit/f42517c26545daab571b804b77e284eb056f26e0))
+* **docker:** update Go base image to 1.25 to match go.mod ([e84fed8](https://github.com/Starosdev/scrutiny/commit/e84fed86b4762af64a2d5d1d4947a6af3fcb16f4))
+* **notify:** fix concurrent map crash and HTML email rendering ([ca04372](https://github.com/Starosdev/scrutiny/commit/ca043723b6ee9170adad585a2cd241ec434f02dc))
+* **notify:** resolve golangci-lint errors ([c4990e1](https://github.com/Starosdev/scrutiny/commit/c4990e15c9549ad02a9cd86ad58122c1194dc3f6))
+* **reports:** address code review findings ([60344d2](https://github.com/Starosdev/scrutiny/commit/60344d2043b1252739642836c4ddeaefdf7c2773))
+* **reports:** resolve golangci-lint errors for CI ([92253f9](https://github.com/Starosdev/scrutiny/commit/92253f984186a9a2d46966288d815ff6e300c9bb))
+
 ## [1.27.3](https://github.com/Starosdev/scrutiny/compare/v1.27.2...v1.27.3) (2026-02-20)
 
 ### Features
