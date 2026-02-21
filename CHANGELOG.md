@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.28.1](https://github.com/Starosdev/scrutiny/compare/v1.28.0...v1.28.1) (2026-02-21)
+
+### Bug Fixes
+
+* **settings:** apply defaults for empty DB values to prevent blank UI ([8d20579](https://github.com/Starosdev/scrutiny/commit/8d2057951716415627f78a50bef2b75223a3e32b))
+
 ## [1.28.0](https://github.com/Starosdev/scrutiny/compare/v1.27.3...v1.28.0) (2026-02-21)
 
 ### Features
