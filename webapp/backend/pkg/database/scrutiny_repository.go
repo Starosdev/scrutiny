@@ -319,7 +319,10 @@ func InfluxSetupComplete(influxEndpoint string, tlsConfig *tls.Config) (bool, er
 		return false, err
 	}
 
-    client := &http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}}
+	client := &http.Client{
+		Transport: &http.Transport{TLSClientConfig: tlsConfig},
+		Timeout:   10 * time.Second,
+	}
 	res, err := client.Get(influxUri.String())
 	if err != nil {
 		return false, err
