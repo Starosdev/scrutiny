@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.29.0](https://github.com/Starosdev/scrutiny/compare/v1.28.1...v1.29.0) (2026-02-21)
+
+### Features
+
+* **dashboard:** add spacing between host-id groups ([7983f10](https://github.com/Starosdev/scrutiny/commit/7983f102bc8d6be6b271e080699049f66f6d51a8)), closes [#234](https://github.com/Starosdev/scrutiny/issues/234)
+
 ## [1.28.1](https://github.com/Starosdev/scrutiny/compare/v1.28.0...v1.28.1) (2026-02-21)
 
 ### Bug Fixes
