@@ -523,6 +523,106 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				return tx.Create(&defaultSettings).Error
 			},
 		},
+		{
+			ID: "m20260217000000", // add scheduled report settings
+			Migrate: func(tx *gorm.DB) error {
+				var defaultSettings = []m20220716214900.Setting{
+					{
+						SettingKeyName:        "metrics.report_enabled",
+						SettingKeyDescription: "Enable scheduled health reports (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      false,
+					},
+					{
+						SettingKeyName:        "metrics.report_daily_enabled",
+						SettingKeyDescription: "Enable daily reports (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      false,
+					},
+					{
+						SettingKeyName:        "metrics.report_daily_time",
+						SettingKeyDescription: "Time of day for daily report in 24h format (default: 08:00)",
+						SettingDataType:       "string",
+						SettingValueString:    "08:00",
+					},
+					{
+						SettingKeyName:        "metrics.report_weekly_enabled",
+						SettingKeyDescription: "Enable weekly reports (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      false,
+					},
+					{
+						SettingKeyName:        "metrics.report_weekly_day",
+						SettingKeyDescription: "Day of week for weekly report (0=Sunday, 1=Monday, default: 1)",
+						SettingDataType:       "numeric",
+						SettingValueNumeric:   1,
+					},
+					{
+						SettingKeyName:        "metrics.report_weekly_time",
+						SettingKeyDescription: "Time of day for weekly report in 24h format (default: 08:00)",
+						SettingDataType:       "string",
+						SettingValueString:    "08:00",
+					},
+					{
+						SettingKeyName:        "metrics.report_monthly_enabled",
+						SettingKeyDescription: "Enable monthly reports (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      false,
+					},
+					{
+						SettingKeyName:        "metrics.report_monthly_day",
+						SettingKeyDescription: "Day of month for monthly report (1-28, default: 1)",
+						SettingDataType:       "numeric",
+						SettingValueNumeric:   1,
+					},
+					{
+						SettingKeyName:        "metrics.report_monthly_time",
+						SettingKeyDescription: "Time of day for monthly report in 24h format (default: 08:00)",
+						SettingDataType:       "string",
+						SettingValueString:    "08:00",
+					},
+					{
+						SettingKeyName:        "metrics.report_pdf_enabled",
+						SettingKeyDescription: "Generate PDF alongside notification report (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      false,
+					},
+					{
+						SettingKeyName:        "metrics.report_pdf_path",
+						SettingKeyDescription: "Directory to save PDF reports (default: /opt/scrutiny/reports)",
+						SettingDataType:       "string",
+						SettingValueString:    "/opt/scrutiny/reports",
+					},
+				}
+				return tx.Create(&defaultSettings).Error
+			},
+		},
+		{
+			ID: "m20260219000000", // add scheduler last-run timestamp settings
+			Migrate: func(tx *gorm.DB) error {
+				var defaultSettings = []m20220716214900.Setting{
+					{
+						SettingKeyName:        "metrics.report_last_daily_run",
+						SettingKeyDescription: "Timestamp of last daily report run (internal, do not edit)",
+						SettingDataType:       "string",
+						SettingValueString:    "",
+					},
+					{
+						SettingKeyName:        "metrics.report_last_weekly_run",
+						SettingKeyDescription: "Timestamp of last weekly report run (internal, do not edit)",
+						SettingDataType:       "string",
+						SettingValueString:    "",
+					},
+					{
+						SettingKeyName:        "metrics.report_last_monthly_run",
+						SettingKeyDescription: "Timestamp of last monthly report run (internal, do not edit)",
+						SettingDataType:       "string",
+						SettingValueString:    "",
+					},
+				}
+				return tx.Create(&defaultSettings).Error
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {

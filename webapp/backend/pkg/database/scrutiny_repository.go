@@ -695,8 +695,8 @@ func (sr *scrutinyRepository) lookupDuration(durationKey string) []string {
 func (sr *scrutinyRepository) lookupResolution(durationKey string) string {
 	switch durationKey {
 	case DURATION_KEY_DAY:
-		// Return data with higher resolution for daily summaries
-		return RESOLUTION_10_MINUTES
+		// Return raw data for daily view so tooltip timestamps match actual collection times
+		return ""
 	default:
 		// Return data with 1h resolution for other summaries
 		return RESOLUTION_1_HOUR

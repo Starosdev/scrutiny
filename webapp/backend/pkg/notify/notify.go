@@ -34,6 +34,7 @@ const NotifyFailureTypeScrutinyFailure = "ScrutinyFailure"
 const NotifyFailureTypeMissedPing = "MissedPing"
 const NotifyFailureTypeHeartbeat = "Heartbeat"
 const NotifyFailureTypePerformanceDegradation = "PerformanceDegradation"
+const NotifyFailureTypeReport = "Report"
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
 func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
@@ -171,6 +172,9 @@ type Payload struct {
 	FailureType string `json:"failure_type"` //EmailTest, BothFail, SmartFail, ScrutinyFail
 	Subject     string `json:"subject"`
 	Message     string `json:"message"`
+
+	// HTMLMessage is an optional HTML version of Message, used for SMTP emails.
+	HTMLMessage string `json:"-"`
 }
 
 func NewPayload(device models.Device, test bool, currentTime ...time.Time) Payload {
@@ -391,14 +395,31 @@ func (n *Notify) SendScriptNotification(scriptUrl string) error {
 func (n *Notify) SendShoutrrrNotification(shoutrrrUrl string) error {
 	n.Logger.Infof("Sending notifications to %v", shoutrrrUrl)
 
-	sender, err := shoutrrr.CreateSender(shoutrrrUrl)
+	// Determine if we should use HTML for this SMTP notification.
+	// We must inject usehtml=Yes into the URL (not just params) because shoutrrr's
+	// getHeaders() reads the original service config, not the per-send cloned config.
+	serviceName := ""
+	if serviceURL, err := url.Parse(shoutrrrUrl); err == nil {
+		serviceName = serviceURL.Scheme
+	}
+	useHTML := serviceName == "smtp" && n.Payload.HTMLMessage != ""
+	senderUrl := shoutrrrUrl
+	if useHTML {
+		if strings.Contains(senderUrl, "?") {
+			senderUrl += "&usehtml=Yes"
+		} else {
+			senderUrl += "?usehtml=Yes"
+		}
+	}
+
+	sender, err := shoutrrr.CreateSender(senderUrl)
 	if err != nil {
 		n.Logger.Errorf("An error occurred while sending notifications %v: %v", shoutrrrUrl, err)
 		return err
 	}
 
 	//sender.SetLogger(n.Logger.)
-	serviceName, params, err := n.GenShoutrrrNotificationParams(shoutrrrUrl)
+	_, params, err := n.GenShoutrrrNotificationParams(shoutrrrUrl)
 	n.Logger.Debugf("notification data for %s: (%s)\n%v", serviceName, shoutrrrUrl, params)
 
 	if err != nil {
@@ -406,7 +427,13 @@ func (n *Notify) SendShoutrrrNotification(shoutrrrUrl string) error {
 		return err
 	}
 
-	errs := sender.Send(n.Payload.Message, params)
+	// For SMTP with HTML, send the HTML version; other services get plain text
+	message := n.Payload.Message
+	if useHTML {
+		message = n.Payload.HTMLMessage
+	}
+
+	errs := sender.Send(message, params)
 	if len(errs) > 0 {
 		var errstrings []string
 
@@ -587,6 +614,142 @@ func NewMissedPing(logger logrus.FieldLogger, appconfig config.Interface, device
 	}
 }
 
+// MissedPingDigestDevice represents a single device in a missed ping digest
+type MissedPingDigestDevice struct {
+	LastSeen     time.Time
+	WWN          string
+	DeviceName   string
+	SerialNumber string
+	HostId       string
+	Label        string
+}
+
+// NewMissedPingDigest creates a Notify instance for a batched missed ping digest
+func NewMissedPingDigest(logger logrus.FieldLogger, appconfig config.Interface, devices []MissedPingDigestDevice, timeoutMinutes int) Notify {
+	count := len(devices)
+	subject := fmt.Sprintf("Scrutiny: %d device(s) missed collector pings", count)
+
+	var parts []string
+	parts = append(parts,
+		fmt.Sprintf("Scrutiny has not received data from %d device(s) within the %d-minute timeout.", count, timeoutMinutes),
+		"",
+		"Affected devices:",
+	)
+	for _, d := range devices {
+		ago := time.Since(d.LastSeen).Round(time.Minute)
+		line := fmt.Sprintf("  - %s (serial: %s) - last seen %s ago", d.DeviceName, d.SerialNumber, ago)
+		if d.Label != "" {
+			line = fmt.Sprintf("  - %s [%s] (serial: %s) - last seen %s ago", d.Label, d.DeviceName, d.SerialNumber, ago)
+		}
+		if d.HostId != "" {
+			line += fmt.Sprintf(" [host: %s]", d.HostId)
+		}
+		parts = append(parts, line)
+	}
+	parts = append(parts,
+		"",
+		"Please check that the collector(s) are running and can reach the Scrutiny server.",
+	)
+
+	message := strings.Join(parts, "\n")
+	htmlMessage := formatHTMLMissedPingDigest(devices, count, timeoutMinutes)
+
+	payload := Payload{
+		Test:        false,
+		Date:        time.Now().Format(time.RFC3339),
+		FailureType: NotifyFailureTypeMissedPing,
+		Subject:     subject,
+		Message:     message,
+		HTMLMessage: htmlMessage,
+	}
+
+	return Notify{
+		Logger:  logger,
+		Config:  appconfig,
+		Payload: payload,
+	}
+}
+
+func formatHTMLMissedPingDigest(devices []MissedPingDigestDevice, count, timeoutMinutes int) string {
+	var b strings.Builder
+
+	b.WriteString(`<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4;padding:20px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:4px;overflow:hidden;">
+`)
+
+	// Warning banner
+	fmt.Fprintf(&b, `<tr><td style="background-color:#e6a817;padding:20px 30px;">
+<h1 style="margin:0;color:#ffffff;font-size:22px;">Missed Collector Pings</h1>
+<p style="margin:4px 0 0;color:#ffffffcc;font-size:13px;">%d device(s) unreachable &middot; %d-minute timeout</p>
+</td></tr>
+`, count, timeoutMinutes)
+
+	// Summary message
+	fmt.Fprintf(&b, `<tr><td style="padding:20px 30px 10px;">
+<p style="margin:0;color:#495057;font-size:13px;">Scrutiny has not received data from <strong>%d device(s)</strong> within the %d-minute timeout. Please check that the collector(s) are running and can reach the Scrutiny server.</p>
+</td></tr>
+`, count, timeoutMinutes)
+
+	// Device table
+	b.WriteString(`<tr><td style="padding:10px 30px 0;">
+<table width="100%" cellpadding="5" cellspacing="0" style="font-size:11px;border-collapse:collapse;">
+<tr style="background-color:#f0f0f0;">
+<th align="left" style="padding:6px;border:1px solid #dee2e6;">Device</th>
+<th align="left" style="padding:6px;border:1px solid #dee2e6;">Serial</th>
+<th align="left" style="padding:6px;border:1px solid #dee2e6;">Host</th>
+<th align="left" style="padding:6px;border:1px solid #dee2e6;">Last Seen</th>
+</tr>`)
+
+	for _, d := range devices {
+		ago := time.Since(d.LastSeen).Round(time.Minute)
+		name := d.DeviceName
+		if d.Label != "" {
+			name = fmt.Sprintf("%s (%s)", d.Label, d.DeviceName)
+		}
+		host := d.HostId
+		if host == "" {
+			host = "-"
+		}
+		serial := d.SerialNumber
+		if serial == "" {
+			serial = "-"
+		}
+
+		fmt.Fprintf(&b, `<tr>
+<td style="padding:5px 6px;border:1px solid #dee2e6;color:#dc3545;"><strong>%s</strong></td>
+<td style="padding:5px 6px;border:1px solid #dee2e6;color:#495057;">%s</td>
+<td style="padding:5px 6px;border:1px solid #dee2e6;color:#495057;">%s</td>
+<td style="padding:5px 6px;border:1px solid #dee2e6;color:#495057;">%s ago</td>
+</tr>`, htmlEscape(name), htmlEscape(serial), htmlEscape(host), ago)
+	}
+
+	b.WriteString(`</table></td></tr>`)
+
+	// Footer
+	fmt.Fprintf(&b, `<tr><td style="padding:15px 30px;background-color:#f8f9fa;border-top:1px solid #dee2e6;">
+<p style="margin:0;color:#6c757d;font-size:11px;">Generated %s by Scrutiny</p>
+</td></tr>`, time.Now().Format("Jan 2, 2006 15:04 MST"))
+
+	b.WriteString(`</table>
+</td></tr></table>
+</body></html>`)
+
+	return b.String()
+}
+
+func htmlEscape(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, "\"", "&quot;")
+	return s
+}
+
 // HeartbeatPayload represents a periodic "all clear" heartbeat notification
 type HeartbeatPayload struct {
 	MonitoredDevices int    `json:"monitored_devices"`
@@ -740,6 +903,25 @@ func NewPerformanceDegradation(logger logrus.FieldLogger, appconfig config.Inter
 		FailureType:  degradationPayload.FailureType,
 		Subject:      degradationPayload.Subject,
 		Message:      degradationPayload.Message,
+	}
+
+	return Notify{
+		Logger:  logger,
+		Config:  appconfig,
+		Payload: payload,
+	}
+}
+
+// NewReport creates a Notify instance for scheduled report delivery.
+// htmlMessage is optional -- when non-empty, SMTP recipients get an HTML email.
+func NewReport(logger logrus.FieldLogger, appconfig config.Interface, subject, message, htmlMessage string) Notify {
+	payload := Payload{
+		Test:        false,
+		Date:        time.Now().Format(time.RFC3339),
+		FailureType: NotifyFailureTypeReport,
+		Subject:     subject,
+		Message:     message,
+		HTMLMessage: htmlMessage,
 	}
 
 	return Notify{

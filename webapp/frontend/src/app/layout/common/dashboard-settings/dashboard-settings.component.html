@@ -166,6 +166,113 @@
             </mat-form-field>
         </div>
 
+        <!-- Scheduled Reports Section -->
+        <mat-expansion-panel class="mt-5">
+            <mat-expansion-panel-header>
+                <mat-panel-title>Scheduled Reports</mat-panel-title>
+                <mat-panel-description>
+                    Configure automated health report delivery
+                </mat-panel-description>
+            </mat-expansion-panel-header>
+
+            <div class="flex flex-col p-4">
+                <div class="flex flex-col gt-md:flex-row">
+                    <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                        <mat-label>Scheduled Reports</mat-label>
+                        <mat-select [(ngModel)]="reportEnabled">
+                            <mat-option [value]="true">Enabled</mat-option>
+                            <mat-option [value]="false">Disabled</mat-option>
+                        </mat-select>
+                        <mat-hint>Master toggle for all scheduled reports</mat-hint>
+                    </mat-form-field>
+                </div>
+
+                <div *ngIf="reportEnabled">
+                    <div class="flex flex-col mt-5 gt-md:flex-row">
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                            <mat-label>Daily Report</mat-label>
+                            <mat-select [(ngModel)]="reportDailyEnabled">
+                                <mat-option [value]="true">Enabled</mat-option>
+                                <mat-option [value]="false">Disabled</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3" *ngIf="reportDailyEnabled">
+                            <mat-label>Daily Report Time</mat-label>
+                            <input matInput type="time" [(ngModel)]="reportDailyTime">
+                            <mat-hint>Time of day to send (24h format)</mat-hint>
+                        </mat-form-field>
+                    </div>
+
+                    <div class="flex flex-col mt-5 gt-md:flex-row">
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                            <mat-label>Weekly Report</mat-label>
+                            <mat-select [(ngModel)]="reportWeeklyEnabled">
+                                <mat-option [value]="true">Enabled</mat-option>
+                                <mat-option [value]="false">Disabled</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3" *ngIf="reportWeeklyEnabled">
+                            <mat-label>Day of Week</mat-label>
+                            <mat-select [(ngModel)]="reportWeeklyDay">
+                                <mat-option [value]="0">Sunday</mat-option>
+                                <mat-option [value]="1">Monday</mat-option>
+                                <mat-option [value]="2">Tuesday</mat-option>
+                                <mat-option [value]="3">Wednesday</mat-option>
+                                <mat-option [value]="4">Thursday</mat-option>
+                                <mat-option [value]="5">Friday</mat-option>
+                                <mat-option [value]="6">Saturday</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3" *ngIf="reportWeeklyEnabled">
+                            <mat-label>Weekly Report Time</mat-label>
+                            <input matInput type="time" [(ngModel)]="reportWeeklyTime">
+                        </mat-form-field>
+                    </div>
+
+                    <div class="flex flex-col mt-5 gt-md:flex-row">
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                            <mat-label>Monthly Report</mat-label>
+                            <mat-select [(ngModel)]="reportMonthlyEnabled">
+                                <mat-option [value]="true">Enabled</mat-option>
+                                <mat-option [value]="false">Disabled</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3" *ngIf="reportMonthlyEnabled">
+                            <mat-label>Day of Month</mat-label>
+                            <input matInput type="number" [(ngModel)]="reportMonthlyDay" min="1" max="28">
+                            <mat-hint>1-28</mat-hint>
+                        </mat-form-field>
+
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3" *ngIf="reportMonthlyEnabled">
+                            <mat-label>Monthly Report Time</mat-label>
+                            <input matInput type="time" [(ngModel)]="reportMonthlyTime">
+                        </mat-form-field>
+                    </div>
+
+                    <div class="flex flex-col mt-5 gt-md:flex-row">
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                            <mat-label>PDF Generation</mat-label>
+                            <mat-select [(ngModel)]="reportPDFEnabled">
+                                <mat-option [value]="true">Enabled</mat-option>
+                                <mat-option [value]="false">Disabled</mat-option>
+                            </mat-select>
+                            <mat-hint>Save PDF reports to disk</mat-hint>
+                        </mat-form-field>
+
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3" *ngIf="reportPDFEnabled">
+                            <mat-label>PDF Save Directory</mat-label>
+                            <input matInput [(ngModel)]="reportPDFPath">
+                            <mat-hint>Directory to save PDF reports</mat-hint>
+                        </mat-form-field>
+                    </div>
+                </div>
+            </div>
+        </mat-expansion-panel>
+
         <!-- SMART Attribute Overrides Section -->
         <mat-expansion-panel class="mt-5">
             <mat-expansion-panel-header>

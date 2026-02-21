@@ -1,17 +1,20 @@
 <div
   [ngClass]="{
     'border-green':
+      !deviceSummary.device.archived &&
       deviceStatusForModelWithThreshold(
         deviceSummary.device,
         !!deviceSummary.smart,
         config.metrics.status_threshold
       ) == 'passed',
     'border-red':
+      !deviceSummary.device.archived &&
       deviceStatusForModelWithThreshold(
         deviceSummary.device,
         !!deviceSummary.smart,
         config.metrics.status_threshold
       ) == 'failed',
+    'border-gray': deviceSummary.device.archived,
     'text-disabled': deviceSummary.device.archived
   }"
   class="relative flex flex-col flex-auto p-6 pr-3 pb-3 bg-card rounded border-l-4 shadow-md overflow-hidden"

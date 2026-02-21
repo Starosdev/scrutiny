@@ -1,5 +1,6 @@
 import {
     ChangeDetectionStrategy,
+    ChangeDetectorRef,
     Component,
     OnDestroy,
     OnInit,
@@ -34,6 +35,7 @@ export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
     constructor(
         private _zfsPoolDetailService: ZFSPoolDetailService,
         private _configService: ScrutinyConfigService,
+        private _changeDetectorRef: ChangeDetectorRef,
         private router: Router,
     ) {
         this._unsubscribeAll = new Subject();
@@ -45,6 +47,7 @@ export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe((config: AppConfig) => {
                 this.config = config;
+                this._changeDetectorRef.markForCheck();
             });
 
         // Get the data
@@ -55,6 +58,7 @@ export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
                     this.pool = data.data.pool;
                     this.metricsHistory = data.data.metrics_history;
                     this._prepareChartData();
+                    this._changeDetectorRef.markForCheck();
                 }
             });
     }
@@ -145,14 +149,14 @@ export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
     getStatusColorClass(status: ZFSPoolStatus): string {
         switch (status) {
             case 'ONLINE':
-                return 'text-green';
+                return 'text-green-600 dark:text-green-400';
             case 'DEGRADED':
-                return 'text-yellow';
+                return 'text-yellow-600 dark:text-yellow-400';
             case 'FAULTED':
             case 'UNAVAIL':
             case 'OFFLINE':
             case 'REMOVED':
-                return 'text-red';
+                return 'text-red-600 dark:text-red-400';
             default:
                 return '';
         }
@@ -183,14 +187,14 @@ export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
     getVdevStatusClass(status: string): string {
         switch (status) {
             case 'ONLINE':
-                return 'text-green';
+                return 'text-green-600 dark:text-green-400';
             case 'DEGRADED':
-                return 'text-yellow';
+                return 'text-yellow-600 dark:text-yellow-400';
             case 'FAULTED':
             case 'UNAVAIL':
             case 'OFFLINE':
             case 'REMOVED':
-                return 'text-red';
+                return 'text-red-600 dark:text-red-400';
             default:
                 return '';
         }

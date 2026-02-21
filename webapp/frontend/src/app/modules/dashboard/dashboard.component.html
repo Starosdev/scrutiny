@@ -109,7 +109,7 @@
                 );
                 track deviceSummary
               ) {
-                @if (showArchived || !$any(deviceSummary).device.archived) {
+                @if (showArchived ? $any(deviceSummary).device.archived : !$any(deviceSummary).device.archived) {
                   <app-dashboard-device
                     class="flex gt-sm:w-1/2 min-w-80 p-4"
                     [deviceSummary]="deviceSummary"
@@ -206,7 +206,9 @@
                   class="flex-auto w-full h-full"
                   [chart]="temperatureOptions.chart"
                   [colors]="temperatureOptions.colors"
+                  [dataLabels]="temperatureOptions.dataLabels"
                   [fill]="temperatureOptions.fill"
+                  [markers]="temperatureOptions.markers"
                   [series]="temperatureOptions.series"
                   [stroke]="temperatureOptions.stroke"
                   [tooltip]="temperatureOptions.tooltip"

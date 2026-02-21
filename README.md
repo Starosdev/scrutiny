@@ -44,6 +44,9 @@ Full credit for the original vision and architecture goes to [AnalogJ](https://g
 - **Improved Dashboard Layout** - Sidebar navigation moved to top for better attribute visibility
 - **Enhanced Mobile UI** - Optimized layout for mobile devices
 - **Performance Benchmarking** - Run fio benchmarks and track drive throughput, IOPS, and latency over time
+- **Scheduled Reports** [WIP] - Automated daily/weekly/monthly health reports via email with HTML formatting
+- **Missed Ping Digest** - Consolidated notification when multiple collectors miss pings (instead of one email per device)
+- **HTML Email Notifications** - Rich HTML emails for reports and missed ping alerts via SMTP
 - **Enhanced Seagate Drive Support** - Better timeout handling for Seagate drives
 - **SHA256 Checksums** - Verify release binary integrity
 
@@ -87,6 +90,9 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Mobile-Optimized Interface** - Better experience on mobile devices
 - **API Timeout Configuration** - Adjust timeouts for slow storage systems
 - **Performance Benchmarking** - fio-based benchmarks for throughput, IOPS, and latency with historical tracking
+- **Scheduled Reports** [WIP] - Automated health reports on daily/weekly/monthly schedules with HTML emails and PDF export
+- **Missed Ping Digest** - Batch notification when multiple collectors go unreachable
+- **HTML Email Notifications** - Rich HTML formatting for SMTP notifications (reports and missed pings)
 - **Heartbeat Notifications** - Periodic "all clear" alerts for uptime monitoring integration
 
 # Migration from AnalogJ/scrutiny
@@ -314,6 +320,59 @@ Scrutiny can send periodic "all clear" heartbeat notifications to confirm the mo
 
 You can mute notifications for specific devices through the web UI. This is useful for drives that are known to have issues but are being monitored before replacement.
 
+### Scheduled Reports [WIP]
+
+Scrutiny can generate and email periodic health reports summarizing device status, temperature, alerts, and ZFS pool health. Reports are sent via your configured notification URLs (HTML formatting for SMTP, plain text for other services).
+
+> **Note:** This feature is a work in progress. It is functional and tested, but the UI and report content may change based on feedback. We'd appreciate hearing about your experience -- please open an issue with suggestions or bug reports.
+
+**Configuration** is done via the Settings page in the web UI, or via the `/api/settings` API:
+
+| Setting | Key | Default | Description |
+| ------- | --- | ------- | ----------- |
+| Enable reports | `metrics.report_enabled` | `false` | Master toggle for scheduled reports |
+| Daily reports | `metrics.report_daily_enabled` | `false` | Enable daily report |
+| Daily time | `metrics.report_daily_time` | `"03:00"` | Time to send daily report (24h format) |
+| Weekly reports | `metrics.report_weekly_enabled` | `false` | Enable weekly report |
+| Weekly day | `metrics.report_weekly_day` | `1` | Day of week (0=Sunday, 1=Monday, ..., 6=Saturday) |
+| Weekly time | `metrics.report_weekly_time` | `"03:00"` | Time to send weekly report |
+| Monthly reports | `metrics.report_monthly_enabled` | `false` | Enable monthly report |
+| Monthly day | `metrics.report_monthly_day` | `1` | Day of month (1-28) |
+| Monthly time | `metrics.report_monthly_time` | `"03:00"` | Time to send monthly report |
+| PDF export | `metrics.report_pdf_enabled` | `false` | Also save reports as PDF files |
+| PDF path | `metrics.report_pdf_path` | `"/opt/scrutiny/reports"` | Directory for PDF files |
+
+**Example API call to enable daily reports:**
+
+```bash
+curl -X POST http://localhost:8080/api/settings \
+  -H "Content-Type: application/json" \
+  -d '{"metrics": {"report_enabled": true, "report_daily_enabled": true, "report_daily_time": "07:00"}}'
+```
+
+**On-demand report generation:**
+
+```bash
+# Generate and send a report immediately
+curl -X POST 'http://localhost:8080/api/reports/generate?period=daily&test=true'
+
+# Generate a PDF report
+curl -X POST 'http://localhost:8080/api/reports/generate?period=daily&format=pdf'
+```
+
+**Report content includes:**
+
+- Overall health status (passed/warning/failed) with color-coded banner
+- Summary counts (total, passed, warning, failed devices)
+- Failure and warning details per device
+- Device table with status, temperature, power-on hours, and alert counts
+- Temperature summary (hottest/coldest devices)
+- ZFS pool health (if applicable)
+
+### Missed Ping Digest
+
+When multiple collectors miss their expected check-in within the configured timeout, Scrutiny sends a single consolidated notification listing all affected devices, instead of flooding your inbox with one email per device.
+
 ### Testing Notifications
 
 You can test that your notifications are configured correctly by posting an empty payload to the notifications health check API.
@@ -497,6 +556,7 @@ The performance collector checks `COLLECTOR_PERF_` prefixed variables first, the
 | `api.endpoint` | `COLLECTOR_PERF_API_ENDPOINT` or `COLLECTOR_API_ENDPOINT` | `http://localhost:8080` |
 | `performance.profile` | `COLLECTOR_PERF_PROFILE` | `quick` |
 | `performance.enabled` | `COLLECTOR_PERFORMANCE_ENABLED` | `false` |
+| `performance.allow_direct_device_io` | `COLLECTOR_PERFORMANCE_ALLOW_DIRECT_DEVICE_IO` | `false` |
 | `performance.temp_file_size` | `COLLECTOR_PERFORMANCE_TEMP_FILE_SIZE` | `256M` |
 | `commands.performance_fio_bin` | `COLLECTOR_COMMANDS_PERFORMANCE_FIO_BIN` | `fio` |
 | `log.level` | `COLLECTOR_LOG_LEVEL` | `INFO` |

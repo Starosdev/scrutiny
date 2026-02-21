@@ -430,6 +430,55 @@
             </td>
           </ng-container>
 
+          <!-- Actions Column -->
+          <ng-container matColumnDef="actions">
+            <th class="bg-cool-gray-50 dark:bg-cool-gray-700 border-t"
+              mat-header-cell
+              *matHeaderCellDef
+              style="width: 48px; min-width: 48px; max-width: 48px;">
+            </th>
+            <td mat-cell
+              *matCellDef="let attribute"
+              style="width: 48px; min-width: 48px; max-width: 48px; padding: 0;"
+              (click)="$event.stopPropagation()">
+
+              @if (getOverrideForAttribute(attribute.attribute_id)) {
+                <button mat-icon-button
+                  [matMenuTriggerFor]="overrideMenu"
+                  matTooltip="Override active"
+                  class="override-active-btn">
+                  <mat-icon class="icon-size-20" [svgIcon]="'tune'" style="color: #667EEA;"></mat-icon>
+                </button>
+              } @else if (getAttributeStatusName(attribute.status) !== 'passed') {
+                <button mat-icon-button
+                  [matMenuTriggerFor]="overrideMenu"
+                  matTooltip="Attribute actions">
+                  <mat-icon class="icon-size-20" [svgIcon]="'more_vert'"></mat-icon>
+                </button>
+              }
+
+              <mat-menu #overrideMenu="matMenu">
+                @if (getOverrideForAttribute(attribute.attribute_id); as override) {
+                  <div class="px-4 py-2 text-secondary text-sm" mat-menu-item disabled>
+                    Override: {{ override.action === 'ignore' ? 'Ignored' : 'Forced ' + override.status }}
+                  </div>
+                  <button mat-menu-item (click)="removeOverride(attribute)">
+                    <mat-icon class="icon-size-20" [svgIcon]="'close'"></mat-icon>
+                    <span>Remove override</span>
+                  </button>
+                } @else {
+                  <button mat-menu-item (click)="ignoreAttribute(attribute)">
+                    <mat-icon class="icon-size-20" [svgIcon]="'visibility_off'"></mat-icon>
+                    <span>Ignore attribute</span>
+                  </button>
+                  <button mat-menu-item (click)="forcePassedAttribute(attribute)">
+                    <mat-icon class="icon-size-20" [svgIcon]="'check_circle'"></mat-icon>
+                    <span>Force passed</span>
+                  </button>
+                }
+              </mat-menu>
+            </td>
+          </ng-container>
 
           <!-- Expanded Content Column - The detail row is made up of this one column that spans across all columns -->
           <ng-container matColumnDef="expandedDetail">
@@ -485,7 +534,7 @@
                         <div class="flex-shrink-0 w-2 h-2 mr-3 rounded-full"></div>
                         <div class="truncate">Raw</div>
                       </div>
-                      <div class="w-1/4 items-center font-medium">{{attribute.raw_value}}</div>
+                      <div class="w-1/4 items-center font-medium">{{attribute.raw_value ?? attribute.value}}</div>
                       <div class="w-1/4 items-center text-secondary">--</div>
                       <div class="w-1/4 items-center text-secondary">--</div>
                     </div>

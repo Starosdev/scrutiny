@@ -16,6 +16,14 @@ type AtaAttributeMetadata struct {
 	Critical    bool   `json:"critical"`
 	Description string `json:"description"`
 
+	// UseDeltaEvaluation indicates this attribute is a cumulative counter where
+	// the trend matters more than the absolute value. When true, Scrutiny will
+	// suppress warnings if the value hasn't increased since the last measurement.
+	// Useful for attributes like UltraDMA CRC Error Count (199) where errors
+	// accumulate from transient issues (e.g., loose cables) but the count persists
+	// even after the root cause is fixed.
+	UseDeltaEvaluation bool `json:"use_delta_evaluation,omitempty"`
+
 	Transform          func(int64, int64, string) int64 `json:"-"` //this should be a method to extract/tranform the normalized or raw data to a chartable format. Str
 	TransformValueUnit string                           `json:"transform_value_unit,omitempty"`
 	ObservedThresholds []ObservedThreshold              `json:"observed_thresholds,omitempty"` //these thresholds must match the DisplayType
@@ -1278,12 +1286,13 @@ var AtaMetadata = map[int]AtaAttributeMetadata{
 		},
 	},
 	199: {
-		ID:          199,
-		DisplayName: "UltraDMA CRC Error Count",
-		DisplayType: AtaSmartAttributeDisplayTypeRaw,
-		Ideal:       ObservedThresholdIdealLow,
-		Critical:    false,
-		Description: "The count of errors in data transfer via the interface cable as determined by ICRC (Interface Cyclic Redundancy Check).",
+		ID:                 199,
+		DisplayName:        "UltraDMA CRC Error Count",
+		DisplayType:        AtaSmartAttributeDisplayTypeRaw,
+		Ideal:              ObservedThresholdIdealLow,
+		Critical:           false,
+		UseDeltaEvaluation: true,
+		Description:        "The count of errors in data transfer via the interface cable as determined by ICRC (Interface Cyclic Redundancy Check).",
 		ObservedThresholds: []ObservedThreshold{
 			{
 				Low:               0,
@@ -1683,6 +1692,7 @@ type AtaDeviceStatisticsMetadata struct {
 	Critical    bool   `json:"critical"`
 	Description string `json:"description"`
 	DisplayType string `json:"display_type"`
+	Threshold   int64  `json:"threshold"` // Fixed threshold for this attribute. 0 means no fixed threshold (use for error counts).
 }
 
 var AtaDeviceStatsMetadata = map[string]AtaDeviceStatisticsMetadata{
@@ -1693,6 +1703,7 @@ var AtaDeviceStatsMetadata = map[string]AtaDeviceStatisticsMetadata{
 		Critical:    true,
 		Description: "Contains a vendor specific estimate of the percentage of the device life used based on the actual device usage and the manufacturer's prediction of device life. A value of 100 indicates that the estimated endurance of the device has been consumed, but may not indicate a device failure.",
 		DisplayType: AtaSmartAttributeDisplayTypeRaw,
+		Threshold:   100,
 	},
 	// Page 1 (General Statistics)
 	"devstat_1_8": {

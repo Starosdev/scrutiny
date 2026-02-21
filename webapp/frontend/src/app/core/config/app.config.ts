@@ -103,6 +103,18 @@ export interface AppConfig {
         // Heartbeat notifications
         heartbeat_enabled?: boolean
         heartbeat_interval_hours?: number
+        // Scheduled reports
+        report_enabled?: boolean
+        report_daily_enabled?: boolean
+        report_daily_time?: string
+        report_weekly_enabled?: boolean
+        report_weekly_day?: number
+        report_weekly_time?: string
+        report_monthly_enabled?: boolean
+        report_monthly_day?: number
+        report_monthly_time?: string
+        report_pdf_enabled?: boolean
+        report_pdf_path?: string
     }
 
     // Server version (populated from API response, not stored in settings)
@@ -143,7 +155,18 @@ export const appConfig: AppConfig = {
         missed_ping_timeout_minutes: 60,
         missed_ping_check_interval_mins: 5,
         heartbeat_enabled: false,
-        heartbeat_interval_hours: 24
+        heartbeat_interval_hours: 24,
+        report_enabled: false,
+        report_daily_enabled: false,
+        report_daily_time: '08:00',
+        report_weekly_enabled: false,
+        report_weekly_day: 1,
+        report_weekly_time: '08:00',
+        report_monthly_enabled: false,
+        report_monthly_day: 1,
+        report_monthly_time: '08:00',
+        report_pdf_enabled: false,
+        report_pdf_path: '/opt/scrutiny/reports'
     }
 };
 

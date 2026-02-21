@@ -14,7 +14,6 @@ jobs:
   test-backend:
     name: Backend Tests + Coverage
     runs-on: ubuntu-latest
-    container: ghcr.io/packagrio/packagr:latest-golang
     services:
       influxdb:
         image: influxdb:2.2
@@ -30,15 +29,14 @@ jobs:
     env:
       STATIC: true
     steps:
-      - name: Install Git
-        run: |
-          apt-get update && apt-get install -y software-properties-common
-          add-apt-repository ppa:git-core/ppa && apt-get update && apt-get install -y git
-          git --version
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
       - name: Run Backend Tests with Coverage
         run: make binary-clean binary-test-coverage
       - name: Upload Backend Coverage

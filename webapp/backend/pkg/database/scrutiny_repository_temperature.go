@@ -14,7 +14,7 @@ import (
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Temperature Data
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-func (sr *scrutinyRepository) SaveSmartTemperature(ctx context.Context, wwn string, deviceProtocol string, collectorSmartData collector.SmartInfo, retrieveSCTTemperatureHistory bool) error {
+func (sr *scrutinyRepository) SaveSmartTemperature(ctx context.Context, wwn string, collectorSmartData *collector.SmartInfo, retrieveSCTTemperatureHistory bool) error {
 	if len(collectorSmartData.AtaSctTemperatureHistory.Table) > 0 && retrieveSCTTemperatureHistory {
 
 		for ndx, temp := range collectorSmartData.AtaSctTemperatureHistory.Table {
@@ -48,7 +48,7 @@ func (sr *scrutinyRepository) SaveSmartTemperature(ctx context.Context, wwn stri
         // Even if ata_sct_temperature_history is present, also add current temperature. See #824
 	smartTemp := measurements.SmartTemperature{
 		Date: time.Unix(collectorSmartData.LocalTime.TimeT, 0),
-		Temp: collectorSmartData.Temperature.Current,
+		Temp: measurements.CorrectedTemperature(collectorSmartData),
 	}
 
 	tags, fields := smartTemp.Flatten()
@@ -142,15 +142,17 @@ func (sr *scrutinyRepository) aggregateTempQuery(durationKey string) string {
 		durationResolution := sr.lookupResolution(nestedDurationKey)
 
 		subQueryNames = append(subQueryNames, fmt.Sprintf(`%sData`, nestedDurationKey))
-		partialQueryStr = append(partialQueryStr, []string{
+		subQuery := []string{
 			fmt.Sprintf(`%sData = from(bucket: "%s")`, nestedDurationKey, bucketName),
 			fmt.Sprintf(`|> range(start: %s, stop: %s)`, durationRange[0], durationRange[1]),
 			`|> filter(fn: (r) => r["_measurement"] == "temp" )`,
-			fmt.Sprintf(`|> aggregateWindow(every: %s, fn: mean, createEmpty: false)`, durationResolution),
-			`|> group(columns: ["device_wwn"])`,
-			`|> toInt()`,
-			"",
-		}...)
+		}
+		if durationResolution != "" {
+			subQuery = append(subQuery,
+				fmt.Sprintf(`|> aggregateWindow(every: %s, fn: mean, createEmpty: false)`, durationResolution))
+		}
+		subQuery = append(subQuery, `|> group(columns: ["device_wwn"])`, `|> toInt()`, "")
+		partialQueryStr = append(partialQueryStr, subQuery...)
 	}
 
 	if len(subQueryNames) == 1 {

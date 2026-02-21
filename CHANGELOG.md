@@ -2,6 +2,138 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.28.0](https://github.com/Starosdev/scrutiny/compare/v1.27.3...v1.28.0) (2026-02-21)
+
+### Features
+
+* **notify:** add HTML email template for missed ping digest ([bd4da67](https://github.com/Starosdev/scrutiny/commit/bd4da674a62283039696ba2ffa994bd0c1110205))
+* **notify:** persist scheduler timestamps, batch missed pings, add HTML emails ([390db81](https://github.com/Starosdev/scrutiny/commit/390db81178da4d56b91bf3092debf00aab1845e8))
+* **reports:** add API endpoints and integrate scheduler into server ([447cd22](https://github.com/Starosdev/scrutiny/commit/447cd22be82fa84f657f0d6e00de416250e555b6))
+* **reports:** add go-pdf/fpdf dependency for PDF report generation ([3dadfe5](https://github.com/Starosdev/scrutiny/commit/3dadfe5649ec75a068e48c299ac7dc09b65367c1))
+* **reports:** add NewReport notification factory for scheduled reports ([b9fd8e2](https://github.com/Starosdev/scrutiny/commit/b9fd8e2a0ae428fe3493b21242dcc27b3b35fa1e))
+* **reports:** add PDF report formatter using go-pdf/fpdf ([51819f8](https://github.com/Starosdev/scrutiny/commit/51819f82d4041e31083aa5f5ae974e33009ef08c))
+* **reports:** add report data models ([e277163](https://github.com/Starosdev/scrutiny/commit/e2771632f718c3b609a67f4e07d4eb439458c887))
+* **reports:** add report generator with DeviceRepo queries ([24a19ee](https://github.com/Starosdev/scrutiny/commit/24a19ee37a9bf1b21762aa1aad707ad8f5b68e60))
+* **reports:** add report scheduler with daily/weekly/monthly scheduling ([f2f156e](https://github.com/Starosdev/scrutiny/commit/f2f156e554cb56ecec2b2e384ae51758014807a9))
+* **reports:** add report settings model and database migration ([919bc68](https://github.com/Starosdev/scrutiny/commit/919bc681a4f64144d8064489ed0853e75ae793ad))
+* **reports:** add scheduled reports settings UI ([eb67015](https://github.com/Starosdev/scrutiny/commit/eb670156cccdc7ddafb107dc61cd374ba410c88b))
+* **reports:** add test notification support to report API ([bbaab7c](https://github.com/Starosdev/scrutiny/commit/bbaab7cbf55a8f368199d3d80ba9c61d3dcff31f))
+* **reports:** add text report formatter ([844277e](https://github.com/Starosdev/scrutiny/commit/844277e8f41686c2ab1d53e2dc32ab233f138291))
+
+### Bug Fixes
+
+* **collector:** auto-detect tmpfs mount points and fallback to direct device I/O ([5c45f78](https://github.com/Starosdev/scrutiny/commit/5c45f78a297810f4f95d30c4bcae9ee4e1062e59))
+* **collector:** correct block device detection and remove stale nolint ([bab9ded](https://github.com/Starosdev/scrutiny/commit/bab9dedf240e50cd191c0119c83d0159dd9f420d))
+* **collector:** resolve gosec G115 integer overflow lint warning ([74f38a9](https://github.com/Starosdev/scrutiny/commit/74f38a97268d415db690a6f13038bd23edcca773))
+* **collector:** resolve NVMe controller to namespace block device for fio ([f42517c](https://github.com/Starosdev/scrutiny/commit/f42517c26545daab571b804b77e284eb056f26e0))
+* **docker:** update Go base image to 1.25 to match go.mod ([e84fed8](https://github.com/Starosdev/scrutiny/commit/e84fed86b4762af64a2d5d1d4947a6af3fcb16f4))
+* **notify:** fix concurrent map crash and HTML email rendering ([ca04372](https://github.com/Starosdev/scrutiny/commit/ca043723b6ee9170adad585a2cd241ec434f02dc))
+* **notify:** resolve golangci-lint errors ([c4990e1](https://github.com/Starosdev/scrutiny/commit/c4990e15c9549ad02a9cd86ad58122c1194dc3f6))
+* **reports:** address code review findings ([60344d2](https://github.com/Starosdev/scrutiny/commit/60344d2043b1252739642836c4ddeaefdf7c2773))
+* **reports:** resolve golangci-lint errors for CI ([92253f9](https://github.com/Starosdev/scrutiny/commit/92253f984186a9a2d46966288d815ff6e300c9bb))
+
+## [1.27.3](https://github.com/Starosdev/scrutiny/compare/v1.27.2...v1.27.3) (2026-02-20)
+
+### Features
+
+* **reports:** scheduled reports with daily/weekly/monthly scheduling [WIP] ([#241](https://github.com/Starosdev/scrutiny/pull/241)), closes [#235](https://github.com/Starosdev/scrutiny/issues/235)
+  * Report generation with text, HTML, and PDF output formats
+  * Configurable schedules via Settings UI (daily time, weekly day+time, monthly day+time)
+  * HTML email reports with device status, temperature summary, and ZFS pool health
+  * PDF report generation saved to configurable path
+  * On-demand report generation and test notifications via API
+  * Scheduler timestamps persisted in SQLite to survive restarts
+* **notify:** consolidated missed ping digest notifications ([#245](https://github.com/Starosdev/scrutiny/pull/245))
+  * Multiple missed devices batched into a single notification instead of one per device
+  * HTML email template for missed ping digest with device table
+* **notify:** HTML email support for SMTP notifications ([#245](https://github.com/Starosdev/scrutiny/pull/245))
+  * Reports and missed ping digests send rich HTML emails via SMTP
+  * Non-SMTP services (Discord, Slack, script, etc.) continue to receive plain text
+
+### Bug Fixes
+
+* **notify:** upgrade shoutrrr to v0.13.2 to fix SMTP zero-timeout bug ([397bb82](https://github.com/Starosdev/scrutiny/commit/397bb8238736ceec47e670d6b80128ea09a5ae55)), closes [#240](https://github.com/Starosdev/scrutiny/issues/240)
+* **notify:** fix concurrent map crash when report scheduler and missed ping monitor run simultaneously ([ca04372](https://github.com/Starosdev/scrutiny/commit/ca04372))
+* **notify:** fix HTML email rendering in shoutrrr SMTP by setting UseHTML in sender URL ([ca04372](https://github.com/Starosdev/scrutiny/commit/ca04372))
+* **collector:** auto-detect tmpfs mount points and fallback to direct device I/O for performance benchmarks ([5c45f78](https://github.com/Starosdev/scrutiny/commit/5c45f78))
+* **collector:** resolve NVMe controller to namespace block device for fio benchmarks ([f42517c](https://github.com/Starosdev/scrutiny/commit/f42517c))
+* **collector:** resolve gosec G115 integer overflow lint warning ([74f38a9](https://github.com/Starosdev/scrutiny/commit/74f38a9))
+* **collector:** correct block device detection and remove stale nolint directives ([bab9ded](https://github.com/Starosdev/scrutiny/commit/bab9ded))
+* **docker:** update Go base image to 1.25 to match go.mod ([e84fed8](https://github.com/Starosdev/scrutiny/commit/e84fed8))
+
+## [1.27.2](https://github.com/Starosdev/scrutiny/compare/v1.27.1...v1.27.2) (2026-02-18)
+
+### Bug Fixes
+
+* **zfs:** address Reddit user feedback - scrub parsing, resolver errors, dark theme, vdev spacing ([9253cdb](https://github.com/Starosdev/scrutiny/commit/9253cdb8163f0b3dfc609de8a850b32e7ce784d1)), closes [#212](https://github.com/Starosdev/scrutiny/issues/212)
+
+## [1.27.1](https://github.com/Starosdev/scrutiny/compare/v1.27.0...v1.27.1) (2026-02-18)
+
+### Bug Fixes
+
+* **ci:** use setup-go action in SonarQube workflow ([38b2dea](https://github.com/Starosdev/scrutiny/commit/38b2deacd5e01bc6776ce073249359fb0382a26d))
+
+## [1.27.0](https://github.com/Starosdev/scrutiny/compare/v1.26.0...v1.27.0) (2026-02-18)
+
+### Features
+
+* **ui:** add hint text for device status threshold setting ([5886a98](https://github.com/Starosdev/scrutiny/commit/5886a98caf06dfd7e2a981de355d29a1c82f017f))
+* **ui:** display collector version on dashboard and link version to repo ([95c6a55](https://github.com/Starosdev/scrutiny/commit/95c6a5588e43cbcb3122b78065bb593ec8a63634))
+* **ui:** display collector version on device detail page ([#176](https://github.com/Starosdev/scrutiny/issues/176)) ([a4be0df](https://github.com/Starosdev/scrutiny/commit/a4be0df8881453e51cca9c89a0e0f9d8d11cecab))
+
+### Bug Fixes
+
+* **ci:** replace packagr container with actions/setup-go for test-backend ([#211](https://github.com/Starosdev/scrutiny/issues/211)) ([73c4e19](https://github.com/Starosdev/scrutiny/commit/73c4e19f856893de67eb9ade4e6bd6a274a60d9b))
+* **smart:** correct data read/write display for Patriot Burst Elite SSD ([573a5bb](https://github.com/Starosdev/scrutiny/commit/573a5bb0c332fc9c7af28bf202582c693b97654d)), closes [#179](https://github.com/Starosdev/scrutiny/issues/179)
+* **smart:** correct temperature and data unit detection for Patriot Burst Elite ([d078058](https://github.com/Starosdev/scrutiny/commit/d0780580b744d26c8ebeca3c32a8037f88505b41)), closes [#179](https://github.com/Starosdev/scrutiny/issues/179)
+* **smart:** sort by time before selecting last seen timestamp ([8e9daac](https://github.com/Starosdev/scrutiny/commit/8e9daac9108c3d7ca762c0883adab68f2b758696)), closes [#181](https://github.com/Starosdev/scrutiny/issues/181)
+* **smart:** use per-attribute thresholds for devstat and fix blank raw_value display ([e3ef071](https://github.com/Starosdev/scrutiny/commit/e3ef07145aaf9a361007a1451405d2e4185df4e3)), closes [#215](https://github.com/Starosdev/scrutiny/issues/215)
+* **thresholds:** add observed thresholds for wear leveling count (attr 177) ([#203](https://github.com/Starosdev/scrutiny/issues/203)) ([2c8ddb1](https://github.com/Starosdev/scrutiny/commit/2c8ddb19220919f62840fc5d0c29459a6de0b169))
+* **ui:** version display clipped on mobile viewports ([eeb805e](https://github.com/Starosdev/scrutiny/commit/eeb805e57143e3e2526f18a1128ad7571fe82dac)), closes [#167](https://github.com/Starosdev/scrutiny/issues/167)
+
+## [1.26.0](https://github.com/Starosdev/scrutiny/compare/v1.25.0...v1.26.0) (2026-02-16)
+
+### Features
+
+* **frontend:** improve archived disk display with filter toggle and gray border ([#218](https://github.com/Starosdev/scrutiny/issues/218)) ([1338a20](https://github.com/Starosdev/scrutiny/commit/1338a204f1ffe46f31dcae672b1919283021c86c))
+* **smart:** add delta-based detection for cumulative counter attributes and inline override actions ([21efe55](https://github.com/Starosdev/scrutiny/commit/21efe5529f5986d2cdb725e9916184de12d75e63)), closes [#217](https://github.com/Starosdev/scrutiny/issues/217)
+
+## [1.25.0](https://github.com/Starosdev/scrutiny/compare/v1.24.5...v1.25.0) (2026-02-15)
+
+### Features
+
+* **frontend:** improve archived disk display with filter toggle and gray border ([#218](https://github.com/Starosdev/scrutiny/issues/218))  ([0eb08ff](https://github.com/Starosdev/scrutiny/commit/0eb08ff0c15f6c8a1f11ce886b028b68865ebfaf))
+
+## [1.24.5](https://github.com/Starosdev/scrutiny/compare/v1.24.4...v1.24.5) (2026-02-15)
+
+### Bug Fixes
+
+* **ci:** enhance release notes script to include PR body summaries ([7f8489f](https://github.com/Starosdev/scrutiny/commit/7f8489feb992b5ac24d879b89a0835c5d076ce78))
+
+## [1.24.4](https://github.com/Starosdev/scrutiny/compare/v1.24.3...v1.24.4) (2026-02-15)
+
+### Bug Fixes
+
+* **ci:** replace packagr container with actions/setup-go in release workflow ([#231](https://github.com/Starosdev/scrutiny/issues/231)) ([0a641d0](https://github.com/Starosdev/scrutiny/commit/0a641d01ded8c6203b46cfce0c06ad15635fe525)), closes [#227](https://github.com/Starosdev/scrutiny/issues/227)
+
+## [1.24.3](https://github.com/Starosdev/scrutiny/compare/v1.24.2...v1.24.3) (2026-02-15)
+
+### Bug Fixes
+
+* **collector:** skip write benchmarks when targeting raw block devices ([#230](https://github.com/Starosdev/scrutiny/issues/230)) ([8b48a02](https://github.com/Starosdev/scrutiny/commit/8b48a0272067e75097bbd12d5527b281c112a6fa)), closes [#226](https://github.com/Starosdev/scrutiny/issues/226)
+
+## [1.24.2](https://github.com/Starosdev/scrutiny/compare/v1.24.1...v1.24.2) (2026-02-15)
+
+### Bug Fixes
+
+* **dashboard:** fix temperature chart tooltip issues ([#222](https://github.com/Starosdev/scrutiny/issues/222)) ([#229](https://github.com/Starosdev/scrutiny/issues/229)) ([58abbcc](https://github.com/Starosdev/scrutiny/commit/58abbcc48874a77d50cc3d8f61887e87ac6872bf))
+
+## [1.24.1](https://github.com/Starosdev/scrutiny/compare/v1.24.0...v1.24.1) (2026-02-15)
+
+### Bug Fixes
+
+* **collector:** wire up allow_direct_device_io for performance benchmarks ([#219](https://github.com/Starosdev/scrutiny/issues/219)) ([#226](https://github.com/Starosdev/scrutiny/issues/226)) ([3a61f2c](https://github.com/Starosdev/scrutiny/commit/3a61f2cdd9e029100e059b34b2a1ec8b4eea46ba))
+
 ## [1.24.0](https://github.com/Starosdev/scrutiny/compare/v1.23.3...v1.24.0) (2026-02-14)
 
 ### Features

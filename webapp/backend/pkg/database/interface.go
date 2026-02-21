@@ -51,8 +51,11 @@ type DeviceRepo interface {
 	// GetPreviousSmartSubmission returns the previous raw SMART submission (without daily aggregation)
 	// for use in repeat notification detection. Returns the submission before the most recent one.
 	GetPreviousSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error)
+	// GetLatestSmartSubmission returns the most recent raw SMART submission (without daily aggregation)
+	// for use in delta evaluation before writing a new submission.
+	GetLatestSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error)
 
-	SaveSmartTemperature(ctx context.Context, wwn string, deviceProtocol string, collectorSmartData collector.SmartInfo, retrieveSCTTemperatureHistory bool) error
+	SaveSmartTemperature(ctx context.Context, wwn string, collectorSmartData *collector.SmartInfo, retrieveSCTTemperatureHistory bool) error
 
 	GetSummary(ctx context.Context) (map[string]*models.DeviceSummary, error)
 	GetSmartTemperatureHistory(ctx context.Context, durationKey string) (map[string][]measurements.SmartTemperature, error)
@@ -67,6 +70,13 @@ type DeviceRepo interface {
 
 	LoadSettings(ctx context.Context) (*models.Settings, error)
 	SaveSettings(ctx context.Context, settings models.Settings) error
+
+	// GetSettingValue retrieves a single setting value by key name.
+	// Returns the string representation of the value, or empty string if not found.
+	GetSettingValue(ctx context.Context, key string) (string, error)
+	// SetSettingValue sets a single setting value by key name.
+	// Creates the entry if it doesn't exist, updates it if it does.
+	SetSettingValue(ctx context.Context, key string, value string) error
 
 	// ZFS Pool operations
 	RegisterZFSPool(ctx context.Context, pool models.ZFSPool) error

@@ -1,37 +1,44 @@
+version: "2"
 run:
-  timeout: 5m
   modules-download-mode: vendor
-
 linters:
   enable:
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
     - gocritic
     - gosec
     - misspell
     - nolintlint
-
-linters-settings:
-  govet:
-    enable-all: true
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - performance
-  gosec:
-    excludes:
-      - G104
-
+  settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+    gosec:
+      excludes:
+        - G104
+    govet:
+      enable-all: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - .*_test\.go$
+      - .*/mock/.*\.go$
+      - vendor
+      - testdata
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-dirs:
-    - vendor
-    - testdata
-  exclude-files:
-    - ".*_test\\.go$"
-    - ".*/mock/.*\\.go$"
   max-issues-per-linter: 50
   max-same-issues: 5
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

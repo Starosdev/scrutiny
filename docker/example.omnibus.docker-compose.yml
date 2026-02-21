@@ -23,3 +23,6 @@ services:
     devices:
       - "/dev/sda"
       - "/dev/sdb"
+      # NVMe: pass both controller (for SMART) and namespace (for performance benchmarks)
+      # - "/dev/nvme0"
+      # - "/dev/nvme0n1"

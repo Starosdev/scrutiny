@@ -146,28 +146,7 @@ func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn s
 	sm.Date = time.Unix(info.LocalTime.TimeT, 0)
 
 	//smart metrics
-	sm.Temp = info.Temperature.Current
-	// For SCSI/SAS drives, if standard temperature field is 0, check scsi_environmental_reports
-	if sm.Temp == 0 && len(info.ScsiEnvironmentalReports) > 0 {
-		if temp, ok := info.ScsiEnvironmentalReports["temperature_1"]; ok {
-			sm.Temp = temp.Current
-		}
-	}
-	// For ATA drives, if standard temperature is unreasonable, check attribute 194 (Temperature)
-	// Covers: zero (not reported), negative (e.g., -53 from corrupted device statistics), or >150C
-	if (sm.Temp <= 0 || sm.Temp > 150) && info.Device.Protocol == pkg.DeviceProtocolAta {
-		for _, attr := range info.AtaSmartAttributes.Table {
-			if attr.ID == 194 && attr.Raw.Value > 0 {
-				// Apply same bit-mask as the Transform function (lowest byte contains temp in Celsius)
-				extractedTemp := attr.Raw.Value & 0xFF
-				// Sanity check: temperature should be reasonable (0-100C range)
-				if extractedTemp > 0 && extractedTemp < 100 {
-					sm.Temp = extractedTemp
-				}
-				break
-			}
-		}
-	}
+	sm.Temp = CorrectedTemperature(&info)
 	sm.PowerCycleCount = info.PowerCycleCount
 	sm.PowerOnHours = info.PowerOnTime.Hours
 	// Store logical block size from smartctl (default to 512 if not provided)
@@ -644,6 +623,78 @@ func (sm *Smart) processNvmeSmartInfoWithOverrides(cfg config.Interface, nvmeSma
 			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 		}
 	}
+}
+
+// ApplyDeltaEvaluation suppresses warnings/failures for cumulative counter attributes
+// (like UltraDMA CRC Error Count) when the value hasn't increased since the previous measurement.
+// This prevents false positives from historical errors that are no longer actively occurring.
+// previousValues maps attribute ID strings to their previous raw values.
+// Only applies to ATA attributes with UseDeltaEvaluation=true in their metadata.
+func (sm *Smart) ApplyDeltaEvaluation(previousValues map[string]int64) {
+	if sm.DeviceProtocol != pkg.DeviceProtocolAta || len(previousValues) == 0 {
+		return
+	}
+
+	deltaApplied := false
+
+	for _, attr := range sm.Attributes {
+		ataAttr, ok := attr.(*SmartAtaAttribute)
+		if !ok {
+			continue
+		}
+
+		metadata, ok := thresholds.AtaMetadata[ataAttr.AttributeId]
+		if !ok || !metadata.UseDeltaEvaluation {
+			continue
+		}
+
+		// Only suppress Scrutiny-evaluated warnings/failures, never manufacturer SMART failures
+		if pkg.AttributeStatusHas(ataAttr.Status, pkg.AttributeStatusFailedSmart) {
+			continue
+		}
+
+		// Only act on attributes that are currently warning or failing
+		if ataAttr.Status == pkg.AttributeStatusPassed {
+			continue
+		}
+
+		attrIdStr := strconv.Itoa(ataAttr.AttributeId)
+		prevValue, hasPrevious := previousValues[attrIdStr]
+		if !hasPrevious {
+			continue
+		}
+
+		// If the raw value hasn't changed, suppress the warning
+		if ataAttr.RawValue == prevValue {
+			ataAttr.Status = pkg.AttributeStatusPassed
+			ataAttr.StatusReason = "Cumulative counter unchanged since last measurement"
+			deltaApplied = true
+		}
+	}
+
+	// If we suppressed any attribute statuses, recalculate device status
+	if deltaApplied {
+		sm.recalculateDeviceStatus()
+	}
+}
+
+// recalculateDeviceStatus re-aggregates device status from individual attribute statuses.
+// Preserves manufacturer SMART failure status, only recalculates Scrutiny status.
+func (sm *Smart) recalculateDeviceStatus() {
+	// Preserve manufacturer SMART failure if set
+	newStatus := pkg.DeviceStatusPassed
+	if pkg.DeviceStatusHas(sm.Status, pkg.DeviceStatusFailedSmart) {
+		newStatus = pkg.DeviceStatusSet(newStatus, pkg.DeviceStatusFailedSmart)
+	}
+
+	for _, attr := range sm.Attributes {
+		if pkg.AttributeStatusHas(attr.GetStatus(), pkg.AttributeStatusFailedScrutiny) {
+			newStatus = pkg.DeviceStatusSet(newStatus, pkg.DeviceStatusFailedScrutiny)
+			break
+		}
+	}
+
+	sm.Status = newStatus
 }
 
 // processScsiSmartInfoWithOverrides generates SmartScsiAttribute entries using pre-merged overrides.

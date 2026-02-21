@@ -52,14 +52,14 @@ export class ZFSPoolCardComponent implements OnInit {
     getStatusColorClass(status: ZFSPoolStatus): string {
         switch (status) {
             case 'ONLINE':
-                return 'text-green';
+                return 'text-green-600 dark:text-green-400';
             case 'DEGRADED':
-                return 'text-yellow';
+                return 'text-yellow-600 dark:text-yellow-400';
             case 'FAULTED':
             case 'UNAVAIL':
             case 'OFFLINE':
             case 'REMOVED':
-                return 'text-red';
+                return 'text-red-600 dark:text-red-400';
             default:
                 return '';
         }
@@ -68,14 +68,14 @@ export class ZFSPoolCardComponent implements OnInit {
     classPoolLastUpdatedOn(pool: ZFSPoolModel): string {
         const poolStatus = this.getPoolStatus(pool);
         if (poolStatus === 'failed') {
-            return 'text-red';
+            return 'text-red-600 dark:text-red-400';
         } else if (poolStatus === 'passed') {
             if (dayjs().subtract(14, 'day').isBefore(dayjs(pool.updated_at))) {
-                return 'text-green';
+                return 'text-green-600 dark:text-green-400';
             } else if (dayjs().subtract(1, 'month').isBefore(dayjs(pool.updated_at))) {
-                return 'text-yellow';
+                return 'text-yellow-600 dark:text-yellow-400';
             } else {
-                return 'text-red';
+                return 'text-red-600 dark:text-red-400';
             }
         } else {
             return '';
@@ -105,8 +105,13 @@ export class ZFSPoolCardComponent implements OnInit {
                 return 'Never';
             case 'scanning':
                 return `In Progress (${pool.scrub_percent_complete}%)`;
-            case 'finished':
-                return dayjs(pool.scrub_end_time).fromNow();
+            case 'finished': {
+                const timeAgo = dayjs(pool.scrub_end_time).fromNow();
+                if (pool.scrub_issued_bytes > 0) {
+                    return `${timeAgo} (repaired)`;
+                }
+                return timeAgo;
+            }
             case 'canceled':
                 return 'Canceled';
             default:

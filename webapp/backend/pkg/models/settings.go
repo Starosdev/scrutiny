@@ -35,5 +35,18 @@ type Settings struct {
 		// Heartbeat notification settings
 		HeartbeatEnabled       bool `json:"heartbeat_enabled" mapstructure:"heartbeat_enabled"`
 		HeartbeatIntervalHours int  `json:"heartbeat_interval_hours" mapstructure:"heartbeat_interval_hours"`
+
+		// Scheduled report settings
+		ReportEnabled        bool   `json:"report_enabled" mapstructure:"report_enabled"`
+		ReportDailyEnabled   bool   `json:"report_daily_enabled" mapstructure:"report_daily_enabled"`
+		ReportDailyTime      string `json:"report_daily_time" mapstructure:"report_daily_time"`
+		ReportWeeklyEnabled  bool   `json:"report_weekly_enabled" mapstructure:"report_weekly_enabled"`
+		ReportWeeklyDay      int    `json:"report_weekly_day" mapstructure:"report_weekly_day"`
+		ReportWeeklyTime     string `json:"report_weekly_time" mapstructure:"report_weekly_time"`
+		ReportMonthlyEnabled bool   `json:"report_monthly_enabled" mapstructure:"report_monthly_enabled"`
+		ReportMonthlyDay     int    `json:"report_monthly_day" mapstructure:"report_monthly_day"`
+		ReportMonthlyTime    string `json:"report_monthly_time" mapstructure:"report_monthly_time"`
+		ReportPDFEnabled     bool   `json:"report_pdf_enabled" mapstructure:"report_pdf_enabled"`
+		ReportPDFPath        string `json:"report_pdf_path" mapstructure:"report_pdf_path"`
 	} `json:"metrics" mapstructure:"metrics"`
 }
