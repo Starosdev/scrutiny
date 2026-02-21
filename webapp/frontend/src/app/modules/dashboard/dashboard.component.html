@@ -81,7 +81,7 @@
 
         <!-- Device Groups -->
         @for (hostId of hostGroups | keyvalue; track hostId) {
-          <div class="flex flex-wrap w-full">
+          <div class="flex flex-wrap w-full mb-6">
             @if (hostId.key) {
               <div class="flex items-center ml-4 gap-3">
                 <h3 class="m-0">{{ hostId.key }}</h3>
