@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.29.2](https://github.com/Starosdev/scrutiny/compare/v1.29.1...v1.29.2) (2026-02-21)
+
+### Bug Fixes
+
+* **db:** use map-based GORM update to reset device status to zero ([31dfd4a](https://github.com/Starosdev/scrutiny/commit/31dfd4a5fca49bc30b40621f761fcb9404bda15d)), closes [#262](https://github.com/Starosdev/scrutiny/issues/262)
+
 ## [1.29.1](https://github.com/Starosdev/scrutiny/compare/v1.29.0...v1.29.1) (2026-02-21)
 
 ### Bug Fixes
