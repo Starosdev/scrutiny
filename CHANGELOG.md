@@ -6,12 +6,23 @@ All notable changes to Scrutiny will be documented in this file.
 
 ### Features
 
-* **workload:** add workload insights page with daily rates, intensity, endurance, and spike detection ([#259](https://github.com/Starosdev/scrutiny/issues/259))
+* **workload:** add Workload Insights page for visualizing drive activity patterns ([#259](https://github.com/Starosdev/scrutiny/issues/259))
+  * New `/workload` page accessible from top navigation bar
+  * Computes daily read/write rates from existing S.M.A.R.T attribute history (no collector changes needed)
+  * I/O intensity classification: idle (<1 GB/day), light (1-20 GB), medium (20-100 GB), heavy (>100 GB)
+  * SSD endurance tracking with percentage used and estimated remaining lifespan
+  * Activity spike detection alerts when recent write rates exceed 3x the baseline
+  * R/W ratio display with human-readable labels (Read-only, Write-only, capped extreme values)
+  * Duration selector (Day, Week, Month, Year, All) for adjusting the analysis window
+  * Sortable table with click-through to device detail pages
+  * Supports ATA (attrs 241/242, DeviceStats) and NVMe (Data Units Written/Read) cumulative counters
+* **api:** add `GET /api/summary/workload` endpoint with `duration_key` query parameter
 
 ### Bug Fixes
 
 * **workload:** filter zero-filled InfluxDB entries from downsampled buckets to prevent inflated rate calculations
 * **workload:** improve R/W ratio display with human-readable labels (Read-only, Write-only, capped ratios)
+* **workload:** resolve golangci-lint errors (field alignment, range copy, format verbs, comment spacing)
 
 ## [1.29.2](https://github.com/Starosdev/scrutiny/compare/v1.29.1...v1.29.2) (2026-02-21)
 
