@@ -111,6 +111,26 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
         return 'primary';
     }
 
+    formatRatio(row: WorkloadInsightModel): string {
+        if (row.daily_write_bytes <= 0 && row.daily_read_bytes <= 0) {
+            return '-';
+        }
+        if (row.daily_write_bytes <= 0 && row.daily_read_bytes > 0) {
+            return 'Read-only';
+        }
+        if (row.daily_read_bytes <= 0 && row.daily_write_bytes > 0) {
+            return 'Write-only';
+        }
+        const ratio = row.read_write_ratio;
+        if (ratio > 1000) {
+            return '> 1000:1';
+        }
+        if (ratio < 0.001) {
+            return '< 0.001:1';
+        }
+        return `${ratio.toFixed(1)}:1`;
+    }
+
     formatDays(days: number): string {
         if (!days || days <= 0) return '-';
         if (days >= 365) {

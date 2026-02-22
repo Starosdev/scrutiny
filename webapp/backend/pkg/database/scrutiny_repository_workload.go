@@ -305,6 +305,19 @@ func (sr *scrutinyRepository) buildWorkloadFirstLastQuery(durationKey string) st
 	partialQueryStr = append(partialQueryStr, []string{
 		fmt.Sprintf(`combined = %s`, combinedExpr),
 		`|> schema.fieldsAsCols()`,
+		// Filter out rows where all counter fields are null or zero.
+		// Downsampled buckets can contain entries with zero-filled or missing counter
+		// fields (e.g. from before a device started reporting a particular attribute).
+		// Using such a row as the "first" point makes the delta equal to the device's
+		// entire lifetime of cumulative writes, grossly inflating daily rates.
+		`|> filter(fn: (r) =>`,
+		`    (exists r["attr.241.raw_value"] and r["attr.241.raw_value"] > 0) or`,
+		`    (exists r["attr.242.raw_value"] and r["attr.242.raw_value"] > 0) or`,
+		`    (exists r["attr.devstat_1_24.value"] and r["attr.devstat_1_24.value"] > 0) or`,
+		`    (exists r["attr.devstat_1_40.value"] and r["attr.devstat_1_40.value"] > 0) or`,
+		`    (exists r["attr.data_units_written.value"] and r["attr.data_units_written.value"] > 0) or`,
+		`    (exists r["attr.data_units_read.value"] and r["attr.data_units_read.value"] > 0)`,
+		`)`,
 		`|> group(columns: ["device_wwn"])`,
 		``,
 		`combined`,

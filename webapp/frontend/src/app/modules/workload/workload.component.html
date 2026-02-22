@@ -89,11 +89,9 @@
               <ng-container matColumnDef="rw_ratio">
                 <th mat-header-cell *matHeaderCellDef mat-sort-header>R/W Ratio</th>
                 <td mat-cell *matCellDef="let row">
-                  @if (row.read_write_ratio > 0) {
-                    {{ row.read_write_ratio | number:'1.1-1' }}:1
-                  } @else {
-                    <span class="text-gray-400">-</span>
-                  }
+                  <span [class.text-gray-400]="row.daily_write_bytes <= 0 && row.daily_read_bytes <= 0">
+                    {{ formatRatio(row) }}
+                  </span>
                 </td>
               </ng-container>
 
