@@ -2,6 +2,17 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.30.0](https://github.com/Starosdev/scrutiny/compare/v1.29.2...v1.30.0) (2026-02-22)
+
+### Features
+
+* **workload:** add workload insights page with activity detection ([#259](https://github.com/Starosdev/scrutiny/issues/259)) ([2eb6405](https://github.com/Starosdev/scrutiny/commit/2eb64057ff71f5a8cf28bf93205c55e8970960b1))
+
+### Bug Fixes
+
+* **workload:** filter zero-filled InfluxDB entries and improve R/W ratio display ([df4f703](https://github.com/Starosdev/scrutiny/commit/df4f7039f99a8aa03cd9da340aa9602982a3f07a))
+* **workload:** resolve golangci-lint errors ([f6eb352](https://github.com/Starosdev/scrutiny/commit/f6eb3529fac6317dca9ba5ae577dda9a092bd4ab))
+
 ## [1.30.0](https://github.com/Starosdev/scrutiny/compare/v1.29.2...v1.30.0) (2026-02-21)
 
 ### Features
