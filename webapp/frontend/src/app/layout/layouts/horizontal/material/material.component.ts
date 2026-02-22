@@ -4,6 +4,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { TreoMediaWatcherService } from '@treo/services/media-watcher';
 import { TreoNavigationService } from '@treo/components/navigation';
+import { AuthService } from 'app/core/auth/auth.service';
 import {versionInfo} from 'environments/versions';
 
 @Component({
@@ -16,6 +17,7 @@ import {versionInfo} from 'environments/versions';
 export class MaterialLayoutComponent implements OnInit, OnDestroy
 {
     appVersion: string;
+    authEnabled: boolean = false;
     data: any;
     isScreenSmall: boolean;
 
@@ -38,6 +40,7 @@ export class MaterialLayoutComponent implements OnInit, OnDestroy
      */
     constructor(
         private _activatedRoute: ActivatedRoute,
+        private _authService: AuthService,
         private _treoMediaWatcherService: TreoMediaWatcherService,
         private _treoNavigationService: TreoNavigationService,
         private _router: Router
@@ -79,6 +82,13 @@ export class MaterialLayoutComponent implements OnInit, OnDestroy
             this.data = data.initialData;
         });
 
+        // Subscribe to auth state
+        this._authService.authEnabled$
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(enabled => {
+                this.authEnabled = enabled;
+            });
+
         // Subscribe to media changes
         this._treoMediaWatcherService.onMediaChange$
             .pipe(takeUntil(this._unsubscribeAll))
@@ -118,5 +128,10 @@ export class MaterialLayoutComponent implements OnInit, OnDestroy
             // Toggle the opened status
             navigation.toggle();
         }
+    }
+
+    logout(): void
+    {
+        this._authService.logout();
     }
 }

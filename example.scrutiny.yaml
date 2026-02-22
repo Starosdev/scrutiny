@@ -119,6 +119,8 @@ web:
   #   web.auth.token            -> SCRUTINY_WEB_AUTH_TOKEN
   #   web.auth.jwt_secret       -> SCRUTINY_WEB_AUTH_JWT_SECRET
   #   web.auth.jwt_expiry_hours -> SCRUTINY_WEB_AUTH_JWT_EXPIRY_HOURS
+  #   web.auth.admin_username   -> SCRUTINY_WEB_AUTH_ADMIN_USERNAME
+  #   web.auth.admin_password   -> SCRUTINY_WEB_AUTH_ADMIN_PASSWORD
   auth:
     # Enable API authentication (default: false, all endpoints open)
     # enabled: false
@@ -135,6 +137,12 @@ web:
 
     # JWT token expiry in hours (default: 24)
     # jwt_expiry_hours: 24
+
+    # Admin credentials for password-based web UI login (optional).
+    # When admin_password is set, users can log in with username/password
+    # in addition to the API token. Token login is always available.
+    # admin_username: 'admin'
+    # admin_password: 'your-admin-password-here'
 
   # Prometheus metrics endpoint configuration
   metrics:

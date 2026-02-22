@@ -84,6 +84,11 @@ func (c *configuration) Init() error {
 	c.SetDefault("web.auth.token", "")
 	c.SetDefault("web.auth.jwt_secret", "")
 	c.SetDefault("web.auth.jwt_expiry_hours", 24)
+	// Admin credentials for password-based login (optional).
+	// Token login (web.auth.token) is always available when auth is enabled.
+	// Password login is only available when admin_password is set.
+	c.SetDefault("web.auth.admin_username", "admin")
+	c.SetDefault("web.auth.admin_password", "")
 
 	//c.SetDefault("disks.include", []string{})
 	//c.SetDefault("disks.exclude", []string{})

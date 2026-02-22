@@ -1,9 +1,16 @@
 import { NgModule, Optional, SkipSelf } from '@angular/core';
-import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { DomSanitizer } from '@angular/platform-browser';
 import { MatIconRegistry } from '@angular/material/icon';
+import { AuthInterceptor } from 'app/core/auth/auth.interceptor';
 
-@NgModule({ imports: [], providers: [provideHttpClient(withInterceptorsFromDi())] })
+@NgModule({
+    imports: [],
+    providers: [
+        provideHttpClient(withInterceptorsFromDi()),
+        { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true }
+    ]
+})
 export class CoreModule
 {
     /**
