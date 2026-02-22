@@ -41,3 +41,11 @@ After 5 years, here's how may data points should exist in each bucket for one di
 | `metrics_monthly` | - |
 | `metrics_yearly` | - |
 
+## Workload Insights and Downsampled Data
+
+The Workload Insights page (`/api/summary/workload`) computes daily read/write rates by querying cumulative SMART counters (e.g., Total LBAs Written, Data Units Written) across multiple buckets. It uses the same multi-bucket union query pattern as temperature history, selecting the first and last data points in the requested time range.
+
+All SMART fields use `fn: last` in downsampling tasks, which means cumulative counters are preserved correctly -- the last value before each aggregation window is retained.
+
+**Zero-filled entry filtering:** Downsampled buckets can contain entries where cumulative counter fields are null or zero (e.g., from before a device started reporting a particular attribute). The workload query filters these out to prevent using a zero-valued "first" point, which would make the delta equal to the device's entire lifetime of writes and grossly inflate daily rate calculations.
+

@@ -2,6 +2,17 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.30.0](https://github.com/Starosdev/scrutiny/compare/v1.29.2...v1.30.0) (2026-02-21)
+
+### Features
+
+* **workload:** add workload insights page with daily rates, intensity, endurance, and spike detection ([#259](https://github.com/Starosdev/scrutiny/issues/259))
+
+### Bug Fixes
+
+* **workload:** filter zero-filled InfluxDB entries from downsampled buckets to prevent inflated rate calculations
+* **workload:** improve R/W ratio display with human-readable labels (Read-only, Write-only, capped ratios)
+
 ## [1.29.2](https://github.com/Starosdev/scrutiny/compare/v1.29.1...v1.29.2) (2026-02-21)
 
 ### Bug Fixes

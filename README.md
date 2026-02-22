@@ -48,6 +48,7 @@ Full credit for the original vision and architecture goes to [AnalogJ](https://g
 - **Missed Ping Digest** - Consolidated notification when multiple collectors miss pings (instead of one email per device)
 - **HTML Email Notifications** - Rich HTML emails for reports and missed ping alerts via SMTP
 - **Enhanced Seagate Drive Support** - Better timeout handling for Seagate drives
+- **Workload Insights** - Visualize daily read/write rates, I/O intensity, SSD endurance, and activity spike detection
 - **SHA256 Checksums** - Verify release binary integrity
 
 # Introduction
@@ -93,6 +94,7 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Scheduled Reports** [WIP] - Automated health reports on daily/weekly/monthly schedules with HTML emails and PDF export
 - **Missed Ping Digest** - Batch notification when multiple collectors go unreachable
 - **HTML Email Notifications** - Rich HTML formatting for SMTP notifications (reports and missed pings)
+- **Workload Insights** - Daily read/write rates, R/W ratio, I/O intensity classification, SSD endurance tracking, and activity spike detection
 - **Heartbeat Notifications** - Periodic "all clear" alerts for uptime monitoring integration
 
 # Migration from AnalogJ/scrutiny
@@ -283,6 +285,39 @@ Performance data appears on the device detail page when benchmark results are av
 - **Latency chart** -- read latency (average, P95, P99) over time
 
 Use the duration selector to view day, week, month, or year ranges.
+
+## Workload Insights
+
+Scrutiny computes drive workload statistics from existing S.M.A.R.T attribute history. No additional collector configuration is required -- once at least two data points exist for a device, workload insights are available.
+
+### What's Computed
+
+| Metric | Description |
+| ------ | ----------- |
+| Daily Writes / Reads | Average bytes written/read per day over the selected duration |
+| R/W Ratio | Ratio of read to write volume (e.g., 2.0:1 means 2x more reads than writes) |
+| Intensity | Workload classification: idle, light, medium, or heavy based on total daily I/O |
+| SSD Endurance | Percentage of rated lifespan used (SSDs only, from wear-leveling attributes) |
+| Est. Remaining | Projected remaining lifespan in days/years based on current usage rate |
+| Activity Spike | Alert when recent write activity exceeds 3x the baseline average |
+
+### Computation Details
+
+1. Scrutiny queries cumulative SMART counters (Total LBAs Written/Read for ATA, Data Units Written/Read for NVMe) from InfluxDB
+2. The delta between the first and last data points in the selected time range is used to compute daily rates
+3. Intensity is classified by total daily I/O: idle (<1 GB/day), light (1-20 GB), medium (20-100 GB), heavy (>100 GB)
+4. SSD endurance is estimated from wear-leveling or percentage-used SMART attributes combined with power-on hours
+5. Spike detection compares the most recent daily rate against the long-term baseline
+
+### Supported Protocols
+
+- **ATA**: Uses SMART attributes 241/242 (Total LBAs Written/Read) or DeviceStats 1.24/1.40 (Logical Sectors Written/Read)
+- **NVMe**: Uses Data Units Written/Read counters
+- **SCSI**: Limited support (cumulative byte counters are not stored as SMART attributes)
+
+### Viewing Workload Data
+
+Navigate to the **Workload** page from the top navigation bar. Use the duration selector (Day, Week, Month, Year, All) to adjust the analysis window. Click any row to navigate to the device detail page.
 
 ## Notifications
 
