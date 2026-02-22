@@ -44,6 +44,7 @@ func (c *configuration) Init() error {
 
 	c.SetDefault("api.endpoint", "http://localhost:8080")
 	c.SetDefault("api.timeout", 60)
+	c.SetDefault("api.token", "")
 
 	c.SetDefault("commands.metrics_smartctl_bin", "smartctl")
 	c.SetDefault("commands.metrics_scan_args", "--scan --json")
@@ -220,4 +221,8 @@ func (c *configuration) IsAllowlistedDevice(deviceName string) bool {
 
 func (c *configuration) GetAPITimeout() int {
 	return c.GetInt("api.timeout")
+}
+
+func (c *configuration) GetAPIToken() string {
+	return c.GetString("api.token")
 }

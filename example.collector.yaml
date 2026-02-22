@@ -24,6 +24,7 @@
 #   commands.metrics_smartctl_wait -> COLLECTOR_COMMANDS_METRICS_SMARTCTL_WAIT
 #   api.endpoint                  -> COLLECTOR_API_ENDPOINT
 #   api.timeout                   -> COLLECTOR_API_TIMEOUT
+#   api.token                     -> COLLECTOR_API_TOKEN
 #   host.id                       -> COLLECTOR_HOST_ID
 #   allow_listed_devices          -> COLLECTOR_ALLOW_LISTED_DEVICES
 #   log.level                     -> COLLECTOR_LOG_LEVEL
@@ -103,6 +104,10 @@ devices:
 # if you need to use a custom base path (for a reverse proxy), you can add a suffix to the endpoint.
 #  See docs/TROUBLESHOOTING_REVERSE_PROXY.md for more info,
 #  timeout: 60 # HTTP timeout in seconds for API requests (default: 60)
+#  token: ''   # API token for authenticating with the Scrutiny server.
+               # Required when web.auth.enabled is true on the server.
+               # Must match the web.auth.token value in scrutiny.yaml.
+               # Environment variable: COLLECTOR_API_TOKEN
 
 # example to show how to override the smartctl command args globally
 #commands:

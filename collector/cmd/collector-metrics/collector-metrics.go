@@ -134,6 +134,10 @@ OPTIONS:
 						config.Set("api.endpoint", apiEndpoint)
 					}
 
+					if c.IsSet("api-token") {
+						config.Set("api.token", c.String("api-token"))
+					}
+
 					collectorLogger, logFile, err := CreateLogger(config)
 					if logFile != nil {
 						defer logFile.Close()
@@ -186,6 +190,12 @@ OPTIONS:
 						Usage:   "Host identifier/label, used for grouping devices",
 						Value:   "",
 						EnvVars: []string{"COLLECTOR_HOST_ID"},
+					},
+
+					&cli.StringFlag{
+						Name:    "api-token",
+						Usage:   "API token for authenticating with the Scrutiny server",
+						EnvVars: []string{"COLLECTOR_API_TOKEN"},
 					},
 				},
 			},
