@@ -17,10 +17,15 @@ import (
 
 const testAPIToken = "test-secret-api-token"
 const testJWTSecret = "test-jwt-secret-for-signing"
+const testMetricsToken = "test-metrics-scrape-token"
+const pathSummary = "/api/summary"
+const pathMetrics = "/api/metrics"
+const pathHealth = "/api/health"
+const bearerPrefix = "Bearer "
 
 // setupRouter creates a test gin router with the auth middleware and a simple
 // protected handler that returns 200 on success.
-func setupRouter(t *testing.T, authEnabled bool, apiToken string, jwtSecret string) *gin.Engine {
+func setupRouter(t *testing.T, authEnabled bool, apiToken string, jwtSecret string, metricsToken string) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
 	mockCtrl := gomock.NewController(t)
@@ -31,6 +36,7 @@ func setupRouter(t *testing.T, authEnabled bool, apiToken string, jwtSecret stri
 	fakeConfig.EXPECT().GetString("web.auth.token").Return(apiToken).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return(jwtSecret).AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.metrics.token").Return(metricsToken).AnyTimes()
 
 	logger := logrus.WithField("test", t.Name())
 
@@ -38,15 +44,20 @@ func setupRouter(t *testing.T, authEnabled bool, apiToken string, jwtSecret stri
 	r.Use(middleware.AuthMiddleware(fakeConfig, logger))
 
 	// Protected endpoint used by most tests
-	r.GET("/api/summary", func(c *gin.Context) {
+	r.GET(pathSummary, func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"success": true})
+	})
+
+	// Metrics endpoint
+	r.GET(pathMetrics, func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": true})
 	})
 
 	// Public endpoints
-	r.GET("/api/health", func(c *gin.Context) {
+	r.GET(pathHealth, func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": true})
 	})
-	r.HEAD("/api/health", func(c *gin.Context) {
+	r.HEAD(pathHealth, func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	})
 	r.GET("/api/auth/status", func(c *gin.Context) {
@@ -59,32 +70,23 @@ func setupRouter(t *testing.T, authEnabled bool, apiToken string, jwtSecret stri
 	return r
 }
 
+// --- Phase 1: General auth tests ---
+
 func TestAuthMiddleware_AuthDisabled_AllRequestsPass(t *testing.T) {
-	router := setupRouter(t, false, "", "")
+	router := setupRouter(t, false, "", "", "")
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/summary", nil)
-	router.ServeHTTP(w, req)
-
-	require.Equal(t, http.StatusOK, w.Code)
-}
-
-func TestAuthMiddleware_AuthDisabled_NoTokenRequired(t *testing.T) {
-	router := setupRouter(t, false, "", "")
-
-	// No Authorization header at all -- should still pass
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/summary", nil)
+	req, _ := http.NewRequest("GET", pathSummary, nil)
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestAuthMiddleware_AuthEnabled_NoToken_Returns401(t *testing.T) {
-	router := setupRouter(t, true, testAPIToken, testJWTSecret)
+	router := setupRouter(t, true, testAPIToken, testJWTSecret, "")
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/summary", nil)
+	req, _ := http.NewRequest("GET", pathSummary, nil)
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusUnauthorized, w.Code)
@@ -97,22 +99,22 @@ func TestAuthMiddleware_AuthEnabled_NoToken_Returns401(t *testing.T) {
 }
 
 func TestAuthMiddleware_AuthEnabled_ValidAPIToken_Returns200(t *testing.T) {
-	router := setupRouter(t, true, testAPIToken, testJWTSecret)
+	router := setupRouter(t, true, testAPIToken, testJWTSecret, "")
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/summary", nil)
-	req.Header.Set("Authorization", "Bearer "+testAPIToken)
+	req, _ := http.NewRequest("GET", pathSummary, nil)
+	req.Header.Set("Authorization", bearerPrefix+testAPIToken)
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestAuthMiddleware_AuthEnabled_InvalidToken_Returns401(t *testing.T) {
-	router := setupRouter(t, true, testAPIToken, testJWTSecret)
+	router := setupRouter(t, true, testAPIToken, testJWTSecret, "")
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/summary", nil)
-	req.Header.Set("Authorization", "Bearer wrong-token")
+	req, _ := http.NewRequest("GET", pathSummary, nil)
+	req.Header.Set("Authorization", bearerPrefix+"wrong-token")
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusUnauthorized, w.Code)
@@ -125,45 +127,45 @@ func TestAuthMiddleware_AuthEnabled_InvalidToken_Returns401(t *testing.T) {
 }
 
 func TestAuthMiddleware_AuthEnabled_ValidJWT_Returns200(t *testing.T) {
-	router := setupRouter(t, true, testAPIToken, testJWTSecret)
+	router := setupRouter(t, true, testAPIToken, testJWTSecret, "")
 
 	// Generate a valid JWT using the same secret
 	jwtToken, _, err := auth.GenerateJWT(testJWTSecret, 24)
 	require.NoError(t, err)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/summary", nil)
-	req.Header.Set("Authorization", "Bearer "+jwtToken)
+	req, _ := http.NewRequest("GET", pathSummary, nil)
+	req.Header.Set("Authorization", bearerPrefix+jwtToken)
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestAuthMiddleware_AuthEnabled_ExpiredJWT_Returns401(t *testing.T) {
-	router := setupRouter(t, true, testAPIToken, testJWTSecret)
+	router := setupRouter(t, true, testAPIToken, testJWTSecret, "")
 
 	// Generate a JWT with 0 hours expiry (already expired)
 	jwtToken, _, err := auth.GenerateJWT(testJWTSecret, 0)
 	require.NoError(t, err)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/summary", nil)
-	req.Header.Set("Authorization", "Bearer "+jwtToken)
+	req, _ := http.NewRequest("GET", pathSummary, nil)
+	req.Header.Set("Authorization", bearerPrefix+jwtToken)
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestAuthMiddleware_AuthEnabled_WrongSecretJWT_Returns401(t *testing.T) {
-	router := setupRouter(t, true, testAPIToken, testJWTSecret)
+	router := setupRouter(t, true, testAPIToken, testJWTSecret, "")
 
 	// Generate a JWT signed with a different secret
 	jwtToken, _, err := auth.GenerateJWT("different-secret", 24)
 	require.NoError(t, err)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/summary", nil)
-	req.Header.Set("Authorization", "Bearer "+jwtToken)
+	req, _ := http.NewRequest("GET", pathSummary, nil)
+	req.Header.Set("Authorization", bearerPrefix+jwtToken)
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusUnauthorized, w.Code)
@@ -172,27 +174,27 @@ func TestAuthMiddleware_AuthEnabled_WrongSecretJWT_Returns401(t *testing.T) {
 // Public route tests: these should be accessible without any token even when auth is enabled.
 
 func TestAuthMiddleware_AuthEnabled_PublicRoute_Health(t *testing.T) {
-	router := setupRouter(t, true, testAPIToken, testJWTSecret)
+	router := setupRouter(t, true, testAPIToken, testJWTSecret, "")
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/health", nil)
+	req, _ := http.NewRequest("GET", pathHealth, nil)
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestAuthMiddleware_AuthEnabled_PublicRoute_HealthHEAD(t *testing.T) {
-	router := setupRouter(t, true, testAPIToken, testJWTSecret)
+	router := setupRouter(t, true, testAPIToken, testJWTSecret, "")
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("HEAD", "/api/health", nil)
+	req, _ := http.NewRequest("HEAD", pathHealth, nil)
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestAuthMiddleware_AuthEnabled_PublicRoute_AuthStatus(t *testing.T) {
-	router := setupRouter(t, true, testAPIToken, testJWTSecret)
+	router := setupRouter(t, true, testAPIToken, testJWTSecret, "")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/auth/status", nil)
@@ -202,7 +204,7 @@ func TestAuthMiddleware_AuthEnabled_PublicRoute_AuthStatus(t *testing.T) {
 }
 
 func TestAuthMiddleware_AuthEnabled_PublicRoute_AuthLogin(t *testing.T) {
-	router := setupRouter(t, true, testAPIToken, testJWTSecret)
+	router := setupRouter(t, true, testAPIToken, testJWTSecret, "")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/api/auth/login", nil)
@@ -223,6 +225,7 @@ func TestAuthMiddleware_AuthEnabled_PublicRoute_WithBasepath(t *testing.T) {
 	fakeConfig.EXPECT().GetString("web.auth.token").Return(testAPIToken).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return(testJWTSecret).AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.metrics.token").Return("").AnyTimes()
 
 	logger := logrus.WithField("test", t.Name())
 
@@ -231,7 +234,7 @@ func TestAuthMiddleware_AuthEnabled_PublicRoute_WithBasepath(t *testing.T) {
 
 	// Simulate a basepath-prefixed route
 	base := r.Group("/scrutiny")
-	base.GET("/api/health", func(c *gin.Context) {
+	base.GET(pathHealth, func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": true})
 	})
 
@@ -243,12 +246,100 @@ func TestAuthMiddleware_AuthEnabled_PublicRoute_WithBasepath(t *testing.T) {
 }
 
 func TestAuthMiddleware_MalformedAuthHeader_Returns401(t *testing.T) {
-	router := setupRouter(t, true, testAPIToken, testJWTSecret)
+	router := setupRouter(t, true, testAPIToken, testJWTSecret, "")
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/summary", nil)
+	req, _ := http.NewRequest("GET", pathSummary, nil)
 	req.Header.Set("Authorization", "NotBearer some-token")
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+// --- Phase 2: Metrics token tests ---
+
+func TestAuthMiddleware_MetricsToken_NotSet_MetricsOpen(t *testing.T) {
+	// Auth disabled, no metrics token: metrics endpoint is open
+	router := setupRouter(t, false, "", "", "")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", pathMetrics, nil)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestAuthMiddleware_MetricsToken_Set_RequiresToken(t *testing.T) {
+	// Auth disabled, metrics token set: 401 without token
+	router := setupRouter(t, false, "", "", testMetricsToken)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", pathMetrics, nil)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusUnauthorized, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+	require.Contains(t, response["error"], "Metrics endpoint requires authentication")
+}
+
+func TestAuthMiddleware_MetricsToken_Set_ValidToken_Returns200(t *testing.T) {
+	// Auth disabled, metrics token set: 200 with correct token
+	router := setupRouter(t, false, "", "", testMetricsToken)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", pathMetrics, nil)
+	req.Header.Set("Authorization", bearerPrefix+testMetricsToken)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestAuthMiddleware_MetricsToken_Set_InvalidToken_Returns401(t *testing.T) {
+	// Auth disabled, metrics token set: 401 with wrong token
+	router := setupRouter(t, false, "", "", testMetricsToken)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", pathMetrics, nil)
+	req.Header.Set("Authorization", bearerPrefix+"wrong-metrics-token")
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestAuthMiddleware_MetricsToken_WithPhase1Auth_MetricsTokenAccepted(t *testing.T) {
+	// Both auth enabled and metrics token set: metrics token grants access to /api/metrics
+	router := setupRouter(t, true, testAPIToken, testJWTSecret, testMetricsToken)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", pathMetrics, nil)
+	req.Header.Set("Authorization", bearerPrefix+testMetricsToken)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestAuthMiddleware_MetricsToken_WithPhase1Auth_APITokenStillWorks(t *testing.T) {
+	// Both auth enabled and metrics token set: Phase 1 API token still works for /api/metrics
+	router := setupRouter(t, true, testAPIToken, testJWTSecret, testMetricsToken)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", pathMetrics, nil)
+	req.Header.Set("Authorization", bearerPrefix+testAPIToken)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestAuthMiddleware_MetricsToken_OnlyAffectsMetrics(t *testing.T) {
+	// Auth disabled, metrics token set: other endpoints remain open
+	router := setupRouter(t, false, "", "", testMetricsToken)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", pathSummary, nil)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code, "non-metrics endpoints should not require metrics token")
 }

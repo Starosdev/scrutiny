@@ -72,6 +72,9 @@ func (c *configuration) Init() error {
 
 	// Metrics settings
 	c.SetDefault("web.metrics.enabled", true)
+	// Optional bearer token for securing the Prometheus /api/metrics endpoint independently.
+	// When empty (default), the endpoint is open (or protected by web.auth if enabled).
+	c.SetDefault("web.metrics.token", "")
 
 	// Authentication settings
 	// Auth is disabled by default for backward compatibility with existing deployments.
