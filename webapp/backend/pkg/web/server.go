@@ -89,7 +89,8 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 
 			api.POST("/devices/register", handler.RegisterDevices)         //used by Collector to register new devices and retrieve filtered list
 			api.GET("/summary", handler.GetDevicesSummary)                 //used by Dashboard
-			api.GET("/summary/temp", handler.GetDevicesSummaryTempHistory) //used by Dashboard (Temperature history dropdown)
+			api.GET("/summary/temp", handler.GetDevicesSummaryTempHistory)       // used by Dashboard (Temperature history dropdown)
+			api.GET("/summary/workload", handler.GetWorkloadInsights)           // used by Workload Insights page
 
 			// Prometheus metrics endpoint (only registered if enabled)
 			if ae.Config.GetBool(configKeyMetricsEnabled) {
