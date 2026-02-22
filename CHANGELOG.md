@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.30.1](https://github.com/Starosdev/scrutiny/compare/v1.30.0...v1.30.1) (2026-02-22)
+
+### Bug Fixes
+
+* **docker:** update Makefile tags and docs to reference Starosdev/scrutiny ([3074668](https://github.com/Starosdev/scrutiny/commit/3074668a2ca3502f61c0c2b3c96c3772afdd708b))
+
 ## [1.30.0](https://github.com/Starosdev/scrutiny/compare/v1.29.2...v1.30.0) (2026-02-22)
 
 ### Features
