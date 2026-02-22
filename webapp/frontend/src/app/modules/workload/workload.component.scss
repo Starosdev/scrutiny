@@ -1,0 +1,42 @@
+:host {
+    display: flex;
+    flex: 1 1 auto;
+
+    .dashboard-placeholder {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+
+        .image {
+            max-width: 300px;
+        }
+    }
+
+    .spike-alert {
+        background-color: rgba(234, 179, 8, 0.1);
+        border: 1px solid rgba(234, 179, 8, 0.3);
+    }
+
+    .endurance-bar {
+        width: 80px;
+    }
+
+    .duration-toggle {
+        .mat-button-toggle {
+            font-size: 12px;
+        }
+    }
+
+    table {
+        tr.mat-row {
+            transition: background-color 0.15s ease;
+        }
+    }
+
+    .capitalize {
+        text-transform: capitalize;
+    }
+}

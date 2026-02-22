@@ -64,6 +64,10 @@ type DeviceRepo interface {
 	// This is used for missed collector ping detection.
 	GetDevicesLastSeenTimes(ctx context.Context) (map[string]time.Time, error)
 
+	// GetWorkloadInsights computes workload metrics (daily rates, intensity, endurance, spikes)
+	// from existing SMART attribute history for all devices.
+	GetWorkloadInsights(ctx context.Context, durationKey string) (map[string]*models.WorkloadInsight, error)
+
 	// GetAvailableInfluxDBBuckets returns a list of bucket names available in InfluxDB.
 	// This is used for diagnostics to verify required buckets exist.
 	GetAvailableInfluxDBBuckets(ctx context.Context) ([]string, error)
