@@ -37,6 +37,7 @@
 #   web.influxdb.retention.weekly         -> SCRUTINY_WEB_INFLUXDB_RETENTION_WEEKLY
 #   web.influxdb.retention.monthly        -> SCRUTINY_WEB_INFLUXDB_RETENTION_MONTHLY
 #   web.metrics.enabled                   -> SCRUTINY_WEB_METRICS_ENABLED
+#   web.metrics.token                     -> SCRUTINY_WEB_METRICS_TOKEN
 #   log.level                             -> SCRUTINY_LOG_LEVEL
 #   log.file                              -> SCRUTINY_LOG_FILE
 #   notify.urls                           -> SCRUTINY_NOTIFY_URLS (comma-separated)
@@ -139,6 +140,22 @@ web:
   metrics:
     # Enable or disable Prometheus metrics endpoint (/api/metrics)
     enabled: true
+
+    # Optional bearer token for authenticating Prometheus scrape requests.
+    # When set, /api/metrics requires: Authorization: Bearer <token>
+    # When empty (default), the endpoint is open (or protected by web.auth if enabled).
+    # Env: SCRUTINY_WEB_METRICS_TOKEN
+    #
+    # Prometheus scrape config example:
+    #   scrape_configs:
+    #     - job_name: scrutiny
+    #       bearer_token: 'your-metrics-token-here'
+    #       metrics_path: '/api/metrics'
+    #       static_configs:
+    #         - targets: ['localhost:8080']
+    #
+    # token: 'your-metrics-token-here'
+
     # if you wish to disable TLS certificate verification,
     # when using self-signed certificates for example,
     # then uncomment the lines below and set `insecure_skip_verify: true`
