@@ -172,6 +172,18 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
      * After view init
      */
     ngAfterViewInit(): void {
+        this.smartAttributeDataSource.sortingDataAccessor = (data, sortHeaderId) => {
+            switch (sortHeaderId) {
+                case 'id': return data.attribute_id;
+                case 'name': return this.getAttributeName(data);
+                case 'failure': return data.failure_rate ?? 0;
+                case 'worst': return this.getAttributeWorst(data) || 0;
+                case 'thresh': return this.getAttributeThreshold(data) || 0;
+                case 'ideal': return this.getAttributeIdeal(data);
+                default: return data[sortHeaderId];
+            }
+        };
+
         // Make the data source sortable
         this.smartAttributeDataSource.sort = this.smartAttributeTableMatSort;
     }
