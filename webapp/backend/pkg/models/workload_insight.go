@@ -2,11 +2,22 @@ package models
 
 // WorkloadInsight contains computed workload metrics for a single device
 type WorkloadInsight struct {
+	// SSD endurance (nil for HDDs or when data unavailable)
+	Endurance *EnduranceEstimate `json:"endurance,omitempty"`
+
+	// Spike detection (nil when no spike or insufficient data)
+	Spike *ActivitySpike `json:"spike,omitempty"`
+
 	DeviceWWN      string `json:"device_wwn"`
 	DeviceProtocol string `json:"device_protocol"`
 
+	// Classification: "heavy", "medium", "light", "idle", "unknown"
+	Intensity string `json:"intensity"`
+
+	// Ratio: reads / writes (0 if no writes)
+	ReadWriteRatio float64 `json:"read_write_ratio"`
+
 	// Data quality
-	DataPoints    int     `json:"data_points"`
 	TimeSpanHours float64 `json:"time_span_hours"`
 
 	// Computed rates (bytes per day)
@@ -17,17 +28,7 @@ type WorkloadInsight struct {
 	TotalWriteBytes int64 `json:"total_write_bytes"`
 	TotalReadBytes  int64 `json:"total_read_bytes"`
 
-	// Ratio: reads / writes (0 if no writes)
-	ReadWriteRatio float64 `json:"read_write_ratio"`
-
-	// Classification: "heavy", "medium", "light", "idle", "unknown"
-	Intensity string `json:"intensity"`
-
-	// SSD endurance (nil for HDDs or when data unavailable)
-	Endurance *EnduranceEstimate `json:"endurance,omitempty"`
-
-	// Spike detection (nil when no spike or insufficient data)
-	Spike *ActivitySpike `json:"spike,omitempty"`
+	DataPoints int `json:"data_points"`
 }
 
 // EnduranceEstimate projects SSD remaining lifespan
@@ -40,9 +41,9 @@ type EnduranceEstimate struct {
 
 // ActivitySpike indicates unusual write activity compared to baseline
 type ActivitySpike struct {
-	Detected                bool    `json:"detected"`
+	Description             string  `json:"description"`
+	SpikeFactor             float64 `json:"spike_factor"`
 	RecentDailyWriteBytes   int64   `json:"recent_daily_write_bytes"`
 	BaselineDailyWriteBytes int64   `json:"baseline_daily_write_bytes"`
-	SpikeFactor             float64 `json:"spike_factor"`
-	Description             string  `json:"description"`
+	Detected                bool    `json:"detected"`
 }

@@ -23,16 +23,16 @@ func (sr *scrutinyRepository) GetWorkloadInsights(ctx context.Context, durationK
 
 	insights := map[string]*models.WorkloadInsight{}
 	deviceProtocols := map[string]string{}
-	for _, device := range devices {
-		if device.Archived {
+	for i := range devices {
+		if devices[i].Archived {
 			continue
 		}
-		insights[device.WWN] = &models.WorkloadInsight{
-			DeviceWWN:      device.WWN,
-			DeviceProtocol: device.DeviceProtocol,
+		insights[devices[i].WWN] = &models.WorkloadInsight{
+			DeviceWWN:      devices[i].WWN,
+			DeviceProtocol: devices[i].DeviceProtocol,
 			Intensity:      "unknown",
 		}
-		deviceProtocols[device.WWN] = device.DeviceProtocol
+		deviceProtocols[devices[i].WWN] = devices[i].DeviceProtocol
 	}
 
 	if len(insights) == 0 {
@@ -170,14 +170,14 @@ func parseWorkloadSnapshot(values map[string]interface{}) *workloadSnapshot {
 		}
 	}
 	for _, attrInfo := range []struct {
-		field string
 		dest  *int64
 		flag  *bool
+		field string
 	}{
-		{"attr.177.value", &snap.Attr177Value, &snap.hasAttr177},
-		{"attr.231.value", &snap.Attr231Value, &snap.hasAttr231},
-		{"attr.232.value", &snap.Attr232Value, &snap.hasAttr232},
-		{"attr.233.value", &snap.Attr233Value, &snap.hasAttr233},
+		{field: "attr.177.value", dest: &snap.Attr177Value, flag: &snap.hasAttr177},
+		{field: "attr.231.value", dest: &snap.Attr231Value, flag: &snap.hasAttr231},
+		{field: "attr.232.value", dest: &snap.Attr232Value, flag: &snap.hasAttr232},
+		{field: "attr.233.value", dest: &snap.Attr233Value, flag: &snap.hasAttr233},
 	} {
 		if v, ok := values[attrInfo.field]; ok && v != nil {
 			if intVal, ok := v.(int64); ok {
@@ -287,7 +287,7 @@ func (sr *scrutinyRepository) buildWorkloadFirstLastQuery(durationKey string) st
 		subQueryNames = append(subQueryNames, subQueryName)
 
 		partialQueryStr = append(partialQueryStr, []string{
-			fmt.Sprintf(`%s = from(bucket: "%s")`, subQueryName, bucketName),
+			fmt.Sprintf("%s = from(bucket: %q)", subQueryName, bucketName),
 			fmt.Sprintf(`|> range(start: %s, stop: %s)`, durationRange[0], durationRange[1]),
 			`|> filter(fn: (r) => r["_measurement"] == "smart")`,
 			`|> filter(fn: workloadFields)`,
@@ -379,7 +379,7 @@ func (sr *scrutinyRepository) buildWorkloadRecentQuery() string {
 		`    r["_field"] == "attr.data_units_written.value" or`,
 		`    r["_field"] == "attr.data_units_read.value"`,
 		``,
-		fmt.Sprintf(`from(bucket: "%s")`, bucketName),
+		fmt.Sprintf("from(bucket: %q)", bucketName),
 		`|> range(start: -1w, stop: now())`,
 		`|> filter(fn: (r) => r["_measurement"] == "smart")`,
 		`|> filter(fn: workloadFields)`,
