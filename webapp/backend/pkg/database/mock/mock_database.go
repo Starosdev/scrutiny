@@ -321,6 +321,21 @@ func (mr *MockDeviceRepoMockRecorder) GetSummary(ctx interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSummary", reflect.TypeOf((*MockDeviceRepo)(nil).GetSummary), ctx)
 }
 
+// GetWorkloadInsights mocks base method.
+func (m *MockDeviceRepo) GetWorkloadInsights(ctx context.Context, durationKey string) (map[string]*models.WorkloadInsight, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetWorkloadInsights", ctx, durationKey)
+	ret0, _ := ret[0].(map[string]*models.WorkloadInsight)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetWorkloadInsights indicates an expected call of GetWorkloadInsights.
+func (mr *MockDeviceRepoMockRecorder) GetWorkloadInsights(ctx, durationKey interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkloadInsights", reflect.TypeOf((*MockDeviceRepo)(nil).GetWorkloadInsights), ctx, durationKey)
+}
+
 // GetZFSPoolDetails mocks base method.
 func (m *MockDeviceRepo) GetZFSPoolDetails(ctx context.Context, guid string) (models.ZFSPool, error) {
 	m.ctrl.T.Helper()

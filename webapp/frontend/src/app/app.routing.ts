@@ -42,7 +42,10 @@ export const appRoutes: Route[] = [
 
             // ZFS Pools
             {path: 'zfs-pools', loadChildren: () => import('app/modules/zfs-pools/zfs-pools.module').then(m => m.ZFSPoolsModule)},
-            {path: 'zfs-pool/:guid', loadChildren: () => import('app/modules/zfs-pool-detail/zfs-pool-detail.module').then(m => m.ZFSPoolDetailModule)}
+            {path: 'zfs-pool/:guid', loadChildren: () => import('app/modules/zfs-pool-detail/zfs-pool-detail.module').then(m => m.ZFSPoolDetailModule)},
+
+            // Workload Insights
+            {path: 'workload', loadChildren: () => import('app/modules/workload/workload.module').then(m => m.WorkloadModule)}
 
             // 404 & Catch all
             // {path: '404-not-found', pathMatch: 'full', loadChildren: () => import('app/modules/admin/pages/errors/error-404/error-404.module').then(m => m.Error404Module)},
