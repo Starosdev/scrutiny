@@ -126,7 +126,7 @@ chmod +x /opt/scrutiny/bin/scrutiny-collector-metrics-linux-amd64 && \
 ls -lha /opt/scrutiny/bin
 ```
 
-<p class="callout warning">When downloading Github Release Assests, make sure that you have the correct version. The provided example is with Release v0.5.0. [The release list can be found here.](https://github.com/analogj/scrutiny/releases) </p>
+<p class="callout warning">When downloading Github Release Assests, make sure that you have the correct version. The provided example is with Release v0.5.0. [The release list can be found here.](https://github.com/Starosdev/scrutiny/releases) </p>
 
 Once the Collector is installed, you can run it with the following command. Make sure to add the correct address and
 port of your Hub as `--api-endpoint`.
