@@ -68,7 +68,7 @@ web:
 
 ### Download Files
 
-Next, we'll download the Scrutiny API binary and frontend files from the [latest Github release](https://github.com/analogj/scrutiny/releases).
+Next, we'll download the Scrutiny API binary and frontend files from the [latest Github release](https://github.com/Starosdev/scrutiny/releases).
 The files you need to download are named:
 
 - **scrutiny-web-linux-amd64** - save this file to `/opt/scrutiny/bin`
@@ -133,7 +133,7 @@ mkdir -p /opt/scrutiny/bin
 
 ### Download Files
 
-Next, we'll download the Scrutiny collector binary from the [latest Github release](https://github.com/analogj/scrutiny/releases).
+Next, we'll download the Scrutiny collector binary from the [latest Github release](https://github.com/Starosdev/scrutiny/releases).
 The file you need to download is named:
 
 - **scrutiny-collector-metrics-linux-amd64** - save this file to `/opt/scrutiny/bin`

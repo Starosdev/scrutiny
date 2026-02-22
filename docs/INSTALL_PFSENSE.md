@@ -25,7 +25,7 @@ mkdir -p /opt/scrutiny/bin
 
 ### Download Files
 
-Next, we'll download the Scrutiny collector binary from the [latest Github release](https://github.com/analogj/scrutiny/releases).
+Next, we'll download the Scrutiny collector binary from the [latest Github release](https://github.com/Starosdev/scrutiny/releases).
 
 > NOTE: Ensure you have the latest version in the below command
 
