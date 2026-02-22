@@ -39,6 +39,7 @@ func (ae *AppEngine) registerMiddleware(r *gin.Engine, logger *logrus.Entry) {
 	r.Use(middleware.LoggerMiddleware(logger))
 	r.Use(middleware.RepositoryMiddleware(ae.Config, logger))
 	r.Use(middleware.ConfigMiddleware(ae.Config))
+	r.Use(middleware.AuthMiddleware(ae.Config, logger))
 
 	if ae.MissedPingMonitor != nil {
 		r.Use(middleware.MissedPingMonitorMiddleware(ae.MissedPingMonitor))
@@ -82,6 +83,10 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 	{
 		api := base.Group("/api")
 		{
+			// Auth endpoints (always public, checked by middleware)
+			api.GET("/auth/status", handler.AuthStatus)
+			api.POST("/auth/login", handler.Login)
+
 			api.GET("/health", handler.HealthCheck)
 			api.HEAD("/health", handler.HealthCheck)
 			api.POST("/health/notify", handler.SendTestNotification)        //check if notifications are configured correctly

@@ -20,6 +20,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260129000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260131000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260202000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260225000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
@@ -621,6 +622,12 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 					},
 				}
 				return tx.Create(&defaultSettings).Error
+			},
+		},
+		{
+			ID: "m20260225000000", // add api_tokens table for authentication
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&m20260225000000.ApiToken{})
 			},
 		},
 	})
