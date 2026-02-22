@@ -108,6 +108,33 @@ web:
     #   monthly: 65318400 # 25 months (default) - monthly aggregated data
     #   # yearly bucket has infinite retention (not configurable)
 
+  # Authentication settings
+  # When enabled, all API endpoints (except /api/health and /api/auth/*) require
+  # a valid Bearer token in the Authorization header. Disabled by default so
+  # existing deployments are unaffected.
+  #
+  # Environment variable overrides:
+  #   web.auth.enabled          -> SCRUTINY_WEB_AUTH_ENABLED
+  #   web.auth.token            -> SCRUTINY_WEB_AUTH_TOKEN
+  #   web.auth.jwt_secret       -> SCRUTINY_WEB_AUTH_JWT_SECRET
+  #   web.auth.jwt_expiry_hours -> SCRUTINY_WEB_AUTH_JWT_EXPIRY_HOURS
+  auth:
+    # Enable API authentication (default: false, all endpoints open)
+    # enabled: false
+
+    # Master API token for collector and programmatic access.
+    # Required when auth is enabled. Collectors send this as:
+    #   Authorization: Bearer <token>
+    # token: 'your-secret-api-token-here'
+
+    # Secret key for signing JWT session tokens (used for web UI sessions).
+    # If empty, a random secret is generated at startup -- tokens will not
+    # survive server restarts. Set a stable value for persistent sessions.
+    # jwt_secret: ''
+
+    # JWT token expiry in hours (default: 24)
+    # jwt_expiry_hours: 24
+
   # Prometheus metrics endpoint configuration
   metrics:
     # Enable or disable Prometheus metrics endpoint (/api/metrics)
