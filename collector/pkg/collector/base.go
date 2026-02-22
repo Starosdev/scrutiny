@@ -14,9 +14,30 @@ type BaseCollector struct {
 	httpClient *http.Client
 }
 
+// authTransport is an http.RoundTripper that injects a Bearer token into every request.
+type authTransport struct {
+	token string
+	base  http.RoundTripper
+}
+
+func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.Header.Set("Authorization", "Bearer "+t.token)
+	return t.base.RoundTrip(req)
+}
+
 // NewHTTPClient creates an HTTP client with the specified timeout in seconds
 func NewHTTPClient(timeoutSeconds int) *http.Client {
 	return &http.Client{Timeout: time.Duration(timeoutSeconds) * time.Second}
+}
+
+// NewAuthHTTPClient creates an HTTP client that injects a Bearer token when apiToken is non-empty.
+func NewAuthHTTPClient(timeoutSeconds int, apiToken string) *http.Client {
+	client := &http.Client{Timeout: time.Duration(timeoutSeconds) * time.Second}
+	if apiToken != "" {
+		client.Transport = &authTransport{token: apiToken, base: http.DefaultTransport}
+	}
+	return client
 }
 
 func (c *BaseCollector) getJson(url string, target interface{}) error {

@@ -253,3 +253,30 @@ func TestConfiguration_EnvironmentVariableOverride(t *testing.T) {
 		require.Equal(t, "--xall --json -T verypermissive", testConfig.GetString("commands.metrics_smart_args"))
 	})
 }
+
+func TestConfiguration_GetAPIToken_Default(t *testing.T) {
+	t.Parallel()
+
+	testConfig, _ := config.Create()
+
+	require.Equal(t, "", testConfig.GetAPIToken(), "default API token should be empty")
+}
+
+func TestConfiguration_GetAPIToken_Set(t *testing.T) {
+	t.Parallel()
+
+	testConfig, _ := config.Create()
+	testConfig.Set("api.token", "my-secret-token")
+
+	require.Equal(t, "my-secret-token", testConfig.GetAPIToken())
+}
+
+func TestConfiguration_GetAPIToken_EnvVar(t *testing.T) {
+	os.Setenv("COLLECTOR_API_TOKEN", "env-token-value")
+	defer os.Unsetenv("COLLECTOR_API_TOKEN")
+
+	testConfig, err := config.Create()
+	require.NoError(t, err)
+
+	require.Equal(t, "env-token-value", testConfig.GetAPIToken())
+}

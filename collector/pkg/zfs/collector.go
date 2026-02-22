@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
+	basecollector "github.com/analogj/scrutiny/collector/pkg/collector"
 	"github.com/analogj/scrutiny/collector/pkg/config"
 	"github.com/analogj/scrutiny/collector/pkg/errors"
 	"github.com/analogj/scrutiny/collector/pkg/zfs/detect"
@@ -37,16 +37,19 @@ func CreateCollector(appConfig config.Interface, logger *logrus.Entry, apiEndpoi
 		timeout = appConfig.GetAPITimeout()
 	}
 
-	collector := &Collector{
+	apiToken := ""
+	if appConfig != nil {
+		apiToken = appConfig.GetAPIToken()
+	}
+
+	c := &Collector{
 		config:      appConfig,
 		logger:      logger,
 		apiEndpoint: apiEndpointUrl,
-		httpClient: &http.Client{
-			Timeout: time.Duration(timeout) * time.Second,
-		},
+		httpClient:  basecollector.NewAuthHTTPClient(timeout, apiToken),
 	}
 
-	return collector, nil
+	return c, nil
 }
 
 // Run executes the ZFS collection

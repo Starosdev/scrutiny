@@ -141,6 +141,10 @@ OPTIONS:
 						config.Set("api.endpoint", apiEndpoint)
 					}
 
+					if c.IsSet("api-token") {
+						config.Set("api.token", c.String("api-token"))
+					}
+
 					if c.IsSet("profile") {
 						config.Set("performance.profile", c.String("profile"))
 					}
@@ -202,6 +206,11 @@ OPTIONS:
 						Usage:   "Benchmark profile: 'quick' or 'comprehensive'",
 						Value:   "",
 						EnvVars: []string{"COLLECTOR_PERF_PROFILE"},
+					},
+					&cli.StringFlag{
+						Name:    "api-token",
+						Usage:   "API token for authenticating with the Scrutiny server",
+						EnvVars: []string{"COLLECTOR_PERF_API_TOKEN", "COLLECTOR_API_TOKEN"},
 					},
 				},
 			},

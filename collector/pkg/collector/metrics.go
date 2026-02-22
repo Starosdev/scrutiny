@@ -37,7 +37,7 @@ func CreateMetricsCollector(appConfig config.Interface, logger *logrus.Entry, ap
 		apiEndpoint: apiEndpointUrl,
 		BaseCollector: BaseCollector{
 			logger:     logger,
-			httpClient: NewHTTPClient(appConfig.GetAPITimeout()),
+			httpClient: NewAuthHTTPClient(appConfig.GetAPITimeout(), appConfig.GetAPIToken()),
 		},
 		shell: shell.Create(),
 	}
@@ -166,6 +166,10 @@ func (mc *MetricsCollector) Publish(deviceWWN string, payload []byte) error {
 		return err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == 401 {
+		mc.logger.Errorln("Authentication failed (HTTP 401). Check that api.token in collector.yaml matches web.auth.token in scrutiny.yaml.")
+	}
 
 	return nil
 }
