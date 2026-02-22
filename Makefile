@@ -150,29 +150,29 @@ binary-frontend-test-coverage:
 ########################################################################################################################
 # Docker
 # NOTE: these docker make targets are only used for local development (not used by Github Actions/CI)
-# NOTE: docker-web and docker-omnibus require `make binary-frontend` or frontend.tar.gz content in /dist before executing.
+# NOTE: docker-web and docker-omnibus build the frontend internally via multi-stage Docker builds.
 ########################################################################################################################
 .PHONY: docker-collector
 docker-collector:
 	@echo "building collector docker image"
-	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.collector -t analogj/scrutiny-dev:collector .
+	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.collector -t ghcr.io/starosdev/scrutiny-dev:collector .
 
 .PHONY: docker-collector-zfs
 docker-collector-zfs:
 	@echo "building ZFS collector docker image"
-	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.collector-zfs -t analogj/scrutiny-dev:collector-zfs .
+	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.collector-zfs -t ghcr.io/starosdev/scrutiny-dev:collector-zfs .
 
 .PHONY: docker-collector-performance
 docker-collector-performance:
 	@echo "building performance collector docker image"
-	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.collector-performance -t analogj/scrutiny-dev:collector-performance .
+	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.collector-performance -t ghcr.io/starosdev/scrutiny-dev:collector-performance .
 
 .PHONY: docker-web
 docker-web:
 	@echo "building web docker image"
-	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.web -t analogj/scrutiny-dev:web .
+	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.web -t ghcr.io/starosdev/scrutiny-dev:web .
 
 .PHONY: docker-omnibus
 docker-omnibus:
 	@echo "building omnibus docker image"
-	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile -t analogj/scrutiny-dev:omnibus .
+	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile -t ghcr.io/starosdev/scrutiny-dev:omnibus .
