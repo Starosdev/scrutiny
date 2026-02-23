@@ -40,9 +40,10 @@ Please include the following information in your report:
 ## Security Best Practices for Users
 
 1. **Keep Updated**: Always run the latest version of Scrutiny
-2. **Network Security**: Do not expose the Scrutiny web interface directly to the internet without proper authentication
-3. **Docker Security**: Follow Docker security best practices when deploying containers
-4. **File Permissions**: Ensure configuration files containing sensitive data have appropriate permissions
+2. **Authentication**: Scrutiny supports opt-in API authentication with token-based and password-based login. See [Authentication Guide](AUTH.md) for setup instructions
+3. **Network Security**: Use authentication and/or network-level controls (VPN, reverse proxy) when exposing Scrutiny beyond your local network
+4. **Docker Security**: Follow Docker security best practices when deploying containers
+5. **File Permissions**: Ensure configuration files containing sensitive data have appropriate permissions
 
 ## Scope
 
