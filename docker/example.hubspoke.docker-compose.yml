@@ -24,6 +24,11 @@ services:
       - './config:/opt/scrutiny/config'
     environment:
       SCRUTINY_WEB_INFLUXDB_HOST: 'influxdb'
+      # Authentication (disabled by default, see docs/AUTH.md)
+      # SCRUTINY_WEB_AUTH_ENABLED: 'true'
+      # SCRUTINY_WEB_AUTH_TOKEN: 'your-secret-api-token'
+      # SCRUTINY_WEB_AUTH_ADMIN_PASSWORD: 'your-admin-password'
+      # SCRUTINY_WEB_METRICS_TOKEN: 'your-metrics-token'
     depends_on:
       influxdb:
         condition: service_healthy
@@ -48,6 +53,8 @@ services:
       # If true forces the collector to run on startup (cron will be started after the collector completes)
       # see: https://github.com/Starosdev/scrutiny/blob/master/docs/TROUBLESHOOTING_DEVICE_COLLECTOR.md#collector-trigger-on-startup
       COLLECTOR_RUN_STARTUP: false
+      # Required when server auth is enabled (must match SCRUTINY_WEB_AUTH_TOKEN)
+      # COLLECTOR_API_TOKEN: 'your-secret-api-token'
     depends_on:
       web:
         condition: service_healthy
