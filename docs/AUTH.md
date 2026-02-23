@@ -331,7 +331,7 @@ Then update your Prometheus scrape configuration to include the token (see [Prom
 
 The collector's `api.token` does not match the server's `web.auth.token`. Verify that both values are identical. Check for trailing whitespace or quoting differences. The collector logs this error as:
 
-```
+```text
 Authentication failed (HTTP 401). Check that api.token in collector.yaml matches web.auth.token in scrutiny.yaml.
 ```
 

@@ -45,6 +45,7 @@ Full credit for the original vision and architecture goes to [AnalogJ](https://g
 - **Enhanced Mobile UI** - Optimized layout for mobile devices
 - **Performance Benchmarking** - Run fio benchmarks and track drive throughput, IOPS, and latency over time
 - **Scheduled Reports** [WIP] - Automated daily/weekly/monthly health reports via email with HTML formatting
+- **API Authentication** - Opt-in token-based auth for API, web UI, and Prometheus metrics
 - **Missed Ping Digest** - Consolidated notification when multiple collectors miss pings (instead of one email per device)
 - **HTML Email Notifications** - Rich HTML emails for reports and missed ping alerts via SMTP
 - **Enhanced Seagate Drive Support** - Better timeout handling for Seagate drives
@@ -87,6 +88,7 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Day-Resolution Graphs** - View temperature trends at daily granularity
 - **SAS Drive Support** - Full temperature support for SAS devices
 - **S.M.A.R.T Attribute Overrides** - Override thresholds per device via UI
+- **API Authentication** - Token and password login, collector auth, independent metrics auth
 - **Improved UI Layout** - Top navigation for better S.M.A.R.T attribute visibility
 - **Mobile-Optimized Interface** - Better experience on mobile devices
 - **API Timeout Configuration** - Adjust timeouts for slow storage systems
