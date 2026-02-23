@@ -167,7 +167,14 @@ func AuthMiddleware(appConfig config.Interface, logger *logrus.Entry) gin.Handle
 			return
 		}
 
-		// Public routes bypass authentication entirely.
+		// Non-API routes (frontend static files, SPA routes) bypass auth.
+		// Only /api/* paths are subject to authentication.
+		if !strings.Contains(requestPath, "/api/") {
+			c.Next()
+			return
+		}
+
+		// Public API routes bypass authentication entirely.
 		if isPublicPath(requestPath) {
 			c.Next()
 			return
