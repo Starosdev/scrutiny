@@ -501,6 +501,13 @@ Dots and dashes in key names become underscores.
 | `web.influxdb.retention.weekly` | `SCRUTINY_WEB_INFLUXDB_RETENTION_WEEKLY` | `5443200` (9 weeks) |
 | `web.influxdb.retention.monthly` | `SCRUTINY_WEB_INFLUXDB_RETENTION_MONTHLY` | `65318400` (25 months) |
 | `web.metrics.enabled` | `SCRUTINY_WEB_METRICS_ENABLED` | `true` |
+| `web.metrics.token` | `SCRUTINY_WEB_METRICS_TOKEN` | `` |
+| `web.auth.enabled` | `SCRUTINY_WEB_AUTH_ENABLED` | `false` |
+| `web.auth.token` | `SCRUTINY_WEB_AUTH_TOKEN` | `` |
+| `web.auth.jwt_secret` | `SCRUTINY_WEB_AUTH_JWT_SECRET` | `` |
+| `web.auth.jwt_expiry_hours` | `SCRUTINY_WEB_AUTH_JWT_EXPIRY_HOURS` | `24` |
+| `web.auth.admin_username` | `SCRUTINY_WEB_AUTH_ADMIN_USERNAME` | `admin` |
+| `web.auth.admin_password` | `SCRUTINY_WEB_AUTH_ADMIN_PASSWORD` | `` |
 | `log.level` | `SCRUTINY_LOG_LEVEL` | `INFO` |
 | `log.file` | `SCRUTINY_LOG_FILE` | `` |
 | `notify.urls` | `SCRUTINY_NOTIFY_URLS` | `` |
@@ -547,6 +554,7 @@ Dots and dashes in key names become underscores.
 | `host.id` | `COLLECTOR_HOST_ID` | `` |
 | `api.endpoint` | `COLLECTOR_API_ENDPOINT` | `http://localhost:8080` |
 | `api.timeout` | `COLLECTOR_API_TIMEOUT` | `60` |
+| `api.token` | `COLLECTOR_API_TOKEN` | `` |
 | `commands.metrics_smartctl_bin` | `COLLECTOR_COMMANDS_METRICS_SMARTCTL_BIN` | `smartctl` |
 | `commands.metrics_scan_args` | `COLLECTOR_COMMANDS_METRICS_SCAN_ARGS` | `--scan --json` |
 | `commands.metrics_info_args` | `COLLECTOR_COMMANDS_METRICS_INFO_ARGS` | `--info --json` |
