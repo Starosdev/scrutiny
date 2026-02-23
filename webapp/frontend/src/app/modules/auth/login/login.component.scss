@@ -31,6 +31,113 @@
         background: #2d2d2d;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
+
+    .mat-mdc-tab-body-content,
+    .mat-mdc-tab-body {
+        overflow: hidden !important;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        // Tab label colors
+        .mdc-tab__text-label {
+            color: rgba(255, 255, 255, 0.6) !important;
+        }
+
+        .mdc-tab--active .mdc-tab__text-label {
+            color: rgb(88, 80, 236) !important;
+        }
+
+        .mdc-tab-indicator__content--underline {
+            border-color: rgb(88, 80, 236) !important;
+        }
+
+        // Form field label
+        .mdc-floating-label,
+        .mdc-text-field--outlined .mdc-floating-label {
+            color: rgba(255, 255, 255, 0.6) !important;
+        }
+
+        // Input text color (all states including focus and typing)
+        .mat-mdc-input-element,
+        .mat-mdc-form-field input,
+        .mdc-text-field__input {
+            color: rgba(255, 255, 255, 0.87) !important;
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.87) !important;
+            caret-color: rgb(88, 80, 236);
+        }
+
+        // Browser autofill override
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.87) !important;
+            -webkit-box-shadow: 0 0 0 30px #2d2d2d inset !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+
+        // Placeholder text
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.4) !important;
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.4) !important;
+        }
+
+        // Form field outline - only leading and trailing get border-color
+        .mdc-notched-outline__leading,
+        .mdc-notched-outline__trailing {
+            border-color: rgba(255, 255, 255, 0.38) !important;
+        }
+
+        // Notch: only top/bottom borders, never left/right (prevents divider)
+        .mdc-notched-outline__notch {
+            border-left: none !important;
+            border-right: none !important;
+            border-top-color: rgba(255, 255, 255, 0.38) !important;
+            border-bottom-color: rgba(255, 255, 255, 0.38) !important;
+        }
+
+        // Hover state
+        .mdc-text-field--outlined:not(.mdc-text-field--disabled):hover {
+            .mdc-notched-outline__leading,
+            .mdc-notched-outline__trailing {
+                border-color: rgba(255, 255, 255, 0.6) !important;
+            }
+
+            .mdc-notched-outline__notch {
+                border-top-color: rgba(255, 255, 255, 0.6) !important;
+                border-bottom-color: rgba(255, 255, 255, 0.6) !important;
+            }
+        }
+
+        // Focused state
+        .mdc-text-field--outlined.mdc-text-field--focused {
+            .mdc-notched-outline__leading,
+            .mdc-notched-outline__trailing {
+                border-color: rgb(88, 80, 236) !important;
+            }
+
+            .mdc-notched-outline__notch {
+                border-top-color: rgb(88, 80, 236) !important;
+                border-bottom-color: rgb(88, 80, 236) !important;
+            }
+        }
+
+        // Suffix icon (visibility toggle)
+        .mat-mdc-form-field .mat-mdc-icon-button {
+            color: rgba(255, 255, 255, 0.54) !important;
+        }
+
+        // Button
+        .mat-mdc-unelevated-button.mat-primary {
+            background-color: rgb(88, 80, 236) !important;
+            color: white !important;
+        }
+
+        .mat-mdc-unelevated-button[disabled] {
+            background-color: rgba(255, 255, 255, 0.12) !important;
+            color: rgba(255, 255, 255, 0.38) !important;
+        }
+    }
 }
 
 .login-logo {
@@ -115,8 +222,4 @@
 
 mat-progress-bar {
     margin-bottom: 16px;
-}
-
-::ng-deep .mat-mdc-tab-body-content {
-    overflow: hidden !important;
 }
