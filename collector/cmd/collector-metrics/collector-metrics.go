@@ -146,7 +146,13 @@ OPTIONS:
 						return err
 					}
 
-					settingsData, err := json.MarshalIndent(config.AllSettings(), "", "\t")
+					settingsMap := config.AllSettings()
+					if apiMap, ok := settingsMap["api"].(map[string]interface{}); ok {
+						if _, hasToken := apiMap["token"]; hasToken && apiMap["token"] != "" {
+							apiMap["token"] = "[REDACTED]"
+						}
+					}
+					settingsData, err := json.MarshalIndent(settingsMap, "", "\t")
 					collectorLogger.Debug(string(settingsData), err)
 					metricCollector, err := collector.CreateMetricsCollector(
 						config,
