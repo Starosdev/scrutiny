@@ -144,6 +144,10 @@ func (c *Collector) RegisterDevices(devices []models.Device) ([]models.Device, e
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == 401 {
+		c.logger.Errorln("Authentication failed (HTTP 401). Check that api.token in collector-performance.yaml matches web.auth.token in scrutiny.yaml.")
+	}
+
 	var responseWrapper models.DeviceWrapper
 	if err := json.NewDecoder(resp.Body).Decode(&responseWrapper); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
@@ -279,6 +283,10 @@ func (c *Collector) Publish(wwn string, result *models.PerformanceResult) error 
 		return fmt.Errorf("failed to publish results: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == 401 {
+		c.logger.Errorln("Authentication failed (HTTP 401). Check that api.token in collector-performance.yaml matches web.auth.token in scrutiny.yaml.")
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("API returned status %d", resp.StatusCode)

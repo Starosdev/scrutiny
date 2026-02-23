@@ -37,6 +37,7 @@ Then configure each collector with the same token. See [Collector Authentication
 |---|---|---|---|
 | `api.token` | `COLLECTOR_API_TOKEN` | (empty) | API token for authenticating with the Scrutiny server. Must match `web.auth.token`. |
 | `api.token` (performance) | `COLLECTOR_PERF_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the performance collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
+| `api.token` (zfs) | `COLLECTOR_ZFS_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the ZFS collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
 
 ## Public Endpoints
 
@@ -101,10 +102,11 @@ Configure the token using any of these methods (in order of precedence):
 
 ### ZFS Collector (scrutiny-collector-zfs)
 
-The ZFS collector reads the token from config or environment variables. It does not have a `--api-token` CLI flag.
+Configure the token using any of these methods (in order of precedence):
 
-1. **Environment variable**: `COLLECTOR_API_TOKEN=your-secret-api-token-here`
-2. **Config file** (`collector-zfs.yaml` or `collector.yaml`):
+1. **CLI flag**: `--api-token your-secret-api-token-here`
+2. **Environment variable**: `COLLECTOR_ZFS_API_TOKEN=your-secret-api-token-here` (falls back to `COLLECTOR_API_TOKEN`)
+3. **Config file** (`collector-zfs.yaml` or `collector.yaml`):
     ```yaml
     api:
         token: 'your-secret-api-token-here'
@@ -215,7 +217,7 @@ services:
             SCRUTINY_WEB_AUTH_JWT_SECRET: 'a-stable-64-character-hex-string'
             # Optional: independent Prometheus metrics token
             SCRUTINY_WEB_METRICS_TOKEN: 'your-metrics-token-here'
-            # The embedded collector reads this automatically
+            # All embedded collectors (metrics, performance, ZFS) read this automatically
             COLLECTOR_API_TOKEN: 'your-secret-api-token-here'
 ```
 

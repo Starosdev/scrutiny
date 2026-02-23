@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { CanActivate, Router, UrlTree } from '@angular/router';
+import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router, UrlTree } from '@angular/router';
 import { AuthService } from './auth.service';
 
 @Injectable({ providedIn: 'root' })
@@ -10,7 +10,7 @@ export class AuthGuard implements CanActivate {
         private _router: Router
     ) {}
 
-    canActivate(): boolean | UrlTree {
+    canActivate(_route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean | UrlTree {
         // If auth is not enabled, always allow access
         if (!this._authService.authEnabled) {
             return true;
@@ -21,7 +21,9 @@ export class AuthGuard implements CanActivate {
             return true;
         }
 
-        // Redirect to login
-        return this._router.createUrlTree(['/login']);
+        // Redirect to login with returnUrl so user lands back here after login
+        return this._router.createUrlTree(['/login'], {
+            queryParams: { returnUrl: state.url }
+        });
     }
 }
