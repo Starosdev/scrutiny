@@ -159,7 +159,13 @@ OPTIONS:
 						return err
 					}
 
-					settingsData, settingsErr := json.MarshalIndent(config.AllSettings(), "", "\t")
+					settingsMap := config.AllSettings()
+					if apiMap, ok := settingsMap["api"].(map[string]interface{}); ok {
+						if _, hasToken := apiMap["token"]; hasToken && apiMap["token"] != "" {
+							apiMap["token"] = "[REDACTED]"
+						}
+					}
+					settingsData, settingsErr := json.MarshalIndent(settingsMap, "", "\t")
 					collectorLogger.Debug(string(settingsData), settingsErr)
 
 					var perfCollector *performance.Collector

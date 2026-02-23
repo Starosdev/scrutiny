@@ -121,8 +121,8 @@ export class AuthService {
             if (!payload.exp) {
                 return false;
             }
-            // Add 30s buffer to avoid edge-case expiry during request
-            return (payload.exp * 1000) < (Date.now() - 30000);
+            // Expire 30s early to avoid edge-case expiry during request
+            return (payload.exp * 1000) < (Date.now() + 30000);
         } catch {
             return true;
         }

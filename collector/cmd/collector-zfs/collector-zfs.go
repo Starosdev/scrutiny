@@ -141,6 +141,10 @@ OPTIONS:
 						config.Set("api.endpoint", apiEndpoint)
 					}
 
+					if c.IsSet("api-token") {
+						config.Set("api.token", c.String("api-token"))
+					}
+
 					collectorLogger, logFile, err := CreateLogger(config)
 					if logFile != nil {
 						defer logFile.Close()
@@ -149,7 +153,13 @@ OPTIONS:
 						return err
 					}
 
-					settingsData, err := json.MarshalIndent(config.AllSettings(), "", "\t")
+					settingsMap := config.AllSettings()
+					if apiMap, ok := settingsMap["api"].(map[string]interface{}); ok {
+						if _, hasToken := apiMap["token"]; hasToken && apiMap["token"] != "" {
+							apiMap["token"] = "[REDACTED]"
+						}
+					}
+					settingsData, err := json.MarshalIndent(settingsMap, "", "\t")
 					collectorLogger.Debug(string(settingsData), err)
 
 					zfsCollector, err := zfs.CreateCollector(
@@ -189,6 +199,11 @@ OPTIONS:
 						Usage:   "Host identifier/label, used for grouping pools",
 						Value:   "",
 						EnvVars: []string{"COLLECTOR_ZFS_HOST_ID", "COLLECTOR_HOST_ID"},
+					},
+					&cli.StringFlag{
+						Name:    "api-token",
+						Usage:   "API token for authenticating with the Scrutiny server",
+						EnvVars: []string{"COLLECTOR_ZFS_API_TOKEN", "COLLECTOR_API_TOKEN"},
 					},
 				},
 			},

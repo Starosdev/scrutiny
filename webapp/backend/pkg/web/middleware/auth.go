@@ -23,6 +23,9 @@ var publicPathSuffixes = []string{
 // which supports an independent authentication token (web.metrics.token).
 const metricsPathSuffix = "/api/metrics"
 
+// configKeyJWTSecret is the config key for the JWT signing secret.
+const configKeyJWTSecret = "web.auth.jwt_secret"
+
 // authContext holds pre-computed auth configuration to avoid repeated config lookups.
 type authContext struct {
 	authEnabled     bool
@@ -144,10 +147,16 @@ func logAuthStatus(logger *logrus.Entry, ac *authContext) {
 //   - "AUTH_TYPE" (string): "api_token", "jwt", or "metrics_token" (only set on successful auth)
 //   - "AUTH_CLAIMS" (*auth.Claims): JWT claims (only set for JWT auth)
 func AuthMiddleware(appConfig config.Interface, logger *logrus.Entry) gin.HandlerFunc {
+	jwtSecret := initJWTSecret(auth.IsAuthEnabled(appConfig), appConfig.GetString(configKeyJWTSecret), logger)
+	// Write the effective secret back so the login handler (which reads config directly) uses the same value.
+	if jwtSecret != "" && appConfig.GetString(configKeyJWTSecret) == "" {
+		appConfig.Set(configKeyJWTSecret, jwtSecret)
+	}
+
 	ac := &authContext{
 		authEnabled:     auth.IsAuthEnabled(appConfig),
 		configuredToken: appConfig.GetString("web.auth.token"),
-		jwtSecret:       initJWTSecret(auth.IsAuthEnabled(appConfig), appConfig.GetString("web.auth.jwt_secret"), logger),
+		jwtSecret:       jwtSecret,
 		metricsToken:    appConfig.GetString("web.metrics.token"),
 	}
 

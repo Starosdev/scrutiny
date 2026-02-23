@@ -66,6 +66,8 @@ export class LoginComponent implements OnInit {
                 this.isLoading = false;
                 if (res.success && res.token) {
                     this._router.navigateByUrl(this.returnUrl);
+                } else if (!res.success) {
+                    this.errorMessage = res.error || 'Login failed. Please try again.';
                 }
             },
             error: (err) => {
@@ -89,6 +91,8 @@ export class LoginComponent implements OnInit {
                 this.isLoading = false;
                 if (res.success && res.token) {
                     this._router.navigateByUrl(this.returnUrl);
+                } else if (!res.success) {
+                    this.errorMessage = res.error || 'Login failed. Please try again.';
                 }
             },
             error: (err) => {
