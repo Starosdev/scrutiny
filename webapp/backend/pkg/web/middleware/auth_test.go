@@ -333,6 +333,42 @@ func TestAuthMiddleware_MetricsToken_WithPhase1Auth_APITokenStillWorks(t *testin
 	require.Equal(t, http.StatusOK, w.Code)
 }
 
+// --- Frontend bypass tests ---
+
+func TestAuthMiddleware_FrontendRoutesbypassAuth(t *testing.T) {
+	// Auth enabled: non-API routes (frontend static files, SPA) should pass through
+	router := setupRouter(t, true, testAPIToken, testJWTSecret, "")
+
+	// Register frontend routes like the real server does
+	router.GET("/web", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"page": "index"})
+	})
+	router.GET("/web/*filepath", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"page": "spa"})
+	})
+	router.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"page": "root"})
+	})
+
+	tests := []struct {
+		name string
+		path string
+	}{
+		{"root", "/"},
+		{"web index", "/web"},
+		{"web SPA route", "/web/dashboard"},
+		{"web static file", "/web/main.js"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", tt.path, nil)
+			router.ServeHTTP(w, req)
+			require.Equal(t, http.StatusOK, w.Code, "frontend route %s should bypass auth", tt.path)
+		})
+	}
+}
+
 func TestAuthMiddleware_MetricsToken_OnlyAffectsMetrics(t *testing.T) {
 	// Auth disabled, metrics token set: other endpoints remain open
 	router := setupRouter(t, false, "", "", testMetricsToken)
