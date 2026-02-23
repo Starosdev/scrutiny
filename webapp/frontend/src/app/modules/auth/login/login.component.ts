@@ -2,6 +2,7 @@ import { Component, OnInit, ViewEncapsulation } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from 'app/core/auth/auth.service';
+import { take } from 'rxjs/operators';
 
 @Component({
     selector: 'login',
@@ -45,9 +46,11 @@ export class LoginComponent implements OnInit {
             return;
         }
 
-        this.returnUrl = this._route.snapshot.queryParams['returnUrl'] || '/dashboard';
+        this.returnUrl = this.sanitizeReturnUrl(
+            this._route.snapshot.queryParams['returnUrl']
+        );
 
-        this._authService.loginMethods$.subscribe(methods => {
+        this._authService.loginMethods$.pipe(take(1)).subscribe(methods => {
             this.loginMethods = methods;
             this.showPasswordTab = methods.includes('password');
         });
@@ -100,5 +103,12 @@ export class LoginComponent implements OnInit {
                 this.errorMessage = err.error?.error || 'Login failed. Please try again.';
             }
         });
+    }
+
+    private sanitizeReturnUrl(url: string): string {
+        if (!url || !url.startsWith('/') || url.startsWith('//')) {
+            return '/dashboard';
+        }
+        return url;
     }
 }

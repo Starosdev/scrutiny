@@ -201,7 +201,7 @@ OPTIONS:
 					&cli.StringFlag{
 						Name:    "api-token",
 						Usage:   "API token for authenticating with the Scrutiny server",
-						EnvVars: []string{"COLLECTOR_API_TOKEN"},
+						EnvVars: []string{"COLLECTOR_METRICS_API_TOKEN", "COLLECTOR_API_TOKEN"},
 					},
 				},
 			},

@@ -37,6 +37,12 @@
         overflow: hidden !important;
     }
 
+    // Notch: remove left/right borders in all modes (prevents divider line next to label)
+    .mdc-notched-outline__notch {
+        border-left: none !important;
+        border-right: none !important;
+    }
+
     @media (prefers-color-scheme: dark) {
         // Tab label colors
         .mdc-tab__text-label {
