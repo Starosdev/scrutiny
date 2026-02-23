@@ -239,6 +239,17 @@ scrape_configs:
     metrics_path: '/api/metrics'
 ```
 
+If you have secured the metrics endpoint with `web.metrics.token` (see [Authentication](docs/AUTH.md#prometheus-metrics-authentication)):
+
+```yaml
+scrape_configs:
+  - job_name: 'scrutiny'
+    metrics_path: '/api/metrics'
+    bearer_token: 'your-metrics-token-here'
+    static_configs:
+      - targets: ['scrutiny:8080']
+```
+
 ## Performance Benchmarking
 
 Scrutiny can run periodic [fio](https://fio.readthedocs.io/) benchmarks on your drives and track performance over time. This helps detect drive degradation before S.M.A.R.T failures appear -- a drive that is suddenly 50% slower may be failing even if S.M.A.R.T attributes look normal.
