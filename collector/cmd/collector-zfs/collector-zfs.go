@@ -159,8 +159,12 @@ OPTIONS:
 							apiMap["token"] = "[REDACTED]"
 						}
 					}
-					settingsData, err := json.MarshalIndent(settingsMap, "", "\t")
-					collectorLogger.Debug(string(settingsData), err)
+					settingsData, settingsErr := json.MarshalIndent(settingsMap, "", "\t")
+					if settingsErr != nil {
+						collectorLogger.Warnf("Failed to marshal settings for debug logging: %v", settingsErr)
+					} else {
+						collectorLogger.Debug(string(settingsData))
+					}
 
 					zfsCollector, err := zfs.CreateCollector(
 						config,

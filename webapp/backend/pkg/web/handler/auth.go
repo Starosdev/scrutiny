@@ -2,12 +2,67 @@ package handler
 
 import (
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/auth"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
+
+// loginRateLimiter tracks failed login attempts per IP to prevent brute-force attacks.
+// After maxFailures within the window, subsequent attempts are rejected until the window expires.
+var loginLimiter = &rateLimiter{
+	failures:    make(map[string]*failureRecord),
+	maxFailures: 10,
+	window:      5 * time.Minute,
+}
+
+type failureRecord struct {
+	count    int
+	windowStart time.Time
+}
+
+type rateLimiter struct {
+	mu          sync.Mutex
+	failures    map[string]*failureRecord
+	maxFailures int
+	window      time.Duration
+}
+
+func (rl *rateLimiter) isBlocked(ip string) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	rec, ok := rl.failures[ip]
+	if !ok {
+		return false
+	}
+	if time.Since(rec.windowStart) > rl.window {
+		delete(rl.failures, ip)
+		return false
+	}
+	return rec.count >= rl.maxFailures
+}
+
+func (rl *rateLimiter) recordFailure(ip string) {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	rec, ok := rl.failures[ip]
+	if !ok || time.Since(rec.windowStart) > rl.window {
+		rl.failures[ip] = &failureRecord{count: 1, windowStart: time.Now()}
+		return
+	}
+	rec.count++
+}
+
+func (rl *rateLimiter) reset(ip string) {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	delete(rl.failures, ip)
+}
 
 // loginMethods returns which login methods are available based on config.
 // "token" is always available when auth is enabled (web.auth.token is required).
@@ -63,6 +118,17 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	// Rate limiting: reject if too many recent failed attempts from this IP
+	clientIP := c.ClientIP()
+	if loginLimiter.isBlocked(clientIP) {
+		logger.Warnf("Login rate limit exceeded for %s", clientIP)
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"success": false,
+			"error":   "Too many failed login attempts. Please try again later.",
+		})
+		return
+	}
+
 	var loginRequest struct {
 		Token    string `json:"token"`
 		Username string `json:"username"`
@@ -98,6 +164,7 @@ func Login(c *gin.Context) {
 func handleTokenLogin(c *gin.Context, logger *logrus.Entry, appConfig config.Interface, token string) {
 	configuredToken := appConfig.GetString("web.auth.token")
 	if !auth.ValidateAPIToken(token, configuredToken) {
+		loginLimiter.recordFailure(c.ClientIP())
 		logger.Warn("Failed login attempt (token)")
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
@@ -106,6 +173,7 @@ func handleTokenLogin(c *gin.Context, logger *logrus.Entry, appConfig config.Int
 		return
 	}
 
+	loginLimiter.reset(c.ClientIP())
 	issueJWT(c, logger, appConfig)
 }
 
@@ -122,6 +190,7 @@ func handlePasswordLogin(c *gin.Context, logger *logrus.Entry, appConfig config.
 
 	configuredUsername := appConfig.GetString("web.auth.admin_username")
 	if !auth.ValidateAPIToken(username, configuredUsername) || !auth.ValidateAPIToken(password, configuredPassword) {
+		loginLimiter.recordFailure(c.ClientIP())
 		logger.Warn("Failed login attempt (password)")
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
@@ -130,6 +199,7 @@ func handlePasswordLogin(c *gin.Context, logger *logrus.Entry, appConfig config.
 		return
 	}
 
+	loginLimiter.reset(c.ClientIP())
 	issueJWT(c, logger, appConfig)
 }
 

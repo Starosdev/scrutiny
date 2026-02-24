@@ -101,6 +101,7 @@ OPTIONS:
 
 					//TODO: pass in the collector, use configuration from collector-metrics
 					stCollector, err := collector.CreateSelfTestCollector(
+						nil,
 						collectorLogger,
 						c.String("api-endpoint"),
 					)

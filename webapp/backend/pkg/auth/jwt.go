@@ -32,10 +32,12 @@ func GenerateRandomSecret() (string, error) {
 func GenerateJWT(secret string, expiryHours int) (string, time.Time, error) {
 	expiresAt := time.Now().Add(time.Duration(expiryHours) * time.Hour)
 
+	now := time.Now()
 	claims := &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			IssuedAt:  jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(now),
 			Issuer:    "scrutiny",
 		},
 		TokenType: "session",
