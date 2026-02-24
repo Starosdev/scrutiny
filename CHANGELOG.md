@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.31.2](https://github.com/Starosdev/scrutiny/compare/v1.31.1...v1.31.2) (2026-02-24)
+
+### Bug Fixes
+
+* **performance:** add smartctl to perf container and configurable mount points ([#274](https://github.com/Starosdev/scrutiny/issues/274)) ([60c5ab1](https://github.com/Starosdev/scrutiny/commit/60c5ab1cd0bcc5addcce077726d9c1929ade6450))
+
 ## [1.31.1](https://github.com/Starosdev/scrutiny/compare/v1.31.0...v1.31.1) (2026-02-24)
 
 ### Bug Fixes

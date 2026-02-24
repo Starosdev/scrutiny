@@ -1,0 +1,33 @@
+# Auto-generate PR descriptions using OpenAI
+# Analyzes the diff and generates a meaningful description when a PR is opened with an empty body
+
+name: Auto PR Description
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  generate-description:
+    name: Generate PR Description
+    # Only run if PR description is empty or null
+    if: github.event.pull_request.body == '' || github.event.pull_request.body == null
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate PR Description
+        uses: timrogers/autofill-pr-description-with-openai@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: gpt-4o-mini
+          overwrite: false

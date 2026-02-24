@@ -1,0 +1,169 @@
+# Automated Branch Cleanup
+# Deletes stale feature branches that have been merged to develop or master for >30 days
+
+name: Cleanup Stale Branches
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'  # Weekly on Sunday at 3 AM UTC
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    name: Delete Stale Merged Branches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+
+      - name: Fetch All Branches
+        run: git fetch --all --prune
+
+      - name: Find and Delete Stale Branches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=================================================="
+          echo "Stale Branch Cleanup - $(date)"
+          echo "=================================================="
+          echo ""
+
+          # Protected branches (never delete)
+          PROTECTED_BRANCHES="master develop main"
+
+          DELETED_COUNT=0
+          KEPT_COUNT=0
+
+          echo "Scanning for stale branches (merged >30 days ago)..."
+          echo ""
+
+          for branch in $(git branch -r | grep -v '\->' | grep -v 'HEAD' | sed 's/origin\///'); do
+            # Skip protected branches
+            skip=false
+            for protected in $PROTECTED_BRANCHES; do
+              if [ "$branch" = "$protected" ]; then
+                skip=true
+                break
+              fi
+            done
+
+            if [ "$skip" = true ]; then
+              continue
+            fi
+
+            # Check if branch is merged into develop or master
+            # Use git merge detection first (works for merge commits and fast-forward)
+            merged_to_develop=$(git branch -r --merged origin/develop | grep -c "origin/$branch" || echo "0")
+            merged_to_master=$(git branch -r --merged origin/master | grep -c "origin/$branch" || echo "0")
+
+            # If not detected by git, check GitHub API for squash-merged PRs
+            if [ "$merged_to_develop" = "0" ] && [ "$merged_to_master" = "0" ]; then
+              pr_merged=$(gh pr list --repo "${{ github.repository }}" --head "$branch" --state merged --json number --jq 'length' 2>/dev/null || echo "0")
+              if [ "$pr_merged" != "0" ] && [ "$pr_merged" != "" ]; then
+                # PR was squash-merged; figure out which base branch
+                pr_base=$(gh pr list --repo "${{ github.repository }}" --head "$branch" --state merged --json baseRefName --jq '.[0].baseRefName' 2>/dev/null || echo "")
+                if [ "$pr_base" = "develop" ]; then
+                  merged_to_develop="1"
+                elif [ "$pr_base" = "master" ]; then
+                  merged_to_master="1"
+                else
+                  # Merged to some other branch, still count it
+                  merged_to_develop="1"
+                fi
+              fi
+            fi
+
+            if [ "$merged_to_develop" = "0" ] && [ "$merged_to_master" = "0" ]; then
+              echo "  Skipping: $branch (not merged to develop or master)"
+              KEPT_COUNT=$((KEPT_COUNT + 1))
+              continue
+            fi
+
+            # Get last commit date
+            LAST_COMMIT_DATE=$(git log -1 --format="%ci" "origin/$branch" 2>/dev/null || echo "1970-01-01")
+            LAST_COMMIT_EPOCH=$(date -d "$LAST_COMMIT_DATE" +%s 2>/dev/null || echo "0")
+            CURRENT_EPOCH=$(date +%s)
+            DAYS_OLD=$(( (CURRENT_EPOCH - LAST_COMMIT_EPOCH) / 86400 ))
+
+            if [ "$DAYS_OLD" -gt 30 ]; then
+              merged_to=""
+              if [ "$merged_to_develop" != "0" ]; then
+                merged_to="develop"
+              fi
+              if [ "$merged_to_master" != "0" ]; then
+                if [ -n "$merged_to" ]; then
+                  merged_to="$merged_to and master"
+                else
+                  merged_to="master"
+                fi
+              fi
+
+              echo "  Deleting: $branch"
+              echo "    Last commit: $DAYS_OLD days ago"
+              echo "    Merged to: $merged_to"
+
+              git push origin --delete "$branch" 2>&1 | sed 's/^/    /' || {
+                echo "    WARNING: Failed to delete $branch"
+              }
+
+              DELETED_COUNT=$((DELETED_COUNT + 1))
+              echo ""
+            else
+              echo "  Keeping: $branch (only $DAYS_OLD days old)"
+              KEPT_COUNT=$((KEPT_COUNT + 1))
+            fi
+          done
+
+          echo ""
+          echo "=================================================="
+          echo "Cleanup Summary"
+          echo "=================================================="
+          echo "Deleted branches: $DELETED_COUNT"
+          echo "Kept branches: $KEPT_COUNT"
+          echo "Protected branches: $PROTECTED_BRANCHES"
+          echo ""
+          echo "Branches are deleted if:"
+          echo "  - Merged to develop or master"
+          echo "  - Last commit >30 days ago"
+          echo "  - Not in protected list"
+
+      - name: List Remaining Feature Branches
+        run: |
+          echo ""
+          echo "=================================================="
+          echo "Remaining Feature/Development Branches"
+          echo "=================================================="
+
+          # Match Scrutiny branch naming: feature/SCR-*, fix/SCR-*, hotfix/SCR-*
+          PATTERN='feature/|fix/|hotfix/'
+
+          REMAINING=$(git branch -r | grep -E "$PATTERN" | grep -v 'origin/master' | grep -v 'origin/develop' | sed 's/origin\///' | wc -l)
+
+          if [ "$REMAINING" -gt 0 ]; then
+            echo "Found $REMAINING active feature branches:"
+            echo ""
+            git branch -r | grep -E "$PATTERN" | grep -v 'origin/master' | grep -v 'origin/develop' | sed 's/origin\///' | while read branch; do
+              LAST_COMMIT=$(git log -1 --format="%ci" "origin/$branch" 2>/dev/null | cut -d' ' -f1)
+              AUTHOR=$(git log -1 --format="%an" "origin/$branch" 2>/dev/null)
+              echo "  $branch"
+              echo "    Last commit: $LAST_COMMIT by $AUTHOR"
+            done
+          else
+            echo "No active feature branches remaining."
+          fi
+
+          echo ""
+          echo "=================================================="
+          echo "Cleanup Complete"
+          echo "=================================================="

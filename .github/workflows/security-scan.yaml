@@ -1,0 +1,117 @@
+# Security Scanning with Trivy
+# Scans repository for vulnerabilities in dependencies and code
+
+name: Security Scan
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC
+  pull_request:
+    branches:
+      - master
+      - develop
+
+jobs:
+  trivy-scan:
+    name: Trivy Vulnerability Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner (SARIF)
+        uses: aquasecurity/trivy-action@0.34.0
+        with:
+          scan-type: 'fs'
+          path: '.'
+          format: 'sarif'
+          output: 'trivy-repo-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+        continue-on-error: true
+
+      - name: Run Trivy vulnerability scanner (JSON)
+        uses: aquasecurity/trivy-action@0.34.0
+        with:
+          scan-type: 'fs'
+          path: '.'
+          format: 'json'
+          output: 'trivy-summary.json'
+          severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'
+          exit-code: '0'
+        continue-on-error: true
+
+      - name: Upload Trivy scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-scan-results
+          path: |
+            trivy-*.sarif
+            trivy-*.json
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Display vulnerability summary
+        if: always()
+        run: |
+          echo "=== Vulnerability Summary ==="
+
+          if [ -f trivy-summary.json ]; then
+            CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-summary.json)
+            HIGH_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' trivy-summary.json)
+            MEDIUM_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "MEDIUM")] | length' trivy-summary.json)
+
+            echo "Critical: $CRITICAL_COUNT"
+            echo "High: $HIGH_COUNT"
+            echo "Medium: $MEDIUM_COUNT"
+
+            if [ "$CRITICAL_COUNT" -gt 0 ]; then
+              echo ""
+              echo "=== CRITICAL Vulnerabilities ==="
+              jq -r '.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL") | "- \(.VulnerabilityID): \(.PkgName) \(.InstalledVersion) (Fixed: \(.FixedVersion // "N/A"))"' trivy-summary.json | head -20
+            fi
+
+            if [ "$HIGH_COUNT" -gt 0 ]; then
+              echo ""
+              echo "=== HIGH Vulnerabilities ==="
+              jq -r '.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH") | "- \(.VulnerabilityID): \(.PkgName) \(.InstalledVersion) (Fixed: \(.FixedVersion // "N/A"))"' trivy-summary.json | head -20
+            fi
+          else
+            echo "No summary file found"
+          fi
+
+      - name: Check for blocking vulnerabilities
+        if: always()
+        run: |
+          if [ -f trivy-summary.json ]; then
+            CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-summary.json 2>/dev/null || echo "0")
+
+            echo ""
+            echo "Security Gate:"
+
+            if [ "$CRITICAL_COUNT" -gt 0 ]; then
+              echo "  Found $CRITICAL_COUNT critical vulnerabilities"
+
+              if [ "${{ github.event_name }}" = "pull_request" ]; then
+                echo ""
+                echo "  BLOCKING: PR has critical vulnerabilities"
+                echo "  Please fix critical vulnerabilities before merging"
+                exit 1
+              else
+                echo ""
+                echo "  WARNING: Daily scan found critical vulnerabilities (not blocking)"
+              fi
+            else
+              echo "  No critical vulnerabilities found"
+            fi
+          else
+            echo "  WARNING: No trivy-summary.json found - scan may have failed"
+          fi
+
+          echo ""
+          echo "Security scan completed"
