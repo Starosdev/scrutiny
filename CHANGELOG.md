@@ -2,6 +2,26 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.31.0](https://github.com/Starosdev/scrutiny/compare/v1.30.1...v1.31.0) (2026-02-24)
+
+### Features
+
+* **api:** add API token authentication and JWT session infrastructure ([#268](https://github.com/Starosdev/scrutiny/issues/268)) ([58f2889](https://github.com/Starosdev/scrutiny/commit/58f288985bd6816926edbb4a55008e9b979560c6))
+* **api:** add independent metrics endpoint authentication ([#268](https://github.com/Starosdev/scrutiny/issues/268)) ([cb736be](https://github.com/Starosdev/scrutiny/commit/cb736bebdb4197c2f27bd858d501a0c0b6a15282))
+* **auth:** harden auth with rate limiting, hash comparison, and tests ([#268](https://github.com/Starosdev/scrutiny/issues/268)) ([d81c32a](https://github.com/Starosdev/scrutiny/commit/d81c32a4e4ffa94fae998aded870115ae0217ba9))
+* **collector:** add API token authentication for collector-to-server requests ([#268](https://github.com/Starosdev/scrutiny/issues/268)) ([f10e7ec](https://github.com/Starosdev/scrutiny/commit/f10e7ec7eae795017c09ba5b9e7c30b42afaf267))
+* **ui:** add web UI authentication with login page and route guards ([#268](https://github.com/Starosdev/scrutiny/issues/268)) ([f99c6e8](https://github.com/Starosdev/scrutiny/commit/f99c6e8ac70a31964c03c44054579222634feb7d))
+
+### Bug Fixes
+
+* **api:** allow frontend routes to bypass auth middleware ([#268](https://github.com/Starosdev/scrutiny/issues/268)) ([4f1585e](https://github.com/Starosdev/scrutiny/commit/4f1585e4eb937d67082f9b4e12761316205c80dd))
+* **auth:** address final review items before merge ([#268](https://github.com/Starosdev/scrutiny/issues/268)) ([d1d8a8c](https://github.com/Starosdev/scrutiny/commit/d1d8a8c33be6596a708926f5c6167957817c6bc7))
+* **auth:** address review findings before merge ([#268](https://github.com/Starosdev/scrutiny/issues/268)) ([3c07b3a](https://github.com/Starosdev/scrutiny/commit/3c07b3a6866f8324fe38632c1de74f96aef67dc3))
+* **auth:** resolve critical bugs found in pre-merge review ([#268](https://github.com/Starosdev/scrutiny/issues/268)) ([857cf94](https://github.com/Starosdev/scrutiny/commit/857cf941409caafb69d3b4ced8ef37d7a869300c))
+* **auth:** resolve golangci-lint fieldalignment and gosec warnings ([#268](https://github.com/Starosdev/scrutiny/issues/268)) ([13a9806](https://github.com/Starosdev/scrutiny/commit/13a98061824764884ee247280605fe7c2827abe0))
+* **ui:** add sortingDataAccessor for SMART attributes table columns ([#269](https://github.com/Starosdev/scrutiny/issues/269)) ([02a2885](https://github.com/Starosdev/scrutiny/commit/02a2885f234b500e7f19914004d71d55acd8ce8f))
+* **ui:** fix login page dark mode styling and scrollbar ([#268](https://github.com/Starosdev/scrutiny/issues/268)) ([93a3e19](https://github.com/Starosdev/scrutiny/commit/93a3e19ba0df1bc5c67e1c7ebc1150f280ba795c))
+
 ## [1.30.1](https://github.com/Starosdev/scrutiny/compare/v1.30.0...v1.30.1) (2026-02-22)
 
 ### Bug Fixes
