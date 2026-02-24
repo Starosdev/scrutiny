@@ -9,6 +9,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/metrics"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/mqtt"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/notify"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
@@ -116,6 +117,13 @@ func UploadDeviceMetrics(c *gin.Context) {
 	if collectorVal, exists := c.Get("METRICS_COLLECTOR"); exists {
 		if collector, ok := collectorVal.(*metrics.Collector); ok && collector != nil {
 			collector.UpdateDeviceMetrics(wwn, updatedDevice, smartData)
+		}
+	}
+
+	// Publish to MQTT / Home Assistant (if enabled)
+	if pubVal, exists := c.Get("MQTT_PUBLISHER"); exists {
+		if pub, ok := pubVal.(*mqtt.Publisher); ok && pub != nil {
+			pub.PublishDeviceState(wwn, updatedDevice, smartData)
 		}
 	}
 
