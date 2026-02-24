@@ -166,7 +166,11 @@ OPTIONS:
 						}
 					}
 					settingsData, settingsErr := json.MarshalIndent(settingsMap, "", "\t")
-					collectorLogger.Debug(string(settingsData), settingsErr)
+					if settingsErr != nil {
+						collectorLogger.Warnf("Failed to marshal settings for debug logging: %v", settingsErr)
+					} else {
+						collectorLogger.Debug(string(settingsData))
+					}
 
 					var perfCollector *performance.Collector
 					perfCollector, err = performance.CreateCollector(

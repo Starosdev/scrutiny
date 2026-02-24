@@ -30,12 +30,16 @@ func ExtractBearerToken(authHeader string) string {
 }
 
 // ValidateAPIToken checks if the provided token matches the configured master token.
-// Uses constant-time comparison to prevent timing side-channel attacks.
+// Both values are SHA-256 hashed before comparison so that:
+//   - The comparison is always constant-time (fixed 32-byte length)
+//   - Token length is never leaked via timing side channels
 func ValidateAPIToken(providedToken string, configuredToken string) bool {
 	if providedToken == "" || configuredToken == "" {
 		return false
 	}
-	return subtle.ConstantTimeCompare([]byte(providedToken), []byte(configuredToken)) == 1
+	h1 := sha256.Sum256([]byte(providedToken))
+	h2 := sha256.Sum256([]byte(configuredToken))
+	return subtle.ConstantTimeCompare(h1[:], h2[:]) == 1
 }
 
 // HashToken creates a SHA-256 hash of a token for safe database storage.
