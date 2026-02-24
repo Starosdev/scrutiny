@@ -9,17 +9,16 @@ import (
 // ApiToken is the migration-specific model for creating the api_tokens table.
 // This is a snapshot of the model at migration time -- do not modify after release.
 type ApiToken struct {
-	ID        uint           `gorm:"primaryKey"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
-
-	Name       string     `gorm:"not null"`
-	TokenHash  string     `gorm:"uniqueIndex;not null"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	DeletedAt  gorm.DeletedAt `gorm:"index"`
 	LastUsedAt *time.Time
 	ExpiresAt  *time.Time
-	Revoked    bool   `gorm:"default:false"`
+	Name       string `gorm:"not null"`
+	TokenHash  string `gorm:"uniqueIndex;not null"`
 	Scope      string `gorm:"default:'full'"`
+	ID         uint   `gorm:"primaryKey"`
+	Revoked    bool   `gorm:"default:false"`
 }
 
 func (ApiToken) TableName() string {

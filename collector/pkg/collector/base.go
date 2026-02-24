@@ -16,8 +16,8 @@ type BaseCollector struct {
 
 // authTransport is an http.RoundTripper that injects a Bearer token into every request.
 type authTransport struct {
-	token string
 	base  http.RoundTripper
+	token string
 }
 
 func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
