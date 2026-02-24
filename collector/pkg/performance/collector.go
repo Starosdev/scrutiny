@@ -260,7 +260,11 @@ func (c *Collector) Benchmark(device *models.Device, profile string) (*models.Pe
 	c.logger.Infof("Benchmarking complete for %s (%.1fs)", device.DeviceName, result.TestDurationSec)
 
 	if result.SeqReadBwBytes == 0 && result.RandReadIOPS == 0 {
-		return nil, fmt.Errorf("all read benchmarks produced zero results for %s -- skipping (device may be inaccessible)", device.DeviceName)
+		hint := ""
+		if directIO {
+			hint = ". Hint: configure performance.mount_points in collector-performance.yaml to specify the filesystem mount point for this device, or ensure the container has sufficient capabilities for raw block device access"
+		}
+		return nil, fmt.Errorf("all read benchmarks produced zero results for %s -- skipping (device may be inaccessible%s)", device.DeviceName, hint)
 	}
 
 	return result, nil
@@ -320,6 +324,26 @@ func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), bo
 		effectiveDevicePath = namespaceDev
 	}
 
+	// Check for explicitly configured mount point (by device name, then by WWN)
+	if configuredMount := c.lookupConfiguredMountPoint(device); configuredMount != "" {
+		if _, statErr := os.Stat(configuredMount); statErr != nil {
+			c.logger.Warnf("Configured mount point %s for device %s does not exist: %v -- ignoring", configuredMount, device.DeviceName, statErr)
+		} else {
+			requiredSize := c.getRequiredTestFileSize()
+			suitable, reason := isMountPointSuitable(configuredMount, requiredSize)
+			if !suitable {
+				c.logger.Warnf("Configured mount point %s for device %s is not suitable: %s -- ignoring", configuredMount, device.DeviceName, reason)
+			} else {
+				c.logger.Infof("Using configured mount point %s for device %s", configuredMount, device.DeviceName)
+				tempFile := fmt.Sprintf("%s/.scrutiny_perf_bench", configuredMount)
+				cleanup := func() {
+					os.Remove(tempFile)
+				}
+				return tempFile, cleanup, false, nil
+			}
+		}
+	}
+
 	// Explicit opt-in takes precedence (now uses namespace device for NVMe)
 	if c.config.GetBool("performance.allow_direct_device_io") {
 		c.logger.Infof("Direct device I/O enabled -- benchmarking %s (read-only, write tests skipped)", effectiveDevicePath)
@@ -347,6 +371,20 @@ func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), bo
 	}
 
 	return tempFile, cleanup, false, nil
+}
+
+// lookupConfiguredMountPoint checks the config for an explicit mount point
+// override, first by device name (e.g., "sda") then by WWN.
+func (c *Collector) lookupConfiguredMountPoint(device *models.Device) string {
+	if mp := c.config.GetString("performance.mount_points." + device.DeviceName); mp != "" {
+		return mp
+	}
+	if device.WWN != "" {
+		if mp := c.config.GetString("performance.mount_points." + device.WWN); mp != "" {
+			return mp
+		}
+	}
+	return ""
 }
 
 // getRequiredTestFileSize returns the number of bytes needed for the benchmark
@@ -434,6 +472,11 @@ func (c *Collector) buildFioArgs(rwMode string, blockSize string, profile string
 		fmt.Sprintf("--filename=%s", targetPath),
 	}
 
+	// When targeting a raw block device, tell fio the file already exists
+	if strings.HasPrefix(targetPath, detect.DevicePrefix()) {
+		args = append(args, "--allow_file_create=0")
+	}
+
 	return args
 }
 
@@ -448,6 +491,10 @@ func (c *Collector) runFio(fioBin string, args []string) ([]byte, error) {
 
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("fio command failed: %w (stderr: %s)", err, stderr.String())
+	}
+
+	if stderrStr := strings.TrimSpace(stderr.String()); stderrStr != "" {
+		c.logger.Debugf("fio stderr (non-fatal): %s", stderrStr)
 	}
 
 	return stdout.Bytes(), nil

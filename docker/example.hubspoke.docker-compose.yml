@@ -81,17 +81,24 @@ services:
   # Performance Benchmark Collector (optional - for fio-based drive benchmarking)
   # Runs fio benchmarks on drives and tracks throughput, IOPS, and latency over time.
   # Default schedule: Sunday 2 AM. Requires device access and mounted filesystems.
+  # For best results, volume-mount the host filesystem paths and configure mount_points
+  # so the collector benchmarks the actual filesystem rather than using raw device I/O.
   # collector-performance:
   #   restart: unless-stopped
   #   image: 'ghcr.io/starosdev/scrutiny:latest-collector-performance'
   #   volumes:
   #     - '/run/udev:/run/udev:ro'
+  #     - '/mnt/data:/mnt/data'        # Mount host filesystem for sda benchmarks
+  #     - '/mnt/backup:/mnt/backup'    # Mount host filesystem for sdb benchmarks
   #   environment:
   #     COLLECTOR_PERF_API_ENDPOINT: 'http://web:8080'
   #     COLLECTOR_PERF_HOST_ID: 'scrutiny-collector-hostname'
   #     COLLECTOR_PERF_CRON_SCHEDULE: '0 2 * * 0'  # Sunday at 2 AM
   #     COLLECTOR_PERF_RUN_STARTUP: 'false'
   #     COLLECTOR_PERF_PROFILE: 'quick'  # 'quick' (~60s/device) or 'comprehensive' (~300s/device)
+  #     # Map devices to their host mount points (avoids raw block device fallback):
+  #     COLLECTOR_PERFORMANCE_MOUNT_POINTS_SDA: '/mnt/data'
+  #     COLLECTOR_PERFORMANCE_MOUNT_POINTS_SDB: '/mnt/backup'
   #   depends_on:
   #     web:
   #       condition: service_healthy

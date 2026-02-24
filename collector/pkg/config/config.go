@@ -64,6 +64,7 @@ func (c *configuration) Init() error {
 	c.SetDefault("performance.profile", "quick")
 	c.SetDefault("performance.allow_direct_device_io", false)
 	c.SetDefault("performance.temp_file_size", "256M")
+	c.SetDefault("performance.mount_points", map[string]string{})
 
 	c.SetDefault("allow_listed_devices", []string{})
 
