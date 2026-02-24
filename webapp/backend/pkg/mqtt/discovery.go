@@ -20,13 +20,14 @@ type DiscoveryMessage struct {
 func deviceInfo(device *models.Device) map[string]interface{} {
 	name := device.Label
 	if name == "" {
-		if device.ModelName != "" && device.DeviceName != "" {
+		switch {
+		case device.ModelName != "" && device.DeviceName != "":
 			name = fmt.Sprintf("%s (%s)", device.ModelName, device.DeviceName)
-		} else if device.ModelName != "" {
+		case device.ModelName != "":
 			name = device.ModelName
-		} else if device.DeviceName != "" {
+		case device.DeviceName != "":
 			name = device.DeviceName
-		} else {
+		default:
 			name = fmt.Sprintf("Drive %s", device.WWN)
 		}
 	}
