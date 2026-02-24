@@ -36,5 +36,10 @@ func UpdateDeviceLabel(c *gin.Context) {
 		return
 	}
 
+	// Re-publish discovery to update the device name in Home Assistant
+	if device, err := deviceRepo.GetDeviceDetails(c, wwn); err == nil {
+		publishMqttDeviceDiscovery(c, &device)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }

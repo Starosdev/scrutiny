@@ -182,6 +182,36 @@ func TestBuildDiscoveryMessages_DeviceNameOnly(t *testing.T) {
 	require.Equal(t, "sda", devInfo["name"], "should use DeviceName when ModelName is empty")
 }
 
+func TestBuildDiscoveryMessages_CustomLabel(t *testing.T) {
+	// Device with a user-set Label should use Label as the HA device name
+	device := &models.Device{
+		WWN:        "0x5000cca264eb01d7",
+		DeviceName: "sda",
+		ModelName:  "ST4000DM000",
+		Label:      "Parity Drive",
+	}
+	messages := BuildDiscoveryMessages(device, "homeassistant")
+
+	var payload map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(messages[0].Payload), &payload))
+	devInfo := payload["device"].(map[string]interface{})
+	require.Equal(t, "Parity Drive", devInfo["name"], "should use Label when set")
+}
+
+func TestBuildDiscoveryMessages_ModelNameOnly(t *testing.T) {
+	// Device with ModelName but no DeviceName
+	device := &models.Device{
+		WWN:       "0x5002538e40a22954",
+		ModelName: "ST4000DM000",
+	}
+	messages := BuildDiscoveryMessages(device, "homeassistant")
+
+	var payload map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(messages[0].Payload), &payload))
+	devInfo := payload["device"].(map[string]interface{})
+	require.Equal(t, "ST4000DM000", devInfo["name"], "should use ModelName when DeviceName is empty")
+}
+
 func TestBuildRemoveMessages_Count(t *testing.T) {
 	device := testDevice()
 	messages := BuildRemoveMessages(device, "homeassistant")
