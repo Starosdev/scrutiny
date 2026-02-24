@@ -17,6 +17,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/errors"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/metrics"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/mqtt"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/reports"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/web/handler"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/web/middleware"
@@ -25,11 +26,13 @@ import (
 )
 
 const configKeyMetricsEnabled = "web.metrics.enabled"
+const configKeyMqttEnabled = "web.mqtt.enabled"
 
 type AppEngine struct {
 	Config            config.Interface
 	Logger            *logrus.Entry
 	MetricsCollector  *metrics.Collector
+	MqttPublisher     *mqtt.Publisher
 	MissedPingMonitor *MissedPingMonitor
 	HeartbeatMonitor  *HeartbeatMonitor
 	ReportScheduler   *reports.Scheduler
@@ -57,6 +60,20 @@ func (ae *AppEngine) registerMiddleware(r *gin.Engine, logger *logrus.Entry) {
 	} else {
 		logger.Info("Prometheus metrics endpoint disabled")
 	}
+
+	if ae.Config.GetBool(configKeyMqttEnabled) {
+		if ae.MqttPublisher == nil {
+			ae.MqttPublisher = mqtt.NewPublisher(ae.Config, logger)
+		}
+		if err := ae.MqttPublisher.Connect(); err != nil {
+			logger.Errorf("Failed to connect MQTT: %v (MQTT integration disabled)", err)
+			ae.MqttPublisher = nil
+		} else {
+			r.Use(middleware.MqttPublisherMiddleware(ae.MqttPublisher))
+			logger.Info("MQTT Home Assistant integration enabled")
+		}
+	}
+
 	r.Use(gin.Recovery())
 }
 
@@ -243,6 +260,7 @@ func (ae *AppEngine) Start() error {
 	ae.Logger.Info("Report scheduler started")
 
 	ae.loadInitialMetrics()
+	ae.loadInitialMqttData()
 
 	// Create HTTP server for graceful shutdown support
 	addr := fmt.Sprintf("%s:%s", ae.Config.GetString("web.listen.host"), ae.Config.GetString("web.listen.port"))
@@ -310,7 +328,28 @@ func (ae *AppEngine) loadInitialMetrics() {
 	}()
 }
 
+func (ae *AppEngine) loadInitialMqttData() {
+	if !ae.Config.GetBool(configKeyMqttEnabled) || ae.MqttPublisher == nil {
+		return
+	}
+	go func() {
+		deviceRepo, err := database.NewScrutinyRepository(ae.Config, ae.Logger)
+		if err != nil {
+			ae.Logger.Errorln("Failed to create repository for loading MQTT data:", err)
+			return
+		}
+		defer deviceRepo.Close()
+
+		if err := ae.MqttPublisher.LoadInitialData(deviceRepo, context.Background()); err != nil {
+			ae.Logger.Errorln("Failed to load initial MQTT data:", err)
+		}
+	}()
+}
+
 func (ae *AppEngine) stopBackgroundMonitors() {
+	if ae.MqttPublisher != nil {
+		ae.MqttPublisher.Disconnect()
+	}
 	if ae.MissedPingMonitor != nil {
 		ae.MissedPingMonitor.Stop()
 	}

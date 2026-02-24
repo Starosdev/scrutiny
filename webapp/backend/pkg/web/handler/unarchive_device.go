@@ -27,5 +27,10 @@ func UnarchiveDevice(c *gin.Context) {
 		return
 	}
 
+	// Re-publish device to Home Assistant when unarchived
+	if device, err := deviceRepo.GetDeviceDetails(c, wwn); err == nil {
+		publishMqttDeviceDiscovery(c, device)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }

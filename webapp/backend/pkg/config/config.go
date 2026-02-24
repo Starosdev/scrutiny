@@ -76,6 +76,16 @@ func (c *configuration) Init() error {
 	// When empty (default), the endpoint is open (or protected by web.auth if enabled).
 	c.SetDefault("web.metrics.token", "")
 
+	// MQTT / Home Assistant integration
+	c.SetDefault("web.mqtt.enabled", false)
+	c.SetDefault("web.mqtt.broker", "tcp://localhost:1883")
+	c.SetDefault("web.mqtt.username", "")
+	c.SetDefault("web.mqtt.password", "")
+	c.SetDefault("web.mqtt.client_id", "scrutiny")
+	c.SetDefault("web.mqtt.topic_prefix", "homeassistant")
+	c.SetDefault("web.mqtt.qos", 1)
+	c.SetDefault("web.mqtt.retain", true)
+
 	// Authentication settings
 	// Auth is disabled by default for backward compatibility with existing deployments.
 	// When enabled, all API endpoints (except /api/health and /api/auth/*) require
