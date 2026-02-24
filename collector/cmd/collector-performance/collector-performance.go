@@ -150,8 +150,8 @@ OPTIONS:
 					}
 
 					var collectorLogger *logrus.Entry
-				var logFile *os.File
-				collectorLogger, logFile, err = CreateLogger(config)
+					var logFile *os.File
+					collectorLogger, logFile, err = CreateLogger(config)
 					if logFile != nil {
 						defer logFile.Close()
 					}

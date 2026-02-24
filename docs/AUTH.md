@@ -35,7 +35,7 @@ Then configure each collector with the same token. See [Collector Authentication
 
 | Config Key | Environment Variable | Default | Description |
 |---|---|---|---|
-| `api.token` | `COLLECTOR_API_TOKEN` | (empty) | API token for authenticating with the Scrutiny server. Must match `web.auth.token`. |
+| `api.token` (metrics) | `COLLECTOR_METRICS_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the metrics collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
 | `api.token` (performance) | `COLLECTOR_PERF_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the performance collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
 | `api.token` (zfs) | `COLLECTOR_ZFS_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the ZFS collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
 
@@ -81,7 +81,7 @@ When authentication is enabled on the server, each collector must be configured 
 Configure the token using any of these methods (in order of precedence):
 
 1. **CLI flag**: `--api-token your-secret-api-token-here`
-2. **Environment variable**: `COLLECTOR_API_TOKEN=your-secret-api-token-here`
+2. **Environment variable**: `COLLECTOR_METRICS_API_TOKEN=your-secret-api-token-here` (falls back to `COLLECTOR_API_TOKEN`)
 3. **Config file** (`collector.yaml`):
     ```yaml
     api:
