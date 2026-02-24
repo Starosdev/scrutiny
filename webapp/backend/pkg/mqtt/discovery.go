@@ -18,14 +18,17 @@ type DiscoveryMessage struct {
 
 // deviceInfo builds the HA device grouping block shared by all entities for a drive.
 func deviceInfo(device *models.Device) map[string]interface{} {
-	name := device.ModelName
-	if device.ModelName != "" && device.DeviceName != "" {
-		name = fmt.Sprintf("%s (%s)", device.ModelName, device.DeviceName)
-	} else if device.DeviceName != "" {
-		name = device.DeviceName
-	}
+	name := device.Label
 	if name == "" {
-		name = fmt.Sprintf("Drive %s", device.WWN)
+		if device.ModelName != "" && device.DeviceName != "" {
+			name = fmt.Sprintf("%s (%s)", device.ModelName, device.DeviceName)
+		} else if device.ModelName != "" {
+			name = device.ModelName
+		} else if device.DeviceName != "" {
+			name = device.DeviceName
+		} else {
+			name = fmt.Sprintf("Drive %s", device.WWN)
+		}
 	}
 
 	info := map[string]interface{}{
