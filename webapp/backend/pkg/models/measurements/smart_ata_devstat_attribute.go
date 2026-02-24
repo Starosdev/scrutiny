@@ -92,7 +92,8 @@ func (sa *SmartAtaDeviceStatAttribute) PopulateAttributeStatus() *SmartAtaDevice
 	// Some drives report corrupted/encoded values that shouldn't be interpreted literally
 	if metadata.Ideal == thresholds.ObservedThresholdIdealLow && sa.Value > MaxReasonableFailureCount {
 		sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusInvalidValue)
-		sa.StatusReason = "Value exceeds reasonable maximum, likely corrupted data"
+		sa.StatusReason = fmt.Sprintf("%s value %d exceeds reasonable maximum (%d), likely corrupted data",
+			metadata.DisplayName, sa.Value, MaxReasonableFailureCount)
 		return sa
 	}
 
@@ -106,15 +107,15 @@ func (sa *SmartAtaDeviceStatAttribute) PopulateAttributeStatus() *SmartAtaDevice
 		// Tier 1: Fixed threshold available (e.g., devstat_7_8 percentage used = 100)
 		if metadata.Ideal == thresholds.ObservedThresholdIdealLow && sa.Value >= threshold {
 			sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusFailedScrutiny)
-			sa.StatusReason = "Device statistic exceeds recommended threshold"
+			sa.StatusReason = fmt.Sprintf("%s value %d exceeds threshold %d", metadata.DisplayName, sa.Value, threshold)
 		} else if metadata.Ideal == thresholds.ObservedThresholdIdealHigh && sa.Value <= threshold {
 			sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusFailedScrutiny)
-			sa.StatusReason = "Device statistic below recommended threshold"
+			sa.StatusReason = fmt.Sprintf("%s value %d is below threshold %d", metadata.DisplayName, sa.Value, threshold)
 		}
 	} else if metadata.Critical && metadata.Ideal == thresholds.ObservedThresholdIdealLow && sa.Value > 0 {
 		// Tier 2: No fixed threshold, but critical error count is non-zero
 		sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusWarningScrutiny)
-		sa.StatusReason = "Critical device statistic has non-zero error count"
+		sa.StatusReason = fmt.Sprintf("%s has non-zero error count: value %d", metadata.DisplayName, sa.Value)
 	}
 
 	return sa
