@@ -37,6 +37,7 @@
 #   web.influxdb.retention.weekly         -> SCRUTINY_WEB_INFLUXDB_RETENTION_WEEKLY
 #   web.influxdb.retention.monthly        -> SCRUTINY_WEB_INFLUXDB_RETENTION_MONTHLY
 #   web.metrics.enabled                   -> SCRUTINY_WEB_METRICS_ENABLED
+#   web.metrics.token                     -> SCRUTINY_WEB_METRICS_TOKEN
 #   log.level                             -> SCRUTINY_LOG_LEVEL
 #   log.file                              -> SCRUTINY_LOG_FILE
 #   notify.urls                           -> SCRUTINY_NOTIFY_URLS (comma-separated)
@@ -108,10 +109,61 @@ web:
     #   monthly: 65318400 # 25 months (default) - monthly aggregated data
     #   # yearly bucket has infinite retention (not configurable)
 
+  # Authentication settings
+  # When enabled, all API endpoints (except /api/health and /api/auth/*) require
+  # a valid Bearer token in the Authorization header. Disabled by default so
+  # existing deployments are unaffected.
+  #
+  # Environment variable overrides:
+  #   web.auth.enabled          -> SCRUTINY_WEB_AUTH_ENABLED
+  #   web.auth.token            -> SCRUTINY_WEB_AUTH_TOKEN
+  #   web.auth.jwt_secret       -> SCRUTINY_WEB_AUTH_JWT_SECRET
+  #   web.auth.jwt_expiry_hours -> SCRUTINY_WEB_AUTH_JWT_EXPIRY_HOURS
+  #   web.auth.admin_username   -> SCRUTINY_WEB_AUTH_ADMIN_USERNAME
+  #   web.auth.admin_password   -> SCRUTINY_WEB_AUTH_ADMIN_PASSWORD
+  auth:
+    # Enable API authentication (default: false, all endpoints open)
+    # enabled: false
+
+    # Master API token for collector and programmatic access.
+    # Required when auth is enabled. Collectors send this as:
+    #   Authorization: Bearer <token>
+    # token: 'your-secret-api-token-here'
+
+    # Secret key for signing JWT session tokens (used for web UI sessions).
+    # If empty, a random secret is generated at startup -- tokens will not
+    # survive server restarts. Set a stable value for persistent sessions.
+    # jwt_secret: ''
+
+    # JWT token expiry in hours (default: 24)
+    # jwt_expiry_hours: 24
+
+    # Admin credentials for password-based web UI login (optional).
+    # When admin_password is set, users can log in with username/password
+    # in addition to the API token. Token login is always available.
+    # admin_username: 'admin'
+    # admin_password: 'your-admin-password-here'
+
   # Prometheus metrics endpoint configuration
   metrics:
     # Enable or disable Prometheus metrics endpoint (/api/metrics)
     enabled: true
+
+    # Optional bearer token for authenticating Prometheus scrape requests.
+    # When set, /api/metrics requires: Authorization: Bearer <token>
+    # When empty (default), the endpoint is open (or protected by web.auth if enabled).
+    # Env: SCRUTINY_WEB_METRICS_TOKEN
+    #
+    # Prometheus scrape config example:
+    #   scrape_configs:
+    #     - job_name: scrutiny
+    #       bearer_token: 'your-metrics-token-here'
+    #       metrics_path: '/api/metrics'
+    #       static_configs:
+    #         - targets: ['localhost:8080']
+    #
+    # token: 'your-metrics-token-here'
+
     # if you wish to disable TLS certificate verification,
     # when using self-signed certificates for example,
     # then uncomment the lines below and set `insecure_skip_verify: true`

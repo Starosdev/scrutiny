@@ -60,6 +60,12 @@
               <code>{{appVersion}}</code>
             </a>
 
+            @if (authEnabled) {
+              <button mat-icon-button (click)="logout()" matTooltip="Logout" class="ml-2">
+                <mat-icon svgIcon="heroicons_outline:logout"></mat-icon>
+              </button>
+            }
+
             <!-- Shortcuts -->
             <!--                <shortcuts [shortcuts]="data.shortcuts"></shortcuts>-->
 

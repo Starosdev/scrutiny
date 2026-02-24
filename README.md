@@ -45,6 +45,7 @@ Full credit for the original vision and architecture goes to [AnalogJ](https://g
 - **Enhanced Mobile UI** - Optimized layout for mobile devices
 - **Performance Benchmarking** - Run fio benchmarks and track drive throughput, IOPS, and latency over time
 - **Scheduled Reports** [WIP] - Automated daily/weekly/monthly health reports via email with HTML formatting
+- **API Authentication** - Opt-in token-based auth for API, web UI, and Prometheus metrics
 - **Missed Ping Digest** - Consolidated notification when multiple collectors miss pings (instead of one email per device)
 - **HTML Email Notifications** - Rich HTML emails for reports and missed ping alerts via SMTP
 - **Enhanced Seagate Drive Support** - Better timeout handling for Seagate drives
@@ -87,6 +88,7 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Day-Resolution Graphs** - View temperature trends at daily granularity
 - **SAS Drive Support** - Full temperature support for SAS devices
 - **S.M.A.R.T Attribute Overrides** - Override thresholds per device via UI
+- **API Authentication** - Token and password login, collector auth, independent metrics auth
 - **Improved UI Layout** - Top navigation for better S.M.A.R.T attribute visibility
 - **Mobile-Optimized Interface** - Better experience on mobile devices
 - **API Timeout Configuration** - Adjust timeouts for slow storage systems
@@ -237,6 +239,17 @@ scrape_configs:
     static_configs:
       - targets: ['scrutiny:8080']
     metrics_path: '/api/metrics'
+```
+
+If you have secured the metrics endpoint with `web.metrics.token` (see [Authentication](docs/AUTH.md#prometheus-metrics-authentication)):
+
+```yaml
+scrape_configs:
+  - job_name: 'scrutiny'
+    metrics_path: '/api/metrics'
+    bearer_token: 'your-metrics-token-here'
+    static_configs:
+      - targets: ['scrutiny:8080']
 ```
 
 ## Performance Benchmarking
@@ -490,6 +503,13 @@ Dots and dashes in key names become underscores.
 | `web.influxdb.retention.weekly` | `SCRUTINY_WEB_INFLUXDB_RETENTION_WEEKLY` | `5443200` (9 weeks) |
 | `web.influxdb.retention.monthly` | `SCRUTINY_WEB_INFLUXDB_RETENTION_MONTHLY` | `65318400` (25 months) |
 | `web.metrics.enabled` | `SCRUTINY_WEB_METRICS_ENABLED` | `true` |
+| `web.metrics.token` | `SCRUTINY_WEB_METRICS_TOKEN` | `` |
+| `web.auth.enabled` | `SCRUTINY_WEB_AUTH_ENABLED` | `false` |
+| `web.auth.token` | `SCRUTINY_WEB_AUTH_TOKEN` | `` |
+| `web.auth.jwt_secret` | `SCRUTINY_WEB_AUTH_JWT_SECRET` | `` |
+| `web.auth.jwt_expiry_hours` | `SCRUTINY_WEB_AUTH_JWT_EXPIRY_HOURS` | `24` |
+| `web.auth.admin_username` | `SCRUTINY_WEB_AUTH_ADMIN_USERNAME` | `admin` |
+| `web.auth.admin_password` | `SCRUTINY_WEB_AUTH_ADMIN_PASSWORD` | `` |
 | `log.level` | `SCRUTINY_LOG_LEVEL` | `INFO` |
 | `log.file` | `SCRUTINY_LOG_FILE` | `` |
 | `notify.urls` | `SCRUTINY_NOTIFY_URLS` | `` |
@@ -536,6 +556,7 @@ Dots and dashes in key names become underscores.
 | `host.id` | `COLLECTOR_HOST_ID` | `` |
 | `api.endpoint` | `COLLECTOR_API_ENDPOINT` | `http://localhost:8080` |
 | `api.timeout` | `COLLECTOR_API_TIMEOUT` | `60` |
+| `api.token` | `COLLECTOR_API_TOKEN` | `` |
 | `commands.metrics_smartctl_bin` | `COLLECTOR_COMMANDS_METRICS_SMARTCTL_BIN` | `smartctl` |
 | `commands.metrics_scan_args` | `COLLECTOR_COMMANDS_METRICS_SCAN_ARGS` | `--scan --json` |
 | `commands.metrics_info_args` | `COLLECTOR_COMMANDS_METRICS_INFO_ARGS` | `--info --json` |

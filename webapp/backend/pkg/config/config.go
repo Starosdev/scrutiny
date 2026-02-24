@@ -72,6 +72,23 @@ func (c *configuration) Init() error {
 
 	// Metrics settings
 	c.SetDefault("web.metrics.enabled", true)
+	// Optional bearer token for securing the Prometheus /api/metrics endpoint independently.
+	// When empty (default), the endpoint is open (or protected by web.auth if enabled).
+	c.SetDefault("web.metrics.token", "")
+
+	// Authentication settings
+	// Auth is disabled by default for backward compatibility with existing deployments.
+	// When enabled, all API endpoints (except /api/health and /api/auth/*) require
+	// a valid Bearer token in the Authorization header.
+	c.SetDefault("web.auth.enabled", false)
+	c.SetDefault("web.auth.token", "")
+	c.SetDefault("web.auth.jwt_secret", "")
+	c.SetDefault("web.auth.jwt_expiry_hours", 24)
+	// Admin credentials for password-based login (optional).
+	// Token login (web.auth.token) is always available when auth is enabled.
+	// Password login is only available when admin_password is set.
+	c.SetDefault("web.auth.admin_username", "admin")
+	c.SetDefault("web.auth.admin_password", "")
 
 	//c.SetDefault("disks.include", []string{})
 	//c.SetDefault("disks.exclude", []string{})
@@ -152,6 +169,12 @@ func (c *configuration) ValidateConfig() error {
 	}
 	if c.IsSet("notify.level") {
 		return errors.ConfigValidationError("`notify.level` configuration option is deprecated. Replaced by option in Dashboard Settings page")
+	}
+
+	// When authentication is enabled, a master API token must be provided.
+	// Without a token, there would be no way to authenticate.
+	if c.GetBool("web.auth.enabled") && c.GetString("web.auth.token") == "" {
+		return errors.ConfigValidationError("`web.auth.token` is required when `web.auth.enabled` is true. Set it in scrutiny.yaml or via SCRUTINY_WEB_AUTH_TOKEN env var.")
 	}
 
 	return nil

@@ -14,9 +14,30 @@ type BaseCollector struct {
 	httpClient *http.Client
 }
 
+// authTransport is an http.RoundTripper that injects a Bearer token into every request.
+type authTransport struct {
+	base  http.RoundTripper
+	token string
+}
+
+func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.Header.Set("Authorization", "Bearer "+t.token)
+	return t.base.RoundTrip(req)
+}
+
 // NewHTTPClient creates an HTTP client with the specified timeout in seconds
 func NewHTTPClient(timeoutSeconds int) *http.Client {
 	return &http.Client{Timeout: time.Duration(timeoutSeconds) * time.Second}
+}
+
+// NewAuthHTTPClient creates an HTTP client that injects a Bearer token when apiToken is non-empty.
+func NewAuthHTTPClient(timeoutSeconds int, apiToken string) *http.Client {
+	client := &http.Client{Timeout: time.Duration(timeoutSeconds) * time.Second}
+	if apiToken != "" {
+		client.Transport = &authTransport{token: apiToken, base: http.DefaultTransport}
+	}
+	return client
 }
 
 func (c *BaseCollector) getJson(url string, target interface{}) error {
@@ -41,6 +62,10 @@ func (c *BaseCollector) postJson(url string, body interface{}, target interface{
 		return err
 	}
 	defer r.Body.Close()
+
+	if r.StatusCode == 401 {
+		c.logger.Errorln("Authentication failed (HTTP 401). Check that api.token in collector.yaml matches web.auth.token in scrutiny.yaml.")
+	}
 
 	return json.NewDecoder(r.Body).Decode(target)
 }

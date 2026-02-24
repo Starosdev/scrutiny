@@ -141,13 +141,17 @@ OPTIONS:
 						config.Set("api.endpoint", apiEndpoint)
 					}
 
+					if c.IsSet("api-token") {
+						config.Set("api.token", c.String("api-token"))
+					}
+
 					if c.IsSet("profile") {
 						config.Set("performance.profile", c.String("profile"))
 					}
 
 					var collectorLogger *logrus.Entry
-				var logFile *os.File
-				collectorLogger, logFile, err = CreateLogger(config)
+					var logFile *os.File
+					collectorLogger, logFile, err = CreateLogger(config)
 					if logFile != nil {
 						defer logFile.Close()
 					}
@@ -155,8 +159,18 @@ OPTIONS:
 						return err
 					}
 
-					settingsData, settingsErr := json.MarshalIndent(config.AllSettings(), "", "\t")
-					collectorLogger.Debug(string(settingsData), settingsErr)
+					settingsMap := config.AllSettings()
+					if apiMap, ok := settingsMap["api"].(map[string]interface{}); ok {
+						if _, hasToken := apiMap["token"]; hasToken && apiMap["token"] != "" {
+							apiMap["token"] = "[REDACTED]"
+						}
+					}
+					settingsData, settingsErr := json.MarshalIndent(settingsMap, "", "\t")
+					if settingsErr != nil {
+						collectorLogger.Warnf("Failed to marshal settings for debug logging: %v", settingsErr)
+					} else {
+						collectorLogger.Debug(string(settingsData))
+					}
 
 					var perfCollector *performance.Collector
 					perfCollector, err = performance.CreateCollector(
@@ -202,6 +216,11 @@ OPTIONS:
 						Usage:   "Benchmark profile: 'quick' or 'comprehensive'",
 						Value:   "",
 						EnvVars: []string{"COLLECTOR_PERF_PROFILE"},
+					},
+					&cli.StringFlag{
+						Name:    "api-token",
+						Usage:   "API token for authenticating with the Scrutiny server",
+						EnvVars: []string{"COLLECTOR_PERF_API_TOKEN", "COLLECTOR_API_TOKEN"},
 					},
 				},
 			},

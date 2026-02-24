@@ -5,6 +5,7 @@ import { MatButtonModule as MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule as MatMenuModule } from '@angular/material/menu';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { TreoNavigationModule } from '@treo/components/navigation';
 import { SearchModule } from 'app/layout/common/search/search.module';
 import { ThemeToggleModule } from 'app/layout/common/theme-toggle/theme-toggle.module';
@@ -24,6 +25,7 @@ import { MaterialLayoutComponent } from 'app/layout/layouts/horizontal/material/
         TreoNavigationModule,
         SearchModule,
         ThemeToggleModule,
+        MatTooltipModule,
         SharedModule], providers: [provideHttpClient(withInterceptorsFromDi())] })
 export class MaterialLayoutModule
 {

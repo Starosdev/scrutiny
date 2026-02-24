@@ -1,0 +1,231 @@
+:host {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    align-items: center;
+    justify-content: center;
+    background-color: #f5f5f5;
+
+    @media (prefers-color-scheme: dark) {
+        background-color: #1e1e1e;
+    }
+}
+
+.login-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 24px;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 40px 32px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+    @media (prefers-color-scheme: dark) {
+        background: #2d2d2d;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .mat-mdc-tab-body-content,
+    .mat-mdc-tab-body {
+        overflow: hidden !important;
+    }
+
+    // Notch: remove left/right borders in all modes (prevents divider line next to label)
+    .mdc-notched-outline__notch {
+        border-left: none !important;
+        border-right: none !important;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        // Tab label colors
+        .mdc-tab__text-label {
+            color: rgba(255, 255, 255, 0.6) !important;
+        }
+
+        .mdc-tab--active .mdc-tab__text-label {
+            color: rgb(88, 80, 236) !important;
+        }
+
+        .mdc-tab-indicator__content--underline {
+            border-color: rgb(88, 80, 236) !important;
+        }
+
+        // Form field label
+        .mdc-floating-label,
+        .mdc-text-field--outlined .mdc-floating-label {
+            color: rgba(255, 255, 255, 0.6) !important;
+        }
+
+        // Input text color (all states including focus and typing)
+        .mat-mdc-input-element,
+        .mat-mdc-form-field input,
+        .mdc-text-field__input {
+            color: rgba(255, 255, 255, 0.87) !important;
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.87) !important;
+            caret-color: rgb(88, 80, 236);
+        }
+
+        // Browser autofill override
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.87) !important;
+            -webkit-box-shadow: 0 0 0 30px #2d2d2d inset !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+
+        // Placeholder text
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.4) !important;
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.4) !important;
+        }
+
+        // Form field outline - only leading and trailing get border-color
+        .mdc-notched-outline__leading,
+        .mdc-notched-outline__trailing {
+            border-color: rgba(255, 255, 255, 0.38) !important;
+        }
+
+        // Notch: only top/bottom borders, never left/right (prevents divider)
+        .mdc-notched-outline__notch {
+            border-left: none !important;
+            border-right: none !important;
+            border-top-color: rgba(255, 255, 255, 0.38) !important;
+            border-bottom-color: rgba(255, 255, 255, 0.38) !important;
+        }
+
+        // Hover state
+        .mdc-text-field--outlined:not(.mdc-text-field--disabled):hover {
+            .mdc-notched-outline__leading,
+            .mdc-notched-outline__trailing {
+                border-color: rgba(255, 255, 255, 0.6) !important;
+            }
+
+            .mdc-notched-outline__notch {
+                border-top-color: rgba(255, 255, 255, 0.6) !important;
+                border-bottom-color: rgba(255, 255, 255, 0.6) !important;
+            }
+        }
+
+        // Focused state
+        .mdc-text-field--outlined.mdc-text-field--focused {
+            .mdc-notched-outline__leading,
+            .mdc-notched-outline__trailing {
+                border-color: rgb(88, 80, 236) !important;
+            }
+
+            .mdc-notched-outline__notch {
+                border-top-color: rgb(88, 80, 236) !important;
+                border-bottom-color: rgb(88, 80, 236) !important;
+            }
+        }
+
+        // Suffix icon (visibility toggle)
+        .mat-mdc-form-field .mat-mdc-icon-button {
+            color: rgba(255, 255, 255, 0.54) !important;
+        }
+
+        // Button
+        .mat-mdc-unelevated-button.mat-primary {
+            background-color: rgb(88, 80, 236) !important;
+            color: white !important;
+        }
+
+        .mat-mdc-unelevated-button[disabled] {
+            background-color: rgba(255, 255, 255, 0.12) !important;
+            color: rgba(255, 255, 255, 0.38) !important;
+        }
+    }
+}
+
+.login-logo {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 24px;
+
+    img {
+        height: 40px;
+        width: auto;
+    }
+
+    .logo-dark {
+        display: none;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .logo-light {
+            display: none;
+        }
+
+        .logo-dark {
+            display: block;
+        }
+    }
+}
+
+.login-title {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 500;
+    margin: 0 0 24px;
+    color: rgba(0, 0, 0, 0.87);
+
+    @media (prefers-color-scheme: dark) {
+        color: rgba(255, 255, 255, 0.87);
+    }
+}
+
+.login-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    background-color: #fdecea;
+    border-radius: 4px;
+    color: #611a15;
+    font-size: 14px;
+
+    mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+        color: #f44336;
+        flex-shrink: 0;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        background-color: #3d1c1c;
+        color: #f5c6cb;
+    }
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    padding-top: 16px;
+}
+
+.login-field {
+    width: 100%;
+    margin-bottom: 4px;
+}
+
+.login-button {
+    width: 100%;
+    height: 44px;
+    margin-top: 8px;
+    font-size: 15px;
+}
+
+mat-progress-bar {
+    margin-bottom: 16px;
+}

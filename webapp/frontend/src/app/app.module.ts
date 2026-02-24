@@ -1,4 +1,4 @@
-import {enableProdMode, NgModule} from '@angular/core';
+import {enableProdMode, inject, NgModule, provideAppInitializer} from '@angular/core';
 import {BrowserModule} from '@angular/platform-browser';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {ExtraOptions, PreloadAllModules, RouterModule} from '@angular/router';
@@ -9,6 +9,7 @@ import {ScrutinyConfigModule} from 'app/core/config/scrutiny-config.module';
 import {TreoMockApiModule} from '@treo/lib/mock-api';
 import {CoreModule} from 'app/core/core.module';
 import {appConfig} from 'app/core/config/app.config';
+import {AuthService} from 'app/core/auth/auth.service';
 import {mockDataServices} from 'app/data/mock';
 import {LayoutModule} from 'app/layout/layout.module';
 import {AppComponent} from 'app/app.component';
@@ -61,7 +62,8 @@ if (environment.production) {
         {
             provide: APP_BASE_HREF,
             useValue: getAppBaseHref()
-        }
+        },
+        provideAppInitializer(() => inject(AuthService).init())
     ],
 })
 export class AppModule

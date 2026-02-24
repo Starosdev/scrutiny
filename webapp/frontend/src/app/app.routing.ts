@@ -1,6 +1,7 @@
 import { Route } from '@angular/router';
 import { LayoutComponent } from 'app/layout/layout.component';
 import { EmptyLayoutComponent } from 'app/layout/layouts/empty/empty.component';
+import { AuthGuard } from 'app/core/auth/auth.guard';
 
 // @formatter:off
 export function getAppBaseHref(): string {
@@ -21,19 +22,21 @@ export const appRoutes: Route[] = [
     {path: '', pathMatch : 'full', redirectTo: 'dashboard'},
 
 
-    // Landing routes
+    // Auth & landing routes (no guard, empty layout)
     {
         path: '',
         component: EmptyLayoutComponent,
         children   : [
+            {path: 'login', loadChildren: () => import('app/modules/auth/auth.module').then(m => m.AuthModule)},
             {path: 'home', loadChildren: () => import('app/modules/landing/home/home.module').then(m => m.LandingHomeModule)},
         ]
     },
 
-    // Admin routes
+    // Protected routes (guarded when auth is enabled)
     {
         path       : '',
         component  : LayoutComponent,
+        canActivate: [AuthGuard],
         children   : [
 
             // Example

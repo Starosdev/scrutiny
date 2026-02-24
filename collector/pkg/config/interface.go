@@ -28,6 +28,7 @@ type Interface interface {
 	GetCommandMetricsInfoArgs(deviceName string) string
 	GetCommandMetricsSmartArgs(deviceName string) string
 	GetAPITimeout() int
+	GetAPIToken() string
 
 	IsAllowlistedDevice(deviceName string) bool
 }

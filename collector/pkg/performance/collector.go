@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	basecollector "github.com/analogj/scrutiny/collector/pkg/collector"
 	"github.com/analogj/scrutiny/collector/pkg/config"
 	"github.com/analogj/scrutiny/collector/pkg/detect"
 	"github.com/analogj/scrutiny/collector/pkg/errors"
@@ -41,16 +42,19 @@ func CreateCollector(appConfig config.Interface, logger *logrus.Entry, apiEndpoi
 		timeout = appConfig.GetAPITimeout()
 	}
 
-	collector := &Collector{
+	apiToken := ""
+	if appConfig != nil {
+		apiToken = appConfig.GetAPIToken()
+	}
+
+	c := &Collector{
 		config:      appConfig,
 		logger:      logger,
 		apiEndpoint: apiEndpointUrl,
-		httpClient: &http.Client{
-			Timeout: time.Duration(timeout) * time.Second,
-		},
+		httpClient:  basecollector.NewAuthHTTPClient(timeout, apiToken),
 	}
 
-	return collector, nil
+	return c, nil
 }
 
 // Run executes the performance benchmark collection
@@ -139,6 +143,10 @@ func (c *Collector) RegisterDevices(devices []models.Device) ([]models.Device, e
 		return nil, fmt.Errorf("failed to register devices: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == 401 {
+		c.logger.Errorln("Authentication failed (HTTP 401). Check that api.token in collector-performance.yaml matches web.auth.token in scrutiny.yaml.")
+	}
 
 	var responseWrapper models.DeviceWrapper
 	if err := json.NewDecoder(resp.Body).Decode(&responseWrapper); err != nil {
@@ -275,6 +283,10 @@ func (c *Collector) Publish(wwn string, result *models.PerformanceResult) error 
 		return fmt.Errorf("failed to publish results: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == 401 {
+		c.logger.Errorln("Authentication failed (HTTP 401). Check that api.token in collector-performance.yaml matches web.auth.token in scrutiny.yaml.")
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("API returned status %d", resp.StatusCode)

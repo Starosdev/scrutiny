@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
+	basecollector "github.com/analogj/scrutiny/collector/pkg/collector"
 	"github.com/analogj/scrutiny/collector/pkg/config"
 	"github.com/analogj/scrutiny/collector/pkg/errors"
 	"github.com/analogj/scrutiny/collector/pkg/zfs/detect"
@@ -37,16 +37,19 @@ func CreateCollector(appConfig config.Interface, logger *logrus.Entry, apiEndpoi
 		timeout = appConfig.GetAPITimeout()
 	}
 
-	collector := &Collector{
+	apiToken := ""
+	if appConfig != nil {
+		apiToken = appConfig.GetAPIToken()
+	}
+
+	c := &Collector{
 		config:      appConfig,
 		logger:      logger,
 		apiEndpoint: apiEndpointUrl,
-		httpClient: &http.Client{
-			Timeout: time.Duration(timeout) * time.Second,
-		},
+		httpClient:  basecollector.NewAuthHTTPClient(timeout, apiToken),
 	}
 
-	return collector, nil
+	return c, nil
 }
 
 // Run executes the ZFS collection
@@ -124,6 +127,10 @@ func (c *Collector) RegisterPools(pools []models.ZFSPool) (*models.ZFSPoolWrappe
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == 401 {
+		c.logger.Errorln("Authentication failed (HTTP 401). Check that api.token in collector-zfs.yaml matches web.auth.token in scrutiny.yaml.")
+	}
+
 	var responseWrapper models.ZFSPoolWrapper
 	if err := json.NewDecoder(resp.Body).Decode(&responseWrapper); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
@@ -152,6 +159,10 @@ func (c *Collector) UploadMetrics(pool models.ZFSPool) error {
 		return err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == 401 {
+		c.logger.Errorln("Authentication failed (HTTP 401). Check that api.token in collector-zfs.yaml matches web.auth.token in scrutiny.yaml.")
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("API returned status %d", resp.StatusCode)
