@@ -98,7 +98,9 @@ func TestSmartAtaDeviceStatAttribute_PopulateAttributeStatus_AtThreshold(t *test
 	attr.PopulateAttributeStatus()
 
 	require.True(t, pkg.AttributeStatusHas(attr.Status, pkg.AttributeStatusFailedScrutiny))
-	require.NotEmpty(t, attr.StatusReason)
+	require.Contains(t, attr.StatusReason, "Percentage Used Endurance Indicator")
+	require.Contains(t, attr.StatusReason, "100")
+	require.Contains(t, attr.StatusReason, "exceeds threshold")
 }
 
 func TestSmartAtaDeviceStatAttribute_PopulateAttributeStatus_AboveThreshold(t *testing.T) {
@@ -270,4 +272,20 @@ func TestSmartAtaDeviceStatAttribute_PopulateAttributeStatus_MechanicalFailures_
 	attr.PopulateAttributeStatus()
 
 	require.Equal(t, pkg.AttributeStatusPassed, attr.Status)
+}
+
+func TestSmartAtaDeviceStatAttribute_PopulateAttributeStatus_Discussion239(t *testing.T) {
+	// Discussion #239: Transcend TS240GMTS420S reports devstat_7_8 = 118
+	// StatusReason should clearly identify the attribute, value, and threshold
+	attr := SmartAtaDeviceStatAttribute{
+		AttributeId: "devstat_7_8",
+		Value:       118,
+	}
+
+	attr.PopulateAttributeStatus()
+
+	require.True(t, pkg.AttributeStatusHas(attr.Status, pkg.AttributeStatusFailedScrutiny))
+	require.Contains(t, attr.StatusReason, "Percentage Used Endurance Indicator")
+	require.Contains(t, attr.StatusReason, "118")
+	require.Contains(t, attr.StatusReason, "100")
 }
