@@ -17,7 +17,7 @@ type DiscoveryMessage struct {
 }
 
 // deviceInfo builds the HA device grouping block shared by all entities for a drive.
-func deviceInfo(device models.Device) map[string]interface{} {
+func deviceInfo(device *models.Device) map[string]interface{} {
 	name := device.ModelName
 	if device.ModelName != "" && device.DeviceName != "" {
 		name = fmt.Sprintf("%s (%s)", device.ModelName, device.DeviceName)
@@ -55,13 +55,13 @@ func stateTopic(wwn string) string {
 }
 
 // BuildDiscoveryMessages generates HA MQTT Discovery config messages for all entities of a device.
-func BuildDiscoveryMessages(device models.Device, topicPrefix string) []DiscoveryMessage {
+func BuildDiscoveryMessages(device *models.Device, topicPrefix string) []DiscoveryMessage {
 	safe := safeWWN(device.WWN)
 	devInfo := deviceInfo(device)
 	st := stateTopic(device.WWN)
 
 	messages := []DiscoveryMessage{
-		buildSensorDiscovery(topicPrefix, safe, "temperature", devInfo, st, sensorConfig{
+		buildSensorDiscovery(topicPrefix, safe, "temperature", devInfo, st, &sensorConfig{
 			Name:          "Temperature",
 			DeviceClass:   "temperature",
 			UnitOfMeasure: "\u00b0C",
@@ -69,12 +69,12 @@ func BuildDiscoveryMessages(device models.Device, topicPrefix string) []Discover
 			ValueTemplate: "{{ value_json.temperature }}",
 			Icon:          "mdi:thermometer",
 		}),
-		buildSensorDiscovery(topicPrefix, safe, "status", devInfo, st, sensorConfig{
+		buildSensorDiscovery(topicPrefix, safe, "status", devInfo, st, &sensorConfig{
 			Name:          "Health Status",
 			ValueTemplate: "{{ value_json.status }}",
 			Icon:          "mdi:harddisk",
 		}),
-		buildSensorDiscovery(topicPrefix, safe, "power_on_hours", devInfo, st, sensorConfig{
+		buildSensorDiscovery(topicPrefix, safe, "power_on_hours", devInfo, st, &sensorConfig{
 			Name:          "Power On Hours",
 			DeviceClass:   "duration",
 			UnitOfMeasure: "h",
@@ -82,7 +82,7 @@ func BuildDiscoveryMessages(device models.Device, topicPrefix string) []Discover
 			ValueTemplate: "{{ value_json.power_on_hours }}",
 			Icon:          "mdi:clock-outline",
 		}),
-		buildSensorDiscovery(topicPrefix, safe, "power_cycle_count", devInfo, st, sensorConfig{
+		buildSensorDiscovery(topicPrefix, safe, "power_cycle_count", devInfo, st, &sensorConfig{
 			Name:          "Power Cycle Count",
 			StateClass:    "total_increasing",
 			ValueTemplate: "{{ value_json.power_cycle_count }}",
@@ -95,7 +95,7 @@ func BuildDiscoveryMessages(device models.Device, topicPrefix string) []Discover
 }
 
 // BuildRemoveMessages generates empty-payload messages to remove a device from HA discovery.
-func BuildRemoveMessages(device models.Device, topicPrefix string) []DiscoveryMessage {
+func BuildRemoveMessages(device *models.Device, topicPrefix string) []DiscoveryMessage {
 	safe := safeWWN(device.WWN)
 
 	topics := []string{
@@ -123,7 +123,7 @@ type sensorConfig struct {
 	EntityCategory string
 }
 
-func buildSensorDiscovery(topicPrefix, safeWwn, entityID string, devInfo map[string]interface{}, st string, cfg sensorConfig) DiscoveryMessage {
+func buildSensorDiscovery(topicPrefix, safeWwn, entityID string, devInfo map[string]interface{}, st string, cfg *sensorConfig) DiscoveryMessage {
 	id := fmt.Sprintf(entityIDFormat, safeWwn, entityID)
 
 	payload := map[string]interface{}{

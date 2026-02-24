@@ -29,7 +29,7 @@ func DeleteDevice(c *gin.Context) {
 	}
 
 	// Remove device from Home Assistant MQTT discovery (if enabled)
-	removeMqttDevice(c, models.Device{WWN: wwn})
+	removeMqttDevice(c, &models.Device{WWN: wwn})
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }

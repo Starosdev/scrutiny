@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testDevice() models.Device {
-	return models.Device{
+func testDevice() *models.Device {
+	return &models.Device{
 		WWN:            "0x5000cca264eb01d7",
 		DeviceName:     "sda",
 		Manufacturer:   "Seagate",
@@ -149,7 +149,7 @@ func TestBuildDiscoveryMessages_DeviceInfoConsistency(t *testing.T) {
 
 func TestBuildDiscoveryMessages_MinimalDevice(t *testing.T) {
 	// Device with only WWN set (minimal data)
-	device := models.Device{
+	device := &models.Device{
 		WWN: "0x5002538e40a22954",
 	}
 	messages := BuildDiscoveryMessages(device, "homeassistant")
@@ -170,7 +170,7 @@ func TestBuildDiscoveryMessages_MinimalDevice(t *testing.T) {
 
 func TestBuildDiscoveryMessages_DeviceNameOnly(t *testing.T) {
 	// Device with DeviceName but no ModelName
-	device := models.Device{
+	device := &models.Device{
 		WWN:        "0x5002538e40a22954",
 		DeviceName: "sda",
 	}

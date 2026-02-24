@@ -38,7 +38,7 @@ func NewPublisher(cfg config.Interface, logger *logrus.Entry) *Publisher {
 	}
 
 	return &Publisher{
-		client:      NewClient(clientCfg, logger),
+		client:      NewClient(&clientCfg, logger),
 		logger:      logger,
 		config:      cfg,
 		topicPrefix: clientCfg.TopicPrefix,
@@ -57,7 +57,7 @@ func (p *Publisher) Disconnect() {
 }
 
 // PublishDiscovery publishes HA MQTT Discovery config messages for a device.
-func (p *Publisher) PublishDiscovery(device models.Device) {
+func (p *Publisher) PublishDiscovery(device *models.Device) {
 	if !p.client.IsConnected() {
 		return
 	}
@@ -72,7 +72,7 @@ func (p *Publisher) PublishDiscovery(device models.Device) {
 }
 
 // PublishDeviceState publishes a state update for a device asynchronously.
-func (p *Publisher) PublishDeviceState(wwn string, device models.Device, smartData measurements.Smart) {
+func (p *Publisher) PublishDeviceState(wwn string, device *models.Device, smartData *measurements.Smart) {
 	go func() {
 		p.mu.RLock()
 		defer p.mu.RUnlock()
@@ -98,7 +98,7 @@ func (p *Publisher) PublishDeviceState(wwn string, device models.Device, smartDa
 }
 
 // RemoveDevice removes a device from HA by publishing empty discovery messages.
-func (p *Publisher) RemoveDevice(device models.Device) {
+func (p *Publisher) RemoveDevice(device *models.Device) {
 	if !p.client.IsConnected() {
 		return
 	}
@@ -138,7 +138,7 @@ func (p *Publisher) LoadInitialData(deviceRepo database.DeviceRepo, ctx context.
 			continue
 		}
 
-		p.PublishDiscovery(device)
+		p.PublishDiscovery(&device)
 		p.publishStateSync(wwn, device, smartDataMap)
 		published++
 	}
@@ -174,7 +174,7 @@ func (p *Publisher) publishStateSync(wwn string, device models.Device, smartData
 		return
 	}
 
-	payload := buildStatePayload(device, smartResults[0])
+	payload := buildStatePayload(&device, &smartResults[0])
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
 		p.logger.Warnf("MQTT: failed to marshal initial state for %s: %v", wwn, err)
@@ -206,14 +206,14 @@ func DeviceStatusString(status pkg.DeviceStatus) string {
 // StatePayload represents the JSON state published to MQTT.
 type StatePayload struct {
 	Temperature     int64  `json:"temperature"`
-	Status          string `json:"status"`
 	PowerOnHours    int64  `json:"power_on_hours"`
 	PowerCycleCount int64  `json:"power_cycle_count"`
+	Status          string `json:"status"`
 	Problem         string `json:"problem"`
 	LastUpdated     string `json:"last_updated"`
 }
 
-func buildStatePayload(device models.Device, smartData measurements.Smart) StatePayload {
+func buildStatePayload(device *models.Device, smartData *measurements.Smart) StatePayload {
 	problem := "OFF"
 	if device.DeviceStatus != pkg.DeviceStatusPassed {
 		problem = "ON"

@@ -29,11 +29,11 @@ func TestDeviceStatusString_FailedBoth(t *testing.T) {
 
 func TestBuildStatePayload_Passed(t *testing.T) {
 	now := time.Date(2026, 2, 24, 10, 30, 0, 0, time.UTC)
-	device := models.Device{
+	device := &models.Device{
 		WWN:          "0x5000cca264eb01d7",
 		DeviceStatus: pkg.DeviceStatusPassed,
 	}
-	smartData := measurements.Smart{
+	smartData := &measurements.Smart{
 		Temp:            45,
 		PowerOnHours:    12345,
 		PowerCycleCount: 678,
@@ -52,11 +52,11 @@ func TestBuildStatePayload_Passed(t *testing.T) {
 
 func TestBuildStatePayload_Failed(t *testing.T) {
 	now := time.Date(2026, 2, 24, 10, 30, 0, 0, time.UTC)
-	device := models.Device{
+	device := &models.Device{
 		WWN:          "0x5000cca264eb01d7",
 		DeviceStatus: pkg.DeviceStatusFailedSmart,
 	}
-	smartData := measurements.Smart{
+	smartData := &measurements.Smart{
 		Temp:            55,
 		PowerOnHours:    50000,
 		PowerCycleCount: 1200,
@@ -73,11 +73,11 @@ func TestBuildStatePayload_Failed(t *testing.T) {
 }
 
 func TestBuildStatePayload_ZeroValues(t *testing.T) {
-	device := models.Device{
+	device := &models.Device{
 		WWN:          "0x5000cca264eb01d7",
 		DeviceStatus: pkg.DeviceStatusPassed,
 	}
-	smartData := measurements.Smart{
+	smartData := &measurements.Smart{
 		Temp:            0,
 		PowerOnHours:    0,
 		PowerCycleCount: 0,

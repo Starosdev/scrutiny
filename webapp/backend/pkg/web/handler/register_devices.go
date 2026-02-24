@@ -65,11 +65,11 @@ func publishMqttDiscovery(c *gin.Context, deviceRepo database.DeviceRepo, device
 	if !ok || pub == nil {
 		return
 	}
-	for _, dev := range devices {
+	for i := range devices {
 		// Fetch device from DB to get the actual archived status
 		// (collector-sent devices don't have this field set correctly)
-		if dbDevice, err := deviceRepo.GetDeviceDetails(c, dev.WWN); err == nil && !dbDevice.Archived {
-			pub.PublishDiscovery(dbDevice)
+		if dbDevice, err := deviceRepo.GetDeviceDetails(c, devices[i].WWN); err == nil && !dbDevice.Archived {
+			pub.PublishDiscovery(&dbDevice)
 		}
 	}
 }
