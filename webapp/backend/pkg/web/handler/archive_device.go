@@ -29,7 +29,7 @@ func ArchiveDevice(c *gin.Context) {
 	}
 
 	// Remove device from Home Assistant when archived
-	removeMqttDevice(c, models.Device{WWN: wwn})
+	removeMqttDevice(c, &models.Device{WWN: wwn})
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }

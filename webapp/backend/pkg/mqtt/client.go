@@ -37,7 +37,7 @@ type ClientConfig struct {
 }
 
 // NewClient creates a new MQTT client configured for Scrutiny.
-func NewClient(cfg ClientConfig, logger *logrus.Entry) *Client {
+func NewClient(cfg *ClientConfig, logger *logrus.Entry) *Client {
 	c := &Client{
 		logger: logger,
 		qos:    byte(cfg.QoS),
@@ -66,7 +66,9 @@ func NewClient(cfg ClientConfig, logger *logrus.Entry) *Client {
 	opts.SetOnConnectHandler(func(_ pahomqtt.Client) {
 		logger.Info("MQTT connected to broker")
 		// Publish online status on every (re)connect
-		c.publish(availabilityTopic, availabilityOnline, true)
+		if err := c.publish(availabilityTopic, availabilityOnline, true); err != nil {
+			logger.Warnf("MQTT: failed to publish online status: %v", err)
+		}
 	})
 
 	opts.SetConnectionLostHandler(func(_ pahomqtt.Client, err error) {
@@ -97,7 +99,9 @@ func (c *Client) Connect() error {
 func (c *Client) Disconnect() {
 	if c.client != nil && c.client.IsConnected() {
 		// Publish offline before disconnecting
-		c.publish(availabilityTopic, availabilityOffline, true)
+		if err := c.publish(availabilityTopic, availabilityOffline, true); err != nil {
+			c.logger.Warnf("MQTT: failed to publish offline status: %v", err)
+		}
 		c.client.Disconnect(1000) // 1 second grace period
 		c.logger.Info("MQTT disconnected from broker")
 	}

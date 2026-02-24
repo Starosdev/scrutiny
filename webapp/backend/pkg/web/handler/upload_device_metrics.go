@@ -123,7 +123,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 	// Publish to MQTT / Home Assistant (if enabled)
 	if pubVal, exists := c.Get("MQTT_PUBLISHER"); exists {
 		if pub, ok := pubVal.(*mqtt.Publisher); ok && pub != nil {
-			pub.PublishDeviceState(wwn, updatedDevice, smartData)
+			pub.PublishDeviceState(wwn, &updatedDevice, &smartData)
 		}
 	}
 
