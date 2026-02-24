@@ -18,8 +18,10 @@ FROM debian:trixie-slim AS runtime
 WORKDIR /opt/scrutiny
 ENV PATH="/opt/scrutiny/bin:${PATH}"
 
-RUN apt-get update && \
+RUN echo "deb http://deb.debian.org/debian trixie-backports main" > /etc/apt/sources.list.d/backports.list && \
+    apt-get update && \
     apt-get install -y cron ca-certificates tzdata fio && \
+    apt-get install -y -t trixie-backports smartmontools && \
     rm -rf /var/lib/apt/lists/* && \
     update-ca-certificates
 

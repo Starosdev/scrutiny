@@ -65,6 +65,13 @@ performance:
   profile: 'quick'            # 'quick' (~60s per device) or 'comprehensive' (~300s per device)
 #  allow_direct_device_io: false  # Benchmark raw block device (/dev/sdX) directly. Read-only (write tests skipped for safety).
 #  temp_file_size: '256M'     # Size of temp file for benchmarks (used in quick profile)
+#  mount_points:              # Explicit mount point overrides per device (useful in containers).
+#    sda: '/mnt/data'         # Key: device name (e.g., sda, nvme0n1)
+#    0x5000cca7aae69487: '/mnt/backup'  # Key: device WWN (stable across reboots)
+#  # In containers, volume-mount the host filesystem path into the container and map it here.
+#  # Example: docker run -v /mnt/data:/mnt/data --device=/dev/sda ...
+#  # The collector checks device name first, then WWN. If neither is configured,
+#  # it auto-detects via 'df' and falls back to direct device I/O if no mount is found.
 
 # Benchmark Profiles:
 #
