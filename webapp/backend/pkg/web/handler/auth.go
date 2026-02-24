@@ -20,15 +20,15 @@ var loginLimiter = &rateLimiter{
 }
 
 type failureRecord struct {
-	count    int
 	windowStart time.Time
+	count       int
 }
 
 type rateLimiter struct {
-	mu          sync.Mutex
 	failures    map[string]*failureRecord
-	maxFailures int
+	mu          sync.Mutex
 	window      time.Duration
+	maxFailures int
 }
 
 func (rl *rateLimiter) isBlocked(ip string) bool {

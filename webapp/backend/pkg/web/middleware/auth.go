@@ -24,14 +24,14 @@ var publicPathSuffixes = []string{
 const metricsPathSuffix = "/api/metrics"
 
 // configKeyJWTSecret is the config key for the JWT signing secret.
-const configKeyJWTSecret = "web.auth.jwt_secret"
+const configKeyJWTSecret = "web.auth.jwt_secret" //nolint:gosec
 
 // authContext holds pre-computed auth configuration to avoid repeated config lookups.
 type authContext struct {
-	authEnabled     bool
 	configuredToken string
 	jwtSecret       string
 	metricsToken    string
+	authEnabled     bool
 }
 
 // isPublicPath returns true if the request path matches a public route suffix.
