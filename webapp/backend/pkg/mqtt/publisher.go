@@ -139,7 +139,7 @@ func (p *Publisher) LoadInitialData(deviceRepo database.DeviceRepo, ctx context.
 		}
 
 		p.PublishDiscovery(&device)
-		p.publishStateSync(wwn, device, smartDataMap)
+		p.publishStateSync(wwn, &device, smartDataMap)
 		published++
 	}
 
@@ -168,13 +168,13 @@ func (p *Publisher) fetchLatestSmartData(deviceRepo database.DeviceRepo, ctx con
 	return smartDataMap
 }
 
-func (p *Publisher) publishStateSync(wwn string, device models.Device, smartDataMap map[string][]measurements.Smart) {
+func (p *Publisher) publishStateSync(wwn string, device *models.Device, smartDataMap map[string][]measurements.Smart) {
 	smartResults, ok := smartDataMap[wwn]
 	if !ok || len(smartResults) == 0 {
 		return
 	}
 
-	payload := buildStatePayload(&device, &smartResults[0])
+	payload := buildStatePayload(device, &smartResults[0])
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
 		p.logger.Warnf("MQTT: failed to marshal initial state for %s: %v", wwn, err)
@@ -205,12 +205,12 @@ func DeviceStatusString(status pkg.DeviceStatus) string {
 
 // StatePayload represents the JSON state published to MQTT.
 type StatePayload struct {
-	Temperature     int64  `json:"temperature"`
-	PowerOnHours    int64  `json:"power_on_hours"`
-	PowerCycleCount int64  `json:"power_cycle_count"`
 	Status          string `json:"status"`
 	Problem         string `json:"problem"`
 	LastUpdated     string `json:"last_updated"`
+	Temperature     int64  `json:"temperature"`
+	PowerOnHours    int64  `json:"power_on_hours"`
+	PowerCycleCount int64  `json:"power_cycle_count"`
 }
 
 func buildStatePayload(device *models.Device, smartData *measurements.Smart) StatePayload {
