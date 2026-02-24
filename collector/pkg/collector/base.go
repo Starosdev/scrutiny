@@ -63,6 +63,10 @@ func (c *BaseCollector) postJson(url string, body interface{}, target interface{
 	}
 	defer r.Body.Close()
 
+	if r.StatusCode == 401 {
+		c.logger.Errorln("Authentication failed (HTTP 401). Check that api.token in collector.yaml matches web.auth.token in scrutiny.yaml.")
+	}
+
 	return json.NewDecoder(r.Body).Decode(target)
 }
 
