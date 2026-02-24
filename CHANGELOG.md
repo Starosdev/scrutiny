@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.31.1](https://github.com/Starosdev/scrutiny/compare/v1.31.0...v1.31.1) (2026-02-24)
+
+### Bug Fixes
+
+* **thresholds:** improve devstat status reason messages ([#275](https://github.com/Starosdev/scrutiny/issues/275)) ([8f1c454](https://github.com/Starosdev/scrutiny/commit/8f1c454a3f5bdf4d9e802566a6c43496a422e23a))
+
 ## [1.31.0](https://github.com/Starosdev/scrutiny/compare/v1.30.1...v1.31.0) (2026-02-24)
 
 ### Features
