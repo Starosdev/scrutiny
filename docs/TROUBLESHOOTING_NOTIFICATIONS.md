@@ -76,3 +76,43 @@ check API.
 ```
 curl -X POST http://localhost:8080/api/health/notify
 ```
+
+# MQTT / Home Assistant
+
+Scrutiny supports native Home Assistant integration via MQTT Discovery. When enabled, drives automatically appear as
+devices in Home Assistant with sensors for temperature, health status, power-on hours, power cycle count, and a
+problem binary sensor.
+
+For setup instructions, see the [Home Assistant Integration](../README.md#home-assistant-integration-mqtt-discovery) section in the README.
+
+## Common Issues
+
+### Drives not appearing in Home Assistant
+
+1. **Verify MQTT is enabled**: Check the Scrutiny logs at startup for `MQTT Home Assistant integration enabled`. If you see `Failed to connect MQTT`, the broker is unreachable.
+
+2. **Check broker connectivity**: Ensure the Scrutiny web server can reach the MQTT broker. If using Docker, remember that `localhost` inside a container refers to the container itself, not the host. Use the container name (e.g., `tcp://mosquitto:1883`) or the Docker gateway IP (e.g., `tcp://172.17.0.1:1883`).
+
+3. **Verify HA MQTT integration**: Home Assistant must have the MQTT integration configured and connected to the **same broker** that Scrutiny publishes to.
+
+4. **Check discovery prefix**: The `topic_prefix` (default: `homeassistant`) must match the discovery prefix configured in your HA MQTT integration (Settings > Integrations > MQTT > Configure > Discovery prefix).
+
+5. **Inspect MQTT messages**: Use `mosquitto_sub` to verify messages are being published:
+   ```bash
+   # Check discovery messages
+   mosquitto_sub -h YOUR_BROKER -t 'homeassistant/#' -v
+
+   # Check state messages
+   mosquitto_sub -h YOUR_BROKER -t 'scrutiny/#' -v
+   ```
+
+### Stale or incorrect data in Home Assistant
+
+- **After changing a device label**: Labels are pushed immediately to MQTT when updated via the Scrutiny UI. If HA still shows the old name, check that the discovery message was published (see `mosquitto_sub` above).
+- **Archived devices still showing**: Archiving a device removes it from HA by publishing empty retained messages. If the device still appears, manually remove it from the HA MQTT integration.
+- **State shows "unavailable"**: This means Scrutiny is offline or the MQTT connection was lost. The LWT (Last Will and Testament) mechanism automatically marks entities as unavailable when Scrutiny disconnects.
+
+### Connection keeps dropping
+
+- **Check `client_id`**: If multiple Scrutiny instances connect to the same broker with the same `client_id`, they will kick each other off. Use unique client IDs (e.g., `scrutiny-server1`, `scrutiny-server2`).
+- **Check broker logs**: Most brokers log connection/disconnection events. Look for authentication failures or client ID conflicts.

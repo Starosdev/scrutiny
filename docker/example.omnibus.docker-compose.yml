@@ -25,6 +25,12 @@ services:
       # SCRUTINY_WEB_AUTH_TOKEN: 'your-secret-api-token'
       # SCRUTINY_WEB_AUTH_ADMIN_PASSWORD: 'your-admin-password'
       # COLLECTOR_API_TOKEN: 'your-secret-api-token'
+      # Home Assistant MQTT Discovery (disabled by default)
+      # Drives auto-appear in HA when enabled. Requires an MQTT broker.
+      # SCRUTINY_WEB_MQTT_ENABLED: 'true'
+      # SCRUTINY_WEB_MQTT_BROKER: 'tcp://mosquitto:1883'
+      # SCRUTINY_WEB_MQTT_USERNAME: ''
+      # SCRUTINY_WEB_MQTT_PASSWORD: ''
     devices:
       - "/dev/sda"
       - "/dev/sdb"

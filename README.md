@@ -50,6 +50,7 @@ Full credit for the original vision and architecture goes to [AnalogJ](https://g
 - **HTML Email Notifications** - Rich HTML emails for reports and missed ping alerts via SMTP
 - **Enhanced Seagate Drive Support** - Better timeout handling for Seagate drives
 - **Workload Insights** - Visualize daily read/write rates, I/O intensity, SSD endurance, and activity spike detection
+- **Home Assistant MQTT Discovery** - Native MQTT integration for automatic device discovery in Home Assistant
 - **SHA256 Checksums** - Verify release binary integrity
 
 # Introduction
@@ -97,6 +98,7 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Missed Ping Digest** - Batch notification when multiple collectors go unreachable
 - **HTML Email Notifications** - Rich HTML formatting for SMTP notifications (reports and missed pings)
 - **Workload Insights** - Daily read/write rates, R/W ratio, I/O intensity classification, SSD endurance tracking, and activity spike detection
+- **Home Assistant MQTT Discovery** - Native push-based integration with automatic entity creation (temperature, health status, power-on hours, power cycles, drive problem)
 - **Heartbeat Notifications** - Periodic "all clear" alerts for uptime monitoring integration
 
 # Migration from AnalogJ/scrutiny
@@ -251,6 +253,80 @@ scrape_configs:
     static_configs:
       - targets: ['scrutiny:8080']
 ```
+
+## Home Assistant Integration (MQTT Discovery)
+
+Scrutiny can natively integrate with Home Assistant via MQTT Discovery. When enabled, each drive automatically appears as a device in Home Assistant with sensors for temperature, health status, power-on hours, power cycle count, and a problem binary sensor.
+
+This is a push-based integration -- state updates are published to MQTT whenever new S.M.A.R.T data is collected, so there's no polling delay. It uses the standard [HA MQTT Discovery](https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery) protocol, so no custom components or HACS add-ons are needed.
+
+### Requirements
+
+- An MQTT broker (e.g., Mosquitto, EMQX) accessible from the Scrutiny web server
+- Home Assistant with the MQTT integration configured and connected to the same broker
+
+### Configuration
+
+Add the following to your `scrutiny.yaml` (or use environment variables):
+
+```yaml
+web:
+  mqtt:
+    enabled: true
+    broker: "tcp://localhost:1883"
+    username: ""
+    password: ""
+    client_id: "scrutiny"
+    topic_prefix: "homeassistant"
+```
+
+Or via environment variables in Docker:
+
+```yaml
+environment:
+  SCRUTINY_WEB_MQTT_ENABLED: 'true'
+  SCRUTINY_WEB_MQTT_BROKER: 'tcp://mosquitto:1883'
+  SCRUTINY_WEB_MQTT_USERNAME: ''
+  SCRUTINY_WEB_MQTT_PASSWORD: ''
+  SCRUTINY_WEB_MQTT_CLIENT_ID: 'scrutiny'
+  SCRUTINY_WEB_MQTT_TOPIC_PREFIX: 'homeassistant'
+```
+
+### Entities Per Drive
+
+Each drive is registered as an HA device with the following entities:
+
+| Entity | Type | Device Class | Description |
+|--------|------|-------------|-------------|
+| Temperature | `sensor` | `temperature` | Current drive temperature in Celsius |
+| Health Status | `sensor` | -- | Passed / Failed (SMART) / Failed (Scrutiny) / Failed (Both) |
+| Power On Hours | `sensor` | `duration` | Total hours the drive has been powered on |
+| Power Cycle Count | `sensor` | -- | Number of power on/off cycles |
+| Drive Problem | `binary_sensor` | `problem` | ON when the drive has any failure status |
+
+### Device Naming
+
+The HA device name follows this priority:
+1. **Custom label** (if set via the Scrutiny UI) -- e.g., "Parity Drive"
+2. **Model + device name** -- e.g., "ST4000DM000 (sda)"
+3. **Model name only** -- e.g., "ST4000DM000"
+4. **Device name only** -- e.g., "sda"
+5. **WWN fallback** -- e.g., "Drive 0x5000cca264eb01d7"
+
+Changing a device label in Scrutiny immediately updates the device name in Home Assistant.
+
+### Behavior
+
+- **Startup**: On startup, Scrutiny publishes discovery configs and current state for all active (non-archived) devices
+- **SMART upload**: Each time a collector uploads new S.M.A.R.T data, the device state is published to MQTT
+- **Device registration**: New devices are published to HA when first detected by a collector
+- **Archiving**: Archiving a device removes it from HA; unarchiving restores it
+- **Deletion**: Deleting a device removes it from HA
+- **Availability**: Scrutiny publishes an LWT (Last Will and Testament) message so HA marks all entities as unavailable if the Scrutiny server goes offline
+
+### Troubleshooting
+
+See [docs/TROUBLESHOOTING_NOTIFICATIONS.md](./docs/TROUBLESHOOTING_NOTIFICATIONS.md#mqtt--home-assistant) for MQTT troubleshooting tips.
 
 ## Performance Benchmarking
 
@@ -510,6 +586,14 @@ Dots and dashes in key names become underscores.
 | `web.auth.jwt_expiry_hours` | `SCRUTINY_WEB_AUTH_JWT_EXPIRY_HOURS` | `24` |
 | `web.auth.admin_username` | `SCRUTINY_WEB_AUTH_ADMIN_USERNAME` | `admin` |
 | `web.auth.admin_password` | `SCRUTINY_WEB_AUTH_ADMIN_PASSWORD` | `` |
+| `web.mqtt.enabled` | `SCRUTINY_WEB_MQTT_ENABLED` | `false` |
+| `web.mqtt.broker` | `SCRUTINY_WEB_MQTT_BROKER` | `tcp://localhost:1883` |
+| `web.mqtt.username` | `SCRUTINY_WEB_MQTT_USERNAME` | `` |
+| `web.mqtt.password` | `SCRUTINY_WEB_MQTT_PASSWORD` | `` |
+| `web.mqtt.client_id` | `SCRUTINY_WEB_MQTT_CLIENT_ID` | `scrutiny` |
+| `web.mqtt.topic_prefix` | `SCRUTINY_WEB_MQTT_TOPIC_PREFIX` | `homeassistant` |
+| `web.mqtt.qos` | `SCRUTINY_WEB_MQTT_QOS` | `1` |
+| `web.mqtt.retain` | `SCRUTINY_WEB_MQTT_RETAIN` | `true` |
 | `log.level` | `SCRUTINY_LOG_LEVEL` | `INFO` |
 | `log.file` | `SCRUTINY_LOG_FILE` | `` |
 | `notify.urls` | `SCRUTINY_NOTIFY_URLS` | `` |

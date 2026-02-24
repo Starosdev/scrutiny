@@ -64,7 +64,22 @@ web:
 #    bucket: 'bucket'
 ```
 
-> Note: for a full list of available configuration options, please check the [example.scrutiny.yaml](https://github.com/AnalogJ/scrutiny/blob/master/example.scrutiny.yaml) file.
+> Note: for a full list of available configuration options, please check the [example.scrutiny.yaml](https://github.com/Starosdev/scrutiny/blob/master/example.scrutiny.yaml) file.
+
+#### Optional: Home Assistant MQTT Integration
+
+To enable native Home Assistant integration via MQTT Discovery, add the following to your config file:
+
+```yaml
+web:
+  mqtt:
+    enabled: true
+    broker: "tcp://localhost:1883"
+    username: ""
+    password: ""
+```
+
+See the [Home Assistant Integration](../README.md#home-assistant-integration-mqtt-discovery) section in the README for full details.
 
 ### Download Files
 
