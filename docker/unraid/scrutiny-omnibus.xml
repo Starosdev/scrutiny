@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>scrutiny</Name>
+  <Repository>ghcr.io/starosdev/scrutiny:latest-omnibus</Repository>
+  <Registry>https://github.com/Starosdev/scrutiny/pkgs/container/scrutiny</Registry>
+  <Branch>
+    <Tag>latest-omnibus</Tag>
+    <TagDescription>Stable omnibus (all-in-one) release</TagDescription>
+  </Branch>
+  <Branch>
+    <Tag>latest</Tag>
+    <TagDescription>Alias for latest-omnibus</TagDescription>
+  </Branch>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Starosdev/scrutiny/issues</Support>
+  <Project>https://github.com/Starosdev/scrutiny</Project>
+  <Overview>Hard Drive S.M.A.R.T Monitoring, Historical Trends and Real World Failure Thresholds. Scrutiny is a hard drive health dashboard and monitoring solution, merging manufacturer-provided S.M.A.R.T metrics with real-world failure rates from Backblaze. Includes web dashboard, metrics collector, and InfluxDB in a single container.</Overview>
+  <Category>Tools: Productivity:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/web/dashboard</WebUI>
+  <Icon>https://raw.githubusercontent.com/Starosdev/scrutiny/master/webapp/frontend/src/assets/images/logo/scrutiny-logo-dark.png</Icon>
+  <ExtraParams>--cap-add SYS_RAWIO --cap-add SYS_ADMIN</ExtraParams>
+  <Shell>bash</Shell>
+  <Config Name="WebUI Port" Target="8080" Default="8080" Mode="tcp" Description="Web dashboard port." Type="Port" Display="always" Required="true" Mask="false"/>
+  <Config Name="InfluxDB Port" Target="8086" Default="8086" Mode="tcp" Description="InfluxDB admin port. Only needed if you want direct access to InfluxDB." Type="Port" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Config" Target="/opt/scrutiny/config" Default="/mnt/user/appdata/scrutiny/config" Mode="rw" Description="Scrutiny configuration and SQLite database." Type="Path" Display="always" Required="true" Mask="false"/>
+  <Config Name="Database" Target="/opt/scrutiny/influxdb" Default="/mnt/user/appdata/scrutiny/influxdb" Mode="rw" Description="InfluxDB time-series data storage." Type="Path" Display="always" Required="true" Mask="false"/>
+  <Config Name="Udev" Target="/run/udev" Default="/run/udev" Mode="ro" Description="Required for device detection. Do not change." Type="Path" Display="always-hide" Required="true" Mask="false"/>
+  <Config Name="Disk 1" Target="" Default="/dev/sda" Description="First disk to monitor. Add more Device entries for additional disks. For NVMe, pass both /dev/nvme0 (controller) and /dev/nvme0n1 (namespace)." Type="Device" Display="always" Required="false" Mask="false"/>
+  <Config Name="Cron Schedule" Target="COLLECTOR_CRON_SCHEDULE" Default="0 0 * * *" Description="S.M.A.R.T data collection schedule (cron format). Default: daily at midnight." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Run on Startup" Target="COLLECTOR_RUN_STARTUP" Default="false" Description="Run S.M.A.R.T data collection immediately on container startup." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Timezone" Target="TZ" Default="" Description="Timezone (e.g. America/New_York). See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="MQTT Enabled" Target="SCRUTINY_WEB_MQTT_ENABLED" Default="false" Description="Enable Home Assistant MQTT Discovery. Drives will auto-appear in Home Assistant." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="MQTT Broker" Target="SCRUTINY_WEB_MQTT_BROKER" Default="" Description="MQTT broker URL (e.g. tcp://mosquitto:1883). Required when MQTT is enabled." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>

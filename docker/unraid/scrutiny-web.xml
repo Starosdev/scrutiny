@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>scrutiny-web</Name>
+  <Repository>ghcr.io/starosdev/scrutiny:latest-web</Repository>
+  <Registry>https://github.com/Starosdev/scrutiny/pkgs/container/scrutiny</Registry>
+  <Branch>
+    <Tag>latest-web</Tag>
+    <TagDescription>Stable web server release</TagDescription>
+  </Branch>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Starosdev/scrutiny/issues</Support>
+  <Project>https://github.com/Starosdev/scrutiny</Project>
+  <Overview>Scrutiny Web Server (Hub/Spoke mode). Provides the web dashboard and API for S.M.A.R.T monitoring. Requires a separate InfluxDB instance and one or more Scrutiny collector containers. Use the omnibus template instead if you want an all-in-one deployment.</Overview>
+  <Category>Tools: Productivity:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/web/dashboard</WebUI>
+  <Icon>https://raw.githubusercontent.com/Starosdev/scrutiny/master/webapp/frontend/src/assets/images/logo/scrutiny-logo-dark.png</Icon>
+  <Shell>bash</Shell>
+  <Config Name="WebUI Port" Target="8080" Default="8080" Mode="tcp" Description="Web dashboard port." Type="Port" Display="always" Required="true" Mask="false"/>
+  <Config Name="Config" Target="/opt/scrutiny/config" Default="/mnt/user/appdata/scrutiny-web/config" Mode="rw" Description="Scrutiny configuration and SQLite database." Type="Path" Display="always" Required="true" Mask="false"/>
+  <Config Name="InfluxDB Host" Target="SCRUTINY_WEB_INFLUXDB_HOST" Default="" Description="Hostname or IP of your InfluxDB instance (e.g. influxdb or 192.168.1.100). Required." Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="InfluxDB Port" Target="SCRUTINY_WEB_INFLUXDB_PORT" Default="8086" Description="InfluxDB port." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Timezone" Target="TZ" Default="" Description="Timezone (e.g. America/New_York). See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="MQTT Enabled" Target="SCRUTINY_WEB_MQTT_ENABLED" Default="false" Description="Enable Home Assistant MQTT Discovery. Drives will auto-appear in Home Assistant." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="MQTT Broker" Target="SCRUTINY_WEB_MQTT_BROKER" Default="" Description="MQTT broker URL (e.g. tcp://mosquitto:1883). Required when MQTT is enabled." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>
