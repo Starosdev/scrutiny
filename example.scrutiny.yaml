@@ -170,6 +170,50 @@ web:
     # tls:
     #   insecure_skip_verify: false
 
+  # MQTT / Home Assistant Integration
+  #
+  # When enabled, Scrutiny publishes MQTT Discovery messages so that drives
+  # automatically appear as devices in Home Assistant with sensors for
+  # temperature, health status, power-on hours, power cycle count, and a
+  # problem binary sensor.
+  #
+  # Requirements:
+  #   - An MQTT broker (e.g., Mosquitto) reachable from Scrutiny
+  #   - Home Assistant configured with the MQTT integration
+  #
+  # Environment variable overrides:
+  #   web.mqtt.enabled       -> SCRUTINY_WEB_MQTT_ENABLED
+  #   web.mqtt.broker        -> SCRUTINY_WEB_MQTT_BROKER
+  #   web.mqtt.username      -> SCRUTINY_WEB_MQTT_USERNAME
+  #   web.mqtt.password      -> SCRUTINY_WEB_MQTT_PASSWORD
+  #   web.mqtt.client_id     -> SCRUTINY_WEB_MQTT_CLIENT_ID
+  #   web.mqtt.topic_prefix  -> SCRUTINY_WEB_MQTT_TOPIC_PREFIX
+  #   web.mqtt.qos           -> SCRUTINY_WEB_MQTT_QOS
+  #   web.mqtt.retain        -> SCRUTINY_WEB_MQTT_RETAIN
+  #
+  #mqtt:
+  #  # Enable MQTT Home Assistant integration (default: false)
+  #  enabled: false
+  #
+  #  # MQTT broker URL (tcp:// for plain, ssl:// for TLS)
+  #  broker: "tcp://localhost:1883"
+  #
+  #  # Broker credentials (leave empty if not required)
+  #  username: ""
+  #  password: ""
+  #
+  #  # Client ID used when connecting to the broker
+  #  client_id: "scrutiny"
+  #
+  #  # Home Assistant MQTT discovery prefix (must match HA's discovery_prefix setting)
+  #  topic_prefix: "homeassistant"
+  #
+  #  # MQTT QoS level: 0 = at most once, 1 = at least once, 2 = exactly once
+  #  qos: 1
+  #
+  #  # Whether to publish messages with the retained flag
+  #  retain: true
+
 # Valid log levels (case-insensitive, highest to lowest severity):
 #   PANIC, FATAL, ERROR, WARN, INFO (default), DEBUG, TRACE
 # Setting a level includes all messages at that level and above.

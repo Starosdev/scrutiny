@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -26,6 +27,9 @@ func ArchiveDevice(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
 	}
+
+	// Remove device from Home Assistant when archived
+	removeMqttDevice(c, &models.Device{WWN: wwn})
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
