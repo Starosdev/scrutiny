@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.32.0](https://github.com/Starosdev/scrutiny/compare/v1.31.2...v1.32.0) (2026-02-25)
+
+### Features
+
+* **mqtt:** native Home Assistant MQTT Discovery integration ([#280](https://github.com/Starosdev/scrutiny/issues/280)) ([232de60](https://github.com/Starosdev/scrutiny/commit/232de6059a26b177779b492ba20e2c63b8ce80d3))
+
 ## [1.31.2](https://github.com/Starosdev/scrutiny/compare/v1.31.1...v1.31.2) (2026-02-24)
 
 ### Bug Fixes
