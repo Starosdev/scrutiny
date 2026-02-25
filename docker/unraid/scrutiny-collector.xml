@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>scrutiny-collector</Name>
+  <Repository>ghcr.io/starosdev/scrutiny:latest-collector</Repository>
+  <Registry>https://github.com/Starosdev/scrutiny/pkgs/container/scrutiny</Registry>
+  <Branch>
+    <Tag>latest-collector</Tag>
+    <TagDescription>Stable S.M.A.R.T metrics collector release</TagDescription>
+  </Branch>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Starosdev/scrutiny/issues</Support>
+  <Project>https://github.com/Starosdev/scrutiny</Project>
+  <Overview>Scrutiny S.M.A.R.T Metrics Collector (Hub/Spoke mode). Collects S.M.A.R.T data from drives and sends it to the Scrutiny web server. Requires a running Scrutiny web server instance. Use the omnibus template instead if you want an all-in-one deployment.</Overview>
+  <Category>Tools: Productivity:</Category>
+  <Icon>https://raw.githubusercontent.com/Starosdev/scrutiny/master/webapp/frontend/src/assets/images/logo/scrutiny-logo-dark.png</Icon>
+  <ExtraParams>--cap-add SYS_RAWIO --cap-add SYS_ADMIN</ExtraParams>
+  <Shell>bash</Shell>
+  <Config Name="Udev" Target="/run/udev" Default="/run/udev" Mode="ro" Description="Required for device detection. Do not change." Type="Path" Display="always-hide" Required="true" Mask="false"/>
+  <Config Name="Disk 1" Target="" Default="/dev/sda" Description="First disk to monitor. Add more Device entries for additional disks. For NVMe, pass both /dev/nvme0 (controller) and /dev/nvme0n1 (namespace)." Type="Device" Display="always" Required="false" Mask="false"/>
+  <Config Name="API Endpoint" Target="COLLECTOR_API_ENDPOINT" Default="" Description="Scrutiny web server URL (e.g. http://scrutiny-web:8080). Required." Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="Host ID" Target="COLLECTOR_HOST_ID" Default="" Description="Unique identifier for this collector host. Useful when running multiple collectors." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Cron Schedule" Target="COLLECTOR_CRON_SCHEDULE" Default="0 0 * * *" Description="S.M.A.R.T data collection schedule (cron format). Default: daily at midnight." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Run on Startup" Target="COLLECTOR_RUN_STARTUP" Default="false" Description="Run S.M.A.R.T data collection immediately on container startup." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>

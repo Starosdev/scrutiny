@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>scrutiny-collector-zfs</Name>
+  <Repository>ghcr.io/starosdev/scrutiny:latest-collector-zfs</Repository>
+  <Registry>https://github.com/Starosdev/scrutiny/pkgs/container/scrutiny</Registry>
+  <Branch>
+    <Tag>latest-collector-zfs</Tag>
+    <TagDescription>Stable ZFS pool collector release</TagDescription>
+  </Branch>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Starosdev/scrutiny/issues</Support>
+  <Project>https://github.com/Starosdev/scrutiny</Project>
+  <Overview>Scrutiny ZFS Pool Collector (Hub/Spoke mode). Monitors ZFS pool health and sends data to the Scrutiny web server. Requires a running Scrutiny web server instance. Only available for amd64 (x86_64) systems.</Overview>
+  <Category>Tools: Productivity:</Category>
+  <Icon>https://raw.githubusercontent.com/Starosdev/scrutiny/master/webapp/frontend/src/assets/images/logo/scrutiny-logo-dark.png</Icon>
+  <Shell>bash</Shell>
+  <Config Name="API Endpoint" Target="COLLECTOR_ZFS_API_ENDPOINT" Default="" Description="Scrutiny web server URL (e.g. http://scrutiny-web:8080). Required." Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="Host ID" Target="COLLECTOR_ZFS_HOST_ID" Default="" Description="Unique identifier for this collector host." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Cron Schedule" Target="COLLECTOR_ZFS_CRON_SCHEDULE" Default="*/15 * * * *" Description="ZFS pool data collection schedule (cron format). Default: every 15 minutes." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Run on Startup" Target="COLLECTOR_ZFS_RUN_STARTUP" Default="false" Description="Run ZFS pool data collection immediately on container startup." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>
