@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.33.0](https://github.com/Starosdev/scrutiny/compare/v1.32.0...v1.33.0) (2026-02-25)
+
+### Features
+
+* **docker:** add Unraid Community Applications templates ([#282](https://github.com/Starosdev/scrutiny/issues/282)) ([d4d8401](https://github.com/Starosdev/scrutiny/commit/d4d84017b59570a883e093513c2e2d841faf2ed9)), closes [#281](https://github.com/Starosdev/scrutiny/issues/281)
+
 ## [1.32.0](https://github.com/Starosdev/scrutiny/compare/v1.31.2...v1.32.0) (2026-02-25)
 
 ### Features
