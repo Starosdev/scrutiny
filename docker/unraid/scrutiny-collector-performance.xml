@@ -11,7 +11,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/Starosdev/scrutiny/issues</Support>
   <Project>https://github.com/Starosdev/scrutiny</Project>
-  <Overview>Scrutiny Performance Benchmark Collector (Hub/Spoke mode). Runs fio benchmarks on drives and tracks throughput, IOPS, and latency over time. Requires a running Scrutiny web server instance. Use the omnibus template instead if you want an all-in-one deployment.</Overview>
+  <Overview>Scrutiny Performance Benchmark Collector (Hub/Spoke mode). Runs fio benchmarks on drives and tracks throughput, IOPS, and latency over time. Requires a running Scrutiny web server instance. Use the omnibus template instead if you want an all-in-one deployment. You must add each drive as a Device in the container settings. Alternatively, toggle Privileged mode to ON in the Unraid Docker UI to grant access to all drives automatically (less secure).</Overview>
   <Category>Tools: Productivity:</Category>
   <Icon>https://raw.githubusercontent.com/Starosdev/scrutiny/master/webapp/frontend/src/assets/images/logo/scrutiny-logo-dark.png</Icon>
   <ExtraParams>--cap-add SYS_RAWIO --cap-add SYS_ADMIN</ExtraParams>
