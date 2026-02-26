@@ -14,10 +14,10 @@ import (
 )
 
 type notifyUrlResponse struct {
-	ID     uint   `json:"id,omitempty"`
 	URL    string `json:"url"`
 	Label  string `json:"label,omitempty"`
 	Source string `json:"source"`
+	ID     uint   `json:"id,omitempty"`
 }
 
 // GetNotifyUrls returns a merged list of notification URLs from all sources.

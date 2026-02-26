@@ -308,20 +308,20 @@ func (n *Notify) Send() error {
 	}
 
 	// Merge with database URLs (additive: both sources contribute)
-	allUrls := append(configUrls, n.DatabaseUrls...)
+	configUrls = append(configUrls, n.DatabaseUrls...)
 
 	// Deduplicate while preserving order
-	seen := make(map[string]bool, len(allUrls))
-	uniqueUrls := make([]string, 0, len(allUrls))
-	for _, u := range allUrls {
+	seen := make(map[string]bool, len(configUrls))
+	uniqueUrls := make([]string, 0, len(configUrls))
+	for _, u := range configUrls {
 		if !seen[u] {
 			seen[u] = true
 			uniqueUrls = append(uniqueUrls, u)
 		}
 	}
 
-	n.Logger.Debugf("Configured notification services: %v (config: %d, db: %d, unique: %d)",
-		uniqueUrls, len(configUrls), len(n.DatabaseUrls), len(uniqueUrls))
+	n.Logger.Debugf("Configured notification services: %v (config+db: %d, unique: %d)",
+		uniqueUrls, len(configUrls), len(uniqueUrls))
 
 	if len(uniqueUrls) == 0 {
 		n.Logger.Warnf("No notification endpoints configured. Cannot send notification.")
@@ -348,11 +348,12 @@ func (n *Notify) sendToUrls(urls []string) error {
 	notifyShoutrrr := []string{}
 
 	for _, u := range urls {
-		if strings.HasPrefix(u, "https://") || strings.HasPrefix(u, "http://") {
+		switch {
+		case strings.HasPrefix(u, "https://"), strings.HasPrefix(u, "http://"):
 			notifyWebhooks = append(notifyWebhooks, u)
-		} else if strings.HasPrefix(u, "script://") {
+		case strings.HasPrefix(u, "script://"):
 			notifyScripts = append(notifyScripts, u)
-		} else {
+		default:
 			notifyShoutrrr = append(notifyShoutrrr, u)
 		}
 	}
