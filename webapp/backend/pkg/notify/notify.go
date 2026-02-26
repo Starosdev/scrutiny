@@ -2,6 +2,7 @@ package notify
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -274,11 +275,30 @@ type Notify struct {
 	Logger  logrus.FieldLogger
 	Config  config.Interface
 	Payload Payload
+
+	// DatabaseUrls holds URLs loaded from the database (UI-sourced).
+	// Set by the caller via LoadDatabaseUrls before calling Send().
+	// These are merged with config/env URLs during Send().
+	DatabaseUrls []string
 }
 
-func (n *Notify) Send() error {
+// LoadDatabaseUrls queries the repository for all UI-sourced notification URLs
+// and populates n.DatabaseUrls. Safe to call even if the repository returns an
+// error (degrades gracefully to config-only URLs).
+func (n *Notify) LoadDatabaseUrls(ctx context.Context, repo database.DeviceRepo) {
+	dbUrls, err := repo.GetNotifyUrls(ctx)
+	if err != nil {
+		n.Logger.Warnf("Could not load database notification URLs: %v", err)
+		return
+	}
+	for _, u := range dbUrls {
+		n.DatabaseUrls = append(n.DatabaseUrls, u.URL)
+	}
+}
 
-	//retrieve list of notification endpoints from config file
+// Send dispatches notifications to all configured URLs (config/env + database).
+func (n *Notify) Send() error {
+	// Retrieve list of notification endpoints from config file / env var
 	configUrls := n.Config.GetStringSlice("notify.urls")
 	configString := n.Config.GetString("notify.urls")
 	var jsonConfig []string
@@ -287,25 +307,54 @@ func (n *Notify) Send() error {
 		configUrls = jsonConfig
 	}
 
-	n.Logger.Debugf("Configured notification services: %v", configUrls)
+	// Merge with database URLs (additive: both sources contribute)
+	configUrls = append(configUrls, n.DatabaseUrls...)
 
-	if len(configUrls) == 0 {
+	// Deduplicate while preserving order
+	seen := make(map[string]bool, len(configUrls))
+	uniqueUrls := make([]string, 0, len(configUrls))
+	for _, u := range configUrls {
+		if !seen[u] {
+			seen[u] = true
+			uniqueUrls = append(uniqueUrls, u)
+		}
+	}
+
+	n.Logger.Debugf("Configured notification services: %v (config+db: %d, unique: %d)",
+		uniqueUrls, len(configUrls), len(uniqueUrls))
+
+	if len(uniqueUrls) == 0 {
 		n.Logger.Warnf("No notification endpoints configured. Cannot send notification.")
 		return errors.New("no notification endpoints configured")
 	}
 
-	//remove http:// https:// and script:// prefixed urls
+	return n.sendToUrls(uniqueUrls)
+}
+
+// SendToUrls dispatches notifications to the given URLs directly, bypassing
+// config/env and database URL loading. Used for per-URL testing.
+func (n *Notify) SendToUrls(urls []string) error {
+	if len(urls) == 0 {
+		return errors.New("no notification URLs provided")
+	}
+	return n.sendToUrls(urls)
+}
+
+// sendToUrls routes URLs to the appropriate sender (webhook, script, or shoutrrr)
+// and dispatches them in parallel.
+func (n *Notify) sendToUrls(urls []string) error {
 	notifyWebhooks := []string{}
 	notifyScripts := []string{}
 	notifyShoutrrr := []string{}
 
-	for ndx := range configUrls {
-		if strings.HasPrefix(configUrls[ndx], "https://") || strings.HasPrefix(configUrls[ndx], "http://") {
-			notifyWebhooks = append(notifyWebhooks, configUrls[ndx])
-		} else if strings.HasPrefix(configUrls[ndx], "script://") {
-			notifyScripts = append(notifyScripts, configUrls[ndx])
-		} else {
-			notifyShoutrrr = append(notifyShoutrrr, configUrls[ndx])
+	for _, u := range urls {
+		switch {
+		case strings.HasPrefix(u, "https://"), strings.HasPrefix(u, "http://"):
+			notifyWebhooks = append(notifyWebhooks, u)
+		case strings.HasPrefix(u, "script://"):
+			notifyScripts = append(notifyScripts, u)
+		default:
+			notifyShoutrrr = append(notifyShoutrrr, u)
 		}
 	}
 
@@ -313,27 +362,21 @@ func (n *Notify) Send() error {
 	n.Logger.Debugf("Configured webhooks: %v", notifyWebhooks)
 	n.Logger.Debugf("Configured shoutrrr: %v", notifyShoutrrr)
 
-	//run all scripts, webhooks and shoutrr commands in parallel
-	//var wg sync.WaitGroup
 	var eg errgroup.Group
 
-	for _, url := range notifyWebhooks {
-		// execute collection in parallel go-routines
-		_url := url
-		eg.Go(func() error { return n.SendWebhookNotification(_url) })
+	for _, u := range notifyWebhooks {
+		targetUrl := u
+		eg.Go(func() error { return n.SendWebhookNotification(targetUrl) })
 	}
-	for _, url := range notifyScripts {
-		// execute collection in parallel go-routines
-		_url := url
-		eg.Go(func() error { return n.SendScriptNotification(_url) })
+	for _, u := range notifyScripts {
+		targetUrl := u
+		eg.Go(func() error { return n.SendScriptNotification(targetUrl) })
 	}
-	for _, url := range notifyShoutrrr {
-		// execute collection in parallel go-routines
-		_url := url
-		eg.Go(func() error { return n.SendShoutrrrNotification(_url) })
+	for _, u := range notifyShoutrrr {
+		targetUrl := u
+		eg.Go(func() error { return n.SendShoutrrrNotification(targetUrl) })
 	}
 
-	//and wait for completion, error or timeout.
 	n.Logger.Debugf("Main: waiting for notifications to complete.")
 
 	if err := eg.Wait(); err == nil {

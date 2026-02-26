@@ -224,6 +224,9 @@ func (s *Scheduler) runReport(periodType string, now time.Time, pdfEnabled bool,
 
 func (s *Scheduler) sendNotification(subject, message, htmlMessage string) {
 	reportNotify := notify.NewReport(s.logger, s.appConfig, subject, message, htmlMessage)
+	if repo, err := s.getRepo(); err == nil {
+		reportNotify.LoadDatabaseUrls(s.ctx, repo)
+	}
 	if err := reportNotify.Send(); err != nil {
 		s.logger.Errorf("Failed to send report notification: %v", err)
 	}

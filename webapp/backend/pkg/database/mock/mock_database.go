@@ -723,3 +723,46 @@ func (mr *MockDeviceRepoMockRecorder) UpdateZFSPoolMuted(ctx, guid, muted interf
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateZFSPoolMuted", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateZFSPoolMuted), ctx, guid, muted)
 }
+
+// GetNotifyUrls mocks base method.
+func (m *MockDeviceRepo) GetNotifyUrls(ctx context.Context) ([]models.NotifyUrl, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetNotifyUrls", ctx)
+	ret0, _ := ret[0].([]models.NotifyUrl)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetNotifyUrls indicates an expected call of GetNotifyUrls.
+func (mr *MockDeviceRepoMockRecorder) GetNotifyUrls(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNotifyUrls", reflect.TypeOf((*MockDeviceRepo)(nil).GetNotifyUrls), ctx)
+}
+
+// SaveNotifyUrl mocks base method.
+func (m *MockDeviceRepo) SaveNotifyUrl(ctx context.Context, notifyUrl *models.NotifyUrl) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveNotifyUrl", ctx, notifyUrl)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveNotifyUrl indicates an expected call of SaveNotifyUrl.
+func (mr *MockDeviceRepoMockRecorder) SaveNotifyUrl(ctx, notifyUrl interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveNotifyUrl", reflect.TypeOf((*MockDeviceRepo)(nil).SaveNotifyUrl), ctx, notifyUrl)
+}
+
+// DeleteNotifyUrl mocks base method.
+func (m *MockDeviceRepo) DeleteNotifyUrl(ctx context.Context, id uint) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteNotifyUrl", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteNotifyUrl indicates an expected call of DeleteNotifyUrl.
+func (mr *MockDeviceRepoMockRecorder) DeleteNotifyUrl(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNotifyUrl", reflect.TypeOf((*MockDeviceRepo)(nil).DeleteNotifyUrl), ctx, id)
+}

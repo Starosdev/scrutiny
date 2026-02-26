@@ -107,4 +107,9 @@ type DeviceRepo interface {
 	SavePerformanceResults(ctx context.Context, wwn string, perfData *measurements.Performance) error
 	GetPerformanceHistory(ctx context.Context, wwn string, durationKey string) ([]measurements.Performance, error)
 	GetPerformanceBaseline(ctx context.Context, wwn string, count int) (*measurements.PerformanceBaseline, error)
+
+	// Notify URL operations (UI-configurable notification endpoints)
+	GetNotifyUrls(ctx context.Context) ([]models.NotifyUrl, error)
+	SaveNotifyUrl(ctx context.Context, notifyUrl *models.NotifyUrl) error
+	DeleteNotifyUrl(ctx context.Context, id uint) error
 }

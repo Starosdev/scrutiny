@@ -340,6 +340,7 @@ func (m *MissedPingMonitor) checkMissedPings() {
 
 func (m *MissedPingMonitor) sendMissedPingDigest(devices []notify.MissedPingDigestDevice, timeoutMinutes int) {
 	notification := notify.NewMissedPingDigest(m.logger, m.appEngine.Config, devices, timeoutMinutes)
+	notification.LoadDatabaseUrls(m.ctx, m.deviceRepo)
 	if err := notification.Send(); err != nil {
 		if err.Error() == "no notification endpoints configured" {
 			m.logger.Warnf("Missed pings detected for %d device(s) but no notification endpoints are configured.", len(devices))

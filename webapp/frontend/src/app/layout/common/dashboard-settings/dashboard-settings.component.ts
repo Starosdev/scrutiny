@@ -6,6 +6,7 @@ import {
     DashboardSort,
     MetricsStatusFilterAttributes,
     MetricsStatusThreshold,
+    NotifyUrlEntry,
     OverrideAction,
     OverrideProtocol,
     OverrideStatus,
@@ -16,6 +17,7 @@ import {
 } from 'app/core/config/app.config';
 import {ScrutinyConfigService} from 'app/core/config/scrutiny-config.service';
 import {AttributeOverrideService} from 'app/core/config/attribute-override.service';
+import {NotifyUrlService} from 'app/core/config/notify-url.service';
 import {Subject} from 'rxjs';
 import {takeUntil} from 'rxjs/operators';
 
@@ -79,12 +81,37 @@ export class DashboardSettingsComponent implements OnInit {
         action: 'ignore'
     };
 
+    // Notification URL management
+    notifyUrls: NotifyUrlEntry[] = [];
+    notifyUrlColumns: string[] = ['label', 'url', 'source', 'actions'];
+    showAddUrlForm = false;
+    selectedService: 'custom' | 'smtp' | 'discord' | 'slack' | 'telegram' = 'custom';
+    newUrlRaw = '';
+    newUrlLabel = '';
+    // SMTP fields
+    smtpHost = '';
+    smtpPort = '587';
+    smtpUsername = '';
+    smtpPassword = '';
+    smtpFrom = '';
+    smtpTo = '';
+    // Discord
+    discordWebhookUrl = '';
+    // Slack
+    slackWebhookUrl = '';
+    // Telegram
+    telegramToken = '';
+    telegramChatId = '';
+    // Test notification state
+    testingUrlId: number | null = null;
+
     // Private
     private _unsubscribeAll: Subject<void>;
 
     constructor(
         private _configService: ScrutinyConfigService,
         private _overrideService: AttributeOverrideService,
+        private _notifyUrlService: NotifyUrlService,
     ) {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
@@ -137,6 +164,9 @@ export class DashboardSettingsComponent implements OnInit {
 
         // Load attribute overrides
         this.loadOverrides();
+
+        // Load notification URLs
+        this.loadNotifyUrls();
     }
 
     loadOverrides(): void {
@@ -190,6 +220,102 @@ export class DashboardSettingsComponent implements OnInit {
     getActionLabel(action: string): string {
         const found = this.actions.find(a => a.value === action);
         return found ? found.label : 'Custom Threshold';
+    }
+
+    // Notification URL methods
+
+    loadNotifyUrls(): void {
+        this._notifyUrlService.getNotifyUrls()
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(urls => {
+                this.notifyUrls = urls;
+            });
+    }
+
+    deleteNotifyUrl(entry: NotifyUrlEntry): void {
+        if (!entry.id || entry.source !== 'ui') {
+            return;
+        }
+        this._notifyUrlService.deleteNotifyUrl(entry.id)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(() => {
+                this.notifyUrls = this.notifyUrls.filter(u => u.id !== entry.id);
+            });
+    }
+
+    testNotifyUrl(entry: NotifyUrlEntry): void {
+        if (!entry.id) {
+            return;
+        }
+        this.testingUrlId = entry.id;
+        this._notifyUrlService.testNotifyUrl(entry.id)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe({
+                next: () => { this.testingUrlId = null; },
+                error: () => { this.testingUrlId = null; }
+            });
+    }
+
+    buildShoutrrrUrl(): string {
+        switch (this.selectedService) {
+            case 'custom':
+                return this.newUrlRaw.trim();
+            case 'smtp': {
+                if (!this.smtpHost || !this.smtpFrom || !this.smtpTo) {
+                    return '';
+                }
+                const user = encodeURIComponent(this.smtpUsername);
+                const pass = encodeURIComponent(this.smtpPassword);
+                const auth = this.smtpUsername ? `${user}:${pass}@` : '';
+                return `smtp://${auth}${this.smtpHost}:${this.smtpPort}/?from=${encodeURIComponent(this.smtpFrom)}&to=${encodeURIComponent(this.smtpTo)}`;
+            }
+            case 'discord': {
+                const match = this.discordWebhookUrl.match(/webhooks\/(\d+)\/([^\/\?]+)/);
+                return match ? `discord://${match[2]}@${match[1]}` : '';
+            }
+            case 'slack': {
+                const match = this.slackWebhookUrl.match(/services\/([^\/]+)\/([^\/]+)\/([^\/\?]+)/);
+                return match ? `slack://hook:${match[1]}/${match[2]}/${match[3]}` : '';
+            }
+            case 'telegram':
+                return (this.telegramToken && this.telegramChatId)
+                    ? `telegram://${this.telegramToken}@telegram?chats=${this.telegramChatId}`
+                    : '';
+            default:
+                return '';
+        }
+    }
+
+    addNotifyUrl(): void {
+        const url = this.buildShoutrrrUrl();
+        if (!url) {
+            return;
+        }
+        const label = this.newUrlLabel.trim();
+
+        this._notifyUrlService.addNotifyUrl(url, label)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(saved => {
+                this.notifyUrls = [...this.notifyUrls, saved];
+                this.showAddUrlForm = false;
+                this.resetAddForm();
+            });
+    }
+
+    resetAddForm(): void {
+        this.selectedService = 'custom';
+        this.newUrlRaw = '';
+        this.newUrlLabel = '';
+        this.smtpHost = '';
+        this.smtpPort = '587';
+        this.smtpUsername = '';
+        this.smtpPassword = '';
+        this.smtpFrom = '';
+        this.smtpTo = '';
+        this.discordWebhookUrl = '';
+        this.slackWebhookUrl = '';
+        this.telegramToken = '';
+        this.telegramChatId = '';
     }
 
     saveSettings(): void {
