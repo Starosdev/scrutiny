@@ -260,6 +260,7 @@ func (m *HeartbeatMonitor) checkAndSendHeartbeat() {
 	m.logger.Infof("All %d monitored drives healthy, sending heartbeat notification", monitoredCount)
 
 	notification := notify.NewHeartbeat(m.logger, m.appEngine.Config, monitoredCount, totalCount)
+	notification.LoadDatabaseUrls(m.ctx, m.deviceRepo)
 	if err := notification.Send(); err != nil {
 		if err.Error() == "no notification endpoints configured" {
 			m.logger.Warn("Heartbeat ready but no notification endpoints are configured. Configure notify.urls in scrutiny.yaml to receive heartbeat alerts.")

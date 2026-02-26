@@ -355,6 +355,8 @@ The performance collector is available as a separate Docker image:
 
 ```bash
 docker run --restart unless-stopped \
+  --cap-add SYS_RAWIO \
+  --cap-add SYS_ADMIN \
   --device=/dev/sda \
   --device=/dev/sdb \
   -e COLLECTOR_PERF_API_ENDPOINT=http://SCRUTINY_WEB_IPADDRESS:8080 \
@@ -714,6 +716,8 @@ Example:
 
 ```bash
 docker run --restart unless-stopped \
+  --cap-add SYS_RAWIO \
+  --cap-add SYS_ADMIN \
   --device=/dev/sda \
   --device=/dev/sdb \
   -e COLLECTOR_PERF_API_ENDPOINT=http://scrutiny-web:8080 \

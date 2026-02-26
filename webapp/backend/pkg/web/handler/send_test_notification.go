@@ -1,19 +1,22 @@
 package handler
 
 import (
+	"net/http"
+
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/notify"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
-	"net/http"
 )
 
 // Send test notification
 func SendTestNotification(c *gin.Context) {
 	appConfig := c.MustGet("CONFIG").(config.Interface)
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
+	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 
 	testNotify := notify.New(
 		logger,
@@ -25,6 +28,7 @@ func SendTestNotification(c *gin.Context) {
 		},
 		true,
 	)
+	testNotify.LoadDatabaseUrls(c, deviceRepo)
 	err := testNotify.Send()
 	if err != nil {
 		logger.Errorln("An error occurred while sending test notification", err)

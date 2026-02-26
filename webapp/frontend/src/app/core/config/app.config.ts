@@ -65,6 +65,16 @@ export interface AttributeOverride {
     source?: OverrideSource;
 }
 
+// Source of a notification URL entry
+export type NotifyUrlSource = 'ui' | 'config' | 'env';
+
+export interface NotifyUrlEntry {
+    id?: number;
+    url: string;
+    label?: string;
+    source: NotifyUrlSource;
+}
+
 /**
  * AppConfig interface. Update this interface to strictly type your config
  * object.
