@@ -140,6 +140,12 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.POST("/settings/overrides", handler.SaveAttributeOverride)
 			api.DELETE("/settings/overrides/:id", handler.DeleteAttributeOverride)
 
+			// Notification URL endpoints (UI-configurable notification channels)
+			api.GET("/settings/notify-urls", handler.GetNotifyUrls)
+			api.POST("/settings/notify-urls", handler.SaveNotifyUrl)
+			api.DELETE("/settings/notify-urls/:id", handler.DeleteNotifyUrl)
+			api.POST("/settings/notify-urls/:id/test", handler.TestNotifyUrl)
+
 			// Scheduled report endpoints
 			api.GET("/reports/generate", handler.GenerateReport)
 			api.GET("/reports/history", handler.ListReports)

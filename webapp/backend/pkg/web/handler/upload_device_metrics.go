@@ -108,6 +108,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 			updatedDevice,
 			false,
 		)
+		liveNotify.LoadDatabaseUrls(c, deviceRepo)
 		if err := liveNotify.Send(); err != nil {
 			logger.Warnf("Failed to send notification for device %s: %v", wwn, err)
 		}

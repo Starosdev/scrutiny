@@ -392,6 +392,184 @@
                 </div>
             </div>
         </mat-expansion-panel>
+
+        <!-- Notification Channels -->
+        <mat-expansion-panel class="mt-5">
+            <mat-expansion-panel-header>
+                <mat-panel-title>Notification Channels</mat-panel-title>
+                <mat-panel-description>
+                    Configure where notifications are sent
+                </mat-panel-description>
+            </mat-expansion-panel-header>
+
+            <div class="flex flex-col p-4">
+
+                <!-- URL list table -->
+                <table mat-table [dataSource]="notifyUrls" class="w-full" *ngIf="notifyUrls.length > 0">
+
+                    <ng-container matColumnDef="label">
+                        <th mat-header-cell *matHeaderCellDef>Label</th>
+                        <td mat-cell *matCellDef="let entry">
+                            {{ entry.label || '(no label)' }}
+                        </td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="url">
+                        <th mat-header-cell *matHeaderCellDef>URL</th>
+                        <td mat-cell *matCellDef="let entry">
+                            <code class="text-xs break-all">{{ entry.url }}</code>
+                        </td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="source">
+                        <th mat-header-cell *matHeaderCellDef>Source</th>
+                        <td mat-cell *matCellDef="let entry">
+                            <span class="px-2 py-1 text-xs rounded"
+                                  [class.bg-blue-100]="entry.source === 'ui'"
+                                  [class.bg-gray-100]="entry.source !== 'ui'">
+                                {{ entry.source }}
+                            </span>
+                        </td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="actions">
+                        <th mat-header-cell *matHeaderCellDef></th>
+                        <td mat-cell *matCellDef="let entry">
+                            <button mat-icon-button
+                                    (click)="testNotifyUrl(entry)"
+                                    [disabled]="entry.source !== 'ui' || testingUrlId === entry.id"
+                                    matTooltip="Send test notification">
+                                <mat-icon *ngIf="testingUrlId !== entry.id">send</mat-icon>
+                                <mat-icon *ngIf="testingUrlId === entry.id">hourglass_empty</mat-icon>
+                            </button>
+                            <button mat-icon-button
+                                    (click)="deleteNotifyUrl(entry)"
+                                    [disabled]="entry.source !== 'ui'"
+                                    [matTooltip]="entry.source !== 'ui' ? 'Config/env URLs cannot be removed from UI' : 'Remove'">
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </td>
+                    </ng-container>
+
+                    <tr mat-header-row *matHeaderRowDef="notifyUrlColumns"></tr>
+                    <tr mat-row *matRowDef="let row; columns: notifyUrlColumns;"></tr>
+                </table>
+
+                <p *ngIf="notifyUrls.length === 0" class="text-gray-500 italic my-4">
+                    No notification channels configured. Add one below, or configure notify.urls in scrutiny.yaml.
+                </p>
+
+                <!-- Add URL button -->
+                <button mat-stroked-button class="mt-4" (click)="showAddUrlForm = !showAddUrlForm">
+                    <mat-icon>add</mat-icon>
+                    <span class="ml-1">Add Notification Channel</span>
+                </button>
+
+                <!-- Add URL form -->
+                <div *ngIf="showAddUrlForm" class="mt-4 p-4 border rounded">
+                    <h4 class="mb-4 font-medium">Add Notification Channel</h4>
+
+                    <mat-form-field class="w-full mb-2">
+                        <mat-label>Label (optional)</mat-label>
+                        <input matInput [(ngModel)]="newUrlLabel" placeholder="e.g. My Discord Server">
+                    </mat-form-field>
+
+                    <mat-form-field class="w-full mb-2">
+                        <mat-label>Service</mat-label>
+                        <mat-select [(ngModel)]="selectedService">
+                            <mat-option value="custom">Custom Shoutrrr URL</mat-option>
+                            <mat-option value="smtp">SMTP Email</mat-option>
+                            <mat-option value="discord">Discord</mat-option>
+                            <mat-option value="slack">Slack</mat-option>
+                            <mat-option value="telegram">Telegram</mat-option>
+                        </mat-select>
+                    </mat-form-field>
+
+                    <!-- Custom URL -->
+                    <div *ngIf="selectedService === 'custom'">
+                        <mat-form-field class="w-full">
+                            <mat-label>Shoutrrr URL</mat-label>
+                            <input matInput [(ngModel)]="newUrlRaw"
+                                   placeholder="e.g. discord://token@webhookid">
+                            <mat-hint>Full Shoutrrr-format URL. See shoutrrr docs for supported services.</mat-hint>
+                        </mat-form-field>
+                    </div>
+
+                    <!-- SMTP -->
+                    <div *ngIf="selectedService === 'smtp'" class="flex flex-wrap gap-4">
+                        <mat-form-field class="flex-1 min-w-[200px]">
+                            <mat-label>SMTP Host</mat-label>
+                            <input matInput [(ngModel)]="smtpHost" placeholder="smtp.gmail.com">
+                        </mat-form-field>
+                        <mat-form-field class="w-24">
+                            <mat-label>Port</mat-label>
+                            <input matInput type="number" [(ngModel)]="smtpPort">
+                        </mat-form-field>
+                        <mat-form-field class="flex-1 min-w-[150px]">
+                            <mat-label>Username</mat-label>
+                            <input matInput [(ngModel)]="smtpUsername">
+                        </mat-form-field>
+                        <mat-form-field class="flex-1 min-w-[150px]">
+                            <mat-label>Password</mat-label>
+                            <input matInput type="password" [(ngModel)]="smtpPassword">
+                        </mat-form-field>
+                        <mat-form-field class="flex-1 min-w-[200px]">
+                            <mat-label>From Address</mat-label>
+                            <input matInput [(ngModel)]="smtpFrom" placeholder="alerts@example.com">
+                        </mat-form-field>
+                        <mat-form-field class="flex-1 min-w-[200px]">
+                            <mat-label>To Address</mat-label>
+                            <input matInput [(ngModel)]="smtpTo" placeholder="admin@example.com">
+                        </mat-form-field>
+                    </div>
+
+                    <!-- Discord -->
+                    <div *ngIf="selectedService === 'discord'">
+                        <mat-form-field class="w-full">
+                            <mat-label>Discord Webhook URL</mat-label>
+                            <input matInput [(ngModel)]="discordWebhookUrl"
+                                   placeholder="https://discord.com/api/webhooks/...">
+                            <mat-hint>Paste the full Discord webhook URL from channel settings</mat-hint>
+                        </mat-form-field>
+                    </div>
+
+                    <!-- Slack -->
+                    <div *ngIf="selectedService === 'slack'">
+                        <mat-form-field class="w-full">
+                            <mat-label>Slack Webhook URL</mat-label>
+                            <input matInput [(ngModel)]="slackWebhookUrl"
+                                   placeholder="https://hooks.slack.com/services/...">
+                            <mat-hint>Paste the full Slack incoming webhook URL</mat-hint>
+                        </mat-form-field>
+                    </div>
+
+                    <!-- Telegram -->
+                    <div *ngIf="selectedService === 'telegram'" class="flex flex-wrap gap-4">
+                        <mat-form-field class="flex-1 min-w-[200px]">
+                            <mat-label>Bot Token</mat-label>
+                            <input matInput [(ngModel)]="telegramToken"
+                                   placeholder="123456789:AABBccddEEff...">
+                        </mat-form-field>
+                        <mat-form-field class="flex-1 min-w-[150px]">
+                            <mat-label>Chat ID</mat-label>
+                            <input matInput [(ngModel)]="telegramChatId" placeholder="-1001234567890">
+                        </mat-form-field>
+                    </div>
+
+                    <div class="flex gap-2 mt-4">
+                        <button mat-raised-button color="primary"
+                                (click)="addNotifyUrl()"
+                                [disabled]="!buildShoutrrrUrl()">
+                            Save
+                        </button>
+                        <button mat-button (click)="showAddUrlForm = false; resetAddForm()">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </mat-expansion-panel>
     </div>
 
 </mat-dialog-content>
