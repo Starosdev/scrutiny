@@ -170,6 +170,14 @@ web:
     # tls:
     #   insecure_skip_verify: false
 
+  # Uptime Kuma push monitor (optional)
+  # When configured here, this URL takes precedence over the Settings UI value.
+  # The monitor itself is enabled/disabled via the Settings API or UI.
+  # Env: SCRUTINY_WEB_UPTIME_KUMA_PUSH_URL
+  #
+  # uptime_kuma:
+  #   push_url: "https://kuma.example.com/api/push/YOUR_TOKEN"
+
   # MQTT / Home Assistant Integration
   #
   # When enabled, Scrutiny publishes MQTT Discovery messages so that drives

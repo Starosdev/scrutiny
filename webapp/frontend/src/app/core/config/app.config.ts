@@ -113,6 +113,10 @@ export interface AppConfig {
         // Heartbeat notifications
         heartbeat_enabled?: boolean
         heartbeat_interval_hours?: number
+        // Uptime Kuma push monitor
+        uptime_kuma_enabled?: boolean
+        uptime_kuma_push_url?: string
+        uptime_kuma_interval_seconds?: number
         // Scheduled reports
         report_enabled?: boolean
         report_daily_enabled?: boolean
@@ -166,6 +170,9 @@ export const appConfig: AppConfig = {
         missed_ping_check_interval_mins: 5,
         heartbeat_enabled: false,
         heartbeat_interval_hours: 24,
+        uptime_kuma_enabled: false,
+        uptime_kuma_push_url: '',
+        uptime_kuma_interval_seconds: 60,
         report_enabled: false,
         report_daily_enabled: false,
         report_daily_time: '08:00',
