@@ -92,6 +92,9 @@ services:
   # collector-performance:
   #   restart: unless-stopped
   #   image: 'ghcr.io/starosdev/scrutiny:latest-collector-performance'
+  #   cap_add:
+  #     - SYS_RAWIO
+  #     - SYS_ADMIN  # Required for NVMe and USB/SAT devices
   #   volumes:
   #     - '/run/udev:/run/udev:ro'
   #     - '/mnt/data:/mnt/data'        # Mount host filesystem for sda benchmarks
