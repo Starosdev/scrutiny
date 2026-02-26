@@ -2,6 +2,22 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.34.0](https://github.com/Starosdev/scrutiny/compare/v1.33.0...v1.34.0) (2026-02-26)
+
+### Features
+
+* **mqtt:** add native Home Assistant MQTT Discovery integration ([#278](https://github.com/Starosdev/scrutiny/issues/278)) ([19fe813](https://github.com/Starosdev/scrutiny/commit/19fe81331a9523a7289e381e874d1d66d661f6a0))
+* **notifications:** add UI for notification URL configuration ([#285](https://github.com/Starosdev/scrutiny/issues/285)) ([476b6c0](https://github.com/Starosdev/scrutiny/commit/476b6c044dd400d26267872690a2d64985910339)), closes [#242](https://github.com/Starosdev/scrutiny/issues/242)
+
+### Bug Fixes
+
+* **docker:** add missing cap_add to performance collector examples ([#283](https://github.com/Starosdev/scrutiny/issues/283)) ([6f2419c](https://github.com/Starosdev/scrutiny/commit/6f2419cab49c1cc5ab204112a706f7528bbe8a49))
+* **mqtt:** fix remaining lint issues in publisher ([c1af8fa](https://github.com/Starosdev/scrutiny/commit/c1af8fa0060ee240e7603c32a4ab4ce570498a4f))
+* **mqtt:** resolve golangci-lint issues in MQTT integration ([48a27e2](https://github.com/Starosdev/scrutiny/commit/48a27e2785919ea495a89cfa29326660e137e657))
+* **mqtt:** rewrite if-else chain as switch statement per gocritic lint ([624683b](https://github.com/Starosdev/scrutiny/commit/624683bfeca592e159271b5052e49a5885aaea9c))
+* **mqtt:** use device label as HA device name when set ([e10b601](https://github.com/Starosdev/scrutiny/commit/e10b601bd045974aa49c28a595401019d7297606))
+* **ui:** add sortingDataAccessor for SMART attributes table columns ([#269](https://github.com/Starosdev/scrutiny/issues/269)) ([da5e74a](https://github.com/Starosdev/scrutiny/commit/da5e74a3b509200a40ac0a99421ff95a4f7878bf))
+
 ## [1.33.0](https://github.com/Starosdev/scrutiny/compare/v1.32.0...v1.33.0) (2026-02-25)
 
 ### Features
