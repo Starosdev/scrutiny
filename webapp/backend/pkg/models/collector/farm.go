@@ -65,7 +65,7 @@ type FarmErrorStatistics struct {
 }
 
 // FarmEnvironmentStatistics contains environmental metrics.
-// Note: "curent_temp" is a known typo in the smartctl JSON output (not "current"). //nolint:misspell
+// Note: the temperature field name has a known typo in the smartctl JSON output.
 type FarmEnvironmentStatistics struct {
 	CurentTemp  int64 `json:"curent_temp"` //nolint:misspell // smartctl uses this spelling
 	HighestTemp int64 `json:"highest_temp"`
