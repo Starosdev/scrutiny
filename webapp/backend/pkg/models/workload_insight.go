@@ -11,6 +11,16 @@ type WorkloadInsight struct {
 	DeviceWWN      string `json:"device_wwn"`
 	DeviceProtocol string `json:"device_protocol"`
 
+	// Device display fields (for frontend device title rendering)
+	DeviceName     string `json:"device_name,omitempty"`
+	DeviceType     string `json:"device_type,omitempty"`
+	ModelName      string `json:"model_name,omitempty"`
+	Label          string `json:"label,omitempty"`
+	DeviceLabel    string `json:"device_label,omitempty"`
+	HostId         string `json:"host_id,omitempty"`
+	DeviceSerialID string `json:"device_serial_id,omitempty"`
+	DeviceUUID     string `json:"device_uuid,omitempty"`
+
 	// Classification: "heavy", "medium", "light", "idle", "unknown"
 	Intensity string `json:"intensity"`
 

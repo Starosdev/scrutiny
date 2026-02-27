@@ -35,7 +35,7 @@
               </div>
               @for (device of spikeDevices; track device.device_wwn) {
                 <div class="text-sm ml-8">
-                  {{ device.device_wwn }} &mdash; {{ device.spike.description }}
+                  {{ getDeviceDisplayTitle(device) }} &mdash; {{ device.spike.description }}
                 </div>
               }
             </div>
@@ -50,8 +50,10 @@
               <!-- Device column -->
               <ng-container matColumnDef="device_wwn">
                 <th mat-header-cell *matHeaderCellDef mat-sort-header>Device</th>
-                <td mat-cell *matCellDef="let row" class="cursor-pointer" (click)="navigateToDevice(row.device_wwn)">
-                  <span class="font-medium">{{ row.device_wwn }}</span>
+                <td mat-cell *matCellDef="let row" class="cursor-pointer"
+                    (click)="navigateToDevice(row.device_wwn)"
+                    [matTooltip]="row.device_wwn">
+                  <span class="font-medium">{{ getDeviceDisplayTitle(row) }}</span>
                 </td>
               </ng-container>
 
