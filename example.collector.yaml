@@ -116,6 +116,11 @@ devices:
 #  metrics_info_args: '--info --json' # used to determine device unique ID & register device with Scrutiny
 #  metrics_smart_args: '--xall --json' # used to retrieve smart data for each device.
 #  metrics_smartctl_wait: 0 # time to wait in seconds between each disk's check
+#  metrics_farm_enabled: false # Enable Seagate FARM log collection (requires smartmontools 7.4+).
+#                              # Collects tamper-proof reliability data from Seagate Exos, IronWolf,
+#                              # IronWolf Pro, and BarraCuda drives. Non-Seagate drives are skipped
+#                              # automatically. Environment variable: COLLECTOR_COMMANDS_METRICS_FARM_ENABLED
+#  metrics_farm_args: '-l farm --json' # smartctl arguments for FARM log collection
 
 
 ########################################################################################################################

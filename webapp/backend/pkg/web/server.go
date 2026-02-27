@@ -33,9 +33,10 @@ type AppEngine struct {
 	Logger            *logrus.Entry
 	MetricsCollector  *metrics.Collector
 	MqttPublisher     *mqtt.Publisher
-	MissedPingMonitor *MissedPingMonitor
-	HeartbeatMonitor  *HeartbeatMonitor
-	ReportScheduler   *reports.Scheduler
+	MissedPingMonitor  *MissedPingMonitor
+	HeartbeatMonitor   *HeartbeatMonitor
+	UptimeKumaMonitor  *UptimeKumaMonitor
+	ReportScheduler    *reports.Scheduler
 }
 
 func (ae *AppEngine) registerMiddleware(r *gin.Engine, logger *logrus.Entry) {
@@ -108,6 +109,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.HEAD("/health", handler.HealthCheck)
 			api.POST("/health/notify", handler.SendTestNotification)        //check if notifications are configured correctly
 			api.GET("/health/missed-ping-status", handler.GetMissedPingStatus) //get missed ping monitor diagnostic status
+			api.POST("/health/uptime-kuma-test", handler.TestUptimeKumaPush) // test Uptime Kuma push monitor
 
 			api.POST("/devices/register", handler.RegisterDevices)         //used by Collector to register new devices and retrieve filtered list
 			api.GET("/summary", handler.GetDevicesSummary)                 //used by Dashboard
@@ -262,6 +264,11 @@ func (ae *AppEngine) Start() error {
 	heartbeatMonitor.Start()
 	ae.Logger.Info("Heartbeat monitor started")
 
+	uptimeKumaMonitor := NewUptimeKumaMonitor(ae)
+	ae.UptimeKumaMonitor = uptimeKumaMonitor
+	uptimeKumaMonitor.Start()
+	ae.Logger.Info("Uptime Kuma monitor started")
+
 	reportScheduler.Start()
 	ae.Logger.Info("Report scheduler started")
 
@@ -361,6 +368,9 @@ func (ae *AppEngine) stopBackgroundMonitors() {
 	}
 	if ae.HeartbeatMonitor != nil {
 		ae.HeartbeatMonitor.Stop()
+	}
+	if ae.UptimeKumaMonitor != nil {
+		ae.UptimeKumaMonitor.Stop()
 	}
 	if ae.ReportScheduler != nil {
 		ae.ReportScheduler.Stop()

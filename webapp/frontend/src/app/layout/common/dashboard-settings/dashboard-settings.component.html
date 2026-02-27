@@ -166,6 +166,53 @@
             </mat-form-field>
         </div>
 
+        <!-- Uptime Kuma Push Monitor -->
+        <div class="flex flex-col mt-5 gt-md:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Uptime Kuma Push Monitor</mat-label>
+                <mat-select [(ngModel)]="uptimeKumaEnabled">
+                    <mat-option [value]="true">Enabled</mat-option>
+                    <mat-option [value]="false">Disabled</mat-option>
+                </mat-select>
+                <mat-hint>Push health status to Uptime Kuma</mat-hint>
+            </mat-form-field>
+        </div>
+
+        <div *ngIf="uptimeKumaEnabled">
+            <div class="flex flex-col mt-5 gt-md:flex-row">
+                <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                    <mat-label>Push URL</mat-label>
+                    <input matInput [(ngModel)]="uptimeKumaPushURL"
+                           placeholder="https://kuma.example.com/api/push/YOUR_TOKEN">
+                    <mat-hint>Uptime Kuma Push Monitor URL (can also be set in scrutiny.yaml)</mat-hint>
+                </mat-form-field>
+            </div>
+
+            <div class="flex flex-col mt-5 gt-md:flex-row items-center">
+                <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                    <mat-label>Push Interval (seconds)</mat-label>
+                    <input matInput type="number" [(ngModel)]="uptimeKumaIntervalSeconds" min="10">
+                    <mat-hint>Seconds between health pushes (default: 60)</mat-hint>
+                </mat-form-field>
+
+                <button mat-stroked-button
+                        class="ml-3"
+                        (click)="testUptimeKuma()"
+                        [disabled]="uptimeKumaTestLoading || !uptimeKumaPushURL">
+                    <mat-icon *ngIf="!uptimeKumaTestLoading">send</mat-icon>
+                    <mat-icon *ngIf="uptimeKumaTestLoading">hourglass_empty</mat-icon>
+                    <span class="ml-1">Test Push</span>
+                </button>
+            </div>
+
+            <div *ngIf="uptimeKumaTestResult === 'success'" class="mt-2 text-green-600 text-sm">
+                Test push sent successfully.
+            </div>
+            <div *ngIf="uptimeKumaTestResult === 'error'" class="mt-2 text-red-600 text-sm">
+                Test push failed. Check the push URL and try again.
+            </div>
+        </div>
+
         <!-- Scheduled Reports Section -->
         <mat-expansion-panel class="mt-5">
             <mat-expansion-panel-header>
