@@ -1,4 +1,5 @@
 import {Component, OnInit} from '@angular/core';
+import {HttpClient} from '@angular/common/http';
 import {
     AppConfig,
     AttributeOverride,
@@ -18,6 +19,7 @@ import {
 import {ScrutinyConfigService} from 'app/core/config/scrutiny-config.service';
 import {AttributeOverrideService} from 'app/core/config/attribute-override.service';
 import {NotifyUrlService} from 'app/core/config/notify-url.service';
+import {getBasePath} from 'app/app.routing';
 import {Subject} from 'rxjs';
 import {takeUntil} from 'rxjs/operators';
 
@@ -49,6 +51,13 @@ export class DashboardSettingsComponent implements OnInit {
     // Heartbeat settings
     heartbeatEnabled: boolean;
     heartbeatIntervalHours: number;
+
+    // Uptime Kuma settings
+    uptimeKumaEnabled: boolean;
+    uptimeKumaPushURL: string;
+    uptimeKumaIntervalSeconds: number;
+    uptimeKumaTestLoading = false;
+    uptimeKumaTestResult: string | null = null;
 
     // Report settings
     reportEnabled: boolean;
@@ -112,6 +121,7 @@ export class DashboardSettingsComponent implements OnInit {
         private _configService: ScrutinyConfigService,
         private _overrideService: AttributeOverrideService,
         private _notifyUrlService: NotifyUrlService,
+        private _httpClient: HttpClient,
     ) {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
@@ -146,6 +156,11 @@ export class DashboardSettingsComponent implements OnInit {
                 // Heartbeat settings
                 this.heartbeatEnabled = config.metrics.heartbeat_enabled ?? false;
                 this.heartbeatIntervalHours = config.metrics.heartbeat_interval_hours ?? 24;
+
+                // Uptime Kuma settings
+                this.uptimeKumaEnabled = config.metrics.uptime_kuma_enabled ?? false;
+                this.uptimeKumaPushURL = config.metrics.uptime_kuma_push_url ?? '';
+                this.uptimeKumaIntervalSeconds = config.metrics.uptime_kuma_interval_seconds ?? 60;
 
                 // Report settings
                 this.reportEnabled = config.metrics.report_enabled ?? false;
@@ -339,6 +354,9 @@ export class DashboardSettingsComponent implements OnInit {
                 missed_ping_check_interval_mins: this.missedPingCheckIntervalMins,
                 heartbeat_enabled: this.heartbeatEnabled,
                 heartbeat_interval_hours: this.heartbeatIntervalHours,
+                uptime_kuma_enabled: this.uptimeKumaEnabled,
+                uptime_kuma_push_url: this.uptimeKumaPushURL,
+                uptime_kuma_interval_seconds: this.uptimeKumaIntervalSeconds,
                 report_enabled: this.reportEnabled,
                 report_daily_enabled: this.reportDailyEnabled,
                 report_daily_time: this.reportDailyTime,
@@ -353,6 +371,24 @@ export class DashboardSettingsComponent implements OnInit {
             }
         }
         this._configService.config = newSettings
+    }
+
+    testUptimeKuma(): void {
+        this.uptimeKumaTestLoading = true;
+        this.uptimeKumaTestResult = null;
+        this._httpClient.post<{success: boolean; errors?: string[]}>(
+            getBasePath() + '/api/health/uptime-kuma-test', {}
+        ).pipe(takeUntil(this._unsubscribeAll))
+            .subscribe({
+                next: (resp) => {
+                    this.uptimeKumaTestLoading = false;
+                    this.uptimeKumaTestResult = resp.success ? 'success' : 'error';
+                },
+                error: () => {
+                    this.uptimeKumaTestLoading = false;
+                    this.uptimeKumaTestResult = 'error';
+                }
+            });
     }
 
     formatLabel(value: number): number {

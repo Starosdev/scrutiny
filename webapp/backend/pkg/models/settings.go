@@ -36,6 +36,11 @@ type Settings struct {
 		HeartbeatEnabled       bool `json:"heartbeat_enabled" mapstructure:"heartbeat_enabled"`
 		HeartbeatIntervalHours int  `json:"heartbeat_interval_hours" mapstructure:"heartbeat_interval_hours"`
 
+		// Uptime Kuma push monitor settings
+		UptimeKumaEnabled         bool   `json:"uptime_kuma_enabled" mapstructure:"uptime_kuma_enabled"`
+		UptimeKumaPushURL         string `json:"uptime_kuma_push_url" mapstructure:"uptime_kuma_push_url"`
+		UptimeKumaIntervalSeconds int    `json:"uptime_kuma_interval_seconds" mapstructure:"uptime_kuma_interval_seconds"`
+
 		// Scheduled report settings
 		ReportEnabled        bool   `json:"report_enabled" mapstructure:"report_enabled"`
 		ReportDailyEnabled   bool   `json:"report_daily_enabled" mapstructure:"report_daily_enabled"`
@@ -86,6 +91,7 @@ func (s *Settings) ApplyDefaults() {
 	defaultInt(&s.Metrics.MissedPingTimeoutMinutes, 60)
 	defaultInt(&s.Metrics.MissedPingCheckIntervalMins, 5)
 	defaultInt(&s.Metrics.HeartbeatIntervalHours, 24)
+	defaultInt(&s.Metrics.UptimeKumaIntervalSeconds, 60)
 
 	// Metrics: scheduled report defaults
 	defaultStr(&s.Metrics.ReportDailyTime, "08:00")
