@@ -156,7 +156,9 @@ func (mc *MetricsCollector) Collect(deviceWWN string, deviceName string, deviceT
 		resultBytes = mc.collectAndMergeFarm(resultBytes, fullDeviceName, deviceType, deviceName)
 	}
 
-	mc.Publish(deviceWWN, resultBytes)
+	if err := mc.Publish(deviceWWN, resultBytes); err != nil {
+		mc.logger.Errorf("Failed to publish SMART data for %s: %v", deviceName, err)
+	}
 }
 
 // collectAndMergeFarm runs a second smartctl call to collect the Seagate FARM log
@@ -169,16 +171,16 @@ func (mc *MetricsCollector) collectAndMergeFarm(smartJson []byte, fullDeviceName
 	}
 	farmArgs = append(farmArgs, fullDeviceName)
 
-	farmResult, err := mc.shell.Command(mc.logger, mc.config.GetString(configKeySmartctlBin), farmArgs, "", os.Environ())
-	if err != nil {
-		mc.logger.Debugf("FARM log collection failed for %s (drive may not support FARM): %v", deviceName, err)
+	farmResult, farmErr := mc.shell.Command(mc.logger, mc.config.GetString(configKeySmartctlBin), farmArgs, "", os.Environ())
+	if farmErr != nil {
+		mc.logger.Debugf("FARM log collection failed for %s (drive may not support FARM): %v", deviceName, farmErr)
 		return smartJson
 	}
 
 	// Parse FARM JSON and check if supported
 	var farmMap map[string]interface{}
-	if err := json.Unmarshal([]byte(farmResult), &farmMap); err != nil {
-		mc.logger.Debugf("Failed to parse FARM JSON for %s: %v", deviceName, err)
+	if unmarshalErr := json.Unmarshal([]byte(farmResult), &farmMap); unmarshalErr != nil {
+		mc.logger.Debugf("Failed to parse FARM JSON for %s: %v", deviceName, unmarshalErr)
 		return smartJson
 	}
 
@@ -198,15 +200,15 @@ func (mc *MetricsCollector) collectAndMergeFarm(smartJson []byte, fullDeviceName
 
 	// Merge FARM data into SMART JSON
 	var smartMap map[string]interface{}
-	if err := json.Unmarshal(smartJson, &smartMap); err != nil {
-		mc.logger.Debugf("Failed to parse SMART JSON for FARM merge on %s: %v", deviceName, err)
+	if unmarshalErr := json.Unmarshal(smartJson, &smartMap); unmarshalErr != nil {
+		mc.logger.Debugf("Failed to parse SMART JSON for FARM merge on %s: %v", deviceName, unmarshalErr)
 		return smartJson
 	}
 
 	smartMap["seagate_farm_log"] = farmLog
-	merged, err := json.Marshal(smartMap)
-	if err != nil {
-		mc.logger.Debugf("Failed to marshal merged SMART+FARM JSON for %s: %v", deviceName, err)
+	merged, mergeErr := json.Marshal(smartMap)
+	if mergeErr != nil {
+		mc.logger.Debugf("Failed to marshal merged SMART+FARM JSON for %s: %v", deviceName, mergeErr)
 		return smartJson
 	}
 

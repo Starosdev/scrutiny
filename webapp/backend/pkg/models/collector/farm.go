@@ -3,13 +3,13 @@ package collector
 // SeagateFarmLog represents the Seagate FARM (Field Accessible Reliability Metrics) log
 // from smartctl -l farm --json output. The top-level JSON key is "seagate_farm_log".
 type SeagateFarmLog struct {
-	Supported bool                        `json:"supported"`
-	LogHeader *FarmLogHeader              `json:"page_0_log_header,omitempty"`
-	DriveInfo *FarmDriveInformation       `json:"page_1_drive_information,omitempty"`
-	Workload  *FarmWorkloadStatistics     `json:"page_2_workload_statistics,omitempty"`
-	Errors    *FarmErrorStatistics        `json:"page_3_error_statistics,omitempty"`
-	Environ   *FarmEnvironmentStatistics  `json:"page_4_environment_statistics,omitempty"`
-	Reliab    *FarmReliabilityStatistics  `json:"page_5_reliability_statistics,omitempty"`
+	LogHeader *FarmLogHeader             `json:"page_0_log_header,omitempty"`
+	DriveInfo *FarmDriveInformation      `json:"page_1_drive_information,omitempty"`
+	Workload  *FarmWorkloadStatistics    `json:"page_2_workload_statistics,omitempty"`
+	Errors    *FarmErrorStatistics       `json:"page_3_error_statistics,omitempty"`
+	Environ   *FarmEnvironmentStatistics `json:"page_4_environment_statistics,omitempty"`
+	Reliab    *FarmReliabilityStatistics `json:"page_5_reliability_statistics,omitempty"`
+	Supported bool                       `json:"supported"`
 }
 
 type FarmLogHeader struct {
@@ -24,13 +24,13 @@ type FarmDriveInformation struct {
 	SerialNumber            string `json:"serial_number"`
 	WorldWideName           string `json:"world_wide_name"`
 	DeviceInterface         string `json:"device_interface"`
+	FormFactor              string `json:"form_factor"`
+	FirmwareRev             string `json:"firmware_rev"`
+	DriveRecordingType      string `json:"drive_recording_type"`
+	DateOfAssembly          string `json:"date_of_assembly"`
 	DeviceCapacityInSectors int64  `json:"device_capacity_in_sectors"`
 	PhysicalSectorSize      int64  `json:"physical_sector_size"`
 	LogicalSectorSize       int64  `json:"logical_sector_size"`
-	NumberOfHeads           int    `json:"number_of_heads"`
-	FormFactor              string `json:"form_factor"`
-	RotationRate            int    `json:"rotation_rate"`
-	FirmwareRev             string `json:"firmware_rev"`
 	Poh                     int64  `json:"poh"`
 	Spoh                    int64  `json:"spoh"`
 	HeadFlightHours         int64  `json:"head_flight_hours"`
@@ -38,8 +38,8 @@ type FarmDriveInformation struct {
 	PowerCycleCount         int64  `json:"power_cycle_count"`
 	ResetCount              int64  `json:"reset_count"`
 	SpinUpTime              int64  `json:"spin_up_time"`
-	DriveRecordingType      string `json:"drive_recording_type"`
-	DateOfAssembly          string `json:"date_of_assembly"`
+	NumberOfHeads           int    `json:"number_of_heads"`
+	RotationRate            int    `json:"rotation_rate"`
 }
 
 type FarmWorkloadStatistics struct {
@@ -65,9 +65,9 @@ type FarmErrorStatistics struct {
 }
 
 // FarmEnvironmentStatistics contains environmental metrics.
-// Note: "curent_temp" is a known typo in the smartctl JSON output.
+// Note: "curent_temp" is a known typo in the smartctl JSON output (not "current"). //nolint:misspell
 type FarmEnvironmentStatistics struct {
-	CurentTemp  int64 `json:"curent_temp"`
+	CurentTemp  int64 `json:"curent_temp"` //nolint:misspell // smartctl uses this spelling
 	HighestTemp int64 `json:"highest_temp"`
 	LowestTemp  int64 `json:"lowest_temp"`
 	AverageTemp int64 `json:"average_temp"`

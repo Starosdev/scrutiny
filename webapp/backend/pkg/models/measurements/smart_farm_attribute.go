@@ -12,14 +12,13 @@ import (
 // attribute. Like ATA Device Statistics, FARM attributes use string-based IDs
 // with a "farm_" prefix (e.g., "farm_poh", "farm_reallocated_sectors").
 type SmartFarmAttribute struct {
-	AttributeId string `json:"attribute_id"`
-	Value       int64  `json:"value"`
-	Threshold   int64  `json:"thresh"`
-
-	TransformedValue int64               `json:"transformed_value"`
-	Status           pkg.AttributeStatus `json:"status"`
+	AttributeId      string              `json:"attribute_id"`
 	StatusReason     string              `json:"status_reason,omitempty"`
+	Value            int64               `json:"value"`
+	Threshold        int64               `json:"thresh"`
+	TransformedValue int64               `json:"transformed_value"`
 	FailureRate      float64             `json:"failure_rate,omitempty"`
+	Status           pkg.AttributeStatus `json:"status"`
 }
 
 func (sa *SmartFarmAttribute) GetTransformedValue() int64 {
@@ -63,7 +62,7 @@ func (sa *SmartFarmAttribute) Inflate(key string, val interface{}) {
 	case "transformed_value":
 		sa.TransformedValue = val.(int64)
 	case "status":
-		sa.Status = pkg.AttributeStatus(val.(int64))
+		sa.Status = pkg.AttributeStatus(val.(int64)) //nolint:gosec // status values are always within uint8 range
 	case "status_reason":
 		sa.StatusReason = val.(string)
 	case "failure_rate":

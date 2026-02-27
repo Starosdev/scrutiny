@@ -621,17 +621,18 @@ func (sm *Smart) processFarmDataWithOverrides(cfg config.Interface, farmLog *col
 
 		// Apply merged overrides (config + database)
 		if result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrId, sm.DeviceWWN); result != nil {
-			if result.ShouldIgnore {
+			switch {
+			case result.ShouldIgnore:
 				attrModel.Status = pkg.AttributeStatusPassed
 				attrModel.StatusReason = result.StatusReason
 				ignored = true
-			} else if result.Status != nil {
+			case result.Status != nil:
 				attrModel.Status = *result.Status
 				attrModel.StatusReason = result.StatusReason
 				if pkg.AttributeStatusHas(*result.Status, pkg.AttributeStatusFailedScrutiny) {
 					sm.HasForcedFailure = true
 				}
-			} else if result.WarnAbove != nil || result.FailAbove != nil {
+			case result.WarnAbove != nil || result.FailAbove != nil:
 				if thresholdStatus := overrides.ApplyThresholds(result, attrModel.Value); thresholdStatus != nil {
 					attrModel.Status = *thresholdStatus
 					if *thresholdStatus == pkg.AttributeStatusPassed {
