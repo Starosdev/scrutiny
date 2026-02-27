@@ -109,6 +109,8 @@ func NewSmartFromInfluxDB(attrs map[string]interface{}, logger logrus.FieldLogge
 					// Device statistics use string-based IDs like "devstat_7_8"
 					if strings.HasPrefix(attributeId, "devstat_") {
 						sm.Attributes[attributeId] = &SmartAtaDeviceStatAttribute{}
+					} else if strings.HasPrefix(attributeId, "farm_") {
+						sm.Attributes[attributeId] = &SmartFarmAttribute{}
 					} else {
 						sm.Attributes[attributeId] = &SmartAtaAttribute{}
 					}
@@ -168,6 +170,10 @@ func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn s
 		// Also process ATA Device Statistics (GP Log 0x04) for enterprise SSD metrics
 		if len(info.AtaDeviceStatistics.Pages) > 0 {
 			sm.processAtaDeviceStatisticsWithOverrides(cfg, info, mergedOverrides)
+		}
+		// Process Seagate FARM data if present and supported
+		if info.SeagateFarmLog != nil && info.SeagateFarmLog.Supported {
+			sm.processFarmDataWithOverrides(cfg, info.SeagateFarmLog, mergedOverrides)
 		}
 	} else if sm.DeviceProtocol == pkg.DeviceProtocolNvme {
 		sm.processNvmeSmartInfoWithOverrides(cfg, info.NvmeSmartHealthInformationLog, mergedOverrides)
@@ -564,6 +570,83 @@ func (sm *Smart) processAtaDeviceStatisticsWithOverrides(cfg config.Interface, d
 			if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !isDevstatIgnored(cfg, attrId) && !ignored {
 				sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 			}
+		}
+	}
+}
+
+// processFarmDataWithOverrides extracts Seagate FARM attributes using pre-merged overrides.
+func (sm *Smart) processFarmDataWithOverrides(cfg config.Interface, farmLog *collector.SeagateFarmLog, mergedOverrides []overrides.AttributeOverride) {
+	// Build a flat map of attribute ID -> value from the FARM struct pages
+	farmAttrs := map[string]int64{}
+
+	if farmLog.DriveInfo != nil {
+		farmAttrs["farm_poh"] = farmLog.DriveInfo.Poh
+		farmAttrs["farm_spoh"] = farmLog.DriveInfo.Spoh
+		farmAttrs["farm_head_flight_hours"] = farmLog.DriveInfo.HeadFlightHours
+		farmAttrs["farm_head_load_events"] = farmLog.DriveInfo.HeadLoadEvents
+		farmAttrs["farm_power_cycle_count"] = farmLog.DriveInfo.PowerCycleCount
+	}
+
+	if farmLog.Workload != nil {
+		farmAttrs["farm_total_read_commands"] = farmLog.Workload.TotalReadCommands
+		farmAttrs["farm_total_write_commands"] = farmLog.Workload.TotalWriteCommands
+		farmAttrs["farm_logical_sectors_written"] = farmLog.Workload.LogicalSectorsWritten
+		farmAttrs["farm_logical_sectors_read"] = farmLog.Workload.LogicalSectorsRead
+	}
+
+	if farmLog.Errors != nil {
+		farmAttrs["farm_unrecoverable_read_errors"] = farmLog.Errors.NumberOfUnrecoverableReadErrors
+		farmAttrs["farm_unrecoverable_write_errors"] = farmLog.Errors.NumberOfUnrecoverableWriteErrors
+		farmAttrs["farm_reallocated_sectors"] = farmLog.Errors.NumberOfReallocatedSectors
+		farmAttrs["farm_reallocation_candidates"] = farmLog.Errors.NumberOfReallocatedCandidateSectors
+		farmAttrs["farm_crc_errors"] = farmLog.Errors.TotalCrcErrors
+		farmAttrs["farm_command_timeouts"] = farmLog.Errors.CommandTimeOutCountTotal
+	}
+
+	if farmLog.Environ != nil {
+		farmAttrs["farm_current_temperature"] = farmLog.Environ.CurentTemp
+		farmAttrs["farm_highest_temperature"] = farmLog.Environ.HighestTemp
+		farmAttrs["farm_lowest_temperature"] = farmLog.Environ.LowestTemp
+	}
+
+	for attrId, value := range farmAttrs {
+		attrModel := SmartFarmAttribute{
+			AttributeId: attrId,
+			Value:       value,
+		}
+
+		attrModel.PopulateAttributeStatus()
+
+		var ignored bool
+
+		// Apply merged overrides (config + database)
+		if result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrId, sm.DeviceWWN); result != nil {
+			if result.ShouldIgnore {
+				attrModel.Status = pkg.AttributeStatusPassed
+				attrModel.StatusReason = result.StatusReason
+				ignored = true
+			} else if result.Status != nil {
+				attrModel.Status = *result.Status
+				attrModel.StatusReason = result.StatusReason
+				if pkg.AttributeStatusHas(*result.Status, pkg.AttributeStatusFailedScrutiny) {
+					sm.HasForcedFailure = true
+				}
+			} else if result.WarnAbove != nil || result.FailAbove != nil {
+				if thresholdStatus := overrides.ApplyThresholds(result, attrModel.Value); thresholdStatus != nil {
+					attrModel.Status = *thresholdStatus
+					if *thresholdStatus == pkg.AttributeStatusPassed {
+						attrModel.StatusReason = "Within custom threshold"
+					} else {
+						attrModel.StatusReason = "Custom threshold exceeded"
+					}
+				}
+			}
+		}
+
+		sm.Attributes[attrId] = &attrModel
+
+		if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !ignored {
+			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 		}
 	}
 }

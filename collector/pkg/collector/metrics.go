@@ -19,6 +19,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const configKeySmartctlBin = "commands.metrics_smartctl_bin"
+
 type MetricsCollector struct {
 	config config.Interface
 	BaseCollector
@@ -108,10 +110,10 @@ func (mc *MetricsCollector) Run() error {
 
 func (mc *MetricsCollector) Validate() error {
 	mc.logger.Infoln("Verifying required tools")
-	_, lookErr := exec.LookPath(mc.config.GetString("commands.metrics_smartctl_bin"))
+	_, lookErr := exec.LookPath(mc.config.GetString(configKeySmartctlBin))
 
 	if lookErr != nil {
-		return errors.DependencyMissingError(fmt.Sprintf("%s binary is missing", mc.config.GetString("commands.metrics_smartctl_bin")))
+		return errors.DependencyMissingError(fmt.Sprintf("%s binary is missing", mc.config.GetString(configKeySmartctlBin)))
 	}
 
 	return nil
@@ -134,24 +136,82 @@ func (mc *MetricsCollector) Collect(deviceWWN string, deviceName string, deviceT
 	}
 	args = append(args, fullDeviceName)
 
-	result, err := mc.shell.Command(mc.logger, mc.config.GetString("commands.metrics_smartctl_bin"), args, "", os.Environ())
+	result, err := mc.shell.Command(mc.logger, mc.config.GetString(configKeySmartctlBin), args, "", os.Environ())
 	resultBytes := []byte(result)
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			// smartctl command exited with an error, we should still push the data to the API server
 			mc.logger.Errorf("smartctl returned an error code (%d) while processing %s\n", exitError.ExitCode(), deviceName)
 			mc.LogSmartctlExitCode(exitError.ExitCode())
-			mc.Publish(deviceWWN, resultBytes)
 		} else {
 			mc.logger.Errorf("error while attempting to execute smartctl: %s\n", deviceName)
 			mc.logger.Errorf("ERROR MESSAGE: %v", err)
 			mc.logger.Errorf("IGNORING RESULT: %v", result)
+			return
 		}
-		return
-	} else {
-		//successful run, pass the results directly to webapp backend for parsing and processing.
-		mc.Publish(deviceWWN, resultBytes)
 	}
+
+	// Attempt FARM log collection if enabled
+	if mc.config.GetBool("commands.metrics_farm_enabled") {
+		resultBytes = mc.collectAndMergeFarm(resultBytes, fullDeviceName, deviceType, deviceName)
+	}
+
+	mc.Publish(deviceWWN, resultBytes)
+}
+
+// collectAndMergeFarm runs a second smartctl call to collect the Seagate FARM log
+// and merges it into the main SMART JSON payload. Returns the original payload
+// unmodified if FARM collection fails or the drive does not support FARM.
+func (mc *MetricsCollector) collectAndMergeFarm(smartJson []byte, fullDeviceName string, deviceType string, deviceName string) []byte {
+	farmArgs := strings.Split(mc.config.GetString("commands.metrics_farm_args"), " ")
+	if len(deviceType) > 0 && deviceType != "scsi" && deviceType != "ata" {
+		farmArgs = append(farmArgs, "--device", deviceType)
+	}
+	farmArgs = append(farmArgs, fullDeviceName)
+
+	farmResult, err := mc.shell.Command(mc.logger, mc.config.GetString(configKeySmartctlBin), farmArgs, "", os.Environ())
+	if err != nil {
+		mc.logger.Debugf("FARM log collection failed for %s (drive may not support FARM): %v", deviceName, err)
+		return smartJson
+	}
+
+	// Parse FARM JSON and check if supported
+	var farmMap map[string]interface{}
+	if err := json.Unmarshal([]byte(farmResult), &farmMap); err != nil {
+		mc.logger.Debugf("Failed to parse FARM JSON for %s: %v", deviceName, err)
+		return smartJson
+	}
+
+	farmLog, ok := farmMap["seagate_farm_log"]
+	if !ok {
+		mc.logger.Debugf("No seagate_farm_log key in FARM output for %s", deviceName)
+		return smartJson
+	}
+
+	// Check the supported field
+	if farmLogMap, ok := farmLog.(map[string]interface{}); ok {
+		if supported, ok := farmLogMap["supported"].(bool); ok && !supported {
+			mc.logger.Debugf("FARM log not supported for %s", deviceName)
+			return smartJson
+		}
+	}
+
+	// Merge FARM data into SMART JSON
+	var smartMap map[string]interface{}
+	if err := json.Unmarshal(smartJson, &smartMap); err != nil {
+		mc.logger.Debugf("Failed to parse SMART JSON for FARM merge on %s: %v", deviceName, err)
+		return smartJson
+	}
+
+	smartMap["seagate_farm_log"] = farmLog
+	merged, err := json.Marshal(smartMap)
+	if err != nil {
+		mc.logger.Debugf("Failed to marshal merged SMART+FARM JSON for %s: %v", deviceName, err)
+		return smartJson
+	}
+
+	mc.logger.Infof("Successfully collected and merged FARM log for %s", deviceName)
+	return merged
 }
 
 func (mc *MetricsCollector) Publish(deviceWWN string, payload []byte) error {
