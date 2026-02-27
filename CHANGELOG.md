@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.35.1](https://github.com/Starosdev/scrutiny/compare/v1.35.0...v1.35.1) (2026-02-27)
+
+### Bug Fixes
+
+* **scsi:** use correct attribute type for SCSI temperature ([#291](https://github.com/Starosdev/scrutiny/issues/291)) ([2de04f8](https://github.com/Starosdev/scrutiny/commit/2de04f8d09310a4dd0d799c060a946af367fd8dc))
+
 ## [1.35.0](https://github.com/Starosdev/scrutiny/compare/v1.34.0...v1.35.0) (2026-02-27)
 
 ### Features
