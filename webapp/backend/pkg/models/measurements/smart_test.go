@@ -643,6 +643,70 @@ func TestFromCollectorSmartInfo_Scsi_SAS_EnvironmentalReports(t *testing.T) {
 	require.Equal(t, int64(38), smartMdl.Temp, "Temperature should be parsed from scsi_environmental_reports when standard temperature is 0")
 }
 
+// TestFromCollectorSmartInfo_Scsi_TemperatureAttributeType verifies that the SCSI
+// temperature attribute is correctly typed as SmartScsiAttribute (not SmartNvmeAttribute)
+// and uses the corrected temperature value. Fixes GitHub issue #291.
+func TestFromCollectorSmartInfo_Scsi_TemperatureAttributeType(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-scsi.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+	require.NoError(t, err)
+
+	// Temperature attribute must be SmartScsiAttribute, not SmartNvmeAttribute
+	tempAttr, ok := smartMdl.Attributes["temperature"].(*measurements.SmartScsiAttribute)
+	require.True(t, ok, "SCSI temperature attribute should be *SmartScsiAttribute, got %T", smartMdl.Attributes["temperature"])
+	require.Equal(t, int64(34), tempAttr.Value, "Temperature attribute should use corrected temperature value")
+	require.Equal(t, int64(34), smartMdl.Temp, "Smart.Temp should match temperature attribute value")
+}
+
+// TestFromCollectorSmartInfo_Scsi_TemperatureAttributeType_EnvReports verifies that
+// when the standard temperature field is 0, the temperature attribute correctly uses
+// the fallback value from scsi_environmental_reports. Fixes GitHub issue #291.
+func TestFromCollectorSmartInfo_Scsi_TemperatureAttributeType_EnvReports(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-scsi-sas-env-temp.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+	require.NoError(t, err)
+
+	// Temperature attribute must be SmartScsiAttribute
+	tempAttr, ok := smartMdl.Attributes["temperature"].(*measurements.SmartScsiAttribute)
+	require.True(t, ok, "SCSI temperature attribute should be *SmartScsiAttribute, got %T", smartMdl.Attributes["temperature"])
+
+	// Standard temp is 0 in this test data; should fall back to env reports (38)
+	require.Equal(t, int64(38), tempAttr.Value, "Temperature attribute should use fallback from scsi_environmental_reports")
+	require.Equal(t, int64(38), smartMdl.Temp, "Smart.Temp should match temperature attribute value")
+}
+
 // TestFromCollectorSmartInfo_ATA_DeviceStatistics tests that ATA Device Statistics
 // from GP Log 0x04 are correctly parsed, including enterprise SSD metrics like
 // "Percentage Used Endurance Indicator" (devstat_7_8). Fixes GitHub issue #7 (SCR-11).
