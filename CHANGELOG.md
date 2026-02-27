@@ -2,6 +2,16 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.36.0](https://github.com/Starosdev/scrutiny/compare/v1.35.1...v1.36.0) (2026-02-27)
+
+### Features
+
+* **workload:** respect dashboard_display setting for device titles ([#290](https://github.com/Starosdev/scrutiny/issues/290)) ([dffb4fb](https://github.com/Starosdev/scrutiny/commit/dffb4fb17db97d3a6e849689c1bc0be7fec1c9cd))
+
+### Bug Fixes
+
+* **scsi:** use correct attribute type for SCSI temperature ([#291](https://github.com/Starosdev/scrutiny/issues/291)) ([27ee4d3](https://github.com/Starosdev/scrutiny/commit/27ee4d37f500ad3d915c0815dff2a189a96baee2))
+
 ## [1.35.1](https://github.com/Starosdev/scrutiny/compare/v1.35.0...v1.35.1) (2026-02-27)
 
 ### Bug Fixes
