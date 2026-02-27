@@ -51,6 +51,8 @@ func (c *configuration) Init() error {
 	c.SetDefault("commands.metrics_info_args", "--info --json")
 	c.SetDefault("commands.metrics_smart_args", "--xall --json")
 	c.SetDefault("commands.metrics_smartctl_wait", 0)
+	c.SetDefault("commands.metrics_farm_enabled", false)
+	c.SetDefault("commands.metrics_farm_args", "-l farm --json")
 
 	//configure env variable parsing.
 	c.SetEnvPrefix("COLLECTOR")

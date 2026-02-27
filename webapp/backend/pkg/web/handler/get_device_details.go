@@ -53,6 +53,9 @@ func GetDeviceDetails(c *gin.Context) {
 		for k, v := range thresholds.AtaDeviceStatsMetadata {
 			mergedMetadata[k] = v
 		}
+		for k, v := range thresholds.FarmMetadata {
+			mergedMetadata[k] = v
+		}
 		deviceMetadata = mergedMetadata
 	} else if device.IsNvme() {
 		deviceMetadata = thresholds.NmveMetadata

@@ -1360,3 +1360,203 @@ func TestCorrectedTemperature_SCSI_FallbackToEnvironmentalReports(t *testing.T) 
 	require.Equal(t, int64(38), measurements.CorrectedTemperature(&info),
 		"SCSI should fall back to scsi_environmental_reports")
 }
+
+// TestFromCollectorSmartInfo_ATA_Farm tests that Seagate FARM data is correctly
+// parsed from the collector SmartInfo and produces the expected FARM attributes.
+func TestFromCollectorSmartInfo_ATA_Farm(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartJson := collector.SmartInfo{
+		Device: struct {
+			Name     string `json:"name"`
+			InfoName string `json:"info_name"`
+			Type     string `json:"type"`
+			Protocol string `json:"protocol"`
+		}{Protocol: "ATA"},
+		LocalTime: struct {
+			TimeT   int64  `json:"time_t"`
+			Asctime string `json:"asctime"`
+		}{TimeT: time.Now().Unix()},
+		SmartStatus: struct {
+			Passed bool `json:"passed"`
+		}{Passed: true},
+		SeagateFarmLog: &collector.SeagateFarmLog{
+			Supported: true,
+			DriveInfo: &collector.FarmDriveInformation{
+				Poh:             2344,
+				Spoh:            2322,
+				HeadFlightHours: 516,
+				HeadLoadEvents:  4333,
+				PowerCycleCount: 19,
+			},
+			Workload: &collector.FarmWorkloadStatistics{
+				TotalReadCommands:     72695,
+				TotalWriteCommands:    172682850,
+				LogicalSectorsWritten: 115597072064,
+				LogicalSectorsRead:    34761656,
+			},
+			Errors: &collector.FarmErrorStatistics{
+				NumberOfUnrecoverableReadErrors:     0,
+				NumberOfUnrecoverableWriteErrors:    0,
+				NumberOfReallocatedSectors:          0,
+				NumberOfReallocatedCandidateSectors: 0,
+				TotalCrcErrors:                      0,
+				CommandTimeOutCountTotal:             1,
+			},
+			Environ: &collector.FarmEnvironmentStatistics{
+				CurentTemp:  35,
+				HighestTemp: 43,
+				LowestTemp:  28,
+			},
+		},
+	}
+
+	//test
+	smartMdl := measurements.Smart{}
+	err := smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+	require.Equal(t, pkg.DeviceProtocolAta, smartMdl.DeviceProtocol)
+
+	// Verify FARM attributes are present with correct types and values
+	farmPoh, ok := smartMdl.Attributes["farm_poh"]
+	require.True(t, ok, "farm_poh should be present")
+	farmPohAttr, ok := farmPoh.(*measurements.SmartFarmAttribute)
+	require.True(t, ok, "farm_poh should be SmartFarmAttribute type")
+	require.Equal(t, int64(2344), farmPohAttr.Value)
+
+	farmTemp, ok := smartMdl.Attributes["farm_current_temperature"]
+	require.True(t, ok, "farm_current_temperature should be present")
+	farmTempAttr := farmTemp.(*measurements.SmartFarmAttribute)
+	require.Equal(t, int64(35), farmTempAttr.Value)
+
+	farmRealloc, ok := smartMdl.Attributes["farm_reallocated_sectors"]
+	require.True(t, ok, "farm_reallocated_sectors should be present")
+	farmReallocAttr := farmRealloc.(*measurements.SmartFarmAttribute)
+	require.Equal(t, int64(0), farmReallocAttr.Value)
+
+	// Verify all 18 expected attributes are present
+	expectedFarmAttrs := []string{
+		"farm_poh", "farm_spoh", "farm_head_flight_hours", "farm_head_load_events", "farm_power_cycle_count",
+		"farm_total_read_commands", "farm_total_write_commands", "farm_logical_sectors_written", "farm_logical_sectors_read",
+		"farm_unrecoverable_read_errors", "farm_unrecoverable_write_errors", "farm_reallocated_sectors",
+		"farm_reallocation_candidates", "farm_crc_errors", "farm_command_timeouts",
+		"farm_current_temperature", "farm_highest_temperature", "farm_lowest_temperature",
+	}
+	for _, attrId := range expectedFarmAttrs {
+		_, ok := smartMdl.Attributes[attrId]
+		require.True(t, ok, "%s should be present in attributes", attrId)
+	}
+
+	// Device should be passing (all error counts are 0)
+	require.Equal(t, pkg.DeviceStatusPassed, smartMdl.Status)
+}
+
+// TestFromCollectorSmartInfo_ATA_Farm_NilSkipped tests that nil FARM log
+// produces no FARM attributes.
+func TestFromCollectorSmartInfo_ATA_Farm_NilSkipped(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartJson := collector.SmartInfo{
+		Device: struct {
+			Name     string `json:"name"`
+			InfoName string `json:"info_name"`
+			Type     string `json:"type"`
+			Protocol string `json:"protocol"`
+		}{Protocol: "ATA"},
+		LocalTime: struct {
+			TimeT   int64  `json:"time_t"`
+			Asctime string `json:"asctime"`
+		}{TimeT: time.Now().Unix()},
+		SmartStatus: struct {
+			Passed bool `json:"passed"`
+		}{Passed: true},
+		// No SeagateFarmLog field
+	}
+
+	smartMdl := measurements.Smart{}
+	err := smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	require.NoError(t, err)
+
+	// No farm_ attributes should exist
+	for attrId := range smartMdl.Attributes {
+		require.False(t, len(attrId) > 5 && attrId[:5] == "farm_",
+			"No farm_ attributes should exist when SeagateFarmLog is nil, found: %s", attrId)
+	}
+}
+
+// TestSmart_Flatten_WithFarmAttributes tests that FARM attributes are correctly
+// flattened for storage in InfluxDB.
+func TestSmart_Flatten_WithFarmAttributes(t *testing.T) {
+	timeNow := time.Now()
+	smart := measurements.Smart{
+		Date:            timeNow,
+		DeviceWWN:       "test-wwn",
+		DeviceProtocol:  pkg.DeviceProtocolAta,
+		Temp:            35,
+		PowerOnHours:    2344,
+		PowerCycleCount: 19,
+		Attributes: map[string]measurements.SmartAttribute{
+			"farm_poh": &measurements.SmartFarmAttribute{
+				AttributeId:      "farm_poh",
+				Value:            2344,
+				TransformedValue: 2344,
+			},
+			"farm_reallocated_sectors": &measurements.SmartFarmAttribute{
+				AttributeId:      "farm_reallocated_sectors",
+				Value:            0,
+				TransformedValue: 0,
+			},
+		},
+		Status: 0,
+	}
+
+	_, fields := smart.Flatten()
+
+	require.Equal(t, "farm_poh", fields["attr.farm_poh.attribute_id"])
+	require.Equal(t, int64(2344), fields["attr.farm_poh.value"])
+	require.Equal(t, "farm_reallocated_sectors", fields["attr.farm_reallocated_sectors.attribute_id"])
+	require.Equal(t, int64(0), fields["attr.farm_reallocated_sectors.value"])
+}
+
+// TestNewSmartFromInfluxDB_WithFarmAttributes tests that FARM attributes are
+// correctly inflated from InfluxDB data.
+func TestNewSmartFromInfluxDB_WithFarmAttributes(t *testing.T) {
+	timeNow := time.Now()
+	attrs := map[string]interface{}{
+		"_time":           timeNow,
+		"device_wwn":      "test-wwn",
+		"device_protocol": pkg.DeviceProtocolAta,
+		"temp":            int64(35),
+		"power_on_hours":  int64(2344),
+		// FARM attribute
+		"attr.farm_poh.attribute_id":      "farm_poh",
+		"attr.farm_poh.value":             int64(2344),
+		"attr.farm_poh.thresh":            int64(0),
+		"attr.farm_poh.transformed_value": int64(2344),
+		"attr.farm_poh.status":            int64(0),
+		"attr.farm_poh.status_reason":     "",
+		"attr.farm_poh.failure_rate":      float64(0),
+	}
+
+	smart, err := measurements.NewSmartFromInfluxDB(attrs, logrus.New())
+
+	require.NoError(t, err)
+	require.Contains(t, smart.Attributes, "farm_poh")
+
+	farmAttr, ok := smart.Attributes["farm_poh"].(*measurements.SmartFarmAttribute)
+	require.True(t, ok, "farm_poh should be SmartFarmAttribute type")
+	require.Equal(t, "farm_poh", farmAttr.AttributeId)
+	require.Equal(t, int64(2344), farmAttr.Value)
+}

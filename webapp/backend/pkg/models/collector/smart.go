@@ -202,6 +202,9 @@ type SmartInfo struct {
 		PowerUpScanResumeMinutes int `json:"power_up_scan_resume_minutes"`
 	} `json:"ata_smart_selective_self_test_log"`
 
+	// Seagate FARM (Field Accessible Reliability Metrics) log
+	SeagateFarmLog *SeagateFarmLog `json:"seagate_farm_log,omitempty"`
+
 	// ATA Device Statistics (GP Log 0x04) - contains SSD endurance info
 	AtaDeviceStatistics struct {
 		Pages []struct {
