@@ -30,6 +30,14 @@ func (sr *scrutinyRepository) GetWorkloadInsights(ctx context.Context, durationK
 		insights[devices[i].WWN] = &models.WorkloadInsight{
 			DeviceWWN:      devices[i].WWN,
 			DeviceProtocol: devices[i].DeviceProtocol,
+			DeviceName:     devices[i].DeviceName,
+			DeviceType:     devices[i].DeviceType,
+			ModelName:      devices[i].ModelName,
+			Label:          devices[i].Label,
+			DeviceLabel:    devices[i].DeviceLabel,
+			HostId:         devices[i].HostId,
+			DeviceSerialID: devices[i].DeviceSerialID,
+			DeviceUUID:     devices[i].DeviceUUID,
 			Intensity:      "unknown",
 		}
 		deviceProtocols[devices[i].WWN] = devices[i].DeviceProtocol

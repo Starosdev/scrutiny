@@ -1,6 +1,17 @@
 export interface WorkloadInsightModel {
     device_wwn: string;
     device_protocol: string;
+
+    // Device display fields (populated from Device record)
+    device_name?: string;
+    device_type?: string;
+    model_name?: string;
+    label?: string;
+    device_label?: string;
+    host_id?: string;
+    device_serial_id?: string;
+    device_uuid?: string;
+
     data_points: number;
     time_span_hours: number;
     daily_write_bytes: number;
