@@ -140,6 +140,57 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
         return `${days} d`;
     }
 
+    getDeviceDisplayTitle(insight: WorkloadInsightModel): string {
+        const titleType = this.config?.dashboard_display || 'name';
+        const parts: string[] = [];
+
+        if (insight.host_id) {
+            parts.push(insight.host_id);
+        }
+
+        let identifier = '';
+        switch (titleType) {
+            case 'name':
+                identifier = this.buildNameTitle(insight);
+                break;
+            case 'serial_id':
+                identifier = insight.device_serial_id ? `/by-id/${insight.device_serial_id}` : '';
+                break;
+            case 'uuid':
+                identifier = insight.device_uuid ? `/by-uuid/${insight.device_uuid}` : '';
+                break;
+            case 'label':
+                if (insight.label) {
+                    identifier = insight.label;
+                } else if (insight.device_label) {
+                    identifier = `/by-label/${insight.device_label}`;
+                }
+                break;
+        }
+
+        // Fallback to name mode if the chosen mode yields nothing
+        if (!identifier) {
+            identifier = this.buildNameTitle(insight);
+        }
+
+        parts.push(identifier);
+        return parts.join(' - ');
+    }
+
+    private buildNameTitle(insight: WorkloadInsightModel): string {
+        const parts: string[] = [];
+        if (insight.device_name) {
+            parts.push(`/dev/${insight.device_name}`);
+        }
+        if (insight.device_type && insight.device_type !== 'scsi' && insight.device_type !== 'ata') {
+            parts.push(insight.device_type);
+        }
+        if (insight.model_name) {
+            parts.push(insight.model_name);
+        }
+        return parts.join(' - ') || insight.device_wwn;
+    }
+
     private refreshComponent(): void {
         const currentUrl = this.router.url;
         this.router.routeReuseStrategy.shouldReuseRoute = () => false;
