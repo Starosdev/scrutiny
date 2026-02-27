@@ -2,6 +2,19 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.35.0](https://github.com/Starosdev/scrutiny/compare/v1.34.0...v1.35.0) (2026-02-27)
+
+### Features
+
+* **collector:** add Seagate FARM log support ([#292](https://github.com/Starosdev/scrutiny/issues/292)) ([35aa354](https://github.com/Starosdev/scrutiny/commit/35aa354e7430659a9181139f0881e0b967715023))
+* **web:** add Uptime Kuma push monitor integration ([#288](https://github.com/Starosdev/scrutiny/issues/288)) ([51d09fa](https://github.com/Starosdev/scrutiny/commit/51d09fa005b179c6aa0daa56ccde36384113e460))
+
+### Bug Fixes
+
+* **lint:** rephrase comment to avoid misspell false positive ([602b9db](https://github.com/Starosdev/scrutiny/commit/602b9dbef314eda251b63b32a332c94a920ce18b))
+* **lint:** resolve golangci-lint issues in FARM implementation ([39866c5](https://github.com/Starosdev/scrutiny/commit/39866c5317af88125238e3d1816175281288f7fd))
+* **web:** resolve golangci-lint issues in Uptime Kuma monitor ([#288](https://github.com/Starosdev/scrutiny/issues/288)) ([5d8af1d](https://github.com/Starosdev/scrutiny/commit/5d8af1d87b481cc5dbd402e487af16f4b50ea608))
+
 ## [1.34.0](https://github.com/Starosdev/scrutiny/compare/v1.33.0...v1.34.0) (2026-02-26)
 
 ### Features
