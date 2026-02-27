@@ -117,4 +117,12 @@ var ScsiMetadata = map[string]ScsiAttributeMetadata{
 		Critical:    true,
 		Description: " This parameter code specifies the counter that contains the total number of blocks for which an uncorrected data error has occurred.",
 	},
+	"temperature": {
+		ID:          "temperature",
+		DisplayName: "Temperature",
+		DisplayType: "",
+		Ideal:       "",
+		Critical:    false,
+		Description: "Current drive temperature in Celsius.",
+	},
 }
