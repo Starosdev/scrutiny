@@ -181,6 +181,7 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 						CollectorVersion: version.VERSION,
 						DeviceType:       overrideDeviceType,
 						DeviceName:       strings.TrimPrefix(overrideDeviceFile, DevicePrefix()),
+						Label:            overrideDevice.Label,
 					})
 				}
 			} else {
@@ -206,6 +207,7 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 					CollectorVersion: version.VERSION,
 					DeviceType:       deviceType,
 					DeviceName:       strings.TrimPrefix(overrideDeviceFile, DevicePrefix()),
+					Label:            overrideDevice.Label,
 				})
 			}
 

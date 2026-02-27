@@ -20,9 +20,22 @@ import (
 // insert device into DB (and update specified columns if device is already registered)
 // update device fields that may change: (DeviceType, HostID)
 func (sr *scrutinyRepository) RegisterDevice(ctx context.Context, dev models.Device) error {
+	updateColumns := []string{
+		"host_id", "device_name", "device_type", "device_uuid",
+		"device_serial_id", "device_label", "collector_version",
+		"model_name", "manufacturer",
+	}
+
+	// Only update the custom label if the collector explicitly provides one.
+	// This preserves labels set via the web UI when no config label is specified,
+	// while allowing config-set labels to take precedence on every collector run.
+	if len(dev.Label) > 0 {
+		updateColumns = append(updateColumns, "label")
+	}
+
 	if err := sr.gormClient.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "wwn"}},
-		DoUpdates: clause.AssignmentColumns([]string{"host_id", "device_name", "device_type", "device_uuid", "device_serial_id", "device_label", "collector_version", "model_name", "manufacturer"}),
+		DoUpdates: clause.AssignmentColumns(updateColumns),
 	}).Create(&dev).Error; err != nil {
 		return err
 	}
