@@ -25,27 +25,22 @@ const (
 
 // UptimeKumaMonitor sends periodic health status pushes to an Uptime Kuma Push Monitor endpoint
 type UptimeKumaMonitor struct {
-	appEngine *AppEngine
-	logger    logrus.FieldLogger
+	appEngine  *AppEngine
+	logger     logrus.FieldLogger
+	deviceRepo database.DeviceRepo // Persistent repository connection (created once, reused)
+	lastError  error
 
-	// Persistent repository connection (created once, reused)
-	deviceRepo database.DeviceRepo
-	repoMu     sync.Mutex
-
-	// Channel to signal shutdown and context for cancellation
-	stopCh chan struct{}
 	ctx    context.Context
 	cancel context.CancelFunc
+	stopCh chan struct{}
 
-	// WaitGroup to track when the run goroutine has finished
-	wg sync.WaitGroup
-
-	// Status tracking for diagnostics
 	lastCheckTime time.Time
 	nextCheckTime time.Time
-	lastError     error
 	lastErrorTime time.Time
-	statusMu      sync.RWMutex
+
+	repoMu   sync.Mutex
+	statusMu sync.RWMutex
+	wg       sync.WaitGroup
 }
 
 // NewUptimeKumaMonitor creates a new Uptime Kuma push monitor
@@ -282,11 +277,11 @@ func (m *UptimeKumaMonitor) checkAndPush() {
 // is "up" or "down".
 func BuildPushMessage(devices []models.Device) (status string, msg string) {
 	var monitored []models.Device
-	for _, d := range devices {
-		if d.Archived || d.Muted {
+	for i := range devices {
+		if devices[i].Archived || devices[i].Muted {
 			continue
 		}
-		monitored = append(monitored, d)
+		monitored = append(monitored, devices[i])
 	}
 
 	totalCount := len(monitored)
@@ -298,9 +293,9 @@ func BuildPushMessage(devices []models.Device) (status string, msg string) {
 
 	// Check for failures
 	var failing []models.Device
-	for _, d := range monitored {
-		if d.DeviceStatus != pkg.DeviceStatusPassed {
-			failing = append(failing, d)
+	for i := range monitored {
+		if monitored[i].DeviceStatus != pkg.DeviceStatusPassed {
+			failing = append(failing, monitored[i])
 		}
 	}
 
@@ -310,12 +305,12 @@ func BuildPushMessage(devices []models.Device) (status string, msg string) {
 
 	// Build failure message
 	var parts []string
-	for _, d := range failing {
-		name := d.DeviceName
+	for i := range failing {
+		name := failing[i].DeviceName
 		if name == "" {
-			name = d.SerialNumber
+			name = failing[i].SerialNumber
 		}
-		dtype := d.DeviceProtocol
+		dtype := failing[i].DeviceProtocol
 		if dtype == "" {
 			dtype = "unknown"
 		}
