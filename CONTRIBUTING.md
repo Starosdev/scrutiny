@@ -42,7 +42,7 @@ Depending on the functionality you are adding, you may need to setup a developme
 
 # Modifying the Scrutiny Backend Server (API)
 
-1. install the [Go runtime](https://go.dev/doc/install) (v1.20+)
+1. install the [Go runtime](https://go.dev/doc/install) (v1.25+)
 2. download the `scrutiny-web-frontend.tar.gz` for
    the [latest release](https://github.com/Starosdev/scrutiny/releases/latest). Extract to a folder named `dist`
 3. create a `scrutiny.yaml` config file
@@ -96,7 +96,7 @@ The frontend is written in Angular. If you're working on the frontend and can us
 If you're developing a feature that requires changes to the backend and the frontend, or a frontend feature that requires real data,
 you'll need to follow the steps below:
 
-1. install the [Go runtime](https://go.dev/doc/install) (v1.20+)
+1. install the [Go runtime](https://go.dev/doc/install) (v1.25+)
 2. install [NodeJS](https://nodejs.org/en/download/)
 3. create a `scrutiny.yaml` config file
     ```yaml
@@ -130,7 +130,7 @@ you'll need to follow the steps below:
     cd webapp/frontend
     npm install --legacy-peer-deps
     npm run build:prod -- --watch --output-path=../../dist
-    # Note: if you do not add `--prod` flag, app will display mocked data for api calls.
+    # Note: `build:prod` uses the production configuration. Without it, app will display mocked data for api calls.
     ```
 6. start the scrutiny web server
     ```bash
@@ -239,19 +239,36 @@ npx ng test --watch=false --code-coverage             # Run with coverage
 
 # API Endpoints
 
+See CLAUDE.md for the complete API endpoint reference (54 endpoints defined in `webapp/backend/pkg/web/server.go`).
+
+Key endpoints for development:
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/health` | GET | Health check |
+| `/api/auth/status` | GET | Authentication status check |
+| `/api/auth/login` | POST | Login (when auth enabled) |
+| `/api/health` | GET/HEAD | Health check |
 | `/api/health/notify` | POST | Test notifications |
 | `/api/summary` | GET | Dashboard summary of all devices |
 | `/api/summary/temp` | GET | Temperature history for dashboard |
+| `/api/summary/workload` | GET | Workload insights |
 | `/api/devices/register` | POST | Register new devices (used by collector) |
 | `/api/device/:wwn/details` | GET | Get device with S.M.A.R.T history |
 | `/api/device/:wwn/smart` | POST | Upload S.M.A.R.T metrics (used by collector) |
 | `/api/device/:wwn/selftest` | POST | Upload self-test results |
 | `/api/device/:wwn/archive` | POST | Archive a device |
 | `/api/device/:wwn/unarchive` | POST | Unarchive a device |
+| `/api/device/:wwn/mute` | POST | Mute device notifications |
+| `/api/device/:wwn/unmute` | POST | Unmute device notifications |
+| `/api/device/:wwn/label` | POST | Update device label |
 | `/api/device/:wwn` | DELETE | Delete a device |
-| `/api/device/:wwn/performance` | GET | Get performance benchmark history |
-| `/api/device/:wwn/performance` | POST | Upload performance benchmark results (used by collector) |
+| `/api/device/:wwn/performance` | GET/POST | Performance benchmark history / upload |
 | `/api/settings` | GET/POST | Application settings |
+| `/api/settings/overrides` | GET/POST | SMART attribute overrides |
+| `/api/settings/notify-urls` | GET/POST | Notification URL management |
+| `/api/reports/generate` | GET | Generate report on demand |
+| `/api/reports/history` | GET | List generated reports |
+| `/api/zfs/pools/register` | POST | Register ZFS pools (used by ZFS collector) |
+| `/api/zfs/summary` | GET | ZFS pools dashboard summary |
+| `/api/zfs/pool/:guid/details` | GET | ZFS pool details |
+| `/api/metrics` | GET | Prometheus metrics (when enabled) |
