@@ -93,11 +93,12 @@ jobs:
         if: steps.semantic.outputs.new_release_published == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           chmod +x .github/scripts/generate-release-notes.sh
-          NOTES=$(.github/scripts/generate-release-notes.sh "${{ steps.prev_tag.outputs.tag }}" "v${{ steps.semantic.outputs.new_release_version }}")
-          # Write to file to preserve newlines
-          echo "$NOTES" > /tmp/release-notes.md
+          chmod +x .github/scripts/polish-release-notes.sh
+          RAW_NOTES=$(.github/scripts/generate-release-notes.sh "${{ steps.prev_tag.outputs.tag }}" "v${{ steps.semantic.outputs.new_release_version }}")
+          echo "$RAW_NOTES" | .github/scripts/polish-release-notes.sh > /tmp/release-notes.md
 
       - name: Update release notes
         if: steps.semantic.outputs.new_release_published == 'true'

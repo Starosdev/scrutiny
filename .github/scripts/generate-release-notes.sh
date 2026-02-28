@@ -1,6 +1,9 @@
 #!/bin/bash
 # Generate release notes from merged PRs between two tags
 # Usage: ./generate-release-notes.sh <previous-tag> <new-tag>
+#
+# Produces structured markdown with bold titles, descriptions, and bullet points.
+# Output can be piped through polish-release-notes.sh for OpenAI polishing.
 
 set -e
 
@@ -19,71 +22,149 @@ echo "Generating release notes for $PREV_TAG..$NEW_TAG" >&2
 PREV_DATE=$(git log -1 --format=%aI "$PREV_TAG" 2>/dev/null || echo "1970-01-01T00:00:00Z")
 
 # Create temp files for PR data
-MASTER_JSON=$(mktemp)
 DEVELOP_JSON=$(mktemp)
-trap 'rm -f "$MASTER_JSON" "$DEVELOP_JSON"' EXIT
+MASTER_JSON=$(mktemp)
+trap 'rm -f "$DEVELOP_JSON" "$MASTER_JSON"' EXIT
 
-# Fetch PRs as JSON arrays (handles bodies with special characters safely)
-gh pr list --repo "$REPO" --state merged --base master \
-    --json number,title,mergedAt,body \
-    --jq "[.[] | select(.mergedAt > \"$PREV_DATE\")]" \
-    > "$MASTER_JSON" 2>/dev/null || echo "[]" > "$MASTER_JSON"
-
+# Fetch PRs merged to develop -- these are the actual feature/fix PRs.
 gh pr list --repo "$REPO" --state merged --base develop \
     --json number,title,mergedAt,body \
     --jq "[.[] | select(.mergedAt > \"$PREV_DATE\")]" \
     > "$DEVELOP_JSON" 2>/dev/null || echo "[]" > "$DEVELOP_JSON"
 
-# Merge and deduplicate by PR number
-MERGED_JSON=$(jq -s '.[0] + .[1] | unique_by(.number)' "$MASTER_JSON" "$DEVELOP_JSON")
+# Also include PRs merged directly to master (hotfixes, direct deploys)
+# but exclude develop->master integration PRs which duplicate develop PRs.
+gh pr list --repo "$REPO" --state merged --base master \
+    --json number,title,mergedAt,body,headRefName \
+    --jq "[.[] | select(.mergedAt > \"$PREV_DATE\") | select(.headRefName != \"develop\")]" \
+    > "$MASTER_JSON" 2>/dev/null || echo "[]" > "$MASTER_JSON"
 
-# Extract summary from PR body. Looks for a ## Summary section and returns
-# the first 1-2 sentences (max 200 chars). Returns empty string if not found.
-extract_summary() {
+# Merge and deduplicate by PR number
+MERGED_JSON=$(jq -s '.[0] + .[1] | unique_by(.number)' "$DEVELOP_JSON" "$MASTER_JSON")
+
+# Extract summary block from PR body (text between ## Summary and next ## heading).
+get_summary_block() {
+    local body="$1"
+    [ -z "$body" ] && return
+    echo "$body" | sed -n '/^## Summary/,/^## /{/^## /d; p;}'
+}
+
+# Extract the first non-bullet line as a description. If none, use first bullet.
+# Sets HAS_PROSE_DESC=1 if a prose line was found, 0 if fell back to first bullet.
+HAS_PROSE_DESC=0
+extract_description() {
+    local summary_block
+    summary_block=$(get_summary_block "$1")
+    [ -z "$summary_block" ] && return
+
+    # Try prose line first (non-empty, non-bullet, non-heading, not just a Closes/Fixes reference)
+    local description
+    description=$(echo "$summary_block" \
+        | grep -v '^[[:space:]]*$' \
+        | grep -v '^[[:space:]]*[-*] ' \
+        | grep -v '^#' \
+        | grep -vE '^(Closes|Fixes|Resolves) #[0-9]+$' \
+        | head -1 \
+        | sed 's/\*\*//g; s/`//g; s/^[[:space:]]*//')
+
+    if [ -n "$description" ]; then
+        HAS_PROSE_DESC=1
+        echo "$description"
+        return
+    fi
+
+    # Fall back to first bullet
+    HAS_PROSE_DESC=0
+    description=$(echo "$summary_block" | sed -n 's/^[[:space:]]*[-*] //p' | head -1 \
+        | sed 's/\*\*//g; s/`//g')
+    echo "$description"
+}
+
+# Extract up to 3 bullet points from ## Summary, stripped of bold markdown.
+# If the description was taken from the first bullet (HAS_PROSE_DESC=0),
+# skip the first bullet to avoid duplication.
+extract_bullets() {
+    local summary_block
+    summary_block=$(get_summary_block "$1")
+    [ -z "$summary_block" ] && return
+
+    local all_bullets
+    all_bullets=$(echo "$summary_block" | sed -n 's/^[[:space:]]*[-*] //p' | sed 's/\*\*//g')
+    [ -z "$all_bullets" ] && return
+
+    if [ "$HAS_PROSE_DESC" -eq 0 ]; then
+        # Skip first bullet (already used as description), take next 3
+        echo "$all_bullets" | tail -n +2 | head -3
+    else
+        echo "$all_bullets" | head -3
+    fi
+}
+
+# Extract "Closes #XXX" / "Fixes #XXX" / "Resolves #XXX" from the PR body.
+extract_closes() {
     local body="$1"
     [ -z "$body" ] && return
 
-    # Extract text between ## Summary and the next ## heading
-    local summary_block
-    summary_block=$(echo "$body" | sed -n '/^## Summary/,/^## /{/^## /d; p;}')
-    [ -z "$summary_block" ] && return
-
-    # If the summary is a bulleted list, take just the first bullet
-    local summary
-    local first_bullet
-    first_bullet=$(echo "$summary_block" | sed -n 's/^[[:space:]]*[-*] //p' | head -1)
-    if [ -n "$first_bullet" ]; then
-        summary="$first_bullet"
-    else
-        # Not a list, take first few lines as prose
-        summary=$(echo "$summary_block" | head -3 | tr '\n' ' ')
-    fi
-
-    # Strip markdown formatting
-    summary=$(echo "$summary" \
-        | sed 's/\*\*//g' \
-        | sed 's/`//g' \
-        | sed 's/[[:space:]]\{2,\}/ /g' \
-        | sed 's/^[[:space:]]*//' \
-        | sed 's/[[:space:]]*$//')
-    [ -z "$summary" ] && return
-
-    # Trim to ~200 chars at a sentence boundary
-    if [ ${#summary} -gt 200 ]; then
-        # Try to cut at a sentence boundary
-        local trimmed
-        trimmed=$(echo "${summary:0:200}" | sed 's/\.[^.]*$/\./')
-        if [ ${#trimmed} -gt 20 ]; then
-            summary="$trimmed"
-        else
-            summary="${summary:0:197}..."
-        fi
-    fi
-
-    echo "$summary"
+    echo "$body" | grep -oE '(Closes|Fixes|Resolves) #[0-9]+' | head -3
 }
 
-# Initialize arrays for categorizing changes
+# Strip conventional commit prefix, trailing issue references, and capitalize first letter.
+clean_title() {
+    local title="$1"
+    # Remove conventional commit prefix
+    title=$(echo "$title" | sed -E 's/^(feat|fix|refactor|docs|ci|build|perf|chore)(\(.+\))?!?:[[:space:]]*//')
+    # Remove trailing issue/PR references like (#123), (SCR-123)
+    title=$(echo "$title" | sed -E 's/[[:space:]]*\((#[0-9]+|SCR-[0-9]+)\)[[:space:]]*$//')
+    # Capitalize first letter
+    echo "$(echo "${title:0:1}" | tr '[:lower:]' '[:upper:]')${title:1}"
+}
+
+# Format a single entry with bold title, description, and bullets.
+# Output is stored in the ENTRY variable (multi-line).
+format_entry() {
+    local pr_num="$1"
+    local pr_title="$2"
+    local pr_body="$3"
+    local link="https://github.com/$REPO/pull/$pr_num"
+
+    local title
+    title=$(clean_title "$pr_title")
+
+    local description
+    description=$(extract_description "$pr_body")
+
+    local closes
+    closes=$(extract_closes "$pr_body")
+
+    # Title line: **Clean Title** ([#PR](link)) - Closes #XXX
+    local title_line="**$title** ([#$pr_num]($link))"
+    if [ -n "$closes" ]; then
+        local closes_inline
+        closes_inline=$(echo "$closes" | paste -sd ', ' -)
+        title_line="$title_line - $closes_inline"
+    fi
+
+    ENTRY="$title_line"
+    ENTRY="$ENTRY"$'\n'
+
+    # Description line
+    if [ -n "$description" ]; then
+        ENTRY="$ENTRY"$'\n'"$description"
+        ENTRY="$ENTRY"$'\n'
+    fi
+
+    # Bullet points (up to 3)
+    local bullets
+    bullets=$(extract_bullets "$pr_body")
+    if [ -n "$bullets" ]; then
+        ENTRY="$ENTRY"$'\n'
+        while IFS= read -r bullet; do
+            [ -n "$bullet" ] && ENTRY="$ENTRY""- $bullet"$'\n'
+        done <<< "$bullets"
+    fi
+}
+
+# Initialize arrays for categorizing entries
 declare -a FEATURES FIXES REFACTORS DOCS DEPS CICD OTHER
 
 # Get count of PRs
@@ -101,104 +182,61 @@ for i in $(seq 0 $((PR_COUNT - 1))); do
         continue
     fi
 
-    # Build the entry line
-    local_title="$pr_title"
-    link="https://github.com/$REPO/pull/$pr_num"
-    summary=$(extract_summary "$pr_body")
-    entry="* $local_title ([#$pr_num]($link))"
-    if [ -n "$summary" ]; then
-        entry="$entry"$'\n'"  - $summary"
-    fi
+    # Format the entry
+    format_entry "$pr_num" "$pr_title" "$pr_body"
 
     # Categorize by conventional commit prefix
     if [[ "$pr_title" =~ ^feat(\(.+\))?:|^feat!(\(.+\))?: ]]; then
-        local_title="${pr_title#feat*: }"
-        entry="* $local_title ([#$pr_num]($link))"
-        [ -n "$summary" ] && entry="$entry"$'\n'"  - $summary"
-        FEATURES+=("$entry")
+        FEATURES+=("$ENTRY")
     elif [[ "$pr_title" =~ ^fix(\(.+\))?:|^fix!(\(.+\))?: ]]; then
-        local_title="${pr_title#fix*: }"
-        entry="* $local_title ([#$pr_num]($link))"
-        [ -n "$summary" ] && entry="$entry"$'\n'"  - $summary"
-        FIXES+=("$entry")
+        FIXES+=("$ENTRY")
     elif [[ "$pr_title" =~ ^refactor(\(.+\))?: ]]; then
-        local_title="${pr_title#refactor*: }"
-        entry="* $local_title ([#$pr_num]($link))"
-        [ -n "$summary" ] && entry="$entry"$'\n'"  - $summary"
-        REFACTORS+=("$entry")
+        REFACTORS+=("$ENTRY")
     elif [[ "$pr_title" =~ ^docs(\(.+\))?: ]]; then
-        local_title="${pr_title#docs*: }"
-        entry="* $local_title ([#$pr_num]($link))"
-        [ -n "$summary" ] && entry="$entry"$'\n'"  - $summary"
-        DOCS+=("$entry")
+        DOCS+=("$ENTRY")
     elif [[ "$pr_title" =~ ^ci(\(.+\))?: ]]; then
-        local_title="${pr_title#ci*: }"
-        entry="* $local_title ([#$pr_num]($link))"
-        [ -n "$summary" ] && entry="$entry"$'\n'"  - $summary"
-        CICD+=("$entry")
+        CICD+=("$ENTRY")
     elif [[ "$pr_title" =~ [Dd]ependen|[Uu]pdate.*go\.(mod|sum) ]]; then
-        entry="* $pr_title ([#$pr_num]($link))"
-        [ -n "$summary" ] && entry="$entry"$'\n'"  - $summary"
-        DEPS+=("$entry")
+        DEPS+=("$ENTRY")
     elif [[ ! "$pr_title" =~ ^chore ]]; then
-        entry="* $pr_title ([#$pr_num]($link))"
-        [ -n "$summary" ] && entry="$entry"$'\n'"  - $summary"
-        OTHER+=("$entry")
+        OTHER+=("$ENTRY")
     fi
 done
+
+# Print a category section with --- separators between entries
+print_section() {
+    local heading="$1"
+    shift
+    local entries=("$@")
+
+    [ ${#entries[@]} -eq 0 ] && return
+
+    echo "### $heading"
+    echo ""
+
+    local count=0
+    for entry in "${entries[@]}"; do
+        if [ $count -gt 0 ]; then
+            echo "---"
+            echo ""
+        fi
+        echo "$entry"
+        count=$((count + 1))
+    done
+    echo ""
+}
 
 # Generate markdown output
 echo "## [$NEW_TAG](https://github.com/$REPO/compare/$PREV_TAG...$NEW_TAG) ($(date +%Y-%m-%d))"
 echo ""
 
-if [ ${#FEATURES[@]} -gt 0 ]; then
-    echo "### Features"
-    echo ""
-    printf '%s\n' "${FEATURES[@]}"
-    echo ""
-fi
-
-if [ ${#FIXES[@]} -gt 0 ]; then
-    echo "### Bug Fixes"
-    echo ""
-    printf '%s\n' "${FIXES[@]}"
-    echo ""
-fi
-
-if [ ${#REFACTORS[@]} -gt 0 ]; then
-    echo "### Refactoring"
-    echo ""
-    printf '%s\n' "${REFACTORS[@]}"
-    echo ""
-fi
-
-if [ ${#DOCS[@]} -gt 0 ]; then
-    echo "### Documentation"
-    echo ""
-    printf '%s\n' "${DOCS[@]}"
-    echo ""
-fi
-
-if [ ${#DEPS[@]} -gt 0 ]; then
-    echo "### Dependencies"
-    echo ""
-    printf '%s\n' "${DEPS[@]}"
-    echo ""
-fi
-
-if [ ${#CICD[@]} -gt 0 ]; then
-    echo "### CI/CD"
-    echo ""
-    printf '%s\n' "${CICD[@]}"
-    echo ""
-fi
-
-if [ ${#OTHER[@]} -gt 0 ]; then
-    echo "### Other Changes"
-    echo ""
-    printf '%s\n' "${OTHER[@]}"
-    echo ""
-fi
+print_section "Features" "${FEATURES[@]}"
+print_section "Bug Fixes" "${FIXES[@]}"
+print_section "Refactoring" "${REFACTORS[@]}"
+print_section "Documentation" "${DOCS[@]}"
+print_section "Dependencies" "${DEPS[@]}"
+print_section "CI/CD" "${CICD[@]}"
+print_section "Other Changes" "${OTHER[@]}"
 
 # If no PRs were categorized, add a note about direct commits
 TOTAL=$((${#FEATURES[@]} + ${#FIXES[@]} + ${#REFACTORS[@]} + ${#DOCS[@]} + ${#DEPS[@]} + ${#CICD[@]} + ${#OTHER[@]}))
