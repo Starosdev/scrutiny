@@ -36,7 +36,7 @@ Full credit for the original vision and architecture goes to [AnalogJ](https://g
 - **Prometheus Metrics** - Export metrics to Prometheus for advanced monitoring
 - **Device Archiving** - Hide decommissioned drives without deleting history
 - **Per-Device Notification Control** - Mute notifications for specific devices
-- **Device Labels** - Add custom labels to drives for easier identification
+- **Device Labels** - Add custom labels to drives via UI or collector config file
 - **Day-Resolution Temperature Graphs** - More granular temperature history
 - **SAS Temperature Support** - Proper temperature readings for SAS drives
 - **SCT Temperature History Toggle** - Control SCT ERC settings per drive
@@ -48,9 +48,11 @@ Full credit for the original vision and architecture goes to [AnalogJ](https://g
 - **API Authentication** - Opt-in token-based auth for API, web UI, and Prometheus metrics
 - **Missed Ping Digest** - Consolidated notification when multiple collectors miss pings (instead of one email per device)
 - **HTML Email Notifications** - Rich HTML emails for reports and missed ping alerts via SMTP
-- **Enhanced Seagate Drive Support** - Better timeout handling for Seagate drives
+- **Enhanced Seagate Drive Support** - Better timeout handling and FARM log collection for Seagate drives
 - **Workload Insights** - Visualize daily read/write rates, I/O intensity, SSD endurance, and activity spike detection
 - **Home Assistant MQTT Discovery** - Native MQTT integration for automatic device discovery in Home Assistant
+- **UI-Configurable Notification URLs** - Add, edit, test, and delete notification endpoints directly in the web UI
+- **Uptime Kuma Push Monitor** - Dedicated push-based integration for Uptime Kuma status monitoring
 - **SHA256 Checksums** - Verify release binary integrity
 
 # Introduction
@@ -85,7 +87,7 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Prometheus Metrics Endpoint** - `/api/metrics` for Grafana integration
 - **Device Archiving** - Archive old drives to declutter the dashboard
 - **Per-Device Notification Muting** - Control which drives trigger alerts
-- **Custom Device Labels** - Add meaningful names to your drives
+- **Custom Device Labels** - Add meaningful names via UI or set persistent labels in collector config
 - **Day-Resolution Graphs** - View temperature trends at daily granularity
 - **SAS Drive Support** - Full temperature support for SAS devices
 - **S.M.A.R.T Attribute Overrides** - Override thresholds per device via UI
@@ -100,6 +102,9 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Workload Insights** - Daily read/write rates, R/W ratio, I/O intensity classification, SSD endurance tracking, and activity spike detection
 - **Home Assistant MQTT Discovery** - Native push-based integration with automatic entity creation (temperature, health status, power-on hours, power cycles, drive problem)
 - **Heartbeat Notifications** - Periodic "all clear" alerts for uptime monitoring integration
+- **Uptime Kuma Push Monitor** - Dedicated push-based health status updates to Uptime Kuma endpoints
+- **Seagate FARM Log Support** - Collect Field Accessible Reliability Metrics from Seagate Exos, IronWolf, and BarraCuda drives
+- **UI-Configurable Notification URLs** - Manage notification endpoints directly in the web UI (add, edit, test, delete)
 
 # Migration from AnalogJ/scrutiny
 
