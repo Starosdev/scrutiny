@@ -250,7 +250,7 @@ func (sr *scrutinyRepository) UpdateDeviceHasForcedFailure(ctx context.Context, 
 func (sr *scrutinyRepository) UpdateDeviceMissedPingTimeout(ctx context.Context, wwn string, timeoutMinutes int) error {
 	var device models.Device
 	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).First(&device).Error; err != nil {
-		return fmt.Errorf("Could not get device from DB: %v", err)
+		return fmt.Errorf("could not get device from DB: %v", err)
 	}
 
 	return sr.gormClient.Model(&device).Where("wwn = ?", wwn).Update("missed_ping_timeout_override", timeoutMinutes).Error

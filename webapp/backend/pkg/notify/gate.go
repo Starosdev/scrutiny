@@ -14,18 +14,17 @@ import (
 // All notification dispatch should pass through Gate.TrySend() instead of
 // directly calling Notify.Send().
 type NotificationGate struct {
-	logger logrus.FieldLogger
-
-	mu             sync.Mutex
-	sentTimestamps []time.Time         // sliding window for rate limiting
+	logger         logrus.FieldLogger
+	sentTimestamps []time.Time          // sliding window for rate limiting
 	quietQueue     []QueuedNotification // queued during quiet hours
+	mu             sync.Mutex
 }
 
 // QueuedNotification holds a notification that was deferred during quiet hours.
 type QueuedNotification struct {
+	QueuedAt time.Time
 	Subject  string
 	Message  string
-	QueuedAt time.Time
 }
 
 // NewNotificationGate creates a new gate instance. Should be created once

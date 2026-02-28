@@ -6,9 +6,7 @@ import (
 )
 
 type Device struct {
-	//GORM attributes, see: http://gorm.io/docs/conventions.html
-	Archived  bool `json:"archived"`
-	Muted     bool `json:"muted"`
+	// GORM attributes, see: http://gorm.io/docs/conventions.html
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt *time.Time
@@ -26,12 +24,9 @@ type Device struct {
 	InterfaceSpeed string `json:"interface_speed"`
 	SerialNumber   string `json:"serial_number"`
 	Firmware       string `json:"firmware"`
-	RotationSpeed  int    `json:"rotational_speed"`
-	Capacity       int64  `json:"capacity"`
 	FormFactor     string `json:"form_factor"`
-	SmartSupport   bool   `json:"smart_support"`
-	DeviceProtocol string `json:"device_protocol"` //protocol determines which smart attribute types are available (ATA, NVMe, SCSI)
-	DeviceType     string `json:"device_type"`     //device type is used for querying with -d/t flag, should only be used by collector.
+	DeviceProtocol string `json:"device_protocol"` // protocol determines which smart attribute types are available (ATA, NVMe, SCSI)
+	DeviceType     string `json:"device_type"`     // device type is used for querying with -d/t flag, should only be used by collector.
 
 	// User provided metadata
 	Label            string `json:"label"`
@@ -41,6 +36,11 @@ type Device struct {
 
 	// Data set by Scrutiny
 	DeviceStatus              pkg.DeviceStatus `json:"device_status"`
-	HasForcedFailure          bool             `json:"has_forced_failure" gorm:"default:false"`
+	Capacity                  int64            `json:"capacity"`
+	RotationSpeed             int              `json:"rotational_speed"`
 	MissedPingTimeoutOverride int              `json:"missed_ping_timeout_override" gorm:"default:0"` // Per-device override (0 = use global)
+	Archived                  bool             `json:"archived"`
+	Muted                     bool             `json:"muted"`
+	SmartSupport              bool             `json:"smart_support"`
+	HasForcedFailure          bool             `json:"has_forced_failure" gorm:"default:false"`
 }

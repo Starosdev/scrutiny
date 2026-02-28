@@ -658,7 +658,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     openSettingsDialog(): void {
         if (!this.device) return;
 
-        const globalMissedPingTimeout = this.config?.metrics?.notify_missed_ping_timeout_minutes || 15;
+        const globalMissedPingTimeout = this.config?.metrics?.missed_ping_timeout_minutes || 15;
 
         const dialogRef = this.dialog.open(DetailSettingsComponent, {
             width: '600px',
