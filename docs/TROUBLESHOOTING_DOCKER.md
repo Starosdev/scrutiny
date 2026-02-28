@@ -3,7 +3,7 @@
 > TL;DR; The `master-omnibus` and `latest` tags are almost semantically identical, as I follow a `golden master` 
 development process. However if you want to ensure you're only using the latest release, you can change to `latest`
 
-The CI script used to orchestrate the docker image builds can be found here: https://github.com/AnalogJ/scrutiny/blob/master/.github/workflows/docker-build.yaml#L166-L184
+The CI script used to orchestrate the docker image builds can be found here: https://github.com/Starosdev/scrutiny/blob/master/.github/workflows/docker-build.yaml#L166-L184
 
 In general Scrutiny follows a `golden master` development process, which means that the `master` branch is not directly updated (unless its for documentation changes), 
 instead development is done in a feature branch, or committed to the `beta` branch. 

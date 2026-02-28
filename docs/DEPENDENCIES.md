@@ -49,8 +49,8 @@ Last updated: 2026-01-08
 
 ### Go Version
 
-- **Current**: 1.20
-- **Recommended**: 1.23+ (latest stable)
+- **Current**: 1.25
+- **Recommended**: Current
 
 ### Direct Dependencies
 

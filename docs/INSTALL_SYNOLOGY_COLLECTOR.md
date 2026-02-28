@@ -37,7 +37,7 @@ mkdir -p /volume1/\@Entware/scrutiny/conf
 
 **6. Download the collector binary for your architecture and make it executable**
 
-`wget https://github.com/AnalogJ/scrutiny/releases/download/v0.4.12/scrutiny-collector-metrics-linux-arm64`
+`wget https://github.com/Starosdev/scrutiny/releases/download/v0.4.12/scrutiny-collector-metrics-linux-arm64`
 
 `chmod +x /volume1/\@Entware/scrutiny/bin/scrutiny-collector-metrics-linux-arm64`
 
@@ -45,7 +45,7 @@ mkdir -p /volume1/\@Entware/scrutiny/conf
 
 ```
 cd /volume1/\@Entware/scrutiny/conf
-wget https://raw.githubusercontent.com/AnalogJ/scrutiny/master/example.collector.yaml
+wget https://raw.githubusercontent.com/Starosdev/scrutiny/master/example.collector.yaml
 mv example.collector.yaml collector.yaml
 ```
 

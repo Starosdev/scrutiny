@@ -71,7 +71,7 @@ If the output is the same, your devices will be processed by Scrutiny.
 In some cases `--scan` does not correctly detect the device type, returning [incomplete SMART data](https://github.com/AnalogJ/scrutiny/issues/45).
 Scrutiny will supports overriding the detected device type via the config file.
 
-[example.collector.yaml](https://github.com/AnalogJ/scrutiny/blob/master/example.collector.yaml)
+[example.collector.yaml](https://github.com/Starosdev/scrutiny/blob/master/example.collector.yaml)
 
 ### RAID Controllers (Megaraid/3ware/HBA/Adaptec/HPE/etc)
 Smartctl has support for a large number of [RAID controllers](https://www.smartmontools.org/wiki/Supported_RAID-Controllers), however this 
@@ -277,7 +277,7 @@ If this is effecting your drives, you'll need to do the following:
 
 1. Upgrade to v0.4.13+
 2. Reset your drive status using the SQLite script
-   in [#device-failed-but-smart--scrutiny-passed](https://github.com/AnalogJ/scrutiny/blob/master/docs/TROUBLESHOOTING_DEVICE_COLLECTOR.md#device-failed-but-smart--scrutiny-passed)
+   in [#device-failed-but-smart--scrutiny-passed](https://github.com/Starosdev/scrutiny/blob/master/docs/TROUBLESHOOTING_DEVICE_COLLECTOR.md#device-failed-but-smart--scrutiny-passed)
 3. Wait for (or manually start) the collector.
 
 If you'd like to learn more about how the Seagate Ironwolf SMART attributes work under the hood, and how they differ
@@ -309,9 +309,9 @@ The host-id is passed from the collector to the web-api when SMART device data i
 the host-id:
 
 - using the collector config
-  file: [master/example.collector.yaml#L19-L22](https://github.com/AnalogJ/scrutiny/blob/master/example.collector.yaml?rgh-link-date=2022-05-25T15%3A08%3A56Z#L19-L22)
+  file: [master/example.collector.yaml#L19-L22](https://github.com/Starosdev/scrutiny/blob/master/example.collector.yaml#L19-L22)
 - using the `--host-id` collector CLI
-  argument: [master/collector/cmd/collector-metrics/collector-metrics.go#L180-L185](https://github.com/AnalogJ/scrutiny/blob/master/collector/cmd/collector-metrics/collector-metrics.go?rgh-link-date=2022-05-25T15%3A08%3A56Z#L180-L185)
+  argument: [master/collector/cmd/collector-metrics/collector-metrics.go#L180-L185](https://github.com/Starosdev/scrutiny/blob/master/collector/cmd/collector-metrics/collector-metrics.go#L180-L185)
 - using the `COLLECTOR_HOST_ID` environmental variable.
 
 See the [docs/INSTALL_HUB_SPOKE.md](/docs/INSTALL_HUB_SPOKE.md) guide for more information.
