@@ -83,6 +83,18 @@ devices:
 #      - 3ware,4
 #      - 3ware,5
 #
+#  # example for setting a custom label for a device.
+#  # This label will be applied on every collector run, making it ideal
+#  # for environments where disks may be swapped (the label follows the slot/path).
+#  # Config labels take precedence over labels set in the web UI.
+#  - device: /dev/sda
+#    label: 'NAS Pool - Disk 1'
+#
+#  # example combining label with type override
+#  - device: /dev/sdb
+#    type: 'sat'
+#    label: 'Backup Drive'
+#
 #  # example to show how to override the smartctl command args (per device), see below for how to override these globally.
 #  - device: /dev/sda
 #    commands:
