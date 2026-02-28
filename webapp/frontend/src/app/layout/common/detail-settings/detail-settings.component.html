@@ -29,10 +29,18 @@
                 </mat-select>
             </mat-form-field>
         </div>
+
+        <div class="flex flex-col gt-xs:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3">
+                <mat-label>Missed Ping Timeout Override (minutes)</mat-label>
+                <input matInput type="number" [(ngModel)]="missedPingTimeoutOverride" name="missedPingTimeoutOverride" min="0" placeholder="0">
+                <mat-hint>Override the global missed ping timeout for this device. 0 = use global ({{data.globalMissedPingTimeout}} min)</mat-hint>
+            </mat-form-field>
+        </div>
     </form>
 
 </mat-dialog-content>
 <mat-dialog-actions align="end">
     <button mat-button mat-dialog-close>Cancel</button>
-    <button mat-button [mat-dialog-close]="{ muted, label }" cdkFocusInitial>Save</button>
+    <button mat-button [mat-dialog-close]="{ muted, label, missedPingTimeoutOverride }" cdkFocusInitial>Save</button>
 </mat-dialog-actions>

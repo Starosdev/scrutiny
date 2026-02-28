@@ -109,8 +109,26 @@ func UploadDeviceMetrics(c *gin.Context) {
 			false,
 		)
 		liveNotify.LoadDatabaseUrls(c, deviceRepo)
-		if err := liveNotify.Send(); err != nil {
-			logger.Warnf("Failed to send notification for device %s: %v", wwn, err)
+
+		// Route through notification gate for rate limiting and quiet hours
+		if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
+			if gate, ok := gateVal.(*notify.NotificationGate); ok {
+				settings, settingsErr := deviceRepo.LoadSettings(c)
+				if settingsErr != nil {
+					logger.Warnf("Failed to load settings for notification gate: %v", settingsErr)
+				}
+				if settings != nil {
+					gate.TrySend(&liveNotify, settings, false)
+				} else {
+					if sendErr := liveNotify.Send(); sendErr != nil {
+						logger.Warnf("Failed to send notification for device %s: %v", wwn, sendErr)
+					}
+				}
+			}
+		} else {
+			if sendErr := liveNotify.Send(); sendErr != nil {
+				logger.Warnf("Failed to send notification for device %s: %v", wwn, sendErr)
+			}
 		}
 	}
 

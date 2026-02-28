@@ -110,6 +110,12 @@ export interface AppConfig {
         notify_on_missed_ping?: boolean
         missed_ping_timeout_minutes?: number
         missed_ping_check_interval_mins?: number
+        // Notification cooldown / rate limiting
+        missed_ping_cooldown_minutes?: number
+        notification_rate_limit?: number
+        // Quiet hours
+        notification_quiet_start?: string
+        notification_quiet_end?: string
         // Heartbeat notifications
         heartbeat_enabled?: boolean
         heartbeat_interval_hours?: number
@@ -168,6 +174,10 @@ export const appConfig: AppConfig = {
         notify_on_missed_ping: false,
         missed_ping_timeout_minutes: 60,
         missed_ping_check_interval_mins: 5,
+        missed_ping_cooldown_minutes: 0,
+        notification_rate_limit: 0,
+        notification_quiet_start: '',
+        notification_quiet_end: '',
         heartbeat_enabled: false,
         heartbeat_interval_hours: 24,
         uptime_kuma_enabled: false,

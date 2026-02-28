@@ -75,6 +75,10 @@ export class DetailService {
         return this._httpClient.post(getBasePath() + `/api/device/${wwn}/smart-display-mode`, { smart_display_mode: mode });
     }
 
+    setMissedPingTimeout(wwn: string, timeoutMinutes: number): Observable<any> {
+        return this._httpClient.post(getBasePath() + `/api/device/${wwn}/missed-ping-timeout`, { missed_ping_timeout_override: timeoutMinutes });
+    }
+
     getPerformanceData(wwn: string, duration: string = 'week'): Observable<PerformanceResponseWrapper> {
         const params = { duration };
         return this._httpClient.get<PerformanceResponseWrapper>(

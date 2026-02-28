@@ -147,6 +147,38 @@
             </mat-form-field>
         </div>
 
+        <div class="flex flex-col mt-5 gt-md:flex-row" *ngIf="notifyOnMissedPing">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Repeat Notification Cooldown (minutes)</mat-label>
+                <input matInput type="number" [(ngModel)]="missedPingCooldownMinutes" min="0">
+                <mat-hint>Minimum time between repeat notifications per device (0 = use timeout)</mat-hint>
+            </mat-form-field>
+        </div>
+
+        <!-- Notification Rate Limiting -->
+        <div class="flex flex-col mt-5 gt-md:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Notification Rate Limit (per hour)</mat-label>
+                <input matInput type="number" [(ngModel)]="notificationRateLimit" min="0">
+                <mat-hint>Maximum notifications per hour across all types (0 = unlimited)</mat-hint>
+            </mat-form-field>
+        </div>
+
+        <!-- Quiet Hours -->
+        <div class="flex flex-col mt-5 gt-md:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Quiet Hours Start</mat-label>
+                <input matInput type="time" [(ngModel)]="notificationQuietStart">
+                <mat-hint>Stop sending notifications at this time (leave empty to disable)</mat-hint>
+            </mat-form-field>
+
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">
+                <mat-label>Quiet Hours End</mat-label>
+                <input matInput type="time" [(ngModel)]="notificationQuietEnd">
+                <mat-hint>Resume and send queued digest at this time</mat-hint>
+            </mat-form-field>
+        </div>
+
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Heartbeat Notifications</mat-label>
