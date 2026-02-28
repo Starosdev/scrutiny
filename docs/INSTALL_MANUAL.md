@@ -1,6 +1,6 @@
 # Manual Install
 
-While the easiest way to get started with [Scrutiny is using Docker](https://github.com/AnalogJ/scrutiny#docker),
+While the easiest way to get started with [Scrutiny is using Docker](https://github.com/Starosdev/scrutiny#docker),
 it is possible to run it manually without much work. You can even mix and match, using Docker for one component and
 a manual installation for the other. There's also [an installer](INSTALL_ANSIBLE.md) which automates this manual installation procedure.
 

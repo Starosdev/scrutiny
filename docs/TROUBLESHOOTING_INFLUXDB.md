@@ -116,8 +116,8 @@ this usually related to either:
 
 Here's a couple of confirmed working docker-compose files that you may want to look at:
 
-- https://github.com/AnalogJ/scrutiny/blob/master/docker/example.hubspoke.docker-compose.yml
-- https://github.com/AnalogJ/scrutiny/blob/master/docker/example.omnibus.docker-compose.yml
+- https://github.com/Starosdev/scrutiny/blob/master/docker/example.hubspoke.docker-compose.yml
+- https://github.com/Starosdev/scrutiny/blob/master/docker/example.omnibus.docker-compose.yml
 
 ## Bring your own InfluxDB
 
@@ -424,7 +424,7 @@ done, you can start the Scrutiny server
 ## Customize InfluxDB Admin Username & Password
 
 The full set of InfluxDB configuration options are available
-in [code](https://github.com/AnalogJ/scrutiny/blob/master/webapp/backend/pkg/config/config.go?rgh-link-date=2023-01-19T16%3A23%3A40Z#L49-L51)
+in [code](https://github.com/Starosdev/scrutiny/blob/master/webapp/backend/pkg/config/config.go#L49-L51)
 .
 
 During first startup Scrutiny will connect to the unprotected InfluxDB server, start the setup process (via API) using a

@@ -1,6 +1,6 @@
 # pfsense Install
 
-This bascially follows the [Manual collector instructions](https://github.com/AnalogJ/scrutiny/blob/master/docs/INSTALL_MANUAL.md#collector) and assumes you are running a hub and spoke deployment and already have the web app setup.
+This bascially follows the [Manual collector instructions](https://github.com/Starosdev/scrutiny/blob/master/docs/INSTALL_MANUAL.md#collector) and assumes you are running a hub and spoke deployment and already have the web app setup.
 
 
 ### Dependencies
@@ -30,7 +30,7 @@ Next, we'll download the Scrutiny collector binary from the [latest Github relea
 > NOTE: Ensure you have the latest version in the below command
 
 ```
-fetch -o /opt/scrutiny/bin https://github.com/AnalogJ/scrutiny/releases/download/vX.X.X/scrutiny-collector-metrics-freebsd-amd64
+fetch -o /opt/scrutiny/bin https://github.com/Starosdev/scrutiny/releases/download/vX.X.X/scrutiny-collector-metrics-freebsd-amd64
 ```
 
 

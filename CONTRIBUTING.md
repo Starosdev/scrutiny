@@ -42,7 +42,7 @@ Depending on the functionality you are adding, you may need to setup a developme
 
 # Modifying the Scrutiny Backend Server (API)
 
-1. install the [Go runtime](https://go.dev/doc/install) (v1.20+)
+1. install the [Go runtime](https://go.dev/doc/install) (v1.25+)
 2. download the `scrutiny-web-frontend.tar.gz` for
    the [latest release](https://github.com/Starosdev/scrutiny/releases/latest). Extract to a folder named `dist`
 3. create a `scrutiny.yaml` config file
@@ -96,7 +96,7 @@ The frontend is written in Angular. If you're working on the frontend and can us
 If you're developing a feature that requires changes to the backend and the frontend, or a frontend feature that requires real data,
 you'll need to follow the steps below:
 
-1. install the [Go runtime](https://go.dev/doc/install) (v1.20+)
+1. install the [Go runtime](https://go.dev/doc/install) (v1.25+)
 2. install [NodeJS](https://nodejs.org/en/download/)
 3. create a `scrutiny.yaml` config file
     ```yaml
@@ -130,7 +130,7 @@ you'll need to follow the steps below:
     cd webapp/frontend
     npm install --legacy-peer-deps
     npm run build:prod -- --watch --output-path=../../dist
-    # Note: if you do not add `--prod` flag, app will display mocked data for api calls.
+    # Note: `build:prod` uses the production configuration. Without it, app will display mocked data for api calls.
     ```
 6. start the scrutiny web server
     ```bash

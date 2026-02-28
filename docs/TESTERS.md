@@ -4,7 +4,7 @@ Scrutiny supports many operating systems, CPU architectures and runtime environm
 difficult to test. 
 Thankfully the following users have been gracious enough to test/validate Scrutiny works on their system.
 
-> NOTE: If you're interested in volunteering to test Scrutiny beta builds on your system, please [open an issue](https://github.com/AnalogJ/scrutiny/issues). 
+> NOTE: If you're interested in volunteering to test Scrutiny beta builds on your system, please [open an issue](https://github.com/Starosdev/scrutiny/issues). 
 
 | Architecture Name | Binaries | Docker |
 | --- | --- | --- |
