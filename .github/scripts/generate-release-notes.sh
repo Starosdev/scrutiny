@@ -21,22 +21,27 @@ echo "Generating release notes for $PREV_TAG..$NEW_TAG" >&2
 # Get the date of the previous tag
 PREV_DATE=$(git log -1 --format=%aI "$PREV_TAG" 2>/dev/null || echo "1970-01-01T00:00:00Z")
 
+# Get the date of the new tag (upper bound for PR merge dates).
+# When run at release time NEW_TAG may not exist yet, so fall back to "now".
+NEW_DATE=$(git log -1 --format=%aI "$NEW_TAG" 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)
+
 # Create temp files for PR data
 DEVELOP_JSON=$(mktemp)
 MASTER_JSON=$(mktemp)
 trap 'rm -f "$DEVELOP_JSON" "$MASTER_JSON"' EXIT
 
 # Fetch PRs merged to develop -- these are the actual feature/fix PRs.
+# Filter to PRs merged between prev tag and new tag dates.
 gh pr list --repo "$REPO" --state merged --base develop \
     --json number,title,mergedAt,body \
-    --jq "[.[] | select(.mergedAt > \"$PREV_DATE\")]" \
+    --jq "[.[] | select(.mergedAt > \"$PREV_DATE\" and .mergedAt <= \"$NEW_DATE\")]" \
     > "$DEVELOP_JSON" 2>/dev/null || echo "[]" > "$DEVELOP_JSON"
 
 # Also include PRs merged directly to master (hotfixes, direct deploys)
 # but exclude develop->master integration PRs which duplicate develop PRs.
 gh pr list --repo "$REPO" --state merged --base master \
     --json number,title,mergedAt,body,headRefName \
-    --jq "[.[] | select(.mergedAt > \"$PREV_DATE\") | select(.headRefName != \"develop\")]" \
+    --jq "[.[] | select(.mergedAt > \"$PREV_DATE\" and .mergedAt <= \"$NEW_DATE\") | select(.headRefName != \"develop\")]" \
     > "$MASTER_JSON" 2>/dev/null || echo "[]" > "$MASTER_JSON"
 
 # Merge and deduplicate by PR number
