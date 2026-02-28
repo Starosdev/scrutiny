@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.37.0](https://github.com/Starosdev/scrutiny/compare/v1.36.0...v1.37.0) (2026-02-28)
+
+### Features
+
+* **collector:** add config-driven device labels ([#301](https://github.com/Starosdev/scrutiny/issues/301)) ([3b3d76b](https://github.com/Starosdev/scrutiny/commit/3b3d76b4f474691eadb20610b4efd111d7a2cefc))
+
 ## [1.36.0](https://github.com/Starosdev/scrutiny/compare/v1.35.1...v1.36.0) (2026-02-27)
 
 ### Features
