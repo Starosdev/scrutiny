@@ -11,7 +11,6 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/mqtt"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/notify"
-	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -25,12 +24,11 @@ func UploadDeviceMetrics(c *gin.Context) {
 
 	//appConfig := c.MustGet("CONFIG").(config.Interface)
 
-	wwn := c.Param("wwn")
-	if err := validation.ValidateWWN(wwn); err != nil {
-		logger.Warnf("Invalid WWN format: %s", wwn)
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+	device, resolveErr := ResolveDevice(c, logger, deviceRepo)
+	if resolveErr != nil {
 		return
 	}
+	wwn := device.WWN
 
 	var collectorSmartData collector.SmartInfo
 	err := c.BindJSON(&collectorSmartData)
@@ -96,6 +94,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 		pkg.MetricsStatusThreshold(appConfig.GetInt(fmt.Sprintf("%s.metrics.status_threshold", config.DB_USER_SETTINGS_SUBKEY))),
 		pkg.MetricsStatusFilterAttributes(appConfig.GetInt(fmt.Sprintf("%s.metrics.status_filter_attributes", config.DB_USER_SETTINGS_SUBKEY))),
 		appConfig.GetBool(fmt.Sprintf("%s.metrics.repeat_notifications", config.DB_USER_SETTINGS_SUBKEY)),
+		wwn,
 		c,
 		deviceRepo,
 		appConfig,
@@ -135,7 +134,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 	// Update Prometheus metrics (if enabled)
 	if collectorVal, exists := c.Get("METRICS_COLLECTOR"); exists {
 		if collector, ok := collectorVal.(*metrics.Collector); ok && collector != nil {
-			collector.UpdateDeviceMetrics(wwn, updatedDevice, smartData)
+			collector.UpdateDeviceMetrics(updatedDevice, smartData)
 		}
 	}
 

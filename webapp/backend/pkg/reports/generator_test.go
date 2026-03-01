@@ -48,8 +48,9 @@ func TestGenerateReport_BasicSummary(t *testing.T) {
 	now := time.Now()
 	mock := &mockSummaryProvider{
 		summary: map[string]*models.DeviceSummary{
-			"0x5000cca264eb01d7": {
+			"devid-1": {
 				Device: models.Device{
+					DeviceID:       "devid-1",
 					WWN:            "0x5000cca264eb01d7",
 					DeviceName:     "/dev/sda",
 					ModelName:      "WDC WD40EFRX",
@@ -62,8 +63,9 @@ func TestGenerateReport_BasicSummary(t *testing.T) {
 					PowerOnHours: 25000,
 				},
 			},
-			"0x5002538e40a22954": {
+			"devid-2": {
 				Device: models.Device{
+					DeviceID:       "devid-2",
 					WWN:            "0x5002538e40a22954",
 					DeviceName:     "/dev/nvme0",
 					ModelName:      "Samsung 970 EVO",
@@ -78,12 +80,12 @@ func TestGenerateReport_BasicSummary(t *testing.T) {
 			},
 		},
 		tempHistory: map[string][]measurements.SmartTemperature{
-			"0x5000cca264eb01d7": {
+			"devid-1": {
 				{Date: now.Add(-12 * time.Hour), Temp: 30},
 				{Date: now.Add(-6 * time.Hour), Temp: 40},
 				{Date: now, Temp: 35},
 			},
-			"0x5002538e40a22954": {
+			"devid-2": {
 				{Date: now.Add(-12 * time.Hour), Temp: 40},
 				{Date: now, Temp: 45},
 			},
@@ -105,8 +107,9 @@ func TestGenerateReport_TempAggregation(t *testing.T) {
 	now := time.Now()
 	mock := &mockSummaryProvider{
 		summary: map[string]*models.DeviceSummary{
-			"wwn1": {
+			"devid-temp": {
 				Device: models.Device{
+					DeviceID:     "devid-temp",
 					WWN:          "wwn1",
 					DeviceName:   "/dev/sda",
 					DeviceStatus: pkg.DeviceStatusPassed,
@@ -115,7 +118,7 @@ func TestGenerateReport_TempAggregation(t *testing.T) {
 			},
 		},
 		tempHistory: map[string][]measurements.SmartTemperature{
-			"wwn1": {
+			"devid-temp": {
 				{Date: now.Add(-8 * time.Hour), Temp: 20},
 				{Date: now.Add(-4 * time.Hour), Temp: 50},
 				{Date: now, Temp: 35},
@@ -138,16 +141,16 @@ func TestGenerateReport_ArchivedDevicesExcluded(t *testing.T) {
 	now := time.Now()
 	mock := &mockSummaryProvider{
 		summary: map[string]*models.DeviceSummary{
-			"wwn1": {
+			"devid-active": {
 				Device: models.Device{
-					WWN: "wwn1", DeviceName: "/dev/sda", Archived: false,
+					DeviceID: "devid-active", WWN: "wwn1", DeviceName: "/dev/sda", Archived: false,
 					DeviceStatus: pkg.DeviceStatusPassed,
 				},
 				SmartResults: &models.SmartSummary{Temp: 35},
 			},
-			"wwn2": {
+			"devid-archived": {
 				Device: models.Device{
-					WWN: "wwn2", DeviceName: "/dev/sdb", Archived: true,
+					DeviceID: "devid-archived", WWN: "wwn2", DeviceName: "/dev/sdb", Archived: true,
 					DeviceStatus: pkg.DeviceStatusPassed,
 				},
 				SmartResults: &models.SmartSummary{Temp: 30},

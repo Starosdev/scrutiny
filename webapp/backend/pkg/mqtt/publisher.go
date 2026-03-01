@@ -132,14 +132,14 @@ func (p *Publisher) LoadInitialData(deviceRepo database.DeviceRepo, ctx context.
 	smartDataMap := p.fetchLatestSmartData(deviceRepo, ctx, summary)
 
 	published := 0
-	for wwn, deviceSummary := range summary {
+	for _, deviceSummary := range summary {
 		device := deviceSummary.Device
 		if device.Archived {
 			continue
 		}
 
 		p.PublishDiscovery(&device)
-		p.publishStateSync(wwn, &device, smartDataMap)
+		p.publishStateSync(device.WWN, &device, smartDataMap)
 		published++
 	}
 
@@ -152,7 +152,8 @@ func (p *Publisher) fetchLatestSmartData(deviceRepo database.DeviceRepo, ctx con
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	for wwn := range summary {
+	for _, deviceSummary := range summary {
+		wwn := deviceSummary.Device.WWN
 		wg.Add(1)
 		go func(w string) {
 			defer wg.Done()

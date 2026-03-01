@@ -3,7 +3,7 @@ export interface DeviceModel {
     archived?: boolean;
     muted: boolean;
     wwn: string;
-    device_id?: string;
+    device_id: string;
     device_name?: string;
     device_uuid?: string;
     device_serial_id?: string;

@@ -18,7 +18,7 @@ import (
 // Collector manages Prometheus metrics for all devices
 type Collector struct {
 	mu       sync.RWMutex
-	devices  map[string]*metricsModels.DeviceMetricsData // key: wwn
+	devices  map[string]*metricsModels.DeviceMetricsData // key: device_id
 	registry *prometheus.Registry
 	logger   *logrus.Entry
 }
@@ -40,16 +40,16 @@ func NewCollector(logger *logrus.Entry) *Collector {
 }
 
 // UpdateDeviceMetrics updates device metrics (called from UploadDeviceMetrics)
-func (mc *Collector) UpdateDeviceMetrics(wwn string, device models.Device, smartData measurements.Smart) {
+func (mc *Collector) UpdateDeviceMetrics(device models.Device, smartData measurements.Smart) {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
 
-	mc.devices[wwn] = &metricsModels.DeviceMetricsData{
+	mc.devices[device.DeviceID] = &metricsModels.DeviceMetricsData{
 		Device:    device,
 		SmartData: smartData,
 		UpdatedAt: time.Now(),
 	}
-	mc.logger.Debugf("Updated metrics for device %s", wwn)
+	mc.logger.Debugf("Updated metrics for device %s", device.DeviceID)
 }
 
 // LoadInitialData loads initial data from database (called at startup)
@@ -63,12 +63,13 @@ func (mc *Collector) LoadInitialData(deviceRepo database.DeviceRepo, ctx context
 		return fmt.Errorf("failed to load device summary: %w", err)
 	}
 
-	// Concurrently fetch latest SMART data for each device
+	// Concurrently fetch latest SMART data for each device (keyed by WWN for InfluxDB queries)
 	smartDataMap := make(map[string][]measurements.Smart)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	for wwn := range summary {
+	for _, deviceSummary := range summary {
+		wwn := deviceSummary.Device.WWN
 		wg.Add(1)
 		go func(w string) {
 			defer wg.Done()
@@ -83,14 +84,15 @@ func (mc *Collector) LoadInitialData(deviceRepo database.DeviceRepo, ctx context
 
 	wg.Wait()
 
-	// Load into memory
+	// Load into memory (keyed by DeviceID)
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
 
-	for wwn, deviceSummary := range summary {
-		if smartResults, ok := smartDataMap[wwn]; ok && len(smartResults) > 0 {
-			mc.devices[wwn] = &metricsModels.DeviceMetricsData{
-				Device:    deviceSummary.Device,
+	for _, deviceSummary := range summary {
+		device := deviceSummary.Device
+		if smartResults, ok := smartDataMap[device.WWN]; ok && len(smartResults) > 0 {
+			mc.devices[device.DeviceID] = &metricsModels.DeviceMetricsData{
+				Device:    device,
 				SmartData: smartResults[0],
 				UpdatedAt: time.Now(),
 			}
@@ -129,13 +131,13 @@ func (mc *Collector) Collect(ch chan<- prometheus.Metric) {
 
 // collectDeviceInfo generates device information metrics
 func (mc *Collector) collectDeviceInfo(ch chan<- prometheus.Metric) {
-	for wwn, data := range mc.devices {
+	for _, data := range mc.devices {
 		ch <- prometheus.MustNewConstMetric(
 			prometheus.NewDesc("scrutiny_device_info", "Device information",
-				[]string{"wwn", "device_name", "model_name", "serial_number",
+				[]string{"device_id", "wwn", "device_name", "model_name", "serial_number",
 					"firmware", "protocol", "host_id", "form_factor"}, nil),
 			prometheus.GaugeValue, 1,
-			wwn, data.Device.DeviceName, data.Device.ModelName,
+			data.Device.DeviceID, data.Device.WWN, data.Device.DeviceName, data.Device.ModelName,
 			data.Device.SerialNumber, data.Device.Firmware,
 			data.Device.DeviceProtocol, data.Device.HostId, data.Device.FormFactor,
 		)
@@ -144,13 +146,13 @@ func (mc *Collector) collectDeviceInfo(ch chan<- prometheus.Metric) {
 
 // collectDeviceCapacity generates device capacity metrics
 func (mc *Collector) collectDeviceCapacity(ch chan<- prometheus.Metric) {
-	for wwn, data := range mc.devices {
+	for _, data := range mc.devices {
 		if data.Device.Capacity > 0 {
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc("scrutiny_device_capacity_bytes", "Device capacity in bytes",
-					[]string{"wwn", "device_name", "model_name", "protocol", "host_id"}, nil),
+					[]string{"device_id", "wwn", "device_name", "model_name", "protocol", "host_id"}, nil),
 				prometheus.GaugeValue, float64(data.Device.Capacity),
-				wwn, data.Device.DeviceName, data.Device.ModelName,
+				data.Device.DeviceID, data.Device.WWN, data.Device.DeviceName, data.Device.ModelName,
 				data.Device.DeviceProtocol, data.Device.HostId,
 			)
 		}
@@ -159,12 +161,12 @@ func (mc *Collector) collectDeviceCapacity(ch chan<- prometheus.Metric) {
 
 // collectDeviceStatus generates device status metrics
 func (mc *Collector) collectDeviceStatus(ch chan<- prometheus.Metric) {
-	for wwn, data := range mc.devices {
+	for _, data := range mc.devices {
 		ch <- prometheus.MustNewConstMetric(
 			prometheus.NewDesc("scrutiny_device_status", "Device status (0=passed, 1=failed)",
-				[]string{"wwn", "device_name", "model_name", "protocol", "host_id"}, nil),
+				[]string{"device_id", "wwn", "device_name", "model_name", "protocol", "host_id"}, nil),
 			prometheus.GaugeValue, float64(data.Device.DeviceStatus),
-			wwn, data.Device.DeviceName, data.Device.ModelName,
+			data.Device.DeviceID, data.Device.WWN, data.Device.DeviceName, data.Device.ModelName,
 			data.Device.DeviceProtocol, data.Device.HostId,
 		)
 	}
@@ -172,8 +174,8 @@ func (mc *Collector) collectDeviceStatus(ch chan<- prometheus.Metric) {
 
 // collectSmartAttributes generates SMART attribute metrics
 func (mc *Collector) collectSmartAttributes(ch chan<- prometheus.Metric) {
-	for wwn, data := range mc.devices {
-		baseLabels := []string{wwn, data.Device.DeviceName, data.Device.ModelName,
+	for _, data := range mc.devices {
+		baseLabels := []string{data.Device.DeviceID, data.Device.WWN, data.Device.DeviceName, data.Device.ModelName,
 			data.Device.DeviceProtocol, data.Device.HostId}
 
 		for attrID, attr := range data.SmartData.Attributes {
@@ -185,7 +187,7 @@ func (mc *Collector) collectSmartAttributes(ch chan<- prometheus.Metric) {
 				if floatVal, ok := TryParseFloat(value); ok {
 					ch <- prometheus.MustNewConstMetric(
 						prometheus.NewDesc(metricName, fmt.Sprintf("SMART attribute %s", key),
-							[]string{"wwn", "device_name", "model_name", "protocol", "host_id", "attribute_id"}, nil),
+							[]string{"device_id", "wwn", "device_name", "model_name", "protocol", "host_id", "attribute_id"}, nil),
 						prometheus.GaugeValue, floatVal, attrLabels...,
 					)
 				}
@@ -196,15 +198,15 @@ func (mc *Collector) collectSmartAttributes(ch chan<- prometheus.Metric) {
 
 // collectSummaryMetrics generates summary metrics
 func (mc *Collector) collectSummaryMetrics(ch chan<- prometheus.Metric) {
-	for wwn, data := range mc.devices {
-		labels := []string{wwn, data.Device.DeviceName, data.Device.ModelName,
+	for _, data := range mc.devices {
+		labels := []string{data.Device.DeviceID, data.Device.WWN, data.Device.DeviceName, data.Device.ModelName,
 			data.Device.DeviceProtocol, data.Device.HostId}
 
 		if data.SmartData.Temp > 0 {
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc("scrutiny_smart_temperature_celsius",
 					"Device temperature in Celsius",
-					[]string{"wwn", "device_name", "model_name", "protocol", "host_id"}, nil),
+					[]string{"device_id", "wwn", "device_name", "model_name", "protocol", "host_id"}, nil),
 				prometheus.GaugeValue, float64(data.SmartData.Temp), labels...,
 			)
 		}
@@ -212,7 +214,7 @@ func (mc *Collector) collectSummaryMetrics(ch chan<- prometheus.Metric) {
 		if data.SmartData.PowerOnHours > 0 {
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc("scrutiny_smart_power_on_hours", "Device power on hours",
-					[]string{"wwn", "device_name", "model_name", "protocol", "host_id"}, nil),
+					[]string{"device_id", "wwn", "device_name", "model_name", "protocol", "host_id"}, nil),
 				prometheus.GaugeValue, float64(data.SmartData.PowerOnHours), labels...,
 			)
 		}
@@ -220,7 +222,7 @@ func (mc *Collector) collectSummaryMetrics(ch chan<- prometheus.Metric) {
 		if data.SmartData.PowerCycleCount > 0 {
 			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc("scrutiny_smart_power_cycle_count", "Device power cycle count",
-					[]string{"wwn", "device_name", "model_name", "protocol", "host_id"}, nil),
+					[]string{"device_id", "wwn", "device_name", "model_name", "protocol", "host_id"}, nil),
 				prometheus.GaugeValue, float64(data.SmartData.PowerCycleCount), labels...,
 			)
 		}
@@ -229,7 +231,7 @@ func (mc *Collector) collectSummaryMetrics(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(
 			prometheus.NewDesc("scrutiny_smart_collector_timestamp",
 				"Timestamp of last data collection",
-				[]string{"wwn", "device_name", "model_name", "protocol", "host_id"}, nil),
+				[]string{"device_id", "wwn", "device_name", "model_name", "protocol", "host_id"}, nil),
 			prometheus.GaugeValue, timestampMs, labels...,
 		)
 	}

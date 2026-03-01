@@ -32,6 +32,7 @@ type MissedPingStatusData struct {
 
 // NotifiedDeviceInfo contains details about a device with an active notification
 type NotifiedDeviceInfo struct {
+	DeviceID         string `json:"device_id"`
 	WWN              string `json:"wwn"`
 	DeviceName       string `json:"device_name"`
 	NotificationTime string `json:"notification_time"`

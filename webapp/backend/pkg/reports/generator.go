@@ -43,16 +43,16 @@ func (g *Generator) Generate(ctx context.Context, periodType string, start, end 
 	}
 
 	archivedCount := 0
-	for wwn, summary := range summaries {
+	for devID, summary := range summaries {
 		if summary.Device.Archived {
 			archivedCount++
 			continue
 		}
 
-		deviceReport := buildDeviceReport(summary, tempHistory[wwn])
+		deviceReport := buildDeviceReport(summary, tempHistory[devID])
 
-		// Populate active failures from latest SMART attribute data
-		g.populateAlerts(ctx, &deviceReport, wwn, durationKey)
+		// Populate active failures from latest SMART attribute data (uses WWN for InfluxDB query)
+		g.populateAlerts(ctx, &deviceReport, summary.Device.WWN, durationKey)
 
 		report.Devices = append(report.Devices, deviceReport)
 

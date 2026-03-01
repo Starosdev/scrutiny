@@ -41,7 +41,7 @@ export const appRoutes: Route[] = [
 
             // Example
             {path: 'dashboard', loadChildren: () => import('app/modules/dashboard/dashboard.module').then(m => m.DashboardModule)},
-            {path: 'device/:wwn', loadChildren: () => import('app/modules/detail/detail.module').then(m => m.DetailModule)},
+            {path: 'device/:device_id', loadChildren: () => import('app/modules/detail/detail.module').then(m => m.DetailModule)},
 
             // ZFS Pools
             {path: 'zfs-pools', loadChildren: () => import('app/modules/zfs-pools/zfs-pools.module').then(m => m.ZFSPoolsModule)},

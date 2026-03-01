@@ -91,8 +91,8 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
         this._workloadService.getWorkloadData(durationKey).subscribe();
     }
 
-    navigateToDevice(wwn: string): void {
-        this.router.navigate(['/device', wwn]);
+    navigateToDevice(deviceId: string): void {
+        this.router.navigate(['/device', deviceId]);
     }
 
     intensityColor(intensity: string): string {

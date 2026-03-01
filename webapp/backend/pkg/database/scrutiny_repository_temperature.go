@@ -65,6 +65,15 @@ func (sr *scrutinyRepository) SaveSmartTemperature(ctx context.Context, wwn stri
 func (sr *scrutinyRepository) GetSmartTemperatureHistory(ctx context.Context, durationKey string) (map[string][]measurements.SmartTemperature, error) {
 	//we can get temp history for "week", "month", DURATION_KEY_YEAR, "forever"
 
+	// Build WWN-to-DeviceID map for re-keying InfluxDB results
+	devices, devErr := sr.GetDevices(ctx)
+	wwnToDeviceID := map[string]string{}
+	if devErr == nil {
+		for _, d := range devices {
+			wwnToDeviceID[d.WWN] = d.DeviceID
+		}
+	}
+
 	deviceTempHistory := map[string][]measurements.SmartTemperature{}
 
 	queryStr := sr.aggregateTempQuery(durationKey)
@@ -75,21 +84,27 @@ func (sr *scrutinyRepository) GetSmartTemperatureHistory(ctx context.Context, du
 		for result.Next() {
 
 			if deviceWWN, ok := result.Record().Values()["device_wwn"]; ok {
-
-				//check if deviceWWN has been seen and initialized already
-				if _, ok := deviceTempHistory[deviceWWN.(string)]; !ok {
-					deviceTempHistory[deviceWWN.(string)] = []measurements.SmartTemperature{}
+				wwn := deviceWWN.(string)
+				// Re-key from WWN to DeviceID
+				key := wwn
+				if devID, hasDevID := wwnToDeviceID[wwn]; hasDevID {
+					key = devID
 				}
 
-				currentTempHistory := deviceTempHistory[deviceWWN.(string)]
+				//check if key has been seen and initialized already
+				if _, ok := deviceTempHistory[key]; !ok {
+					deviceTempHistory[key] = []measurements.SmartTemperature{}
+				}
+
+				currentTempHistory := deviceTempHistory[key]
 				smartTemp := measurements.SmartTemperature{}
 
-				for key, val := range result.Record().Values() {
-					smartTemp.Inflate(key, val)
+				for k, val := range result.Record().Values() {
+					smartTemp.Inflate(k, val)
 				}
 				smartTemp.Date = result.Record().Values()["_time"].(time.Time)
 				currentTempHistory = append(currentTempHistory, smartTemp)
-				deviceTempHistory[deviceWWN.(string)] = currentTempHistory
+				deviceTempHistory[key] = currentTempHistory
 			}
 		}
 		if result.Err() != nil {

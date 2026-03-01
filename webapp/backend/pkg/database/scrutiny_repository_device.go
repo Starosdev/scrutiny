@@ -199,6 +199,14 @@ func (sr *scrutinyRepository) GetDeviceDetails(ctx context.Context, wwn string) 
 	return device, nil
 }
 
+func (sr *scrutinyRepository) GetDeviceByID(ctx context.Context, deviceID string) (models.Device, error) {
+	var device models.Device
+	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
+		return models.Device{}, fmt.Errorf("could not find device by device_id: %w", err)
+	}
+	return device, nil
+}
+
 // Update Device Archived State
 func (sr *scrutinyRepository) UpdateDeviceArchived(ctx context.Context, wwn string, archived bool) error {
 	var device models.Device

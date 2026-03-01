@@ -38,7 +38,7 @@ const NotifyFailureTypePerformanceDegradation = "PerformanceDegradation"
 const NotifyFailureTypeReport = "Report"
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
-func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
+func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, wwn string, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
 	// 1. check if the device is healthy
 	if device.DeviceStatus == pkg.DeviceStatusPassed {
 		logger.Debugf("ShouldNotify: skipping device %s - device status is passed", device.WWN)
@@ -138,7 +138,7 @@ func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs me
 	var lastPoints []measurements.Smart
 	var err error
 	if !repeatNotifications {
-		lastPoints, err = deviceRepo.GetPreviousSmartSubmission(c, c.Param("wwn"))
+		lastPoints, err = deviceRepo.GetPreviousSmartSubmission(c, wwn)
 		if err != nil || len(lastPoints) < 1 {
 			logger.Debugln("Could not get the previous submission from the database. This is expected for the first or second submission of data for the device.")
 		}
@@ -660,6 +660,7 @@ func NewMissedPing(logger logrus.FieldLogger, appconfig config.Interface, device
 // MissedPingDigestDevice represents a single device in a missed ping digest
 type MissedPingDigestDevice struct {
 	LastSeen     time.Time
+	DeviceID     string
 	WWN          string
 	DeviceName   string
 	SerialNumber string
