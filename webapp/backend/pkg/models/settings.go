@@ -32,6 +32,14 @@ type Settings struct {
 		MissedPingTimeoutMinutes    int  `json:"missed_ping_timeout_minutes" mapstructure:"missed_ping_timeout_minutes"`
 		MissedPingCheckIntervalMins int  `json:"missed_ping_check_interval_mins" mapstructure:"missed_ping_check_interval_mins"`
 
+		// Notification cooldown / rate limiting
+		MissedPingCooldownMinutes int `json:"missed_ping_cooldown_minutes" mapstructure:"missed_ping_cooldown_minutes"`
+		NotificationRateLimit     int `json:"notification_rate_limit" mapstructure:"notification_rate_limit"`
+
+		// Quiet hours
+		NotificationQuietStart string `json:"notification_quiet_start" mapstructure:"notification_quiet_start"`
+		NotificationQuietEnd   string `json:"notification_quiet_end" mapstructure:"notification_quiet_end"`
+
 		// Heartbeat notification settings
 		HeartbeatEnabled       bool `json:"heartbeat_enabled" mapstructure:"heartbeat_enabled"`
 		HeartbeatIntervalHours int  `json:"heartbeat_interval_hours" mapstructure:"heartbeat_interval_hours"`

@@ -48,7 +48,8 @@ type Device struct {
 
 	// Data set by Scrutiny
 	DeviceStatus     pkg.DeviceStatus `json:"device_status"`
-	HasForcedFailure bool             `json:"has_forced_failure" gorm:"default:false"` // True when override with action=force_status, status=failed is applied
+	HasForcedFailure          bool             `json:"has_forced_failure" gorm:"default:false"` // True when override with action=force_status, status=failed is applied
+	MissedPingTimeoutOverride int              `json:"missed_ping_timeout_override" gorm:"default:0"` // Per-device override for missed ping timeout (0 = use global)
 }
 
 func (dv *Device) IsAta() bool {

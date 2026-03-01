@@ -28,4 +28,5 @@ export interface DeviceModel {
 
     device_status: number;
     has_forced_failure?: boolean;
+    missed_ping_timeout_override?: number;
 }

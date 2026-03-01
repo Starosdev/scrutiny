@@ -246,6 +246,16 @@ func (sr *scrutinyRepository) UpdateDeviceHasForcedFailure(ctx context.Context, 
 	return sr.gormClient.WithContext(ctx).Model(&models.Device{}).Where("wwn = ?", wwn).Update("has_forced_failure", hasForcedFailure).Error
 }
 
+// Update Device Missed Ping Timeout Override (0 = use global setting)
+func (sr *scrutinyRepository) UpdateDeviceMissedPingTimeout(ctx context.Context, wwn string, timeoutMinutes int) error {
+	var device models.Device
+	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).First(&device).Error; err != nil {
+		return fmt.Errorf("could not get device from DB: %v", err)
+	}
+
+	return sr.gormClient.Model(&device).Where("wwn = ?", wwn).Update("missed_ping_timeout_override", timeoutMinutes).Error
+}
+
 func (sr *scrutinyRepository) DeleteDevice(ctx context.Context, wwn string) error {
 	// Validate WWN format before using in delete predicate (defense-in-depth, DeleteAPI doesn't support params)
 	if err := validation.ValidateWWN(wwn); err != nil {

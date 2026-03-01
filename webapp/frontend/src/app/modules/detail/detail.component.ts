@@ -658,15 +658,19 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     openSettingsDialog(): void {
         if (!this.device) return;
 
+        const globalMissedPingTimeout = this.config?.metrics?.missed_ping_timeout_minutes || 15;
+
         const dialogRef = this.dialog.open(DetailSettingsComponent, {
             width: '600px',
             data: {
                 curMuted: this.device.muted,
-                curLabel: this.device.label
+                curLabel: this.device.label,
+                curMissedPingTimeoutOverride: this.device.missed_ping_timeout_override || 0,
+                globalMissedPingTimeout: globalMissedPingTimeout
             },
         });
 
-        dialogRef.afterClosed().subscribe((result: undefined | null | { muted: boolean, label: string }) => {
+        dialogRef.afterClosed().subscribe((result: undefined | null | { muted: boolean, label: string, missedPingTimeoutOverride: number }) => {
             if (!result || !this.device) return;
 
             const promises: Promise<any>[] = [];
@@ -677,6 +681,11 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
             if (result.label !== this.device.label) {
                 promises.push(this._detailService.setLabel(this.device.wwn, result.label).toPromise());
+            }
+
+            const currentOverride = this.device.missed_ping_timeout_override || 0;
+            if (result.missedPingTimeoutOverride !== currentOverride) {
+                promises.push(this._detailService.setMissedPingTimeout(this.device.wwn, result.missedPingTimeoutOverride).toPromise());
             }
 
             if (promises.length > 0) {

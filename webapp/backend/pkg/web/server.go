@@ -18,6 +18,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/errors"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/metrics"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/mqtt"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/notify"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/reports"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/web/handler"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/web/middleware"
@@ -29,10 +30,11 @@ const configKeyMetricsEnabled = "web.metrics.enabled"
 const configKeyMqttEnabled = "web.mqtt.enabled"
 
 type AppEngine struct {
-	Config            config.Interface
-	Logger            *logrus.Entry
-	MetricsCollector  *metrics.Collector
-	MqttPublisher     *mqtt.Publisher
+	Config             config.Interface
+	Logger             *logrus.Entry
+	MetricsCollector   *metrics.Collector
+	MqttPublisher      *mqtt.Publisher
+	NotificationGate   *notify.NotificationGate
 	MissedPingMonitor  *MissedPingMonitor
 	HeartbeatMonitor   *HeartbeatMonitor
 	UptimeKumaMonitor  *UptimeKumaMonitor
@@ -45,6 +47,9 @@ func (ae *AppEngine) registerMiddleware(r *gin.Engine, logger *logrus.Entry) {
 	r.Use(middleware.ConfigMiddleware(ae.Config))
 	r.Use(middleware.AuthMiddleware(ae.Config, logger))
 
+	if ae.NotificationGate != nil {
+		r.Use(middleware.NotificationGateMiddleware(ae.NotificationGate))
+	}
 	if ae.MissedPingMonitor != nil {
 		r.Use(middleware.MissedPingMonitorMiddleware(ae.MissedPingMonitor))
 	}
@@ -129,7 +134,8 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.POST("/device/:wwn/mute", handler.MuteDevice)           //used by UI to mute device
 			api.POST("/device/:wwn/unmute", handler.UnmuteDevice)       //used by UI to unmute device
 			api.POST("/device/:wwn/label", handler.UpdateDeviceLabel)                         //used by UI to set device label
-			api.POST("/device/:wwn/smart-display-mode", handler.UpdateDeviceSmartDisplayMode) //used by UI to set SMART attribute display mode
+			api.POST("/device/:wwn/smart-display-mode", handler.UpdateDeviceSmartDisplayMode)       // used by UI to set SMART attribute display mode
+			api.POST("/device/:wwn/missed-ping-timeout", handler.UpdateDeviceMissedPingTimeout) // used by UI to set per-device missed ping timeout override
 			api.DELETE("/device/:wwn", handler.DeleteDevice)                                  //used by UI to delete device
 			api.POST("/device/:wwn/performance", handler.UploadDevicePerformance)            // used by Collector to upload performance benchmarks
 			api.GET("/device/:wwn/performance", handler.GetDevicePerformance)                // used by UI to view performance history
@@ -244,7 +250,9 @@ func (ae *AppEngine) Start() error {
 			filepath.Dir(ae.Config.GetString("web.database.location"))))
 	}
 
-	// Create monitors BEFORE Setup() so middleware can register them in gin context
+	// Create notification gate and monitors BEFORE Setup() so middleware can register them in gin context
+	ae.NotificationGate = notify.NewNotificationGate(ae.Logger)
+
 	missedPingMonitor := NewMissedPingMonitor(ae)
 	ae.MissedPingMonitor = missedPingMonitor
 

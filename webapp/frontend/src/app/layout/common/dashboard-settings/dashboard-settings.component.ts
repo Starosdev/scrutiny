@@ -48,6 +48,14 @@ export class DashboardSettingsComponent implements OnInit {
     missedPingTimeoutMinutes: number;
     missedPingCheckIntervalMins: number;
 
+    // Notification cooldown / rate limiting
+    missedPingCooldownMinutes: number;
+    notificationRateLimit: number;
+
+    // Quiet hours
+    notificationQuietStart: string;
+    notificationQuietEnd: string;
+
     // Heartbeat settings
     heartbeatEnabled: boolean;
     heartbeatIntervalHours: number;
@@ -152,6 +160,14 @@ export class DashboardSettingsComponent implements OnInit {
                 this.notifyOnMissedPing = config.metrics.notify_on_missed_ping ?? false;
                 this.missedPingTimeoutMinutes = config.metrics.missed_ping_timeout_minutes ?? 60;
                 this.missedPingCheckIntervalMins = config.metrics.missed_ping_check_interval_mins ?? 5;
+
+                // Notification cooldown / rate limiting
+                this.missedPingCooldownMinutes = config.metrics.missed_ping_cooldown_minutes ?? 0;
+                this.notificationRateLimit = config.metrics.notification_rate_limit ?? 0;
+
+                // Quiet hours
+                this.notificationQuietStart = config.metrics.notification_quiet_start ?? '';
+                this.notificationQuietEnd = config.metrics.notification_quiet_end ?? '';
 
                 // Heartbeat settings
                 this.heartbeatEnabled = config.metrics.heartbeat_enabled ?? false;
@@ -352,6 +368,10 @@ export class DashboardSettingsComponent implements OnInit {
                 notify_on_missed_ping: this.notifyOnMissedPing,
                 missed_ping_timeout_minutes: this.missedPingTimeoutMinutes,
                 missed_ping_check_interval_mins: this.missedPingCheckIntervalMins,
+                missed_ping_cooldown_minutes: this.missedPingCooldownMinutes,
+                notification_rate_limit: this.notificationRateLimit,
+                notification_quiet_start: this.notificationQuietStart,
+                notification_quiet_end: this.notificationQuietEnd,
                 heartbeat_enabled: this.heartbeatEnabled,
                 heartbeat_interval_hours: this.heartbeatIntervalHours,
                 uptime_kuma_enabled: this.uptimeKumaEnabled,

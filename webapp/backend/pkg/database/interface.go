@@ -41,6 +41,7 @@ type DeviceRepo interface {
 	UpdateDeviceLabel(ctx context.Context, wwn string, label string) error
 	UpdateDeviceSmartDisplayMode(ctx context.Context, wwn string, mode string) error
 	UpdateDeviceHasForcedFailure(ctx context.Context, wwn string, hasForcedFailure bool) error
+	UpdateDeviceMissedPingTimeout(ctx context.Context, wwn string, timeoutMinutes int) error
 	DeleteDevice(ctx context.Context, wwn string) error
 	// RecalculateDeviceStatusFromHistory re-evaluates device status from stored SMART data
 	// with current overrides applied. Used when overrides are added/modified/deleted.
