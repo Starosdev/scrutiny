@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.38.0](https://github.com/Starosdev/scrutiny/compare/v1.37.0...v1.38.0) (2026-03-01)
+
+### Features
+
+* **notifications:** add cooldown, quiet hours, rate limiting, and per-device overrides ([#308](https://github.com/Starosdev/scrutiny/issues/308)) ([#309](https://github.com/Starosdev/scrutiny/issues/309)) ([de63691](https://github.com/Starosdev/scrutiny/commit/de63691fdb904c6e6c1547fffae8c04c3f707c0c)), closes [#255](https://github.com/Starosdev/scrutiny/issues/255)
+
 ## [1.37.0](https://github.com/Starosdev/scrutiny/compare/v1.36.0...v1.37.0) (2026-02-28)
 
 ### Features
