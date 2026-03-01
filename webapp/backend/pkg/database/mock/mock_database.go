@@ -669,20 +669,6 @@ func (mr *MockDeviceRepoMockRecorder) UpdateDeviceMissedPingTimeout(ctx, deviceI
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDeviceMissedPingTimeout", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateDeviceMissedPingTimeout), ctx, deviceID, timeoutMinutes)
 }
 
-// UpdateDeviceMissedPingTimeout mocks base method.
-func (m *MockDeviceRepo) UpdateDeviceMissedPingTimeout(ctx context.Context, wwn string, timeoutMinutes int) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateDeviceMissedPingTimeout", ctx, wwn, timeoutMinutes)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateDeviceMissedPingTimeout indicates an expected call of UpdateDeviceMissedPingTimeout.
-func (mr *MockDeviceRepoMockRecorder) UpdateDeviceMissedPingTimeout(ctx, wwn, timeoutMinutes interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDeviceMissedPingTimeout", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateDeviceMissedPingTimeout), ctx, wwn, timeoutMinutes)
-}
-
 // UpdateDeviceLabel mocks base method.
 func (m *MockDeviceRepo) UpdateDeviceLabel(ctx context.Context, deviceID, label string) error {
 	m.ctrl.T.Helper()
