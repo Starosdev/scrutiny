@@ -6,39 +6,31 @@ import (
 )
 
 type Device struct {
-	// GORM attributes, see: http://gorm.io/docs/conventions.html
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time
-
-	WWN string `json:"wwn" gorm:"primary_key"`
-
-	DeviceName     string `json:"device_name"`
-	DeviceUUID     string `json:"device_uuid"`
-	DeviceSerialID string `json:"device_serial_id"`
-	DeviceLabel    string `json:"device_label"`
-
-	Manufacturer   string `json:"manufacturer"`
-	ModelName      string `json:"model_name"`
-	InterfaceType  string `json:"interface_type"`
-	InterfaceSpeed string `json:"interface_speed"`
-	SerialNumber   string `json:"serial_number"`
-	Firmware       string `json:"firmware"`
-	FormFactor     string `json:"form_factor"`
-	DeviceProtocol string `json:"device_protocol"` // protocol determines which smart attribute types are available (ATA, NVMe, SCSI)
-	DeviceType     string `json:"device_type"`     // device type is used for querying with -d/t flag, should only be used by collector.
-
-	// User provided metadata
-	Label            string `json:"label"`
-	HostId           string `json:"host_id"`
-	CollectorVersion string `json:"collector_version"`
-	SmartDisplayMode string `json:"smart_display_mode" gorm:"default:'scrutiny'"` // "scrutiny", "raw", or "normalized"
-
-	// Data set by Scrutiny
-	DeviceStatus              pkg.DeviceStatus `json:"device_status"`
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
+	DeletedAt                 *time.Time
+	FormFactor                string           `json:"form_factor"`
+	DeviceType                string           `json:"device_type"`
+	DeviceUUID                string           `json:"device_uuid"`
+	DeviceSerialID            string           `json:"device_serial_id"`
+	DeviceLabel               string           `json:"device_label"`
+	Manufacturer              string           `json:"manufacturer"`
+	ModelName                 string           `json:"model_name"`
+	InterfaceType             string           `json:"interface_type"`
+	InterfaceSpeed            string           `json:"interface_speed"`
+	SerialNumber              string           `json:"serial_number"`
+	Firmware                  string           `json:"firmware"`
+	WWN                       string           `json:"wwn" gorm:"primary_key"`
+	DeviceProtocol            string           `json:"device_protocol"`
+	DeviceName                string           `json:"device_name"`
+	Label                     string           `json:"label"`
+	HostId                    string           `json:"host_id"`
+	CollectorVersion          string           `json:"collector_version"`
+	SmartDisplayMode          string           `json:"smart_display_mode" gorm:"default:'scrutiny'"`
 	Capacity                  int64            `json:"capacity"`
 	RotationSpeed             int              `json:"rotational_speed"`
-	MissedPingTimeoutOverride int              `json:"missed_ping_timeout_override" gorm:"default:0"` // Per-device override (0 = use global)
+	MissedPingTimeoutOverride int              `json:"missed_ping_timeout_override" gorm:"default:0"`
+	DeviceStatus              pkg.DeviceStatus `json:"device_status"`
 	Archived                  bool             `json:"archived"`
 	Muted                     bool             `json:"muted"`
 	SmartSupport              bool             `json:"smart_support"`
