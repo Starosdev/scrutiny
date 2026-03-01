@@ -1,7 +1,8 @@
 package models
 
 type Device struct {
-	WWN string `json:"wwn"`
+	WWN      string `json:"wwn"`
+	DeviceID string `json:"device_id"`
 
 	DeviceName     string `json:"device_name"`
 	DeviceUUID	   string `json:"device_uuid"`

@@ -23,11 +23,13 @@ func (sr *scrutinyRepository) GetWorkloadInsights(ctx context.Context, durationK
 
 	insights := map[string]*models.WorkloadInsight{}
 	deviceProtocols := map[string]string{}
+	wwnToDeviceID := map[string]string{}
 	for i := range devices {
 		if devices[i].Archived {
 			continue
 		}
-		insights[devices[i].WWN] = &models.WorkloadInsight{
+		insights[devices[i].DeviceID] = &models.WorkloadInsight{
+			DeviceID:       devices[i].DeviceID,
 			DeviceWWN:      devices[i].WWN,
 			DeviceProtocol: devices[i].DeviceProtocol,
 			DeviceName:     devices[i].DeviceName,
@@ -41,6 +43,7 @@ func (sr *scrutinyRepository) GetWorkloadInsights(ctx context.Context, durationK
 			Intensity:      "unknown",
 		}
 		deviceProtocols[devices[i].WWN] = devices[i].DeviceProtocol
+		wwnToDeviceID[devices[i].WWN] = devices[i].DeviceID
 	}
 
 	if len(insights) == 0 {
@@ -62,7 +65,12 @@ func (sr *scrutinyRepository) GetWorkloadInsights(ctx context.Context, durationK
 	}
 
 	// Compute insights per device
-	for wwn, insight := range insights {
+	// InfluxDB results are keyed by WWN, so we look up by WWN using the reverse map
+	for devID, insight := range insights {
+		// Find WWN for this DeviceID to look up InfluxDB results
+		wwn := insight.DeviceWWN
+		_ = devID
+
 		first, hasFirst := firstPoints[wwn]
 		last, hasLast := lastPoints[wwn]
 

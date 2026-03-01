@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
-	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"gorm.io/gorm/clause"
 )
 
@@ -20,10 +20,15 @@ import (
 // insert device into DB (and update specified columns if device is already registered)
 // update device fields that may change: (DeviceType, HostID)
 func (sr *scrutinyRepository) RegisterDevice(ctx context.Context, dev models.Device) error {
+	// Compute deterministic device ID from model, serial, and WWN
+	if dev.DeviceID == "" {
+		dev.DeviceID = deviceid.Generate(dev.ModelName, dev.SerialNumber, dev.WWN)
+	}
+
 	updateColumns := []string{
 		"host_id", "device_name", "device_type", "device_uuid",
 		"device_serial_id", "device_label", "collector_version",
-		"model_name", "manufacturer",
+		"model_name", "manufacturer", "wwn",
 	}
 
 	// Only update the custom label if the collector explicitly provides one.
@@ -34,7 +39,7 @@ func (sr *scrutinyRepository) RegisterDevice(ctx context.Context, dev models.Dev
 	}
 
 	if err := sr.gormClient.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "wwn"}},
+		Columns:   []clause.Column{{Name: "device_id"}},
 		DoUpdates: clause.AssignmentColumns(updateColumns),
 	}).Create(&dev).Error; err != nil {
 		return err
@@ -53,14 +58,13 @@ func (sr *scrutinyRepository) GetDevices(ctx context.Context) ([]models.Device, 
 }
 
 // update device (only metadata) from collector
-func (sr *scrutinyRepository) UpdateDevice(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo) (models.Device, error) {
+func (sr *scrutinyRepository) UpdateDevice(ctx context.Context, deviceID string, collectorSmartData *collector.SmartInfo) (models.Device, error) {
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).First(&device).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
 		return device, fmt.Errorf("Could not get device from DB: %v", err)
 	}
 
-	//TODO catch GormClient err
-	err := device.UpdateFromCollectorSmartInfo(collectorSmartData)
+	err := device.UpdateFromCollectorSmartInfo(*collectorSmartData)
 	if err != nil {
 		return device, err
 	}
@@ -73,9 +77,9 @@ func (sr *scrutinyRepository) UpdateDevice(ctx context.Context, wwn string, coll
 }
 
 // Update Device Status
-func (sr *scrutinyRepository) UpdateDeviceStatus(ctx context.Context, wwn string, status pkg.DeviceStatus) (models.Device, error) {
+func (sr *scrutinyRepository) UpdateDeviceStatus(ctx context.Context, deviceID string, status pkg.DeviceStatus) (models.Device, error) {
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).First(&device).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
 		return device, fmt.Errorf("Could not get device from DB: %v", err)
 	}
 
@@ -84,9 +88,9 @@ func (sr *scrutinyRepository) UpdateDeviceStatus(ctx context.Context, wwn string
 }
 
 // ResetDeviceStatus clears all failure flags when device SMART data shows all attributes passing
-func (sr *scrutinyRepository) ResetDeviceStatus(ctx context.Context, wwn string) (models.Device, error) {
+func (sr *scrutinyRepository) ResetDeviceStatus(ctx context.Context, deviceID string) (models.Device, error) {
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).First(&device).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
 		return device, fmt.Errorf("Could not get device from DB: %v", err)
 	}
 
@@ -101,15 +105,15 @@ func (sr *scrutinyRepository) ResetDeviceStatus(ctx context.Context, wwn string)
 
 // RecalculateDeviceStatusFromHistory re-evaluates device status from stored SMART data
 // with current overrides applied. Used when overrides are added/modified/deleted.
-func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Context, wwn string) error {
+func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Context, deviceID string) error {
 	// 1. Get device to know its protocol and current status
-	device, err := sr.GetDeviceDetails(ctx, wwn)
+	device, err := sr.GetDeviceDetails(ctx, deviceID)
 	if err != nil {
 		return fmt.Errorf("could not get device: %w", err)
 	}
 
-	// 2. Get latest SMART entry from InfluxDB (delta evaluation is already baked into stored data)
-	smartHistory, err := sr.GetSmartAttributeHistory(ctx, wwn, "week", 1, 0, nil)
+	// 2. Get latest SMART entry from InfluxDB (uses WWN for InfluxDB query)
+	smartHistory, err := sr.GetSmartAttributeHistory(ctx, device.WWN, "week", 1, 0, nil)
 	if err != nil {
 		return fmt.Errorf("could not get SMART history: %w", err)
 	}
@@ -128,8 +132,8 @@ func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Con
 	for attrId, attr := range latestSmart.Attributes {
 		attrStatus := attr.GetStatus()
 
-		// Apply override logic
-		if result := overrides.ApplyWithOverrides(mergedOverrides, device.DeviceProtocol, attrId, wwn); result != nil {
+		// Apply override logic (uses WWN for device-specific overrides)
+		if result := overrides.ApplyWithOverrides(mergedOverrides, device.DeviceProtocol, attrId, device.WWN); result != nil {
 			if result.ShouldIgnore {
 				// Attribute is ignored - don't count its failure
 				continue
@@ -157,74 +161,86 @@ func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Con
 
 	// 5. Update device status if changed
 	if newStatus == pkg.DeviceStatusPassed && device.DeviceStatus != pkg.DeviceStatusPassed {
-		_, err = sr.ResetDeviceStatus(ctx, wwn)
+		_, err = sr.ResetDeviceStatus(ctx, deviceID)
 		if err != nil {
 			return fmt.Errorf("could not reset device status: %w", err)
 		}
-		sr.logger.Infof("Device %s status recalculated to passed after override change", wwn)
+		sr.logger.Infof("Device %s status recalculated to passed after override change", deviceID)
 	} else if newStatus != pkg.DeviceStatusPassed && device.DeviceStatus == pkg.DeviceStatusPassed {
-		_, err = sr.UpdateDeviceStatus(ctx, wwn, newStatus)
+		_, err = sr.UpdateDeviceStatus(ctx, deviceID, newStatus)
 		if err != nil {
 			return fmt.Errorf("could not update device status: %w", err)
 		}
-		sr.logger.Infof("Device %s status recalculated to failed after override change", wwn)
+		sr.logger.Infof("Device %s status recalculated to failed after override change", deviceID)
 	}
 
 	// 6. Update has_forced_failure flag if changed
 	if hasForcedFailure != device.HasForcedFailure {
-		if err := sr.UpdateDeviceHasForcedFailure(ctx, wwn, hasForcedFailure); err != nil {
+		if err := sr.UpdateDeviceHasForcedFailure(ctx, deviceID, hasForcedFailure); err != nil {
 			return fmt.Errorf("could not update has_forced_failure: %w", err)
 		}
-		sr.logger.Infof("Device %s has_forced_failure updated to %v after override change", wwn, hasForcedFailure)
+		sr.logger.Infof("Device %s has_forced_failure updated to %v after override change", deviceID, hasForcedFailure)
 	}
 
 	return nil
 }
 
-func (sr *scrutinyRepository) GetDeviceDetails(ctx context.Context, wwn string) (models.Device, error) {
+func (sr *scrutinyRepository) GetDeviceDetails(ctx context.Context, deviceID string) (models.Device, error) {
 	var device models.Device
 
 	sr.logger.Debugln("GetDeviceDetails from GORM")
 
-	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).First(&device).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
 		return models.Device{}, err
 	}
 
 	return device, nil
 }
 
-// Update Device Archived State
-func (sr *scrutinyRepository) UpdateDeviceArchived(ctx context.Context, wwn string, archived bool) error {
+func (sr *scrutinyRepository) GetDeviceByID(ctx context.Context, deviceID string) (models.Device, error) {
+	return sr.GetDeviceDetails(ctx, deviceID)
+}
+
+func (sr *scrutinyRepository) GetDeviceByWWN(ctx context.Context, wwn string) (models.Device, error) {
 	var device models.Device
 	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).First(&device).Error; err != nil {
+		return models.Device{}, fmt.Errorf("could not find device by wwn: %w", err)
+	}
+	return device, nil
+}
+
+// Update Device Archived State
+func (sr *scrutinyRepository) UpdateDeviceArchived(ctx context.Context, deviceID string, archived bool) error {
+	var device models.Device
+	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
 		return fmt.Errorf("Could not get device from DB: %v", err)
 	}
 
-	return sr.gormClient.Model(&device).Where("wwn = ?", wwn).Update("archived", archived).Error
+	return sr.gormClient.Model(&device).Update("archived", archived).Error
 }
 
 // Update Device Muted State
-func (sr *scrutinyRepository) UpdateDeviceMuted(ctx context.Context, wwn string, muted bool) error {
+func (sr *scrutinyRepository) UpdateDeviceMuted(ctx context.Context, deviceID string, muted bool) error {
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).First(&device).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
 		return fmt.Errorf("Could not get device from DB: %v", err)
 	}
 
-	return sr.gormClient.Model(&device).Where("wwn = ?", wwn).Update("muted", muted).Error
+	return sr.gormClient.Model(&device).Update("muted", muted).Error
 }
 
 // Update Device Label (custom user-provided name)
-func (sr *scrutinyRepository) UpdateDeviceLabel(ctx context.Context, wwn string, label string) error {
+func (sr *scrutinyRepository) UpdateDeviceLabel(ctx context.Context, deviceID string, label string) error {
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).First(&device).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
 		return fmt.Errorf("Could not get device from DB: %v", err)
 	}
 
-	return sr.gormClient.Model(&device).Where("wwn = ?", wwn).Update("label", label).Error
+	return sr.gormClient.Model(&device).Update("label", label).Error
 }
 
 // Update Device Smart Display Mode (user preference for attribute value display)
-func (sr *scrutinyRepository) UpdateDeviceSmartDisplayMode(ctx context.Context, wwn string, mode string) error {
+func (sr *scrutinyRepository) UpdateDeviceSmartDisplayMode(ctx context.Context, deviceID string, mode string) error {
 	// Validate mode is one of the allowed values
 	validModes := map[string]bool{"scrutiny": true, "raw": true, "normalized": true}
 	if !validModes[mode] {
@@ -232,59 +248,62 @@ func (sr *scrutinyRepository) UpdateDeviceSmartDisplayMode(ctx context.Context, 
 	}
 
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).First(&device).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
 		return fmt.Errorf("Could not get device from DB: %v", err)
 	}
 
-	return sr.gormClient.Model(&device).Where("wwn = ?", wwn).Update("smart_display_mode", mode).Error
+	return sr.gormClient.Model(&device).Update("smart_display_mode", mode).Error
 }
 
 // UpdateDeviceHasForcedFailure updates the has_forced_failure flag for a device.
 // This flag indicates when an override with action=force_status, status=failed was applied.
 // When true, the frontend should show the device as failed regardless of threshold setting.
-func (sr *scrutinyRepository) UpdateDeviceHasForcedFailure(ctx context.Context, wwn string, hasForcedFailure bool) error {
-	return sr.gormClient.WithContext(ctx).Model(&models.Device{}).Where("wwn = ?", wwn).Update("has_forced_failure", hasForcedFailure).Error
+func (sr *scrutinyRepository) UpdateDeviceHasForcedFailure(ctx context.Context, deviceID string, hasForcedFailure bool) error {
+	return sr.gormClient.WithContext(ctx).Model(&models.Device{}).Where("device_id = ?", deviceID).Update("has_forced_failure", hasForcedFailure).Error
 }
 
 // Update Device Missed Ping Timeout Override (0 = use global setting)
-func (sr *scrutinyRepository) UpdateDeviceMissedPingTimeout(ctx context.Context, wwn string, timeoutMinutes int) error {
+func (sr *scrutinyRepository) UpdateDeviceMissedPingTimeout(ctx context.Context, deviceID string, timeoutMinutes int) error {
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).First(&device).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
 		return fmt.Errorf("could not get device from DB: %v", err)
 	}
 
-	return sr.gormClient.Model(&device).Where("wwn = ?", wwn).Update("missed_ping_timeout_override", timeoutMinutes).Error
+	return sr.gormClient.Model(&device).Update("missed_ping_timeout_override", timeoutMinutes).Error
 }
 
-func (sr *scrutinyRepository) DeleteDevice(ctx context.Context, wwn string) error {
-	// Validate WWN format before using in delete predicate (defense-in-depth, DeleteAPI doesn't support params)
-	if err := validation.ValidateWWN(wwn); err != nil {
-		return fmt.Errorf("invalid WWN: %w", err)
+func (sr *scrutinyRepository) DeleteDevice(ctx context.Context, deviceID string) error {
+	// Look up device to get WWN for InfluxDB cleanup
+	var device models.Device
+	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
+		return fmt.Errorf("could not find device: %w", err)
 	}
 
-	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).Delete(&models.Device{}).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).Delete(&models.Device{}).Error; err != nil {
 		return err
 	}
 
-	//delete data from influxdb.
-	buckets := []string{
-		sr.appConfig.GetString("web.influxdb.bucket"),
-		fmt.Sprintf("%s_weekly", sr.appConfig.GetString("web.influxdb.bucket")),
-		fmt.Sprintf("%s_monthly", sr.appConfig.GetString("web.influxdb.bucket")),
-		fmt.Sprintf("%s_yearly", sr.appConfig.GetString("web.influxdb.bucket")),
-	}
+	// Delete data from InfluxDB using WWN (InfluxDB tags use device_wwn)
+	if device.WWN != "" {
+		buckets := []string{
+			sr.appConfig.GetString("web.influxdb.bucket"),
+			fmt.Sprintf("%s_weekly", sr.appConfig.GetString("web.influxdb.bucket")),
+			fmt.Sprintf("%s_monthly", sr.appConfig.GetString("web.influxdb.bucket")),
+			fmt.Sprintf("%s_yearly", sr.appConfig.GetString("web.influxdb.bucket")),
+		}
 
-	for _, bucket := range buckets {
-		sr.logger.Infof("Deleting data for %s in bucket: %s", wwn, bucket)
-		if err := sr.influxClient.DeleteAPI().DeleteWithName(
-			ctx,
-			sr.appConfig.GetString("web.influxdb.org"),
-			bucket,
-			time.Now().AddDate(-10, 0, 0),
-			time.Now(),
-			fmt.Sprintf(`device_wwn="%s"`, wwn),
-		); err != nil {
-			return err
+		for _, bucket := range buckets {
+			sr.logger.Infof("Deleting data for %s (wwn: %s) in bucket: %s", deviceID, device.WWN, bucket)
+			if err := sr.influxClient.DeleteAPI().DeleteWithName(
+				ctx,
+				sr.appConfig.GetString("web.influxdb.org"),
+				bucket,
+				time.Now().AddDate(-10, 0, 0),
+				time.Now(),
+				fmt.Sprintf("device_wwn=%q", device.WWN),
+			); err != nil {
+				return err
+			}
 		}
 	}
 

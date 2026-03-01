@@ -12,7 +12,7 @@ export class DashboardDeviceDeleteDialogComponent implements OnInit {
 
     constructor(
         public dialogRef: MatDialogRef<DashboardDeviceDeleteDialogComponent>,
-        @Inject(MAT_DIALOG_DATA) public data: {wwn: string, title: string},
+        @Inject(MAT_DIALOG_DATA) public data: {deviceId: string, title: string},
         private _deleteService: DashboardDeviceDeleteDialogService,
     ) {
     }
@@ -21,7 +21,7 @@ export class DashboardDeviceDeleteDialogComponent implements OnInit {
   }
 
   onDeleteClick(): void {
-      this._deleteService.deleteDevice(this.data.wwn)
+      this._deleteService.deleteDevice(this.data.deviceId)
           .subscribe((data) => {
               this.dialogRef.close(data);
           });

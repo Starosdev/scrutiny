@@ -76,22 +76,22 @@ export class DashboardDeviceComponent implements OnInit {
 
     openArchiveDialog(): void {
         if(this.deviceSummary.device.archived){
-            this._archiveService.unarchiveDevice(this.deviceSummary.device.wwn).subscribe((result) => {
+            this._archiveService.unarchiveDevice(this.deviceSummary.device.device_id).subscribe((result) => {
                 if(result) {
-                    this.deviceUnarchived.emit(this.deviceSummary.device.wwn)
+                    this.deviceUnarchived.emit(this.deviceSummary.device.device_id)
                 }
             })
             return;
         }
         const dialogRef = this.dialog.open(DashboardDeviceArchiveDialogComponent, {
             data: {
-                wwn: this.deviceSummary.device.wwn,
+                deviceId: this.deviceSummary.device.device_id,
                 title: DeviceTitlePipe.deviceTitleWithFallback(this.deviceSummary.device, this.config.dashboard_display)
             }
         });
         dialogRef.afterClosed().subscribe(result => {
             if(result) {
-                this.deviceArchived.emit(this.deviceSummary.device.wwn);
+                this.deviceArchived.emit(this.deviceSummary.device.device_id);
             }
         })
     }
@@ -100,14 +100,14 @@ export class DashboardDeviceComponent implements OnInit {
         const dialogRef = this.dialog.open(DashboardDeviceDeleteDialogComponent, {
             // width: '250px',
             data: {
-                wwn: this.deviceSummary.device.wwn,
+                deviceId: this.deviceSummary.device.device_id,
                 title: DeviceTitlePipe.deviceTitleWithFallback(this.deviceSummary.device, this.config.dashboard_display)
             }
         });
 
         dialogRef.afterClosed().subscribe(result => {
             if (result?.success) {
-                this.deviceDeleted.emit(this.deviceSummary.device.wwn)
+                this.deviceDeleted.emit(this.deviceSummary.device.device_id)
             }
         });
     }

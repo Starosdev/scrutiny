@@ -24,7 +24,7 @@ type MissedPingMonitor struct {
 	logger    logrus.FieldLogger
 
 	// Track which devices we've already notified about to avoid spam
-	// Key: device WWN, Value: last notification time
+	// Key: device ID, Value: last notification time
 	notifiedDevices map[string]time.Time
 	mu              sync.RWMutex
 
@@ -249,13 +249,13 @@ func (m *MissedPingMonitor) loadCheckData() (*checkMissedPingsData, error) {
 // Returns nil if the device is not missed (healthy, skipped, or already notified recently).
 func (m *MissedPingMonitor) checkDevice(device *models.Device, data *checkMissedPingsData, now time.Time) *notify.MissedPingDigestDevice {
 	if device.Archived || device.Muted {
-		m.logger.Debugf("Skipping device %s - archived: %v, muted: %v", device.WWN, device.Archived, device.Muted)
+		m.logger.Debugf("Skipping device %s (wwn: %s) - archived: %v, muted: %v", device.DeviceID, device.WWN, device.Archived, device.Muted)
 		return nil
 	}
 
-	lastSeen, exists := data.lastSeenTimes[device.WWN]
+	lastSeen, exists := data.lastSeenTimes[device.DeviceID]
 	if !exists {
-		m.logger.Debugf("Device %s has no last seen time (newly registered?)", device.WWN)
+		m.logger.Debugf("Device %s (wwn: %s) has no last seen time (newly registered?)", device.DeviceID, device.WWN)
 		return nil
 	}
 
@@ -267,13 +267,13 @@ func (m *MissedPingMonitor) checkDevice(device *models.Device, data *checkMissed
 	deviceTimeout := time.Duration(deviceTimeoutMinutes) * time.Minute
 
 	if now.Sub(lastSeen) <= deviceTimeout {
-		m.clearNotificationState(device.WWN)
+		m.clearNotificationState(device.DeviceID)
 		return nil
 	}
 
 	// Device has missed pings -- check dedup before including in digest
 	m.mu.RLock()
-	lastNotified, alreadyNotified := m.notifiedDevices[device.WWN]
+	lastNotified, alreadyNotified := m.notifiedDevices[device.DeviceID]
 	m.mu.RUnlock()
 
 	if alreadyNotified {
@@ -284,15 +284,16 @@ func (m *MissedPingMonitor) checkDevice(device *models.Device, data *checkMissed
 		}
 		timeSinceNotification := time.Since(lastNotified)
 		if timeSinceNotification < time.Duration(cooldownMinutes)*time.Minute {
-			m.logger.Debugf("Already notified about device %s %v ago (cooldown: %dm), skipping", device.WWN, timeSinceNotification.Round(time.Minute), cooldownMinutes)
+			m.logger.Debugf("Already notified about device %s %v ago (cooldown: %dm), skipping", device.DeviceID, timeSinceNotification.Round(time.Minute), cooldownMinutes)
 			return nil
 		}
 	}
 
 	m.logger.Warnf("Device %s (%s) has not sent data for %v (threshold: %d minutes)",
-		device.WWN, device.DeviceName, time.Since(lastSeen).Round(time.Minute), deviceTimeoutMinutes)
+		device.DeviceID, device.DeviceName, time.Since(lastSeen).Round(time.Minute), deviceTimeoutMinutes)
 
 	return &notify.MissedPingDigestDevice{
+		DeviceID:     device.DeviceID,
 		WWN:          device.WWN,
 		DeviceName:   device.DeviceName,
 		SerialNumber: device.SerialNumber,
@@ -349,11 +350,11 @@ func (m *MissedPingMonitor) checkMissedPings() {
 	m.statusMu.Unlock()
 
 	now := time.Now()
-	currentDeviceWWNs := make(map[string]bool, len(data.devices))
+	currentDeviceIDs := make(map[string]bool, len(data.devices))
 	var missed []notify.MissedPingDigestDevice
 
 	for _, device := range data.devices {
-		currentDeviceWWNs[device.WWN] = true
+		currentDeviceIDs[device.DeviceID] = true
 		if md := m.checkDevice(&device, data, now); md != nil {
 			missed = append(missed, *md)
 		}
@@ -363,7 +364,7 @@ func (m *MissedPingMonitor) checkMissedPings() {
 		m.sendMissedPingDigest(missed, data)
 	}
 
-	m.cleanupStaleNotifications(currentDeviceWWNs)
+	m.cleanupStaleNotifications(currentDeviceIDs)
 }
 
 func (m *MissedPingMonitor) sendMissedPingDigest(devices []notify.MissedPingDigestDevice, data *checkMissedPingsData) {
@@ -392,7 +393,7 @@ func (m *MissedPingMonitor) sendMissedPingDigest(devices []notify.MissedPingDige
 		m.mu.Lock()
 		now := time.Now()
 		for _, d := range devices {
-			m.notifiedDevices[d.WWN] = now
+			m.notifiedDevices[d.DeviceID] = now
 		}
 		m.mu.Unlock()
 
@@ -400,25 +401,25 @@ func (m *MissedPingMonitor) sendMissedPingDigest(devices []notify.MissedPingDige
 	}
 }
 
-func (m *MissedPingMonitor) clearNotificationState(wwn string) {
+func (m *MissedPingMonitor) clearNotificationState(deviceID string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if _, exists := m.notifiedDevices[wwn]; exists {
-		delete(m.notifiedDevices, wwn)
-		m.logger.Debugf("Cleared missed ping notification state for device %s (device is now healthy)", wwn)
+	if _, exists := m.notifiedDevices[deviceID]; exists {
+		delete(m.notifiedDevices, deviceID)
+		m.logger.Debugf("Cleared missed ping notification state for device %s (device is now healthy)", deviceID)
 	}
 }
 
 // cleanupStaleNotifications removes entries from notifiedDevices for devices that no longer exist
-func (m *MissedPingMonitor) cleanupStaleNotifications(currentDeviceWWNs map[string]bool) {
+func (m *MissedPingMonitor) cleanupStaleNotifications(currentDeviceIDs map[string]bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	for wwn := range m.notifiedDevices {
-		if !currentDeviceWWNs[wwn] {
-			delete(m.notifiedDevices, wwn)
-			m.logger.Debugf("Cleaned up stale notification state for deleted device %s", wwn)
+	for deviceID := range m.notifiedDevices {
+		if !currentDeviceIDs[deviceID] {
+			delete(m.notifiedDevices, deviceID)
+			m.logger.Debugf("Cleaned up stale notification state for deleted device %s", deviceID)
 		}
 	}
 }
@@ -481,26 +482,28 @@ func (m *MissedPingMonitor) GetStatus(ctx context.Context) (*models.MissedPingSt
 	notifiedDevices := make([]string, 0, len(m.notifiedDevices))
 	notifiedDetails := make([]models.NotifiedDeviceInfo, 0, len(m.notifiedDevices))
 
-	for wwn, notifyTime := range m.notifiedDevices {
-		notifiedDevices = append(notifiedDevices, wwn)
+	for devID, notifyTime := range m.notifiedDevices {
+		notifiedDevices = append(notifiedDevices, devID)
 
 		// Find device details
-		var deviceName string
+		var deviceName, deviceWWN string
 		for _, device := range devices {
-			if device.WWN == wwn {
+			if device.DeviceID == devID {
 				deviceName = device.DeviceName
+				deviceWWN = device.WWN
 				break
 			}
 		}
 
-		// Get last seen time from InfluxDB
+		// Get last seen time from InfluxDB (keyed by DeviceID)
 		var lastSeenTime time.Time
-		if lst, ok := lastSeenTimes[wwn]; ok {
+		if lst, ok := lastSeenTimes[devID]; ok {
 			lastSeenTime = lst
 		}
 
 		notifiedDetails = append(notifiedDetails, models.NotifiedDeviceInfo{
-			WWN:              wwn,
+			DeviceID:         devID,
+			WWN:              deviceWWN,
 			DeviceName:       deviceName,
 			NotificationTime: notifyTime.Format(time.RFC3339),
 			LastSeenTime:     lastSeenTime.Format(time.RFC3339),
@@ -595,9 +598,9 @@ func (m *MissedPingMonitor) GetNotifiedDevicesCount() int {
 }
 
 // IsDeviceNotified returns whether a device is currently in the notified state (for testing)
-func (m *MissedPingMonitor) IsDeviceNotified(wwn string) bool {
+func (m *MissedPingMonitor) IsDeviceNotified(deviceID string) bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	_, exists := m.notifiedDevices[wwn]
+	_, exists := m.notifiedDevices[deviceID]
 	return exists
 }

@@ -65,14 +65,14 @@ func (p *Publisher) PublishDiscovery(device *models.Device) {
 	messages := BuildDiscoveryMessages(device, p.topicPrefix)
 	for _, msg := range messages {
 		if err := p.client.Publish(msg.Topic, msg.Payload, true); err != nil {
-			p.logger.Warnf("MQTT: failed to publish discovery for %s: %v", device.WWN, err)
+			p.logger.Warnf("MQTT: failed to publish discovery for %s: %v", device.DeviceID, err)
 		}
 	}
-	p.logger.Debugf("MQTT: published discovery for device %s (%s)", device.WWN, device.ModelName)
+	p.logger.Debugf("MQTT: published discovery for device %s (%s)", device.DeviceID, device.ModelName)
 }
 
 // PublishDeviceState publishes a state update for a device asynchronously.
-func (p *Publisher) PublishDeviceState(wwn string, device *models.Device, smartData *measurements.Smart) {
+func (p *Publisher) PublishDeviceState(deviceID string, device *models.Device, smartData *measurements.Smart) {
 	go func() {
 		p.mu.RLock()
 		defer p.mu.RUnlock()
@@ -84,16 +84,16 @@ func (p *Publisher) PublishDeviceState(wwn string, device *models.Device, smartD
 		payload := buildStatePayload(device, smartData)
 		payloadJSON, err := json.Marshal(payload)
 		if err != nil {
-			p.logger.Warnf("MQTT: failed to marshal state for %s: %v", wwn, err)
+			p.logger.Warnf("MQTT: failed to marshal state for %s: %v", deviceID, err)
 			return
 		}
 
-		topic := stateTopic(wwn)
+		topic := stateTopic(deviceID)
 		if err := p.client.Publish(topic, string(payloadJSON), p.retain); err != nil {
-			p.logger.Warnf("MQTT: failed to publish state for %s: %v", wwn, err)
+			p.logger.Warnf("MQTT: failed to publish state for %s: %v", deviceID, err)
 			return
 		}
-		p.logger.Debugf("MQTT: published state for device %s", wwn)
+		p.logger.Debugf("MQTT: published state for device %s", deviceID)
 	}()
 }
 
@@ -103,23 +103,33 @@ func (p *Publisher) RemoveDevice(device *models.Device) {
 		return
 	}
 
+	// Remove DeviceID-based topics and legacy WWN-based topics
 	messages := BuildRemoveMessages(device, p.topicPrefix)
 	for _, msg := range messages {
 		if err := p.client.Publish(msg.Topic, msg.Payload, true); err != nil {
-			p.logger.Warnf("MQTT: failed to remove discovery for %s: %v", device.WWN, err)
+			p.logger.Warnf("MQTT: failed to remove discovery for %s: %v", device.DeviceID, err)
 		}
 	}
 
-	// Also clear the state topic
-	topic := stateTopic(device.WWN)
+	// Clear the DeviceID-based state topic
+	topic := stateTopic(device.DeviceID)
 	if err := p.client.Publish(topic, "", true); err != nil {
-		p.logger.Warnf("MQTT: failed to clear state for %s: %v", device.WWN, err)
+		p.logger.Warnf("MQTT: failed to clear state for %s: %v", device.DeviceID, err)
 	}
 
-	p.logger.Debugf("MQTT: removed device %s from Home Assistant", device.WWN)
+	// Also clear the legacy WWN-based state topic
+	if device.WWN != "" {
+		legacyTopic := fmt.Sprintf("scrutiny/device/%s/state", device.WWN)
+		if err := p.client.Publish(legacyTopic, "", true); err != nil {
+			p.logger.Warnf("MQTT: failed to clear legacy state for %s: %v", device.WWN, err)
+		}
+	}
+
+	p.logger.Debugf("MQTT: removed device %s from Home Assistant", device.DeviceID)
 }
 
 // LoadInitialData publishes discovery and state for all active devices from the database.
+// On startup, it also cleans up old WWN-based MQTT topics by publishing empty payloads.
 func (p *Publisher) LoadInitialData(deviceRepo database.DeviceRepo, ctx context.Context) error {
 	start := time.Now()
 	p.logger.Info("MQTT: loading initial device data...")
@@ -129,17 +139,32 @@ func (p *Publisher) LoadInitialData(deviceRepo database.DeviceRepo, ctx context.
 		return fmt.Errorf("MQTT: failed to load device summary: %w", err)
 	}
 
+	// Clean up legacy WWN-based topics for all devices
+	for _, deviceSummary := range summary {
+		device := deviceSummary.Device
+		if device.WWN != "" {
+			legacyMessages := BuildRemoveMessagesForWWN(device.WWN, p.topicPrefix)
+			for _, msg := range legacyMessages {
+				_ = p.client.Publish(msg.Topic, msg.Payload, true)
+			}
+			// Clear legacy state topic
+			legacyStateTopic := fmt.Sprintf("scrutiny/device/%s/state", device.WWN)
+			_ = p.client.Publish(legacyStateTopic, "", true)
+		}
+	}
+
+	// Fetch SMART data keyed by DeviceID (uses WWN internally for InfluxDB)
 	smartDataMap := p.fetchLatestSmartData(deviceRepo, ctx, summary)
 
 	published := 0
-	for wwn, deviceSummary := range summary {
+	for _, deviceSummary := range summary {
 		device := deviceSummary.Device
 		if device.Archived {
 			continue
 		}
 
 		p.PublishDiscovery(&device)
-		p.publishStateSync(wwn, &device, smartDataMap)
+		p.publishStateSync(device.DeviceID, &device, smartDataMap)
 		published++
 	}
 
@@ -152,24 +177,26 @@ func (p *Publisher) fetchLatestSmartData(deviceRepo database.DeviceRepo, ctx con
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	for wwn := range summary {
+	for _, deviceSummary := range summary {
+		device := deviceSummary.Device
 		wg.Add(1)
-		go func(w string) {
+		go func(wwn, deviceID string) {
 			defer wg.Done()
-			smarts, err := deviceRepo.GetSmartAttributeHistory(ctx, w, "forever", 1, 0, nil)
+			// InfluxDB queries use WWN
+			smarts, err := deviceRepo.GetSmartAttributeHistory(ctx, wwn, "forever", 1, 0, nil)
 			if err == nil && len(smarts) > 0 {
 				mu.Lock()
-				smartDataMap[w] = smarts
+				smartDataMap[deviceID] = smarts
 				mu.Unlock()
 			}
-		}(wwn)
+		}(device.WWN, device.DeviceID)
 	}
 	wg.Wait()
 	return smartDataMap
 }
 
-func (p *Publisher) publishStateSync(wwn string, device *models.Device, smartDataMap map[string][]measurements.Smart) {
-	smartResults, ok := smartDataMap[wwn]
+func (p *Publisher) publishStateSync(deviceID string, device *models.Device, smartDataMap map[string][]measurements.Smart) {
+	smartResults, ok := smartDataMap[deviceID]
 	if !ok || len(smartResults) == 0 {
 		return
 	}
@@ -177,12 +204,12 @@ func (p *Publisher) publishStateSync(wwn string, device *models.Device, smartDat
 	payload := buildStatePayload(device, &smartResults[0])
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
-		p.logger.Warnf("MQTT: failed to marshal initial state for %s: %v", wwn, err)
+		p.logger.Warnf("MQTT: failed to marshal initial state for %s: %v", deviceID, err)
 		return
 	}
-	topic := stateTopic(wwn)
+	topic := stateTopic(deviceID)
 	if err := p.client.Publish(topic, string(payloadJSON), p.retain); err != nil {
-		p.logger.Warnf("MQTT: failed to publish initial state for %s: %v", wwn, err)
+		p.logger.Warnf("MQTT: failed to publish initial state for %s: %v", deviceID, err)
 	}
 }
 

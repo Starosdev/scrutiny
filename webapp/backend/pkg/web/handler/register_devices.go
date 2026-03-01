@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/mqtt"
 	"github.com/gin-gonic/gin"
-	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 )
 
@@ -25,12 +25,8 @@ func RegisterDevices(c *gin.Context) {
 		return
 	}
 
-	//filter any device with empty wwn (they are invalid)
-	detectedStorageDevices := lo.Filter[models.Device](collectorDeviceWrapper.Data, func(dev models.Device, _ int) bool {
-		return len(dev.WWN) > 0
-	})
-
 	errs := []error{}
+	detectedStorageDevices := collectorDeviceWrapper.Data
 	for _, dev := range detectedStorageDevices {
 		//insert devices into DB (and update specified columns if device is already registered)
 		// update device fields that may change: (DeviceType, HostID)
@@ -66,9 +62,14 @@ func publishMqttDiscovery(c *gin.Context, deviceRepo database.DeviceRepo, device
 		return
 	}
 	for i := range devices {
+		// Compute DeviceID if not already set (collector may not populate it)
+		devID := devices[i].DeviceID
+		if devID == "" {
+			devID = deviceid.Generate(devices[i].ModelName, devices[i].SerialNumber, devices[i].WWN)
+		}
 		// Fetch device from DB to get the actual archived status
 		// (collector-sent devices don't have this field set correctly)
-		if dbDevice, err := deviceRepo.GetDeviceDetails(c, devices[i].WWN); err == nil && !dbDevice.Archived {
+		if dbDevice, err := deviceRepo.GetDeviceDetails(c, devID); err == nil && !dbDevice.Archived {
 			pub.PublishDiscovery(&dbDevice)
 		}
 	}

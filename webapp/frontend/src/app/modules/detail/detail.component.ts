@@ -164,7 +164,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                 this._prepareChartData();
 
                 // Load performance data (lazy, non-blocking)
-                this._loadPerformanceData(this.device.wwn, this.perfDurationKey);
+                this._loadPerformanceData(this.device.device_id, this.perfDurationKey);
             });
     }
 
@@ -436,7 +436,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         this.smartAttributeDataSource.data = this._generateSmartAttributeTableDataSource(this.smart_results);
 
         // Persist preference to backend
-        this._detailService.setSmartDisplayMode(this.device.wwn, mode).subscribe();
+        this._detailService.setSmartDisplayMode(this.device.device_id, mode).subscribe();
     }
 
     private _generateSmartAttributeTableDataSource(smartResults: SmartModel[]): SmartAttributeModel[] {
@@ -650,7 +650,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.activeOverrides = overrides;
                 this._buildOverrideMap();
             });
-        this._detailService.getData(this.device.wwn)
+        this._detailService.getData(this.device.device_id)
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe();
     }
@@ -676,21 +676,21 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             const promises: Promise<any>[] = [];
 
             if (result.muted !== this.device.muted) {
-                promises.push(this._detailService.setMuted(this.device.wwn, result.muted).toPromise());
+                promises.push(this._detailService.setMuted(this.device.device_id, result.muted).toPromise());
             }
 
             if (result.label !== this.device.label) {
-                promises.push(this._detailService.setLabel(this.device.wwn, result.label).toPromise());
+                promises.push(this._detailService.setLabel(this.device.device_id, result.label).toPromise());
             }
 
             const currentOverride = this.device.missed_ping_timeout_override || 0;
             if (result.missedPingTimeoutOverride !== currentOverride) {
-                promises.push(this._detailService.setMissedPingTimeout(this.device.wwn, result.missedPingTimeoutOverride).toPromise());
+                promises.push(this._detailService.setMissedPingTimeout(this.device.device_id, result.missedPingTimeoutOverride).toPromise());
             }
 
             if (promises.length > 0) {
                 Promise.all(promises).then(() => {
-                    return this._detailService.getData(this.device.wwn).toPromise();
+                    return this._detailService.getData(this.device.device_id).toPromise();
                 });
             }
         });
@@ -908,7 +908,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     changePerformanceDuration(durationKey: string): void {
         this.perfDurationKey = durationKey;
-        this._loadPerformanceData(this.device.wwn, durationKey);
+        this._loadPerformanceData(this.device.device_id, durationKey);
     }
 
     getLatestPerformance(): PerformanceModel | null {

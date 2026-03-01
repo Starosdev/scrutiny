@@ -32,20 +32,24 @@ type DeviceRepo interface {
 
 	RegisterDevice(ctx context.Context, dev models.Device) error
 	GetDevices(ctx context.Context) ([]models.Device, error)
-	UpdateDevice(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo) (models.Device, error)
-	UpdateDeviceStatus(ctx context.Context, wwn string, status pkg.DeviceStatus) (models.Device, error)
-	ResetDeviceStatus(ctx context.Context, wwn string) (models.Device, error)
-	GetDeviceDetails(ctx context.Context, wwn string) (models.Device, error)
-	UpdateDeviceArchived(ctx context.Context, wwn string, archived bool) error
-	UpdateDeviceMuted(ctx context.Context, wwn string, muted bool) error
-	UpdateDeviceLabel(ctx context.Context, wwn string, label string) error
-	UpdateDeviceSmartDisplayMode(ctx context.Context, wwn string, mode string) error
-	UpdateDeviceHasForcedFailure(ctx context.Context, wwn string, hasForcedFailure bool) error
-	UpdateDeviceMissedPingTimeout(ctx context.Context, wwn string, timeoutMinutes int) error
-	DeleteDevice(ctx context.Context, wwn string) error
+	UpdateDevice(ctx context.Context, deviceID string, collectorSmartData *collector.SmartInfo) (models.Device, error)
+	UpdateDeviceStatus(ctx context.Context, deviceID string, status pkg.DeviceStatus) (models.Device, error)
+	ResetDeviceStatus(ctx context.Context, deviceID string) (models.Device, error)
+	GetDeviceDetails(ctx context.Context, deviceID string) (models.Device, error)
+	// GetDeviceByID is an alias for GetDeviceDetails (kept for backward compatibility).
+	GetDeviceByID(ctx context.Context, deviceID string) (models.Device, error)
+	// GetDeviceByWWN looks up a device by its WWN. Used for backward-compatible device resolution.
+	GetDeviceByWWN(ctx context.Context, wwn string) (models.Device, error)
+	UpdateDeviceArchived(ctx context.Context, deviceID string, archived bool) error
+	UpdateDeviceMuted(ctx context.Context, deviceID string, muted bool) error
+	UpdateDeviceLabel(ctx context.Context, deviceID string, label string) error
+	UpdateDeviceSmartDisplayMode(ctx context.Context, deviceID string, mode string) error
+	UpdateDeviceHasForcedFailure(ctx context.Context, deviceID string, hasForcedFailure bool) error
+	UpdateDeviceMissedPingTimeout(ctx context.Context, deviceID string, timeoutMinutes int) error
+	DeleteDevice(ctx context.Context, deviceID string) error
 	// RecalculateDeviceStatusFromHistory re-evaluates device status from stored SMART data
 	// with current overrides applied. Used when overrides are added/modified/deleted.
-	RecalculateDeviceStatusFromHistory(ctx context.Context, wwn string) error
+	RecalculateDeviceStatusFromHistory(ctx context.Context, deviceID string) error
 
 	SaveSmartAttributes(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo) (measurements.Smart, error)
 	GetSmartAttributeHistory(ctx context.Context, wwn string, durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) ([]measurements.Smart, error)
@@ -56,7 +60,7 @@ type DeviceRepo interface {
 	// for use in delta evaluation before writing a new submission.
 	GetLatestSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error)
 
-	SaveSmartTemperature(ctx context.Context, wwn string, collectorSmartData *collector.SmartInfo, retrieveSCTTemperatureHistory bool) error
+	SaveSmartTemperature(ctx context.Context, wwn string, deviceID string, collectorSmartData *collector.SmartInfo, retrieveSCTTemperatureHistory bool) error
 
 	GetSummary(ctx context.Context) (map[string]*models.DeviceSummary, error)
 	GetSmartTemperatureHistory(ctx context.Context, durationKey string) (map[string][]measurements.SmartTemperature, error)

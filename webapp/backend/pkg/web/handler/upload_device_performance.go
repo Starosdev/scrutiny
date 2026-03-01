@@ -7,7 +7,6 @@ import (
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
-	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -39,10 +38,8 @@ func UploadDevicePerformance(c *gin.Context) {
 	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 
-	wwn := c.Param("wwn")
-	if err := validation.ValidateWWN(wwn); err != nil {
-		logger.Warnf("Invalid WWN format: %s", wwn)
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+	device, err := ResolveDevice(c, logger, deviceRepo)
+	if err != nil {
 		return
 	}
 
@@ -55,7 +52,7 @@ func UploadDevicePerformance(c *gin.Context) {
 
 	perfData := measurements.Performance{
 		Date:              time.Unix(req.Date, 0),
-		DeviceWWN:         wwn,
+		DeviceWWN:         device.WWN,
 		DeviceProtocol:    req.DeviceProtocol,
 		Profile:           req.Profile,
 		SeqReadBwBytes:    req.SeqReadBwBytes,
@@ -75,16 +72,16 @@ func UploadDevicePerformance(c *gin.Context) {
 		TestDurationSec:   req.TestDurationSec,
 	}
 
-	if err := deviceRepo.SavePerformanceResults(c, wwn, &perfData); err != nil {
-		logger.Errorln("An error occurred while saving performance results", err)
+	if saveErr := deviceRepo.SavePerformanceResults(c, device.WWN, &perfData); saveErr != nil {
+		logger.Errorln("An error occurred while saving performance results", saveErr)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
 	}
 
 	// Calculate degradation against baseline
-	baseline, err := deviceRepo.GetPerformanceBaseline(c, wwn, 5)
+	baseline, err := deviceRepo.GetPerformanceBaseline(c, device.WWN, 5)
 	if err != nil {
-		logger.Warnf("Could not retrieve performance baseline for %s: %v", wwn, err)
+		logger.Warnf("Could not retrieve performance baseline for %s: %v", device.WWN, err)
 		c.JSON(http.StatusOK, gin.H{"success": true})
 		return
 	}

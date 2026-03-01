@@ -27,6 +27,12 @@ func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, wwn strin
 		return measurements.Smart{}, err
 	}
 
+	// Look up DeviceID for dual-tagging in InfluxDB
+	device, devErr := sr.GetDeviceDetails(ctx, wwn)
+	if devErr == nil {
+		deviceSmartData.DeviceID = device.DeviceID
+	}
+
 	// Apply delta-based evaluation for cumulative counter attributes (e.g., UltraDMA CRC Error Count).
 	// Fetch the most recent existing SMART submission to compare values. Uses GetLatestSmartSubmission
 	// (offset=0) because this is called BEFORE the current data is written to InfluxDB.

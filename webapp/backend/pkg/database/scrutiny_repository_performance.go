@@ -15,6 +15,12 @@ import (
 func (sr *scrutinyRepository) SavePerformanceResults(ctx context.Context, wwn string, perfData *measurements.Performance) error {
 	perfData.DeviceWWN = wwn
 
+	// Look up DeviceID for dual-tagging in InfluxDB
+	device, devErr := sr.GetDeviceDetails(ctx, wwn)
+	if devErr == nil {
+		perfData.DeviceID = device.DeviceID
+	}
+
 	tags, fields := perfData.Flatten()
 
 	return sr.saveDatapoint(

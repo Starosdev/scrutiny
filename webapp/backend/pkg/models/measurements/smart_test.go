@@ -35,7 +35,7 @@ func TestSmart_Flatten(t *testing.T) {
 	tags, fields := smart.Flatten()
 
 	//assert
-	require.Equal(t, map[string]string{"device_protocol": "ATA", "device_wwn": "test-wwn"}, tags)
+	require.Equal(t, map[string]string{"device_protocol": "ATA", "device_wwn": "test-wwn", "device_id": ""}, tags)
 	require.Equal(t, map[string]interface{}{"logical_block_size": int64(512), "power_cycle_count": int64(10), "power_on_hours": int64(10), "temp": int64(50)}, fields)
 }
 
@@ -77,7 +77,7 @@ func TestSmart_Flatten_ATA(t *testing.T) {
 	tags, fields := smart.Flatten()
 
 	//assert
-	require.Equal(t, map[string]string{"device_protocol": "ATA", "device_wwn": "test-wwn"}, tags)
+	require.Equal(t, map[string]string{"device_protocol": "ATA", "device_wwn": "test-wwn", "device_id": ""}, tags)
 	require.Equal(t, map[string]interface{}{
 		"attr.1.attribute_id":      "1",
 		"attr.1.name":              "",
@@ -136,7 +136,7 @@ func TestSmart_Flatten_SCSI(t *testing.T) {
 	tags, fields := smart.Flatten()
 
 	//assert
-	require.Equal(t, map[string]string{"device_protocol": "SCSI", "device_wwn": "test-wwn"}, tags)
+	require.Equal(t, map[string]string{"device_protocol": "SCSI", "device_wwn": "test-wwn", "device_id": ""}, tags)
 	require.Equal(t, map[string]interface{}{
 		"attr.read_errors_corrected_by_eccfast.attribute_id":      "read_errors_corrected_by_eccfast",
 		"attr.read_errors_corrected_by_eccfast.failure_rate":      float64(0),
@@ -176,7 +176,7 @@ func TestSmart_Flatten_NVMe(t *testing.T) {
 	tags, fields := smart.Flatten()
 
 	//assert
-	require.Equal(t, map[string]string{"device_protocol": "NVMe", "device_wwn": "test-wwn"}, tags)
+	require.Equal(t, map[string]string{"device_protocol": "NVMe", "device_wwn": "test-wwn", "device_id": ""}, tags)
 	require.Equal(t, map[string]interface{}{
 		"attr.available_spare.attribute_id":      "available_spare",
 		"attr.available_spare.failure_rate":      float64(0),

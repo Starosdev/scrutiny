@@ -43,8 +43,8 @@ export class DetailService {
     /**
      * Get data
      */
-    getData(wwn): Observable<DeviceDetailsResponseWrapper> {
-        return this._httpClient.get(getBasePath() + `/api/device/${wwn}/details`).pipe(
+    getData(deviceId): Observable<DeviceDetailsResponseWrapper> {
+        return this._httpClient.get(getBasePath() + `/api/device/${deviceId}/details`).pipe(
             tap((response: DeviceDetailsResponseWrapper) => {
                 this._data.next(response);
             })
@@ -54,35 +54,30 @@ export class DetailService {
     /**
      * Mute / Unmute certain device
      */
-    setMuted(wwn, muted): Observable<any> {
+    setMuted(deviceId, muted): Observable<any> {
         const action = muted ? 'mute' : 'unmute';
-        return this._httpClient.post(getBasePath() + `/api/device/${wwn}/${action}`, {});
+        return this._httpClient.post(getBasePath() + `/api/device/${deviceId}/${action}`, {});
     }
 
     /**
      * Set device label (custom user-provided name)
      */
-    setLabel(wwn: string, label: string): Observable<any> {
-        return this._httpClient.post(getBasePath() + `/api/device/${wwn}/label`, { label });
+    setLabel(deviceId: string, label: string): Observable<any> {
+        return this._httpClient.post(getBasePath() + `/api/device/${deviceId}/label`, { label });
     }
 
-    /**
-     * Set device SMART display mode (user preference for attribute value display)
-     * @param wwn Device WWN
-     * @param mode Display mode: "scrutiny", "raw", or "normalized"
-     */
-    setSmartDisplayMode(wwn: string, mode: string): Observable<any> {
-        return this._httpClient.post(getBasePath() + `/api/device/${wwn}/smart-display-mode`, { smart_display_mode: mode });
+    setSmartDisplayMode(deviceId: string, mode: string): Observable<any> {
+        return this._httpClient.post(getBasePath() + `/api/device/${deviceId}/smart-display-mode`, { smart_display_mode: mode });
     }
 
-    setMissedPingTimeout(wwn: string, timeoutMinutes: number): Observable<any> {
-        return this._httpClient.post(getBasePath() + `/api/device/${wwn}/missed-ping-timeout`, { missed_ping_timeout_override: timeoutMinutes });
+    setMissedPingTimeout(deviceId: string, timeoutMinutes: number): Observable<any> {
+        return this._httpClient.post(getBasePath() + `/api/device/${deviceId}/missed-ping-timeout`, { missed_ping_timeout_override: timeoutMinutes });
     }
 
-    getPerformanceData(wwn: string, duration: string = 'week'): Observable<PerformanceResponseWrapper> {
+    getPerformanceData(deviceId: string, duration: string = 'week'): Observable<PerformanceResponseWrapper> {
         const params = { duration };
         return this._httpClient.get<PerformanceResponseWrapper>(
-            getBasePath() + `/api/device/${wwn}/performance`,
+            getBasePath() + `/api/device/${deviceId}/performance`,
             { params }
         );
     }

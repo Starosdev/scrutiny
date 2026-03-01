@@ -8,6 +8,7 @@ type WorkloadInsight struct {
 	// Spike detection (nil when no spike or insufficient data)
 	Spike *ActivitySpike `json:"spike,omitempty"`
 
+	DeviceID       string `json:"device_id"`
 	DeviceWWN      string `json:"device_wwn"`
 	DeviceProtocol string `json:"device_protocol"`
 
