@@ -37,8 +37,8 @@ func UploadDeviceMetrics(c *gin.Context) {
 		return
 	}
 
-	//update the device information if necessary (SQLite - uses deviceID)
-	updatedDevice, err := deviceRepo.UpdateDevice(c, device.DeviceID, collectorSmartData)
+	// update the device information if necessary (SQLite - uses deviceID)
+	updatedDevice, err := deviceRepo.UpdateDevice(c, device.DeviceID, &collectorSmartData)
 	if err != nil {
 		logger.Errorln("An error occurred while updating device data from smartctl metrics:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
@@ -54,8 +54,8 @@ func UploadDeviceMetrics(c *gin.Context) {
 	}
 
 	// Update device's forced failure flag based on override processing (SQLite - uses deviceID)
-	if err := deviceRepo.UpdateDeviceHasForcedFailure(c, device.DeviceID, smartData.HasForcedFailure); err != nil {
-		logger.Warnf("Failed to update has_forced_failure for device %s: %v", device.DeviceID, err)
+	if ffErr := deviceRepo.UpdateDeviceHasForcedFailure(c, device.DeviceID, smartData.HasForcedFailure); ffErr != nil {
+		logger.Warnf("Failed to update has_forced_failure for device %s: %v", device.DeviceID, ffErr)
 	}
 
 	if smartData.Status != pkg.DeviceStatusPassed {
@@ -88,7 +88,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 	//check for error
 	if notify.ShouldNotify(
 		logger,
-		updatedDevice,
+		&updatedDevice,
 		smartData,
 		pkg.MetricsStatusThreshold(appConfig.GetInt(fmt.Sprintf("%s.metrics.status_threshold", config.DB_USER_SETTINGS_SUBKEY))),
 		pkg.MetricsStatusFilterAttributes(appConfig.GetInt(fmt.Sprintf("%s.metrics.status_filter_attributes", config.DB_USER_SETTINGS_SUBKEY))),
@@ -133,7 +133,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 	// Update Prometheus metrics (if enabled)
 	if collectorVal, exists := c.Get("METRICS_COLLECTOR"); exists {
 		if collector, ok := collectorVal.(*metrics.Collector); ok && collector != nil {
-			collector.UpdateDeviceMetrics(updatedDevice, smartData)
+			collector.UpdateDeviceMetrics(&updatedDevice, smartData)
 		}
 	}
 

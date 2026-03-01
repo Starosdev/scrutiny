@@ -4,6 +4,7 @@ export const sda = {
             'CreatedAt': '2021-06-24T21:17:31.301226-07:00',
             'UpdatedAt': '2021-10-24T16:37:56.981833-07:00',
             'DeletedAt': null,
+            'device_id': 'a0000000-0000-0000-0000-000000000007',
             'wwn': '0x5002538e40a22954',
             'device_name': 'sda',
             'manufacturer': 'ATA',

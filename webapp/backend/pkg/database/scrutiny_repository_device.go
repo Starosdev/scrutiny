@@ -58,13 +58,13 @@ func (sr *scrutinyRepository) GetDevices(ctx context.Context) ([]models.Device, 
 }
 
 // update device (only metadata) from collector
-func (sr *scrutinyRepository) UpdateDevice(ctx context.Context, deviceID string, collectorSmartData collector.SmartInfo) (models.Device, error) {
+func (sr *scrutinyRepository) UpdateDevice(ctx context.Context, deviceID string, collectorSmartData *collector.SmartInfo) (models.Device, error) {
 	var device models.Device
 	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
 		return device, fmt.Errorf("Could not get device from DB: %v", err)
 	}
 
-	err := device.UpdateFromCollectorSmartInfo(collectorSmartData)
+	err := device.UpdateFromCollectorSmartInfo(*collectorSmartData)
 	if err != nil {
 		return device, err
 	}
@@ -300,7 +300,7 @@ func (sr *scrutinyRepository) DeleteDevice(ctx context.Context, deviceID string)
 				bucket,
 				time.Now().AddDate(-10, 0, 0),
 				time.Now(),
-				fmt.Sprintf(`device_wwn="%s"`, device.WWN),
+				fmt.Sprintf("device_wwn=%q", device.WWN),
 			); err != nil {
 				return err
 			}

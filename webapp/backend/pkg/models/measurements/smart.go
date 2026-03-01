@@ -17,7 +17,7 @@ import (
 type Smart struct {
 	Date           time.Time `json:"date"`
 	DeviceWWN      string    `json:"device_wwn"` //(tag)
-	DeviceID       string    `json:"device_id"`  //(tag) deterministic UUIDv5
+	DeviceID       string    `json:"device_id"` // (tag) deterministic UUIDv5
 	DeviceProtocol string    `json:"device_protocol"`
 
 	//Metrics (fields)

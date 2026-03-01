@@ -505,7 +505,7 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 					continue
 				}
 
-				//ensure summaries is initialized for this device_id
+				// ensure summaries is initialized for this device_id
 				if _, exists := summaries[devID]; !exists {
 					summaries[devID] = &models.DeviceSummary{}
 				}
@@ -579,8 +579,8 @@ func (sr *scrutinyRepository) GetDevicesLastSeenTimes(ctx context.Context) (map[
 		return nil, fmt.Errorf("failed to get devices for last seen times: %w", err)
 	}
 	wwnToDeviceID := map[string]string{}
-	for _, d := range devices {
-		wwnToDeviceID[d.WWN] = d.DeviceID
+	for i := range devices {
+		wwnToDeviceID[devices[i].WWN] = devices[i].DeviceID
 	}
 
 	lastSeenTimes := map[string]time.Time{}

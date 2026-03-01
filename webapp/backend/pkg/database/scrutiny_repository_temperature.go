@@ -69,8 +69,8 @@ func (sr *scrutinyRepository) GetSmartTemperatureHistory(ctx context.Context, du
 	devices, devErr := sr.GetDevices(ctx)
 	wwnToDeviceID := map[string]string{}
 	if devErr == nil {
-		for _, d := range devices {
-			wwnToDeviceID[d.WWN] = d.DeviceID
+		for i := range devices {
+			wwnToDeviceID[devices[i].WWN] = devices[i].DeviceID
 		}
 	}
 
@@ -91,7 +91,7 @@ func (sr *scrutinyRepository) GetSmartTemperatureHistory(ctx context.Context, du
 					key = devID
 				}
 
-				//check if key has been seen and initialized already
+				// check if key has been seen and initialized already
 				if _, ok := deviceTempHistory[key]; !ok {
 					deviceTempHistory[key] = []measurements.SmartTemperature{}
 				}

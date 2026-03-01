@@ -38,7 +38,7 @@ const NotifyFailureTypePerformanceDegradation = "PerformanceDegradation"
 const NotifyFailureTypeReport = "Report"
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
-func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, wwn string, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
+func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, wwn string, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
 	// 1. check if the device is healthy
 	if device.DeviceStatus == pkg.DeviceStatusPassed {
 		logger.Debugf("ShouldNotify: skipping device %s - device status is passed", device.WWN)

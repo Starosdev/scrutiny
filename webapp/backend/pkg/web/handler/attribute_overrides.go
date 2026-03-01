@@ -152,7 +152,8 @@ func recalculateDeviceStatusForOverride(c *gin.Context, logger *logrus.Entry, de
 		logger.Warnf("Failed to get devices for status recalculation: %v", err)
 		return
 	}
-	for _, device := range devices {
+	for i := range devices {
+		device := &devices[i]
 		if override.WWN != "" {
 			// Override applies to specific device - match by WWN
 			if device.WWN != override.WWN {

@@ -613,7 +613,7 @@ func (mr *MockDeviceRepoMockRecorder) SetSettingValue(ctx, key, value interface{
 }
 
 // UpdateDevice mocks base method.
-func (m *MockDeviceRepo) UpdateDevice(ctx context.Context, deviceID string, collectorSmartData collector.SmartInfo) (models.Device, error) {
+func (m *MockDeviceRepo) UpdateDevice(ctx context.Context, deviceID string, collectorSmartData *collector.SmartInfo) (models.Device, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateDevice", ctx, deviceID, collectorSmartData)
 	ret0, _ := ret[0].(models.Device)
