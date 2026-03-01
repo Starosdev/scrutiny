@@ -22,6 +22,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260202000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260225000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260226000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260301000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
@@ -635,6 +636,44 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 			ID: "m20260226000000", // add notify_urls table for UI-configurable notification endpoints
 			Migrate: func(tx *gorm.DB) error {
 				return tx.AutoMigrate(&m20260226000000.NotifyUrl{})
+			},
+		},
+		{
+			ID: "m20260301000000", // add notification cooldown, quiet hours, and per-device timeout override
+			Migrate: func(tx *gorm.DB) error {
+				// Add missed_ping_timeout_override column to devices table
+				if err := tx.AutoMigrate(m20260301000000.Device{}); err != nil {
+					return err
+				}
+
+				// Add notification cooldown, rate limiting, and quiet hours settings
+				var defaultSettings = []m20220716214900.Setting{
+					{
+						SettingKeyName:        "metrics.missed_ping_cooldown_minutes",
+						SettingKeyDescription: "Minutes between repeated missed ping notifications for the same device (0 = use timeout value)",
+						SettingDataType:       "numeric",
+						SettingValueNumeric:   0,
+					},
+					{
+						SettingKeyName:        "metrics.notification_rate_limit",
+						SettingKeyDescription: "Maximum notifications per hour across all types (0 = unlimited)",
+						SettingDataType:       "numeric",
+						SettingValueNumeric:   0,
+					},
+					{
+						SettingKeyName:        "metrics.notification_quiet_start",
+						SettingKeyDescription: "Time to stop sending notifications in HH:MM 24h format (empty = disabled)",
+						SettingDataType:       "string",
+						SettingValueString:    "",
+					},
+					{
+						SettingKeyName:        "metrics.notification_quiet_end",
+						SettingKeyDescription: "Time to resume sending notifications in HH:MM 24h format (empty = disabled)",
+						SettingDataType:       "string",
+						SettingValueString:    "",
+					},
+				}
+				return tx.Create(&defaultSettings).Error
 			},
 		},
 	})

@@ -261,13 +261,19 @@ func (m *HeartbeatMonitor) checkAndSendHeartbeat() {
 
 	notification := notify.NewHeartbeat(m.logger, m.appEngine.Config, monitoredCount, totalCount)
 	notification.LoadDatabaseUrls(m.ctx, m.deviceRepo)
-	if err := notification.Send(); err != nil {
-		if err.Error() == "no notification endpoints configured" {
-			m.logger.Warn("Heartbeat ready but no notification endpoints are configured. Configure notify.urls in scrutiny.yaml to receive heartbeat alerts.")
+
+	// Route through notification gate (bypass quiet hours -- heartbeats are informational)
+	if gate := m.appEngine.NotificationGate; gate != nil {
+		gate.TrySend(&notification, settings, true)
+	} else {
+		if err := notification.Send(); err != nil {
+			if err.Error() == "no notification endpoints configured" {
+				m.logger.Warn("Heartbeat ready but no notification endpoints are configured. Configure notify.urls in scrutiny.yaml to receive heartbeat alerts.")
+				return
+			}
+			m.logger.Errorf("Failed to send heartbeat notification: %v", err)
 			return
 		}
-		m.logger.Errorf("Failed to send heartbeat notification: %v", err)
-		return
 	}
 
 	m.logger.Info("Heartbeat notification sent successfully")

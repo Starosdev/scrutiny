@@ -185,10 +185,12 @@ func (m *MissedPingMonitor) getCheckInterval() time.Duration {
 
 // checkMissedPingsData holds the data needed to check for missed pings
 type checkMissedPingsData struct {
-	timeoutMinutes int
-	timeout        time.Duration
-	devices        []models.Device
-	lastSeenTimes  map[string]time.Time
+	timeoutMinutes  int
+	timeout         time.Duration
+	cooldownMinutes int // 0 = use timeoutMinutes for cooldown (backward compat)
+	settings        *models.Settings
+	devices         []models.Device
+	lastSeenTimes   map[string]time.Time
 }
 
 // loadCheckData loads all data needed for missed ping checks
@@ -229,13 +231,17 @@ func (m *MissedPingMonitor) loadCheckData() (*checkMissedPingsData, error) {
 		return nil, err
 	}
 
-	m.logger.Debugf("Loaded missed ping check data: %d devices, timeout=%dm", len(devices), timeoutMinutes)
+	cooldownMinutes := settings.Metrics.MissedPingCooldownMinutes
+
+	m.logger.Debugf("Loaded missed ping check data: %d devices, timeout=%dm, cooldown=%dm", len(devices), timeoutMinutes, cooldownMinutes)
 
 	return &checkMissedPingsData{
-		timeoutMinutes: timeoutMinutes,
-		timeout:        time.Duration(timeoutMinutes) * time.Minute,
-		devices:        devices,
-		lastSeenTimes:  lastSeenTimes,
+		timeoutMinutes:  timeoutMinutes,
+		timeout:         time.Duration(timeoutMinutes) * time.Minute,
+		cooldownMinutes: cooldownMinutes,
+		settings:        settings,
+		devices:         devices,
+		lastSeenTimes:   lastSeenTimes,
 	}, nil
 }
 
@@ -253,7 +259,14 @@ func (m *MissedPingMonitor) checkDevice(device *models.Device, data *checkMissed
 		return nil
 	}
 
-	if now.Sub(lastSeen) <= data.timeout {
+	// Use per-device timeout override if set, otherwise use global timeout
+	deviceTimeoutMinutes := data.timeoutMinutes
+	if device.MissedPingTimeoutOverride > 0 {
+		deviceTimeoutMinutes = device.MissedPingTimeoutOverride
+	}
+	deviceTimeout := time.Duration(deviceTimeoutMinutes) * time.Minute
+
+	if now.Sub(lastSeen) <= deviceTimeout {
 		m.clearNotificationState(device.WWN)
 		return nil
 	}
@@ -264,15 +277,20 @@ func (m *MissedPingMonitor) checkDevice(device *models.Device, data *checkMissed
 	m.mu.RUnlock()
 
 	if alreadyNotified {
+		// Use configurable cooldown, or fall back to device timeout (backward compat)
+		cooldownMinutes := data.cooldownMinutes
+		if cooldownMinutes <= 0 {
+			cooldownMinutes = deviceTimeoutMinutes
+		}
 		timeSinceNotification := time.Since(lastNotified)
-		if timeSinceNotification < time.Duration(data.timeoutMinutes)*time.Minute {
-			m.logger.Debugf("Already notified about device %s %v ago, skipping", device.WWN, timeSinceNotification.Round(time.Minute))
+		if timeSinceNotification < time.Duration(cooldownMinutes)*time.Minute {
+			m.logger.Debugf("Already notified about device %s %v ago (cooldown: %dm), skipping", device.WWN, timeSinceNotification.Round(time.Minute), cooldownMinutes)
 			return nil
 		}
 	}
 
 	m.logger.Warnf("Device %s (%s) has not sent data for %v (threshold: %d minutes)",
-		device.WWN, device.DeviceName, time.Since(lastSeen).Round(time.Minute), data.timeoutMinutes)
+		device.WWN, device.DeviceName, time.Since(lastSeen).Round(time.Minute), deviceTimeoutMinutes)
 
 	return &notify.MissedPingDigestDevice{
 		WWN:          device.WWN,
@@ -315,6 +333,16 @@ func (m *MissedPingMonitor) checkMissedPings() {
 		return
 	}
 
+	// Flush any notifications queued during quiet hours
+	if gate := m.appEngine.NotificationGate; gate != nil && data.settings != nil {
+		flushNotify := notify.Notify{
+			Logger: m.logger,
+			Config: m.appEngine.Config,
+		}
+		flushNotify.LoadDatabaseUrls(m.ctx, m.deviceRepo)
+		gate.FlushQuietQueue(&flushNotify, data.settings)
+	}
+
 	// Clear previous error on successful data load
 	m.statusMu.Lock()
 	m.lastError = nil
@@ -332,33 +360,44 @@ func (m *MissedPingMonitor) checkMissedPings() {
 	}
 
 	if len(missed) > 0 {
-		m.sendMissedPingDigest(missed, data.timeoutMinutes)
+		m.sendMissedPingDigest(missed, data)
 	}
 
 	m.cleanupStaleNotifications(currentDeviceWWNs)
 }
 
-func (m *MissedPingMonitor) sendMissedPingDigest(devices []notify.MissedPingDigestDevice, timeoutMinutes int) {
-	notification := notify.NewMissedPingDigest(m.logger, m.appEngine.Config, devices, timeoutMinutes)
+func (m *MissedPingMonitor) sendMissedPingDigest(devices []notify.MissedPingDigestDevice, data *checkMissedPingsData) {
+	notification := notify.NewMissedPingDigest(m.logger, m.appEngine.Config, devices, data.timeoutMinutes)
 	notification.LoadDatabaseUrls(m.ctx, m.deviceRepo)
-	if err := notification.Send(); err != nil {
-		if err.Error() == "no notification endpoints configured" {
-			m.logger.Warnf("Missed pings detected for %d device(s) but no notification endpoints are configured.", len(devices))
+
+	// Route through the notification gate for rate limiting and quiet hours
+	sent := false
+	if gate := m.appEngine.NotificationGate; gate != nil && data.settings != nil {
+		sent = gate.TrySend(&notification, data.settings, false)
+	} else {
+		// Fallback: send directly if gate not available
+		if err := notification.Send(); err != nil {
+			if err.Error() == "no notification endpoints configured" {
+				m.logger.Warnf("Missed pings detected for %d device(s) but no notification endpoints are configured.", len(devices))
+				return
+			}
+			m.logger.Errorf("Failed to send missed ping digest notification: %v", err)
 			return
 		}
-		m.logger.Errorf("Failed to send missed ping digest notification: %v", err)
-		return
+		sent = true
 	}
 
-	// Mark all devices as notified
-	m.mu.Lock()
-	now := time.Now()
-	for _, d := range devices {
-		m.notifiedDevices[d.WWN] = now
-	}
-	m.mu.Unlock()
+	if sent {
+		// Mark all devices as notified
+		m.mu.Lock()
+		now := time.Now()
+		for _, d := range devices {
+			m.notifiedDevices[d.WWN] = now
+		}
+		m.mu.Unlock()
 
-	m.logger.Infof("Sent missed ping digest notification for %d device(s)", len(devices))
+		m.logger.Infof("Sent missed ping digest notification for %d device(s)", len(devices))
+	}
 }
 
 func (m *MissedPingMonitor) clearNotificationState(wwn string) {
