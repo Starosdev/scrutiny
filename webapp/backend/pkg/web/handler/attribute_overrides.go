@@ -146,24 +146,24 @@ func DeleteAttributeOverride(c *gin.Context) {
 // recalculateDeviceStatusForOverride triggers device status recalculation for devices
 // affected by an attribute override change.
 func recalculateDeviceStatusForOverride(c *gin.Context, logger *logrus.Entry, deviceRepo database.DeviceRepo, override *models.AttributeOverride) {
-	if override.WWN != "" {
-		// Override applies to specific device
-		if err := deviceRepo.RecalculateDeviceStatusFromHistory(c, override.WWN); err != nil {
-			logger.Warnf("Failed to recalculate status for device %s: %v", override.WWN, err)
-		}
-	} else {
-		// Override applies to all devices of this protocol - recalculate all
-		devices, err := deviceRepo.GetDevices(c)
-		if err != nil {
-			logger.Warnf("Failed to get devices for status recalculation: %v", err)
-			return
-		}
-		for _, device := range devices {
-			if device.DeviceProtocol == override.Protocol {
-				if err := deviceRepo.RecalculateDeviceStatusFromHistory(c, device.WWN); err != nil {
-					logger.Warnf("Failed to recalculate status for device %s: %v", device.WWN, err)
-				}
+	// Get all devices to find the ones affected by this override
+	devices, err := deviceRepo.GetDevices(c)
+	if err != nil {
+		logger.Warnf("Failed to get devices for status recalculation: %v", err)
+		return
+	}
+	for _, device := range devices {
+		if override.WWN != "" {
+			// Override applies to specific device - match by WWN
+			if device.WWN != override.WWN {
+				continue
 			}
+		} else if device.DeviceProtocol != override.Protocol {
+			// Override applies to all devices of this protocol
+			continue
+		}
+		if err := deviceRepo.RecalculateDeviceStatusFromHistory(c, device.DeviceID); err != nil {
+			logger.Warnf("Failed to recalculate status for device %s: %v", device.DeviceID, err)
 		}
 	}
 }

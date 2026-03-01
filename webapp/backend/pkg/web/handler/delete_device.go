@@ -17,7 +17,7 @@ func DeleteDevice(c *gin.Context) {
 		return
 	}
 
-	err = deviceRepo.DeleteDevice(c, device.WWN)
+	err = deviceRepo.DeleteDevice(c, device.DeviceID)
 	if err != nil {
 		logger.Errorln("An error occurred while deleting device", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})

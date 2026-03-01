@@ -26,7 +26,7 @@ func UpdateDeviceLabel(c *gin.Context) {
 		return
 	}
 
-	err = deviceRepo.UpdateDeviceLabel(c, device.WWN, request.Label)
+	err = deviceRepo.UpdateDeviceLabel(c, device.DeviceID, request.Label)
 	if err != nil {
 		logger.Errorln("An error occurred while updating device label", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
@@ -34,7 +34,7 @@ func UpdateDeviceLabel(c *gin.Context) {
 	}
 
 	// Re-publish discovery to update the device name in Home Assistant
-	if updatedDevice, err := deviceRepo.GetDeviceDetails(c, device.WWN); err == nil {
+	if updatedDevice, err := deviceRepo.GetDeviceDetails(c, device.DeviceID); err == nil {
 		publishMqttDeviceDiscovery(c, &updatedDevice)
 	}
 

@@ -26,7 +26,7 @@ func UpdateDeviceSmartDisplayMode(c *gin.Context) {
 		return
 	}
 
-	err = deviceRepo.UpdateDeviceSmartDisplayMode(c, device.WWN, request.SmartDisplayMode)
+	err = deviceRepo.UpdateDeviceSmartDisplayMode(c, device.DeviceID, request.SmartDisplayMode)
 	if err != nil {
 		logger.Errorln("An error occurred while updating device smart display mode", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})

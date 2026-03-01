@@ -33,7 +33,7 @@ func UpdateDeviceMissedPingTimeout(c *gin.Context) {
 		return
 	}
 
-	err = deviceRepo.UpdateDeviceMissedPingTimeout(c, device.WWN, req.MissedPingTimeoutOverride)
+	err = deviceRepo.UpdateDeviceMissedPingTimeout(c, device.DeviceID, req.MissedPingTimeoutOverride)
 	if err != nil {
 		logger.Errorln("An error occurred while updating device missed ping timeout", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})

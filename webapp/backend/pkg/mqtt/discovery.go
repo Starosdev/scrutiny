@@ -28,12 +28,12 @@ func deviceInfo(device *models.Device) map[string]interface{} {
 		case device.DeviceName != "":
 			name = device.DeviceName
 		default:
-			name = fmt.Sprintf("Drive %s", device.WWN)
+			name = fmt.Sprintf("Drive %s", device.DeviceID)
 		}
 	}
 
 	info := map[string]interface{}{
-		"identifiers":  []string{fmt.Sprintf("scrutiny_%s", device.WWN)},
+		"identifiers":  []string{fmt.Sprintf("scrutiny_%s", safeID(device.DeviceID))},
 		"name":         name,
 		"manufacturer": device.Manufacturer,
 		"model":        device.ModelName,
@@ -48,21 +48,22 @@ func deviceInfo(device *models.Device) map[string]interface{} {
 	return info
 }
 
-// safeWWN strips the 0x prefix from a WWN for use in MQTT topics.
-func safeWWN(wwn string) string {
-	return strings.TrimPrefix(wwn, "0x")
+// safeID strips the 0x prefix and dashes from an identifier for use in MQTT topics.
+func safeID(id string) string {
+	s := strings.TrimPrefix(id, "0x")
+	return strings.ReplaceAll(s, "-", "")
 }
 
 // stateTopic returns the MQTT topic for a device's state updates.
-func stateTopic(wwn string) string {
-	return fmt.Sprintf("scrutiny/device/%s/state", wwn)
+func stateTopic(deviceID string) string {
+	return fmt.Sprintf("scrutiny/device/%s/state", safeID(deviceID))
 }
 
 // BuildDiscoveryMessages generates HA MQTT Discovery config messages for all entities of a device.
 func BuildDiscoveryMessages(device *models.Device, topicPrefix string) []DiscoveryMessage {
-	safe := safeWWN(device.WWN)
+	safe := safeID(device.DeviceID)
 	devInfo := deviceInfo(device)
-	st := stateTopic(device.WWN)
+	st := stateTopic(device.DeviceID)
 
 	messages := []DiscoveryMessage{
 		buildSensorDiscovery(topicPrefix, safe, "temperature", devInfo, st, &sensorConfig{
@@ -100,8 +101,25 @@ func BuildDiscoveryMessages(device *models.Device, topicPrefix string) []Discove
 
 // BuildRemoveMessages generates empty-payload messages to remove a device from HA discovery.
 func BuildRemoveMessages(device *models.Device, topicPrefix string) []DiscoveryMessage {
-	safe := safeWWN(device.WWN)
+	safe := safeID(device.DeviceID)
+	messages := buildRemoveMessagesForSafeID(safe, topicPrefix)
 
+	// Also remove legacy WWN-based topics if device has a WWN
+	if device.WWN != "" {
+		legacyMessages := BuildRemoveMessagesForWWN(device.WWN, topicPrefix)
+		messages = append(messages, legacyMessages...)
+	}
+
+	return messages
+}
+
+// BuildRemoveMessagesForWWN generates empty-payload messages to clean up legacy WWN-based topics.
+func BuildRemoveMessagesForWWN(wwn string, topicPrefix string) []DiscoveryMessage {
+	safe := strings.TrimPrefix(wwn, "0x")
+	return buildRemoveMessagesForSafeID(safe, topicPrefix)
+}
+
+func buildRemoveMessagesForSafeID(safe string, topicPrefix string) []DiscoveryMessage {
 	topics := []string{
 		fmt.Sprintf("%s/sensor/scrutiny/%s_temperature/config", topicPrefix, safe),
 		fmt.Sprintf("%s/sensor/scrutiny/%s_status/config", topicPrefix, safe),
@@ -127,8 +145,8 @@ type sensorConfig struct {
 	EntityCategory string
 }
 
-func buildSensorDiscovery(topicPrefix, safeWwn, entityID string, devInfo map[string]interface{}, st string, cfg *sensorConfig) DiscoveryMessage {
-	id := fmt.Sprintf(entityIDFormat, safeWwn, entityID)
+func buildSensorDiscovery(topicPrefix, safeDeviceID, entityID string, devInfo map[string]interface{}, st string, cfg *sensorConfig) DiscoveryMessage {
+	id := fmt.Sprintf(entityIDFormat, safeDeviceID, entityID)
 
 	payload := map[string]interface{}{
 		"name":               cfg.Name,
@@ -156,7 +174,7 @@ func buildSensorDiscovery(topicPrefix, safeWwn, entityID string, devInfo map[str
 		payload["entity_category"] = cfg.EntityCategory
 	}
 
-	topic := fmt.Sprintf("%s/sensor/scrutiny/%s_%s/config", topicPrefix, safeWwn, entityID)
+	topic := fmt.Sprintf("%s/sensor/scrutiny/%s_%s/config", topicPrefix, safeDeviceID, entityID)
 	payloadJSON, _ := json.Marshal(payload)
 
 	return DiscoveryMessage{
@@ -165,8 +183,8 @@ func buildSensorDiscovery(topicPrefix, safeWwn, entityID string, devInfo map[str
 	}
 }
 
-func buildBinarySensorDiscovery(topicPrefix, safeWwn, entityID string, devInfo map[string]interface{}, st string) DiscoveryMessage {
-	id := fmt.Sprintf(entityIDFormat, safeWwn, entityID)
+func buildBinarySensorDiscovery(topicPrefix, safeDeviceID, entityID string, devInfo map[string]interface{}, st string) DiscoveryMessage {
+	id := fmt.Sprintf(entityIDFormat, safeDeviceID, entityID)
 
 	payload := map[string]interface{}{
 		"name":               "Drive Problem",
@@ -182,7 +200,7 @@ func buildBinarySensorDiscovery(topicPrefix, safeWwn, entityID string, devInfo m
 		"icon":               "mdi:alert-circle",
 	}
 
-	topic := fmt.Sprintf("%s/binary_sensor/scrutiny/%s_%s/config", topicPrefix, safeWwn, entityID)
+	topic := fmt.Sprintf("%s/binary_sensor/scrutiny/%s_%s/config", topicPrefix, safeDeviceID, entityID)
 	payloadJSON, _ := json.Marshal(payload)
 
 	return DiscoveryMessage{

@@ -11,6 +11,7 @@ import (
 
 func testDevice() *models.Device {
 	return &models.Device{
+		DeviceID:       "d290f1ee-6c54-4b01-90e6-d701748f0851",
 		WWN:            "0x5000cca264eb01d7",
 		DeviceName:     "sda",
 		Manufacturer:   "Seagate",
@@ -33,12 +34,13 @@ func TestBuildDiscoveryMessages_Topics(t *testing.T) {
 	device := testDevice()
 	messages := BuildDiscoveryMessages(device, "homeassistant")
 
+	safe := "d290f1ee6c544b0190e6d701748f0851"
 	expectedTopics := []string{
-		"homeassistant/sensor/scrutiny/5000cca264eb01d7_temperature/config",
-		"homeassistant/sensor/scrutiny/5000cca264eb01d7_status/config",
-		"homeassistant/sensor/scrutiny/5000cca264eb01d7_power_on_hours/config",
-		"homeassistant/sensor/scrutiny/5000cca264eb01d7_power_cycle_count/config",
-		"homeassistant/binary_sensor/scrutiny/5000cca264eb01d7_problem/config",
+		"homeassistant/sensor/scrutiny/" + safe + "_temperature/config",
+		"homeassistant/sensor/scrutiny/" + safe + "_status/config",
+		"homeassistant/sensor/scrutiny/" + safe + "_power_on_hours/config",
+		"homeassistant/sensor/scrutiny/" + safe + "_power_cycle_count/config",
+		"homeassistant/binary_sensor/scrutiny/" + safe + "_problem/config",
 	}
 
 	for i, msg := range messages {
@@ -53,14 +55,15 @@ func TestBuildDiscoveryMessages_TemperatureSensor(t *testing.T) {
 	var payload map[string]interface{}
 	require.NoError(t, json.Unmarshal([]byte(messages[0].Payload), &payload))
 
+	safe := "d290f1ee6c544b0190e6d701748f0851"
 	require.Equal(t, "Temperature", payload["name"])
 	require.Equal(t, "temperature", payload["device_class"])
 	require.Equal(t, "\u00b0C", payload["unit_of_measurement"])
 	require.Equal(t, "measurement", payload["state_class"])
 	require.Equal(t, "{{ value_json.temperature }}", payload["value_template"])
 	require.Equal(t, "scrutiny/availability", payload["availability_topic"])
-	require.Equal(t, "scrutiny/device/0x5000cca264eb01d7/state", payload["state_topic"])
-	require.Equal(t, "scrutiny_5000cca264eb01d7_temperature", payload["unique_id"])
+	require.Equal(t, "scrutiny/device/"+safe+"/state", payload["state_topic"])
+	require.Equal(t, "scrutiny_"+safe+"_temperature", payload["unique_id"])
 }
 
 func TestBuildDiscoveryMessages_StatusSensor(t *testing.T) {
@@ -123,7 +126,7 @@ func TestBuildDiscoveryMessages_DeviceInfo(t *testing.T) {
 	identifiers, ok := devInfo["identifiers"].([]interface{})
 	require.True(t, ok)
 	require.Len(t, identifiers, 1)
-	require.Equal(t, "scrutiny_0x5000cca264eb01d7", identifiers[0])
+	require.Equal(t, "scrutiny_d290f1ee6c544b0190e6d701748f0851", identifiers[0])
 }
 
 func TestBuildDiscoveryMessages_DeviceInfoConsistency(t *testing.T) {
@@ -148,18 +151,18 @@ func TestBuildDiscoveryMessages_DeviceInfoConsistency(t *testing.T) {
 }
 
 func TestBuildDiscoveryMessages_MinimalDevice(t *testing.T) {
-	// Device with only WWN set (minimal data)
+	// Device with only DeviceID set (minimal data)
 	device := &models.Device{
-		WWN: "0x5002538e40a22954",
+		DeviceID: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 	}
 	messages := BuildDiscoveryMessages(device, "homeassistant")
 	require.Len(t, messages, 5)
 
-	// Check that the device name falls back to "Drive <WWN>"
+	// Check that the device name falls back to "Drive <DeviceID>"
 	var payload map[string]interface{}
 	require.NoError(t, json.Unmarshal([]byte(messages[0].Payload), &payload))
 	devInfo := payload["device"].(map[string]interface{})
-	require.Equal(t, "Drive 0x5002538e40a22954", devInfo["name"])
+	require.Equal(t, "Drive a1b2c3d4-e5f6-7890-abcd-ef1234567890", devInfo["name"])
 
 	// Serial number and firmware should be absent when empty
 	_, hasSerial := devInfo["serial_number"]
@@ -171,6 +174,7 @@ func TestBuildDiscoveryMessages_MinimalDevice(t *testing.T) {
 func TestBuildDiscoveryMessages_DeviceNameOnly(t *testing.T) {
 	// Device with DeviceName but no ModelName
 	device := &models.Device{
+		DeviceID:   "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 		WWN:        "0x5002538e40a22954",
 		DeviceName: "sda",
 	}
@@ -185,6 +189,7 @@ func TestBuildDiscoveryMessages_DeviceNameOnly(t *testing.T) {
 func TestBuildDiscoveryMessages_CustomLabel(t *testing.T) {
 	// Device with a user-set Label should use Label as the HA device name
 	device := &models.Device{
+		DeviceID:   "d290f1ee-6c54-4b01-90e6-d701748f0851",
 		WWN:        "0x5000cca264eb01d7",
 		DeviceName: "sda",
 		ModelName:  "ST4000DM000",
@@ -201,6 +206,7 @@ func TestBuildDiscoveryMessages_CustomLabel(t *testing.T) {
 func TestBuildDiscoveryMessages_ModelNameOnly(t *testing.T) {
 	// Device with ModelName but no DeviceName
 	device := &models.Device{
+		DeviceID:  "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 		WWN:       "0x5002538e40a22954",
 		ModelName: "ST4000DM000",
 	}
@@ -215,7 +221,16 @@ func TestBuildDiscoveryMessages_ModelNameOnly(t *testing.T) {
 func TestBuildRemoveMessages_Count(t *testing.T) {
 	device := testDevice()
 	messages := BuildRemoveMessages(device, "homeassistant")
-	require.Len(t, messages, 5, "should produce 5 removal messages")
+	// 5 for DeviceID-based topics + 5 for legacy WWN-based topics
+	require.Len(t, messages, 10, "should produce 10 removal messages (5 DeviceID + 5 legacy WWN)")
+}
+
+func TestBuildRemoveMessages_CountNoWWN(t *testing.T) {
+	device := &models.Device{
+		DeviceID: "d290f1ee-6c54-4b01-90e6-d701748f0851",
+	}
+	messages := BuildRemoveMessages(device, "homeassistant")
+	require.Len(t, messages, 5, "should produce 5 removal messages when no WWN")
 }
 
 func TestBuildRemoveMessages_EmptyPayloads(t *testing.T) {
@@ -232,9 +247,28 @@ func TestBuildRemoveMessages_TopicsMatch(t *testing.T) {
 	discovery := BuildDiscoveryMessages(device, "homeassistant")
 	removal := BuildRemoveMessages(device, "homeassistant")
 
-	// Removal topics should match discovery topics exactly
-	for i, msg := range removal {
-		require.Equal(t, discovery[i].Topic, msg.Topic, "removal topic should match discovery topic at index %d", i)
+	// First 5 removal topics (DeviceID-based) should match discovery topics exactly
+	for i, msg := range discovery {
+		require.Equal(t, msg.Topic, removal[i].Topic, "removal topic should match discovery topic at index %d", i)
+	}
+}
+
+func TestBuildRemoveMessages_LegacyWWNTopics(t *testing.T) {
+	device := testDevice()
+	removal := BuildRemoveMessages(device, "homeassistant")
+
+	// Last 5 messages should be legacy WWN-based topics
+	legacySafe := "5000cca264eb01d7"
+	expectedLegacyTopics := []string{
+		"homeassistant/sensor/scrutiny/" + legacySafe + "_temperature/config",
+		"homeassistant/sensor/scrutiny/" + legacySafe + "_status/config",
+		"homeassistant/sensor/scrutiny/" + legacySafe + "_power_on_hours/config",
+		"homeassistant/sensor/scrutiny/" + legacySafe + "_power_cycle_count/config",
+		"homeassistant/binary_sensor/scrutiny/" + legacySafe + "_problem/config",
+	}
+
+	for i, expected := range expectedLegacyTopics {
+		require.Equal(t, expected, removal[5+i].Topic, "legacy WWN removal topic mismatch at index %d", i)
 	}
 }
 
@@ -247,7 +281,7 @@ func TestBuildDiscoveryMessages_CustomTopicPrefix(t *testing.T) {
 	}
 }
 
-func TestSafeWWN(t *testing.T) {
+func TestSafeID(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected string
@@ -255,15 +289,17 @@ func TestSafeWWN(t *testing.T) {
 		{"0x5000cca264eb01d7", "5000cca264eb01d7"},
 		{"5000cca264eb01d7", "5000cca264eb01d7"},
 		{"0xABCDEF", "ABCDEF"},
+		{"d290f1ee-6c54-4b01-90e6-d701748f0851", "d290f1ee6c544b0190e6d701748f0851"},
+		{"no-prefix-with-dashes", "noprefixwithdashes"},
 	}
 
 	for _, tt := range tests {
-		result := safeWWN(tt.input)
-		require.Equal(t, tt.expected, result, "safeWWN(%q)", tt.input)
+		result := safeID(tt.input)
+		require.Equal(t, tt.expected, result, "safeID(%q)", tt.input)
 	}
 }
 
 func TestStateTopic(t *testing.T) {
-	result := stateTopic("0x5000cca264eb01d7")
-	require.Equal(t, "scrutiny/device/0x5000cca264eb01d7/state", result)
+	result := stateTopic("d290f1ee-6c54-4b01-90e6-d701748f0851")
+	require.Equal(t, "scrutiny/device/d290f1ee6c544b0190e6d701748f0851/state", result)
 }

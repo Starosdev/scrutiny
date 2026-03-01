@@ -17,7 +17,7 @@ func UnarchiveDevice(c *gin.Context) {
 		return
 	}
 
-	err = deviceRepo.UpdateDeviceArchived(c, device.WWN, false)
+	err = deviceRepo.UpdateDeviceArchived(c, device.DeviceID, false)
 	if err != nil {
 		logger.Errorln("An error occurred while unarchiving device", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})

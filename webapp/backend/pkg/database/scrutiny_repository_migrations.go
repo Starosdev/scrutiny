@@ -24,6 +24,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260226000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260301000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260315000000"
+	_ "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260401000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -701,6 +702,102 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 					if err := tx.Exec("UPDATE devices SET device_id = ? WHERE wwn = ?", id, dev.WWN).Error; err != nil {
 						return fmt.Errorf("could not backfill device_id for %s: %w", dev.WWN, err)
 					}
+				}
+
+				return nil
+			},
+		},
+		{
+			ID: "m20260401000000", // swap primary key from wwn to device_id
+			Migrate: func(tx *gorm.DB) error {
+				// Safety: ensure every device has a device_id before proceeding.
+				var nullCount int64
+				if err := tx.Raw("SELECT COUNT(*) FROM devices WHERE device_id IS NULL OR device_id = ''").Scan(&nullCount).Error; err != nil {
+					return fmt.Errorf("could not check for null device_ids: %w", err)
+				}
+				if nullCount > 0 {
+					return fmt.Errorf("found %d devices with NULL/empty device_id; run m20260315000000 backfill first", nullCount)
+				}
+
+				// Step 1: Create new table with device_id as PRIMARY KEY
+				createSQL := `CREATE TABLE devices_new (
+					device_id TEXT PRIMARY KEY,
+					wwn TEXT,
+					created_at DATETIME,
+					updated_at DATETIME,
+					deleted_at DATETIME,
+					device_name TEXT,
+					device_uuid TEXT,
+					device_serial_id TEXT,
+					device_label TEXT,
+					manufacturer TEXT,
+					model_name TEXT,
+					interface_type TEXT,
+					interface_speed TEXT,
+					serial_number TEXT,
+					firmware TEXT,
+					rotation_speed INTEGER,
+					capacity INTEGER,
+					form_factor TEXT,
+					smart_support NUMERIC,
+					device_protocol TEXT,
+					device_type TEXT,
+					label TEXT,
+					host_id TEXT,
+					collector_version TEXT,
+					smart_display_mode TEXT DEFAULT 'scrutiny',
+					device_status INTEGER,
+					has_forced_failure NUMERIC DEFAULT 0,
+					archived NUMERIC,
+					muted NUMERIC,
+					missed_ping_timeout_override INTEGER DEFAULT 0
+				)`
+				if err := tx.Exec(createSQL).Error; err != nil {
+					return fmt.Errorf("failed to create devices_new: %w", err)
+				}
+
+				// Step 2: Copy all data from old table
+				copySQL := `INSERT INTO devices_new (
+					device_id, wwn, created_at, updated_at, deleted_at,
+					device_name, device_uuid, device_serial_id, device_label,
+					manufacturer, model_name, interface_type, interface_speed,
+					serial_number, firmware, rotation_speed, capacity,
+					form_factor, smart_support, device_protocol, device_type,
+					label, host_id, collector_version, smart_display_mode,
+					device_status, has_forced_failure, archived, muted,
+					missed_ping_timeout_override
+				) SELECT
+					device_id, wwn, created_at, updated_at, deleted_at,
+					device_name, device_uuid, device_serial_id, device_label,
+					manufacturer, model_name, interface_type, interface_speed,
+					serial_number, firmware, rotation_speed, capacity,
+					form_factor, smart_support, device_protocol, device_type,
+					label, host_id, collector_version, smart_display_mode,
+					device_status, has_forced_failure, archived, muted,
+					missed_ping_timeout_override
+				FROM devices`
+				if err := tx.Exec(copySQL).Error; err != nil {
+					return fmt.Errorf("failed to copy data to devices_new: %w", err)
+				}
+
+				// Step 3: Drop old table
+				if err := tx.Exec("DROP TABLE devices").Error; err != nil {
+					return fmt.Errorf("failed to drop old devices table: %w", err)
+				}
+
+				// Step 4: Rename new table
+				if err := tx.Exec("ALTER TABLE devices_new RENAME TO devices").Error; err != nil {
+					return fmt.Errorf("failed to rename devices_new: %w", err)
+				}
+
+				// Step 5: Partial unique index on wwn (allows multiple empty/NULL values)
+				if err := tx.Exec("CREATE UNIQUE INDEX idx_devices_wwn ON devices(wwn) WHERE wwn IS NOT NULL AND wwn != ''").Error; err != nil {
+					return fmt.Errorf("failed to create wwn unique index: %w", err)
+				}
+
+				// Step 6: Index on deleted_at (GORM soft-delete convention)
+				if err := tx.Exec("CREATE INDEX idx_devices_deleted_at ON devices(deleted_at)").Error; err != nil {
+					return fmt.Errorf("failed to create deleted_at index: %w", err)
 				}
 
 				return nil

@@ -23,21 +23,20 @@ func ResolveDevice(c *gin.Context, logger *logrus.Entry, deviceRepo database.Dev
 		return models.Device{}, err
 	}
 
-	// Try UUID-based lookup first (new device_id format)
-	if validation.IsUUIDFormat(id) {
-		device, err := deviceRepo.GetDeviceByID(c, id)
-		if err == nil {
-			return device, nil
-		}
-		// Fall through to WWN lookup - some WWNs are also UUID format
+	// Try device_id lookup first (primary key)
+	device, err := deviceRepo.GetDeviceDetails(c, id)
+	if err == nil {
+		return device, nil
 	}
 
-	// Legacy WWN lookup
-	device, err := deviceRepo.GetDeviceDetails(c, id)
-	if err != nil {
-		logger.Warnf("Device not found for identifier: %s", id)
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "device not found"})
-		return models.Device{}, fmt.Errorf("device not found: %s", id)
+	// Legacy WWN fallback for backward compatibility with old collectors/bookmarks
+	device, wwnErr := deviceRepo.GetDeviceByWWN(c, id)
+	if wwnErr == nil {
+		logger.Warnf("DEPRECATED: Device lookup by WWN (%s). Use device_id (%s) instead.", id, device.DeviceID)
+		return device, nil
 	}
-	return device, nil
+
+	logger.Warnf("Device not found for identifier: %s", id)
+	c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "device not found"})
+	return models.Device{}, fmt.Errorf("device not found: %s", id)
 }

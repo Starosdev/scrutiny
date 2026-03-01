@@ -15,7 +15,6 @@ import (
 	"github.com/analogj/scrutiny/collector/pkg/detect"
 	"github.com/analogj/scrutiny/collector/pkg/errors"
 	"github.com/analogj/scrutiny/collector/pkg/models"
-	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 )
 
@@ -67,12 +66,8 @@ func (mc *MetricsCollector) Run() error {
 		return err
 	}
 
-	//filter any device with empty wwn (they are invalid)
-	detectedStorageDevices := lo.Filter[models.Device](rawDetectedStorageDevices, func(dev models.Device, _ int) bool {
-		return len(dev.WWN) > 0
-	})
-
 	mc.logger.Infoln("Sending detected devices to API, for filtering & validation")
+	detectedStorageDevices := rawDetectedStorageDevices
 	jsonObj, _ := json.Marshal(detectedStorageDevices)
 	mc.logger.Debugf("Detected devices: %v", string(jsonObj))
 	err = mc.postJson(apiEndpoint.String(), models.DeviceWrapper{

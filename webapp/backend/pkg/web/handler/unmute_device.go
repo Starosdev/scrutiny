@@ -17,7 +17,7 @@ func UnmuteDevice(c *gin.Context) {
 		return
 	}
 
-	err = deviceRepo.UpdateDeviceMuted(c, device.WWN, false)
+	err = deviceRepo.UpdateDeviceMuted(c, device.DeviceID, false)
 	if err != nil {
 		logger.Errorln("An error occurred while unmuting device", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
