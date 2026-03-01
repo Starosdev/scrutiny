@@ -688,11 +688,6 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                 promises.push(this._detailService.setMissedPingTimeout(this.device.device_id, result.missedPingTimeoutOverride).toPromise());
             }
 
-            const currentOverride = this.device.missed_ping_timeout_override || 0;
-            if (result.missedPingTimeoutOverride !== currentOverride) {
-                promises.push(this._detailService.setMissedPingTimeout(this.device.wwn, result.missedPingTimeoutOverride).toPromise());
-            }
-
             if (promises.length > 0) {
                 Promise.all(promises).then(() => {
                     return this._detailService.getData(this.device.device_id).toPromise();
