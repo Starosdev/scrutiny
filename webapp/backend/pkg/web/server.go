@@ -133,10 +133,10 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.POST("/device/:id/unarchive", handler.UnarchiveDevice) // used by UI to unarchive device
 			api.POST("/device/:id/mute", handler.MuteDevice)           // used by UI to mute device
 			api.POST("/device/:id/unmute", handler.UnmuteDevice)       // used by UI to unmute device
-			api.POST("/device/:id/label", handler.UpdateDeviceLabel)                         //used by UI to set device label
+			api.POST("/device/:id/label", handler.UpdateDeviceLabel)                         // used by UI to set device label
 			api.POST("/device/:id/smart-display-mode", handler.UpdateDeviceSmartDisplayMode)       // used by UI to set SMART attribute display mode
 			api.POST("/device/:id/missed-ping-timeout", handler.UpdateDeviceMissedPingTimeout) // used by UI to set per-device missed ping timeout override
-			api.DELETE("/device/:id", handler.DeleteDevice)                                  //used by UI to delete device
+			api.DELETE("/device/:id", handler.DeleteDevice)                                  // used by UI to delete device
 			api.POST("/device/:id/performance", handler.UploadDevicePerformance)            // used by Collector to upload performance benchmarks
 			api.GET("/device/:id/performance", handler.GetDevicePerformance)                // used by UI to view performance history
 

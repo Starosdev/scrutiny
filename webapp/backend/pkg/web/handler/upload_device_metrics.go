@@ -85,11 +85,11 @@ func UploadDeviceMetrics(c *gin.Context) {
 		return
 	}
 
-	//check for error
+	// check for error
 	if notify.ShouldNotify(
 		logger,
 		&updatedDevice,
-		smartData,
+		&smartData,
 		pkg.MetricsStatusThreshold(appConfig.GetInt(fmt.Sprintf("%s.metrics.status_threshold", config.DB_USER_SETTINGS_SUBKEY))),
 		pkg.MetricsStatusFilterAttributes(appConfig.GetInt(fmt.Sprintf("%s.metrics.status_filter_attributes", config.DB_USER_SETTINGS_SUBKEY))),
 		appConfig.GetBool(fmt.Sprintf("%s.metrics.repeat_notifications", config.DB_USER_SETTINGS_SUBKEY)),
@@ -133,7 +133,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 	// Update Prometheus metrics (if enabled)
 	if collectorVal, exists := c.Get("METRICS_COLLECTOR"); exists {
 		if collector, ok := collectorVal.(*metrics.Collector); ok && collector != nil {
-			collector.UpdateDeviceMetrics(&updatedDevice, smartData)
+			collector.UpdateDeviceMetrics(&updatedDevice, &smartData)
 		}
 	}
 

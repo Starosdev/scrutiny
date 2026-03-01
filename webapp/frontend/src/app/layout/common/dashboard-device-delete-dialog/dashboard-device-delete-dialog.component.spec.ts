@@ -26,7 +26,7 @@ describe('DashboardDeviceDeleteDialogComponent', () => {
         SharedModule],
     providers: [
         { provide: MatDialogRef, useValue: matDialogRefSpy },
-        { provide: MAT_DIALOG_DATA, useValue: { wwn: 'test-wwn', title: 'my-test-device-title' } },
+        { provide: MAT_DIALOG_DATA, useValue: { deviceId: 'test-device-id', title: 'my-test-device-title' } },
         { provide: DashboardDeviceDeleteDialogService, useValue: dashboardDeviceDeleteDialogServiceSpy },
         provideHttpClient(withInterceptorsFromDi())
     ]
@@ -54,7 +54,7 @@ describe('DashboardDeviceDeleteDialogComponent', () => {
         dashboardDeviceDeleteDialogServiceSpy.deleteDevice.and.returnValue(of({'success': true}));
 
         component.onDeleteClick()
-        expect(dashboardDeviceDeleteDialogServiceSpy.deleteDevice).toHaveBeenCalledWith('test-wwn');
+        expect(dashboardDeviceDeleteDialogServiceSpy.deleteDevice).toHaveBeenCalledWith('test-device-id');
         expect(dashboardDeviceDeleteDialogServiceSpy.deleteDevice.calls.count())
             .withContext('one call')
             .toBe(1);

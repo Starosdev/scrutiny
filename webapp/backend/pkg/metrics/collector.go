@@ -40,13 +40,13 @@ func NewCollector(logger *logrus.Entry) *Collector {
 }
 
 // UpdateDeviceMetrics updates device metrics (called from UploadDeviceMetrics)
-func (mc *Collector) UpdateDeviceMetrics(device *models.Device, smartData measurements.Smart) {
+func (mc *Collector) UpdateDeviceMetrics(device *models.Device, smartData *measurements.Smart) {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
 
 	mc.devices[device.DeviceID] = &metricsModels.DeviceMetricsData{
 		Device:    *device,
-		SmartData: smartData,
+		SmartData: *smartData,
 		UpdatedAt: time.Now(),
 	}
 	mc.logger.Debugf("Updated metrics for device %s", device.DeviceID)

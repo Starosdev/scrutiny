@@ -26,7 +26,7 @@ describe('DashboardDeviceArchiveDialogComponent', () => {
         SharedModule],
     providers: [
         { provide: MatDialogRef, useValue: matDialogRefSpy },
-        { provide: MAT_DIALOG_DATA, useValue: { wwn: 'test-wwn', title: 'my-test-device-title' } },
+        { provide: MAT_DIALOG_DATA, useValue: { deviceId: 'test-device-id', title: 'my-test-device-title' } },
         { provide: DashboardDeviceArchiveDialogService, useValue: dashboardDeviceArchiveDialogServiceSpy },
         provideHttpClient(withInterceptorsFromDi())
     ]
@@ -54,7 +54,7 @@ describe('DashboardDeviceArchiveDialogComponent', () => {
         dashboardDeviceArchiveDialogServiceSpy.archiveDevice.and.returnValue(of({'success': true}));
 
         component.onArchiveClick()
-        expect(dashboardDeviceArchiveDialogServiceSpy.archiveDevice).toHaveBeenCalledWith('test-wwn');
+        expect(dashboardDeviceArchiveDialogServiceSpy.archiveDevice).toHaveBeenCalledWith('test-device-id');
         expect(dashboardDeviceArchiveDialogServiceSpy.archiveDevice.calls.count())
             .withContext('one call')
             .toBe(1);
