@@ -63,7 +63,7 @@
   <div class="flex items-center">
     <div class="flex flex-col">
       <a
-        [routerLink]="'/device/' + deviceSummary.device.wwn"
+        [routerLink]="'/device/' + deviceSummary.device.device_id"
         class="font-bold text-md text-secondary uppercase tracking-wider"
       >
         {{ deviceSummary.device | deviceTitle:config.dashboard_display }}
@@ -103,7 +103,7 @@
         <mat-menu #previousStatementMenu="matMenu">
           <a
             mat-menu-item
-            [routerLink]="'/device/' + deviceSummary.device.wwn"
+            [routerLink]="'/device/' + deviceSummary.device.device_id"
           >
             <span class="flex items-center">
               <mat-icon

@@ -184,6 +184,7 @@ func TestMissedPingMonitor_CheckDevice_ReturnsMissedWhenNoEndpoints(t *testing.T
 
 	device := models.Device{
 		WWN:        "test-wwn",
+		DeviceID:   "test-device-id",
 		DeviceName: "/dev/sda",
 	}
 	lastSeen := time.Now().Add(-2 * time.Hour)
@@ -194,12 +195,13 @@ func TestMissedPingMonitor_CheckDevice_ReturnsMissedWhenNoEndpoints(t *testing.T
 		timeoutMinutes: timeoutMinutes,
 		timeout:        time.Duration(timeoutMinutes) * time.Minute,
 		lastSeenTimes: map[string]time.Time{
-			"test-wwn": lastSeen,
+			"test-device-id": lastSeen,
 		},
 	}
 	result := monitor.checkDevice(&device, data, time.Now())
 	require.NotNil(t, result)
 	require.Equal(t, "test-wwn", result.WWN)
+	require.Equal(t, "test-device-id", result.DeviceID)
 }
 
 func TestMissedPingMonitor_CheckDevice_Deduplication(t *testing.T) {
@@ -212,18 +214,19 @@ func TestMissedPingMonitor_CheckDevice_Deduplication(t *testing.T) {
 
 	device := models.Device{
 		WWN:        "test-wwn",
+		DeviceID:   "test-device-id",
 		DeviceName: "/dev/sda",
 	}
 	lastSeen := time.Now().Add(-2 * time.Hour)
 	timeoutMinutes := 60
 
-	// Simulate a successful notification by directly adding to notifiedDevices
+	// Simulate a successful notification by directly adding to notifiedDevices (keyed by DeviceID)
 	firstNotifyTime := time.Now()
 	monitor.mu.Lock()
-	monitor.notifiedDevices["test-wwn"] = firstNotifyTime
+	monitor.notifiedDevices["test-device-id"] = firstNotifyTime
 	monitor.mu.Unlock()
 
-	require.True(t, monitor.IsDeviceNotified("test-wwn"))
+	require.True(t, monitor.IsDeviceNotified("test-device-id"))
 
 	// Second call within timeout period should be skipped (deduplication)
 	time.Sleep(10 * time.Millisecond)
@@ -231,7 +234,7 @@ func TestMissedPingMonitor_CheckDevice_Deduplication(t *testing.T) {
 		timeoutMinutes: timeoutMinutes,
 		timeout:        time.Duration(timeoutMinutes) * time.Minute,
 		lastSeenTimes: map[string]time.Time{
-			"test-wwn": lastSeen,
+			"test-device-id": lastSeen,
 		},
 	}
 	result := monitor.checkDevice(&device, data, time.Now())
@@ -239,7 +242,7 @@ func TestMissedPingMonitor_CheckDevice_Deduplication(t *testing.T) {
 	// Should return nil (skipped due to dedup) and notification time should not have changed
 	require.Nil(t, result)
 	monitor.mu.RLock()
-	storedTime := monitor.notifiedDevices["test-wwn"]
+	storedTime := monitor.notifiedDevices["test-device-id"]
 	monitor.mu.RUnlock()
 	require.Equal(t, firstNotifyTime, storedTime)
 }
@@ -254,6 +257,7 @@ func TestMissedPingMonitor_CheckDevice_SkipsArchived(t *testing.T) {
 
 	device := models.Device{
 		WWN:        "archived-device",
+		DeviceID:   "archived-device-id",
 		DeviceName: "/dev/sda",
 		Archived:   true,
 	}
@@ -262,7 +266,7 @@ func TestMissedPingMonitor_CheckDevice_SkipsArchived(t *testing.T) {
 		timeoutMinutes: 60,
 		timeout:        60 * time.Minute,
 		lastSeenTimes: map[string]time.Time{
-			"archived-device": time.Now().Add(-2 * time.Hour), // Would trigger notification if not archived
+			"archived-device-id": time.Now().Add(-2 * time.Hour),
 		},
 	}
 
@@ -282,6 +286,7 @@ func TestMissedPingMonitor_CheckDevice_SkipsMuted(t *testing.T) {
 
 	device := models.Device{
 		WWN:        "muted-device",
+		DeviceID:   "muted-device-id",
 		DeviceName: "/dev/sda",
 		Muted:      true,
 	}
@@ -290,7 +295,7 @@ func TestMissedPingMonitor_CheckDevice_SkipsMuted(t *testing.T) {
 		timeoutMinutes: 60,
 		timeout:        60 * time.Minute,
 		lastSeenTimes: map[string]time.Time{
-			"muted-device": time.Now().Add(-2 * time.Hour),
+			"muted-device-id": time.Now().Add(-2 * time.Hour),
 		},
 	}
 
@@ -310,6 +315,7 @@ func TestMissedPingMonitor_CheckDevice_SkipsNewlyRegistered(t *testing.T) {
 
 	device := models.Device{
 		WWN:        "new-device",
+		DeviceID:   "new-device-id",
 		DeviceName: "/dev/sda",
 	}
 
@@ -333,12 +339,13 @@ func TestMissedPingMonitor_CheckDevice_ClearsHealthyDevice(t *testing.T) {
 
 	monitor := NewMissedPingMonitor(ae)
 
-	// Pre-populate with a notified device
-	monitor.notifiedDevices["healthy-device"] = time.Now().Add(-1 * time.Hour)
-	require.True(t, monitor.IsDeviceNotified("healthy-device"))
+	// Pre-populate with a notified device (keyed by DeviceID)
+	monitor.notifiedDevices["healthy-device-id"] = time.Now().Add(-1 * time.Hour)
+	require.True(t, monitor.IsDeviceNotified("healthy-device-id"))
 
 	device := models.Device{
 		WWN:        "healthy-device",
+		DeviceID:   "healthy-device-id",
 		DeviceName: "/dev/sda",
 	}
 
@@ -346,7 +353,7 @@ func TestMissedPingMonitor_CheckDevice_ClearsHealthyDevice(t *testing.T) {
 		timeoutMinutes: 60,
 		timeout:        60 * time.Minute,
 		lastSeenTimes: map[string]time.Time{
-			"healthy-device": time.Now().Add(-5 * time.Minute),
+			"healthy-device-id": time.Now().Add(-5 * time.Minute),
 		},
 	}
 
@@ -354,7 +361,7 @@ func TestMissedPingMonitor_CheckDevice_ClearsHealthyDevice(t *testing.T) {
 
 	// Should return nil (device is healthy) and clear notification state
 	require.Nil(t, result)
-	require.False(t, monitor.IsDeviceNotified("healthy-device"))
+	require.False(t, monitor.IsDeviceNotified("healthy-device-id"))
 }
 
 func TestMissedPingMonitor_CheckDevice_ReturnsMissedDevice(t *testing.T) {
@@ -367,6 +374,7 @@ func TestMissedPingMonitor_CheckDevice_ReturnsMissedDevice(t *testing.T) {
 
 	device := models.Device{
 		WWN:          "stale-device",
+		DeviceID:     "stale-device-id",
 		DeviceName:   "/dev/sda",
 		SerialNumber: "ABC123",
 		DeviceStatus: pkg.DeviceStatusPassed,
@@ -376,7 +384,7 @@ func TestMissedPingMonitor_CheckDevice_ReturnsMissedDevice(t *testing.T) {
 		timeoutMinutes: 60,
 		timeout:        60 * time.Minute,
 		lastSeenTimes: map[string]time.Time{
-			"stale-device": time.Now().Add(-2 * time.Hour),
+			"stale-device-id": time.Now().Add(-2 * time.Hour),
 		},
 	}
 
@@ -385,6 +393,7 @@ func TestMissedPingMonitor_CheckDevice_ReturnsMissedDevice(t *testing.T) {
 	// Should return a digest device entry (notification not sent yet, just collected)
 	require.NotNil(t, result)
 	require.Equal(t, "stale-device", result.WWN)
+	require.Equal(t, "stale-device-id", result.DeviceID)
 	require.Equal(t, "/dev/sda", result.DeviceName)
 	require.Equal(t, "ABC123", result.SerialNumber)
 }

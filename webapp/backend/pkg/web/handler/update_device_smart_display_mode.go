@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
-	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -13,10 +12,8 @@ func UpdateDeviceSmartDisplayMode(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 
-	wwn := c.Param("wwn")
-	if err := validation.ValidateWWN(wwn); err != nil {
-		logger.Warnf("Invalid WWN format: %s", wwn)
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+	device, err := ResolveDevice(c, logger, deviceRepo)
+	if err != nil {
 		return
 	}
 
@@ -29,7 +26,7 @@ func UpdateDeviceSmartDisplayMode(c *gin.Context) {
 		return
 	}
 
-	err := deviceRepo.UpdateDeviceSmartDisplayMode(c, wwn, request.SmartDisplayMode)
+	err = deviceRepo.UpdateDeviceSmartDisplayMode(c, device.DeviceID, request.SmartDisplayMode)
 	if err != nil {
 		logger.Errorln("An error occurred while updating device smart display mode", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})

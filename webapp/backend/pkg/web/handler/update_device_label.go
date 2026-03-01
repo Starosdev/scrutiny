@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
-	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -13,10 +12,8 @@ func UpdateDeviceLabel(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 
-	wwn := c.Param("wwn")
-	if err := validation.ValidateWWN(wwn); err != nil {
-		logger.Warnf("Invalid WWN format: %s", wwn)
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+	device, err := ResolveDevice(c, logger, deviceRepo)
+	if err != nil {
 		return
 	}
 
@@ -29,7 +26,7 @@ func UpdateDeviceLabel(c *gin.Context) {
 		return
 	}
 
-	err := deviceRepo.UpdateDeviceLabel(c, wwn, request.Label)
+	err = deviceRepo.UpdateDeviceLabel(c, device.DeviceID, request.Label)
 	if err != nil {
 		logger.Errorln("An error occurred while updating device label", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
@@ -37,8 +34,8 @@ func UpdateDeviceLabel(c *gin.Context) {
 	}
 
 	// Re-publish discovery to update the device name in Home Assistant
-	if device, err := deviceRepo.GetDeviceDetails(c, wwn); err == nil {
-		publishMqttDeviceDiscovery(c, &device)
+	if updatedDevice, err := deviceRepo.GetDeviceDetails(c, device.DeviceID); err == nil {
+		publishMqttDeviceDiscovery(c, &updatedDevice)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})

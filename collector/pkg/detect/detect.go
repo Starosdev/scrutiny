@@ -122,10 +122,7 @@ func (d *Detect) SmartCtlInfo(device *models.Device) error {
 		d.wwnFallback(device)
 	}
 	if len(device.WWN) == 0 {
-		// no WWN populated after WWN lookup and fallback. we need to throw an error
-		errMsg := fmt.Sprintf("no WWN (or fallback) populated for device: %s. Device will be registered, but no data will be published for this device. ", device.DeviceName)
-		d.Logger.Error(errMsg)
-		return fmt.Errorf("%s", errMsg)
+		d.Logger.Warnf("no WWN populated for device: %s. Device will be registered using model+serial as identifier.", device.DeviceName)
 	}
 
 	return nil

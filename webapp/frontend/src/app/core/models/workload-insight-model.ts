@@ -1,4 +1,5 @@
 export interface WorkloadInsightModel {
+    device_id: string;
     device_wwn: string;
     device_protocol: string;
 

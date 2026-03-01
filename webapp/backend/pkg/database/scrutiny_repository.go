@@ -422,9 +422,11 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 	}
 
 	summaries := map[string]*models.DeviceSummary{}
+	wwnToDeviceID := map[string]string{}
 
 	for _, device := range devices {
-		summaries[device.WWN] = &models.DeviceSummary{Device: device}
+		summaries[device.DeviceID] = &models.DeviceSummary{Device: device}
+		wwnToDeviceID[device.WWN] = device.DeviceID
 	}
 
 	// Get parser flux query result
@@ -497,10 +499,15 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 			//get summary data from Influxdb.
 			//result.Record().Values()
 			if deviceWWN, ok := result.Record().Values()["device_wwn"]; ok {
+				wwn := deviceWWN.(string)
+				devID, hasDevID := wwnToDeviceID[wwn]
+				if !hasDevID {
+					continue
+				}
 
-				//ensure summaries is intialized for this wwn
-				if _, exists := summaries[deviceWWN.(string)]; !exists {
-					summaries[deviceWWN.(string)] = &models.DeviceSummary{}
+				// ensure summaries is initialized for this device_id
+				if _, exists := summaries[devID]; !exists {
+					summaries[devID] = &models.DeviceSummary{}
 				}
 
 				smartSummary := &models.SmartSummary{
@@ -539,7 +546,7 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 				}
 				smartSummary.WearoutValue = wearoutVal
 
-				summaries[deviceWWN.(string)].SmartResults = smartSummary
+				summaries[devID].SmartResults = smartSummary
 			}
 		}
 		if result.Err() != nil {
@@ -553,8 +560,10 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 	if err != nil {
 		sr.logger.Errorf("Error getting temperature history: %v", err)
 	}
-	for wwn, tempHistory := range deviceTempHistory {
-		summaries[wwn].TempHistory = tempHistory
+	for devID, tempHistory := range deviceTempHistory {
+		if summary, exists := summaries[devID]; exists {
+			summary.TempHistory = tempHistory
+		}
 	}
 
 	return summaries, nil
@@ -564,6 +573,16 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 // This queries InfluxDB for the most recent submission time for each device, which is more efficient
 // than calling GetSummary when only timestamps are needed.
 func (sr *scrutinyRepository) GetDevicesLastSeenTimes(ctx context.Context) (map[string]time.Time, error) {
+	// Build WWN-to-DeviceID map for re-keying InfluxDB results
+	devices, err := sr.GetDevices(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get devices for last seen times: %w", err)
+	}
+	wwnToDeviceID := map[string]string{}
+	for i := range devices {
+		wwnToDeviceID[devices[i].WWN] = devices[i].DeviceID
+	}
+
 	lastSeenTimes := map[string]time.Time{}
 
 	// Query to get the last submission time for each device from all buckets
@@ -617,9 +636,14 @@ union(tables: [dailyData, weeklyData, monthlyData, yearlyData])
 		values := result.Record().Values()
 		if deviceWWN, ok := values["device_wwn"].(string); ok {
 			if lastTime, ok := values["_time"].(time.Time); ok {
+				// Re-key from WWN to DeviceID
+				key := deviceWWN
+				if devID, hasDevID := wwnToDeviceID[deviceWWN]; hasDevID {
+					key = devID
+				}
 				// Keep the most recent time if we've seen this device before
-				if existing, exists := lastSeenTimes[deviceWWN]; !exists || lastTime.After(existing) {
-					lastSeenTimes[deviceWWN] = lastTime
+				if existing, exists := lastSeenTimes[key]; !exists || lastTime.After(existing) {
+					lastSeenTimes[key] = lastTime
 				}
 			}
 		}

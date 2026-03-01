@@ -8,6 +8,7 @@ import (
 type Performance struct {
 	Date              time.Time `json:"date"`
 	DeviceWWN         string    `json:"device_wwn"`      // tag
+	DeviceID          string    `json:"device_id"`       // tag (deterministic UUIDv5)
 	DeviceProtocol    string    `json:"device_protocol"` // tag
 	Profile           string    `json:"profile"`         // tag
 	FioVersion        string    `json:"fio_version"`
@@ -31,6 +32,7 @@ type Performance struct {
 func (p *Performance) Flatten() (tags map[string]string, fields map[string]interface{}) {
 	tags = map[string]string{
 		"device_wwn":      p.DeviceWWN,
+		"device_id":       p.DeviceID,
 		"device_protocol": p.DeviceProtocol,
 		"profile":         p.Profile,
 	}

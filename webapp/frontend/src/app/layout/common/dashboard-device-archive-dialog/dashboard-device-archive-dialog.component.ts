@@ -12,7 +12,7 @@ export class DashboardDeviceArchiveDialogComponent implements OnInit {
 
     constructor(
         public dialogRef: MatDialogRef<DashboardDeviceArchiveDialogComponent>,
-        @Inject(MAT_DIALOG_DATA) public data: {wwn: string, title: string},
+        @Inject(MAT_DIALOG_DATA) public data: {deviceId: string, title: string},
         private _archiveService: DashboardDeviceArchiveDialogService,
     ) {
     }
@@ -21,7 +21,7 @@ export class DashboardDeviceArchiveDialogComponent implements OnInit {
   }
 
   onArchiveClick(): void {
-      this._archiveService.archiveDevice(this.data.wwn)
+      this._archiveService.archiveDevice(this.data.deviceId)
           .subscribe((data) => {
               this.dialogRef.close(data);
           });

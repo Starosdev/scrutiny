@@ -13,6 +13,9 @@ var (
 	//   NVMe and SCSI devices often use serial numbers as WWN fallbacks when WWN is unavailable
 	wwnRegex = regexp.MustCompile(`^(0x[0-9a-fA-F]{16}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[a-zA-Z0-9_-]{1,64})$`)
 
+	// uuidRegex matches standard UUID format: 8-4-4-4-12 lowercase hex with dashes
+	uuidRegex = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
 	// guidRegex validates ZFS pool GUID format: either decimal (up to 20 digits) or hex (0x prefix)
 	// Examples: 12345678901234567890, 0xABCD1234
 	guidRegex = regexp.MustCompile(`^(0x[0-9a-fA-F]{1,16}|[0-9]{1,20})$`)
@@ -37,6 +40,22 @@ func ValidateWWN(wwn string) error {
 		return ErrInvalidWWN
 	}
 	return nil
+}
+
+// ValidateDeviceIdentifier validates that a device identifier follows one of the accepted formats.
+// Accepts either a WWN format or a UUIDv5 device_id format. This allows API routes to accept
+// both legacy WWN identifiers and the new deterministic device IDs during migration.
+func ValidateDeviceIdentifier(id string) error {
+	if wwnRegex.MatchString(id) {
+		return nil
+	}
+	return ErrInvalidWWN
+}
+
+// IsUUIDFormat returns true if the string looks like a UUID (8-4-4-4-12 hex format).
+// Used to determine whether to resolve by device_id or by WWN.
+func IsUUIDFormat(id string) bool {
+	return uuidRegex.MatchString(id)
 }
 
 // ValidateGUID validates that a ZFS pool GUID follows the expected format.
