@@ -14,7 +14,7 @@ import (
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Temperature Data
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-func (sr *scrutinyRepository) SaveSmartTemperature(ctx context.Context, wwn string, collectorSmartData *collector.SmartInfo, retrieveSCTTemperatureHistory bool) error {
+func (sr *scrutinyRepository) SaveSmartTemperature(ctx context.Context, wwn string, deviceID string, collectorSmartData *collector.SmartInfo, retrieveSCTTemperatureHistory bool) error {
 	if len(collectorSmartData.AtaSctTemperatureHistory.Table) > 0 && retrieveSCTTemperatureHistory {
 
 		for ndx, temp := range collectorSmartData.AtaSctTemperatureHistory.Table {
@@ -33,6 +33,7 @@ func (sr *scrutinyRepository) SaveSmartTemperature(ctx context.Context, wwn stri
 
 			tags, fields := smartTemp.Flatten()
 			tags["device_wwn"] = wwn
+			tags["device_id"] = deviceID
 			p := influxdb2.NewPoint("temp",
 				tags,
 				fields,
@@ -53,6 +54,7 @@ func (sr *scrutinyRepository) SaveSmartTemperature(ctx context.Context, wwn stri
 
 	tags, fields := smartTemp.Flatten()
 	tags["device_wwn"] = wwn
+	tags["device_id"] = deviceID
 	p := influxdb2.NewPoint("temp",
 		tags,
 		fields,

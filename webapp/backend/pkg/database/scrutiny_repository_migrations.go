@@ -23,6 +23,8 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260225000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260226000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260301000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260315000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
@@ -674,6 +676,34 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 					},
 				}
 				return tx.Create(&defaultSettings).Error
+			},
+		},
+		{
+			ID: "m20260315000000", // add device_id (UUIDv5) column and backfill existing devices
+			Migrate: func(tx *gorm.DB) error {
+				// Add device_id column to devices table
+				if err := tx.AutoMigrate(m20260315000000.Device{}); err != nil {
+					return err
+				}
+
+				// Backfill: compute device_id for all existing devices
+				var devices []struct {
+					WWN          string
+					ModelName    string
+					SerialNumber string
+				}
+				if err := tx.Raw("SELECT wwn, model_name, serial_number FROM devices").Scan(&devices).Error; err != nil {
+					return fmt.Errorf("could not query devices for backfill: %w", err)
+				}
+
+				for _, dev := range devices {
+					id := deviceid.Generate(dev.ModelName, dev.SerialNumber, dev.WWN)
+					if err := tx.Exec("UPDATE devices SET device_id = ? WHERE wwn = ?", id, dev.WWN).Error; err != nil {
+						return fmt.Errorf("could not backfill device_id for %s: %w", dev.WWN, err)
+					}
+				}
+
+				return nil
 			},
 		},
 	})

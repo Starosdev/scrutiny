@@ -17,6 +17,7 @@ import (
 type Smart struct {
 	Date           time.Time `json:"date"`
 	DeviceWWN      string    `json:"device_wwn"` //(tag)
+	DeviceID       string    `json:"device_id"`  //(tag) deterministic UUIDv5
 	DeviceProtocol string    `json:"device_protocol"`
 
 	//Metrics (fields)
@@ -36,6 +37,7 @@ type Smart struct {
 func (sm *Smart) Flatten() (tags map[string]string, fields map[string]interface{}) {
 	tags = map[string]string{
 		"device_wwn":      sm.DeviceWWN,
+		"device_id":       sm.DeviceID,
 		"device_protocol": sm.DeviceProtocol,
 	}
 

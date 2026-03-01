@@ -20,7 +20,8 @@ type Device struct {
 	UpdatedAt time.Time
 	DeletedAt *time.Time
 
-	WWN string `json:"wwn" gorm:"primary_key"`
+	WWN      string `json:"wwn" gorm:"primary_key"`
+	DeviceID string `json:"device_id" gorm:"column:device_id;uniqueIndex"`
 
 	DeviceName     string `json:"device_name"`
 	DeviceUUID     string `json:"device_uuid"`

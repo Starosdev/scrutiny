@@ -56,7 +56,7 @@ type DeviceRepo interface {
 	// for use in delta evaluation before writing a new submission.
 	GetLatestSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error)
 
-	SaveSmartTemperature(ctx context.Context, wwn string, collectorSmartData *collector.SmartInfo, retrieveSCTTemperatureHistory bool) error
+	SaveSmartTemperature(ctx context.Context, wwn string, deviceID string, collectorSmartData *collector.SmartInfo, retrieveSCTTemperatureHistory bool) error
 
 	GetSummary(ctx context.Context) (map[string]*models.DeviceSummary, error)
 	GetSmartTemperatureHistory(ctx context.Context, durationKey string) (map[string][]measurements.SmartTemperature, error)

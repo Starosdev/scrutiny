@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
@@ -20,10 +21,15 @@ import (
 // insert device into DB (and update specified columns if device is already registered)
 // update device fields that may change: (DeviceType, HostID)
 func (sr *scrutinyRepository) RegisterDevice(ctx context.Context, dev models.Device) error {
+	// Compute deterministic device ID from model, serial, and WWN
+	if dev.DeviceID == "" {
+		dev.DeviceID = deviceid.Generate(dev.ModelName, dev.SerialNumber, dev.WWN)
+	}
+
 	updateColumns := []string{
 		"host_id", "device_name", "device_type", "device_uuid",
 		"device_serial_id", "device_label", "collector_version",
-		"model_name", "manufacturer",
+		"model_name", "manufacturer", "device_id",
 	}
 
 	// Only update the custom label if the collector explicitly provides one.
