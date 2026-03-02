@@ -128,18 +128,22 @@ func (p *Publisher) RemoveDevice(device *models.Device) {
 	p.logger.Debugf("MQTT: removed device %s from Home Assistant", device.DeviceID)
 }
 
-// LoadInitialData publishes discovery and state for all active devices from the database.
-// On startup, it also cleans up old WWN-based MQTT topics by publishing empty payloads.
-func (p *Publisher) LoadInitialData(deviceRepo database.DeviceRepo, ctx context.Context) error {
-	start := time.Now()
-	p.logger.Info("MQTT: loading initial device data...")
+// SyncAllDevices re-syncs all MQTT discovery entities with Home Assistant.
+// It cleans up legacy WWN-based topics, removes archived devices, and re-publishes
+// discovery + state for all active devices. Returns counts of devices published
+// and legacy topics cleaned.
+func (p *Publisher) SyncAllDevices(deviceRepo database.DeviceRepo, ctx context.Context) (int, int, error) {
+	if !p.client.IsConnected() {
+		return 0, 0, fmt.Errorf("MQTT client is not connected")
+	}
 
 	summary, err := deviceRepo.GetSummary(ctx)
 	if err != nil {
-		return fmt.Errorf("MQTT: failed to load device summary: %w", err)
+		return 0, 0, fmt.Errorf("MQTT: failed to load device summary: %w", err)
 	}
 
 	// Clean up legacy WWN-based topics for all devices
+	cleaned := 0
 	for _, deviceSummary := range summary {
 		device := deviceSummary.Device
 		if device.WWN != "" {
@@ -150,6 +154,7 @@ func (p *Publisher) LoadInitialData(deviceRepo database.DeviceRepo, ctx context.
 			// Clear legacy state topic
 			legacyStateTopic := fmt.Sprintf("scrutiny/device/%s/state", device.WWN)
 			_ = p.client.Publish(legacyStateTopic, "", true)
+			cleaned++
 		}
 	}
 
@@ -160,6 +165,8 @@ func (p *Publisher) LoadInitialData(deviceRepo database.DeviceRepo, ctx context.
 	for _, deviceSummary := range summary {
 		device := deviceSummary.Device
 		if device.Archived {
+			// Remove archived devices from HA (in case they were previously published)
+			p.RemoveDevice(&device)
 			continue
 		}
 
@@ -168,7 +175,21 @@ func (p *Publisher) LoadInitialData(deviceRepo database.DeviceRepo, ctx context.
 		published++
 	}
 
-	p.logger.Infof("MQTT: published discovery and state for %d devices in %v", published, time.Since(start))
+	return published, cleaned, nil
+}
+
+// LoadInitialData publishes discovery and state for all active devices from the database.
+// On startup, it also cleans up old WWN-based MQTT topics by publishing empty payloads.
+func (p *Publisher) LoadInitialData(deviceRepo database.DeviceRepo, ctx context.Context) error {
+	start := time.Now()
+	p.logger.Info("MQTT: loading initial device data...")
+
+	published, cleaned, err := p.SyncAllDevices(deviceRepo, ctx)
+	if err != nil {
+		return err
+	}
+
+	p.logger.Infof("MQTT: synced %d devices, cleaned %d legacy topics in %v", published, cleaned, time.Since(start))
 	return nil
 }
 
