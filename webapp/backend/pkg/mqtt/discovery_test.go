@@ -64,6 +64,8 @@ func TestBuildDiscoveryMessages_TemperatureSensor(t *testing.T) {
 	require.Equal(t, "scrutiny/availability", payload["availability_topic"])
 	require.Equal(t, "scrutiny/device/"+safe+"/state", payload["state_topic"])
 	require.Equal(t, "scrutiny_"+safe+"_temperature", payload["unique_id"])
+	require.Equal(t, "sensor.scrutiny_"+safe+"_temperature", payload["default_entity_id"])
+	require.Nil(t, payload["object_id"], "object_id should no longer be present")
 }
 
 func TestBuildDiscoveryMessages_StatusSensor(t *testing.T) {
@@ -103,6 +105,10 @@ func TestBuildDiscoveryMessages_ProblemBinarySensor(t *testing.T) {
 	require.Equal(t, "ON", payload["payload_on"])
 	require.Equal(t, "OFF", payload["payload_off"])
 	require.Equal(t, "{{ value_json.problem }}", payload["value_template"])
+
+	safe := "d290f1ee6c544b0190e6d701748f0851"
+	require.Equal(t, "binary_sensor.scrutiny_"+safe+"_problem", payload["default_entity_id"])
+	require.Nil(t, payload["object_id"], "object_id should no longer be present")
 }
 
 func TestBuildDiscoveryMessages_DeviceInfo(t *testing.T) {
