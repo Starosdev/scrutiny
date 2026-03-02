@@ -151,7 +151,7 @@ func buildSensorDiscovery(topicPrefix, safeDeviceID, entityID string, devInfo ma
 	payload := map[string]interface{}{
 		"name":               cfg.Name,
 		"unique_id":          id,
-		"object_id":          id,
+		"default_entity_id":  fmt.Sprintf("sensor.%s", id),
 		"state_topic":        st,
 		"value_template":     cfg.ValueTemplate,
 		"availability_topic": availabilityTopic,
@@ -189,7 +189,7 @@ func buildBinarySensorDiscovery(topicPrefix, safeDeviceID, entityID string, devI
 	payload := map[string]interface{}{
 		"name":               "Drive Problem",
 		"unique_id":          id,
-		"object_id":          id,
+		"default_entity_id":  fmt.Sprintf("binary_sensor.%s", id),
 		"state_topic":        st,
 		"value_template":     "{{ value_json.problem }}",
 		"payload_on":         "ON",
