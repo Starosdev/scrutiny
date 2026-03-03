@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.39.0](https://github.com/Starosdev/scrutiny/compare/v1.38.0...v1.39.0) (2026-03-01)
+
+### Features
+
+* **database:** UUIDv5 device_id as primary identifier ([#270](https://github.com/Starosdev/scrutiny/issues/270)) ([#311](https://github.com/Starosdev/scrutiny/issues/311)) ([850794e](https://github.com/Starosdev/scrutiny/commit/850794e4d404737d302dad4499d787735c442bd5))
+
 ## [1.38.0](https://github.com/Starosdev/scrutiny/compare/v1.37.0...v1.38.0) (2026-03-01)
 
 ### Features
