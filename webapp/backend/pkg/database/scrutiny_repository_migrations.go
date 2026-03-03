@@ -803,6 +803,25 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				return nil
 			},
 		},
+		// Drop unique constraint on wwn, replace with regular index.
+		// The unique index caused INSERT failures for devices sharing the same
+		// non-empty WWN (e.g. multiple disks reporting 0x0000000000000000).
+		// Since device_id is now the primary key, wwn uniqueness is no longer needed.
+		// Fixes: https://github.com/Starosdev/scrutiny/issues/314
+		{
+			ID: "m20260402000000",
+			Migrate: func(tx *gorm.DB) error {
+				// Drop the unique index
+				if err := tx.Exec("DROP INDEX IF EXISTS idx_devices_wwn").Error; err != nil {
+					return fmt.Errorf("failed to drop unique wwn index: %w", err)
+				}
+				// Create a regular (non-unique) index for lookup performance
+				if err := tx.Exec("CREATE INDEX idx_devices_wwn ON devices(wwn)").Error; err != nil {
+					return fmt.Errorf("failed to create wwn index: %w", err)
+				}
+				return nil
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {
