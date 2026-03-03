@@ -12,6 +12,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/Starosdev/scrutiny?style=flat-square)](https://goreportcard.com/report/github.com/Starosdev/scrutiny)
 [![GitHub release](http://img.shields.io/github/release/Starosdev/scrutiny.svg?style=flat-square)](https://github.com/Starosdev/scrutiny/releases)
 [![Docker Pulls](https://img.shields.io/badge/docker-ghcr.io%2Fstarosdev%2Fscrutiny-blue?style=flat-square&logo=docker)](https://github.com/Starosdev/scrutiny/pkgs/container/scrutiny)
+[![Roadmap](https://img.shields.io/badge/roadmap-view%20roadmap-8b5cf6?style=flat-square)](https://staroslabs.dev/roadmap)
 
 **Hard Drive Health Dashboard & Monitoring for S.M.A.R.T metrics**
 
