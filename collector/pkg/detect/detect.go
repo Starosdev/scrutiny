@@ -22,6 +22,20 @@ type Detect struct {
 	Shell  shell.Interface
 }
 
+// stripDevicePrefix removes the platform-specific device prefix from a device path.
+// On platforms where DevicePrefix() is empty (e.g., Windows), it falls back to
+// stripping the common "/dev/" prefix to avoid storing paths like "/dev/sda" as
+// the device name, which would cause doubling in the UI (e.g., "/dev//dev/sda").
+func stripDevicePrefix(devicePath string) string {
+	prefix := DevicePrefix()
+	if prefix != "" {
+		return strings.TrimPrefix(devicePath, prefix)
+	}
+	// Fallback: strip "/dev/" if present (handles Windows where smartctl
+	// outputs /dev/sda but DevicePrefix() is empty)
+	return strings.TrimPrefix(devicePath, "/dev/")
+}
+
 //private/common functions
 
 // This function calls smartctl --scan which can be used to detect storage devices.
@@ -147,7 +161,7 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 			HostId:           d.Config.GetString("host.id"),
 			CollectorVersion: version.VERSION,
 			DeviceType:       scannedDevice.Type,
-			DeviceName:       strings.TrimPrefix(deviceFile, DevicePrefix()),
+			DeviceName:       stripDevicePrefix(deviceFile),
 		}
 
 		//find (or create) a slice to contain the devices in this group
@@ -177,7 +191,7 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 						HostId:           d.Config.GetString("host.id"),
 						CollectorVersion: version.VERSION,
 						DeviceType:       overrideDeviceType,
-						DeviceName:       strings.TrimPrefix(overrideDeviceFile, DevicePrefix()),
+						DeviceName:       stripDevicePrefix(overrideDeviceFile),
 						Label:            overrideDevice.Label,
 					})
 				}
@@ -203,7 +217,7 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 					HostId:           d.Config.GetString("host.id"),
 					CollectorVersion: version.VERSION,
 					DeviceType:       deviceType,
-					DeviceName:       strings.TrimPrefix(overrideDeviceFile, DevicePrefix()),
+					DeviceName:       stripDevicePrefix(overrideDeviceFile),
 					Label:            overrideDevice.Label,
 				})
 			}
