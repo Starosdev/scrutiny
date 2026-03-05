@@ -180,7 +180,7 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
     private buildNameTitle(insight: WorkloadInsightModel): string {
         const parts: string[] = [];
         if (insight.device_name) {
-            parts.push(`/dev/${insight.device_name}`);
+            parts.push(insight.device_name.startsWith('/dev/') ? insight.device_name : `/dev/${insight.device_name}`);
         }
         if (insight.device_type && insight.device_type !== 'scsi' && insight.device_type !== 'ata') {
             parts.push(insight.device_type);
