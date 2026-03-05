@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.40.0](https://github.com/Starosdev/scrutiny/compare/v1.39.0...v1.40.0) (2026-03-03)
+
+### Features
+
+* **database:** UUIDv5 device_id migration and MQTT improvements ([#317](https://github.com/Starosdev/scrutiny/issues/317)) ([53a0840](https://github.com/Starosdev/scrutiny/commit/53a08400617997f930458cdebf92565c402450e3)), closes [#308](https://github.com/Starosdev/scrutiny/issues/308) [#255](https://github.com/Starosdev/scrutiny/issues/255) [#270](https://github.com/Starosdev/scrutiny/issues/270) [#310](https://github.com/Starosdev/scrutiny/issues/310) [#270](https://github.com/Starosdev/scrutiny/issues/270) [#270](https://github.com/Starosdev/scrutiny/issues/270) [#270](https://github.com/Starosdev/scrutiny/issues/270) [#312](https://github.com/Starosdev/scrutiny/issues/312) [#313](https://github.com/Starosdev/scrutiny/issues/313) [#316](https://github.com/Starosdev/scrutiny/issues/316) [#314](https://github.com/Starosdev/scrutiny/issues/314)
+
 ## [1.39.0](https://github.com/Starosdev/scrutiny/compare/v1.38.0...v1.39.0) (2026-03-01)
 
 ### Features
