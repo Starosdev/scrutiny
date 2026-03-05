@@ -416,6 +416,44 @@ Scrutiny computes drive workload statistics from existing S.M.A.R.T attribute hi
 
 Navigate to the **Workload** page from the top navigation bar. Use the duration selector (Day, Week, Month, Year, All) to adjust the analysis window. Click any row to navigate to the device detail page.
 
+## SMART Attribute Overrides
+
+Scrutiny allows you to customize how individual SMART attributes are evaluated. Use this to suppress false positives, ignore noisy attributes, force specific statuses, or set custom warning/failure thresholds.
+
+### From the Device Detail Page (Quick Action)
+
+1. Click on a drive to open its detail page
+2. Find the attribute in the SMART table
+3. Click the three-dot menu in the **Actions** column (appears on failed/warning attributes)
+4. Select **Ignore attribute** to suppress it, or **Force passed** to override its status
+
+These quick actions create device-specific overrides. To remove an override, click the purple tune icon and select **Remove override**.
+
+### From Dashboard Settings (Global)
+
+1. Open Dashboard Settings (gear icon)
+2. Expand **SMART Attribute Overrides**
+3. Fill in the override form:
+   - **Protocol**: ATA, NVMe, or SCSI
+   - **Attribute ID**: The attribute identifier (e.g., `199` for UltraDMA CRC Error Count, `media_errors` for NVMe)
+   - **Action**: Ignore, Force Status, or Custom Threshold
+   - **Device WWN** (optional): Leave empty to apply globally, or specify a WWN for a single device
+4. Click **Add Override**
+
+### From Config File
+
+Add overrides to `scrutiny.yaml` under `smart.attribute_overrides`. See [example.scrutiny.yaml](example.scrutiny.yaml) for examples including ignore, force status, and custom threshold configurations.
+
+### Override Types
+
+| Action | Behavior |
+| ------ | -------- |
+| Ignore | Attribute marked as passed; excluded from device failure status and notifications |
+| Force Status | Overrides computed status to passed, warn, or failed |
+| Custom Threshold | Replaces default thresholds with user-defined warn_above/fail_above values |
+
+Overrides apply at the next SMART data collection. Device status is recalculated immediately when overrides are added or removed via the UI.
+
 ## Notifications
 
 Scrutiny supports sending SMART device failure notifications via the following services:
