@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.40.1](https://github.com/Starosdev/scrutiny/compare/v1.40.0...v1.40.1) (2026-03-05)
+
+### Bug Fixes
+
+* **collector:** prevent double /dev/ prefix on Windows device paths ([#320](https://github.com/Starosdev/scrutiny/issues/320)) ([#321](https://github.com/Starosdev/scrutiny/issues/321)) ([0b5f971](https://github.com/Starosdev/scrutiny/commit/0b5f97169d197a5be278cfb3c78085f2c2d74e8b))
+
 ## [1.40.0](https://github.com/Starosdev/scrutiny/compare/v1.39.0...v1.40.0) (2026-03-03)
 
 ### Features
