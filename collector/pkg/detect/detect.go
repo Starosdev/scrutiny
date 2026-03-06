@@ -1,12 +1,14 @@
 package detect
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/analogj/scrutiny/collector/pkg/common/shell"
 	"github.com/analogj/scrutiny/collector/pkg/config"
@@ -47,7 +49,10 @@ func stripDevicePrefix(devicePath string) string {
 func (d *Detect) SmartctlScan() ([]models.Device, error) {
 	//we use smartctl to detect all the drives available.
 	args := strings.Split(d.Config.GetString("commands.metrics_scan_args"), " ")
-	detectedDeviceConnJson, err := d.Shell.Command(d.Logger, d.Config.GetString("commands.metrics_smartctl_bin"), args, "", os.Environ())
+	timeout := time.Duration(d.Config.GetInt("commands.metrics_smartctl_timeout")) * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	detectedDeviceConnJson, err := d.Shell.CommandContext(ctx, d.Logger, d.Config.GetString("commands.metrics_smartctl_bin"), args, "", os.Environ())
 	if err != nil {
 		d.Logger.Errorf("Error scanning for devices: %v", err)
 		return nil, err
@@ -78,7 +83,10 @@ func (d *Detect) SmartCtlInfo(device *models.Device) error {
 	}
 	args = append(args, fullDeviceName)
 
-	availableDeviceInfoJson, err := d.Shell.Command(d.Logger, d.Config.GetString("commands.metrics_smartctl_bin"), args, "", os.Environ())
+	timeout := time.Duration(d.Config.GetInt("commands.metrics_smartctl_timeout")) * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	availableDeviceInfoJson, err := d.Shell.CommandContext(ctx, d.Logger, d.Config.GetString("commands.metrics_smartctl_bin"), args, "", os.Environ())
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
 		exitCode := exitErr.ExitCode()
