@@ -2,20 +2,26 @@ package shell
 
 import (
 	"bytes"
+	"context"
 	"errors"
-	"github.com/sirupsen/logrus"
 	"io"
 	"os/exec"
 	"path"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 type localShell struct{}
 
 func (s *localShell) Command(logger *logrus.Entry, cmdName string, cmdArgs []string, workingDir string, environ []string) (string, error) {
+	return s.CommandContext(context.Background(), logger, cmdName, cmdArgs, workingDir, environ)
+}
+
+func (s *localShell) CommandContext(ctx context.Context, logger *logrus.Entry, cmdName string, cmdArgs []string, workingDir string, environ []string) (string, error) {
 	logger.Infof("Executing command: %s %s", cmdName, strings.Join(cmdArgs, " "))
 
-	cmd := exec.Command(cmdName, cmdArgs...)
+	cmd := exec.CommandContext(ctx, cmdName, cmdArgs...)
 	var stdBuffer bytes.Buffer
 
 	logWriters := []io.Writer{
@@ -41,5 +47,4 @@ func (s *localShell) Command(logger *logrus.Entry, cmdName string, cmdArgs []str
 
 	err := cmd.Run()
 	return stdBuffer.String(), err
-
 }

@@ -25,11 +25,12 @@ func TestDetect_SmartctlScan(t *testing.T) {
 	fakeConfig.EXPECT().GetDeviceOverrides().AnyTimes().Return([]models.ScanOverride{})
 	fakeConfig.EXPECT().GetString("commands.metrics_smartctl_bin").AnyTimes().Return("smartctl")
 	fakeConfig.EXPECT().GetString("commands.metrics_scan_args").AnyTimes().Return("--scan --json")
+	fakeConfig.EXPECT().GetInt("commands.metrics_smartctl_timeout").AnyTimes().Return(120)
 	fakeConfig.EXPECT().IsAllowlistedDevice(gomock.Any()).AnyTimes().Return(true)
 
 	fakeShell := mock_shell.NewMockInterface(mockCtrl)
 	testScanResults, err := os.ReadFile("testdata/smartctl_scan_simple.json")
-	fakeShell.EXPECT().Command(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(string(testScanResults), err)
+	fakeShell.EXPECT().CommandContext(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(string(testScanResults), err)
 
 	d := detect.Detect{
 		Logger: logrus.WithFields(logrus.Fields{}),
@@ -55,11 +56,12 @@ func TestDetect_SmartctlScan_Megaraid(t *testing.T) {
 	fakeConfig.EXPECT().GetDeviceOverrides().AnyTimes().Return([]models.ScanOverride{})
 	fakeConfig.EXPECT().GetString("commands.metrics_smartctl_bin").AnyTimes().Return("smartctl")
 	fakeConfig.EXPECT().GetString("commands.metrics_scan_args").AnyTimes().Return("--scan --json")
+	fakeConfig.EXPECT().GetInt("commands.metrics_smartctl_timeout").AnyTimes().Return(120)
 	fakeConfig.EXPECT().IsAllowlistedDevice(gomock.Any()).AnyTimes().Return(true)
 
 	fakeShell := mock_shell.NewMockInterface(mockCtrl)
 	testScanResults, err := os.ReadFile("testdata/smartctl_scan_megaraid.json")
-	fakeShell.EXPECT().Command(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(string(testScanResults), err)
+	fakeShell.EXPECT().CommandContext(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(string(testScanResults), err)
 
 	d := detect.Detect{
 		Logger: logrus.WithFields(logrus.Fields{}),
@@ -88,11 +90,12 @@ func TestDetect_SmartctlScan_Nvme(t *testing.T) {
 	fakeConfig.EXPECT().GetDeviceOverrides().AnyTimes().Return([]models.ScanOverride{})
 	fakeConfig.EXPECT().GetString("commands.metrics_smartctl_bin").AnyTimes().Return("smartctl")
 	fakeConfig.EXPECT().GetString("commands.metrics_scan_args").AnyTimes().Return("--scan --json")
+	fakeConfig.EXPECT().GetInt("commands.metrics_smartctl_timeout").AnyTimes().Return(120)
 	fakeConfig.EXPECT().IsAllowlistedDevice(gomock.Any()).AnyTimes().Return(true)
 
 	fakeShell := mock_shell.NewMockInterface(mockCtrl)
 	testScanResults, err := os.ReadFile("testdata/smartctl_scan_nvme.json")
-	fakeShell.EXPECT().Command(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(string(testScanResults), err)
+	fakeShell.EXPECT().CommandContext(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(string(testScanResults), err)
 
 	d := detect.Detect{
 		Logger: logrus.WithFields(logrus.Fields{}),
@@ -376,6 +379,9 @@ func TestDetect_SmartCtlInfo(t *testing.T) {
 		fakeConfig.EXPECT().
 			GetString("commands.metrics_smartctl_bin").
 			Return("smartctl")
+		fakeConfig.EXPECT().
+			GetInt("commands.metrics_smartctl_timeout").
+			Return(120)
 
 		someLogger := logrus.WithFields(logrus.Fields{})
 
@@ -384,7 +390,7 @@ func TestDetect_SmartCtlInfo(t *testing.T) {
 
 		fakeShell := mock_shell.NewMockInterface(ctrl)
 		fakeShell.EXPECT().
-			Command(someLogger, "smartctl", append(strings.Split(someArgs, " "), "/dev/"+someDeviceName), "", gomock.Any()).
+			CommandContext(gomock.Any(), someLogger, "smartctl", append(strings.Split(someArgs, " "), "/dev/"+someDeviceName), "", gomock.Any()).
 			Return(string(smartctlInfoResults), err)
 
 		d := detect.Detect{

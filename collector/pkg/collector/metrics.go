@@ -2,6 +2,7 @@ package collector
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -131,7 +132,10 @@ func (mc *MetricsCollector) Collect(deviceWWN string, deviceName string, deviceT
 	}
 	args = append(args, fullDeviceName)
 
-	result, err := mc.shell.Command(mc.logger, mc.config.GetString(configKeySmartctlBin), args, "", os.Environ())
+	timeout := time.Duration(mc.config.GetInt("commands.metrics_smartctl_timeout")) * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	result, err := mc.shell.CommandContext(ctx, mc.logger, mc.config.GetString(configKeySmartctlBin), args, "", os.Environ())
 	resultBytes := []byte(result)
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
@@ -166,7 +170,10 @@ func (mc *MetricsCollector) collectAndMergeFarm(smartJson []byte, fullDeviceName
 	}
 	farmArgs = append(farmArgs, fullDeviceName)
 
-	farmResult, farmErr := mc.shell.Command(mc.logger, mc.config.GetString(configKeySmartctlBin), farmArgs, "", os.Environ())
+	farmTimeout := time.Duration(mc.config.GetInt("commands.metrics_smartctl_timeout")) * time.Second
+	farmCtx, farmCancel := context.WithTimeout(context.Background(), farmTimeout)
+	defer farmCancel()
+	farmResult, farmErr := mc.shell.CommandContext(farmCtx, mc.logger, mc.config.GetString(configKeySmartctlBin), farmArgs, "", os.Environ())
 	if farmErr != nil {
 		mc.logger.Debugf("FARM log collection failed for %s (drive may not support FARM): %v", deviceName, farmErr)
 		return smartJson

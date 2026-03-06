@@ -5,6 +5,7 @@
 package mock_shell
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -47,4 +48,19 @@ func (m *MockInterface) Command(logger *logrus.Entry, cmdName string, cmdArgs []
 func (mr *MockInterfaceMockRecorder) Command(logger, cmdName, cmdArgs, workingDir, environ interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Command", reflect.TypeOf((*MockInterface)(nil).Command), logger, cmdName, cmdArgs, workingDir, environ)
+}
+
+// CommandContext mocks base method.
+func (m *MockInterface) CommandContext(ctx context.Context, logger *logrus.Entry, cmdName string, cmdArgs []string, workingDir string, environ []string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CommandContext", ctx, logger, cmdName, cmdArgs, workingDir, environ)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CommandContext indicates an expected call of CommandContext.
+func (mr *MockInterfaceMockRecorder) CommandContext(ctx, logger, cmdName, cmdArgs, workingDir, environ interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommandContext", reflect.TypeOf((*MockInterface)(nil).CommandContext), ctx, logger, cmdName, cmdArgs, workingDir, environ)
 }
