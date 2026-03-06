@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.41.0](https://github.com/Starosdev/scrutiny/compare/v1.40.1...v1.41.0) (2026-03-06)
+
+### Features
+
+* **collector:** add configurable timeout for smartctl and fio command execution ([#324](https://github.com/Starosdev/scrutiny/issues/324)) ([0bb2099](https://github.com/Starosdev/scrutiny/commit/0bb2099b031e2f32cb14a9ceebc60973a225a33a)), closes [#267](https://github.com/Starosdev/scrutiny/issues/267)
+
 ## [1.40.1](https://github.com/Starosdev/scrutiny/compare/v1.40.0...v1.40.1) (2026-03-05)
 
 ### Bug Fixes
