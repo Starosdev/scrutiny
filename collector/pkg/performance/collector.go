@@ -2,6 +2,7 @@ package performance
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -484,7 +485,11 @@ func (c *Collector) buildFioArgs(rwMode string, blockSize string, profile string
 func (c *Collector) runFio(fioBin string, args []string) ([]byte, error) {
 	c.logger.Debugf("Executing: %s %s", fioBin, strings.Join(args, " "))
 
-	cmd := exec.Command(fioBin, args...)
+	timeout := time.Duration(c.config.GetInt("commands.performance_fio_timeout")) * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, fioBin, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

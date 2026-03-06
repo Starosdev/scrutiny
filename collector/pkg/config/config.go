@@ -53,6 +53,8 @@ func (c *configuration) Init() error {
 	c.SetDefault("commands.metrics_smartctl_wait", 0)
 	c.SetDefault("commands.metrics_farm_enabled", false)
 	c.SetDefault("commands.metrics_farm_args", "-l farm --json")
+	c.SetDefault("commands.metrics_smartctl_timeout", 120)
+	c.SetDefault("commands.performance_fio_timeout", 300)
 
 	//configure env variable parsing.
 	c.SetEnvPrefix("COLLECTOR")

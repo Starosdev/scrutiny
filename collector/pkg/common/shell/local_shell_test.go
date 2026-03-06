@@ -1,10 +1,13 @@
 package shell
 
 import (
-	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
+	"context"
 	"os/exec"
 	"testing"
+	"time"
+
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLocalShellCommand(t *testing.T) {
@@ -63,4 +66,19 @@ func TestLocalShellCommand_InvalidCommand(t *testing.T) {
 	//assert
 	_, castOk := err.(*exec.ExitError)
 	require.False(t, castOk)
+}
+
+func TestLocalShellCommandContext_Timeout(t *testing.T) {
+	t.Parallel()
+
+	//setup
+	testShell := localShell{}
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+	defer cancel()
+
+	//test
+	_, err := testShell.CommandContext(ctx, logrus.WithField("exec", "test"), "sleep", []string{"5"}, "", nil)
+
+	//assert
+	require.Error(t, err)
 }
