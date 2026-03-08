@@ -52,6 +52,13 @@ export class DetailService {
     }
 
     /**
+     * Reset device failed status to passed
+     */
+    resetStatus(deviceId: string): Observable<any> {
+        return this._httpClient.post(getBasePath() + `/api/device/${deviceId}/reset-status`, {});
+    }
+
+    /**
      * Mute / Unmute certain device
      */
     setMuted(deviceId, muted): Observable<any> {
