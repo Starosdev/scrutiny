@@ -655,6 +655,18 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             .subscribe();
     }
 
+    resetDeviceStatus(): void {
+        if (!this.device) return;
+
+        this._detailService.resetStatus(this.device.device_id)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(() => {
+                this._detailService.getData(this.device.device_id)
+                    .pipe(takeUntil(this._unsubscribeAll))
+                    .subscribe();
+            });
+    }
+
     openSettingsDialog(): void {
         if (!this.device) return;
 
