@@ -16,13 +16,6 @@ jobs:
       - name: Test Frontend
         run: |
           make binary-frontend-test-coverage
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-frontend
-          path: ${{ github.workspace }}/webapp/frontend/coverage/lcov.info
-          retention-days: 1
-          if-no-files-found: ignore
   test-backend:
     name: Test Backend
     runs-on: ubuntu-latest
@@ -51,38 +44,6 @@ jobs:
       - name: Test Backend
         run: |
           make binary-clean binary-test-coverage
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-backend
-          path: ${{ github.workspace }}/coverage.txt
-          retention-days: 1
-  test-coverage:
-    name: Test Coverage Upload
-    needs:
-      - test-backend
-      - test-frontend
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Download backend coverage
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage-backend
-      - name: Download frontend coverage
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage-frontend
-        continue-on-error: true
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v5
-        with:
-          files: ${{ github.workspace }}/coverage.txt,${{ github.workspace }}/lcov.info
-          flags: unittests
-          fail_ci_if_error: false
-          verbose: true
-
   lint-backend:
     name: Lint Backend (Go)
     runs-on: ubuntu-latest
