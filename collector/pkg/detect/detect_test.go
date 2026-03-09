@@ -487,6 +487,68 @@ func TestDetect_TransformDetectedDevices_NoLabel(t *testing.T) {
 	require.Equal(t, "", transformedDevices[0].Label)
 }
 
+func TestDetect_TransformDetectedDevices_IOServicePath(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetString("host.id").AnyTimes().Return("")
+	fakeConfig.EXPECT().GetDeviceOverrides().AnyTimes().Return([]models.ScanOverride{})
+	fakeConfig.EXPECT().IsAllowlistedDevice(gomock.Any()).AnyTimes().Return(true)
+
+	const ioServicePath = "IOService:/AppleARMPE/arm-io@10F00000/AppleT8110AHCIE@ba010000/IOAHCIBlockStorageDevice"
+
+	detectedDevices := models.Scan{
+		Devices: []models.ScanDevice{
+			{Name: ioServicePath, InfoName: ioServicePath, Protocol: "ata", Type: "ata"},
+		},
+	}
+
+	d := detect.Detect{Config: fakeConfig}
+	transformedDevices := d.TransformDetectedDevices(detectedDevices)
+
+	require.Equal(t, 1, len(transformedDevices))
+	// Case must be preserved — smartctl requires the exact IOService path
+	require.Equal(t, ioServicePath, transformedDevices[0].DeviceName)
+	require.Equal(t, "ata", transformedDevices[0].DeviceType)
+}
+
+func TestDetect_TransformDetectedDevices_IODeviceTreePath(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetString("host.id").AnyTimes().Return("")
+	fakeConfig.EXPECT().GetDeviceOverrides().AnyTimes().Return([]models.ScanOverride{})
+	fakeConfig.EXPECT().IsAllowlistedDevice(gomock.Any()).AnyTimes().Return(true)
+
+	const ioDeviceTreePath = "IODeviceTree:/arm-io@10F00000/SDIO@10F00000/IOSDHostDevice/IOSDBlockStorageDevice"
+
+	detectedDevices := models.Scan{
+		Devices: []models.ScanDevice{
+			{Name: ioDeviceTreePath, InfoName: ioDeviceTreePath, Protocol: "ata", Type: "ata"},
+		},
+	}
+
+	d := detect.Detect{Config: fakeConfig}
+	transformedDevices := d.TransformDetectedDevices(detectedDevices)
+
+	require.Equal(t, 1, len(transformedDevices))
+	// Case must be preserved — smartctl requires the exact IODeviceTree path
+	require.Equal(t, ioDeviceTreePath, transformedDevices[0].DeviceName)
+}
+
+func TestDetect_DeviceFullPath_IOServicePreservesPath(t *testing.T) {
+	const ioServicePath = "IOService:/AppleARMPE/arm-io@10F00000/IOAHCIBlockStorageDevice"
+	// DeviceFullPath must return the IOService path verbatim (no /dev/ prefix)
+	require.Equal(t, ioServicePath, detect.DeviceFullPath(ioServicePath))
+}
+
+func TestDetect_DeviceFullPath_StandardDeviceGetsPrefixed(t *testing.T) {
+	// Standard device names should still receive the platform device prefix
+	result := detect.DeviceFullPath("sda")
+	require.True(t, strings.HasSuffix(result, "sda"))
+	require.NotEqual(t, "sda", result, "standard device should have a prefix added")
+}
+
 func TestDetect_TransformDetectedDevices_RaidWithLabel(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()

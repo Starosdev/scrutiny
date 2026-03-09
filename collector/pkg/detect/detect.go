@@ -28,7 +28,11 @@ type Detect struct {
 // On platforms where DevicePrefix() is empty (e.g., Windows), it falls back to
 // stripping the common "/dev/" prefix to avoid storing paths like "/dev/sda" as
 // the device name, which would cause doubling in the UI (e.g., "/dev//dev/sda").
+// IOService/IODeviceTree paths are returned unchanged since they have no prefix.
 func stripDevicePrefix(devicePath string) string {
+	if isIOPath(devicePath) {
+		return devicePath
+	}
 	prefix := DevicePrefix()
 	if prefix != "" {
 		return strings.TrimPrefix(devicePath, prefix)
@@ -36,6 +40,25 @@ func stripDevicePrefix(devicePath string) string {
 	// Fallback: strip "/dev/" if present (handles Windows where smartctl
 	// outputs /dev/sda but DevicePrefix() is empty)
 	return strings.TrimPrefix(devicePath, "/dev/")
+}
+
+// isIOPath reports whether name is a macOS IOService or IODeviceTree path.
+// These paths must be passed verbatim to smartctl without a /dev/ prefix
+// and without case modification.
+func isIOPath(name string) bool {
+	lower := strings.ToLower(name)
+	return strings.HasPrefix(lower, "ioservice:") || strings.HasPrefix(lower, "iodevicetree:")
+}
+
+// DeviceFullPath returns the full path used when invoking smartctl for a device.
+// For standard devices it prepends DevicePrefix() (e.g. "/dev/"); IOService and
+// IODeviceTree paths are returned verbatim because they are self-contained
+// identifiers that must not be prefixed.
+func DeviceFullPath(deviceName string) string {
+	if isIOPath(deviceName) {
+		return deviceName
+	}
+	return fmt.Sprintf("%s%s", DevicePrefix(), deviceName)
 }
 
 //private/common functions
@@ -75,7 +98,7 @@ func (d *Detect) SmartctlScan() ([]models.Device, error) {
 // - WWN is provided as component data, rather than a "string". We'll have to generate the WWN value ourselves
 // - WWN from smartctl only provided for ATA protocol drives, NVMe and SCSI drives do not include WWN.
 func (d *Detect) SmartCtlInfo(device *models.Device) error {
-	fullDeviceName := fmt.Sprintf("%s%s", DevicePrefix(), device.DeviceName)
+	fullDeviceName := DeviceFullPath(device.DeviceName)
 	args := strings.Split(d.Config.GetCommandMetricsInfoArgs(fullDeviceName), " ")
 	//only include the device type if its a non-standard one. In some cases ata drives are detected as scsi in docker, and metadata is lost.
 	if len(device.DeviceType) > 0 && device.DeviceType != "scsi" && device.DeviceType != "ata" {
@@ -158,7 +181,12 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 
 	for _, scannedDevice := range detectedDeviceConns.Devices {
 
-		deviceFile := strings.ToLower(scannedDevice.Name)
+		// Preserve case for IOService/IODeviceTree paths; they are case-sensitive
+		// macOS identifiers that must be passed verbatim to smartctl.
+		deviceFile := scannedDevice.Name
+		if !isIOPath(deviceFile) {
+			deviceFile = strings.ToLower(deviceFile)
+		}
 
 		// If the user has defined a device allow list, and this device isnt there, then ignore it
 		if !d.Config.IsAllowlistedDevice(deviceFile) {
