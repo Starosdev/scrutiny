@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.42.0](https://github.com/Starosdev/scrutiny/compare/v1.41.0...v1.42.0) (2026-03-09)
+
+### Features
+
+* **api:** add on-demand device status reset endpoint and UI button ([#271](https://github.com/Starosdev/scrutiny/issues/271)) ([#329](https://github.com/Starosdev/scrutiny/issues/329)) ([4cb0458](https://github.com/Starosdev/scrutiny/commit/4cb0458b1b8f094b9b487a8602dd10b3644d7232))
+
 ## [1.41.0](https://github.com/Starosdev/scrutiny/compare/v1.40.1...v1.41.0) (2026-03-06)
 
 ### Features
