@@ -45,6 +45,17 @@
           <span class="ml-2">Settings</span>
         </button>
 
+        @if (device?.device_status !== 0) {
+          <button
+            class="ml-2 xs:hidden"
+            mat-stroked-button
+            (click)="resetDeviceStatus()"
+            matTooltip="Reset device status to passed">
+            <mat-icon class="icon-size-20" [svgIcon]="'refresh'"></mat-icon>
+            <span class="ml-2">Reset Status</span>
+          </button>
+        }
+
         <!-- Actions menu (mobile / xs) -->
         <div class="hidden xs:flex">
           <button
@@ -71,6 +82,15 @@
               </mat-icon>
               <span class="ml-2">Settings</span>
             </button>
+
+            @if (device?.device_status !== 0) {
+              <button
+                mat-menu-item
+                (click)="resetDeviceStatus()">
+                <mat-icon class="icon-size-20" [svgIcon]="'refresh'"></mat-icon>
+                <span class="ml-2">Reset Status</span>
+              </button>
+            }
           </mat-menu>
         </div>
       </div>
