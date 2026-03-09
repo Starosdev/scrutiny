@@ -5,6 +5,7 @@ import {
     AttributeOverride,
     DashboardDisplay,
     DashboardSort,
+    MetricsNotifyLevel,
     MetricsStatusFilterAttributes,
     MetricsStatusThreshold,
     NotifyUrlEntry,
@@ -39,6 +40,7 @@ export class DashboardSettingsComponent implements OnInit {
     lineStroke: string;
     theme: string;
     retrieveSCTTemperatureHistory: boolean;
+    notifyLevel: number;
     statusThreshold: number;
     statusFilterAttributes: number;
     repeatNotifications: boolean;
@@ -152,6 +154,7 @@ export class DashboardSettingsComponent implements OnInit {
 
                 this.retrieveSCTTemperatureHistory = config.collector.retrieve_sct_temperature_history;
 
+                this.notifyLevel = config.metrics.notify_level;
                 this.statusFilterAttributes = config.metrics.status_filter_attributes;
                 this.statusThreshold = config.metrics.status_threshold;
                 this.repeatNotifications = config.metrics.repeat_notifications;
@@ -362,6 +365,7 @@ export class DashboardSettingsComponent implements OnInit {
                 retrieve_sct_temperature_history: this.retrieveSCTTemperatureHistory
             },
             metrics: {
+                notify_level: this.notifyLevel as MetricsNotifyLevel,
                 status_filter_attributes: this.statusFilterAttributes as MetricsStatusFilterAttributes,
                 status_threshold: this.statusThreshold as MetricsStatusThreshold,
                 repeat_notifications: this.repeatNotifications,
