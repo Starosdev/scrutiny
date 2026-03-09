@@ -93,6 +93,17 @@
 
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Notify - Level</mat-label>
+                <mat-select [(ngModel)]=notifyLevel>
+                    <mat-option [value]=1>Warn</mat-option>
+                    <mat-option [value]=2>Fail</mat-option>
+                </mat-select>
+                <mat-hint>Warn = notify on warnings and failures, Fail = notify on failures only</mat-hint>
+            </mat-form-field>
+        </div>
+
+        <div class="flex flex-col mt-5 gt-md:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Notify - Filter Attributes</mat-label>
                 <mat-select [(ngModel)]=statusFilterAttributes>
                     <mat-option [value]=0>All</mat-option>

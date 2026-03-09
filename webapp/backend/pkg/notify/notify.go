@@ -38,9 +38,11 @@ const NotifyFailureTypePerformanceDegradation = "PerformanceDegradation"
 const NotifyFailureTypeReport = "Report"
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
-func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, wwn string, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
+func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *measurements.Smart, notifyLevel pkg.MetricsNotifyLevel, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, wwn string, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
 	// 1. check if the device is healthy
-	if device.DeviceStatus == pkg.DeviceStatusPassed {
+	// For warn level, a device with only warning attributes still has DeviceStatusPassed,
+	// so we must continue to the attribute-level check.
+	if device.DeviceStatus == pkg.DeviceStatusPassed && notifyLevel != pkg.MetricsNotifyLevelWarn {
 		logger.Debugf("ShouldNotify: skipping device %s - device status is passed", device.WWN)
 		return false
 	}
@@ -50,8 +52,6 @@ func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *
 		logger.Debugf("ShouldNotify: skipping device %s - device is muted", device.WWN)
 		return false
 	}
-
-	//TODO: cannot check for warning notifyLevel yet.
 
 	// setup constants for comparison
 	var requiredDeviceStatus pkg.DeviceStatus
@@ -69,8 +69,14 @@ func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *
 		requiredAttrStatus = pkg.AttributeStatusFailedScrutiny
 	}
 
-	// This is the only case where individual attributes need not be considered
-	if statusFilterAttributes == pkg.MetricsStatusFilterAttributesAll && repeatNotifications {
+	// When warn level is set, also match attributes with a warning scrutiny status.
+	if notifyLevel == pkg.MetricsNotifyLevelWarn {
+		requiredAttrStatus = pkg.AttributeStatusSet(requiredAttrStatus, pkg.AttributeStatusWarningScrutiny)
+	}
+
+	// This is the only case where individual attributes need not be considered.
+	// Warn level is excluded: there is no DeviceStatusWarn, so we must always check individual attributes.
+	if statusFilterAttributes == pkg.MetricsStatusFilterAttributesAll && repeatNotifications && notifyLevel != pkg.MetricsNotifyLevelWarn {
 		return pkg.DeviceStatusHas(device.DeviceStatus, requiredDeviceStatus)
 	}
 
