@@ -64,6 +64,7 @@ func (mc *MetricsCollector) Run() error {
 	}
 	rawDetectedStorageDevices, err := deviceDetector.Start()
 	if err != nil {
+		mc.ReportScanError("scan", err.Error())
 		return err
 	}
 
@@ -120,6 +121,7 @@ func (mc *MetricsCollector) Collect(deviceWWN string, deviceName string, deviceT
 	//defer wg.Done()
 	if len(deviceWWN) == 0 {
 		mc.logger.Errorf("no device WWN detected for %s. Skipping collection for this device (no data association possible).\n", deviceName)
+		mc.ReportScanError("info", fmt.Sprintf("no WWN detected for device %s; smartctl --info may have failed", deviceName))
 		return
 	}
 	mc.logger.Infof("Collecting smartctl results for %s\n", deviceName)
@@ -146,6 +148,7 @@ func (mc *MetricsCollector) Collect(deviceWWN string, deviceName string, deviceT
 			mc.logger.Errorf("error while attempting to execute smartctl: %s\n", deviceName)
 			mc.logger.Errorf("ERROR MESSAGE: %v", err)
 			mc.logger.Errorf("IGNORING RESULT: %v", result)
+			mc.ReportDeviceError(deviceWWN, "xall", err.Error())
 			return
 		}
 	}
@@ -236,4 +239,40 @@ func (mc *MetricsCollector) Publish(deviceWWN string, payload []byte) error {
 	}
 
 	return nil
+}
+
+// collectorErrorPayload is the JSON body sent to the backend collector-error endpoints.
+type collectorErrorPayload struct {
+	ErrorType    string `json:"error_type"`
+	ErrorMessage string `json:"error_message"`
+}
+
+// ReportDeviceError posts a collector error to /api/device/:wwn/collector-error.
+// Errors from this call are logged but do not abort the collection run.
+func (mc *MetricsCollector) ReportDeviceError(deviceWWN string, errorType string, errorMessage string) {
+	if deviceWWN == "" {
+		mc.logger.Debugf("Cannot report device error without WWN; skipping")
+		return
+	}
+	apiEndpoint, _ := url.Parse(mc.apiEndpoint.String())
+	apiEndpoint, _ = apiEndpoint.Parse(fmt.Sprintf("api/device/%s/collector-error", strings.ToLower(deviceWWN)))
+
+	body := collectorErrorPayload{ErrorType: errorType, ErrorMessage: errorMessage}
+	var result map[string]interface{}
+	if err := mc.postJson(apiEndpoint.String(), body, &result); err != nil {
+		mc.logger.Warnf("Failed to report collector device error for %s: %v", deviceWWN, err)
+	}
+}
+
+// ReportScanError posts a collector scan-level error to /api/collector/scan-error.
+// Errors from this call are logged but do not abort the collection run.
+func (mc *MetricsCollector) ReportScanError(errorType string, errorMessage string) {
+	apiEndpoint, _ := url.Parse(mc.apiEndpoint.String())
+	apiEndpoint, _ = apiEndpoint.Parse("api/collector/scan-error")
+
+	body := collectorErrorPayload{ErrorType: errorType, ErrorMessage: errorMessage}
+	var result map[string]interface{}
+	if err := mc.postJson(apiEndpoint.String(), body, &result); err != nil {
+		mc.logger.Warnf("Failed to report collector scan error: %v", err)
+	}
 }

@@ -36,6 +36,7 @@ const NotifyFailureTypeMissedPing = "MissedPing"
 const NotifyFailureTypeHeartbeat = "Heartbeat"
 const NotifyFailureTypePerformanceDegradation = "PerformanceDegradation"
 const NotifyFailureTypeReport = "Report"
+const NotifyFailureTypeCollectorError = "CollectorError"
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
 func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *measurements.Smart, notifyLevel pkg.MetricsNotifyLevel, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, wwn string, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
@@ -972,6 +973,59 @@ func NewReport(logger logrus.FieldLogger, appconfig config.Interface, subject, m
 		Subject:     subject,
 		Message:     message,
 		HTMLMessage: htmlMessage,
+	}
+
+	return Notify{
+		Logger:  logger,
+		Config:  appconfig,
+		Payload: payload,
+	}
+}
+
+// NewCollectorError creates a Notify instance for collector-side smartctl error notifications.
+// device may be a zero-value Device when the error occurs before a device is fully identified
+// (e.g. during --scan). errorType is a short tag (e.g. "scan", "info", "xall") and
+// errorMessage is the human-readable description of the failure.
+func NewCollectorError(logger logrus.FieldLogger, appconfig config.Interface, device models.Device, errorType, errorMessage string) Notify {
+	deviceIdentifier := device.DeviceName
+	if deviceIdentifier == "" {
+		deviceIdentifier = "(unknown device)"
+	}
+	hostPrefix := ""
+	if device.HostId != "" {
+		hostPrefix = fmt.Sprintf("[%s] ", strings.TrimSpace(device.HostId))
+	}
+
+	subject := fmt.Sprintf("Scrutiny collector error (%s) on %sdevice: %s", errorType, hostPrefix, deviceIdentifier)
+
+	var messageParts []string
+	messageParts = append(messageParts, fmt.Sprintf("Scrutiny collector error notification for device: %s", deviceIdentifier))
+	if device.HostId != "" {
+		messageParts = append(messageParts, fmt.Sprintf("Host Id: %s", strings.TrimSpace(device.HostId)))
+	}
+	messageParts = append(messageParts,
+		fmt.Sprintf("Error Type: %s", errorType),
+		fmt.Sprintf("Error: %s", errorMessage),
+		"",
+		fmt.Sprintf("Date: %s", time.Now().Format(time.RFC3339)),
+	)
+	if device.SerialNumber != "" {
+		messageParts = append([]string{fmt.Sprintf("Device Serial: %s", device.SerialNumber)}, messageParts...)
+	}
+
+	message := strings.Join(messageParts, "\n")
+
+	payload := Payload{
+		HostId:       strings.TrimSpace(device.HostId),
+		DeviceType:   device.DeviceType,
+		DeviceName:   device.DeviceName,
+		DeviceSerial: device.SerialNumber,
+		DeviceLabel:  strings.TrimSpace(device.Label),
+		Test:         false,
+		Date:         time.Now().Format(time.RFC3339),
+		FailureType:  NotifyFailureTypeCollectorError,
+		Subject:      subject,
+		Message:      message,
 	}
 
 	return Notify{

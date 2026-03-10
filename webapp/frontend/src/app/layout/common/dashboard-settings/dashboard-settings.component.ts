@@ -45,6 +45,9 @@ export class DashboardSettingsComponent implements OnInit {
     statusFilterAttributes: number;
     repeatNotifications: boolean;
 
+    // Collector error settings
+    notifyOnCollectorError: boolean;
+
     // Missed ping settings
     notifyOnMissedPing: boolean;
     missedPingTimeoutMinutes: number;
@@ -158,6 +161,9 @@ export class DashboardSettingsComponent implements OnInit {
                 this.statusFilterAttributes = config.metrics.status_filter_attributes;
                 this.statusThreshold = config.metrics.status_threshold;
                 this.repeatNotifications = config.metrics.repeat_notifications;
+
+                // Collector error settings
+                this.notifyOnCollectorError = config.metrics.notify_on_collector_error ?? true;
 
                 // Missed ping settings
                 this.notifyOnMissedPing = config.metrics.notify_on_missed_ping ?? false;
@@ -369,6 +375,7 @@ export class DashboardSettingsComponent implements OnInit {
                 status_filter_attributes: this.statusFilterAttributes as MetricsStatusFilterAttributes,
                 status_threshold: this.statusThreshold as MetricsStatusThreshold,
                 repeat_notifications: this.repeatNotifications,
+                notify_on_collector_error: this.notifyOnCollectorError,
                 notify_on_missed_ping: this.notifyOnMissedPing,
                 missed_ping_timeout_minutes: this.missedPingTimeoutMinutes,
                 missed_ping_check_interval_mins: this.missedPingCheckIntervalMins,

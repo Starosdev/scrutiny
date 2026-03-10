@@ -40,6 +40,9 @@ type Settings struct {
 		NotificationQuietStart string `json:"notification_quiet_start" mapstructure:"notification_quiet_start"`
 		NotificationQuietEnd   string `json:"notification_quiet_end" mapstructure:"notification_quiet_end"`
 
+		// Collector error notification settings
+		NotifyOnCollectorError bool `json:"notify_on_collector_error" mapstructure:"notify_on_collector_error"`
+
 		// Heartbeat notification settings
 		HeartbeatEnabled       bool `json:"heartbeat_enabled" mapstructure:"heartbeat_enabled"`
 		HeartbeatIntervalHours int  `json:"heartbeat_interval_hours" mapstructure:"heartbeat_interval_hours"`

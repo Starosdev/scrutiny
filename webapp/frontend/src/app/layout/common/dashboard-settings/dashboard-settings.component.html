@@ -132,6 +132,18 @@
             </mat-form-field>
         </div>
 
+        <!-- Collector Error Notifications -->
+        <div class="flex flex-col mt-5 gt-md:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Notify on Collector smartctl Errors</mat-label>
+                <mat-select [(ngModel)]="notifyOnCollectorError">
+                    <mat-option [value]="true">Enabled</mat-option>
+                    <mat-option [value]="false">Disabled</mat-option>
+                </mat-select>
+                <mat-hint>Alert when smartctl encounters errors during device scan or data collection</mat-hint>
+            </mat-form-field>
+        </div>
+
         <!-- Missed Collector Ping Notifications -->
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
