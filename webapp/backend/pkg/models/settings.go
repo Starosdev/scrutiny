@@ -40,6 +40,9 @@ type Settings struct {
 		NotificationQuietStart string `json:"notification_quiet_start" mapstructure:"notification_quiet_start"`
 		NotificationQuietEnd   string `json:"notification_quiet_end" mapstructure:"notification_quiet_end"`
 
+		// Collector error notification settings
+		NotifyOnCollectorError bool `json:"notify_on_collector_error" mapstructure:"notify_on_collector_error"`
+
 		// Heartbeat notification settings
 		HeartbeatEnabled       bool `json:"heartbeat_enabled" mapstructure:"heartbeat_enabled"`
 		HeartbeatIntervalHours int  `json:"heartbeat_interval_hours" mapstructure:"heartbeat_interval_hours"`
@@ -82,6 +85,14 @@ func defaultInt(p *int, def int) {
 // This prevents the API from returning empty strings that break the frontend
 // (e.g. theme="" produces invalid CSS class "treo-theme-", layout="" matches
 // no template case). Called after loading settings from the database.
+//
+// Note: bool fields whose intended default is true (e.g. NotifyOnCollectorError,
+// RepeatNotifications, NotifyOnMissedPing) cannot be safely defaulted here because
+// Go's zero value for bool is false, making it impossible to distinguish between
+// "user explicitly set to false" and "setting was never written to the database".
+// These fields rely on the database migration to seed the correct default value on
+// fresh installations. ApplyDefaults only covers string and int fields where 0/"" is
+// an unambiguous sentinel for "not configured".
 func (s *Settings) ApplyDefaults() {
 	// Top-level string settings
 	defaultStr(&s.Theme, "system")

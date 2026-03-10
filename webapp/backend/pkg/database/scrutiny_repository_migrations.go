@@ -822,6 +822,20 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				return nil
 			},
 		},
+		{
+			ID: "m20260410000000", // add notify_on_collector_error setting
+			Migrate: func(tx *gorm.DB) error {
+				var defaultSettings = []m20220716214900.Setting{
+					{
+						SettingKeyName:        "metrics.notify_on_collector_error",
+						SettingKeyDescription: "Enable notifications when the collector encounters smartctl errors (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      true,
+					},
+				}
+				return tx.Create(&defaultSettings).Error
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {
