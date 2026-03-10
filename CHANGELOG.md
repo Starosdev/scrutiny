@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.43.2](https://github.com/Starosdev/scrutiny/compare/v1.43.1...v1.43.2) (2026-03-10)
+
+### Bug Fixes
+
+* **detect:** preserve device path case for /dev/disk/by-id paths ([#335](https://github.com/Starosdev/scrutiny/issues/335)) ([#341](https://github.com/Starosdev/scrutiny/issues/341)) ([e5e3dcf](https://github.com/Starosdev/scrutiny/commit/e5e3dcfc2da078376e945fded542f08948087667))
+
 ## [1.43.1](https://github.com/Starosdev/scrutiny/compare/v1.43.0...v1.43.1) (2026-03-10)
 
 ### Bug Fixes
