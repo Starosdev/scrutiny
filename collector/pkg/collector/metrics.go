@@ -124,7 +124,7 @@ func (mc *MetricsCollector) Collect(deviceWWN string, deviceName string, deviceT
 	}
 	mc.logger.Infof("Collecting smartctl results for %s\n", deviceName)
 
-	fullDeviceName := fmt.Sprintf("%s%s", detect.DevicePrefix(), deviceName)
+	fullDeviceName := detect.DeviceFullPath(deviceName)
 	args := strings.Split(mc.config.GetCommandMetricsSmartArgs(fullDeviceName), " ")
 	//only include the device type if its a non-standard one. In some cases ata drives are detected as scsi in docker, and metadata is lost.
 	if len(deviceType) > 0 && deviceType != "scsi" && deviceType != "ata" {
