@@ -2,6 +2,18 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.43.1](https://github.com/Starosdev/scrutiny/compare/v1.43.0...v1.43.1) (2026-03-10)
+
+### Bug Fixes
+
+* **collector:** handle macOS IOService/IODeviceTree device paths correctly ([#338](https://github.com/Starosdev/scrutiny/issues/338)) ([fa5b982](https://github.com/Starosdev/scrutiny/commit/fa5b982c0ab0f37a1fae92ae159213faa9421145)), closes [#336](https://github.com/Starosdev/scrutiny/issues/336)
+
+## [1.43.0](https://github.com/Starosdev/scrutiny/compare/v1.42.0...v1.43.0) (2026-03-09)
+
+### Features
+
+* **notify:** support warning-level notify threshold ([#254](https://github.com/Starosdev/scrutiny/issues/254)) ([#332](https://github.com/Starosdev/scrutiny/issues/332)) ([187e374](https://github.com/Starosdev/scrutiny/commit/187e374a9091dd908c024fedfc2b8d4f5be6ab82))
+
 ## [1.42.0](https://github.com/Starosdev/scrutiny/compare/v1.41.0...v1.42.0) (2026-03-09)
 
 ### Features
