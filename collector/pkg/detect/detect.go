@@ -207,7 +207,7 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 		groupedDevices[deviceFile] = append(groupedDevices[deviceFile], detectedDevice)
 	}
 
-	//now that we've "grouped" all the devices, lets override any groups specified in the config file.
+	// now that we've "grouped" all the devices, lets override any groups specified in the config file.
 
 	for _, overrideDevice := range d.Config.GetDeviceOverrides() {
 		// Preserve case for the override device path — filesystem paths are case-sensitive.
@@ -239,7 +239,7 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 			} else {
 				//user may have specified device in config file without device type (default to scanned device type)
 
-				//check if the device file was detected by the scanner (case-insensitive)
+				// check if the device file was detected by the scanner (case-insensitive)
 				var deviceType string
 				scannedKey := groupedDeviceKey(groupedDevices, overrideDeviceFile)
 				if scannedKey != "" {
