@@ -19,6 +19,29 @@ type CollectorErrorRequest struct {
 	ErrorType string `json:"error_type" binding:"required"`
 	// ErrorMessage is the human-readable description of the failure.
 	ErrorMessage string `json:"error_message" binding:"required"`
+	// DeviceName is an optional hint used when no WWN is available (e.g. during --info).
+	// It is included in the notification subject so operators can identify the device.
+	DeviceName string `json:"device_name"`
+}
+
+// sendNotificationViaGate dispatches n through the NOTIFICATION_GATE middleware if present,
+// falling back to a direct send. Errors are logged but do not affect the HTTP response.
+func sendNotificationViaGate(c *gin.Context, logger *logrus.Entry, n *notify.Notify, deviceRepo database.DeviceRepo) {
+	if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
+		if gate, ok := gateVal.(*notify.NotificationGate); ok {
+			settings, settingsErr := deviceRepo.LoadSettings(c)
+			if settingsErr != nil {
+				logger.Warnf("Failed to load settings for notification gate: %v", settingsErr)
+			}
+			if settings != nil {
+				gate.TrySend(n, settings, false)
+				return
+			}
+		}
+	}
+	if sendErr := n.Send(); sendErr != nil {
+		logger.Warnf("Failed to send notification: %v", sendErr)
+	}
 }
 
 // UploadCollectorError handles POST /api/device/:id/collector-error.
@@ -57,26 +80,7 @@ func UploadCollectorError(c *gin.Context) {
 
 	errorNotify := notify.NewCollectorError(logger, appConfig, device, req.ErrorType, req.ErrorMessage)
 	errorNotify.LoadDatabaseUrls(c, deviceRepo)
-
-	if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
-		if gate, ok := gateVal.(*notify.NotificationGate); ok {
-			settings, settingsErr := deviceRepo.LoadSettings(c)
-			if settingsErr != nil {
-				logger.Warnf("Failed to load settings for notification gate: %v", settingsErr)
-			}
-			if settings != nil {
-				gate.TrySend(&errorNotify, settings, false)
-			} else {
-				if sendErr := errorNotify.Send(); sendErr != nil {
-					logger.Warnf("Failed to send collector error notification for device %s: %v", device.DeviceID, sendErr)
-				}
-			}
-		}
-	} else {
-		if sendErr := errorNotify.Send(); sendErr != nil {
-			logger.Warnf("Failed to send collector error notification for device %s: %v", device.DeviceID, sendErr)
-		}
-	}
+	sendNotificationViaGate(c, logger, &errorNotify, deviceRepo)
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
@@ -84,7 +88,8 @@ func UploadCollectorError(c *gin.Context) {
 // UploadCollectorScanError handles POST /api/collector/scan-error.
 // The collector calls this endpoint when smartctl --scan itself fails (no devices
 // available to attach the error to). The notification is sent host-scoped rather
-// than device-scoped.
+// than device-scoped. An optional device_name hint in the payload is used to
+// produce a more informative notification subject when no WWN is available.
 func UploadCollectorScanError(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 	appConfig := c.MustGet("CONFIG").(config.Interface)
@@ -104,30 +109,12 @@ func UploadCollectorScanError(c *gin.Context) {
 		return
 	}
 
-	// For scan errors we have no specific device, so we use a minimal Device struct.
-	device := models.Device{}
+	// For scan errors we have no specific device. Populate DeviceName from the request
+	// hint (if provided) so the notification subject is more informative than "(unknown device)".
+	device := models.Device{DeviceName: req.DeviceName}
 	errorNotify := notify.NewCollectorError(logger, appConfig, device, req.ErrorType, req.ErrorMessage)
 	errorNotify.LoadDatabaseUrls(c, deviceRepo)
-
-	if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
-		if gate, ok := gateVal.(*notify.NotificationGate); ok {
-			settings, settingsErr := deviceRepo.LoadSettings(c)
-			if settingsErr != nil {
-				logger.Warnf("Failed to load settings for notification gate: %v", settingsErr)
-			}
-			if settings != nil {
-				gate.TrySend(&errorNotify, settings, false)
-			} else {
-				if sendErr := errorNotify.Send(); sendErr != nil {
-					logger.Warnf("Failed to send collector scan error notification: %v", sendErr)
-				}
-			}
-		}
-	} else {
-		if sendErr := errorNotify.Send(); sendErr != nil {
-			logger.Warnf("Failed to send collector scan error notification: %v", sendErr)
-		}
-	}
+	sendNotificationViaGate(c, logger, &errorNotify, deviceRepo)
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
