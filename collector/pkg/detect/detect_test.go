@@ -549,6 +549,52 @@ func TestDetect_DeviceFullPath_StandardDeviceGetsPrefixed(t *testing.T) {
 	require.NotEqual(t, "sda", result, "standard device should have a prefix added")
 }
 
+func TestDetect_TransformDetectedDevices_UppercaseByIDPath(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetString("host.id").AnyTimes().Return("")
+	fakeConfig.EXPECT().GetDeviceOverrides().AnyTimes().Return([]models.ScanOverride{
+		{Device: "/dev/disk/by-id/ata-HGST_HUH721212ALE600_ABC123"},
+	})
+	fakeConfig.EXPECT().IsAllowlistedDevice(gomock.Any()).AnyTimes().Return(true)
+
+	// Simulate smartctl --scan returning no results; the device is config-only.
+	detectedDevices := models.Scan{}
+
+	d := detect.Detect{Config: fakeConfig}
+	transformedDevices := d.TransformDetectedDevices(detectedDevices)
+
+	require.Equal(t, 1, len(transformedDevices))
+	// The uppercase by-id path must be preserved verbatim so smartctl can resolve it.
+	require.Equal(t, "disk/by-id/ata-HGST_HUH721212ALE600_ABC123", transformedDevices[0].DeviceName)
+	require.Equal(t, "ata", transformedDevices[0].DeviceType)
+}
+
+func TestDetect_TransformDetectedDevices_UppercaseByIDPathScanned(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetString("host.id").AnyTimes().Return("")
+	fakeConfig.EXPECT().GetDeviceOverrides().AnyTimes().Return([]models.ScanOverride{})
+	fakeConfig.EXPECT().IsAllowlistedDevice(gomock.Any()).AnyTimes().Return(true)
+
+	// Simulate smartctl --scan returning a by-id path with uppercase characters.
+	const byIDPath = "/dev/disk/by-id/ata-HGST_HUH721212ALE600_ABC123"
+	detectedDevices := models.Scan{
+		Devices: []models.ScanDevice{
+			{Name: byIDPath, InfoName: byIDPath, Protocol: "ata", Type: "ata"},
+		},
+	}
+
+	d := detect.Detect{Config: fakeConfig}
+	transformedDevices := d.TransformDetectedDevices(detectedDevices)
+
+	require.Equal(t, 1, len(transformedDevices))
+	// Case must be preserved so smartctl receives the correct path.
+	require.Equal(t, "disk/by-id/ata-HGST_HUH721212ALE600_ABC123", transformedDevices[0].DeviceName)
+}
+
 func TestDetect_TransformDetectedDevices_RaidWithLabel(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
