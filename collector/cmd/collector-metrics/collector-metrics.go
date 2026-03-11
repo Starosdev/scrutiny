@@ -6,7 +6,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	_ "go.uber.org/automaxprocs"
@@ -17,6 +19,7 @@ import (
 	"github.com/analogj/scrutiny/collector/pkg/errors"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
 	"github.com/fatih/color"
+	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -138,6 +141,18 @@ OPTIONS:
 						config.Set("api.token", c.String("api-token"))
 					}
 
+					if c.IsSet("cron-schedule") {
+						config.Set("cron.schedule", c.String("cron-schedule"))
+					}
+
+					if c.IsSet("run-startup") {
+						config.Set("cron.run_on_startup", c.Bool("run-startup"))
+					}
+
+					if c.IsSet("run-startup-sleep") {
+						config.Set("cron.startup_sleep_secs", c.Int("run-startup-sleep"))
+					}
+
 					collectorLogger, logFile, err := CreateLogger(config)
 					if logFile != nil {
 						defer logFile.Close()
@@ -168,7 +183,44 @@ OPTIONS:
 						return err
 					}
 
-					return metricCollector.Run()
+					cronSchedule := config.GetString("cron.schedule")
+					if cronSchedule == "" {
+						// No schedule configured: run once and exit (original behavior).
+						return metricCollector.Run()
+					}
+
+					// Schedule configured: run on a recurring cron schedule.
+					runFunc := func() {
+						if runErr := metricCollector.Run(); runErr != nil {
+							collectorLogger.Errorf("collector run failed: %v", runErr)
+						}
+					}
+
+					if config.GetBool("cron.run_on_startup") {
+						sleepSecs := config.GetInt("cron.startup_sleep_secs")
+						if sleepSecs > 0 {
+							collectorLogger.Infof("Waiting %d seconds before startup run", sleepSecs)
+							time.Sleep(time.Duration(sleepSecs) * time.Second)
+						}
+						collectorLogger.Info("Running startup collection before first scheduled tick")
+						runFunc()
+					}
+
+					c2 := cron.New()
+					_, err = c2.AddFunc(cronSchedule, runFunc)
+					if err != nil {
+						return fmt.Errorf("invalid cron schedule %q: %w", cronSchedule, err)
+					}
+					c2.Start()
+					collectorLogger.Infof("Collector scheduled with cron expression: %s", cronSchedule)
+
+					quit := make(chan os.Signal, 1)
+					signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+					<-quit
+					collectorLogger.Info("Shutting down collector scheduler")
+					ctx := c2.Stop()
+					<-ctx.Done()
+					return nil
 				},
 
 				Flags: []cli.Flag{
@@ -206,6 +258,25 @@ OPTIONS:
 						Name:    "api-token",
 						Usage:   "API token for authenticating with the Scrutiny server",
 						EnvVars: []string{"COLLECTOR_METRICS_API_TOKEN", "COLLECTOR_API_TOKEN"},
+					},
+
+					&cli.StringFlag{
+						Name:    "cron-schedule",
+						Usage:   "Cron expression for scheduled collection (e.g. \"0 * * * *\"). If not set, the collector runs once and exits.",
+						EnvVars: []string{"COLLECTOR_CRON_SCHEDULE"},
+					},
+
+					&cli.BoolFlag{
+						Name:    "run-startup",
+						Usage:   "Run an immediate collection on startup before the first scheduled tick",
+						EnvVars: []string{"COLLECTOR_RUN_STARTUP"},
+					},
+
+					&cli.IntFlag{
+						Name:    "run-startup-sleep",
+						Usage:   "Seconds to sleep before the startup run (requires --run-startup)",
+						Value:   0,
+						EnvVars: []string{"COLLECTOR_RUN_STARTUP_SLEEP"},
 					},
 				},
 			},
