@@ -986,7 +986,7 @@ func NewReport(logger logrus.FieldLogger, appconfig config.Interface, subject, m
 // device may be a zero-value Device when the error occurs before a device is fully identified
 // (e.g. during --scan). errorType is a short tag (e.g. "scan", "info", "xall") and
 // errorMessage is the human-readable description of the failure.
-func NewCollectorError(logger logrus.FieldLogger, appconfig config.Interface, device models.Device, errorType, errorMessage string) Notify {
+func NewCollectorError(logger logrus.FieldLogger, appconfig config.Interface, device *models.Device, errorType, errorMessage string) Notify {
 	deviceIdentifier := device.DeviceName
 	if deviceIdentifier == "" {
 		deviceIdentifier = "(unknown device)"

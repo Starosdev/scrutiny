@@ -78,7 +78,7 @@ func UploadCollectorError(c *gin.Context) {
 		return
 	}
 
-	errorNotify := notify.NewCollectorError(logger, appConfig, device, req.ErrorType, req.ErrorMessage)
+	errorNotify := notify.NewCollectorError(logger, appConfig, &device, req.ErrorType, req.ErrorMessage)
 	errorNotify.LoadDatabaseUrls(c, deviceRepo)
 	sendNotificationViaGate(c, logger, &errorNotify, deviceRepo)
 
@@ -112,7 +112,7 @@ func UploadCollectorScanError(c *gin.Context) {
 	// For scan errors we have no specific device. Populate DeviceName from the request
 	// hint (if provided) so the notification subject is more informative than "(unknown device)".
 	device := models.Device{DeviceName: req.DeviceName}
-	errorNotify := notify.NewCollectorError(logger, appConfig, device, req.ErrorType, req.ErrorMessage)
+	errorNotify := notify.NewCollectorError(logger, appConfig, &device, req.ErrorType, req.ErrorMessage)
 	errorNotify.LoadDatabaseUrls(c, deviceRepo)
 	sendNotificationViaGate(c, logger, &errorNotify, deviceRepo)
 
