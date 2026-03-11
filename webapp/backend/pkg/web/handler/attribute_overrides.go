@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"regexp"
 	"strconv"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
@@ -9,6 +10,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
+
+// wwnPattern matches a valid WWN: optional 0x prefix followed by 1-16 hex digits.
+var wwnPattern = regexp.MustCompile(`(?i)^(0x)?[0-9a-f]{1,16}$`)
 
 // validProtocols defines the allowed protocol values
 var validProtocols = map[string]bool{
@@ -31,12 +35,14 @@ var validStatuses = map[string]bool{
 	"failed": true,
 }
 
-// GetAttributeOverrides retrieves all attribute overrides from the database
+// GetAttributeOverrides retrieves all active attribute overrides for display.
+// Includes both UI-created overrides (source: "ui") and config file overrides
+// (source: "config"), so users can see everything that is currently active.
 func GetAttributeOverrides(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 
-	overrides, err := deviceRepo.GetAttributeOverrides(c)
+	allOverrides, err := deviceRepo.GetAllOverridesForDisplay(c)
 	if err != nil {
 		logger.Errorln("Error retrieving attribute overrides:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to retrieve overrides"})
@@ -45,8 +51,61 @@ func GetAttributeOverrides(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    overrides,
+		"data":    allOverrides,
 	})
+}
+
+// validateAttributeOverride checks all fields of an override and returns a
+// human-readable error string, or an empty string if the override is valid.
+func validateAttributeOverride(o *models.AttributeOverride) string {
+	if o.Protocol == "" {
+		return "Protocol is required"
+	}
+	if o.AttributeId == "" {
+		return "AttributeId is required"
+	}
+	if !validProtocols[o.Protocol] {
+		return "Invalid protocol. Must be ATA, NVMe, or SCSI"
+	}
+	if !validActions[o.Action] {
+		return "Invalid action. Must be empty, 'ignore', or 'force_status'"
+	}
+	if o.WWN != "" && !wwnPattern.MatchString(o.WWN) {
+		return "Invalid WWN format. Must be a hex value (e.g. 0x5000cca264eb01d7)"
+	}
+	if o.Action == "force_status" {
+		return validateForceStatus(o)
+	}
+	if o.Action == "" {
+		return validateThresholds(o)
+	}
+	return ""
+}
+
+func validateForceStatus(o *models.AttributeOverride) string {
+	if o.Status == "" {
+		return "Status is required when action is 'force_status'"
+	}
+	if !validStatuses[o.Status] {
+		return "Invalid status. Must be 'passed', 'warn', or 'failed'"
+	}
+	return ""
+}
+
+func validateThresholds(o *models.AttributeOverride) string {
+	if o.WarnAbove == nil && o.FailAbove == nil {
+		return "At least one of warn_above or fail_above is required for custom threshold overrides"
+	}
+	if o.WarnAbove != nil && *o.WarnAbove < 0 {
+		return "warn_above must be a non-negative value"
+	}
+	if o.FailAbove != nil && *o.FailAbove < 0 {
+		return "fail_above must be a non-negative value"
+	}
+	if o.WarnAbove != nil && o.FailAbove != nil && *o.WarnAbove >= *o.FailAbove {
+		return "warn_above must be less than fail_above"
+	}
+	return ""
 }
 
 // SaveAttributeOverride creates or updates an attribute override
@@ -61,38 +120,9 @@ func SaveAttributeOverride(c *gin.Context) {
 		return
 	}
 
-	// Validate required fields
-	if override.Protocol == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Protocol is required"})
+	if errMsg := validateAttributeOverride(&override); errMsg != "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": errMsg})
 		return
-	}
-	if override.AttributeId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "AttributeId is required"})
-		return
-	}
-
-	// Validate protocol
-	if !validProtocols[override.Protocol] {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid protocol. Must be ATA, NVMe, or SCSI"})
-		return
-	}
-
-	// Validate action
-	if !validActions[override.Action] {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid action. Must be empty, 'ignore', or 'force_status'"})
-		return
-	}
-
-	// Validate status if force_status action is used
-	if override.Action == "force_status" {
-		if override.Status == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Status is required when action is 'force_status'"})
-			return
-		}
-		if !validStatuses[override.Status] {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid status. Must be 'passed', 'warn', or 'failed'"})
-			return
-		}
 	}
 
 	// Source is always "ui" for API-created overrides

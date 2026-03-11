@@ -823,6 +823,32 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 			},
 		},
 		{
+			ID: "m20260411000000", // enforce unique constraint on (protocol, attribute_id, wwn) in attribute_overrides
+			Migrate: func(tx *gorm.DB) error {
+				// Remove any duplicate overrides, keeping the row with the lowest id
+				// for each (protocol, attribute_id, wwn) combination.
+				if err := tx.Exec(`
+					DELETE FROM attribute_overrides
+					WHERE id NOT IN (
+						SELECT MIN(id)
+						FROM attribute_overrides
+						GROUP BY protocol, attribute_id, wwn
+					)
+				`).Error; err != nil {
+					return fmt.Errorf("failed to remove duplicate attribute overrides: %w", err)
+				}
+				// Drop the existing non-unique composite index so we can replace it.
+				if err := tx.Exec("DROP INDEX IF EXISTS idx_override_lookup").Error; err != nil {
+					return fmt.Errorf("failed to drop old attribute_overrides index: %w", err)
+				}
+				// Create a unique composite index to prevent future duplicates.
+				if err := tx.Exec("CREATE UNIQUE INDEX idx_override_lookup ON attribute_overrides (protocol, attribute_id, wwn)").Error; err != nil {
+					return fmt.Errorf("failed to create unique attribute_overrides index: %w", err)
+				}
+				return nil
+			},
+		},
+		{
 			ID: "m20260410000000", // add notify_on_collector_error setting
 			Migrate: func(tx *gorm.DB) error {
 				var defaultSettings = []m20220716214900.Setting{
