@@ -141,7 +141,9 @@ func Apply(cfg config.Interface, protocol, attributeId, wwn string) *Result {
 		result.StatusReason = "Status forced by user configuration"
 	}
 
-	// Custom thresholds (can be combined with force_status or standalone)
+	// Custom thresholds are only evaluated when action is empty (see smart.go).
+	// When action is force_status, these fields are populated but callers use
+	// mutually exclusive else-if branches, so thresholds are effectively ignored.
 	result.WarnAbove = override.WarnAbove
 	result.FailAbove = override.FailAbove
 
@@ -228,7 +230,9 @@ func ApplyWithOverrides(overrideList []AttributeOverride, protocol, attributeId,
 		result.StatusReason = "Status forced by user configuration"
 	}
 
-	// Custom thresholds (can be combined with force_status or standalone)
+	// Custom thresholds are only evaluated when action is empty (see smart.go).
+	// When action is force_status, these fields are populated but callers use
+	// mutually exclusive else-if branches, so thresholds are effectively ignored.
 	result.WarnAbove = override.WarnAbove
 	result.FailAbove = override.FailAbove
 

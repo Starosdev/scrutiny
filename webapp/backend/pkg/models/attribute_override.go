@@ -18,18 +18,18 @@ type AttributeOverride struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 
 	// Required: Protocol type (ATA, NVMe, SCSI)
-	Protocol string `json:"protocol" gorm:"not null;index:idx_override_lookup"`
+	Protocol string `json:"protocol" gorm:"not null;uniqueIndex:idx_override_lookup"`
 
 	// Required: Attribute ID (string for all protocols)
 	// ATA: "5", "187", etc.
 	// ATA DevStats: "devstat_7_8"
 	// NVMe: "media_errors", "percentage_used"
 	// SCSI: "scsi_grown_defect_list"
-	AttributeId string `json:"attribute_id" gorm:"not null;index:idx_override_lookup"`
+	AttributeId string `json:"attribute_id" gorm:"not null;uniqueIndex:idx_override_lookup"`
 
 	// Optional: Limit override to specific device by WWN
 	// If empty, override applies to all devices
-	WWN string `json:"wwn,omitempty" gorm:"index:idx_override_lookup"`
+	WWN string `json:"wwn,omitempty" gorm:"uniqueIndex:idx_override_lookup"`
 
 	// Optional: Action to take (ignore or force_status)
 	// If not set, custom thresholds are applied
