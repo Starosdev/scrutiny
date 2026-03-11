@@ -19,6 +19,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/nicholas-fedor/shoutrrr v0.13.2
 	github.com/prometheus/client_golang v1.17.0
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/samber/lo v1.25.0
 	github.com/sirupsen/logrus v1.8.3
 	github.com/spf13/viper v1.21.0

@@ -160,6 +160,26 @@ devices:
 #  performance_fio_bin: 'fio'  # Path to fio binary
 
 ########################################################################################################################
+# Built-in Cron Scheduling
+#
+# The collector can run on a recurring schedule without an external cron daemon.
+# When a schedule is configured, the process stays alive and collects on each tick.
+# Without a schedule, the collector runs once and exits (default behavior).
+#
+# Environment variable overrides:
+#   cron.schedule          -> COLLECTOR_CRON_SCHEDULE
+#   cron.run_on_startup    -> COLLECTOR_RUN_STARTUP
+#   cron.startup_sleep_secs -> COLLECTOR_RUN_STARTUP_SLEEP
+#
+########################################################################################################################
+
+#cron:
+#  schedule: "0 * * * *"   # Standard 5-field cron expression. Leave empty to run once and exit.
+#  run_on_startup: false    # Run an immediate collection on startup before the first scheduled tick.
+#  startup_sleep_secs: 0   # Seconds to sleep before the startup run (useful for letting the system settle).
+
+
+########################################################################################################################
 # FEATURES COMING SOON
 #
 # The following commented out sections are a preview of additional configuration options that will be available soon.

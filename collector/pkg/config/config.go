@@ -72,6 +72,10 @@ func (c *configuration) Init() error {
 
 	c.SetDefault("allow_listed_devices", []string{})
 
+	c.SetDefault("cron.schedule", "")
+	c.SetDefault("cron.run_on_startup", false)
+	c.SetDefault("cron.startup_sleep_secs", 0)
+
 	//if you want to load a non-standard location system config file (~/drawbridge.yml), use ReadConfig
 	c.SetConfigType("yaml")
 	//c.SetConfigName("drawbridge")
