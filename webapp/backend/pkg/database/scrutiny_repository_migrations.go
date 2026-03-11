@@ -823,6 +823,20 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 			},
 		},
 		{
+			ID: "m20260410000000", // add notify_on_collector_error setting
+			Migrate: func(tx *gorm.DB) error {
+				var defaultSettings = []m20220716214900.Setting{
+					{
+						SettingKeyName:        "metrics.notify_on_collector_error",
+						SettingKeyDescription: "Enable notifications when the collector encounters smartctl errors (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      true,
+					},
+				}
+				return tx.Create(&defaultSettings).Error
+			},
+		},
+		{
 			ID: "m20260411000000", // enforce unique constraint on (protocol, attribute_id, wwn) in attribute_overrides
 			Migrate: func(tx *gorm.DB) error {
 				// Remove any duplicate overrides, keeping the row with the lowest id
@@ -846,20 +860,6 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 					return fmt.Errorf("failed to create unique attribute_overrides index: %w", err)
 				}
 				return nil
-			},
-		},
-		{
-			ID: "m20260410000000", // add notify_on_collector_error setting
-			Migrate: func(tx *gorm.DB) error {
-				var defaultSettings = []m20220716214900.Setting{
-					{
-						SettingKeyName:        "metrics.notify_on_collector_error",
-						SettingKeyDescription: "Enable notifications when the collector encounters smartctl errors (true | false)",
-						SettingDataType:       "bool",
-						SettingValueBool:      true,
-					},
-				}
-				return tx.Create(&defaultSettings).Error
 			},
 		},
 	})
