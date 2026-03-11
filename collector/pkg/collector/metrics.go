@@ -64,6 +64,7 @@ func (mc *MetricsCollector) Run() error {
 	}
 	rawDetectedStorageDevices, err := deviceDetector.Start()
 	if err != nil {
+		mc.ReportScanError("scan", err.Error(), "")
 		return err
 	}
 
@@ -120,6 +121,7 @@ func (mc *MetricsCollector) Collect(deviceWWN string, deviceName string, deviceT
 	//defer wg.Done()
 	if len(deviceWWN) == 0 {
 		mc.logger.Errorf("no device WWN detected for %s. Skipping collection for this device (no data association possible).\n", deviceName)
+		mc.ReportScanError("info", fmt.Sprintf("no WWN detected for device %s; smartctl --info may have failed", deviceName), deviceName)
 		return
 	}
 	mc.logger.Infof("Collecting smartctl results for %s\n", deviceName)
@@ -142,10 +144,19 @@ func (mc *MetricsCollector) Collect(deviceWWN string, deviceName string, deviceT
 			// smartctl command exited with an error, we should still push the data to the API server
 			mc.logger.Errorf("smartctl returned an error code (%d) while processing %s\n", exitError.ExitCode(), deviceName)
 			mc.LogSmartctlExitCode(exitError.ExitCode())
+			// Bits 0x01 and 0x02 mean smartctl could not parse the command line or open the
+			// device respectively. In these cases the JSON output is unusable, so report the
+			// failure to the backend and skip publishing.
+			exitCode := exitError.ExitCode()
+			if exitCode&0x01 != 0 || exitCode&0x02 != 0 {
+				mc.ReportDeviceError(deviceWWN, "xall", fmt.Sprintf("smartctl exited with fatal code %d while reading %s", exitCode, deviceName))
+				return
+			}
 		} else {
 			mc.logger.Errorf("error while attempting to execute smartctl: %s\n", deviceName)
 			mc.logger.Errorf("ERROR MESSAGE: %v", err)
 			mc.logger.Errorf("IGNORING RESULT: %v", result)
+			mc.ReportDeviceError(deviceWWN, "xall", err.Error())
 			return
 		}
 	}
@@ -236,4 +247,44 @@ func (mc *MetricsCollector) Publish(deviceWWN string, payload []byte) error {
 	}
 
 	return nil
+}
+
+// collectorErrorPayload is the JSON body sent to the backend collector-error endpoints.
+type collectorErrorPayload struct {
+	ErrorType    string `json:"error_type"`
+	ErrorMessage string `json:"error_message"`
+	// DeviceName is an optional hint used when no WWN is available (scan/info errors).
+	DeviceName string `json:"device_name,omitempty"`
+}
+
+// ReportDeviceError posts a collector error to /api/device/:wwn/collector-error.
+// Errors from this call are logged but do not abort the collection run.
+func (mc *MetricsCollector) ReportDeviceError(deviceWWN string, errorType string, errorMessage string) {
+	if deviceWWN == "" {
+		mc.logger.Debugf("Cannot report device error without WWN; skipping")
+		return
+	}
+	apiEndpoint, _ := url.Parse(mc.apiEndpoint.String())
+	apiEndpoint, _ = apiEndpoint.Parse(fmt.Sprintf("api/device/%s/collector-error", strings.ToLower(deviceWWN)))
+
+	body := collectorErrorPayload{ErrorType: errorType, ErrorMessage: errorMessage}
+	var result map[string]interface{}
+	if err := mc.postJson(apiEndpoint.String(), body, &result); err != nil {
+		mc.logger.Warnf("Failed to report collector device error for %s: %v", deviceWWN, err)
+	}
+}
+
+// ReportScanError posts a collector scan-level error to /api/collector/scan-error.
+// deviceName is an optional hint included in the payload so the backend can produce
+// a more informative notification subject when no WWN is available.
+// Errors from this call are logged but do not abort the collection run.
+func (mc *MetricsCollector) ReportScanError(errorType string, errorMessage string, deviceName string) {
+	apiEndpoint, _ := url.Parse(mc.apiEndpoint.String())
+	apiEndpoint, _ = apiEndpoint.Parse("api/collector/scan-error")
+
+	body := collectorErrorPayload{ErrorType: errorType, ErrorMessage: errorMessage, DeviceName: deviceName}
+	var result map[string]interface{}
+	if err := mc.postJson(apiEndpoint.String(), body, &result); err != nil {
+		mc.logger.Warnf("Failed to report collector scan error: %v", err)
+	}
 }
