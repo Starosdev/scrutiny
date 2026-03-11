@@ -2,7 +2,7 @@
 
 This document provides a comprehensive inventory of all project dependencies, their current versions, health status, and update recommendations.
 
-Last updated: 2026-01-08
+Last updated: 2026-03-10
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@ Last updated: 2026-01-08
 
 | Category | Total | Current | Outdated | Vulnerable |
 |----------|-------|---------|----------|------------|
-| Go Direct | 18 | 3 | 15 | TBD |
+| Go Direct | 24 | 13 | 11 | TBD |
 | Go Indirect | ~60 | - | - | TBD |
 | NPM Production | 21 | 15 | 6 | 1 |
 | NPM Development | 25 | 22 | 3 | 0 |
@@ -34,7 +34,9 @@ Last updated: 2026-01-08
 |---------|------|----------|--------------|--------|
 | quill | npm | Moderate | GHSA-4943-9vgg-gr5r (XSS) | Deferred - requires breaking upgrade |
 
-### Recently Fixed (2026-01-08)
+### History
+
+#### Fixed/Updated (2026-01-08)
 
 | Package | Severity | Fix Applied |
 |---------|----------|-------------|
@@ -42,6 +44,30 @@ Last updated: 2026-01-08
 | qs | High | npm audit fix |
 | semver | High | @angular-eslint update |
 | js-yaml | Moderate | @angular-eslint update |
+
+#### Updated (2026-03-10)
+
+Go direct dependencies updated as part of feature development:
+
+| Package | Old | New | Reason |
+|---------|-----|-----|--------|
+| fatih/color | v1.15.0 | v1.18.0 | Routine update |
+| nicholas-fedor/shoutrrr | v0.8.17 | v0.13.2 | Major update, new features |
+| sirupsen/logrus | v1.6.0 | v1.8.3 | Routine update |
+| spf13/viper | v1.15.0 | v1.21.0 | Routine update |
+| stretchr/testify | v1.8.1 | v1.11.1 | Routine update |
+| golang.org/x/sync | v0.3.0 | v0.19.0 | Routine update |
+
+New Go direct dependencies added:
+
+| Package | Version | Added For |
+|---------|---------|-----------|
+| github.com/eclipse/paho.mqtt.golang | v1.5.0 | Home Assistant MQTT Discovery |
+| github.com/go-pdf/fpdf | v0.9.0 | Scheduled reports PDF export |
+| github.com/go-viper/mapstructure/v2 | v2.5.0 | Successor to mitchellh/mapstructure |
+| github.com/golang-jwt/jwt/v5 | v5.3.1 | API authentication |
+| github.com/google/uuid | v1.3.0 | UUID generation |
+| go.uber.org/automaxprocs | v1.6.0 | Auto GOMAXPROCS tuning |
 
 ---
 
@@ -57,22 +83,28 @@ Last updated: 2026-01-08
 | Package | Version | Latest | Gap | Priority |
 |---------|---------|--------|-----|----------|
 | github.com/analogj/go-util | v0.0.0-20190301 | v0.0.0-20210417 | 2 years | Low |
-| github.com/nicholas-fedor/shoutrrr | v0.8.17 | v0.12.0 | Go 1.24 compatible | - |
-| github.com/fatih/color | v1.15.0 | v1.18.0 | 3 minor | Low |
-| github.com/gin-gonic/gin | v1.6.3 | v1.11.0 | 4 minor | High |
+| github.com/eclipse/paho.mqtt.golang | v1.5.0 | v1.5.0 | Current | - |
+| github.com/fatih/color | v1.18.0 | v1.18.0 | Current | - |
+| github.com/gin-gonic/gin | v1.9.1 | v1.11.0 | 2 minor | High |
 | github.com/glebarez/sqlite | v1.4.5 | v1.11.0 | 6 minor | Medium |
 | github.com/go-gormigrate/gormigrate/v2 | v2.0.0 | v2.1.5 | 1 minor | Low |
+| github.com/go-pdf/fpdf | v0.9.0 | v0.9.0 | Current | - |
+| github.com/go-viper/mapstructure/v2 | v2.5.0 | v2.5.0 | Current | - |
+| github.com/golang-jwt/jwt/v5 | v5.3.1 | v5.3.1 | Current | - |
 | github.com/golang/mock | v1.6.0 | v1.6.0 | Current | - |
+| github.com/google/uuid | v1.3.0 | v1.6.0 | 3 minor | Low |
 | github.com/influxdata/influxdb-client-go/v2 | v2.9.0 | v2.14.0 | 5 minor | Medium |
 | github.com/jaypipes/ghw | v0.6.1 | v0.21.2 | 15 minor | High |
 | github.com/mitchellh/mapstructure | v1.5.0 | v1.5.0 | Current | - |
+| github.com/nicholas-fedor/shoutrrr | v0.13.2 | v0.13.2 | Current | - |
 | github.com/prometheus/client_golang | v1.17.0 | v1.23.2 | 6 minor | Medium |
 | github.com/samber/lo | v1.25.0 | v1.52.0 | 27 minor | Medium |
-| github.com/sirupsen/logrus | v1.6.0 | v1.9.3 | 3 minor | Low |
-| github.com/spf13/viper | v1.15.0 | v1.21.0 | 6 minor | Medium |
-| github.com/stretchr/testify | v1.8.1 | v1.11.1 | 3 minor | Low |
+| github.com/sirupsen/logrus | v1.8.3 | v1.9.3 | 1 minor | Low |
+| github.com/spf13/viper | v1.21.0 | v1.21.0 | Current | - |
+| github.com/stretchr/testify | v1.11.1 | v1.11.1 | Current | - |
 | github.com/urfave/cli/v2 | v2.2.0 | v2.27.7 | 25 minor | High |
-| golang.org/x/sync | v0.3.0 | v0.19.0 | 16 minor | Low |
+| go.uber.org/automaxprocs | v1.6.0 | v1.6.0 | Current | - |
+| golang.org/x/sync | v0.19.0 | v0.19.0 | Current | - |
 | gorm.io/gorm | v1.23.5 | v1.31.1 | 8 minor | High |
 
 ### Deprecated Indirect Dependencies
@@ -168,14 +200,15 @@ Last updated: 2026-01-08
 - [x] npm audit fix (non-breaking)
 - [x] Update @angular-eslint to v21.x
 
-### Phase 2: Low-Risk Go Updates
+### Phase 2: Low-Risk Go Updates (Complete)
 
-```bash
-go get -u github.com/sirupsen/logrus@latest
-go get -u github.com/fatih/color@latest
-go get -u github.com/stretchr/testify@latest
-go get -u golang.org/x/sync@latest
-```
+The following were updated as part of feature development (2026-03-10):
+- fatih/color v1.15.0 → v1.18.0
+- sirupsen/logrus v1.6.0 → v1.8.3
+- stretchr/testify v1.8.1 → v1.11.1
+- golang.org/x/sync v0.3.0 → v0.19.0
+- spf13/viper v1.15.0 → v1.21.0
+- nicholas-fedor/shoutrrr v0.8.17 → v0.13.2
 
 ### Phase 3: Angular Material Alignment
 
@@ -209,7 +242,10 @@ go get -u gorm.io/gorm@latest
 - GitHub #69: Quill v2.0 upgrade (XSS vulnerability fix)
 - GitHub #70: moment.js migration to date-fns
 - TBD: Angular Material v21 upgrade
-- TBD: Go dependency updates (multiple phases)
+- Phase 2 Go updates: Complete (2026-03-10)
+- Phase 3 Angular Material: Pending
+- Phase 4 medium-risk Go updates: Pending
+- Phase 5 high-risk Go updates: Pending
 
 ---
 
