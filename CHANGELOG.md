@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.45.0](https://github.com/Starosdev/scrutiny/compare/v1.44.0...v1.45.0) (2026-03-11)
+
+### Features
+
+* **collector:** add built-in cron scheduling ([#333](https://github.com/Starosdev/scrutiny/issues/333)) ([#344](https://github.com/Starosdev/scrutiny/issues/344)) ([ccbb485](https://github.com/Starosdev/scrutiny/commit/ccbb485c8fa99c74a4831d61d09f2cb2dc078c12))
+
 ## [1.44.0](https://github.com/Starosdev/scrutiny/compare/v1.43.2...v1.44.0) (2026-03-11)
 
 ### Features
