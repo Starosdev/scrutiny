@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.46.0](https://github.com/Starosdev/scrutiny/compare/v1.45.0...v1.46.0) (2026-03-11)
+
+### Features
+
+* **scrutiny:** collector cron scheduling, smartctl error notifications, and override improvements ([#347](https://github.com/Starosdev/scrutiny/issues/347)) ([e329684](https://github.com/Starosdev/scrutiny/commit/e32968496213d5529538b89ba16fea77f2d24aa8)), closes [#345](https://github.com/Starosdev/scrutiny/issues/345)
+
 ## [1.45.0](https://github.com/Starosdev/scrutiny/compare/v1.44.0...v1.45.0) (2026-03-11)
 
 ### Features
