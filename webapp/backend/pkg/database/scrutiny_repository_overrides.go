@@ -40,8 +40,8 @@ func (sr *scrutinyRepository) GetAllOverridesForDisplay(ctx context.Context) ([]
 
 	// Build a set of (protocol|attribute_id|wwn) keys already covered by DB overrides.
 	dbKeys := make(map[string]struct{}, len(dbOverrides))
-	for _, o := range dbOverrides {
-		key := o.Protocol + "|" + o.AttributeId + "|" + o.WWN
+	for i := range dbOverrides {
+		key := dbOverrides[i].Protocol + "|" + dbOverrides[i].AttributeId + "|" + dbOverrides[i].WWN
 		dbKeys[key] = struct{}{}
 	}
 
