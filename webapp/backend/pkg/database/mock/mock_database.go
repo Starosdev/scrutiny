@@ -127,6 +127,21 @@ func (mr *MockDeviceRepoMockRecorder) GetAttributeOverrides(ctx interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAttributeOverrides", reflect.TypeOf((*MockDeviceRepo)(nil).GetAttributeOverrides), ctx)
 }
 
+// GetAllOverridesForDisplay mocks base method.
+func (m *MockDeviceRepo) GetAllOverridesForDisplay(ctx context.Context) ([]models.AttributeOverride, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllOverridesForDisplay", ctx)
+	ret0, _ := ret[0].([]models.AttributeOverride)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllOverridesForDisplay indicates an expected call of GetAllOverridesForDisplay.
+func (mr *MockDeviceRepoMockRecorder) GetAllOverridesForDisplay(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllOverridesForDisplay", reflect.TypeOf((*MockDeviceRepo)(nil).GetAllOverridesForDisplay), ctx)
+}
+
 // GetAvailableInfluxDBBuckets mocks base method.
 func (m *MockDeviceRepo) GetAvailableInfluxDBBuckets(ctx context.Context) ([]string, error) {
 	m.ctrl.T.Helper()

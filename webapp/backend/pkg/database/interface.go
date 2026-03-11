@@ -103,6 +103,11 @@ type DeviceRepo interface {
 
 	// Attribute Override operations
 	GetAttributeOverrides(ctx context.Context) ([]models.AttributeOverride, error)
+	// GetAllOverridesForDisplay returns all overrides for display in the settings UI.
+	// It merges DB overrides (source: "ui") with config file overrides (source: "config"),
+	// so users can see everything that is active. Config overrides have ID=0 and cannot
+	// be deleted via the UI.
+	GetAllOverridesForDisplay(ctx context.Context) ([]models.AttributeOverride, error)
 	GetAttributeOverrideByID(ctx context.Context, id uint) (*models.AttributeOverride, error)
 	SaveAttributeOverride(ctx context.Context, override *models.AttributeOverride) error
 	DeleteAttributeOverride(ctx context.Context, id uint) error
