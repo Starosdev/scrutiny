@@ -116,3 +116,19 @@ For setup instructions, see the [Home Assistant Integration](../README.md#home-a
 
 - **Check `client_id`**: If multiple Scrutiny instances connect to the same broker with the same `client_id`, they will kick each other off. Use unique client IDs (e.g., `scrutiny-server1`, `scrutiny-server2`).
 - **Check broker logs**: Most brokers log connection/disconnection events. Look for authentication failures or client ID conflicts.
+
+# Collector-Side Error Notifications
+
+Scrutiny notifies you when the collector fails to read SMART data from a drive via `smartctl`, or when a device scan fails entirely. This is distinct from SMART attribute threshold failures — it alerts you when the collection process itself errors.
+
+**Per-device errors** occur when `smartctl` successfully scans and finds a device but fails to retrieve its SMART data. These are reported to `POST /api/device/:wwn/collector-error` and include device context in the notification.
+
+**Scan-level errors** occur when `smartctl --scan` itself fails (no device context available). These are reported to `POST /api/collector/scan-error`.
+
+Common causes:
+
+- Collector not running as root or without `SYS_RAWIO`/`SYS_ADMIN` capabilities
+- Drive physically failing to respond to commands
+- Unsupported drive type or interface
+
+No additional configuration is required. If notification URLs are configured, collector errors are sent through the same channels as SMART failures.

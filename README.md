@@ -106,6 +106,7 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Uptime Kuma Push Monitor** - Dedicated push-based health status updates to Uptime Kuma endpoints
 - **Seagate FARM Log Support** - Collect Field Accessible Reliability Metrics from Seagate Exos, IronWolf, and BarraCuda drives
 - **UI-Configurable Notification URLs** - Manage notification endpoints directly in the web UI (add, edit, test, delete)
+- **Collector-Side Error Notifications** - Receive alerts when smartctl fails to read a drive during collection, not just when SMART attribute thresholds are exceeded
 
 # Migration from AnalogJ/scrutiny
 
