@@ -144,11 +144,13 @@ func (mc *MetricsCollector) Collect(deviceWWN string, deviceName string, deviceT
 			// smartctl command exited with an error, we should still push the data to the API server
 			mc.logger.Errorf("smartctl returned an error code (%d) while processing %s\n", exitError.ExitCode(), deviceName)
 			mc.LogSmartctlExitCode(exitError.ExitCode())
-			// Bits 0x01 and 0x02 mean smartctl could not parse the command line or open the
-			// device respectively. In these cases the JSON output is unusable, so report the
-			// failure to the backend and skip publishing.
+			// Bits 0x01, 0x02, and 0x04 indicate fatal errors where the JSON
+			// output should not be trusted:
+			//   0x01 = command line parse error
+			//   0x02 = device open failed
+			//   0x04 = checksum error in response
 			exitCode := exitError.ExitCode()
-			if exitCode&0x01 != 0 || exitCode&0x02 != 0 {
+			if exitCode&0x07 != 0 {
 				mc.ReportDeviceError(deviceWWN, "xall", fmt.Sprintf("smartctl exited with fatal code %d while reading %s", exitCode, deviceName))
 				return
 			}

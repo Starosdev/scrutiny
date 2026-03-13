@@ -37,6 +37,32 @@ func UploadDeviceMetrics(c *gin.Context) {
 		return
 	}
 
+	// Validate smartctl exit_status bitmask before persisting data.
+	// Bits 0-2 indicate conditions where the JSON data should not be trusted:
+	//   0x01 = command line parse error
+	//   0x02 = device open failed (includes standby)
+	//   0x04 = checksum error in response
+	exitStatus := collectorSmartData.Smartctl.ExitStatus
+	if exitStatus&0x07 != 0 {
+		logger.Warnf("Rejecting SMART data for device %s: smartctl exit_status %d has fatal bits set (mask 0x07)", device.WWN, exitStatus)
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"success": false,
+			"error":   fmt.Sprintf("smartctl exit_status %d indicates unreliable data (bits 0-2 set)", exitStatus),
+		})
+		return
+	}
+
+	// Log informational exit status bits without rejecting data.
+	// These indicate disk health issues which are exactly what we want to track:
+	//   0x08 = SMART failure detected
+	//   0x10 = prefail threshold exceeded
+	//   0x20 = disk approaching failure
+	//   0x40 = error log contains errors
+	//   0x80 = self-test log contains errors
+	if exitStatus != 0 {
+		logger.Warnf("Device %s: smartctl exit_status %d has informational bits set; persisting data", device.WWN, exitStatus)
+	}
+
 	// update the device information if necessary (SQLite - uses deviceID)
 	updatedDevice, err := deviceRepo.UpdateDevice(c, device.DeviceID, &collectorSmartData)
 	if err != nil {
