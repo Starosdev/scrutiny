@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.46.2](https://github.com/Starosdev/scrutiny/compare/v1.46.1...v1.46.2) (2026-03-13)
+
+### Bug Fixes
+
+* **database:** add migration to seed Uptime Kuma settings ([#351](https://github.com/Starosdev/scrutiny/issues/351)) ([#354](https://github.com/Starosdev/scrutiny/issues/354)) ([7b968c3](https://github.com/Starosdev/scrutiny/commit/7b968c35f8878cdee1808e1978630224803b3406))
+
 ## [1.46.1](https://github.com/Starosdev/scrutiny/compare/v1.46.0...v1.46.1) (2026-03-13)
 
 ### Bug Fixes
