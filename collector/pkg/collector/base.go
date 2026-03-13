@@ -70,23 +70,33 @@ func (c *BaseCollector) postJson(url string, body interface{}, target interface{
 	return json.NewDecoder(r.Body).Decode(target)
 }
 
+// LogSmartctlExitCode logs each set bit in the smartctl exit code bitmask.
+// Fatal bits (0x01, 0x02) are logged at ERROR; health-related bits (0x08,
+// 0x10, 0x20) at WARN; purely informational bits (0x04, 0x40, 0x80) at INFO.
 // http://www.linuxguide.it/command_line/linux-manpage/do.php?file=smartctl#sect7
-func (c *BaseCollector) LogSmartctlExitCode(exitCode int) {
+func (c *BaseCollector) LogSmartctlExitCode(exitCode int, deviceName string) {
 	if exitCode&0x01 != 0 {
-		c.logger.Errorln("smartctl could not parse commandline")
-	} else if exitCode&0x02 != 0 {
-		c.logger.Errorln("smartctl could not open device")
-	} else if exitCode&0x04 != 0 {
-		c.logger.Errorln("smartctl detected a checksum error")
-	} else if exitCode&0x08 != 0 {
-		c.logger.Errorln("smartctl detected a failing disk ")
-	} else if exitCode&0x10 != 0 {
-		c.logger.Errorln("smartctl detected a disk in pre-fail")
-	} else if exitCode&0x20 != 0 {
-		c.logger.Errorln("smartctl detected a disk close to failure")
-	} else if exitCode&0x40 != 0 {
-		c.logger.Errorln("smartctl detected a error log with errors")
-	} else if exitCode&0x80 != 0 {
-		c.logger.Errorln("smartctl detected a self test log with errors")
+		c.logger.Errorf("smartctl could not parse command line for %s", deviceName)
+	}
+	if exitCode&0x02 != 0 {
+		c.logger.Errorf("smartctl could not open device %s", deviceName)
+	}
+	if exitCode&0x04 != 0 {
+		c.logger.Infof("smartctl detected a checksum error for %s (bit 0x04)", deviceName)
+	}
+	if exitCode&0x08 != 0 {
+		c.logger.Warnf("smartctl detected a failing disk for %s (bit 0x08)", deviceName)
+	}
+	if exitCode&0x10 != 0 {
+		c.logger.Warnf("smartctl detected a disk in pre-fail for %s (bit 0x10)", deviceName)
+	}
+	if exitCode&0x20 != 0 {
+		c.logger.Warnf("smartctl detected a disk close to failure for %s (bit 0x20)", deviceName)
+	}
+	if exitCode&0x40 != 0 {
+		c.logger.Infof("smartctl error log contains records of errors for %s (bit 0x40)", deviceName)
+	}
+	if exitCode&0x80 != 0 {
+		c.logger.Infof("smartctl self-test log contains errors for %s (bit 0x80)", deviceName)
 	}
 }

@@ -141,25 +141,26 @@ func (mc *MetricsCollector) Collect(deviceWWN string, deviceName string, deviceT
 	resultBytes := []byte(result)
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
-			// smartctl command exited with an error, we should still push the data to the API server
-			mc.logger.Errorf("smartctl returned an error code (%d) while processing %s\n", exitError.ExitCode(), deviceName)
-			mc.LogSmartctlExitCode(exitError.ExitCode())
+			exitCode := exitError.ExitCode()
 			// Bits 0x01 and 0x02 indicate fatal errors where the JSON
 			// output should not be trusted:
 			//   0x01 = command line parse error
 			//   0x02 = device open failed (includes standby)
-			// Bit 0x04 (checksum error in response) is intentionally
-			// excluded because the JSON data is usually still valid
-			// and many drives behind RAID/HBA controllers intermittently
-			// return this code.
-			exitCode := exitError.ExitCode()
-			if exitCode&0x04 != 0 {
-				mc.logger.Warnf("smartctl exit code %d for %s has bit 0x04 set (checksum error); data will still be published", exitCode, deviceName)
-			}
+			// Other bits are informational and the JSON data is still valid:
+			//   0x04 = checksum error in response (common behind RAID/HBA)
+			//   0x08 = SMART status failure
+			//   0x10 = prefail attributes past threshold
+			//   0x20 = some attributes past threshold
+			//   0x40 = error log contains records of errors
+			//   0x80 = self-test log contains errors
 			if exitCode&0x03 != 0 {
+				mc.logger.Errorf("smartctl returned a fatal error code (%d) while processing %s", exitCode, deviceName)
+				mc.LogSmartctlExitCode(exitCode, deviceName)
 				mc.ReportDeviceError(deviceWWN, "xall", fmt.Sprintf("smartctl exited with fatal code %d while reading %s", exitCode, deviceName))
 				return
 			}
+			mc.logger.Warnf("smartctl returned a non-fatal exit code (%d) while processing %s; data will still be published", exitCode, deviceName)
+			mc.LogSmartctlExitCode(exitCode, deviceName)
 		} else {
 			mc.logger.Errorf("error while attempting to execute smartctl: %s\n", deviceName)
 			mc.logger.Errorf("ERROR MESSAGE: %v", err)

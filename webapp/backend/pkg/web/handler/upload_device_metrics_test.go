@@ -174,6 +174,34 @@ func TestUploadDeviceMetrics_ExitStatus_ChecksumWithInfoBitsNotFatal(t *testing.
 	require.Contains(t, w.Body.String(), "success")
 }
 
+func TestUploadDeviceMetrics_ExitStatus_ErrorLogNotFatal(t *testing.T) {
+	// exit_status 64 = bit 0x40 (error log contains records of errors).
+	// This is informational and should not block data persistence.
+	router := setupMetricsRouterAccept(t)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/api/device/%s/smart", testDeviceWWN), strings.NewReader(smartPayload(64)))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Contains(t, w.Body.String(), "success")
+}
+
+func TestUploadDeviceMetrics_ExitStatus_SelfTestLogNotFatal(t *testing.T) {
+	// exit_status 128 = bit 0x80 (self-test log contains errors).
+	// This is informational and should not block data persistence.
+	router := setupMetricsRouterAccept(t)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/api/device/%s/smart", testDeviceWWN), strings.NewReader(smartPayload(128)))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Contains(t, w.Body.String(), "success")
+}
+
 func TestUploadDeviceMetrics_ExitStatus_FatalBitWithInfoBits(t *testing.T) {
 	// exit_status 0x43 = bits 0, 1, and 6 set; bits 0-1 are fatal
 	router := setupMetricsRouter(t)
