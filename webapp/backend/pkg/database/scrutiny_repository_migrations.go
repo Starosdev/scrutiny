@@ -862,6 +862,32 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				return nil
 			},
 		},
+		{
+			ID: "m20260413000000", // add Uptime Kuma push monitor settings (#351)
+			Migrate: func(tx *gorm.DB) error {
+				var defaultSettings = []m20220716214900.Setting{
+					{
+						SettingKeyName:        "metrics.uptime_kuma_enabled",
+						SettingKeyDescription: "Enable Uptime Kuma push monitor (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      false,
+					},
+					{
+						SettingKeyName:        "metrics.uptime_kuma_push_url",
+						SettingKeyDescription: "Uptime Kuma push monitor URL",
+						SettingDataType:       "string",
+						SettingValueString:    "",
+					},
+					{
+						SettingKeyName:        "metrics.uptime_kuma_interval_seconds",
+						SettingKeyDescription: "Seconds between Uptime Kuma pushes (default: 60)",
+						SettingDataType:       "numeric",
+						SettingValueNumeric:   60,
+					},
+				}
+				return tx.Create(&defaultSettings).Error
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {
