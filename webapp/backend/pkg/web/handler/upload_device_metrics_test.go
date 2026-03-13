@@ -8,10 +8,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/analogj/scrutiny/webapp/backend/pkg"
+	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
 	mock_database "github.com/analogj/scrutiny/webapp/backend/pkg/database/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/web/handler"
-	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
@@ -23,8 +25,8 @@ func smartPayload(exitStatus int) string {
 	payload := map[string]interface{}{
 		"json_format_version": []int{1, 0},
 		"smartctl": map[string]interface{}{
-			"version":       []int{7, 3},
-			"exit_status":   exitStatus,
+			"version":     []int{7, 3},
+			"exit_status": exitStatus,
 		},
 		"device": map[string]interface{}{
 			"name":     "/dev/sda",
@@ -70,6 +72,42 @@ func setupMetricsRouter(t *testing.T) *gin.Engine {
 	return r
 }
 
+// setupMetricsRouterAccept creates a router for UploadDeviceMetrics tests where the
+// exit_status validation passes and the handler proceeds to persist data. The mock
+// repo stubs all DB calls that occur after validation.
+func setupMetricsRouterAccept(t *testing.T) *gin.Engine {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+
+	mockCtrl := gomock.NewController(t)
+	t.Cleanup(func() { mockCtrl.Finish() })
+
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeRepo := mock_database.NewMockDeviceRepo(mockCtrl)
+
+	device := models.Device{DeviceID: testDeviceWWN, DeviceName: "/dev/sda", DeviceStatus: pkg.DeviceStatusPassed}
+	fakeRepo.EXPECT().GetDeviceDetails(gomock.Any(), testDeviceWWN).Return(device, nil).AnyTimes()
+	fakeRepo.EXPECT().GetDeviceByWWN(gomock.Any(), testDeviceWWN).Return(device, nil).AnyTimes()
+	fakeRepo.EXPECT().UpdateDevice(gomock.Any(), gomock.Any(), gomock.Any()).Return(device, nil).AnyTimes()
+	fakeRepo.EXPECT().SaveSmartAttributes(gomock.Any(), gomock.Any(), gomock.Any()).Return(measurements.Smart{Status: pkg.DeviceStatusPassed}, nil).AnyTimes()
+	fakeRepo.EXPECT().UpdateDeviceHasForcedFailure(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	fakeRepo.EXPECT().SaveSmartTemperature(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	fakeConfig.EXPECT().GetBool(gomock.Any()).Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetInt(gomock.Any()).Return(0).AnyTimes()
+
+	logger := logrus.WithField("test", t.Name())
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("CONFIG", fakeConfig)
+		c.Set("DEVICE_REPOSITORY", fakeRepo)
+		c.Set("LOGGER", logger)
+		c.Next()
+	})
+	r.POST("/api/device/:id/smart", handler.UploadDeviceMetrics)
+	return r
+}
+
 func TestUploadDeviceMetrics_ExitStatus_FatalBit0(t *testing.T) {
 	router := setupMetricsRouter(t)
 
@@ -94,11 +132,12 @@ func TestUploadDeviceMetrics_ExitStatus_FatalBit1(t *testing.T) {
 	require.Contains(t, w.Body.String(), "unreliable data")
 }
 
-func TestUploadDeviceMetrics_ExitStatus_FatalBit2(t *testing.T) {
+func TestUploadDeviceMetrics_ExitStatus_FatalBits0And1(t *testing.T) {
+	// exit_status 3 = bits 0x01 | 0x02; both are fatal
 	router := setupMetricsRouter(t)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", fmt.Sprintf("/api/device/%s/smart", testDeviceWWN), strings.NewReader(smartPayload(4)))
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/api/device/%s/smart", testDeviceWWN), strings.NewReader(smartPayload(3)))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -106,16 +145,33 @@ func TestUploadDeviceMetrics_ExitStatus_FatalBit2(t *testing.T) {
 	require.Contains(t, w.Body.String(), "unreliable data")
 }
 
-func TestUploadDeviceMetrics_ExitStatus_AllFatalBits(t *testing.T) {
-	router := setupMetricsRouter(t)
+func TestUploadDeviceMetrics_ExitStatus_ChecksumNotFatal(t *testing.T) {
+	// exit_status 4 = bit 0x04 (checksum error). This is intentionally
+	// treated as non-fatal because the JSON data is usually still valid
+	// and many drives behind RAID/HBA controllers intermittently return it.
+	router := setupMetricsRouterAccept(t)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", fmt.Sprintf("/api/device/%s/smart", testDeviceWWN), strings.NewReader(smartPayload(7)))
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/api/device/%s/smart", testDeviceWWN), strings.NewReader(smartPayload(4)))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
-	require.Equal(t, http.StatusUnprocessableEntity, w.Code)
-	require.Contains(t, w.Body.String(), "unreliable data")
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Contains(t, w.Body.String(), "success")
+}
+
+func TestUploadDeviceMetrics_ExitStatus_ChecksumWithInfoBitsNotFatal(t *testing.T) {
+	// exit_status 0x44 = bit 0x04 (checksum) + bit 0x40 (error log has errors).
+	// Neither is fatal; data should be accepted.
+	router := setupMetricsRouterAccept(t)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/api/device/%s/smart", testDeviceWWN), strings.NewReader(smartPayload(0x44)))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Contains(t, w.Body.String(), "success")
 }
 
 func TestUploadDeviceMetrics_ExitStatus_FatalBitWithInfoBits(t *testing.T) {
