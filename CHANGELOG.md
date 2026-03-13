@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.46.1](https://github.com/Starosdev/scrutiny/compare/v1.46.0...v1.46.1) (2026-03-13)
+
+### Bug Fixes
+
+* **smart:** validate smartctl exit_status before persisting data ([#348](https://github.com/Starosdev/scrutiny/issues/348)) ([#350](https://github.com/Starosdev/scrutiny/issues/350)) ([37a8f89](https://github.com/Starosdev/scrutiny/commit/37a8f89ffc4f87ce7f028e722476a73c5ea8edbf))
+
 ## [1.46.0](https://github.com/Starosdev/scrutiny/compare/v1.45.0...v1.46.0) (2026-03-11)
 
 ### Features
