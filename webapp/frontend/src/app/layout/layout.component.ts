@@ -6,6 +6,7 @@ import {Subject} from 'rxjs';
 import {filter, takeUntil} from 'rxjs/operators';
 import {ScrutinyConfigService} from 'app/core/config/scrutiny-config.service';
 import {TreoDrawerService} from '@treo/components/drawer';
+import {TreoMediaWatcherService} from '@treo/services/media-watcher';
 import {Layout} from 'app/layout/layout.types';
 import {AppConfig, Theme} from 'app/core/config/app.config';
 
@@ -22,6 +23,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     theme: Theme;
 
     // Private
+    private _isMobile: boolean = false;
     private _unsubscribeAll: Subject<void>;
     private systemPrefersDark: boolean;
 
@@ -39,7 +41,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
         private _scrutinyConfigService: ScrutinyConfigService,
         private _treoDrawerService: TreoDrawerService,
         @Inject(DOCUMENT) private _document: any,
-        private _router: Router
+        private _router: Router,
+        private _treoMediaWatcherService: TreoMediaWatcherService
     )
     {
         // Set the private defaults
@@ -93,6 +96,14 @@ export class LayoutComponent implements OnInit, OnDestroy {
             // Update the layout
             this._updateLayout();
         });
+
+        // Subscribe to media changes to detect mobile breakpoint
+        this._treoMediaWatcherService.onMediaChange$
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(({matchingAliases}) => {
+                this._isMobile = matchingAliases.includes('lt-md');
+                this._updateLayout();
+            });
     }
 
     /**
@@ -169,6 +180,10 @@ export class LayoutComponent implements OnInit, OnDestroy {
                 this.layout = path.routeConfig.data.layout;
             }
         });
+
+        if (this._isMobile) {
+            this.layout = 'mobile';
+        }
     }
 
     // -----------------------------------------------------------------------------------------------------
