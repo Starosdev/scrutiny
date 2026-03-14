@@ -1,0 +1,11 @@
+<nav class="mobile-tab-bar">
+  @for (tab of tabs; track tab.route) {
+    <button
+      class="tab-item"
+      [class.active]="isActive(tab)"
+      (click)="navigate(tab)">
+      <mat-icon>{{ tab.icon }}</mat-icon>
+      <span class="tab-label">{{ tab.label }}</span>
+    </button>
+  }
+</nav>
