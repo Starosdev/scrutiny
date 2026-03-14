@@ -2,6 +2,18 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.47.0](https://github.com/Starosdev/scrutiny/compare/v1.46.4...v1.47.0) (2026-03-14)
+
+### Features
+
+* **mobile:** mobile-friendly UI with bottom tab bar and card layouts ([#364](https://github.com/Starosdev/scrutiny/issues/364)) ([#368](https://github.com/Starosdev/scrutiny/issues/368)) ([9d520aa](https://github.com/Starosdev/scrutiny/commit/9d520aa55e6568f2c31feb869ce2000c620eb158))
+
+## [1.46.4](https://github.com/Starosdev/scrutiny/compare/v1.46.3...v1.46.4) (2026-03-14)
+
+### Bug Fixes
+
+* **docker:** add AppArmor profile and detection for TrueNAS/Docker ([#361](https://github.com/Starosdev/scrutiny/issues/361)) ([#363](https://github.com/Starosdev/scrutiny/issues/363)) ([cbb934b](https://github.com/Starosdev/scrutiny/commit/cbb934b327827ee045d51c21bf2bea0282427393))
+
 ## [1.46.3](https://github.com/Starosdev/scrutiny/compare/v1.46.2...v1.46.3) (2026-03-14)
 
 ### Bug Fixes
