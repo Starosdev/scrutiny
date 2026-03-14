@@ -74,14 +74,14 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
                 // Update the selected theme class name on body
                 const themeName = 'treo-theme-' + this.determineTheme(config);
-                this._document.body.classList.forEach((className) => {
-                    if ( className.startsWith('treo-theme-') && className !== themeName )
-                    {
-                        this._document.body.classList.remove(className);
-                        this._document.body.classList.add(themeName);
-                        return;
+                const toRemove: string[] = [];
+                this._document.body.classList.forEach((className: string) => {
+                    if (className.startsWith('treo-theme-') && className !== themeName) {
+                        toRemove.push(className);
                     }
                 });
+                toRemove.forEach((cls: string) => this._document.body.classList.remove(cls));
+                this._document.body.classList.add(themeName);
 
                 // Update the layout
                 this._updateLayout();

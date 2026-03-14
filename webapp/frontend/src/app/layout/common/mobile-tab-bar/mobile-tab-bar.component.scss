@@ -6,8 +6,8 @@ mobile-tab-bar {
     left: 0;
     right: 0;
     height: 56px;
-    background: var(--treo-bg-card);
-    border-top: 1px solid var(--treo-border);
+    background-color: #ffffff;
+    border-top: 1px solid #e0e0e0;
     z-index: 100;
     padding-bottom: env(safe-area-inset-bottom, 0);
 
@@ -74,6 +74,7 @@ mobile-tab-bar {
 .treo-theme-dark {
   mobile-tab-bar {
     .mobile-tab-bar {
+      background-color: #1e293b;
       border-top-color: rgba(255, 255, 255, 0.12);
 
       .tab-item.active {

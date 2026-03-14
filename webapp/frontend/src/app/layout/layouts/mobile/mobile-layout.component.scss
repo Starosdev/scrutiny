@@ -35,7 +35,7 @@ mobile-layout {
   .mobile-content {
     flex: 1;
     overflow-y: auto;
-    padding-bottom: 56px; // Space for tab bar
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
   }
 }
 

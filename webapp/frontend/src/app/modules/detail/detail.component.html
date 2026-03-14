@@ -3,6 +3,14 @@
   <div class="flex flex-wrap w-full">
 
     <div class="flex items-center justify-between w-full my-4 px-4 xs:pr-0">
+      <!-- Back button (mobile) -->
+      <button
+        class="hidden xs:flex mr-2 -ml-2"
+        mat-icon-button
+        (click)="goBack()">
+        <mat-icon [svgIcon]="'arrow_back'"></mat-icon>
+      </button>
+
       <!-- Title + status -->
       <div class="mr-6">
         <h2 class="m-0 flex items-center gap-2">
@@ -239,7 +247,107 @@
                 </div>
             </treo-card>
         </div>
-        <!-- S.M.A.R.T. Data table -->
+        <!-- S.M.A.R.T. Data -->
+        @if (isMobile) {
+          <!-- Mobile: Card layout -->
+          <div class="flex flex-col w-full p-4">
+            <div class="flex justify-between items-center mb-3">
+              <div>
+                <div class="font-bold text-md text-secondary uppercase tracking-wider">S.M.A.R.T {{device?.device_protocol}} Attributes</div>
+                <div class="text-sm text-hint font-medium">{{this.smartAttributeDataSource.data.length}} visible, {{getHiddenAttributes()}} hidden</div>
+              </div>
+              <mat-button-toggle-group *ngIf="isAta()"
+                                       [value]="displayMode"
+                                       (change)="setDisplayMode($event.value)"
+                                       class="display-mode-toggle">
+                <mat-button-toggle value="scrutiny">Scrutiny</mat-button-toggle>
+                <mat-button-toggle value="raw">Raw</mat-button-toggle>
+                <mat-button-toggle value="normalized">Norm</mat-button-toggle>
+              </mat-button-toggle-group>
+            </div>
+
+            @for (attribute of smartAttributeDataSource.data; track attribute.attribute_id) {
+              <div class="smart-card bg-card shadow rounded-lg mb-2 overflow-hidden"
+                   [class.smart-card-warn]="getAttributeStatusName(attribute.status) === 'warn'"
+                   [class.smart-card-fail]="getAttributeStatusName(attribute.status) === 'failed'"
+                   (click)="expandedAttribute = expandedAttribute === attribute ? null : attribute">
+                <!-- Card header -->
+                <div class="flex items-center justify-between p-3">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="inline-flex items-center font-bold text-xs px-2 py-2px rounded-full tracking-wide uppercase flex-shrink-0"
+                          [ngClass]="{'red-200': getAttributeStatusName(attribute.status) === 'failed',
+                                      'green-200': getAttributeStatusName(attribute.status) === 'passed',
+                                      'yellow-200': getAttributeStatusName(attribute.status) === 'warn'}">
+                      <span class="w-2 h-2 rounded-full mr-1"
+                            [ngClass]="{'bg-red': getAttributeStatusName(attribute.status) === 'failed',
+                                        'bg-green': getAttributeStatusName(attribute.status) === 'passed',
+                                        'bg-yellow': getAttributeStatusName(attribute.status) === 'warn'}"></span>
+                      {{getAttributeStatusName(attribute.status)}}
+                    </span>
+                    <span class="font-medium text-sm truncate">{{getAttributeName(attribute)}}</span>
+                  </div>
+                  <div class="flex items-center gap-3 flex-shrink-0 ml-2">
+                    <span class="font-semibold text-sm">{{getAttributeValue(attribute)}}</span>
+                    @if ($any(attribute).chartData) {
+                      <apx-chart
+                        [series]="$any(attribute).chartData"
+                        [chart]="commonSparklineOptions.chart"
+                        [tooltip]="commonSparklineOptions.tooltip"
+                        [stroke]="commonSparklineOptions.stroke"
+                        [annotations]="$any(attribute).chartDataReferenceLine"
+                      ></apx-chart>
+                    }
+                  </div>
+                </div>
+
+                <!-- Expanded details -->
+                @if (expandedAttribute === attribute) {
+                  <div class="border-t px-3 py-2 bg-cool-gray-50 dark:bg-cool-gray-800">
+                    @if (isAta()) {
+                      <div class="grid grid-cols-2 gap-2 text-sm mb-2">
+                        <div><span class="text-hint">ID:</span> {{formatAttributeId(attribute.attribute_id)}}</div>
+                        <div><span class="text-hint">Worst:</span> {{getAttributeWorst(attribute) || '--'}}</div>
+                        <div><span class="text-hint">Threshold:</span> {{getAttributeThreshold(attribute) || '--'}}</div>
+                        <div><span class="text-hint">Ideal:</span> {{getAttributeIdeal(attribute) || '--'}}</div>
+                        <div><span class="text-hint">Failure Rate:</span> {{attribute.failure_rate | percent}}</div>
+                      </div>
+                    } @else {
+                      <div class="grid grid-cols-2 gap-2 text-sm mb-2">
+                        <div><span class="text-hint">Threshold:</span> {{getAttributeThreshold(attribute) || '--'}}</div>
+                        <div><span class="text-hint">Ideal:</span> {{getAttributeIdeal(attribute) || '--'}}</div>
+                      </div>
+                    }
+                    @if (getAttributeDescription(attribute)) {
+                      <div class="text-sm text-secondary mt-1 mb-2">{{getAttributeDescription(attribute)}}</div>
+                    }
+                    <div class="flex gap-2 mt-1">
+                      <button mat-stroked-button class="text-xs" (click)="openHistoryDialog(attribute, $event)">
+                        <mat-icon class="icon-size-16 mr-1" [svgIcon]="'show_chart'"></mat-icon> History
+                      </button>
+                      @if (getOverrideForAttribute(attribute.attribute_id)) {
+                        <button mat-stroked-button class="text-xs" (click)="removeOverride(attribute); $event.stopPropagation()">
+                          <mat-icon class="icon-size-16 mr-1" [svgIcon]="'close'"></mat-icon> Remove Override
+                        </button>
+                      } @else if (getAttributeStatusName(attribute.status) !== 'passed') {
+                        <button mat-stroked-button class="text-xs" (click)="ignoreAttribute(attribute); $event.stopPropagation()">
+                          <mat-icon class="icon-size-16 mr-1" [svgIcon]="'visibility_off'"></mat-icon> Ignore
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="mt-2">
+              <button mat-button (click)="toggleOnlyCritical()" [color]="'primary'">
+                @if (onlyCritical) { <span>Show all attributes</span> }
+                @if (!onlyCritical) { <span>Show critical attributes</span> }
+              </button>
+            </div>
+          </div>
+        } @else {
+        <!-- Desktop: Table layout -->
         <div class="flex flex-auto w-full p-4">
             <div class="flex flex-col flex-auto w-full bg-card shadow-md rounded ">
                 <div class="p-6">
@@ -600,6 +708,7 @@
       </div>
     </div>
   </div>
+  }
 
   <!-- Performance Benchmarks -->
   @if (performanceEverLoaded) {
