@@ -38,22 +38,25 @@ func UploadDeviceMetrics(c *gin.Context) {
 	}
 
 	// Validate smartctl exit_status bitmask before persisting data.
-	// Bits 0-2 indicate conditions where the JSON data should not be trusted:
+	// Bits 0x01 and 0x02 indicate conditions where the JSON data should not be trusted:
 	//   0x01 = command line parse error
 	//   0x02 = device open failed (includes standby)
-	//   0x04 = checksum error in response
+	// Bit 0x04 (checksum error in response) is intentionally excluded because
+	// the JSON data is usually still valid and many drives behind RAID/HBA
+	// controllers intermittently return this code.
 	exitStatus := collectorSmartData.Smartctl.ExitStatus
-	if exitStatus&0x07 != 0 {
-		logger.Warnf("Rejecting SMART data for device %s: smartctl exit_status %d has fatal bits set (mask 0x07)", device.WWN, exitStatus)
+	if exitStatus&0x03 != 0 {
+		logger.Warnf("Rejecting SMART data for device %s: smartctl exit_status %d has fatal bits set (mask 0x03)", device.WWN, exitStatus)
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"success": false,
-			"error":   fmt.Sprintf("smartctl exit_status %d indicates unreliable data (bits 0-2 set)", exitStatus),
+			"error":   fmt.Sprintf("smartctl exit_status %d indicates unreliable data (bits 0-1 set)", exitStatus),
 		})
 		return
 	}
 
 	// Log informational exit status bits without rejecting data.
 	// These indicate disk health issues which are exactly what we want to track:
+	//   0x04 = checksum error in response (non-fatal, data usually valid)
 	//   0x08 = SMART failure detected
 	//   0x10 = prefail threshold exceeded
 	//   0x20 = disk approaching failure
