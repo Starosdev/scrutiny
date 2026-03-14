@@ -1,0 +1,57 @@
+mobile-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+
+  .mobile-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--treo-border);
+    min-height: 48px;
+    background: var(--treo-bg-card);
+
+    .mobile-logo {
+      height: 28px;
+    }
+
+    .mobile-logo-dark {
+      display: none;
+      height: 28px;
+    }
+
+    .spacer {
+      flex: 1;
+    }
+  }
+
+  .mobile-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 56px; // Space for tab bar
+  }
+}
+
+// Dark theme
+.treo-theme-dark {
+  mobile-layout {
+    .mobile-header {
+      border-bottom-color: rgba(255, 255, 255, 0.12);
+
+      .mobile-logo {
+        display: none;
+      }
+
+      .mobile-logo-dark {
+        display: block;
+      }
+    }
+  }
+}

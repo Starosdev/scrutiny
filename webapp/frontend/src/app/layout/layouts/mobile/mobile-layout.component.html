@@ -1,0 +1,31 @@
+<div class="mobile-layout">
+  <!-- Mobile header bar -->
+  <div class="mobile-header">
+    <a routerLink="/dashboard">
+      <img class="mobile-logo"
+        src="assets/images/logo/scrutiny-logo-dark-text.png">
+      <img class="mobile-logo-dark"
+        src="assets/images/logo/scrutiny-logo-white-text.png">
+    </a>
+
+    <div class="spacer"></div>
+
+    <theme-toggle></theme-toggle>
+
+    @if (authEnabled) {
+      <button mat-icon-button (click)="logout()" matTooltip="Logout" class="ml-1">
+        <mat-icon svgIcon="heroicons_outline:logout"></mat-icon>
+      </button>
+    }
+  </div>
+
+  <!-- Page content -->
+  <div class="mobile-content">
+    @if (true) {
+      <router-outlet></router-outlet>
+    }
+  </div>
+
+  <!-- Bottom tab bar -->
+  <mobile-tab-bar></mobile-tab-bar>
+</div>
