@@ -5,7 +5,12 @@
         class="tab-item"
         [class.active]="isActive(tab)"
         (click)="navigate(tab)">
-        <mat-icon>{{ tab.icon }}</mat-icon>
+        <div class="tab-icon-wrapper">
+          <mat-icon>{{ tab.icon }}</mat-icon>
+          @if (tab.route === '/dashboard' && drivesNeedAttention > 0) {
+            <span class="tab-badge">{{ drivesNeedAttention }}</span>
+          }
+        </div>
         <span class="tab-label">{{ tab.label }}</span>
       </button>
     }

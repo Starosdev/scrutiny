@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { filter, takeUntil } from 'rxjs/operators';
+import { DashboardService } from 'app/modules/dashboard/dashboard.service';
 
 interface TabItem {
     icon: string;
@@ -28,10 +29,11 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
 
     activeRoute: string = '';
     isDetailPage: boolean = false;
+    drivesNeedAttention: number = 0;
 
     private _unsubscribeAll: Subject<void>;
 
-    constructor(private _router: Router) {
+    constructor(private _router: Router, private readonly _dashboardService: DashboardService) {
         this._unsubscribeAll = new Subject();
     }
 
@@ -46,6 +48,20 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
             this.activeRoute = event.urlAfterRedirects;
             this.isDetailPage = this._isDetailRoute(event.urlAfterRedirects);
         });
+
+        this._dashboardService.data$
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(data => {
+                if (data) {
+                    this.drivesNeedAttention = 0;
+                    for (const wwn in data) {
+                        const status = data[wwn].device?.device_status;
+                        if (status && status > 0 && !data[wwn].device?.archived) {
+                            this.drivesNeedAttention++;
+                        }
+                    }
+                }
+            });
     }
 
     ngOnDestroy(): void {

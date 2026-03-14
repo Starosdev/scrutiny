@@ -46,6 +46,27 @@ mobile-tab-bar {
         opacity: 0.7;
       }
     }
+
+    .tab-icon-wrapper {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .tab-badge {
+      position: absolute;
+      top: -4px;
+      right: -8px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 16px;
+      text-align: center;
+      color: white;
+      background: #dc2626;
+      border-radius: 8px;
+    }
   }
 }
 
