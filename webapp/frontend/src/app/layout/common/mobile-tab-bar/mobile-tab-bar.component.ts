@@ -27,6 +27,7 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
     ];
 
     activeRoute: string = '';
+    isDetailPage: boolean = false;
 
     private _unsubscribeAll: Subject<void>;
 
@@ -36,12 +37,14 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
 
     ngOnInit(): void {
         this.activeRoute = this._router.url;
+        this.isDetailPage = this._isDetailRoute(this._router.url);
 
         this._router.events.pipe(
             filter(event => event instanceof NavigationEnd),
             takeUntil(this._unsubscribeAll)
         ).subscribe((event: NavigationEnd) => {
             this.activeRoute = event.urlAfterRedirects;
+            this.isDetailPage = this._isDetailRoute(event.urlAfterRedirects);
         });
     }
 
@@ -56,5 +59,9 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
 
     navigate(tab: TabItem): void {
         this._router.navigate([tab.route]);
+    }
+
+    private _isDetailRoute(url: string): boolean {
+        return url.startsWith('/device/') || url.startsWith('/zfs-pool/');
     }
 }
