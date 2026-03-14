@@ -65,6 +65,7 @@ RUN curl -L https://dl.influxdata.com/influxdb/releases/influxdb2-${INFLUXVER}-$
     && rm -rf /tmp/influxdb2-${INFLUXVER}-${TARGETARCH}.deb
 
 COPY /rootfs /
+COPY /docker/apparmor-profile /opt/scrutiny/apparmor-profile
 
 COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny /opt/scrutiny/bin/
 COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny-collector-metrics /opt/scrutiny/bin/

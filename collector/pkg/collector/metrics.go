@@ -113,7 +113,64 @@ func (mc *MetricsCollector) Validate() error {
 		return errors.DependencyMissingError(fmt.Sprintf("%s binary is missing", mc.config.GetString(configKeySmartctlBin)))
 	}
 
+	mc.checkAppArmor()
+
 	return nil
+}
+
+// checkAppArmor reads /proc/self/attr/apparmor/current (or the legacy
+// /proc/self/attr/current) to determine if the container is confined by
+// AppArmor. When the default docker-default profile is active, smartctl
+// may fail with permission errors even when SYS_RAWIO and SYS_ADMIN
+// capabilities are granted. This method logs a warning with remediation
+// steps so users do not have to debug cryptic ioctl failures.
+func (mc *MetricsCollector) checkAppArmor() {
+	// Try the modern path first, then fall back to the legacy path.
+	paths := []string{
+		"/proc/self/attr/apparmor/current",
+		"/proc/self/attr/current",
+	}
+
+	var profile string
+	for _, p := range paths {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		profile = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(string(data)), "(enforce)"))
+		break
+	}
+
+	if profile == "" || profile == "unconfined" {
+		mc.logger.Debugln("AppArmor: not confined or not available")
+		return
+	}
+
+	mc.logger.Infof("AppArmor: running under profile %q", profile)
+
+	if profile == "docker-default" || profile == "cri-containerd.apparmor.d" {
+		mc.logger.Warnln("AppArmor: the container is using the default Docker/containerd profile which blocks raw device I/O required by smartctl.")
+		mc.logger.Warnln("AppArmor: if you see permission errors, apply the custom scrutiny-collector profile or run with --security-opt apparmor=unconfined.")
+		mc.logger.Warnln("AppArmor: see https://github.com/Starosdev/scrutiny/blob/master/docs/TROUBLESHOOTING_APPARMOR.md for details.")
+	}
+}
+
+// hintAppArmorOnDeviceOpenFailure logs an additional hint when smartctl
+// fails to open a device (exit code bit 0x02). On AppArmor-confined
+// systems this is the most common symptom.
+func (mc *MetricsCollector) hintAppArmorOnDeviceOpenFailure(deviceName string) {
+	data, err := os.ReadFile("/proc/self/attr/apparmor/current")
+	if err != nil {
+		data, err = os.ReadFile("/proc/self/attr/current")
+	}
+	if err != nil {
+		return
+	}
+	profile := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(string(data)), "(enforce)"))
+	if profile != "" && profile != "unconfined" {
+		mc.logger.Warnf("AppArmor: device open failure for %s may be caused by AppArmor profile %q blocking raw device I/O", deviceName, profile)
+		mc.logger.Warnln("AppArmor: see https://github.com/Starosdev/scrutiny/blob/master/docs/TROUBLESHOOTING_APPARMOR.md")
+	}
 }
 
 // func (mc *MetricsCollector) Collect(wg *sync.WaitGroup, deviceWWN string, deviceName string, deviceType string) {
@@ -156,6 +213,9 @@ func (mc *MetricsCollector) Collect(deviceWWN string, deviceName string, deviceT
 			if exitCode&0x03 != 0 {
 				mc.logger.Errorf("smartctl returned a fatal error code (%d) while processing %s", exitCode, deviceName)
 				mc.LogSmartctlExitCode(exitCode, deviceName)
+				if exitCode&0x02 != 0 {
+					mc.hintAppArmorOnDeviceOpenFailure(deviceName)
+				}
 				mc.ReportDeviceError(deviceWWN, "xall", fmt.Sprintf("smartctl exited with fatal code %d while reading %s", exitCode, deviceName))
 				return
 			}
