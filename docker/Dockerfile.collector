@@ -26,6 +26,7 @@ RUN echo "deb http://deb.debian.org/debian trixie-backports main" > /etc/apt/sou
     update-ca-certificates
 
 COPY /docker/entrypoint-collector.sh /entrypoint-collector.sh
+COPY /docker/apparmor-profile /opt/scrutiny/apparmor-profile
 COPY /rootfs/etc/cron.d/scrutiny /etc/cron.d/scrutiny
 COPY --from=backendbuild /go/src/github.com/analogj/scrutiny/scrutiny-collector-metrics /opt/scrutiny/bin/
 RUN chmod +x /opt/scrutiny/bin/scrutiny-collector-metrics && \
