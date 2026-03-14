@@ -1,0 +1,90 @@
+# AppArmor profile for Scrutiny collector containers.
+#
+# This profile grants the minimum permissions that smartctl needs to read
+# SMART data from passed-through block devices, while keeping the rest of
+# the default Docker confinement in place.
+#
+# INSTALL (run on the Docker *host*, not inside the container):
+#   sudo cp apparmor-profile /etc/apparmor.d/scrutiny-collector
+#   sudo apparmor_parser -r /etc/apparmor.d/scrutiny-collector
+#
+# USAGE (docker run):
+#   docker run --security-opt apparmor=scrutiny-collector ...
+#
+# USAGE (docker-compose):
+#   security_opt:
+#     - apparmor=scrutiny-collector
+
+#include <tunables/global>
+
+profile scrutiny-collector flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # ---------- filesystem access ----------
+
+  # Standard container filesystem (read/write)
+  / r,
+  /** rwlk,
+
+  # Block device nodes passed via --device (read-only)
+  /dev/sd*   r,
+  /dev/hd*   r,
+  /dev/nvme* r,
+  /dev/sg*   r,
+  /dev/bsg/** r,
+  /dev/disk/** r,
+
+  # sysfs device metadata used by smartctl for device identification
+  /sys/block/** r,
+  /sys/class/block/** r,
+  /sys/class/scsi_generic/** r,
+  /sys/class/nvme/** r,
+  /sys/devices/** r,
+
+  # proc entries used by smartctl / the collector
+  /proc/*/mounts r,
+  /proc/devices r,
+
+  # ---------- capabilities ----------
+
+  # Required for ATA/SCSI passthrough ioctls (SMART data retrieval)
+  capability sys_rawio,
+
+  # Required for NVMe ioctl access
+  capability sys_admin,
+
+  # Standard capabilities expected by container processes
+  capability dac_override,
+  capability fowner,
+  capability fsetid,
+  capability kill,
+  capability setgid,
+  capability setuid,
+  capability setpcap,
+  capability net_bind_service,
+  capability net_raw,
+  capability chown,
+  capability mknod,
+  capability audit_write,
+  capability setfcap,
+
+  # ---------- network ----------
+
+  network,
+
+  # ---------- signals ----------
+
+  signal (receive) peer=unconfined,
+  signal (send,receive) peer=scrutiny-collector,
+
+  # ---------- deny rules ----------
+
+  # Prevent writes to block devices (collector only reads SMART data)
+  deny /dev/sd* w,
+  deny /dev/hd* w,
+  deny /dev/nvme* w,
+  deny /dev/sg* w,
+
+  # Prevent mounting filesystems
+  deny mount,
+}

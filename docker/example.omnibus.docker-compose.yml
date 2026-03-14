@@ -8,6 +8,16 @@ services:
     cap_add:
       - SYS_RAWIO
       - SYS_ADMIN  # Required for NVMe devices
+    # AppArmor: on systems with AppArmor enforced (TrueNAS SCALE, Ubuntu, Debian),
+    # the default Docker profile blocks raw device I/O even with SYS_RAWIO/SYS_ADMIN.
+    # Option 1 (recommended): load the custom profile on the host, then uncomment:
+    #   sudo cp docker/apparmor-profile /etc/apparmor.d/scrutiny-collector
+    #   sudo apparmor_parser -r /etc/apparmor.d/scrutiny-collector
+    # security_opt:
+    #   - apparmor=scrutiny-collector
+    # Option 2 (less secure): disable AppArmor for this container:
+    # security_opt:
+    #   - apparmor=unconfined
     ports:
       - "8080:8080" # webapp
       - "8086:8086" # influxDB admin
