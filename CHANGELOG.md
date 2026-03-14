@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.46.3](https://github.com/Starosdev/scrutiny/compare/v1.46.2...v1.46.3) (2026-03-14)
+
+### Bug Fixes
+
+* **smart:** treat non-fatal smartctl exit codes as informational ([#352](https://github.com/Starosdev/scrutiny/issues/352), [#353](https://github.com/Starosdev/scrutiny/issues/353)) ([#357](https://github.com/Starosdev/scrutiny/issues/357)) ([8e9e8e5](https://github.com/Starosdev/scrutiny/commit/8e9e8e5400921ba975ea26d972ad6743928ee0c0))
+
 ## [1.46.2](https://github.com/Starosdev/scrutiny/compare/v1.46.1...v1.46.2) (2026-03-13)
 
 ### Bug Fixes
