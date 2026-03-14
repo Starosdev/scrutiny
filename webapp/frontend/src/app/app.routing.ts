@@ -51,7 +51,8 @@ export const appRoutes: Route[] = [
             {path: 'workload', loadChildren: () => import('app/modules/workload/workload.module').then(m => m.WorkloadModule)},
 
             // Mobile-only routes
-            {path: 'mobile-home', loadChildren: () => import('app/modules/mobile-home/mobile-home.module').then(m => m.MobileHomeModule)}
+            {path: 'mobile-home', loadChildren: () => import('app/modules/mobile-home/mobile-home.module').then(m => m.MobileHomeModule)},
+            {path: 'mobile-settings', loadChildren: () => import('app/modules/mobile-settings/mobile-settings.module').then(m => m.MobileSettingsModule)}
 
             // 404 & Catch all
             // {path: '404-not-found', pathMatch: 'full', loadChildren: () => import('app/modules/admin/pages/errors/error-404/error-404.module').then(m => m.Error404Module)},
