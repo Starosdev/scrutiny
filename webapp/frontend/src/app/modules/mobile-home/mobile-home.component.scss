@@ -1,0 +1,189 @@
+mobile-home {
+  display: block;
+
+  .mobile-home {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .stats-card {
+    background: var(--treo-bg-card);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .stats-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--treo-text-default);
+    margin: 0 0 12px 0;
+  }
+
+  .stats-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .stat-count {
+    font-size: 20px;
+    font-weight: 700;
+    width: 36px;
+    text-align: right;
+    margin-right: 8px;
+
+    &.healthy { color: #16a34a; }
+    &.warning { color: #d97706; }
+    &.critical { color: #dc2626; }
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: var(--treo-text-secondary);
+  }
+
+  .attention-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--treo-text-default);
+    margin: 0 0 12px 0;
+  }
+
+  .all-healthy {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px;
+    color: #16a34a;
+
+    .healthy-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 8px;
+    }
+
+    span {
+      font-size: 16px;
+      font-weight: 500;
+    }
+  }
+
+  .attention-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    background: var(--treo-bg-card);
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+
+    &:active {
+      opacity: 0.7;
+    }
+  }
+
+  .attention-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .attention-type-icon {
+      color: var(--treo-text-hint);
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  .attention-info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .attention-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--treo-text-default);
+  }
+
+  .attention-host {
+    font-size: 11px;
+    color: var(--treo-text-hint);
+  }
+
+  .attention-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .status-badge {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 10px;
+
+    &.warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    &.critical {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+  }
+
+  .attention-temp {
+    font-size: 12px;
+    color: var(--treo-text-secondary);
+  }
+
+  .chevron {
+    color: var(--treo-text-hint);
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+// Dark theme
+.treo-theme-dark {
+  mobile-home {
+    .stats-card,
+    .attention-card {
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .status-badge {
+      &.warning {
+        background: rgba(217, 119, 6, 0.2);
+        color: #fbbf24;
+      }
+
+      &.critical {
+        background: rgba(220, 38, 38, 0.2);
+        color: #f87171;
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+mobile-settings {
+  display: block;
+
+  .mobile-settings {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .settings-button {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 16px;
+    height: auto;
+  }
+}

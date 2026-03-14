@@ -43,7 +43,7 @@ Full credit for the original vision and architecture goes to [AnalogJ](https://g
 - **SCT Temperature History Toggle** - Control SCT ERC settings per drive
 - **S.M.A.R.T Attribute Overrides** - Override manufacturer thresholds via UI or config
 - **Improved Dashboard Layout** - Sidebar navigation moved to top for better attribute visibility
-- **Enhanced Mobile UI** - Optimized layout for mobile devices
+- **Enhanced Mobile UI** - Dedicated mobile layout with bottom tab bar navigation, unified health overview home screen, card-based SMART attributes and workload views, and badge indicators for drives needing attention
 - **Performance Benchmarking** - Run fio benchmarks and track drive throughput, IOPS, and latency over time
 - **Scheduled Reports** [WIP] - Automated daily/weekly/monthly health reports via email with HTML formatting
 - **API Authentication** - Opt-in token-based auth for API, web UI, and Prometheus metrics
@@ -94,7 +94,7 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **S.M.A.R.T Attribute Overrides** - Override thresholds per device via UI
 - **API Authentication** - Token and password login, collector auth, independent metrics auth
 - **Improved UI Layout** - Top navigation for better S.M.A.R.T attribute visibility
-- **Mobile-Optimized Interface** - Better experience on mobile devices
+- **Mobile-Optimized Interface** - Bottom tab bar (Home, Drives, ZFS, Workload, Settings), health overview home tab, card-based data views, and responsive layouts below 960px
 - **API Timeout Configuration** - Adjust timeouts for slow storage systems
 - **Performance Benchmarking** - fio-based benchmarks for throughput, IOPS, and latency with historical tracking
 - **Scheduled Reports** [WIP] - Automated health reports on daily/weekly/monthly schedules with HTML emails and PDF export
