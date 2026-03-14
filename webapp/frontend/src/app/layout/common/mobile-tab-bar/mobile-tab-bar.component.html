@@ -1,0 +1,18 @@
+@if (!isDetailPage) {
+  <nav class="mobile-tab-bar">
+    @for (tab of tabs; track tab.route) {
+      <button
+        class="tab-item"
+        [class.active]="isActive(tab)"
+        (click)="navigate(tab)">
+        <div class="tab-icon-wrapper">
+          <mat-icon>{{ tab.icon }}</mat-icon>
+          @if (tab.route === '/dashboard' && drivesNeedAttention > 0) {
+            <span class="tab-badge">{{ drivesNeedAttention }}</span>
+          }
+        </div>
+        <span class="tab-label">{{ tab.label }}</span>
+      </button>
+    }
+  </nav>
+}

@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import {TREO_APP_CONFIG} from '@treo/services/config/config.constants';
 import {BehaviorSubject, Observable} from 'rxjs';
 import {getBasePath} from '../../app.routing';
-import {map, tap} from 'rxjs/operators';
+import {filter, map, tap} from 'rxjs/operators';
 import {AppConfig} from './app.config';
 import {merge} from 'lodash';
 
@@ -36,6 +36,9 @@ export class ScrutinyConfigService {
         // get the current config, merge the new values, and then submit. (setTheme only sets a single key, not the whole obj)
         const mergedSettings = merge({}, this._config.getValue(), value);
 
+        // Optimistic update: apply changes immediately for responsive UI
+        this._config.next(mergedSettings);
+
         this._httpClient.post(getBasePath() + '/api/settings', mergedSettings).pipe(
             map((response: any) => {
                 return response.settings
@@ -48,21 +51,22 @@ export class ScrutinyConfigService {
     }
 
     get config$(): Observable<AppConfig> {
-        if (this._config.getValue()) {
-            return this._config.asObservable()
-        } else {
-            return this._httpClient.get(getBasePath() + '/api/settings').pipe(
+        if (!this._config.getValue()) {
+            // Kick off the initial load as a side effect
+            this._httpClient.get(getBasePath() + '/api/settings').pipe(
                 map((response: any) => {
                     const merged = this._mergeWithDefaults(this._defaultConfig, response.settings);
                     return { ...merged, server_version: response.server_version };
                 }),
                 tap((settings: AppConfig) => {
                     this._config.next(settings);
-                    return this._config.asObservable()
                 })
-            );
+            ).subscribe();
         }
 
+        // Always return the BehaviorSubject so subscribers stay alive for future updates
+        // Filter out null so subscribers don't need null guards
+        return this._config.asObservable().pipe(filter((c): c is AppConfig => c !== null));
     }
 
     // -----------------------------------------------------------------------------------------------------

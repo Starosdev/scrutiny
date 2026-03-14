@@ -6,6 +6,7 @@ import { WorkloadInsightModel } from 'app/core/models/workload-insight-model';
 import { AppConfig } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { Router } from '@angular/router';
+import { TreoMediaWatcherService } from '@treo/services/media-watcher';
 import { MatSort, Sort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { ViewChild, AfterViewInit } from '@angular/core';
@@ -25,6 +26,7 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
     dataSource: MatTableDataSource<WorkloadInsightModel>;
     displayedColumns: string[] = ['device_wwn', 'device_protocol', 'daily_writes', 'daily_reads', 'rw_ratio', 'intensity', 'endurance', 'est_remaining'];
     spikeDevices: WorkloadInsightModel[] = [];
+    isMobile: boolean = false;
 
     @ViewChild(MatSort) sort: MatSort;
     private _unsubscribeAll: Subject<void>;
@@ -33,6 +35,7 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
         private _workloadService: WorkloadService,
         private _configService: ScrutinyConfigService,
         private _changeDetectorRef: ChangeDetectorRef,
+        private _mediaWatcherService: TreoMediaWatcherService,
         private router: Router
     ) {
         this._unsubscribeAll = new Subject();
@@ -40,6 +43,13 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     ngOnInit(): void {
+        this._mediaWatcherService.onMediaChange$
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(({matchingAliases}) => {
+                this.isMobile = matchingAliases.includes('lt-md');
+                this._changeDetectorRef.markForCheck();
+            });
+
         this._configService.config$
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe((config: AppConfig) => {

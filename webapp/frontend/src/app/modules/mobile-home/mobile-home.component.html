@@ -1,0 +1,74 @@
+<div class="mobile-home p-4">
+
+  <!-- Summary Stats -->
+  <div class="stats-grid">
+    <div class="stats-card">
+      <h3 class="stats-title">Drives</h3>
+      <div class="stats-row">
+        <span class="stat-count healthy">{{ driveCounts.healthy }}</span>
+        <span class="stat-label">Healthy</span>
+      </div>
+      <div class="stats-row">
+        <span class="stat-count warning">{{ driveCounts.warning }}</span>
+        <span class="stat-label">Warning</span>
+      </div>
+      <div class="stats-row">
+        <span class="stat-count critical">{{ driveCounts.critical }}</span>
+        <span class="stat-label">Critical</span>
+      </div>
+    </div>
+
+    <div class="stats-card">
+      <h3 class="stats-title">ZFS Pools</h3>
+      <div class="stats-row">
+        <span class="stat-count healthy">{{ zfsCounts.healthy }}</span>
+        <span class="stat-label">Healthy</span>
+      </div>
+      <div class="stats-row">
+        <span class="stat-count warning">{{ zfsCounts.warning }}</span>
+        <span class="stat-label">Warning</span>
+      </div>
+      <div class="stats-row">
+        <span class="stat-count critical">{{ zfsCounts.critical }}</span>
+        <span class="stat-label">Critical</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Attention Section -->
+  <div class="attention-section mt-6">
+    <h3 class="attention-title">Needs Attention</h3>
+
+    @if (attentionItems.length === 0 && loaded) {
+      <div class="all-healthy">
+        <mat-icon class="healthy-icon">check_circle</mat-icon>
+        <span>All systems healthy</span>
+      </div>
+    }
+
+    @for (item of attentionItems; track item.id) {
+      <button class="attention-card" (click)="navigateTo(item)">
+        <div class="attention-left">
+          <mat-icon class="attention-type-icon">
+            {{ item.type === 'drive' ? 'storage' : 'dns' }}
+          </mat-icon>
+          <div class="attention-info">
+            <span class="attention-name">{{ item.name }}</span>
+            @if (item.host) {
+              <span class="attention-host">{{ item.host }}</span>
+            }
+          </div>
+        </div>
+        <div class="attention-right">
+          <span class="status-badge" [class]="item.status">
+            {{ item.status }}
+          </span>
+          @if (item.temperature != null) {
+            <span class="attention-temp">{{ item.temperature }}C</span>
+          }
+          <mat-icon class="chevron">chevron_right</mat-icon>
+        </div>
+      </button>
+    }
+  </div>
+</div>

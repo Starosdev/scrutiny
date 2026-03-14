@@ -24,6 +24,8 @@ import { AppConfig } from 'app/core/config/app.config';
 import { SharedModule } from 'app/shared/shared.module';
 import { DetailSettingsModule } from 'app/layout/common/detail-settings/detail-settings.module';
 import { AttributeOverrideService } from 'app/core/config/attribute-override.service';
+import { TreoMediaWatcherService } from '@treo/services/media-watcher';
+import { Location } from '@angular/common';
 
 describe('DetailComponent', () => {
   let component: DetailComponent;
@@ -80,6 +82,8 @@ describe('DetailComponent', () => {
         { provide: ScrutinyConfigService, useValue: mockConfigService },
         { provide: MatDialog, useValue: mockDialog },
         { provide: AttributeOverrideService, useValue: mockOverrideService },
+        { provide: TreoMediaWatcherService, useValue: { onMediaChange$: of({ matchingAliases: [] }) } },
+        { provide: Location, useValue: { back: () => {} } },
         { provide: LOCALE_ID, useValue: 'en-US' }
       ],
       schemas: [NO_ERRORS_SCHEMA]

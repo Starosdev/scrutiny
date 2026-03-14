@@ -58,3 +58,30 @@ tr.attribute-row:not(.attribute-expanded-row):active {
     // vertical-align: middle;
 }
 
+// Mobile: SMART attribute cards
+.smart-card {
+    cursor: pointer;
+    transition: box-shadow 0.15s ease;
+    border-left: 3px solid transparent;
+
+    &:active {
+        opacity: 0.8;
+    }
+
+    &.smart-card-warn {
+        border-left-color: #d97706;
+    }
+
+    &.smart-card-fail {
+        border-left-color: #dc2626;
+    }
+}
+
+.treo-theme-dark {
+    .smart-card {
+        .bg-cool-gray-50 {
+            background-color: #1e293b !important;
+        }
+    }
+}
+

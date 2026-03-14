@@ -1,5 +1,6 @@
 import humanizeDuration from 'humanize-duration';
 import {AfterViewInit, Component, Inject, LOCALE_ID, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {Location, formatDate} from '@angular/common';
 import {ApexOptions} from 'ng-apexcharts';
 import {AppConfig} from 'app/core/config/app.config';
 import {DetailService} from './detail.service';
@@ -11,7 +12,7 @@ import {MatTableDataSource as MatTableDataSource} from '@angular/material/table'
 import {Subject} from 'rxjs';
 import {ScrutinyConfigService} from 'app/core/config/scrutiny-config.service';
 import {animate, state, style, transition, trigger} from '@angular/animations';
-import {formatDate} from '@angular/common';
+import {TreoMediaWatcherService} from '@treo/services/media-watcher';
 import {takeUntil} from 'rxjs/operators';
 import {DeviceModel} from 'app/core/models/device-model';
 import {SmartModel} from 'app/core/models/measurements/smart-model';
@@ -55,11 +56,15 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
      * @param {ScrutinyConfigService} _configService
      * @param {string} locale
      */
+    isMobile: boolean = false;
+
     constructor(
         private _detailService: DetailService,
         public dialog: MatDialog,
         private _configService: ScrutinyConfigService,
         private _overrideService: AttributeOverrideService,
+        private _location: Location,
+        private _mediaWatcherService: TreoMediaWatcherService,
         @Inject(LOCALE_ID) public locale: string
     ) {
         // Set the private defaults
@@ -127,6 +132,13 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
      * On init
      */
     ngOnInit(): void {
+        // Detect mobile breakpoint
+        this._mediaWatcherService.onMediaChange$
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(({matchingAliases}) => {
+                this.isMobile = matchingAliases.includes('lt-md');
+            });
+
         // Subscribe to config changes
         this._configService.config$
             .pipe(takeUntil(this._unsubscribeAll))
@@ -665,6 +677,10 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                     .pipe(takeUntil(this._unsubscribeAll))
                     .subscribe();
             });
+    }
+
+    goBack(): void {
+        this._location.back();
     }
 
     openSettingsDialog(): void {

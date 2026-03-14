@@ -1,0 +1,18 @@
+<div class="mobile-settings p-4">
+  <h2 class="m-0 mb-4">Settings</h2>
+  <p class="text-secondary mb-4">Application configuration</p>
+
+  <button mat-stroked-button class="settings-button" (click)="openSettings()">
+    <mat-icon svgIcon="tune" class="icon-size-20 rotate-90 mirror"></mat-icon>
+    <span class="ml-2">Display & Notifications</span>
+  </button>
+
+  <div class="mt-6">
+    <a class="version-link text-secondary"
+      href="https://github.com/Starosdev/scrutiny"
+      target="_blank"
+      rel="noopener noreferrer">
+      <code>{{ appVersion }}</code>
+    </a>
+  </div>
+</div>
