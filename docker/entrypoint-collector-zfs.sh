@@ -19,7 +19,7 @@ sed -i 's|{COLLECTOR_ZFS_CRON_SCHEDULE}|'"${COLLECTOR_ZFS_CRON_SCHEDULE}"'|g' /e
 if [[ "${COLLECTOR_ZFS_RUN_STARTUP}" == "true" ]]; then
     sleep ${COLLECTOR_ZFS_RUN_STARTUP_SLEEP}
     echo "starting scrutiny ZFS collector (run-once mode. subsequent calls will be triggered via cron service)"
-    /opt/scrutiny/bin/scrutiny-collector-zfs run
+    COLLECTOR_CRON_SCHEDULE= COLLECTOR_ZFS_RUN_STARTUP= /opt/scrutiny/bin/scrutiny-collector-zfs run
 fi
 
 

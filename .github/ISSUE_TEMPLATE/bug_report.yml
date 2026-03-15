@@ -1,0 +1,63 @@
+name: Bug Report
+description: Create a report to help us improve
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain your problem.
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log Files
+      description: |
+        If related to missing devices or SMART data, please run the collector in DEBUG mode and attach the log file.
+        See [TROUBLESHOOTING_DEVICE_COLLECTOR.md](docs/TROUBLESHOOTING_DEVICE_COLLECTOR.md) for other troubleshooting tips.
+
+        ```
+        docker run -it --rm -p 8080:8080 \
+        -v `pwd`/config:/opt/scrutiny/config \
+        -v /run/udev:/run/udev:ro \
+        --cap-add SYS_RAWIO \
+        --device=/dev/sda \
+        --device=/dev/sdb \
+        -e DEBUG=true \
+        -e COLLECTOR_LOG_FILE=/opt/scrutiny/config/collector.log \
+        -e SCRUTINY_LOG_FILE=/opt/scrutiny/config/web.log \
+        --name scrutiny \
+        ghcr.io/starosdev/scrutiny:master-omnibus
+        ```
+
+        The log files will be available on your host in the `config` directory.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Please provide the output of `docker info` or your OS/architecture details.
+    validations:
+      required: false

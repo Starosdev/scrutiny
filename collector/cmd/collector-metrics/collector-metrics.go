@@ -212,7 +212,7 @@ OPTIONS:
 						return fmt.Errorf("invalid cron schedule %q: %w", cronSchedule, err)
 					}
 					c2.Start()
-					collectorLogger.Infof("Collector scheduled with cron expression: %s", cronSchedule)
+					collectorLogger.Warnf("Internal cron scheduler active with expression: %s. If running under system cron (Docker), ensure COLLECTOR_CRON_SCHEDULE env var is unset to avoid process accumulation.", cronSchedule)
 
 					quit := make(chan os.Signal, 1)
 					signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -261,22 +261,19 @@ OPTIONS:
 					},
 
 					&cli.StringFlag{
-						Name:    "cron-schedule",
-						Usage:   "Cron expression for scheduled collection (e.g. \"0 * * * *\"). If not set, the collector runs once and exits.",
-						EnvVars: []string{"COLLECTOR_CRON_SCHEDULE"},
+						Name:  "cron-schedule",
+						Usage: "Cron expression for scheduled collection (e.g. \"0 * * * *\"). If not set, the collector runs once and exits.",
 					},
 
 					&cli.BoolFlag{
-						Name:    "run-startup",
-						Usage:   "Run an immediate collection on startup before the first scheduled tick",
-						EnvVars: []string{"COLLECTOR_RUN_STARTUP"},
+						Name:  "run-startup",
+						Usage: "Run an immediate collection on startup before the first scheduled tick",
 					},
 
 					&cli.IntFlag{
-						Name:    "run-startup-sleep",
-						Usage:   "Seconds to sleep before the startup run (requires --run-startup)",
-						Value:   0,
-						EnvVars: []string{"COLLECTOR_RUN_STARTUP_SLEEP"},
+						Name:  "run-startup-sleep",
+						Usage: "Seconds to sleep before the startup run (requires --run-startup)",
+						Value: 0,
 					},
 				},
 			},

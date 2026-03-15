@@ -1,0 +1,112 @@
+name: Project Router
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  issues: read
+  repository-projects: write
+
+env:
+  PROJECT_ID: "PVT_kwHOAhLuuc4BRxRe"
+  STATUS_FIELD_ID: "PVTSSF_lAHOAhLuuc4BRxRezg_f_1E"
+  # Status column option IDs
+  TRIAGE_ID: "f38a7179"
+  SECURITY_ID: "1e285fa8"
+  HOTFIX_ID: "6fa8da28"
+  BUG_BACKLOG_ID: "a1e615eb"
+  NEXT_SUNDAY_ID: "d3611ce7"
+  BETA_SATURDAY_ID: "f0f297f5"
+  NEXT_MONTHLY_ID: "f81174b5"
+  DONE_ID: "ef84d09e"
+
+jobs:
+  route-issue:
+    name: Route Issue to Project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine target column
+        id: target
+        env:
+          LABELS: ${{ toJson(github.event.issue.labels.*.name) }}
+        run: |
+          echo "Labels: $LABELS"
+
+          HAS_BUG=$(echo "$LABELS" | jq 'any(. == "bug")')
+          HAS_ENHANCEMENT=$(echo "$LABELS" | jq 'any(. == "enhancement")')
+          HAS_HOTFIX=$(echo "$LABELS" | jq 'any(. == "hotfix")')
+          HAS_SECURITY=$(echo "$LABELS" | jq 'any(. == "security")')
+          HAS_URGENT=$(echo "$LABELS" | jq 'any(. == "priority:urgent")')
+          HAS_HIGH=$(echo "$LABELS" | jq 'any(. == "priority:high")')
+
+          # Priority overrides: urgent/high bugs or urgent security go to Hotfix
+          if [ "$HAS_HOTFIX" = "true" ]; then
+            echo "column_id=${{ env.HOTFIX_ID }}" >> $GITHUB_OUTPUT
+            echo "column_name=Hotfix" >> $GITHUB_OUTPUT
+          elif [ "$HAS_SECURITY" = "true" ] && [ "$HAS_URGENT" = "true" ]; then
+            echo "column_id=${{ env.HOTFIX_ID }}" >> $GITHUB_OUTPUT
+            echo "column_name=Hotfix (urgent security)" >> $GITHUB_OUTPUT
+          elif [ "$HAS_BUG" = "true" ] && ([ "$HAS_URGENT" = "true" ] || [ "$HAS_HIGH" = "true" ]); then
+            echo "column_id=${{ env.HOTFIX_ID }}" >> $GITHUB_OUTPUT
+            echo "column_name=Hotfix (urgent/high bug)" >> $GITHUB_OUTPUT
+          elif [ "$HAS_SECURITY" = "true" ]; then
+            echo "column_id=${{ env.SECURITY_ID }}" >> $GITHUB_OUTPUT
+            echo "column_name=Security" >> $GITHUB_OUTPUT
+          elif [ "$HAS_BUG" = "true" ]; then
+            echo "column_id=${{ env.BUG_BACKLOG_ID }}" >> $GITHUB_OUTPUT
+            echo "column_name=Bug Backlog" >> $GITHUB_OUTPUT
+          elif [ "$HAS_ENHANCEMENT" = "true" ]; then
+            echo "column_id=${{ env.BETA_SATURDAY_ID }}" >> $GITHUB_OUTPUT
+            echo "column_name=Beta (Saturday)" >> $GITHUB_OUTPUT
+          else
+            echo "column_id=${{ env.TRIAGE_ID }}" >> $GITHUB_OUTPUT
+            echo "column_name=Triage" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Add issue to project
+        id: add
+        env:
+          GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
+        run: |
+          ITEM_ID=$(gh api graphql -f query='
+            mutation($projectId: ID!, $contentId: ID!) {
+              addProjectV2ItemById(input: {
+                projectId: $projectId
+                contentId: $contentId
+              }) {
+                item {
+                  id
+                }
+              }
+            }' \
+            -f projectId="${{ env.PROJECT_ID }}" \
+            -f contentId="${{ github.event.issue.node_id }}" \
+            --jq '.data.addProjectV2ItemById.item.id')
+
+          echo "item_id=$ITEM_ID" >> $GITHUB_OUTPUT
+          echo "Added issue #${{ github.event.issue.number }} to project (item: $ITEM_ID)"
+
+      - name: Set status column
+        env:
+          GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
+        run: |
+          gh api graphql -f query='
+            mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+              updateProjectV2ItemFieldValue(input: {
+                projectId: $projectId
+                itemId: $itemId
+                fieldId: $fieldId
+                value: { singleSelectOptionId: $optionId }
+              }) {
+                projectV2Item {
+                  id
+                }
+              }
+            }' \
+            -f projectId="${{ env.PROJECT_ID }}" \
+            -f itemId="${{ steps.add.outputs.item_id }}" \
+            -f fieldId="${{ env.STATUS_FIELD_ID }}" \
+            -f optionId="${{ steps.target.outputs.column_id }}"
+
+          echo "Routed issue #${{ github.event.issue.number }} to: ${{ steps.target.outputs.column_name }}"

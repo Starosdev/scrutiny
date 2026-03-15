@@ -56,6 +56,19 @@ Full credit for the original vision and architecture goes to [AnalogJ](https://g
 - **Uptime Kuma Push Monitor** - Dedicated push-based integration for Uptime Kuma status monitoring
 - **SHA256 Checksums** - Verify release binary integrity
 
+## Release Schedule
+
+We follow a predictable release cadence to balance new features with stability:
+
+| When | What | Channel |
+| --- | --- | --- |
+| **Sunday** | Bug fixes and stability improvements | Stable (`:latest`) |
+| **Saturday** | New features and experiments | Beta (`:beta`) |
+| **Monthly** | Promote mature beta features to stable | Stable (`:latest`) |
+| **As needed** | Critical hotfixes and urgent security patches | Stable (`:latest`) |
+
+Releases are created manually, not on every commit. Track upcoming work on the [Release Schedule](https://github.com/users/Starosdev/projects/1) project board.
+
 # Introduction
 
 If you run a server with more than a couple of hard drives, you're probably already familiar with S.M.A.R.T and the `smartd` daemon. If not, it's an incredible open source project described as the following:

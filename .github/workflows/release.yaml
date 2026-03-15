@@ -1,10 +1,6 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - master
-      - beta
   workflow_dispatch:
     inputs:
       release_type:
