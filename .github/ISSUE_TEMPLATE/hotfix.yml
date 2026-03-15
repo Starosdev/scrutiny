@@ -1,0 +1,74 @@
+name: Hotfix
+description: Report a critical bug that needs an immediate fix
+title: "[HOTFIX] "
+labels: ["hotfix"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Use this template for critical bugs that are blocking usage or causing data loss.**
+        For non-critical bugs, please use the Bug Report template instead.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the critical bug
+      description: A clear and concise description of what the bug is and why it is critical.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Impact
+      description: How is this affecting your usage?
+      options:
+        - Application is completely unusable
+        - Data loss or corruption
+        - Major feature is broken with no workaround
+        - Security concern (use Security Advisory for vulnerabilities)
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce this issue?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround
+      description: Is there any workaround you are currently using?
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log Files
+      description: |
+        Please run the collector in DEBUG mode and attach relevant logs.
+        See [TROUBLESHOOTING_DEVICE_COLLECTOR.md](docs/TROUBLESHOOTING_DEVICE_COLLECTOR.md) for tips.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Version, OS, Docker info, or any relevant environment details.
+    validations:
+      required: true
