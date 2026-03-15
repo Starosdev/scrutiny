@@ -19,7 +19,7 @@ sed -i 's|{COLLECTOR_CRON_SCHEDULE}|'"${COLLECTOR_CRON_SCHEDULE}"'|g' /etc/cron.
 if [[ "${COLLECTOR_RUN_STARTUP}" == "true" ]]; then
     sleep ${COLLECTOR_RUN_STARTUP_SLEEP}
     echo "starting scrutiny collector (run-once mode. subsequent calls will be triggered via cron service)"
-    /opt/scrutiny/bin/scrutiny-collector-metrics run
+    COLLECTOR_CRON_SCHEDULE= COLLECTOR_RUN_STARTUP= /opt/scrutiny/bin/scrutiny-collector-metrics run
 fi
 
 
