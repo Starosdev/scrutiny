@@ -21,7 +21,7 @@ s6-svwait -u /run/service/scrutiny
 until $(curl --output /dev/null --silent --head --fail http://localhost:8080/api/health); do echo "scrutiny api not ready" && sleep 5; done
 
 echo "starting performance collector (run-once mode)"
-/opt/scrutiny/bin/scrutiny-collector-performance run
+COLLECTOR_CRON_SCHEDULE= /opt/scrutiny/bin/scrutiny-collector-performance run
 
 touch /tmp/perf-collector-init-performed
 s6-svc -D /run/service/collector-performance-once

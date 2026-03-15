@@ -21,7 +21,7 @@ s6-svwait -u /run/service/scrutiny
 until $(curl --output /dev/null --silent --head --fail http://localhost:8080/api/health); do echo "scrutiny api not ready" && sleep 5; done
 
 echo "starting ZFS collector (run-once mode)"
-/opt/scrutiny/bin/scrutiny-collector-zfs run
+COLLECTOR_CRON_SCHEDULE= /opt/scrutiny/bin/scrutiny-collector-zfs run
 
 touch /tmp/zfs-collector-init-performed
 s6-svc -D /run/service/collector-zfs-once
