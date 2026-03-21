@@ -20,7 +20,7 @@ require (
 	github.com/nicholas-fedor/shoutrrr v0.13.2
 	github.com/prometheus/client_golang v1.23.2
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/samber/lo v1.25.0
+	github.com/samber/lo v1.53.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
@@ -83,7 +83,6 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/crypto v0.47.0 // indirect
-	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/term v0.39.0 // indirect
