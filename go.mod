@@ -1,11 +1,11 @@
 module github.com/analogj/scrutiny
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/analogj/go-util v0.0.0-20190301173314-5295e364eb14
 	github.com/eclipse/paho.mqtt.golang v1.5.0
-	github.com/fatih/color v1.18.0
+	github.com/fatih/color v1.19.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/glebarez/sqlite v1.4.5
 	github.com/go-gormigrate/gormigrate/v2 v2.0.0
@@ -85,7 +85,7 @@ require (
 	golang.org/x/crypto v0.47.0 // indirect
 	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
 	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/term v0.39.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
