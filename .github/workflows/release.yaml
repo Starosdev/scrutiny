@@ -137,7 +137,7 @@ jobs:
         with:
           ref: v${{ needs.release.outputs.new_release_version }}
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       - name: Build Binaries
