@@ -17,7 +17,7 @@ func UploadZFSPoolMetrics(c *gin.Context) {
 
 	guid := c.Param("guid")
 	if err := validation.ValidateGUID(guid); err != nil {
-		logger.Warnf("Invalid GUID format: %s", guid)
+		logger.Warnf(fmtInvalidGUID, guid)
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}

@@ -34,8 +34,8 @@ export class AuthService {
     readonly loginMethods$ = this._loginMethods.asObservable();
 
     constructor(
-        private _http: HttpClient,
-        private _router: Router
+        private readonly _http: HttpClient,
+        private readonly _router: Router
     ) {}
 
     get authEnabled(): boolean {

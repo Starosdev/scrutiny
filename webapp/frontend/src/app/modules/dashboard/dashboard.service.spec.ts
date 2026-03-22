@@ -28,9 +28,6 @@ describe('DashboardService', () => {
     });
 
     it('should unwrap and return getSummaryTempData() (HttpClient called once)', (done: DoneFn) => {
-        // const expectedHeroes: any[] =
-        //     [{ id: 1, name: 'A' }, { id: 2, name: 'B' }];
-
         httpClientSpy.get.and.returnValue(of(temp_history));
 
         service.getSummaryTempData('weekly').subscribe(value => {

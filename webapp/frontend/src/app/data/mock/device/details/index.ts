@@ -23,7 +23,7 @@ export class DetailsMockApi implements TreoMockApi
      * @param _treoMockApiService
      */
     constructor(
-        private _treoMockApiService: TreoMockApiService
+        private readonly _treoMockApiService: TreoMockApiService
     )
     {
         // Register the API endpoints

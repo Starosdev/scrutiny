@@ -16,7 +16,7 @@ export class TreoMockApiInterceptor implements HttpInterceptor
      * @param {TreoMockApiService} _treoMockApiService
      */
     constructor(
-        private _treoMockApiService: TreoMockApiService
+        private readonly _treoMockApiService: TreoMockApiService
     )
     {
     }

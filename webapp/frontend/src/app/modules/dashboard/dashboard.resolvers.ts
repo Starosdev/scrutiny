@@ -14,7 +14,7 @@ export class DashboardResolver  {
      * @param {FinanceService} _dashboardService
      */
     constructor(
-        private _dashboardService: DashboardService
+        private readonly _dashboardService: DashboardService
     )
     {
     }

@@ -23,7 +23,7 @@ interface SimpleResponse {
     providedIn: 'root'
 })
 export class NotifyUrlService {
-    constructor(private http: HttpClient) {}
+    constructor(private readonly http: HttpClient) {}
 
     getNotifyUrls(): Observable<NotifyUrlEntry[]> {
         return this.http.get<NotifyUrlsResponse>(

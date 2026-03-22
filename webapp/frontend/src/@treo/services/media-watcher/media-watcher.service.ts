@@ -14,7 +14,7 @@ export class TreoMediaWatcherService
      * @param {BreakpointObserver} _breakpointObserver
      */
     constructor(
-        private _breakpointObserver: BreakpointObserver
+        private readonly _breakpointObserver: BreakpointObserver
     )
     {
         // Set the defaults

@@ -24,10 +24,10 @@ export class LoginComponent implements OnInit {
     private returnUrl: string = '/dashboard';
 
     constructor(
-        private _fb: FormBuilder,
-        private _authService: AuthService,
-        private _router: Router,
-        private _route: ActivatedRoute
+        private readonly _fb: FormBuilder,
+        private readonly _authService: AuthService,
+        private readonly _router: Router,
+        private readonly _route: ActivatedRoute
     ) {
         this.tokenForm = this._fb.group({
             token: ['', Validators.required]

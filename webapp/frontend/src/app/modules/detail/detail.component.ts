@@ -59,12 +59,12 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     isMobile: boolean = false;
 
     constructor(
-        private _detailService: DetailService,
+        private readonly _detailService: DetailService,
         public dialog: MatDialog,
-        private _configService: ScrutinyConfigService,
-        private _overrideService: AttributeOverrideService,
-        private _location: Location,
-        private _mediaWatcherService: TreoMediaWatcherService,
+        private readonly _configService: ScrutinyConfigService,
+        private readonly _overrideService: AttributeOverrideService,
+        private readonly _location: Location,
+        private readonly _mediaWatcherService: TreoMediaWatcherService,
         @Inject(LOCALE_ID) public locale: string
     ) {
         // Set the private defaults
@@ -501,9 +501,6 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                     }
                     attrHistory.push(chartDatapoint)
                 }
-
-                // var rawHistory = (attr.history || []).map(hist_attr => this.getAttributeValue(hist_attr)).reverse()
-                // rawHistory.push(this.getAttributeValue(attr))
 
                 attributes[attrId].chartData = [
                     {

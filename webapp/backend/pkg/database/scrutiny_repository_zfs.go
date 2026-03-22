@@ -23,7 +23,7 @@ func (sr *scrutinyRepository) RegisterZFSPool(ctx context.Context, pool models.Z
 
 	// Check if pool already exists
 	var existing models.ZFSPool
-	result := sr.gormClient.WithContext(ctx).Where("guid = ?", pool.GUID).First(&existing)
+	result := sr.gormClient.WithContext(ctx).Where(queryGUID, pool.GUID).First(&existing)
 
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		// New pool - create it
@@ -115,7 +115,7 @@ func (sr *scrutinyRepository) GetZFSPools(ctx context.Context) ([]models.ZFSPool
 func (sr *scrutinyRepository) GetZFSPoolDetails(ctx context.Context, guid string) (models.ZFSPool, error) {
 	var pool models.ZFSPool
 
-	if err := sr.gormClient.WithContext(ctx).Where("guid = ?", guid).First(&pool).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where(queryGUID, guid).First(&pool).Error; err != nil {
 		return models.ZFSPool{}, err
 	}
 
@@ -156,31 +156,31 @@ func (sr *scrutinyRepository) loadVdevChildren(ctx context.Context, vdev *models
 // UpdateZFSPoolArchived updates the archived state of a ZFS pool
 func (sr *scrutinyRepository) UpdateZFSPoolArchived(ctx context.Context, guid string, archived bool) error {
 	var pool models.ZFSPool
-	if err := sr.gormClient.WithContext(ctx).Where("guid = ?", guid).First(&pool).Error; err != nil {
-		return fmt.Errorf("could not get ZFS pool from DB: %v", err)
+	if err := sr.gormClient.WithContext(ctx).Where(queryGUID, guid).First(&pool).Error; err != nil {
+		return fmt.Errorf(errZFSPoolNotFound, err)
 	}
 
-	return sr.gormClient.Model(&pool).Where("guid = ?", guid).Update("archived", archived).Error
+	return sr.gormClient.Model(&pool).Where(queryGUID, guid).Update("archived", archived).Error
 }
 
 // UpdateZFSPoolMuted updates the muted state of a ZFS pool
 func (sr *scrutinyRepository) UpdateZFSPoolMuted(ctx context.Context, guid string, muted bool) error {
 	var pool models.ZFSPool
-	if err := sr.gormClient.WithContext(ctx).Where("guid = ?", guid).First(&pool).Error; err != nil {
-		return fmt.Errorf("could not get ZFS pool from DB: %v", err)
+	if err := sr.gormClient.WithContext(ctx).Where(queryGUID, guid).First(&pool).Error; err != nil {
+		return fmt.Errorf(errZFSPoolNotFound, err)
 	}
 
-	return sr.gormClient.Model(&pool).Where("guid = ?", guid).Update("muted", muted).Error
+	return sr.gormClient.Model(&pool).Where(queryGUID, guid).Update("muted", muted).Error
 }
 
 // UpdateZFSPoolLabel updates the label of a ZFS pool
 func (sr *scrutinyRepository) UpdateZFSPoolLabel(ctx context.Context, guid string, label string) error {
 	var pool models.ZFSPool
-	if err := sr.gormClient.WithContext(ctx).Where("guid = ?", guid).First(&pool).Error; err != nil {
-		return fmt.Errorf("could not get ZFS pool from DB: %v", err)
+	if err := sr.gormClient.WithContext(ctx).Where(queryGUID, guid).First(&pool).Error; err != nil {
+		return fmt.Errorf(errZFSPoolNotFound, err)
 	}
 
-	return sr.gormClient.Model(&pool).Where("guid = ?", guid).Update("label", label).Error
+	return sr.gormClient.Model(&pool).Where(queryGUID, guid).Update("label", label).Error
 }
 
 // DeleteZFSPool deletes a ZFS pool and its associated data
@@ -196,23 +196,23 @@ func (sr *scrutinyRepository) DeleteZFSPool(ctx context.Context, guid string) er
 	}
 
 	// Delete the pool
-	if err := sr.gormClient.WithContext(ctx).Where("guid = ?", guid).Delete(&models.ZFSPool{}).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where(queryGUID, guid).Delete(&models.ZFSPool{}).Error; err != nil {
 		return err
 	}
 
 	// Delete data from InfluxDB
 	buckets := []string{
-		sr.appConfig.GetString("web.influxdb.bucket"),
-		fmt.Sprintf("%s_weekly", sr.appConfig.GetString("web.influxdb.bucket")),
-		fmt.Sprintf("%s_monthly", sr.appConfig.GetString("web.influxdb.bucket")),
-		fmt.Sprintf("%s_yearly", sr.appConfig.GetString("web.influxdb.bucket")),
+		sr.appConfig.GetString(cfgInfluxDBBucket),
+		fmt.Sprintf("%s_weekly", sr.appConfig.GetString(cfgInfluxDBBucket)),
+		fmt.Sprintf("%s_monthly", sr.appConfig.GetString(cfgInfluxDBBucket)),
+		fmt.Sprintf("%s_yearly", sr.appConfig.GetString(cfgInfluxDBBucket)),
 	}
 
 	for _, bucket := range buckets {
 		sr.logger.Infof("Deleting ZFS pool data for %s in bucket: %s", guid, bucket)
 		if err := sr.influxClient.DeleteAPI().DeleteWithName(
 			ctx,
-			sr.appConfig.GetString("web.influxdb.org"),
+			sr.appConfig.GetString(cfgInfluxDBOrg),
 			bucket,
 			time.Now().AddDate(-10, 0, 0),
 			time.Now(),

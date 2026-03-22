@@ -60,8 +60,8 @@ func (sr *scrutinyRepository) GetDevices(ctx context.Context) ([]models.Device, 
 // update device (only metadata) from collector
 func (sr *scrutinyRepository) UpdateDevice(ctx context.Context, deviceID string, collectorSmartData *collector.SmartInfo) (models.Device, error) {
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
-		return device, fmt.Errorf("Could not get device from DB: %v", err)
+	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).First(&device).Error; err != nil {
+		return device, fmt.Errorf(errDeviceNotFound, err)
 	}
 
 	err := device.UpdateFromCollectorSmartInfo(*collectorSmartData)
@@ -79,8 +79,8 @@ func (sr *scrutinyRepository) UpdateDevice(ctx context.Context, deviceID string,
 // Update Device Status
 func (sr *scrutinyRepository) UpdateDeviceStatus(ctx context.Context, deviceID string, status pkg.DeviceStatus) (models.Device, error) {
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
-		return device, fmt.Errorf("Could not get device from DB: %v", err)
+	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).First(&device).Error; err != nil {
+		return device, fmt.Errorf(errDeviceNotFound, err)
 	}
 
 	device.DeviceStatus = pkg.DeviceStatusSet(device.DeviceStatus, status)
@@ -90,8 +90,8 @@ func (sr *scrutinyRepository) UpdateDeviceStatus(ctx context.Context, deviceID s
 // ResetDeviceStatus clears all failure flags when device SMART data shows all attributes passing
 func (sr *scrutinyRepository) ResetDeviceStatus(ctx context.Context, deviceID string) (models.Device, error) {
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
-		return device, fmt.Errorf("Could not get device from DB: %v", err)
+	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).First(&device).Error; err != nil {
+		return device, fmt.Errorf(errDeviceNotFound, err)
 	}
 
 	device.DeviceStatus = pkg.DeviceStatusPassed
@@ -190,7 +190,7 @@ func (sr *scrutinyRepository) GetDeviceDetails(ctx context.Context, deviceID str
 
 	sr.logger.Debugln("GetDeviceDetails from GORM")
 
-	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).First(&device).Error; err != nil {
 		return models.Device{}, err
 	}
 
@@ -212,8 +212,8 @@ func (sr *scrutinyRepository) GetDeviceByWWN(ctx context.Context, wwn string) (m
 // Update Device Archived State
 func (sr *scrutinyRepository) UpdateDeviceArchived(ctx context.Context, deviceID string, archived bool) error {
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
-		return fmt.Errorf("Could not get device from DB: %v", err)
+	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).First(&device).Error; err != nil {
+		return fmt.Errorf(errDeviceNotFound, err)
 	}
 
 	return sr.gormClient.Model(&device).Update("archived", archived).Error
@@ -222,8 +222,8 @@ func (sr *scrutinyRepository) UpdateDeviceArchived(ctx context.Context, deviceID
 // Update Device Muted State
 func (sr *scrutinyRepository) UpdateDeviceMuted(ctx context.Context, deviceID string, muted bool) error {
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
-		return fmt.Errorf("Could not get device from DB: %v", err)
+	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).First(&device).Error; err != nil {
+		return fmt.Errorf(errDeviceNotFound, err)
 	}
 
 	return sr.gormClient.Model(&device).Update("muted", muted).Error
@@ -232,8 +232,8 @@ func (sr *scrutinyRepository) UpdateDeviceMuted(ctx context.Context, deviceID st
 // Update Device Label (custom user-provided name)
 func (sr *scrutinyRepository) UpdateDeviceLabel(ctx context.Context, deviceID string, label string) error {
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
-		return fmt.Errorf("Could not get device from DB: %v", err)
+	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).First(&device).Error; err != nil {
+		return fmt.Errorf(errDeviceNotFound, err)
 	}
 
 	return sr.gormClient.Model(&device).Update("label", label).Error
@@ -248,8 +248,8 @@ func (sr *scrutinyRepository) UpdateDeviceSmartDisplayMode(ctx context.Context, 
 	}
 
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
-		return fmt.Errorf("Could not get device from DB: %v", err)
+	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).First(&device).Error; err != nil {
+		return fmt.Errorf(errDeviceNotFound, err)
 	}
 
 	return sr.gormClient.Model(&device).Update("smart_display_mode", mode).Error
@@ -259,13 +259,13 @@ func (sr *scrutinyRepository) UpdateDeviceSmartDisplayMode(ctx context.Context, 
 // This flag indicates when an override with action=force_status, status=failed was applied.
 // When true, the frontend should show the device as failed regardless of threshold setting.
 func (sr *scrutinyRepository) UpdateDeviceHasForcedFailure(ctx context.Context, deviceID string, hasForcedFailure bool) error {
-	return sr.gormClient.WithContext(ctx).Model(&models.Device{}).Where("device_id = ?", deviceID).Update("has_forced_failure", hasForcedFailure).Error
+	return sr.gormClient.WithContext(ctx).Model(&models.Device{}).Where(queryDeviceID, deviceID).Update("has_forced_failure", hasForcedFailure).Error
 }
 
 // Update Device Missed Ping Timeout Override (0 = use global setting)
 func (sr *scrutinyRepository) UpdateDeviceMissedPingTimeout(ctx context.Context, deviceID string, timeoutMinutes int) error {
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).First(&device).Error; err != nil {
 		return fmt.Errorf("could not get device from DB: %v", err)
 	}
 
@@ -275,28 +275,28 @@ func (sr *scrutinyRepository) UpdateDeviceMissedPingTimeout(ctx context.Context,
 func (sr *scrutinyRepository) DeleteDevice(ctx context.Context, deviceID string) error {
 	// Look up device to get WWN for InfluxDB cleanup
 	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).First(&device).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).First(&device).Error; err != nil {
 		return fmt.Errorf("could not find device: %w", err)
 	}
 
-	if err := sr.gormClient.WithContext(ctx).Where("device_id = ?", deviceID).Delete(&models.Device{}).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).Delete(&models.Device{}).Error; err != nil {
 		return err
 	}
 
 	// Delete data from InfluxDB using WWN (InfluxDB tags use device_wwn)
 	if device.WWN != "" {
 		buckets := []string{
-			sr.appConfig.GetString("web.influxdb.bucket"),
-			fmt.Sprintf("%s_weekly", sr.appConfig.GetString("web.influxdb.bucket")),
-			fmt.Sprintf("%s_monthly", sr.appConfig.GetString("web.influxdb.bucket")),
-			fmt.Sprintf("%s_yearly", sr.appConfig.GetString("web.influxdb.bucket")),
+			sr.appConfig.GetString(cfgInfluxDBBucket),
+			fmt.Sprintf("%s_weekly", sr.appConfig.GetString(cfgInfluxDBBucket)),
+			fmt.Sprintf("%s_monthly", sr.appConfig.GetString(cfgInfluxDBBucket)),
+			fmt.Sprintf("%s_yearly", sr.appConfig.GetString(cfgInfluxDBBucket)),
 		}
 
 		for _, bucket := range buckets {
 			sr.logger.Infof("Deleting data for %s (wwn: %s) in bucket: %s", deviceID, device.WWN, bucket)
 			if err := sr.influxClient.DeleteAPI().DeleteWithName(
 				ctx,
-				sr.appConfig.GetString("web.influxdb.org"),
+				sr.appConfig.GetString(cfgInfluxDBOrg),
 				bucket,
 				time.Now().AddDate(-10, 0, 0),
 				time.Now(),

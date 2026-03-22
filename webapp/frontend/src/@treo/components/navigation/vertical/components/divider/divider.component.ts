@@ -33,8 +33,8 @@ export class TreoVerticalNavigationDividerItemComponent implements OnInit, OnDes
      * @param {ChangeDetectorRef} _changeDetectorRef
      */
     constructor(
-        private _treoNavigationService: TreoNavigationService,
-        private _changeDetectorRef: ChangeDetectorRef
+        private readonly _treoNavigationService: TreoNavigationService,
+        private readonly _changeDetectorRef: ChangeDetectorRef
     )
     {
         // Set the private defaults

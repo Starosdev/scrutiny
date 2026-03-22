@@ -86,13 +86,13 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      * @param {ScrollStrategyOptions} _scrollStrategyOptions
      */
     constructor(
-        private _animationBuilder: AnimationBuilder,
-        private _treoNavigationService: TreoNavigationService,
-        private _changeDetectorRef: ChangeDetectorRef,
-        private _elementRef: ElementRef,
-        private _renderer2: Renderer2,
-        private _router: Router,
-        private _scrollStrategyOptions: ScrollStrategyOptions
+        private readonly _animationBuilder: AnimationBuilder,
+        private readonly _treoNavigationService: TreoNavigationService,
+        private readonly _changeDetectorRef: ChangeDetectorRef,
+        private readonly _elementRef: ElementRef,
+        private readonly _renderer2: Renderer2,
+        private readonly _router: Router,
+        private readonly _scrollStrategyOptions: ScrollStrategyOptions
     )
     {
         // Set the private defaults

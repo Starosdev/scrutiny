@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, forwardRef, HostBinding, Input, OnDestroy, OnInit, Output, Renderer2, TemplateRef, ViewChild, ViewContainerRef, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, EventEmitter, forwardRef, HostBinding, Input, OnDestroy, Output, Renderer2, TemplateRef, ViewChild, ViewContainerRef, ViewEncapsulation } from '@angular/core';
 import { ControlValueAccessor, FormControl, NG_VALUE_ACCESSOR, Validators } from '@angular/forms';
 import { Overlay } from '@angular/cdk/overlay';
 import { TemplatePortal } from '@angular/cdk/portal';
@@ -23,7 +23,7 @@ dayjs.extend(isBetween);
         }
     ]
 })
-export class TreoDateRangeComponent implements ControlValueAccessor, OnInit, OnDestroy
+export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
 {
     // Range changed
     @Output()
@@ -70,11 +70,11 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnInit, OnD
      * @param {ViewContainerRef} _viewContainerRef
      */
     constructor(
-        private _changeDetectorRef: ChangeDetectorRef,
-        private _elementRef: ElementRef,
-        private _overlay: Overlay,
-        private _renderer2: Renderer2,
-        private _viewContainerRef: ViewContainerRef
+        private readonly _changeDetectorRef: ChangeDetectorRef,
+        private readonly _elementRef: ElementRef,
+        private readonly _overlay: Overlay,
+        private readonly _renderer2: Renderer2,
+        private readonly _viewContainerRef: ViewContainerRef
     )
     {
         // Set the private defaults
@@ -374,14 +374,6 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnInit, OnD
     // -----------------------------------------------------------------------------------------------------
     // @ Lifecycle hooks
     // -----------------------------------------------------------------------------------------------------
-
-    /**
-     * On init
-     */
-    ngOnInit(): void
-    {
-
-    }
 
     /**
      * On destroy

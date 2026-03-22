@@ -16,7 +16,7 @@ export class ScrutinyConfigService {
     private _defaultConfig: AppConfig;
 
     constructor(
-        private _httpClient: HttpClient,
+        private readonly _httpClient: HttpClient,
         @Inject(TREO_APP_CONFIG) defaultConfig: AppConfig
     ) {
         // Set the private defaults

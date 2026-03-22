@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, OnDestroy, ViewEncapsulation } from '@angular/core';
 import { Subject } from 'rxjs';
 
 @Component({
@@ -8,7 +8,7 @@ import { Subject } from 'rxjs';
     encapsulation: ViewEncapsulation.None,
     standalone: false
 })
-export class EmptyLayoutComponent implements OnInit, OnDestroy
+export class EmptyLayoutComponent implements OnDestroy
 {
     // Private
     private _unsubscribeAll: Subject<void>;
@@ -25,14 +25,6 @@ export class EmptyLayoutComponent implements OnInit, OnDestroy
     // -----------------------------------------------------------------------------------------------------
     // @ Lifecycle hooks
     // -----------------------------------------------------------------------------------------------------
-
-    /**
-     * On init
-     */
-    ngOnInit(): void
-    {
-
-    }
 
     /**
      * On destroy

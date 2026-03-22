@@ -21,8 +21,8 @@ export class CoreModule
      * @param parentModule
      */
     constructor(
-        private _domSanitizer: DomSanitizer,
-        private _matIconRegistry: MatIconRegistry,
+        private readonly _domSanitizer: DomSanitizer,
+        private readonly _matIconRegistry: MatIconRegistry,
         @Optional() @SkipSelf() parentModule?: CoreModule
     )
     {

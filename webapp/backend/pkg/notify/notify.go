@@ -28,6 +28,13 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// Notification message format strings (S1192: deduplicated string literals)
+const fmtLabelWithName = "%s (%s)"
+const fmtHostId = "Host Id: %s"
+const fmtDeviceSerial = "Device Serial: %s"
+const fmtDeviceLabel = "Device Label: %s"
+const fmtDate = "Date: %s"
+
 const NotifyFailureTypeEmailTest = "EmailTest"
 const NotifyFailureTypeBothFailure = "SmartFailure" //SmartFailure always takes precedence when Scrutiny & Smart failed.
 const NotifyFailureTypeSmartFailure = "SmartFailure"
@@ -229,7 +236,7 @@ func (p *Payload) GenerateSubject() string {
 	var subject string
 	deviceIdentifier := p.DeviceName
 	if len(p.DeviceLabel) > 0 {
-		deviceIdentifier = fmt.Sprintf("%s (%s)", p.DeviceLabel, p.DeviceName)
+		deviceIdentifier = fmt.Sprintf(fmtLabelWithName, p.DeviceLabel, p.DeviceName)
 	}
 	if len(p.HostId) > 0 {
 		subject = fmt.Sprintf("Scrutiny SMART error (%s) detected on [host]device: [%s]%s", p.FailureType, p.HostId, deviceIdentifier)
@@ -246,21 +253,21 @@ func (p *Payload) GenerateMessage() string {
 
 	messageParts = append(messageParts, fmt.Sprintf("Scrutiny SMART error notification for device: %s", p.DeviceName))
 	if len(p.HostId) > 0 {
-		messageParts = append(messageParts, fmt.Sprintf("Host Id: %s", p.HostId))
+		messageParts = append(messageParts, fmt.Sprintf(fmtHostId, p.HostId))
 	}
 
 	messageParts = append(messageParts,
 		fmt.Sprintf("Failure Type: %s", p.FailureType),
 		fmt.Sprintf("Device Name: %s", p.DeviceName),
-		fmt.Sprintf("Device Serial: %s", p.DeviceSerial),
+		fmt.Sprintf(fmtDeviceSerial, p.DeviceSerial),
 		fmt.Sprintf("Device Type: %s", p.DeviceType),
 	)
 	if len(p.DeviceLabel) > 0 {
-		messageParts = append(messageParts, fmt.Sprintf("Device Label: %s", p.DeviceLabel))
+		messageParts = append(messageParts, fmt.Sprintf(fmtDeviceLabel, p.DeviceLabel))
 	}
 	messageParts = append(messageParts,
 		"",
-		fmt.Sprintf("Date: %s", p.Date),
+		fmt.Sprintf(fmtDate, p.Date),
 	)
 
 	if p.Test {
@@ -604,7 +611,7 @@ func NewMissedPingPayload(device models.Device, lastSeenTime time.Time, timeoutM
 func (p *MissedPingPayload) generateSubject() string {
 	deviceIdentifier := p.DeviceName
 	if len(p.DeviceLabel) > 0 {
-		deviceIdentifier = fmt.Sprintf("%s (%s)", p.DeviceLabel, p.DeviceName)
+		deviceIdentifier = fmt.Sprintf(fmtLabelWithName, p.DeviceLabel, p.DeviceName)
 	}
 	if len(p.HostId) > 0 {
 		return fmt.Sprintf("Scrutiny collector missed ping on [host]device: [%s]%s", p.HostId, deviceIdentifier)
@@ -619,14 +626,14 @@ func (p *MissedPingPayload) generateMessage() string {
 		fmt.Sprintf("Scrutiny has not received data from collector for device: %s", p.DeviceName),
 	}
 	if len(p.HostId) > 0 {
-		messageParts = append(messageParts, fmt.Sprintf("Host Id: %s", p.HostId))
+		messageParts = append(messageParts, fmt.Sprintf(fmtHostId, p.HostId))
 	}
 	messageParts = append(messageParts,
 		fmt.Sprintf("Device WWN: %s", p.DeviceWWN),
-		fmt.Sprintf("Device Serial: %s", p.DeviceSerial),
+		fmt.Sprintf(fmtDeviceSerial, p.DeviceSerial),
 	)
 	if len(p.DeviceLabel) > 0 {
-		messageParts = append(messageParts, fmt.Sprintf("Device Label: %s", p.DeviceLabel))
+		messageParts = append(messageParts, fmt.Sprintf(fmtDeviceLabel, p.DeviceLabel))
 	}
 	messageParts = append(messageParts,
 		"",
@@ -760,7 +767,7 @@ func formatHTMLMissedPingDigest(devices []MissedPingDigestDevice, count, timeout
 		ago := time.Since(d.LastSeen).Round(time.Minute)
 		name := d.DeviceName
 		if d.Label != "" {
-			name = fmt.Sprintf("%s (%s)", d.Label, d.DeviceName)
+			name = fmt.Sprintf(fmtLabelWithName, d.Label, d.DeviceName)
 		}
 		host := d.HostId
 		if host == "" {
@@ -835,7 +842,7 @@ func (p *HeartbeatPayload) generateMessage() string {
 		"",
 		fmt.Sprintf("Monitored devices: %d", p.MonitoredDevices),
 		fmt.Sprintf("Total devices (including archived/muted): %d", p.TotalDevices),
-		fmt.Sprintf("Date: %s", p.Date),
+		fmt.Sprintf(fmtDate, p.Date),
 		"",
 		"This is an automated heartbeat notification confirming that Scrutiny is running and all drives are healthy.",
 	}
@@ -904,7 +911,7 @@ func NewPerformanceDegradationPayload(device *models.Device, metric string, base
 func (p *PerformanceDegradationPayload) generateSubject() string {
 	deviceIdentifier := p.DeviceName
 	if len(p.DeviceLabel) > 0 {
-		deviceIdentifier = fmt.Sprintf("%s (%s)", p.DeviceLabel, p.DeviceName)
+		deviceIdentifier = fmt.Sprintf(fmtLabelWithName, p.DeviceLabel, p.DeviceName)
 	}
 	if len(p.HostId) > 0 {
 		return fmt.Sprintf("Scrutiny performance degradation detected on [host]device: [%s]%s", p.HostId, deviceIdentifier)
@@ -917,14 +924,14 @@ func (p *PerformanceDegradationPayload) generateMessage() string {
 		fmt.Sprintf("Scrutiny performance degradation notification for device: %s", p.DeviceName),
 	}
 	if len(p.HostId) > 0 {
-		messageParts = append(messageParts, fmt.Sprintf("Host Id: %s", p.HostId))
+		messageParts = append(messageParts, fmt.Sprintf(fmtHostId, p.HostId))
 	}
 	messageParts = append(messageParts,
 		fmt.Sprintf("Device WWN: %s", p.DeviceWWN),
-		fmt.Sprintf("Device Serial: %s", p.DeviceSerial),
+		fmt.Sprintf(fmtDeviceSerial, p.DeviceSerial),
 	)
 	if len(p.DeviceLabel) > 0 {
-		messageParts = append(messageParts, fmt.Sprintf("Device Label: %s", p.DeviceLabel))
+		messageParts = append(messageParts, fmt.Sprintf(fmtDeviceLabel, p.DeviceLabel))
 	}
 	messageParts = append(messageParts,
 		"",
@@ -933,7 +940,7 @@ func (p *PerformanceDegradationPayload) generateMessage() string {
 		fmt.Sprintf("Current Value: %.2f", p.CurrentValue),
 		fmt.Sprintf("Deviation: %.1f%%", p.DeviationPct),
 		"",
-		fmt.Sprintf("Date: %s", p.Date),
+		fmt.Sprintf(fmtDate, p.Date),
 	)
 
 	return strings.Join(messageParts, "\n")
@@ -1001,16 +1008,16 @@ func NewCollectorError(logger logrus.FieldLogger, appconfig config.Interface, de
 	var messageParts []string
 	messageParts = append(messageParts, fmt.Sprintf("Scrutiny collector error notification for device: %s", deviceIdentifier))
 	if device.HostId != "" {
-		messageParts = append(messageParts, fmt.Sprintf("Host Id: %s", strings.TrimSpace(device.HostId)))
+		messageParts = append(messageParts, fmt.Sprintf(fmtHostId, strings.TrimSpace(device.HostId)))
 	}
 	messageParts = append(messageParts,
 		fmt.Sprintf("Error Type: %s", errorType),
 		fmt.Sprintf("Error: %s", errorMessage),
 		"",
-		fmt.Sprintf("Date: %s", time.Now().Format(time.RFC3339)),
+		fmt.Sprintf(fmtDate, time.Now().Format(time.RFC3339)),
 	)
 	if device.SerialNumber != "" {
-		messageParts = append([]string{fmt.Sprintf("Device Serial: %s", device.SerialNumber)}, messageParts...)
+		messageParts = append([]string{fmt.Sprintf(fmtDeviceSerial, device.SerialNumber)}, messageParts...)
 	}
 
 	message := strings.Join(messageParts, "\n")

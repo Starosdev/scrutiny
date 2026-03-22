@@ -54,10 +54,10 @@ export class TreoDrawerComponent implements OnInit, OnDestroy
      * @param {Renderer2} _renderer2
      */
     constructor(
-        private _animationBuilder: AnimationBuilder,
-        private _treoDrawerService: TreoDrawerService,
-        private _elementRef: ElementRef,
-        private _renderer2: Renderer2
+        private readonly _animationBuilder: AnimationBuilder,
+        private readonly _treoDrawerService: TreoDrawerService,
+        private readonly _elementRef: ElementRef,
+        private readonly _renderer2: Renderer2
     )
     {
         // Set the private defaults

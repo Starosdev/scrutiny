@@ -76,7 +76,7 @@ func (sr *scrutinyRepository) GetPerformanceHistory(ctx context.Context, wwn str
 
 // GetPerformanceBaseline calculates a baseline from the last N performance results
 func (sr *scrutinyRepository) GetPerformanceBaseline(ctx context.Context, wwn string, count int) (*measurements.PerformanceBaseline, error) {
-	bucketName := sr.appConfig.GetString("web.influxdb.bucket")
+	bucketName := sr.appConfig.GetString(cfgInfluxDBBucket)
 
 	queryStr := fmt.Sprintf(`
 		from(bucket: "%s")

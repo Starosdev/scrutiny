@@ -28,6 +28,7 @@ import (
 
 const configKeyMetricsEnabled = "web.metrics.enabled"
 const configKeyMqttEnabled = "web.mqtt.enabled"
+const indexFile = "index.html"
 
 type AppEngine struct {
 	Config             config.Interface
@@ -183,7 +184,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 	// Determine the actual frontend path - check if browser/ subdirectory exists
 	frontendPath := ae.Config.GetString("web.src.frontend.path")
 	browserPath := filepath.Join(frontendPath, "browser")
-	indexPath := filepath.Join(browserPath, "index.html")
+	indexPath := filepath.Join(browserPath, indexFile)
 	
 	// Use browser subdirectory if it exists, otherwise use the configured path directly
 	actualFrontendPath := frontendPath
@@ -199,13 +200,13 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 	
 	// Serve static files with proper MIME types and SPA routing support
 	base.GET("/web", func(c *gin.Context) {
-		c.File(filepath.Join(actualFrontendPath, "index.html"))
+		c.File(filepath.Join(actualFrontendPath, indexFile))
 	})
 	
 	base.GET("/web/*filepath", func(c *gin.Context) {
 		file := c.Param("filepath")
 		if file == "" || file == "/" {
-			c.File(filepath.Join(actualFrontendPath, "index.html"))
+			c.File(filepath.Join(actualFrontendPath, indexFile))
 			return
 		}
 		
@@ -218,7 +219,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 		fullPath := filepath.Join(actualFrontendPath, file)
 		if !utils.FileExists(fullPath) {
 			// For SPA routing, serve index.html for non-existent files
-			c.File(filepath.Join(actualFrontendPath, "index.html"))
+			c.File(filepath.Join(actualFrontendPath, indexFile))
 			return
 		}
 		
@@ -235,7 +236,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 
 	//catch-all, serve index page for any unmatched routes
 	r.NoRoute(func(c *gin.Context) {
-		c.File(filepath.Join(actualFrontendPath, "index.html"))
+		c.File(filepath.Join(actualFrontendPath, indexFile))
 	})
 	return r
 }

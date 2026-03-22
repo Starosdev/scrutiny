@@ -37,9 +37,9 @@ export class LayoutComponent implements OnInit, OnDestroy {
      * @param {Router} _router
      */
     constructor(
-        private _activatedRoute: ActivatedRoute,
-        private _scrutinyConfigService: ScrutinyConfigService,
-        private _treoDrawerService: TreoDrawerService,
+        private readonly _activatedRoute: ActivatedRoute,
+        private readonly _scrutinyConfigService: ScrutinyConfigService,
+        private readonly _treoDrawerService: TreoDrawerService,
         @Inject(DOCUMENT) private _document: any,
         private _router: Router,
         private _treoMediaWatcherService: TreoMediaWatcherService

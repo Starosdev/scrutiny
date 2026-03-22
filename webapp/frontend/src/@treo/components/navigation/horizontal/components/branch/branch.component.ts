@@ -42,8 +42,8 @@ export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDe
      * @param {ChangeDetectorRef} _changeDetectorRef
      */
     constructor(
-        private _treoNavigationService: TreoNavigationService,
-        private _changeDetectorRef: ChangeDetectorRef
+        private readonly _treoNavigationService: TreoNavigationService,
+        private readonly _changeDetectorRef: ChangeDetectorRef
     )
     {
         // Set the private defaults
