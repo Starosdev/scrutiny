@@ -23,7 +23,7 @@ interface DeleteResponse {
     providedIn: 'root'
 })
 export class AttributeOverrideService {
-    constructor(private http: HttpClient) {}
+    constructor(private readonly http: HttpClient) {}
 
     /**
      * Get all attribute overrides from the database

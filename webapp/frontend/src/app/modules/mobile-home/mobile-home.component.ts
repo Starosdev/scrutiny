@@ -39,9 +39,9 @@ export class MobileHomeComponent implements OnInit, OnDestroy {
     private _unsubscribeAll: Subject<void>;
 
     constructor(
-        private _dashboardService: DashboardService,
-        private _zfsPoolsService: ZFSPoolsService,
-        private _router: Router
+        private readonly _dashboardService: DashboardService,
+        private readonly _zfsPoolsService: ZFSPoolsService,
+        private readonly _router: Router
     ) {
         this._unsubscribeAll = new Subject();
     }

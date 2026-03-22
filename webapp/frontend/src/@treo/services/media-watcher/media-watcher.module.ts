@@ -14,7 +14,7 @@ export class TreoMediaWatcherModule
      * @param {TreoMediaWatcherService} _treoMediaWatcherService
      */
     constructor(
-        private _treoMediaWatcherService: TreoMediaWatcherService
+        private readonly _treoMediaWatcherService: TreoMediaWatcherService
     )
     {
     }

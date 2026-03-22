@@ -6,8 +6,8 @@ import { AuthService } from './auth.service';
 export class AuthGuard implements CanActivate {
 
     constructor(
-        private _authService: AuthService,
-        private _router: Router
+        private readonly _authService: AuthService,
+        private readonly _router: Router
     ) {}
 
     canActivate(_route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean | UrlTree {

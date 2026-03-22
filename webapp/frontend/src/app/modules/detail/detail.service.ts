@@ -19,7 +19,7 @@ export class DetailService {
      * @param {HttpClient} _httpClient
      */
     constructor(
-        private _httpClient: HttpClient
+        private readonly _httpClient: HttpClient
     ) {
         // Set the private defaults
         this._data = new BehaviorSubject(null);

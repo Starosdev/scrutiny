@@ -145,7 +145,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 							sr.logger.Debugf("device (%s) smart data added to bucket: daily", preDevice.WWN)
 							// write point immediately
 							err = sr.saveDatapoint(
-								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString("web.influxdb.org"), sr.appConfig.GetString("web.influxdb.bucket")),
+								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString(cfgInfluxDBOrg), sr.appConfig.GetString(cfgInfluxDBBucket)),
 								"smart",
 								smartTags,
 								smartFields,
@@ -155,7 +155,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 							}
 
 							err = sr.saveDatapoint(
-								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString("web.influxdb.org"), sr.appConfig.GetString("web.influxdb.bucket")),
+								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString(cfgInfluxDBOrg), sr.appConfig.GetString(cfgInfluxDBBucket)),
 								"temp",
 								tempTags,
 								tempFields,
@@ -173,7 +173,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 							weeklyLookup[yearWeekStr] = true
 							// write point immediately
 							err = sr.saveDatapoint(
-								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString("web.influxdb.org"), fmt.Sprintf("%s_weekly", sr.appConfig.GetString("web.influxdb.bucket"))),
+								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString(cfgInfluxDBOrg), fmt.Sprintf("%s_weekly", sr.appConfig.GetString(cfgInfluxDBBucket))),
 								"smart",
 								smartTags,
 								smartFields,
@@ -184,7 +184,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 							}
 
 							err = sr.saveDatapoint(
-								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString("web.influxdb.org"), fmt.Sprintf("%s_weekly", sr.appConfig.GetString("web.influxdb.bucket"))),
+								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString(cfgInfluxDBOrg), fmt.Sprintf("%s_weekly", sr.appConfig.GetString(cfgInfluxDBBucket))),
 								"temp",
 								tempTags,
 								tempFields,
@@ -202,7 +202,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 							monthlyLookup[yearMonthStr] = true
 							// write point immediately
 							err = sr.saveDatapoint(
-								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString("web.influxdb.org"), fmt.Sprintf("%s_monthly", sr.appConfig.GetString("web.influxdb.bucket"))),
+								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString(cfgInfluxDBOrg), fmt.Sprintf("%s_monthly", sr.appConfig.GetString(cfgInfluxDBBucket))),
 								"smart",
 								smartTags,
 								smartFields,
@@ -212,7 +212,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 							}
 
 							err = sr.saveDatapoint(
-								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString("web.influxdb.org"), fmt.Sprintf("%s_monthly", sr.appConfig.GetString("web.influxdb.bucket"))),
+								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString(cfgInfluxDBOrg), fmt.Sprintf("%s_monthly", sr.appConfig.GetString(cfgInfluxDBBucket))),
 								"temp",
 								tempTags,
 								tempFields,
@@ -229,7 +229,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 							yearlyLookup[yearStr] = true
 							// write point immediately
 							err = sr.saveDatapoint(
-								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString("web.influxdb.org"), fmt.Sprintf("%s_yearly", sr.appConfig.GetString("web.influxdb.bucket"))),
+								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString(cfgInfluxDBOrg), fmt.Sprintf("%s_yearly", sr.appConfig.GetString(cfgInfluxDBBucket))),
 								"smart",
 								smartTags,
 								smartFields,
@@ -239,7 +239,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 							}
 
 							err = sr.saveDatapoint(
-								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString("web.influxdb.org"), fmt.Sprintf("%s_yearly", sr.appConfig.GetString("web.influxdb.bucket"))),
+								sr.influxClient.WriteAPIBlocking(sr.appConfig.GetString(cfgInfluxDBOrg), fmt.Sprintf("%s_yearly", sr.appConfig.GetString(cfgInfluxDBBucket))),
 								"temp",
 								tempTags,
 								tempFields,

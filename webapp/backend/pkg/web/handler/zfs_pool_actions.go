@@ -9,6 +9,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Log format for invalid GUID validation (S1192: deduplicated string literal)
+const fmtInvalidGUID = "Invalid GUID format: %s"
+
 // ArchiveZFSPool archives a ZFS pool (hides it from the dashboard)
 func ArchiveZFSPool(c *gin.Context) {
 	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
@@ -16,7 +19,7 @@ func ArchiveZFSPool(c *gin.Context) {
 
 	guid := c.Param("guid")
 	if err := validation.ValidateGUID(guid); err != nil {
-		logger.Warnf("Invalid GUID format: %s", guid)
+		logger.Warnf(fmtInvalidGUID, guid)
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
@@ -38,7 +41,7 @@ func UnarchiveZFSPool(c *gin.Context) {
 
 	guid := c.Param("guid")
 	if err := validation.ValidateGUID(guid); err != nil {
-		logger.Warnf("Invalid GUID format: %s", guid)
+		logger.Warnf(fmtInvalidGUID, guid)
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
@@ -60,7 +63,7 @@ func MuteZFSPool(c *gin.Context) {
 
 	guid := c.Param("guid")
 	if err := validation.ValidateGUID(guid); err != nil {
-		logger.Warnf("Invalid GUID format: %s", guid)
+		logger.Warnf(fmtInvalidGUID, guid)
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
@@ -82,7 +85,7 @@ func UnmuteZFSPool(c *gin.Context) {
 
 	guid := c.Param("guid")
 	if err := validation.ValidateGUID(guid); err != nil {
-		logger.Warnf("Invalid GUID format: %s", guid)
+		logger.Warnf(fmtInvalidGUID, guid)
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
@@ -104,7 +107,7 @@ func UpdateZFSPoolLabel(c *gin.Context) {
 
 	guid := c.Param("guid")
 	if err := validation.ValidateGUID(guid); err != nil {
-		logger.Warnf("Invalid GUID format: %s", guid)
+		logger.Warnf(fmtInvalidGUID, guid)
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
@@ -135,7 +138,7 @@ func DeleteZFSPool(c *gin.Context) {
 
 	guid := c.Param("guid")
 	if err := validation.ValidateGUID(guid); err != nil {
-		logger.Warnf("Invalid GUID format: %s", guid)
+		logger.Warnf(fmtInvalidGUID, guid)
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}

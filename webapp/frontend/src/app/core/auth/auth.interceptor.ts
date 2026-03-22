@@ -10,7 +10,7 @@ const AUTH_SKIP_PATHS = ['/api/auth/status', '/api/auth/login'];
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
 
-    constructor(private _authService: AuthService) {}
+    constructor(private readonly _authService: AuthService) {}
 
     intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
         let authReq = req;

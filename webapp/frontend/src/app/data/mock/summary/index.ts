@@ -18,7 +18,7 @@ export class SummaryMockApi implements TreoMockApi
      * @param _treoMockApiService
      */
     constructor(
-        private _treoMockApiService: TreoMockApiService
+        private readonly _treoMockApiService: TreoMockApiService
     )
     {
         // Set the data

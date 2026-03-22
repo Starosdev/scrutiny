@@ -14,6 +14,11 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Config key constants for smartctl command arguments (S1192: deduplicated string literals)
+const configKeyMetricsScanArgs = "commands.metrics_scan_args"
+const configKeyMetricsInfoArgs = "commands.metrics_info_args"
+const configKeyMetricsSmartArgs = "commands.metrics_smart_args"
+
 // When initializing this class the following methods must be called:
 // Config.New
 // Config.Init
@@ -47,9 +52,9 @@ func (c *configuration) Init() error {
 	c.SetDefault("api.token", "")
 
 	c.SetDefault("commands.metrics_smartctl_bin", "smartctl")
-	c.SetDefault("commands.metrics_scan_args", "--scan --json")
-	c.SetDefault("commands.metrics_info_args", "--info --json")
-	c.SetDefault("commands.metrics_smart_args", "--xall --json")
+	c.SetDefault(configKeyMetricsScanArgs, "--scan --json")
+	c.SetDefault(configKeyMetricsInfoArgs, "--info --json")
+	c.SetDefault(configKeyMetricsSmartArgs, "--xall --json")
 	c.SetDefault("commands.metrics_smartctl_wait", 0)
 	c.SetDefault("commands.metrics_farm_enabled", false)
 	c.SetDefault("commands.metrics_farm_args", "-l farm --json")
@@ -128,9 +133,9 @@ func (c *configuration) ValidateConfig() error {
 
 	// check that the collector commands are valid
 	commandArgStrings := map[string]string{
-		"commands.metrics_scan_args":  c.GetString("commands.metrics_scan_args"),
-		"commands.metrics_info_args":  c.GetString("commands.metrics_info_args"),
-		"commands.metrics_smart_args": c.GetString("commands.metrics_smart_args"),
+		configKeyMetricsScanArgs:  c.GetString(configKeyMetricsScanArgs),
+		configKeyMetricsInfoArgs:  c.GetString(configKeyMetricsInfoArgs),
+		configKeyMetricsSmartArgs: c.GetString(configKeyMetricsSmartArgs),
 	}
 
 	errorStrings := []string{}
@@ -190,11 +195,11 @@ func (c *configuration) GetCommandMetricsInfoArgs(deviceName string) string {
 			if len(deviceOverrides.Commands.MetricsInfoArgs) > 0 {
 				return deviceOverrides.Commands.MetricsInfoArgs
 			} else {
-				return c.GetString("commands.metrics_info_args")
+				return c.GetString(configKeyMetricsInfoArgs)
 			}
 		}
 	}
-	return c.GetString("commands.metrics_info_args")
+	return c.GetString(configKeyMetricsInfoArgs)
 }
 
 func (c *configuration) GetCommandMetricsSmartArgs(deviceName string) string {
@@ -206,11 +211,11 @@ func (c *configuration) GetCommandMetricsSmartArgs(deviceName string) string {
 			if len(deviceOverrides.Commands.MetricsSmartArgs) > 0 {
 				return deviceOverrides.Commands.MetricsSmartArgs
 			} else {
-				return c.GetString("commands.metrics_smart_args")
+				return c.GetString(configKeyMetricsSmartArgs)
 			}
 		}
 	}
-	return c.GetString("commands.metrics_smart_args")
+	return c.GetString(configKeyMetricsSmartArgs)
 }
 
 func (c *configuration) IsAllowlistedDevice(deviceName string) bool {

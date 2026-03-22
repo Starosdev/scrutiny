@@ -13,7 +13,7 @@ import { versionInfo } from 'environments/versions';
 export class MobileSettingsComponent {
     appVersion: string = versionInfo.version;
 
-    constructor(private dialog: MatDialog) {}
+    constructor(private readonly dialog: MatDialog) {}
 
     openSettings(): void {
         this.dialog.open(DashboardSettingsComponent, {

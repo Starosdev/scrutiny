@@ -32,11 +32,11 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
     private _unsubscribeAll: Subject<void>;
 
     constructor(
-        private _workloadService: WorkloadService,
-        private _configService: ScrutinyConfigService,
-        private _changeDetectorRef: ChangeDetectorRef,
-        private _mediaWatcherService: TreoMediaWatcherService,
-        private router: Router
+        private readonly _workloadService: WorkloadService,
+        private readonly _configService: ScrutinyConfigService,
+        private readonly _changeDetectorRef: ChangeDetectorRef,
+        private readonly _mediaWatcherService: TreoMediaWatcherService,
+        private readonly router: Router
     ) {
         this._unsubscribeAll = new Subject();
         this.dataSource = new MatTableDataSource([]);

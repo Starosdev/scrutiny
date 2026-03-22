@@ -10,8 +10,8 @@ import { ZFSPoolsService } from 'app/modules/zfs-pools/zfs-pools.service';
 })
 export class MobileHomeResolver implements Resolve<any> {
     constructor(
-        private _dashboardService: DashboardService,
-        private _zfsPoolsService: ZFSPoolsService
+        private readonly _dashboardService: DashboardService,
+        private readonly _zfsPoolsService: ZFSPoolsService
     ) {}
 
     resolve(): Observable<any> {

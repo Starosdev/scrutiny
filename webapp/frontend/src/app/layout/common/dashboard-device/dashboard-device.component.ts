@@ -21,8 +21,8 @@ import {DashboardDeviceArchiveDialogService} from '../dashboard-device-archive-d
 export class DashboardDeviceComponent implements OnInit {
 
     constructor(
-        private _configService: ScrutinyConfigService,
-        private _archiveService: DashboardDeviceArchiveDialogService,
+        private readonly _configService: ScrutinyConfigService,
+        private readonly _archiveService: DashboardDeviceArchiveDialogService,
         public dialog: MatDialog,
     ) {
         // Set the private defaults

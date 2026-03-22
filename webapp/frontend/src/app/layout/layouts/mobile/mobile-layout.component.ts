@@ -18,7 +18,7 @@ export class MobileLayoutComponent implements OnInit, OnDestroy {
 
     private _unsubscribeAll: Subject<void>;
 
-    constructor(private _authService: AuthService, private _router: Router) {
+    constructor(private readonly _authService: AuthService, private readonly _router: Router) {
         this._unsubscribeAll = new Subject();
         this.appVersion = versionInfo.version;
     }

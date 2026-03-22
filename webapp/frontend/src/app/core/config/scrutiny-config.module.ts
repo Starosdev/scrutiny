@@ -10,7 +10,7 @@ export class ScrutinyConfigModule {
      * @param {ScrutinyConfigService} _scrutinyConfigService
      */
     constructor(
-        private _scrutinyConfigService: ScrutinyConfigService
+        private readonly _scrutinyConfigService: ScrutinyConfigService
     ) {
     }
 

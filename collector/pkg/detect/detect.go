@@ -18,6 +18,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Config key for the host identifier (S1192: deduplicated string literal)
+const configKeyHostId = "host.id"
+
 type Detect struct {
 	Logger *logrus.Entry
 	Config config.Interface
@@ -192,7 +195,7 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 		}
 
 		detectedDevice := models.Device{
-			HostId:           d.Config.GetString("host.id"),
+			HostId:           d.Config.GetString(configKeyHostId),
 			CollectorVersion: version.VERSION,
 			DeviceType:       scannedDevice.Type,
 			DeviceName:       stripDevicePrefix(deviceFile),
@@ -229,7 +232,7 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 			if overrideDevice.DeviceType != nil {
 				for _, overrideDeviceType := range overrideDevice.DeviceType {
 					overrideDeviceGroup = append(overrideDeviceGroup, models.Device{
-						HostId:           d.Config.GetString("host.id"),
+						HostId:           d.Config.GetString(configKeyHostId),
 						CollectorVersion: version.VERSION,
 						DeviceType:       overrideDeviceType,
 						DeviceName:       stripDevicePrefix(overrideDeviceFile),
@@ -256,7 +259,7 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 				}
 
 				overrideDeviceGroup = append(overrideDeviceGroup, models.Device{
-					HostId:           d.Config.GetString("host.id"),
+					HostId:           d.Config.GetString(configKeyHostId),
 					CollectorVersion: version.VERSION,
 					DeviceType:       deviceType,
 					DeviceName:       stripDevicePrefix(overrideDeviceFile),

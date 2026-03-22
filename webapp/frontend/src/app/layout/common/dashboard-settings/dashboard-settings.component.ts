@@ -131,10 +131,10 @@ export class DashboardSettingsComponent implements OnInit {
     private _unsubscribeAll: Subject<void>;
 
     constructor(
-        private _configService: ScrutinyConfigService,
-        private _overrideService: AttributeOverrideService,
-        private _notifyUrlService: NotifyUrlService,
-        private _httpClient: HttpClient,
+        private readonly _configService: ScrutinyConfigService,
+        private readonly _overrideService: AttributeOverrideService,
+        private readonly _notifyUrlService: NotifyUrlService,
+        private readonly _httpClient: HttpClient,
     ) {
         // Set the private defaults
         this._unsubscribeAll = new Subject();

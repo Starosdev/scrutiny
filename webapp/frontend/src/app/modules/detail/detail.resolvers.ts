@@ -10,8 +10,8 @@ import {DeviceDetailsResponseWrapper} from 'app/core/models/device-details-respo
 })
 export class DetailResolver  {
     constructor(
-        private _detailService: DetailService,
-        private _router: Router
+        private readonly _detailService: DetailService,
+        private readonly _router: Router
     )
     {
     }

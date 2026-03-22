@@ -10,8 +10,8 @@ import { ZFSPoolDetailsResponseWrapper } from 'app/core/models/zfs-pool-summary-
 })
 export class ZFSPoolDetailResolver {
     constructor(
-        private _zfsPoolDetailService: ZFSPoolDetailService,
-        private _router: Router
+        private readonly _zfsPoolDetailService: ZFSPoolDetailService,
+        private readonly _router: Router
     ) {
     }
 

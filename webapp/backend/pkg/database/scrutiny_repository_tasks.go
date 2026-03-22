@@ -83,20 +83,20 @@ func (sr *scrutinyRepository) DownsampleScript(aggregationType string, name stri
 	var aggWindow string
 	switch aggregationType {
 	case "weekly":
-		sourceBucket = sr.appConfig.GetString("web.influxdb.bucket")
-		destBucket = fmt.Sprintf("%s_weekly", sr.appConfig.GetString("web.influxdb.bucket"))
+		sourceBucket = sr.appConfig.GetString(cfgInfluxDBBucket)
+		destBucket = fmt.Sprintf("%s_weekly", sr.appConfig.GetString(cfgInfluxDBBucket))
 		rangeStart = "-2w"
 		rangeEnd = "-1w"
 		aggWindow = "1w"
 	case "monthly":
-		sourceBucket = fmt.Sprintf("%s_weekly", sr.appConfig.GetString("web.influxdb.bucket"))
-		destBucket = fmt.Sprintf("%s_monthly", sr.appConfig.GetString("web.influxdb.bucket"))
+		sourceBucket = fmt.Sprintf("%s_weekly", sr.appConfig.GetString(cfgInfluxDBBucket))
+		destBucket = fmt.Sprintf("%s_monthly", sr.appConfig.GetString(cfgInfluxDBBucket))
 		rangeStart = "-2mo"
 		rangeEnd = "-1mo"
 		aggWindow = "1mo"
 	case "yearly":
-		sourceBucket = fmt.Sprintf("%s_monthly", sr.appConfig.GetString("web.influxdb.bucket"))
-		destBucket = fmt.Sprintf("%s_yearly", sr.appConfig.GetString("web.influxdb.bucket"))
+		sourceBucket = fmt.Sprintf("%s_monthly", sr.appConfig.GetString(cfgInfluxDBBucket))
+		destBucket = fmt.Sprintf("%s_yearly", sr.appConfig.GetString(cfgInfluxDBBucket))
 		rangeStart = "-2y"
 		rangeEnd = "-1y"
 		aggWindow = "1y"
@@ -160,6 +160,6 @@ from(bucket: sourceBucket)
 		rangeEnd,
 		aggWindow,
 		destBucket,
-		sr.appConfig.GetString("web.influxdb.org"),
+		sr.appConfig.GetString(cfgInfluxDBOrg),
 	)
 }

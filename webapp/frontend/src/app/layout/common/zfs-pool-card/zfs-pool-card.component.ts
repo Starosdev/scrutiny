@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { Subject } from 'rxjs';
@@ -15,8 +15,8 @@ import { ZFSPoolsService } from 'app/modules/zfs-pools/zfs-pools.service';
     styleUrls: ['./zfs-pool-card.component.scss'],
     standalone: false,
 })
-export class ZFSPoolCardComponent implements OnInit {
-    constructor(private _zfsPoolsService: ZFSPoolsService, public dialog: MatDialog) {
+export class ZFSPoolCardComponent {
+    constructor(private readonly _zfsPoolsService: ZFSPoolsService, public dialog: MatDialog) {
         this._unsubscribeAll = new Subject();
     }
 
@@ -27,8 +27,6 @@ export class ZFSPoolCardComponent implements OnInit {
     @Output() poolDeleted = new EventEmitter<string>();
 
     private _unsubscribeAll: Subject<void>;
-
-    ngOnInit(): void {}
 
     // -----------------------------------------------------------------------------------------------------
     // @ Public methods
