@@ -21,6 +21,13 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+// CLI flag and config key constants (S1192: deduplicated string literals)
+const flagHostId = "host-id"
+const flagApiToken = "api-token"
+const flagLogFile = "log-file"
+const flagApiEndpoint = "api-endpoint"
+const configKeyLogFile = "log.file"
+
 var goos string
 var goarch string
 
@@ -124,25 +131,25 @@ OPTIONS:
 					}
 
 					// Override config with flags if set
-					if c.IsSet("host-id") {
-						config.Set("host.id", c.String("host-id"))
+					if c.IsSet(flagHostId) {
+						config.Set("host.id", c.String(flagHostId))
 					}
 
 					if c.Bool("debug") {
 						config.Set("log.level", "DEBUG")
 					}
 
-					if c.IsSet("log-file") {
-						config.Set("log.file", c.String("log-file"))
+					if c.IsSet(flagLogFile) {
+						config.Set(configKeyLogFile, c.String(flagLogFile))
 					}
 
-					if c.IsSet("api-endpoint") {
-						apiEndpoint := strings.TrimSuffix(c.String("api-endpoint"), "/") + "/"
+					if c.IsSet(flagApiEndpoint) {
+						apiEndpoint := strings.TrimSuffix(c.String(flagApiEndpoint), "/") + "/"
 						config.Set("api.endpoint", apiEndpoint)
 					}
 
-					if c.IsSet("api-token") {
-						config.Set("api.token", c.String("api-token"))
+					if c.IsSet(flagApiToken) {
+						config.Set("api.token", c.String(flagApiToken))
 					}
 
 					if c.IsSet("profile") {
@@ -191,12 +198,12 @@ OPTIONS:
 						Usage: "Specify the path to the config file",
 					},
 					&cli.StringFlag{
-						Name:    "api-endpoint",
+						Name:    flagApiEndpoint,
 						Usage:   "The api server endpoint",
 						EnvVars: []string{"COLLECTOR_PERF_API_ENDPOINT", "COLLECTOR_API_ENDPOINT"},
 					},
 					&cli.StringFlag{
-						Name:    "log-file",
+						Name:    flagLogFile,
 						Usage:   "Path to file for logging. Leave empty to use STDOUT",
 						EnvVars: []string{"COLLECTOR_PERF_LOG_FILE", "COLLECTOR_LOG_FILE"},
 					},
@@ -206,7 +213,7 @@ OPTIONS:
 						EnvVars: []string{"COLLECTOR_PERF_DEBUG", "COLLECTOR_DEBUG", "DEBUG"},
 					},
 					&cli.StringFlag{
-						Name:    "host-id",
+						Name:    flagHostId,
 						Usage:   "Host identifier/label, used for grouping devices",
 						Value:   "",
 						EnvVars: []string{"COLLECTOR_PERF_HOST_ID", "COLLECTOR_HOST_ID"},
@@ -218,7 +225,7 @@ OPTIONS:
 						EnvVars: []string{"COLLECTOR_PERF_PROFILE"},
 					},
 					&cli.StringFlag{
-						Name:    "api-token",
+						Name:    flagApiToken,
 						Usage:   "API token for authenticating with the Scrutiny server",
 						EnvVars: []string{"COLLECTOR_PERF_API_TOKEN", "COLLECTOR_API_TOKEN"},
 					},
@@ -247,10 +254,10 @@ func CreateLogger(appConfig config.Interface) (*logrus.Entry, *os.File, error) {
 
 	var logFile *os.File
 	var err error
-	if appConfig.IsSet("log.file") && len(appConfig.GetString("log.file")) > 0 {
-		logFile, err = os.OpenFile(appConfig.GetString("log.file"), os.O_CREATE|os.O_WRONLY, 0644)
+	if appConfig.IsSet(configKeyLogFile) && len(appConfig.GetString(configKeyLogFile)) > 0 {
+		logFile, err = os.OpenFile(appConfig.GetString(configKeyLogFile), os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			logger.Logger.Errorf("Failed to open log file %s for output: %s", appConfig.GetString("log.file"), err)
+			logger.Logger.Errorf("Failed to open log file %s for output: %s", appConfig.GetString(configKeyLogFile), err)
 			return nil, logFile, err
 		}
 		logger.Logger.SetOutput(io.MultiWriter(os.Stderr, logFile))

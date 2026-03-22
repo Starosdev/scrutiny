@@ -1,4 +1,4 @@
-import {Component, Inject, OnInit} from '@angular/core';
+import {Component, Inject} from '@angular/core';
 import {MAT_DIALOG_DATA, MatDialogRef as MatDialogRef} from '@angular/material/dialog';
 import {DashboardDeviceArchiveDialogService} from 'app/layout/common/dashboard-device-archive-dialog/dashboard-device-archive-dialog.service';
 
@@ -8,7 +8,7 @@ import {DashboardDeviceArchiveDialogService} from 'app/layout/common/dashboard-d
     styleUrls: ['./dashboard-device-archive-dialog.component.scss'],
     standalone: false
 })
-export class DashboardDeviceArchiveDialogComponent implements OnInit {
+export class DashboardDeviceArchiveDialogComponent {
 
     constructor(
         public dialogRef: MatDialogRef<DashboardDeviceArchiveDialogComponent>,
@@ -16,9 +16,6 @@ export class DashboardDeviceArchiveDialogComponent implements OnInit {
         private _archiveService: DashboardDeviceArchiveDialogService,
     ) {
     }
-
-  ngOnInit(): void {
-  }
 
   onArchiveClick(): void {
       this._archiveService.archiveDevice(this.data.deviceId)

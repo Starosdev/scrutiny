@@ -35,9 +35,9 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      * @param {Router} _router
      */
     constructor(
-        private _elementRef: ElementRef,
-        private _platform: Platform,
-        private _router: Router
+        private readonly _elementRef: ElementRef,
+        private readonly _platform: Platform,
+        private readonly _router: Router
     )
     {
         // Set the private defaults

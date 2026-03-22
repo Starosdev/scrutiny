@@ -1,5 +1,4 @@
 import {
-    AfterViewInit,
     ChangeDetectionStrategy,
     ChangeDetectorRef,
     Component,
@@ -29,7 +28,7 @@ import {DeviceSummaryModel} from 'app/core/models/device-summary-model';
     changeDetection: ChangeDetectionStrategy.OnPush,
     standalone: false
 })
-export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
+export class DashboardComponent implements OnInit, OnDestroy
 {
     summaryData: { [key: string]: DeviceSummaryModel };
     hostGroups: { [hostId: string]: string[] } = {}
@@ -53,11 +52,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
      * @param {Router} router
      */
     constructor(
-        private _dashboardService: DashboardService,
-        private _configService: ScrutinyConfigService,
-        private _changeDetectorRef: ChangeDetectorRef,
+        private readonly _dashboardService: DashboardService,
+        private readonly _configService: ScrutinyConfigService,
+        private readonly _changeDetectorRef: ChangeDetectorRef,
         public dialog: MatDialog,
-        private router: Router,
+        private readonly router: Router,
     )
     {
         // Set the private defaults
@@ -116,12 +115,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
                 this._prepareChartData();
             });
     }
-
-    /**
-     * After view init
-     */
-    ngAfterViewInit(): void
-    {}
 
     /**
      * On destroy

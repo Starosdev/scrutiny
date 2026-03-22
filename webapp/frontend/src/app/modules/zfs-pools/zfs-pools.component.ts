@@ -23,7 +23,7 @@ export class ZFSPoolsComponent implements OnInit, OnDestroy {
 
     private _unsubscribeAll: Subject<void>;
 
-    constructor(private _zfsPoolsService: ZFSPoolsService, private _configService: ScrutinyConfigService, private router: Router) {
+    constructor(private readonly _zfsPoolsService: ZFSPoolsService, private readonly _configService: ScrutinyConfigService, private readonly router: Router) {
         this._unsubscribeAll = new Subject();
     }
 

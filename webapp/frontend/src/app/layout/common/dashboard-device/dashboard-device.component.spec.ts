@@ -20,7 +20,6 @@ describe('DashboardDeviceComponent', () => {
     let fixture: ComponentFixture<DashboardDeviceComponent>;
 
     const matDialogSpy = jasmine.createSpyObj('MatDialog', ['open']);
-    // const configServiceSpy = jasmine.createSpyObj('ScrutinyConfigService', ['config$']);
     let configService: ScrutinyConfigService;
     let httpClientSpy: jasmine.SpyObj<HttpClient>;
 

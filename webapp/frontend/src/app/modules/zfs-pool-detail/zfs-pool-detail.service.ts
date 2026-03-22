@@ -13,7 +13,7 @@ export class ZFSPoolDetailService {
     private _data: BehaviorSubject<ZFSPoolDetailsResponseWrapper>;
 
     constructor(
-        private _httpClient: HttpClient
+        private readonly _httpClient: HttpClient
     ) {
         this._data = new BehaviorSubject(null);
     }

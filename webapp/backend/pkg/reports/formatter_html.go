@@ -5,6 +5,10 @@ import (
 	"strings"
 )
 
+// HTML report color constants (S1192: deduplicated string literals)
+const colorGreen = "#28a745"
+const colorRed = "#dc3545"
+
 // FormatHTMLReport generates an HTML email body for the report.
 func FormatHTMLReport(report *ReportData) string {
 	if report == nil {
@@ -42,9 +46,9 @@ func FormatHTMLReport(report *ReportData) string {
 <table width="100%" cellpadding="0" cellspacing="0">
 <tr>`)
 	writeSummaryCell(&b, "Total", report.TotalDevices, "#212529")
-	writeSummaryCell(&b, "Passed", report.PassedDevices, "#28a745")
+	writeSummaryCell(&b, "Passed", report.PassedDevices, colorGreen)
 	writeSummaryCell(&b, "Warning", report.WarningDevices, "#ffc107")
-	writeSummaryCell(&b, "Failed", report.FailedDevices, "#dc3545")
+	writeSummaryCell(&b, "Failed", report.FailedDevices, colorRed)
 	b.WriteString(`</tr></table>`)
 
 	if report.ArchivedDevices > 0 {
@@ -53,7 +57,7 @@ func FormatHTMLReport(report *ReportData) string {
 	b.WriteString(`</td></tr>`)
 
 	// Failures section
-	writeAlertHTMLSection(&b, report, "failed", "Failures", "#dc3545")
+	writeAlertHTMLSection(&b, report, "failed", "Failures", colorRed)
 	writeAlertHTMLSection(&b, report, "warning", "Warnings", "#ffc107")
 
 	// Device table
@@ -84,11 +88,11 @@ func FormatHTMLReport(report *ReportData) string {
 func statusColor(status string) string {
 	switch status {
 	case "critical":
-		return "#dc3545"
+		return colorRed
 	case "warning":
 		return "#e6a817"
 	default:
-		return "#28a745"
+		return colorGreen
 	}
 }
 
@@ -135,7 +139,7 @@ func writeDeviceHTMLTable(b *strings.Builder, report *ReportData) {
 		d := &report.Devices[i]
 		rowColor := "#212529"
 		if d.Status > 0 {
-			rowColor = "#dc3545"
+			rowColor = colorRed
 		}
 
 		name := d.DisplayName()
@@ -192,9 +196,9 @@ func writeZFSHTMLSection(b *strings.Builder, pools []ZFSPoolReport) {
 </tr>`)
 
 	for _, pool := range pools {
-		healthColor := "#28a745"
+		healthColor := colorGreen
 		if pool.Health != "ONLINE" {
-			healthColor = "#dc3545"
+			healthColor = colorRed
 		}
 
 		errors := ""

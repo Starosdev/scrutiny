@@ -11,7 +11,7 @@ export class TreoConfigModule
      * @param {TreoConfigService} _treoConfigService
      */
     constructor(
-        private _treoConfigService: TreoConfigService
+        private readonly _treoConfigService: TreoConfigService
     )
     {
     }

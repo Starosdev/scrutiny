@@ -16,7 +16,7 @@ export class ThemeToggleComponent implements OnInit, OnDestroy {
 
     private _unsubscribeAll: Subject<void> = new Subject();
 
-    constructor(private _configService: ScrutinyConfigService) {}
+    constructor(private readonly _configService: ScrutinyConfigService) {}
 
     ngOnInit(): void {
         this._configService.config$

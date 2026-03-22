@@ -25,8 +25,8 @@ export class TreoCardComponent
      * @param {ElementRef} _elementRef
      */
     constructor(
-        private _renderer2: Renderer2,
-        private _elementRef: ElementRef
+        private readonly _renderer2: Renderer2,
+        private readonly _elementRef: ElementRef
     )
     {
         // Set the defaults

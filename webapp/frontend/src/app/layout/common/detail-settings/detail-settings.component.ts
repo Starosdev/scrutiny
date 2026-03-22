@@ -1,4 +1,4 @@
-import { Component, OnInit, Inject } from '@angular/core';
+import { Component, Inject } from '@angular/core';
 import { MAT_DIALOG_DATA } from '@angular/material/dialog';
 
 @Component({
@@ -7,7 +7,7 @@ import { MAT_DIALOG_DATA } from '@angular/material/dialog';
     styleUrls: ['./detail-settings.component.scss'],
     standalone: false
 })
-export class DetailSettingsComponent implements OnInit {
+export class DetailSettingsComponent {
 
   muted: boolean;
   label: string;
@@ -24,8 +24,5 @@ export class DetailSettingsComponent implements OnInit {
       this.muted = data.curMuted;
       this.label = data.curLabel || '';
       this.missedPingTimeoutOverride = data.curMissedPingTimeoutOverride || 0;
-  }
-
-  ngOnInit(): void {
   }
 }

@@ -33,12 +33,12 @@ export class TreoHighlightComponent implements AfterViewInit
      * @param {ViewContainerRef} _viewContainerRef
      */
     constructor(
-        private _treoHighlightService: TreoHighlightService,
-        private _domSanitizer: DomSanitizer,
-        private _changeDetectorRef: ChangeDetectorRef,
-        private _elementRef: ElementRef,
-        private _renderer2: Renderer2,
-        private _viewContainerRef: ViewContainerRef
+        private readonly _treoHighlightService: TreoHighlightService,
+        private readonly _domSanitizer: DomSanitizer,
+        private readonly _changeDetectorRef: ChangeDetectorRef,
+        private readonly _elementRef: ElementRef,
+        private readonly _renderer2: Renderer2,
+        private readonly _viewContainerRef: ViewContainerRef
     )
     {
         // Set the private defaults

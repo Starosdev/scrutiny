@@ -46,9 +46,9 @@ export class SearchComponent implements OnInit, OnDestroy
      * @param {Renderer2} _renderer2
      */
     constructor(
-        private _elementRef: ElementRef,
-        private _httpClient: HttpClient,
-        private _renderer2: Renderer2
+        private readonly _elementRef: ElementRef,
+        private readonly _httpClient: HttpClient,
+        private readonly _renderer2: Renderer2
     )
     {
         // Set the private defaults

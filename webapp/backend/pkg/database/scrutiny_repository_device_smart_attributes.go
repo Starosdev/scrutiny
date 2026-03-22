@@ -130,7 +130,7 @@ from(bucket: "%s")
 |> group()
 |> sort(columns: ["_time"], desc: true)
 |> limit(n: 1, offset: 1)
-`, sr.appConfig.GetString("web.influxdb.bucket"), wwn)
+`, sr.appConfig.GetString(cfgInfluxDBBucket), wwn)
 
 	sr.logger.Debugln("GetPreviousSmartSubmission query:", queryStr)
 
@@ -171,7 +171,7 @@ from(bucket: "%s")
 |> group()
 |> sort(columns: ["_time"], desc: true)
 |> limit(n: 1, offset: 0)
-`, sr.appConfig.GetString("web.influxdb.bucket"), wwn)
+`, sr.appConfig.GetString(cfgInfluxDBBucket), wwn)
 
 	sr.logger.Debugln("GetLatestSmartSubmission query:", queryStr)
 

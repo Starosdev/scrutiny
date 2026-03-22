@@ -39,11 +39,11 @@ export class MaterialLayoutComponent implements OnInit, OnDestroy
      * @param {Router} _router
      */
     constructor(
-        private _activatedRoute: ActivatedRoute,
-        private _authService: AuthService,
-        private _treoMediaWatcherService: TreoMediaWatcherService,
-        private _treoNavigationService: TreoNavigationService,
-        private _router: Router
+        private readonly _activatedRoute: ActivatedRoute,
+        private readonly _authService: AuthService,
+        private readonly _treoMediaWatcherService: TreoMediaWatcherService,
+        private readonly _treoNavigationService: TreoNavigationService,
+        private readonly _router: Router
     )
     {
         // Set the private defaults

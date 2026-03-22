@@ -16,7 +16,7 @@ export class DashboardDeviceArchiveDialogService
      * @param {HttpClient} _httpClient
      */
     constructor(
-        private _httpClient: HttpClient
+        private readonly _httpClient: HttpClient
     )
     {
     }

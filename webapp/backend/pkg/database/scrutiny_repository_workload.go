@@ -129,6 +129,17 @@ type workloadSnapshot struct {
 	hasPercentageUsed  bool
 }
 
+// extractInt64 extracts an int64 value from InfluxDB result map.
+// Returns the value and true if found, or 0 and false otherwise.
+func extractInt64(values map[string]interface{}, key string) (int64, bool) {
+	if v, ok := values[key]; ok && v != nil {
+		if intVal, ok := v.(int64); ok {
+			return intVal, true
+		}
+	}
+	return 0, false
+}
+
 func parseWorkloadSnapshot(values map[string]interface{}) *workloadSnapshot {
 	snap := &workloadSnapshot{}
 
@@ -137,11 +148,7 @@ func parseWorkloadSnapshot(values map[string]interface{}) *workloadSnapshot {
 			snap.Time = t
 		}
 	}
-	if v, ok := values["power_on_hours"]; ok && v != nil {
-		if intVal, ok := v.(int64); ok {
-			snap.PowerOnHours = intVal
-		}
-	}
+	snap.PowerOnHours, _ = extractInt64(values, "power_on_hours")
 	if v, ok := values["logical_block_size"]; ok && v != nil {
 		switch val := v.(type) {
 		case int64:
@@ -154,73 +161,28 @@ func parseWorkloadSnapshot(values map[string]interface{}) *workloadSnapshot {
 		snap.LogicalBlockSize = 512 // default
 	}
 
-	// ATA attributes
-	if v, ok := values["attr.241.raw_value"]; ok && v != nil {
-		if intVal, ok := v.(int64); ok {
-			snap.Attr241RawValue = intVal
-			snap.hasAttr241 = true
-		}
-	}
-	if v, ok := values["attr.242.raw_value"]; ok && v != nil {
-		if intVal, ok := v.(int64); ok {
-			snap.Attr242RawValue = intVal
-			snap.hasAttr242 = true
-		}
-	}
-	if v, ok := values["attr.devstat_1_24.value"]; ok && v != nil {
-		if intVal, ok := v.(int64); ok {
-			snap.Devstat124Value = intVal
-			snap.hasDevstat124 = true
-		}
-	}
-	if v, ok := values["attr.devstat_1_40.value"]; ok && v != nil {
-		if intVal, ok := v.(int64); ok {
-			snap.Devstat140Value = intVal
-			snap.hasDevstat140 = true
-		}
-	}
-	if v, ok := values["attr.devstat_7_8.value"]; ok && v != nil {
-		if intVal, ok := v.(int64); ok {
-			snap.Devstat78Value = intVal
-			snap.hasDevstat78 = true
-		}
-	}
-	for _, attrInfo := range []struct {
+	// Extract all int64 SMART attributes using table-driven approach
+	for _, attr := range []struct {
 		dest  *int64
 		flag  *bool
 		field string
 	}{
+		// ATA attributes
+		{field: "attr.241.raw_value", dest: &snap.Attr241RawValue, flag: &snap.hasAttr241},
+		{field: "attr.242.raw_value", dest: &snap.Attr242RawValue, flag: &snap.hasAttr242},
+		{field: "attr.devstat_1_24.value", dest: &snap.Devstat124Value, flag: &snap.hasDevstat124},
+		{field: "attr.devstat_1_40.value", dest: &snap.Devstat140Value, flag: &snap.hasDevstat140},
+		{field: "attr.devstat_7_8.value", dest: &snap.Devstat78Value, flag: &snap.hasDevstat78},
 		{field: "attr.177.value", dest: &snap.Attr177Value, flag: &snap.hasAttr177},
 		{field: "attr.231.value", dest: &snap.Attr231Value, flag: &snap.hasAttr231},
 		{field: "attr.232.value", dest: &snap.Attr232Value, flag: &snap.hasAttr232},
 		{field: "attr.233.value", dest: &snap.Attr233Value, flag: &snap.hasAttr233},
+		// NVMe attributes
+		{field: "attr.data_units_written.value", dest: &snap.DataUnitsWritten, flag: &snap.hasDataUnitsW},
+		{field: "attr.data_units_read.value", dest: &snap.DataUnitsRead, flag: &snap.hasDataUnitsR},
+		{field: "attr.percentage_used.value", dest: &snap.PercentageUsed, flag: &snap.hasPercentageUsed},
 	} {
-		if v, ok := values[attrInfo.field]; ok && v != nil {
-			if intVal, ok := v.(int64); ok {
-				*attrInfo.dest = intVal
-				*attrInfo.flag = true
-			}
-		}
-	}
-
-	// NVMe attributes
-	if v, ok := values["attr.data_units_written.value"]; ok && v != nil {
-		if intVal, ok := v.(int64); ok {
-			snap.DataUnitsWritten = intVal
-			snap.hasDataUnitsW = true
-		}
-	}
-	if v, ok := values["attr.data_units_read.value"]; ok && v != nil {
-		if intVal, ok := v.(int64); ok {
-			snap.DataUnitsRead = intVal
-			snap.hasDataUnitsR = true
-		}
-	}
-	if v, ok := values["attr.percentage_used.value"]; ok && v != nil {
-		if intVal, ok := v.(int64); ok {
-			snap.PercentageUsed = intVal
-			snap.hasPercentageUsed = true
-		}
+		*attr.dest, *attr.flag = extractInt64(values, attr.field)
 	}
 
 	return snap
@@ -270,7 +232,7 @@ func (sr *scrutinyRepository) queryWorkloadFirstLast(ctx context.Context, durati
 }
 
 func (sr *scrutinyRepository) buildWorkloadFirstLastQuery(durationKey string) string {
-	bucketBaseName := sr.appConfig.GetString("web.influxdb.bucket")
+	bucketBaseName := sr.appConfig.GetString(cfgInfluxDBBucket)
 
 	partialQueryStr := []string{
 		`import "influxdata/influxdb/schema"`,
@@ -380,7 +342,7 @@ func (sr *scrutinyRepository) queryWorkloadRecent(ctx context.Context) (map[stri
 }
 
 func (sr *scrutinyRepository) buildWorkloadRecentQuery() string {
-	bucketName := sr.appConfig.GetString("web.influxdb.bucket")
+	bucketName := sr.appConfig.GetString(cfgInfluxDBBucket)
 
 	return strings.Join([]string{
 		`import "influxdata/influxdb/schema"`,

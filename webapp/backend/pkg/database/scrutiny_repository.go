@@ -57,7 +57,7 @@ func NewScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Gorm/SQLite setup
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	globalLogger.Infof("Trying to connect to scrutiny sqlite db: %s\n", appConfig.GetString("web.database.location"))
+	globalLogger.Infof("Trying to connect to scrutiny sqlite db: %s\n", appConfig.GetString(cfgDatabaseLocation))
 
 	// When a transaction cannot lock the database, because it is already locked by another one,
 	// SQLite by default throws an error: database is locked. This behavior is usually not appropriate when
@@ -106,7 +106,7 @@ func NewScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 		},
 	)
 
-	database, err := gorm.Open(sqlite.Open(appConfig.GetString("web.database.location")+pragmaStr), &gorm.Config{
+	database, err := gorm.Open(sqlite.Open(appConfig.GetString(cfgDatabaseLocation)+pragmaStr), &gorm.Config{
 		Logger:                                   gormLoggerConfig,
 		DisableForeignKeyConstraintWhenMigrating: true,
 	})
@@ -122,7 +122,7 @@ func NewScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 		}
 		return nil, fmt.Errorf("Failed to connect to database! - %v", err)
 	}
-	globalLogger.Infof("Successfully connected to scrutiny sqlite db: %s\n", appConfig.GetString("web.database.location"))
+	globalLogger.Infof("Successfully connected to scrutiny sqlite db: %s\n", appConfig.GetString(cfgDatabaseLocation))
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// InfluxDB setup
@@ -162,8 +162,8 @@ func NewScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 			backgroundContext,
 			appConfig.GetString("web.influxdb.init_username"),
 			appConfig.GetString("web.influxdb.init_password"),
-			appConfig.GetString("web.influxdb.org"),
-			appConfig.GetString("web.influxdb.bucket"),
+			appConfig.GetString(cfgInfluxDBOrg),
+			appConfig.GetString(cfgInfluxDBBucket),
 			0,
 			appConfig.GetString("web.influxdb.token"),
 		)
@@ -173,10 +173,10 @@ func NewScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 	}
 
 	// Use blocking write client for writes to desired bucket
-	writeAPI := client.WriteAPIBlocking(appConfig.GetString("web.influxdb.org"), appConfig.GetString("web.influxdb.bucket"))
+	writeAPI := client.WriteAPIBlocking(appConfig.GetString(cfgInfluxDBOrg), appConfig.GetString(cfgInfluxDBBucket))
 
 	// Get query client
-	queryAPI := client.QueryAPI(appConfig.GetString("web.influxdb.org"))
+	queryAPI := client.QueryAPI(appConfig.GetString(cfgInfluxDBOrg))
 
 	// Get task client
 	taskAPI := client.TasksAPI()
@@ -195,7 +195,7 @@ func NewScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 		gormClient:     database,
 	}
 
-	orgInfo, err := client.OrganizationsAPI().FindOrganizationByName(backgroundContext, appConfig.GetString("web.influxdb.org"))
+	orgInfo, err := client.OrganizationsAPI().FindOrganizationByName(backgroundContext, appConfig.GetString(cfgInfluxDBOrg))
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +349,7 @@ func (sr *scrutinyRepository) EnsureBuckets(ctx context.Context, org *domain.Org
 	var mainBucketRetentionRule domain.RetentionRule
 	var weeklyBucketRetentionRule domain.RetentionRule
 	var monthlyBucketRetentionRule domain.RetentionRule
-	if sr.appConfig.GetBool("web.influxdb.retention_policy") {
+	if sr.appConfig.GetBool(cfgInfluxDBRetentionPolicy) {
 
 		// in tests, we may not want to set a retention policy. If "false", we can set data with old timestamps,
 		// then manually run the down sampling scripts. This should be true for production environments.
@@ -358,47 +358,47 @@ func (sr *scrutinyRepository) EnsureBuckets(ctx context.Context, org *domain.Org
 		monthlyBucketRetentionRule = domain.RetentionRule{EverySeconds: int64(sr.appConfig.GetInt("web.influxdb.retention.monthly"))}
 	}
 
-	mainBucket := sr.appConfig.GetString("web.influxdb.bucket")
+	mainBucket := sr.appConfig.GetString(cfgInfluxDBBucket)
 	if foundMainBucket, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, mainBucket); foundErr != nil {
 		// metrics bucket will have a retention period of 15 days (since it will be down-sampled once a week)
 		_, err := sr.influxClient.BucketsAPI().CreateBucketWithName(ctx, org, mainBucket, mainBucketRetentionRule)
 		if err != nil {
 			return err
 		}
-	} else if sr.appConfig.GetBool("web.influxdb.retention_policy") {
+	} else if sr.appConfig.GetBool(cfgInfluxDBRetentionPolicy) {
 		//correctly set the retention period for the main bucket (cant do it during setup/creation)
 		foundMainBucket.RetentionRules = domain.RetentionRules{mainBucketRetentionRule}
 		sr.influxClient.BucketsAPI().UpdateBucket(ctx, foundMainBucket)
 	}
 
 	//create buckets (used for downsampling)
-	weeklyBucket := fmt.Sprintf("%s_weekly", sr.appConfig.GetString("web.influxdb.bucket"))
+	weeklyBucket := fmt.Sprintf("%s_weekly", sr.appConfig.GetString(cfgInfluxDBBucket))
 	if foundWeeklyBucket, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, weeklyBucket); foundErr != nil {
 		// metrics_weekly bucket will have a retention period of 8+1 weeks (since it will be down-sampled once a month)
 		_, err := sr.influxClient.BucketsAPI().CreateBucketWithName(ctx, org, weeklyBucket, weeklyBucketRetentionRule)
 		if err != nil {
 			return err
 		}
-	} else if sr.appConfig.GetBool("web.influxdb.retention_policy") {
+	} else if sr.appConfig.GetBool(cfgInfluxDBRetentionPolicy) {
 		//correctly set the retention period for the bucket (may not be able to do it during setup/creation)
 		foundWeeklyBucket.RetentionRules = domain.RetentionRules{weeklyBucketRetentionRule}
 		sr.influxClient.BucketsAPI().UpdateBucket(ctx, foundWeeklyBucket)
 	}
 
-	monthlyBucket := fmt.Sprintf("%s_monthly", sr.appConfig.GetString("web.influxdb.bucket"))
+	monthlyBucket := fmt.Sprintf("%s_monthly", sr.appConfig.GetString(cfgInfluxDBBucket))
 	if foundMonthlyBucket, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, monthlyBucket); foundErr != nil {
 		// metrics_monthly bucket will have a retention period of 24+1 months (since it will be down-sampled once a year)
 		_, err := sr.influxClient.BucketsAPI().CreateBucketWithName(ctx, org, monthlyBucket, monthlyBucketRetentionRule)
 		if err != nil {
 			return err
 		}
-	} else if sr.appConfig.GetBool("web.influxdb.retention_policy") {
+	} else if sr.appConfig.GetBool(cfgInfluxDBRetentionPolicy) {
 		//correctly set the retention period for the bucket (may not be able to do it during setup/creation)
 		foundMonthlyBucket.RetentionRules = domain.RetentionRules{monthlyBucketRetentionRule}
 		sr.influxClient.BucketsAPI().UpdateBucket(ctx, foundMonthlyBucket)
 	}
 
-	yearlyBucket := fmt.Sprintf("%s_yearly", sr.appConfig.GetString("web.influxdb.bucket"))
+	yearlyBucket := fmt.Sprintf("%s_yearly", sr.appConfig.GetString(cfgInfluxDBBucket))
 	if _, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, yearlyBucket); foundErr != nil {
 		// metrics_yearly bucket will have an infinite retention period
 		_, err := sr.influxClient.BucketsAPI().CreateBucketWithName(ctx, org, yearlyBucket)
@@ -430,7 +430,7 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 	}
 
 	// Get parser flux query result
-	//appConfig.GetString("web.influxdb.bucket")
+	// appConfig.GetString(cfgInfluxDBBucket)
 	// SSD health fields:
 	// - NVMe: attr.percentage_used.value (0-100%, higher = more worn)
 	// - ATA DevStats: attr.devstat_7_8.raw_value (0-100%, higher = more worn)
@@ -489,7 +489,7 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 	|> last(column: "device_wwn")
 	|> yield(name: "last")
 		`,
-		sr.appConfig.GetString("web.influxdb.bucket"),
+		sr.appConfig.GetString(cfgInfluxDBBucket),
 	)
 
 	result, err := sr.influxQueryApi.Query(ctx, queryStr)
@@ -625,7 +625,7 @@ union(tables: [dailyData, weeklyData, monthlyData, yearlyData])
 |> sort(columns: ["_time"], desc: false)
 |> last()
 |> yield(name: "last_seen")
-	`, sr.appConfig.GetString("web.influxdb.bucket"))
+	`, sr.appConfig.GetString(cfgInfluxDBBucket))
 
 	result, err := sr.influxQueryApi.Query(ctx, queryStr)
 	if err != nil {
@@ -659,7 +659,7 @@ union(tables: [dailyData, weeklyData, monthlyData, yearlyData])
 // GetAvailableInfluxDBBuckets returns a list of bucket names available in InfluxDB.
 // This is used for diagnostics to verify required buckets exist.
 func (sr *scrutinyRepository) GetAvailableInfluxDBBuckets(ctx context.Context) ([]string, error) {
-	org := sr.appConfig.GetString("web.influxdb.org")
+	org := sr.appConfig.GetString(cfgInfluxDBOrg)
 
 	// Query InfluxDB for all buckets in the organization
 	buckets, err := sr.influxClient.BucketsAPI().FindBucketsByOrgName(ctx, org)
@@ -684,18 +684,18 @@ func (sr *scrutinyRepository) lookupBucketName(durationKey string) string {
 	case DURATION_KEY_DAY:
 	case DURATION_KEY_WEEK:
 		//data stored in the last week
-		return sr.appConfig.GetString("web.influxdb.bucket")
+		return sr.appConfig.GetString(cfgInfluxDBBucket)
 	case DURATION_KEY_MONTH:
 		// data stored in the last month (after the first week)
-		return fmt.Sprintf("%s_weekly", sr.appConfig.GetString("web.influxdb.bucket"))
+		return fmt.Sprintf("%s_weekly", sr.appConfig.GetString(cfgInfluxDBBucket))
 	case DURATION_KEY_YEAR:
 		// data stored in the last year (after the first month)
-		return fmt.Sprintf("%s_monthly", sr.appConfig.GetString("web.influxdb.bucket"))
+		return fmt.Sprintf("%s_monthly", sr.appConfig.GetString(cfgInfluxDBBucket))
 	case DURATION_KEY_FOREVER:
 		//data stored before the last year
-		return fmt.Sprintf("%s_yearly", sr.appConfig.GetString("web.influxdb.bucket"))
+		return fmt.Sprintf("%s_yearly", sr.appConfig.GetString(cfgInfluxDBBucket))
 	}
-	return sr.appConfig.GetString("web.influxdb.bucket")
+	return sr.appConfig.GetString(cfgInfluxDBBucket)
 }
 
 func (sr *scrutinyRepository) lookupDuration(durationKey string) []string {

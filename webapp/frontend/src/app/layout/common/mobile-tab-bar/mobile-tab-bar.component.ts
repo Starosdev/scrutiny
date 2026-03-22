@@ -33,7 +33,7 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
 
     private _unsubscribeAll: Subject<void>;
 
-    constructor(private _router: Router, private readonly _dashboardService: DashboardService) {
+    constructor(private readonly _router: Router, private readonly _dashboardService: DashboardService) {
         this._unsubscribeAll = new Subject();
     }
 

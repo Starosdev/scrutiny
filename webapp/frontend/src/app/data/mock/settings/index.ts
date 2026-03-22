@@ -12,7 +12,7 @@ export class SettingsMockApi implements TreoMockApi
 {
     private _settings: any;
 
-    constructor(private _treoMockApiService: TreoMockApiService)
+    constructor(private readonly _treoMockApiService: TreoMockApiService)
     {
         this._settings = settingsData;
         this.register();

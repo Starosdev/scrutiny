@@ -14,7 +14,7 @@ export class TreoSplashScreenModule
      * @param {TreoSplashScreenService} _treoSplashScreenService
      */
     constructor(
-        private _treoSplashScreenService: TreoSplashScreenService
+        private readonly _treoSplashScreenService: TreoSplashScreenService
     )
     {
     }
