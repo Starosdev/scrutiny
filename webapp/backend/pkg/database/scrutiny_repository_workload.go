@@ -163,24 +163,24 @@ func parseWorkloadSnapshot(values map[string]interface{}) *workloadSnapshot {
 
 	// Extract all int64 SMART attributes using table-driven approach
 	for _, attr := range []struct {
-		field string
 		dest  *int64
 		flag  *bool
+		field string
 	}{
 		// ATA attributes
-		{"attr.241.raw_value", &snap.Attr241RawValue, &snap.hasAttr241},
-		{"attr.242.raw_value", &snap.Attr242RawValue, &snap.hasAttr242},
-		{"attr.devstat_1_24.value", &snap.Devstat124Value, &snap.hasDevstat124},
-		{"attr.devstat_1_40.value", &snap.Devstat140Value, &snap.hasDevstat140},
-		{"attr.devstat_7_8.value", &snap.Devstat78Value, &snap.hasDevstat78},
-		{"attr.177.value", &snap.Attr177Value, &snap.hasAttr177},
-		{"attr.231.value", &snap.Attr231Value, &snap.hasAttr231},
-		{"attr.232.value", &snap.Attr232Value, &snap.hasAttr232},
-		{"attr.233.value", &snap.Attr233Value, &snap.hasAttr233},
+		{field: "attr.241.raw_value", dest: &snap.Attr241RawValue, flag: &snap.hasAttr241},
+		{field: "attr.242.raw_value", dest: &snap.Attr242RawValue, flag: &snap.hasAttr242},
+		{field: "attr.devstat_1_24.value", dest: &snap.Devstat124Value, flag: &snap.hasDevstat124},
+		{field: "attr.devstat_1_40.value", dest: &snap.Devstat140Value, flag: &snap.hasDevstat140},
+		{field: "attr.devstat_7_8.value", dest: &snap.Devstat78Value, flag: &snap.hasDevstat78},
+		{field: "attr.177.value", dest: &snap.Attr177Value, flag: &snap.hasAttr177},
+		{field: "attr.231.value", dest: &snap.Attr231Value, flag: &snap.hasAttr231},
+		{field: "attr.232.value", dest: &snap.Attr232Value, flag: &snap.hasAttr232},
+		{field: "attr.233.value", dest: &snap.Attr233Value, flag: &snap.hasAttr233},
 		// NVMe attributes
-		{"attr.data_units_written.value", &snap.DataUnitsWritten, &snap.hasDataUnitsW},
-		{"attr.data_units_read.value", &snap.DataUnitsRead, &snap.hasDataUnitsR},
-		{"attr.percentage_used.value", &snap.PercentageUsed, &snap.hasPercentageUsed},
+		{field: "attr.data_units_written.value", dest: &snap.DataUnitsWritten, flag: &snap.hasDataUnitsW},
+		{field: "attr.data_units_read.value", dest: &snap.DataUnitsRead, flag: &snap.hasDataUnitsR},
+		{field: "attr.percentage_used.value", dest: &snap.PercentageUsed, flag: &snap.hasPercentageUsed},
 	} {
 		*attr.dest, *attr.flag = extractInt64(values, attr.field)
 	}

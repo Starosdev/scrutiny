@@ -430,7 +430,7 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 	}
 
 	// Get parser flux query result
-	//appConfig.GetString(cfgInfluxDBBucket)
+	// appConfig.GetString(cfgInfluxDBBucket)
 	// SSD health fields:
 	// - NVMe: attr.percentage_used.value (0-100%, higher = more worn)
 	// - ATA DevStats: attr.devstat_7_8.raw_value (0-100%, higher = more worn)

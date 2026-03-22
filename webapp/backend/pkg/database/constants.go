@@ -12,6 +12,6 @@ const (
     queryGUID     = "guid = ?"
 
     // Error format strings
-    errDeviceNotFound  = "Could not get device from DB: %v"
+    errDeviceNotFound  = "could not get device from DB: %v"
     errZFSPoolNotFound = "could not get ZFS pool from DB: %v"
 )
