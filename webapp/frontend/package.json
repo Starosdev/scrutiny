@@ -45,7 +45,7 @@
     "rxjs": "^7.5.7",
     "tslib": "^2.4.1",
     "web-animations-js": "^2.3.2",
-    "zone.js": "^0.15.1"
+    "zone.js": "^0.16.1"
   },
   "devDependencies": {
     "@angular-eslint/builder": "^21.1.0",
