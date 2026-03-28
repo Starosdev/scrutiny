@@ -13,7 +13,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang/mock v1.6.0
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.6.0
 	github.com/influxdata/influxdb-client-go/v2 v2.9.0
 	github.com/jaypipes/ghw v0.23.0
 	github.com/mitchellh/mapstructure v1.5.0
