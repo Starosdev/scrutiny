@@ -27,10 +27,21 @@ func RegisterDevices(c *gin.Context) {
 
 	errs := []error{}
 	detectedStorageDevices := collectorDeviceWrapper.Data
-	for _, dev := range detectedStorageDevices {
+	for i := range detectedStorageDevices {
+		// Compute DeviceID before registration so it is present in the response.
+		// RegisterDevice performs the same computation internally; doing it here
+		// ensures the response payload carries the device_id the collector should
+		// use for subsequent API calls (e.g. SMART submission).
+		if detectedStorageDevices[i].DeviceID == "" {
+			detectedStorageDevices[i].DeviceID = deviceid.Generate(
+				detectedStorageDevices[i].ModelName,
+				detectedStorageDevices[i].SerialNumber,
+				detectedStorageDevices[i].WWN,
+			)
+		}
 		//insert devices into DB (and update specified columns if device is already registered)
 		// update device fields that may change: (DeviceType, HostID)
-		if err := deviceRepo.RegisterDevice(c, dev); err != nil {
+		if err := deviceRepo.RegisterDevice(c, detectedStorageDevices[i]); err != nil {
 			errs = append(errs, err)
 		}
 	}
