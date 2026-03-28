@@ -12,7 +12,7 @@ RUN make binary-frontend
 
 
 ######## Build the backend
-FROM golang:1.25-trixie AS backendbuild
+FROM golang:1.26-trixie AS backendbuild
 
 WORKDIR /go/src/github.com/analogj/scrutiny
 COPY --link . /go/src/github.com/analogj/scrutiny

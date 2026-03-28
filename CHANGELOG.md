@@ -2,6 +2,13 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.47.1](https://github.com/Starosdev/scrutiny/compare/v1.47.0...v1.47.1) (2026-03-15)
+
+### Bug Fixes
+
+* **collector:** prevent cron bomb from accumulating collector processes ([#365](https://github.com/Starosdev/scrutiny/issues/365)) ([#370](https://github.com/Starosdev/scrutiny/issues/370)) ([11366e7](https://github.com/Starosdev/scrutiny/commit/11366e78db8d6e68ee0dc92abf08955f2dfd0220))
+* manual release trigger ([0e47e6a](https://github.com/Starosdev/scrutiny/commit/0e47e6abb420b0445373f3e380f328956cfd758f))
+
 ## [1.47.0](https://github.com/Starosdev/scrutiny/compare/v1.46.4...v1.47.0) (2026-03-14)
 
 ### Features
