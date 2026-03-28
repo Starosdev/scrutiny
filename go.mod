@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/analogj/go-util v0.0.0-20190301173314-5295e364eb14
-	github.com/eclipse/paho.mqtt.golang v1.5.0
+	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/fatih/color v1.19.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/glebarez/sqlite v1.4.5
