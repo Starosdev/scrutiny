@@ -14,7 +14,8 @@
       "typeRoots": [
         "node_modules/@types"
       ],
-      "useDefineForClassFields": false
+      "useDefineForClassFields": false,
+      "skipLibCheck": true
     },
     "angularCompilerOptions": {
         "fullTemplateTypeCheck": true,
