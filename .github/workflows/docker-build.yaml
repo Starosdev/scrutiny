@@ -77,7 +77,7 @@ jobs:
             type=semver,pattern={{major}}-collector,enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           context: .
@@ -135,7 +135,7 @@ jobs:
             type=semver,pattern={{major}}-collector-zfs,enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           platforms: linux/amd64
           context: .
@@ -193,7 +193,7 @@ jobs:
             type=semver,pattern={{major}}-collector-performance,enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           context: .
@@ -252,7 +252,7 @@ jobs:
             type=semver,pattern={{major}}-web,enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           context: .
@@ -315,7 +315,7 @@ jobs:
             type=raw,value=latest,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           platforms: linux/amd64,linux/arm64
           context: .
