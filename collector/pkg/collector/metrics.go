@@ -87,10 +87,16 @@ func (mc *MetricsCollector) Run() error {
 		mc.logger.Debugln(deviceRespWrapper)
 		//var wg sync.WaitGroup
 		for _, device := range deviceRespWrapper.Data {
+			// Use device_id as the primary identifier for API calls.
+			// Fall back to WWN for compatibility with older backends that do not return device_id.
+			deviceIdentifier := device.DeviceID
+			if deviceIdentifier == "" {
+				deviceIdentifier = device.WWN
+			}
 			// execute collection in parallel go-routines
 			//wg.Add(1)
-			//go mc.Collect(&wg, device.WWN, device.DeviceName, device.DeviceType)
-			mc.Collect(device.WWN, device.DeviceName, device.DeviceType)
+			//go mc.Collect(&wg, deviceIdentifier, device.DeviceName, device.DeviceType)
+			mc.Collect(deviceIdentifier, device.DeviceName, device.DeviceType)
 
 			if mc.config.GetInt("commands.metrics_smartctl_wait") > 0 {
 				time.Sleep(time.Duration(mc.config.GetInt("commands.metrics_smartctl_wait")) * time.Second)
@@ -173,11 +179,11 @@ func (mc *MetricsCollector) hintAppArmorOnDeviceOpenFailure(deviceName string) {
 	}
 }
 
-// func (mc *MetricsCollector) Collect(wg *sync.WaitGroup, deviceWWN string, deviceName string, deviceType string) {
-func (mc *MetricsCollector) Collect(deviceWWN string, deviceName string, deviceType string) {
+// func (mc *MetricsCollector) Collect(wg *sync.WaitGroup, deviceID string, deviceName string, deviceType string) {
+func (mc *MetricsCollector) Collect(deviceID string, deviceName string, deviceType string) {
 	//defer wg.Done()
-	if len(deviceWWN) == 0 {
-		mc.logger.Errorf("no device WWN detected for %s. Skipping collection for this device (no data association possible).\n", deviceName)
+	if len(deviceID) == 0 {
+		mc.logger.Errorf("no device identifier detected for %s. Skipping collection for this device (no data association possible).\n", deviceName)
 		mc.ReportScanError("info", fmt.Sprintf("no WWN detected for device %s; smartctl --info may have failed", deviceName), deviceName)
 		return
 	}
@@ -216,7 +222,7 @@ func (mc *MetricsCollector) Collect(deviceWWN string, deviceName string, deviceT
 				if exitCode&0x02 != 0 {
 					mc.hintAppArmorOnDeviceOpenFailure(deviceName)
 				}
-				mc.ReportDeviceError(deviceWWN, "xall", fmt.Sprintf("smartctl exited with fatal code %d while reading %s", exitCode, deviceName))
+				mc.ReportDeviceError(deviceID, "xall", fmt.Sprintf("smartctl exited with fatal code %d while reading %s", exitCode, deviceName))
 				return
 			}
 			mc.logger.Warnf("smartctl returned a non-fatal exit code (%d) while processing %s; data will still be published", exitCode, deviceName)
@@ -225,7 +231,7 @@ func (mc *MetricsCollector) Collect(deviceWWN string, deviceName string, deviceT
 			mc.logger.Errorf("error while attempting to execute smartctl: %s\n", deviceName)
 			mc.logger.Errorf("ERROR MESSAGE: %v", err)
 			mc.logger.Errorf("IGNORING RESULT: %v", result)
-			mc.ReportDeviceError(deviceWWN, "xall", err.Error())
+			mc.ReportDeviceError(deviceID, "xall", err.Error())
 			return
 		}
 	}
@@ -235,7 +241,7 @@ func (mc *MetricsCollector) Collect(deviceWWN string, deviceName string, deviceT
 		resultBytes = mc.collectAndMergeFarm(resultBytes, fullDeviceName, deviceType, deviceName)
 	}
 
-	if err := mc.Publish(deviceWWN, resultBytes); err != nil {
+	if err := mc.Publish(deviceID, resultBytes); err != nil {
 		mc.logger.Errorf("Failed to publish SMART data for %s: %v", deviceName, err)
 	}
 }
@@ -298,15 +304,15 @@ func (mc *MetricsCollector) collectAndMergeFarm(smartJson []byte, fullDeviceName
 	return merged
 }
 
-func (mc *MetricsCollector) Publish(deviceWWN string, payload []byte) error {
-	mc.logger.Infof("Publishing smartctl results for %s\n", deviceWWN)
+func (mc *MetricsCollector) Publish(deviceID string, payload []byte) error {
+	mc.logger.Infof("Publishing smartctl results for %s\n", deviceID)
 
 	apiEndpoint, _ := url.Parse(mc.apiEndpoint.String())
-	apiEndpoint, _ = apiEndpoint.Parse(fmt.Sprintf("api/device/%s/smart", strings.ToLower(deviceWWN)))
+	apiEndpoint, _ = apiEndpoint.Parse(fmt.Sprintf("api/device/%s/smart", strings.ToLower(deviceID)))
 
 	resp, err := mc.httpClient.Post(apiEndpoint.String(), "application/json", bytes.NewBuffer(payload))
 	if err != nil {
-		mc.logger.Errorf("An error occurred while publishing SMART data for device (%s): %v", deviceWWN, err)
+		mc.logger.Errorf("An error occurred while publishing SMART data for device (%s): %v", deviceID, err)
 		return err
 	}
 	defer resp.Body.Close()
@@ -326,20 +332,21 @@ type collectorErrorPayload struct {
 	DeviceName string `json:"device_name,omitempty"`
 }
 
-// ReportDeviceError posts a collector error to /api/device/:wwn/collector-error.
+// ReportDeviceError posts a collector error to /api/device/:id/collector-error.
+// deviceID may be a device_id (UUID) or a legacy WWN; the backend accepts both.
 // Errors from this call are logged but do not abort the collection run.
-func (mc *MetricsCollector) ReportDeviceError(deviceWWN string, errorType string, errorMessage string) {
-	if deviceWWN == "" {
-		mc.logger.Debugf("Cannot report device error without WWN; skipping")
+func (mc *MetricsCollector) ReportDeviceError(deviceID string, errorType string, errorMessage string) {
+	if deviceID == "" {
+		mc.logger.Debugf("Cannot report device error without device identifier; skipping")
 		return
 	}
 	apiEndpoint, _ := url.Parse(mc.apiEndpoint.String())
-	apiEndpoint, _ = apiEndpoint.Parse(fmt.Sprintf("api/device/%s/collector-error", strings.ToLower(deviceWWN)))
+	apiEndpoint, _ = apiEndpoint.Parse(fmt.Sprintf("api/device/%s/collector-error", strings.ToLower(deviceID)))
 
 	body := collectorErrorPayload{ErrorType: errorType, ErrorMessage: errorMessage}
 	var result map[string]interface{}
 	if err := mc.postJson(apiEndpoint.String(), body, &result); err != nil {
-		mc.logger.Warnf("Failed to report collector device error for %s: %v", deviceWWN, err)
+		mc.logger.Warnf("Failed to report collector device error for %s: %v", deviceID, err)
 	}
 }
 
