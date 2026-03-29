@@ -46,6 +46,10 @@ func TestApplyDefaults_AllZeroValues(t *testing.T) {
 	require.False(t, s.Metrics.ReportWeeklyEnabled)
 	require.False(t, s.Metrics.ReportMonthlyEnabled)
 	require.False(t, s.Metrics.ReportPDFEnabled)
+	require.False(t, s.Metrics.NotifyOnReplacementRisk)
+
+	// String defaults for replacement risk
+	require.Equal(t, "replace_soon", s.Metrics.ReplacementRiskNotifyCategory)
 }
 
 func TestApplyDefaults_PreservesExistingValues(t *testing.T) {
