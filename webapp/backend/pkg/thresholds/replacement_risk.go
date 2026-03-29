@@ -126,28 +126,34 @@ var NvmeReplacementRiskWeights = []ReplacementRiskWeight{
 // ScsiReplacementRiskWeights defines attribute weights for SCSI/SAS drives.
 var ScsiReplacementRiskWeights = []ReplacementRiskWeight{
 	{
-		AttributeID:     "grown_defect_list",
+		AttributeID:     "scsi_grown_defect_list",
 		DisplayName:     "Grown Defect List",
 		Weight:          40,
 		TrendMultiplier: 1.5,
 	},
 	{
+		AttributeID:     "read_total_uncorrected_errors",
+		DisplayName:     "Read Total Uncorrected Errors",
+		Weight:          25,
+		TrendMultiplier: 1.5,
+	},
+	{
+		AttributeID:     "write_total_uncorrected_errors",
+		DisplayName:     "Write Total Uncorrected Errors",
+		Weight:          25,
+		TrendMultiplier: 1.5,
+	},
+	{
 		AttributeID:     "read_errors_corrected_by_eccdelayed",
 		DisplayName:     "Read Errors Corrected by ECC (Delayed)",
-		Weight:          20,
-		TrendMultiplier: 1.2,
+		Weight:          5,
+		TrendMultiplier: 1.0,
 	},
 	{
 		AttributeID:     "write_errors_corrected_by_eccdelayed",
 		DisplayName:     "Write Errors Corrected by ECC (Delayed)",
-		Weight:          20,
-		TrendMultiplier: 1.2,
-	},
-	{
-		AttributeID:     "non_medium_error_count",
-		DisplayName:     "Non-Medium Error Count",
-		Weight:          20,
-		TrendMultiplier: 0.8,
+		Weight:          5,
+		TrendMultiplier: 1.0,
 	},
 }
 
