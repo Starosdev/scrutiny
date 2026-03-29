@@ -160,6 +160,15 @@ func UploadDeviceMetrics(c *gin.Context) {
 		}
 	}
 
+	// Check replacement risk and notify if configured threshold is met.
+	riskSettings, riskSettingsErr := deviceRepo.LoadSettings(c)
+	if riskSettingsErr != nil {
+		logger.Warnf("Could not load settings for replacement risk notification: %v", riskSettingsErr)
+	}
+	if riskSettings != nil && riskSettings.Metrics.NotifyOnReplacementRisk {
+		maybeNotifyReplacementRisk(c, logger, appConfig, deviceRepo, updatedDevice, smartData.Attributes, riskSettings)
+	}
+
 	// Update Prometheus metrics (if enabled)
 	if collectorVal, exists := c.Get("METRICS_COLLECTOR"); exists {
 		if collector, ok := collectorVal.(*metrics.Collector); ok && collector != nil {
