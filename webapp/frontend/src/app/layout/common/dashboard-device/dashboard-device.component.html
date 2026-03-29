@@ -84,6 +84,21 @@
           {{ deviceSummary.smart.collector_date | date:'MMMM dd, yyyy - HH:mm' }}
         </div>
       }
+
+      @if (deviceSummary.smart?.risk_category && deviceSummary.smart?.risk_category !== 'healthy') {
+        <div class="flex items-center mt-1">
+          <span
+            [ngClass]="{
+              'bg-yellow-100 text-yellow-800': deviceSummary.smart.risk_category === 'monitor',
+              'bg-orange-100 text-orange-800': deviceSummary.smart.risk_category === 'plan_replacement',
+              'bg-red-100 text-red-800': deviceSummary.smart.risk_category === 'replace_soon'
+            }"
+            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+          >
+            {{ riskCategoryLabel(deviceSummary.smart.risk_category) }}
+          </span>
+        </div>
+      }
     </div>
 
     <!-- Actions -->

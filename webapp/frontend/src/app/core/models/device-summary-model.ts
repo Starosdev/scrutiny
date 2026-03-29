@@ -17,5 +17,8 @@ export interface SmartSummary {
     percentage_used?: number
     // wearout_value: ATA attributes 177, 233, 231, 232 (0-100%, higher = healthier)
     wearout_value?: number
+    // Replacement risk indicator (simplified score; full detail at /api/device/:id/replacement-risk)
+    risk_score?: number
+    risk_category?: 'healthy' | 'monitor' | 'plan_replacement' | 'replace_soon'
 }
 

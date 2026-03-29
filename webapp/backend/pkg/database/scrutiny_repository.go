@@ -439,7 +439,7 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
   	import "influxdata/influxdb/schema"
   	bucketBaseName = "%s"
 
-	// Fields to retrieve for summary (basic metrics + SSD health attributes)
+	// Fields to retrieve for summary (basic metrics + SSD health + risk indicator attributes)
 	summaryFields = (r) =>
 		r["_field"] == "temp" or
 		r["_field"] == "power_on_hours" or
@@ -449,7 +449,12 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 		r["_field"] == "attr.177.value" or
 		r["_field"] == "attr.233.value" or
 		r["_field"] == "attr.231.value" or
-		r["_field"] == "attr.232.value"
+		r["_field"] == "attr.232.value" or
+		r["_field"] == "attr.5.raw_value" or
+		r["_field"] == "attr.197.raw_value" or
+		r["_field"] == "attr.198.raw_value" or
+		r["_field"] == "attr.media_errors.value" or
+		r["_field"] == "attr.scsi_grown_defect_list.value"
 
 	dailyData = from(bucket: bucketBaseName)
 	|> range(start: -10y, stop: now())
@@ -545,6 +550,12 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 					}
 				}
 				smartSummary.WearoutValue = wearoutVal
+
+				// Compute simplified replacement risk from the fetched counter attrs.
+				protocol := summaries[devID].Device.DeviceProtocol
+				riskScore, riskCategory := summaryRiskScore(protocol, values)
+				smartSummary.RiskScore = &riskScore
+				smartSummary.RiskCategory = string(riskCategory)
 
 				summaries[devID].SmartResults = smartSummary
 			}
