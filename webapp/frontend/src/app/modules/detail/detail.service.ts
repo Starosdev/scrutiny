@@ -5,6 +5,7 @@ import {tap} from 'rxjs/operators';
 import {getBasePath} from 'app/app.routing';
 import {DeviceDetailsResponseWrapper} from 'app/core/models/device-details-response-wrapper';
 import {PerformanceResponseWrapper} from 'app/core/models/measurements/performance-model';
+import {ReplacementRiskResponseWrapper} from 'app/core/models/replacement-risk-model';
 
 @Injectable({
     providedIn: 'root'
@@ -85,6 +86,14 @@ export class DetailService {
         const params = { duration };
         return this._httpClient.get<PerformanceResponseWrapper>(
             getBasePath() + `/api/device/${deviceId}/performance`,
+            { params }
+        );
+    }
+
+    getReplacementRisk(deviceId: string, trendWindow: string = '30d'): Observable<ReplacementRiskResponseWrapper> {
+        const params = { trend_window: trendWindow };
+        return this._httpClient.get<ReplacementRiskResponseWrapper>(
+            getBasePath() + `/api/device/${deviceId}/replacement-risk`,
             { params }
         );
     }

@@ -30,4 +30,10 @@ type SmartSummary struct {
 	PercentageUsed *int64 `json:"percentage_used,omitempty"`
 	// WearoutValue: ATA attributes 177, 233, 231, 232 (0-100%, higher = healthier)
 	WearoutValue *int64 `json:"wearout_value,omitempty"`
+
+	// Replacement Risk (simplified score based on the subset of attributes
+	// available in the summary query — not as precise as the full /replacement-risk endpoint
+	// but sufficient for dashboard indicator use).
+	RiskScore    *int   `json:"risk_score,omitempty"`
+	RiskCategory string `json:"risk_category,omitempty"`
 }

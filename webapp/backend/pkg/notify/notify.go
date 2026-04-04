@@ -44,6 +44,7 @@ const NotifyFailureTypeHeartbeat = "Heartbeat"
 const NotifyFailureTypePerformanceDegradation = "PerformanceDegradation"
 const NotifyFailureTypeReport = "Report"
 const NotifyFailureTypeCollectorError = "CollectorError"
+const NotifyFailureTypeReplacementRisk = "ReplacementRisk"
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
 func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *measurements.Smart, notifyLevel pkg.MetricsNotifyLevel, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, wwn string, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {

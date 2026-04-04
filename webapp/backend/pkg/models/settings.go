@@ -43,6 +43,10 @@ type Settings struct {
 		// Collector error notification settings
 		NotifyOnCollectorError bool `json:"notify_on_collector_error" mapstructure:"notify_on_collector_error"`
 
+		// Replacement risk notification settings
+		NotifyOnReplacementRisk         bool   `json:"notify_on_replacement_risk" mapstructure:"notify_on_replacement_risk"`
+		ReplacementRiskNotifyCategory   string `json:"replacement_risk_notify_category" mapstructure:"replacement_risk_notify_category"`
+
 		// Heartbeat notification settings
 		HeartbeatEnabled       bool `json:"heartbeat_enabled" mapstructure:"heartbeat_enabled"`
 		HeartbeatIntervalHours int  `json:"heartbeat_interval_hours" mapstructure:"heartbeat_interval_hours"`
@@ -111,6 +115,9 @@ func (s *Settings) ApplyDefaults() {
 	defaultInt(&s.Metrics.MissedPingCheckIntervalMins, 5)
 	defaultInt(&s.Metrics.HeartbeatIntervalHours, 24)
 	defaultInt(&s.Metrics.UptimeKumaIntervalSeconds, 60)
+
+	// Replacement risk notification default
+	defaultStr(&s.Metrics.ReplacementRiskNotifyCategory, "replace_soon")
 
 	// Metrics: scheduled report defaults
 	defaultStr(&s.Metrics.ReportDailyTime, "08:00")

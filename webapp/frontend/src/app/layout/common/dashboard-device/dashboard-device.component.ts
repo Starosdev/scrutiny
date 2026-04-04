@@ -113,6 +113,18 @@ export class DashboardDeviceComponent implements OnInit {
     }
 
     /**
+     * Returns a human-readable label for a risk category.
+     */
+    riskCategoryLabel(category: string): string {
+        switch (category) {
+            case 'monitor':         return 'Monitor';
+            case 'plan_replacement': return 'Plan Replacement';
+            case 'replace_soon':    return 'Replace Soon';
+            default:                return '';
+        }
+    }
+
+    /**
      * Get SSD health value for display.
      * Returns an object with the value (0-100) and whether it represents "remaining" health
      * (where higher is better) or "used" percentage (where lower is better).

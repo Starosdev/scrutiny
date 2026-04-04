@@ -20,6 +20,7 @@ import {SmartAttributeModel} from 'app/core/models/measurements/smart-attribute-
 import {AttributeMetadataModel} from 'app/core/models/thresholds/attribute-metadata-model';
 import {DeviceStatusPipe} from 'app/shared/device-status.pipe';
 import {PerformanceModel, PerformanceBaselineModel, PerformanceResponseWrapper} from 'app/core/models/measurements/performance-model';
+import {ReplacementRiskModel, RiskCategory} from 'app/core/models/replacement-risk-model';
 import {LatencyPipe} from 'app/shared/latency.pipe';
 import {FileSizePipe} from 'app/shared/file-size.pipe';
 import {AttributeOverrideService} from 'app/core/config/attribute-override.service';
@@ -102,6 +103,9 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     @ViewChild('smartAttributeTable', {read: MatSort})
     smartAttributeTableMatSort: MatSort;
 
+    // Replacement risk
+    replacementRisk: ReplacementRiskModel | null = null;
+
     // Performance benchmarks
     performanceHistory: PerformanceModel[] = [];
     performanceBaseline: PerformanceBaselineModel | null = null;
@@ -177,6 +181,9 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
                 // Load performance data (lazy, non-blocking)
                 this._loadPerformanceData(this.device.device_id, this.perfDurationKey);
+
+                // Load replacement risk (lazy, non-blocking)
+                this._loadReplacementRisk(this.device.device_id);
             });
     }
 
@@ -673,6 +680,43 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                 this._detailService.getData(this.device.device_id)
                     .pipe(takeUntil(this._unsubscribeAll))
                     .subscribe();
+            });
+    }
+
+    riskCategoryLabel(category: RiskCategory): string {
+        const labels: Record<RiskCategory, string> = {
+            healthy: 'Healthy',
+            monitor: 'Monitor',
+            plan_replacement: 'Plan Replacement',
+            replace_soon: 'Replace Soon',
+        };
+        return labels[category] ?? category;
+    }
+
+    riskCategoryClass(category: RiskCategory): Record<string, boolean> {
+        return {
+            'green-200':  category === 'healthy',
+            'yellow-200': category === 'monitor',
+            'orange-200': category === 'plan_replacement',
+            'red-200':    category === 'replace_soon',
+        };
+    }
+
+    riskDotClass(category: RiskCategory): Record<string, boolean> {
+        return {
+            'bg-green':  category === 'healthy',
+            'bg-yellow': category === 'monitor',
+            'bg-orange': category === 'plan_replacement',
+            'bg-red':    category === 'replace_soon',
+        };
+    }
+
+    private _loadReplacementRisk(deviceId: string): void {
+        this._detailService.getReplacementRisk(deviceId)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe({
+                next: (resp) => { this.replacementRisk = resp?.data ?? null; },
+                error: () => { this.replacementRisk = null; },
             });
     }
 
