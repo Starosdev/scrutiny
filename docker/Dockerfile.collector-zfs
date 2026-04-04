@@ -4,14 +4,17 @@
 
 
 ########
-FROM golang:1.26-trixie AS backendbuild
+FROM --platform=$BUILDPLATFORM golang:1.26-trixie AS backendbuild
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /go/src/github.com/analogj/scrutiny
 
 COPY . /go/src/github.com/analogj/scrutiny
 
 RUN apt-get update && apt-get install -y file && rm -rf /var/lib/apt/lists/*
-RUN make binary-clean binary-collector-zfs
+RUN GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} make binary-clean binary-collector-zfs && \
+    mv scrutiny-collector-zfs-${TARGETOS:-linux}-${TARGETARCH:-amd64} scrutiny-collector-zfs
 
 ########
 FROM debian:trixie-slim AS runtime
@@ -20,7 +23,8 @@ ENV PATH="/opt/scrutiny/bin:${PATH}"
 
 RUN echo "deb http://deb.debian.org/debian trixie contrib" >> /etc/apt/sources.list.d/contrib.list && \
     apt-get update && \
-    apt-get install -y cron zfsutils-linux ca-certificates tzdata && \
+    apt-get install -y cron ca-certificates tzdata && \
+    apt-get install -y --no-install-recommends zfsutils-linux && \
     rm -rf /var/lib/apt/lists/* && \
     update-ca-certificates
 
