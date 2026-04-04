@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.49.0](https://github.com/Starosdev/scrutiny/compare/v1.48.0...v1.49.0) (2026-04-04)
+
+### Features
+
+* **collector-zfs:** add arm64 support for scrutiny collector zfs ([#422](https://github.com/Starosdev/scrutiny/issues/422)) ([9290987](https://github.com/Starosdev/scrutiny/commit/92909871b1803bc5509320f19fc4200b992ba59b)), closes [#90](https://github.com/Starosdev/scrutiny/issues/90)
+
 ## [1.48.0](https://github.com/Starosdev/scrutiny/compare/v1.47.1...v1.48.0) (2026-04-04)
 
 ### Features
