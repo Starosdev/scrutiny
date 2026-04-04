@@ -10,8 +10,8 @@ import (
 )
 
 // NewReplacementRisk constructs a Notify instance for a drive replacement risk alert.
-func NewReplacementRisk(logger logrus.FieldLogger, appconfig config.Interface, device models.Device, score int, category models.RiskCategory) Notify {
-	payload := NewPayload(device, false)
+func NewReplacementRisk(logger logrus.FieldLogger, appconfig config.Interface, device *models.Device, score int, category models.RiskCategory) Notify {
+	payload := NewPayload(*device, false)
 	payload.FailureType = NotifyFailureTypeReplacementRisk
 
 	deviceIdentifier := device.DeviceName

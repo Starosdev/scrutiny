@@ -83,20 +83,20 @@ const (
 // It is computed on-the-fly from the latest SMART data and historical trends;
 // it is NOT persisted to the database in this definition phase.
 type ReplacementRiskScore struct {
+    // ComputedAt is the timestamp when this score was calculated.
+    ComputedAt time.Time `json:"computed_at"`
+
+    // Contributions lists per-attribute score breakdowns.
+    Contributions []AttributeContribution `json:"contributions"`
+
     // DeviceWWN identifies the drive this score belongs to.
     DeviceWWN string `json:"device_wwn"`
 
     // DeviceProtocol is the protocol type used for scoring (ATA, NVMe, SCSI).
     DeviceProtocol string `json:"device_protocol"`
 
-    // Score is the overall replacement risk score, 0 (best) to 100 (worst).
-    Score int `json:"score"`
-
     // Category is the human-readable risk bucket derived from Score.
     Category RiskCategory `json:"category"`
-
-    // Contributions lists per-attribute score breakdowns.
-    Contributions []AttributeContribution `json:"contributions"`
 
     // TrendWindow is the time window over which rate-of-change was evaluated.
     TrendWindow TrendWindow `json:"trend_window"`
@@ -104,13 +104,13 @@ type ReplacementRiskScore struct {
     // TrendBonus is the total additional score added by trend analysis across all attributes.
     TrendBonus float64 `json:"trend_bonus"`
 
-    // ComputedAt is the timestamp when this score was calculated.
-    ComputedAt time.Time `json:"computed_at"`
+    // Score is the overall replacement risk score, 0 (best) to 100 (worst).
+    Score int `json:"score"`
 }
 
 // ReplacementRiskResponse is the API response envelope for the
 // GET /api/device/:wwn/replacement-risk endpoint.
 type ReplacementRiskResponse struct {
-    Success bool                 `json:"success"`
     Data    ReplacementRiskScore `json:"data"`
+    Success bool                 `json:"success"`
 }

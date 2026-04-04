@@ -21,7 +21,7 @@ func maybeNotifyReplacementRisk(
 	logger logrus.FieldLogger,
 	appConfig config.Interface,
 	deviceRepo database.DeviceRepo,
-	device models.Device,
+	device *models.Device,
 	latestAttrs map[string]measurements.SmartAttribute,
 	settings *models.Settings,
 ) {

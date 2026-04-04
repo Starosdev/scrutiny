@@ -92,6 +92,7 @@ func setupMetricsRouterAccept(t *testing.T) *gin.Engine {
 	fakeRepo.EXPECT().SaveSmartAttributes(gomock.Any(), gomock.Any(), gomock.Any()).Return(measurements.Smart{Status: pkg.DeviceStatusPassed}, nil).AnyTimes()
 	fakeRepo.EXPECT().UpdateDeviceHasForcedFailure(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	fakeRepo.EXPECT().SaveSmartTemperature(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	fakeRepo.EXPECT().LoadSettings(gomock.Any()).Return(&models.Settings{}, nil).AnyTimes()
 
 	fakeConfig.EXPECT().GetBool(gomock.Any()).Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetInt(gomock.Any()).Return(0).AnyTimes()

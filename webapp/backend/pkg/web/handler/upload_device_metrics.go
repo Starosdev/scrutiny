@@ -166,7 +166,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 		logger.Warnf("Could not load settings for replacement risk notification: %v", riskSettingsErr)
 	}
 	if riskSettings != nil && riskSettings.Metrics.NotifyOnReplacementRisk {
-		maybeNotifyReplacementRisk(c, logger, appConfig, deviceRepo, updatedDevice, smartData.Attributes, riskSettings)
+		maybeNotifyReplacementRisk(c, logger, appConfig, deviceRepo, &updatedDevice, smartData.Attributes, riskSettings)
 	}
 
 	// Update Prometheus metrics (if enabled)
