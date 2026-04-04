@@ -2,6 +2,14 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.48.0](https://github.com/Starosdev/scrutiny/compare/v1.47.1...v1.48.0) (2026-04-04)
+
+### Features
+
+* **ci:** release schedule system with dependency upgrades and collector fixes ([#406](https://github.com/Starosdev/scrutiny/issues/406)) ([439c378](https://github.com/Starosdev/scrutiny/commit/439c378b4679d4ec1f8dd851f1b1913137a90b5b)), closes [#404](https://github.com/Starosdev/scrutiny/issues/404) [#402](https://github.com/Starosdev/scrutiny/issues/402) [#403](https://github.com/Starosdev/scrutiny/issues/403) [#404](https://github.com/Starosdev/scrutiny/issues/404)
+* manual release trigger ([c250b25](https://github.com/Starosdev/scrutiny/commit/c250b2532dda9d98b5dd3303d3b9b047d886d733))
+* **smart:** replacement risk scoring system with dashboard UI ([#358](https://github.com/Starosdev/scrutiny/issues/358)) ([#424](https://github.com/Starosdev/scrutiny/issues/424)) ([bd96c3d](https://github.com/Starosdev/scrutiny/commit/bd96c3d0cc200a1599c3a91af531538f0efd5cbc))
+
 ## [1.47.1](https://github.com/Starosdev/scrutiny/compare/v1.47.0...v1.47.1) (2026-03-15)
 
 ### Bug Fixes
