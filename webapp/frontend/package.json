@@ -37,7 +37,7 @@
     "highlight.js": "^11.6.0",
     "humanize-duration": "^3.27.3",
     "dayjs": "^1.11.10",
-    "lodash": "4.17.21",
+    "lodash": "4.18.1",
     "marked": "^17.0.1",
     "ng-apexcharts": "^2.3.0",
     "perfect-scrollbar": "^1.5.5",
