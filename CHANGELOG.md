@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.49.1](https://github.com/Starosdev/scrutiny/compare/v1.49.0...v1.49.1) (2026-04-05)
+
+### Bug Fixes
+
+* **backend:** memory leak, query fixes, and dependency updates ([#431](https://github.com/Starosdev/scrutiny/issues/431)) ([423237a](https://github.com/Starosdev/scrutiny/commit/423237ab529caf408706bbd29347bc8ecd0a9822)), closes [#419](https://github.com/Starosdev/scrutiny/issues/419) [#423](https://github.com/Starosdev/scrutiny/issues/423) [#419](https://github.com/Starosdev/scrutiny/issues/419) [#423](https://github.com/Starosdev/scrutiny/issues/423)
+
 ## [1.49.0](https://github.com/Starosdev/scrutiny/compare/v1.48.0...v1.49.0) (2026-04-04)
 
 ### Features
