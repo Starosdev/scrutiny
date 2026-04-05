@@ -28,36 +28,65 @@ NEW_DATE=$(git log -1 --format=%aI "$NEW_TAG" 2>/dev/null || date -u +%Y-%m-%dT%
 # Create temp files for PR data
 DEVELOP_JSON=$(mktemp)
 MASTER_JSON=$(mktemp)
-trap 'rm -f "$DEVELOP_JSON" "$MASTER_JSON"' EXIT
+INTEGRATION_JSON=$(mktemp)
+trap 'rm -f "$DEVELOP_JSON" "$MASTER_JSON" "$INTEGRATION_JSON"' EXIT
 
 # Fetch PRs merged to develop -- these are the actual feature/fix PRs.
 # Filter to PRs merged between prev tag and new tag dates.
-gh pr list --repo "$REPO" --state merged --base develop \
+gh pr list --repo "$REPO" --state merged --base develop --limit 200 \
     --json number,title,mergedAt,body \
     --jq "[.[] | select(.mergedAt > \"$PREV_DATE\" and .mergedAt <= \"$NEW_DATE\")]" \
     > "$DEVELOP_JSON" 2>/dev/null || echo "[]" > "$DEVELOP_JSON"
 
-# Also include PRs merged directly to master (hotfixes, direct deploys)
-# but exclude develop->master integration PRs which duplicate develop PRs.
-gh pr list --repo "$REPO" --state merged --base master \
+# PRs merged directly to master (hotfixes, direct deploys, dependabot).
+# Excludes develop->master integration PRs (captured separately below).
+gh pr list --repo "$REPO" --state merged --base master --limit 200 \
     --json number,title,mergedAt,body,headRefName \
     --jq "[.[] | select(.mergedAt > \"$PREV_DATE\" and .mergedAt <= \"$NEW_DATE\") | select(.headRefName != \"develop\")]" \
     > "$MASTER_JSON" 2>/dev/null || echo "[]" > "$MASTER_JSON"
 
-# Merge and deduplicate by PR number
-MERGED_JSON=$(jq -s '.[0] + .[1] | unique_by(.number)' "$DEVELOP_JSON" "$MASTER_JSON")
+# Develop->master integration PRs. These are the squash-merge PRs that
+# contain curated summaries of all work done on the develop branch.
+# They are the primary source for release notes when feature work is
+# pushed directly to develop (not via individual PRs).
+gh pr list --repo "$REPO" --state merged --base master --limit 200 \
+    --json number,title,mergedAt,body,headRefName \
+    --jq "[.[] | select(.mergedAt > \"$PREV_DATE\" and .mergedAt <= \"$NEW_DATE\") | select(.headRefName == \"develop\")]" \
+    > "$INTEGRATION_JSON" 2>/dev/null || echo "[]" > "$INTEGRATION_JSON"
+
+# Build a set of PR numbers referenced by integration PRs (via Closes #N,
+# Fixes #N, Resolves #N, or (#N) in title/body). These individual develop
+# PRs are "covered" by the integration PR's curated description.
+COVERED_PRS=$(jq -r '.[].body // "", .[].title // ""' "$INTEGRATION_JSON" 2>/dev/null \
+    | { grep -oE '(Closes|Fixes|Resolves) #[0-9]+|\(#[0-9]+\)' || true; } \
+    | { grep -oE '[0-9]+' || true; } \
+    | sort -u \
+    | paste -sd '|' - 2>/dev/null || echo "")
+
+# Filter develop PRs to remove those already covered by integration PRs.
+if [ -n "$COVERED_PRS" ]; then
+    DEVELOP_FILTERED=$(jq "[.[] | select(.number | tostring | test(\"^($COVERED_PRS)$\") | not)]" "$DEVELOP_JSON")
+else
+    DEVELOP_FILTERED=$(cat "$DEVELOP_JSON")
+fi
+
+# Merge all three sources and deduplicate by PR number.
+MERGED_JSON=$(echo "$DEVELOP_FILTERED" | jq -s --argjson master "$(cat "$MASTER_JSON")" --argjson integration "$(cat "$INTEGRATION_JSON")" \
+    '.[0] + $master + $integration | unique_by(.number)')
 
 # Extract summary block from PR body (text between ## Summary and next ## heading).
+# Strips \r to handle GitHub's \r\n line endings.
 get_summary_block() {
     local body="$1"
     [ -z "$body" ] && return
-    echo "$body" | sed -n '/^## Summary/,/^## /{/^## /d; p;}'
+    echo "$body" | tr -d '\r' | sed -n '/^## Summary/,/^## /{/^## /d; p;}'
 }
 
 # Extract the first non-bullet line as a description. If none, use first bullet.
 # Sets HAS_PROSE_DESC=1 if a prose line was found, 0 if fell back to first bullet.
 HAS_PROSE_DESC=0
 extract_description() {
+    HAS_PROSE_DESC=0
     local summary_block
     summary_block=$(get_summary_block "$1")
     [ -z "$summary_block" ] && return
@@ -190,7 +219,9 @@ for i in $(seq 0 $((PR_COUNT - 1))); do
     # Format the entry
     format_entry "$pr_num" "$pr_title" "$pr_body"
 
-    # Categorize by conventional commit prefix
+    # Categorize by conventional commit prefix.
+    # chore(deps) and chore(ci/docker) are checked before the generic chore
+    # exclusion so they appear in Dependencies / CI/CD sections.
     if [[ "$pr_title" =~ ^feat(\(.+\))?:|^feat!(\(.+\))?: ]]; then
         FEATURES+=("$ENTRY")
     elif [[ "$pr_title" =~ ^fix(\(.+\))?:|^fix!(\(.+\))?: ]]; then
@@ -199,10 +230,12 @@ for i in $(seq 0 $((PR_COUNT - 1))); do
         REFACTORS+=("$ENTRY")
     elif [[ "$pr_title" =~ ^docs(\(.+\))?: ]]; then
         DOCS+=("$ENTRY")
-    elif [[ "$pr_title" =~ ^ci(\(.+\))?: ]]; then
+    elif [[ "$pr_title" =~ ^ci(\(.+\))?:|^chore\((ci|docker)\): ]]; then
         CICD+=("$ENTRY")
-    elif [[ "$pr_title" =~ [Dd]ependen|[Uu]pdate.*go\.(mod|sum) ]]; then
+    elif [[ "$pr_title" =~ ^chore\(deps\):|[Dd]ependen|[Uu]pdate.*go\.(mod|sum) ]]; then
         DEPS+=("$ENTRY")
+    elif [[ "$pr_title" =~ ^chore\(quality\): ]]; then
+        OTHER+=("$ENTRY")
     elif [[ ! "$pr_title" =~ ^chore ]]; then
         OTHER+=("$ENTRY")
     fi

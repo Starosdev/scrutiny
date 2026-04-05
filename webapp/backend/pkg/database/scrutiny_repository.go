@@ -327,6 +327,7 @@ func InfluxSetupComplete(influxEndpoint string, tlsConfig *tls.Config) (bool, er
 	if err != nil {
 		return false, err
 	}
+	defer res.Body.Close()
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -491,7 +492,7 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 	union(tables: [dailyData, weeklyData, monthlyData, yearlyData])
 	|> sort(columns: ["_time"], desc: false)
 	|> group(columns: ["device_wwn"])
-	|> last(column: "device_wwn")
+	|> tail(n: 1)
 	|> yield(name: "last")
 		`,
 		sr.appConfig.GetString(cfgInfluxDBBucket),
@@ -499,6 +500,7 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 
 	result, err := sr.influxQueryApi.Query(ctx, queryStr)
 	if err == nil {
+		defer result.Close()
 		// Use Next() to iterate over query result lines
 		for result.Next() {
 			//get summary data from Influxdb.
@@ -642,6 +644,7 @@ union(tables: [dailyData, weeklyData, monthlyData, yearlyData])
 	if err != nil {
 		return nil, fmt.Errorf("failed to query last seen times: %w", err)
 	}
+	defer result.Close()
 
 	for result.Next() {
 		values := result.Record().Values()

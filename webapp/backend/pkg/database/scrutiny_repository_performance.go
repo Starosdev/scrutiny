@@ -52,6 +52,7 @@ func (sr *scrutinyRepository) GetPerformanceHistory(ctx context.Context, wwn str
 	if err != nil {
 		return nil, fmt.Errorf("failed to query performance metrics: %v", err)
 	}
+	defer result.Close()
 
 	var history []measurements.Performance
 	for result.Next() {
@@ -92,6 +93,7 @@ func (sr *scrutinyRepository) GetPerformanceBaseline(ctx context.Context, wwn st
 	if err != nil {
 		return nil, fmt.Errorf("failed to query performance baseline: %v", err)
 	}
+	defer result.Close()
 
 	var results []measurements.Performance
 	for result.Next() {

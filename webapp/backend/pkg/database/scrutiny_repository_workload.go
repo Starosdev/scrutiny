@@ -203,6 +203,7 @@ func (sr *scrutinyRepository) queryWorkloadFirstLast(ctx context.Context, durati
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to query workload data: %w", err)
 	}
+	defer result.Close()
 
 	for result.Next() {
 		values := result.Record().Values()
@@ -323,6 +324,7 @@ func (sr *scrutinyRepository) queryWorkloadRecent(ctx context.Context) (map[stri
 	if err != nil {
 		return nil, fmt.Errorf("failed to query recent workload data: %w", err)
 	}
+	defer result.Close()
 
 	for result.Next() {
 		values := result.Record().Values()
