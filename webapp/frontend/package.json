@@ -34,10 +34,10 @@
     "@angular/router": "^21.2.6",
     "@types/humanize-duration": "^3.27.1",
     "crypto-js": "^4.1.1",
+    "dayjs": "^1.11.10",
     "highlight.js": "^11.6.0",
     "humanize-duration": "^3.27.3",
-    "dayjs": "^1.11.10",
-    "lodash": "4.17.21",
+    "lodash": "^4.18.1",
     "marked": "^17.0.1",
     "ng-apexcharts": "^2.3.0",
     "perfect-scrollbar": "^1.5.5",
@@ -79,5 +79,11 @@
     "tailwindcss": "^3.2.3",
     "ts-node": "^10.9.1",
     "typescript": "~5.9"
+  },
+  "overrides": {
+    "lodash-es": "4.18.1",
+    "picomatch@2": "2.3.2",
+    "ajv@6": "6.14.0",
+    "qs": "6.14.2"
   }
 }
