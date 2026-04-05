@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -258,9 +259,11 @@ func (m *UptimeKumaMonitor) checkAndPush() {
 
 	status, msg := BuildPushMessage(devices)
 
+	insecureSkipVerify := m.appEngine.Config.GetBool("web.uptime_kuma.insecure_skip_verify")
+
 	// Measure push duration for the ping parameter
 	start := time.Now()
-	if err := sendPush(pushURL, status, msg, start); err != nil {
+	if err := sendPush(pushURL, status, msg, start, insecureSkipVerify); err != nil {
 		m.logger.Errorf("Failed to send Uptime Kuma push: %v", err)
 		m.statusMu.Lock()
 		m.lastError = err
@@ -330,9 +333,14 @@ func BuildPushMessage(devices []models.Device) (status string, msg string) {
 }
 
 // sendPush sends an HTTP GET to the Uptime Kuma push endpoint with status, msg, and ping params
-func sendPush(pushURL, status, msg string, start time.Time) error {
+func sendPush(pushURL, status, msg string, start time.Time, insecureSkipVerify bool) error {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
+	}
+	if insecureSkipVerify {
+		client.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
 	}
 
 	// Build URL with query parameters

@@ -640,6 +640,7 @@ Dots and dashes in key names become underscores.
 | `web.influxdb.retention.monthly` | `SCRUTINY_WEB_INFLUXDB_RETENTION_MONTHLY` | `65318400` (25 months) |
 | `web.metrics.enabled` | `SCRUTINY_WEB_METRICS_ENABLED` | `true` |
 | `web.metrics.token` | `SCRUTINY_WEB_METRICS_TOKEN` | `` |
+| `web.uptime_kuma.insecure_skip_verify` | `SCRUTINY_WEB_UPTIME_KUMA_INSECURE_SKIP_VERIFY` | `false` |
 | `web.auth.enabled` | `SCRUTINY_WEB_AUTH_ENABLED` | `false` |
 | `web.auth.token` | `SCRUTINY_WEB_AUTH_TOKEN` | `` |
 | `web.auth.jwt_secret` | `SCRUTINY_WEB_AUTH_JWT_SECRET` | `` |
