@@ -80,6 +80,7 @@ func (sr *scrutinyRepository) GetSmartTemperatureHistory(ctx context.Context, du
 
 	result, err := sr.influxQueryApi.Query(ctx, queryStr)
 	if err == nil {
+		defer result.Close()
 		// Use Next() to iterate over query result lines
 		for result.Next() {
 

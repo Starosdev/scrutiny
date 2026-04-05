@@ -80,6 +80,7 @@ func (sr *scrutinyRepository) GetSmartAttributeHistory(ctx context.Context, wwn 
 
 	result, err := sr.influxQueryApi.Query(ctx, queryStr)
 	if err == nil {
+		defer result.Close()
 		// Use Next() to iterate over query result lines
 		for result.Next() {
 			smartData, err := measurements.NewSmartFromInfluxDB(result.Record().Values(), sr.logger)
@@ -140,6 +141,7 @@ from(bucket: "%s")
 	if err != nil {
 		return nil, err
 	}
+	defer result.Close()
 
 	for result.Next() {
 		smartData, err := measurements.NewSmartFromInfluxDB(result.Record().Values(), sr.logger)
@@ -181,6 +183,7 @@ from(bucket: "%s")
 	if err != nil {
 		return nil, err
 	}
+	defer result.Close()
 
 	for result.Next() {
 		smartData, err := measurements.NewSmartFromInfluxDB(result.Record().Values(), sr.logger)
