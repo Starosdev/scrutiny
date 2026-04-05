@@ -492,7 +492,7 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 	union(tables: [dailyData, weeklyData, monthlyData, yearlyData])
 	|> sort(columns: ["_time"], desc: false)
 	|> group(columns: ["device_wwn"])
-	|> last(column: "device_wwn")
+	|> tail(n: 1)
 	|> yield(name: "last")
 		`,
 		sr.appConfig.GetString(cfgInfluxDBBucket),
