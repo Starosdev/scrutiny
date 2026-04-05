@@ -10,6 +10,8 @@ bolt-path: /opt/scrutiny/influxdb/influxd.bolt
 engine-path: /opt/scrutiny/influxdb/engine
 http-bind-address: ":8086"
 reporting-disabled: true
+storage-cache-max-memory-size: 256000000
+storage-cache-snapshot-memory-size: 25000000
 EOF
 fi
 

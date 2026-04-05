@@ -304,6 +304,7 @@ func (sr *scrutinyRepository) GetZFSPoolMetricsHistory(ctx context.Context, guid
 	if err != nil {
 		return nil, fmt.Errorf("failed to query ZFS pool metrics: %v", err)
 	}
+	defer result.Close()
 
 	var metricsHistory []measurements.ZFSPoolMetrics
 	for result.Next() {
