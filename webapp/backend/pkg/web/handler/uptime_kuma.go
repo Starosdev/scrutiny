@@ -65,9 +65,10 @@ func TestUptimeKumaPush(c *gin.Context) {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
-	if appConfig.GetBool("web.uptime_kuma.insecure_skip_verify") {
+	insecureSkipVerify := appConfig.GetBool("web.uptime_kuma.insecure_skip_verify")
+	if insecureSkipVerify {
 		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipVerify},
 		}
 	}
 

@@ -339,7 +339,7 @@ func sendPush(pushURL, status, msg string, start time.Time, insecureSkipVerify b
 	}
 	if insecureSkipVerify {
 		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipVerify},
 		}
 	}
 
