@@ -76,6 +76,9 @@ func (c *configuration) Init() error {
 	// When empty (default), the endpoint is open (or protected by web.auth if enabled).
 	c.SetDefault("web.metrics.token", "")
 
+	// Uptime Kuma push monitor
+	c.SetDefault("web.uptime_kuma.insecure_skip_verify", false)
+
 	// MQTT / Home Assistant integration
 	c.SetDefault("web.mqtt.enabled", false)
 	c.SetDefault("web.mqtt.broker", "tcp://localhost:1883")

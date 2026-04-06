@@ -36,6 +36,7 @@
 #   web.influxdb.retention.daily          -> SCRUTINY_WEB_INFLUXDB_RETENTION_DAILY
 #   web.influxdb.retention.weekly         -> SCRUTINY_WEB_INFLUXDB_RETENTION_WEEKLY
 #   web.influxdb.retention.monthly        -> SCRUTINY_WEB_INFLUXDB_RETENTION_MONTHLY
+#   web.uptime_kuma.insecure_skip_verify  -> SCRUTINY_WEB_UPTIME_KUMA_INSECURE_SKIP_VERIFY
 #   web.metrics.enabled                   -> SCRUTINY_WEB_METRICS_ENABLED
 #   web.metrics.token                     -> SCRUTINY_WEB_METRICS_TOKEN
 #   log.level                             -> SCRUTINY_LOG_LEVEL
@@ -177,6 +178,9 @@ web:
   #
   # uptime_kuma:
   #   push_url: "https://kuma.example.com/api/push/YOUR_TOKEN"
+  #   # Skip TLS certificate verification (for self-signed certificates)
+  #   # Env: SCRUTINY_WEB_UPTIME_KUMA_INSECURE_SKIP_VERIFY
+  #   insecure_skip_verify: false
 
   # MQTT / Home Assistant Integration
   #

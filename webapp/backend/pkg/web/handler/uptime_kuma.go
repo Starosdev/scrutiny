@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -62,6 +63,11 @@ func TestUptimeKumaPush(c *gin.Context) {
 
 	// Send test push
 	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: appConfig.GetBool("web.uptime_kuma.insecure_skip_verify"), //nolint:gosec // user-controlled config option for self-signed certs
+			},
+		},
 		Timeout: 10 * time.Second,
 	}
 
