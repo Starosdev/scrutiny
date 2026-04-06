@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.49.2](https://github.com/Starosdev/scrutiny/compare/v1.49.1...v1.49.2) (2026-04-06)
+
+### Bug Fixes
+
+* **uptime-kuma:** add insecure_skip_verify for self-signed TLS certs ([#418](https://github.com/Starosdev/scrutiny/issues/418)) ([#432](https://github.com/Starosdev/scrutiny/issues/432)) ([f9e701e](https://github.com/Starosdev/scrutiny/commit/f9e701efbe8a3000007914c413a41ec48b55d9b0))
+
 ## [1.49.1](https://github.com/Starosdev/scrutiny/compare/v1.49.0...v1.49.1) (2026-04-05)
 
 ### Bug Fixes
