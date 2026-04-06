@@ -40,7 +40,7 @@ jobs:
       - name: Run Backend Tests with Coverage
         run: make binary-clean binary-test-coverage
       - name: Upload Backend Coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-backend
           path: ${{ github.workspace }}/coverage.txt
@@ -61,7 +61,7 @@ jobs:
       - name: Run Frontend Tests with Coverage
         run: make binary-frontend-test-coverage
       - name: Upload Frontend Coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-frontend
           path: ${{ github.workspace }}/webapp/frontend/coverage/lcov.info
