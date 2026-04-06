@@ -129,8 +129,8 @@ github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9G
 github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
-github.com/nicholas-fedor/shoutrrr v0.14.1 h1:6sx4cJNfNuUtD6ygGlB0dqcCQ+abfsUh+b+6jgujf6A=
-github.com/nicholas-fedor/shoutrrr v0.14.1/go.mod h1:U7IywBkLpBV7rgn8iLbQ9/LklJG1gm24bFv5cXXsDKs=
+github.com/nicholas-fedor/shoutrrr v0.14.3 h1:aBX2iw9a7jl5wfHd3bi9LnS5ucoYIy6KcLH9XVF+gig=
+github.com/nicholas-fedor/shoutrrr v0.14.3/go.mod h1:U7IywBkLpBV7rgn8iLbQ9/LklJG1gm24bFv5cXXsDKs=
 github.com/oapi-codegen/runtime v1.0.0 h1:P4rqFX5fMFWqRzY9M/3YF9+aPSPPB06IzP2P7oOxrWo=
 github.com/oapi-codegen/runtime v1.0.0/go.mod h1:LmCUMQuPB4M/nLXilQXhHw+BLZdDb18B34OO356yJ/A=
 github.com/onsi/ginkgo/v2 v2.28.1 h1:S4hj+HbZp40fNKuLUQOYLDgZLwNUVn19N3Atb98NCyI=
