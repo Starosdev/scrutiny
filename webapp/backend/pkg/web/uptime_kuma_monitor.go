@@ -335,12 +335,10 @@ func BuildPushMessage(devices []models.Device) (status string, msg string) {
 // sendPush sends an HTTP GET to the Uptime Kuma push endpoint with status, msg, and ping params
 func sendPush(pushURL, status, msg string, start time.Time, insecureSkipVerify bool) error {
 	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-	if insecureSkipVerify {
-		client.Transport = &http.Transport{
+		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipVerify},
-		}
+		},
+		Timeout: 10 * time.Second,
 	}
 
 	// Build URL with query parameters
