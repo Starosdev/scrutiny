@@ -336,7 +336,7 @@ func BuildPushMessage(devices []models.Device) (status string, msg string) {
 func sendPush(pushURL, status, msg string, start time.Time, insecureSkipVerify bool) error {
 	client := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipVerify},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipVerify}, //nolint:gosec // user-controlled config option for self-signed certs
 		},
 		Timeout: 10 * time.Second,
 	}

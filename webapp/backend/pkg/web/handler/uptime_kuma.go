@@ -65,7 +65,7 @@ func TestUptimeKumaPush(c *gin.Context) {
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: appConfig.GetBool("web.uptime_kuma.insecure_skip_verify"),
+				InsecureSkipVerify: appConfig.GetBool("web.uptime_kuma.insecure_skip_verify"), //nolint:gosec // user-controlled config option for self-signed certs
 			},
 		},
 		Timeout: 10 * time.Second,
