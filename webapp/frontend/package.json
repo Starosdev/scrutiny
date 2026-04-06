@@ -34,7 +34,7 @@
     "@angular/router": "^21.2.6",
     "@types/humanize-duration": "^3.27.1",
     "crypto-js": "^4.1.1",
-    "dayjs": "^1.11.10",
+    "dayjs": "^1.11.20",
     "highlight.js": "^11.6.0",
     "humanize-duration": "^3.27.3",
     "lodash": "^4.18.1",
