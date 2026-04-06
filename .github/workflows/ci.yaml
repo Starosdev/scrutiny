@@ -97,7 +97,7 @@ jobs:
         run: |
           make binary-clean binary-all
       - name: Archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: binaries-${{ matrix.cfg.on }}-${{ matrix.cfg.goos }}-${{ matrix.cfg.goarch }}-${{ matrix.cfg.goarm || 'na' }}
           path: |
