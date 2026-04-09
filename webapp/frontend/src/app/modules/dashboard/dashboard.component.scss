@@ -21,6 +21,14 @@ example {
     }
 }
 
+// Prevent the temperature chart tooltip from truncating long device labels.
+// Scoped to .temp-chart-wrapper because this component uses ViewEncapsulation.None
+// and the rule would otherwise affect all ApexCharts tooltips in the app.
+.temp-chart-wrapper .apexcharts-tooltip {
+    white-space: nowrap;
+    max-width: none !important;
+}
+
 .dashboard-placeholder {
     align-items: center;
     justify-content: center;
