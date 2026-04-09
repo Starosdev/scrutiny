@@ -888,6 +888,62 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				return tx.Create(&defaultSettings).Error
 			},
 		},
+		{
+			ID: "m20260414000000", // remove soft-delete from attribute_overrides; drop deleted_at column
+			Migrate: func(tx *gorm.DB) error {
+				// Step 1: Purge any soft-deleted rows so they don't block future inserts.
+				if err := tx.Exec(`DELETE FROM attribute_overrides WHERE deleted_at IS NOT NULL`).Error; err != nil {
+					return fmt.Errorf("failed to purge soft-deleted attribute overrides: %w", err)
+				}
+
+				// Step 2: Recreate table without deleted_at column (SQLite lacks DROP COLUMN on older versions).
+				createSQL := `CREATE TABLE attribute_overrides_new (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					created_at DATETIME,
+					updated_at DATETIME,
+					protocol TEXT NOT NULL,
+					attribute_id TEXT NOT NULL,
+					wwn TEXT DEFAULT '',
+					action TEXT DEFAULT '',
+					status TEXT DEFAULT '',
+					warn_above INTEGER,
+					fail_above INTEGER,
+					source TEXT DEFAULT 'ui'
+				)`
+				if err := tx.Exec(createSQL).Error; err != nil {
+					return fmt.Errorf("failed to create attribute_overrides_new: %w", err)
+				}
+
+				// Step 3: Copy live data (deleted_at rows already purged in step 1).
+				copySQL := `INSERT INTO attribute_overrides_new (
+					id, created_at, updated_at,
+					protocol, attribute_id, wwn,
+					action, status, warn_above, fail_above, source
+				) SELECT
+					id, created_at, updated_at,
+					protocol, attribute_id, wwn,
+					action, status, warn_above, fail_above, source
+				FROM attribute_overrides`
+				if err := tx.Exec(copySQL).Error; err != nil {
+					return fmt.Errorf("failed to copy attribute_overrides data: %w", err)
+				}
+
+				// Step 4: Swap tables.
+				if err := tx.Exec("DROP TABLE attribute_overrides").Error; err != nil {
+					return fmt.Errorf("failed to drop old attribute_overrides table: %w", err)
+				}
+				if err := tx.Exec("ALTER TABLE attribute_overrides_new RENAME TO attribute_overrides").Error; err != nil {
+					return fmt.Errorf("failed to rename attribute_overrides_new: %w", err)
+				}
+
+				// Step 5: Recreate the unique composite index.
+				if err := tx.Exec("CREATE UNIQUE INDEX idx_override_lookup ON attribute_overrides (protocol, attribute_id, wwn)").Error; err != nil {
+					return fmt.Errorf("failed to create unique attribute_overrides index: %w", err)
+				}
+
+				return nil
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {
