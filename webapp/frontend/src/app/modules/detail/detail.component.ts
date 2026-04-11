@@ -25,6 +25,7 @@ import {LatencyPipe} from 'app/shared/latency.pipe';
 import {FileSizePipe} from 'app/shared/file-size.pipe';
 import {AttributeOverrideService} from 'app/core/config/attribute-override.service';
 import {AttributeOverride, OverrideProtocol} from 'app/core/config/app.config';
+import {angularLongDateTime, apexShortDateTime} from 'app/shared/time-format.utils';
 
 // from Constants.go - these must match
 const AttributeStatusPassed = 0
@@ -495,7 +496,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                     // attrHistory.push(this.getAttributeValue(smart_result.attrs[attrId]))
 
                     const chartDatapoint = {
-                        x: formatDate(smartResult.date, 'MMMM dd, yyyy - HH:mm', this.locale),
+                        x: formatDate(smartResult.date, angularLongDateTime(this.config.time_format), this.locale),
                         y: this.getAttributeValue(smartResult.attrs[attrId])
                     }
                     const attributeStatusName = this.getAttributeStatusName(smartResult.attrs[attrId].status)
@@ -1058,7 +1059,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             stroke: { curve: 'smooth', width: 2 },
             tooltip: {
                 theme: 'dark', shared: true, intersect: false,
-                x: { format: 'MMM dd, yyyy HH:mm' },
+                x: { format: apexShortDateTime(this.config.time_format) },
                 y: { formatter: (val) => fileSizePipe.transform(val, siUnits) + '/s' }
             },
             xaxis: baseXAxis,
@@ -1105,7 +1106,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             stroke: { curve: 'smooth', width: 2 },
             tooltip: {
                 theme: 'dark', shared: true, intersect: false,
-                x: { format: 'MMM dd, yyyy HH:mm' },
+                x: { format: apexShortDateTime(this.config.time_format) },
                 y: { formatter: (val) => val != null ? val.toLocaleString() + ' IOPS' : '--' }
             },
             xaxis: baseXAxis,
@@ -1142,7 +1143,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             stroke: { curve: 'smooth', width: 2 },
             tooltip: {
                 theme: 'dark', shared: true, intersect: false,
-                x: { format: 'MMM dd, yyyy HH:mm' },
+                x: { format: apexShortDateTime(this.config.time_format) },
                 y: { formatter: (val) => LatencyPipe.formatLatency(val) }
             },
             xaxis: baseXAxis,

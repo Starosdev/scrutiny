@@ -19,6 +19,8 @@ export type LineStroke = 'smooth' | 'straight' | 'stepline'
 
 export type DevicePoweredOnUnit = 'humanize' | 'device_hours'
 
+export type TimeFormat = '12' | '24'
+
 
 export enum MetricsNotifyLevel {
     Warn = 1,
@@ -93,6 +95,8 @@ export interface AppConfig {
 
     powered_on_hours_unit?: DevicePoweredOnUnit;
 
+    time_format?: TimeFormat;
+
     line_stroke?: LineStroke;
 
     // Settings from Scrutiny API
@@ -162,6 +166,7 @@ export const appConfig: AppConfig = {
     file_size_si_units: false,
     powered_on_hours_unit: 'humanize',
 
+    time_format: '24',
     line_stroke: 'smooth',
     
     collector: {

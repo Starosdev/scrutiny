@@ -81,7 +81,7 @@
           class="font-medium text-sm"
         >
           Last Updated on
-          {{ deviceSummary.smart.collector_date | date:'MMMM dd, yyyy - HH:mm' }}
+          {{ deviceSummary.smart.collector_date | date:(config?.time_format === '12' ? 'MMMM dd, yyyy - h:mm a' : 'MMMM dd, yyyy - HH:mm') }}
         </div>
       }
 
