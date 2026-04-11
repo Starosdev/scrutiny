@@ -15,6 +15,7 @@ import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { Router } from '@angular/router';
 import { ZFSPoolModel, ZFSPoolStatus, ZFSVdevModel } from 'app/core/models/zfs-pool-model';
 import { ZFSPoolMetricsHistoryModel } from 'app/core/models/zfs-pool-summary-model';
+import { apexShortDateTime } from 'app/shared/time-format.utils';
 
 @Component({
     selector: 'zfs-pool-detail',
@@ -116,7 +117,7 @@ export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
             tooltip: {
                 theme: 'dark',
                 x: {
-                    format: 'MMM dd, yyyy HH:mm:ss'
+                    format: apexShortDateTime(this.config.time_format, true)
                 },
                 y: {
                     formatter: (value) => `${value}%`

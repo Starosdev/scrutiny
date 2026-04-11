@@ -16,6 +16,7 @@ type Settings struct {
 	FileSizeSIUnits    bool   `json:"file_size_si_units" mapstructure:"file_size_si_units"`
 	LineStroke         string `json:"line_stroke" mapstructure:"line_stroke"`
 	PoweredOnHoursUnit string `json:"powered_on_hours_unit" mapstructure:"powered_on_hours_unit"`
+	TimeFormat         string `json:"time_format" mapstructure:"time_format"`
 
 	Collector struct {
 		RetrieveSCTHistory bool `json:"retrieve_sct_temperature_history" mapstructure:"retrieve_sct_temperature_history"`
@@ -106,6 +107,7 @@ func (s *Settings) ApplyDefaults() {
 	defaultStr(&s.TemperatureUnit, "celsius")
 	defaultStr(&s.LineStroke, "smooth")
 	defaultStr(&s.PoweredOnHoursUnit, "humanize")
+	defaultStr(&s.TimeFormat, "24")
 
 	// Metrics: numeric fields where 0 is not a valid value.
 	// Note: StatusFilterAttributes defaults to 0 (All), which is the zero value, so no check needed.
