@@ -141,12 +141,18 @@ extract_bullets() {
     fi
 }
 
-# Extract "Closes #XXX" / "Fixes #XXX" / "Resolves #XXX" from the PR body.
+# Extract "Closes #XXX" / "Fixes #XXX" / "Resolves #XXX" from the PR body,
+# formatted as hyperlinks: Closes [#N](url)
 extract_closes() {
     local body="$1"
     [ -z "$body" ] && return
 
-    echo "$body" | grep -oE '(Closes|Fixes|Resolves) #[0-9]+' | head -3
+    echo "$body" | grep -oE '(Closes|Fixes|Resolves) #[0-9]+' | head -3 | while IFS= read -r ref; do
+        local keyword issue_num
+        keyword=$(echo "$ref" | grep -oE '^(Closes|Fixes|Resolves)')
+        issue_num=$(echo "$ref" | grep -oE '[0-9]+$')
+        echo "$keyword [#$issue_num](https://github.com/$REPO/issues/$issue_num)"
+    done
 }
 
 # Strip conventional commit prefix, trailing issue references, and capitalize first letter.
@@ -160,8 +166,12 @@ clean_title() {
     echo "$(echo "${title:0:1}" | tr '[:lower:]' '[:upper:]')${title:1}"
 }
 
-# Format a single entry with bold title, description, and bullets.
+# Format a single entry as a dash-list item with indented sub-bullets.
 # Output is stored in the ENTRY variable (multi-line).
+# Format matches v1.48.0 style:
+#   - **Title** ([#PR](link)) - Closes [#N](url)
+#     - sub-bullet 1
+#     - sub-bullet 2
 format_entry() {
     local pr_num="$1"
     local pr_title="$2"
@@ -177,31 +187,26 @@ format_entry() {
     local closes
     closes=$(extract_closes "$pr_body")
 
-    # Title line: **Clean Title** ([#PR](link)) - Closes #XXX
-    local title_line="**$title** ([#$pr_num]($link))"
+    # Title line: - **Clean Title** ([#PR](link)) - Closes [#N](url)
+    local title_line="- **$title** ([#$pr_num]($link))"
     if [ -n "$closes" ]; then
         local closes_inline
-        closes_inline=$(echo "$closes" | paste -sd ', ' -)
+        closes_inline=$(echo "$closes" | awk 'NR>1{printf ", "} {printf "%s", $0} END{print ""}')
         title_line="$title_line - $closes_inline"
     fi
 
-    ENTRY="$title_line"
-    ENTRY="$ENTRY"$'\n'
+    ENTRY="$title_line"$'\n'
 
-    # Description line
-    if [ -n "$description" ]; then
-        ENTRY="$ENTRY"$'\n'"$description"
-        ENTRY="$ENTRY"$'\n'
-    fi
-
-    # Bullet points (up to 3)
+    # Sub-bullets indented with 2 spaces (up to 3)
     local bullets
     bullets=$(extract_bullets "$pr_body")
     if [ -n "$bullets" ]; then
-        ENTRY="$ENTRY"$'\n'
         while IFS= read -r bullet; do
-            [ -n "$bullet" ] && ENTRY="$ENTRY""- $bullet"$'\n'
+            [ -n "$bullet" ] && ENTRY="$ENTRY""  - $bullet"$'\n'
         done <<< "$bullets"
+    elif [ -n "$description" ]; then
+        # No bullets: fall back to description as a single indented bullet
+        ENTRY="$ENTRY""  - $description"$'\n'
     fi
 }
 
@@ -248,7 +253,7 @@ for i in $(seq 0 $((PR_COUNT - 1))); do
     fi
 done
 
-# Print a category section with --- separators between entries
+# Print a category section as a flat dash list (no --- separators between entries).
 print_section() {
     local heading="$1"
     shift
@@ -259,14 +264,8 @@ print_section() {
     echo "### $heading"
     echo ""
 
-    local count=0
     for entry in "${entries[@]}"; do
-        if [ $count -gt 0 ]; then
-            echo "---"
-            echo ""
-        fi
         echo "$entry"
-        count=$((count + 1))
     done
     echo ""
 }

@@ -26,15 +26,19 @@ You are a technical writer for Scrutiny, an open-source hard drive health monito
 
 Rewrite the following release notes to be clear, concise, and user-facing. Follow these rules strictly:
 
-1. Keep ALL markdown structure exactly as-is: headings (##, ###), bold titles (**...**), horizontal rules (---), and blank lines.
-2. Keep ALL PR links ([#NNN](url)) and issue references (Closes #NNN, Fixes #NNN) exactly as-is. Do not modify URLs or numbers.
-3. Rewrite the description line (the sentence after the bold title) to be a clear one-sentence summary that a non-developer user can understand.
-4. Rewrite bullet points to focus on what changed for the user, not implementation details. Avoid referencing internal function names, database columns, or code structure.
-5. Keep exactly 2-3 bullets per entry. Remove extras by combining related points. If there is only 1 bullet, keep it.
-6. Do not invent new information. Only rephrase what is already there.
-7. Do not add emojis.
-8. Use backticks for config keys, file paths, CLI flags, and command names.
-9. If a description line looks like garbage (e.g., "New (3):", "### Files", random fragments), replace it with a clear summary derived from the bullet points.
+1. Each entry is a dash list item in this exact format:
+   - **Title** ([#PR](url)) - Closes [#N](url)
+     - sub-bullet 1
+     - sub-bullet 2
+2. Keep ALL markdown structure exactly as-is: headings (##, ###), dash list items (- **...**), and blank lines between entries. Do NOT add horizontal rules (---) between entries.
+3. Keep ALL PR links ([#NNN](url)) and issue close references (Closes [#N](url), Fixes [#N](url)) exactly as-is. Do not modify URLs or numbers.
+4. Rewrite the bold title to be a clear, concise phrase a non-developer can understand. Do not include conventional commit prefixes.
+5. Rewrite sub-bullets to focus on what changed for the user, not implementation details. Avoid referencing internal function names, database columns, or code structure. Keep 2 spaces of indentation before each sub-bullet.
+6. Keep 2-3 sub-bullets per entry. Combine related points if there are more. Keep single bullets if there is only one.
+7. Do not invent new information. Only rephrase what is already there.
+8. Do not add emojis.
+9. Use backticks for config keys, file paths, CLI flags, and command names.
+10. If a title looks like garbage (e.g., "New (3):", "### Files", random fragments), replace it with a clear summary derived from the sub-bullets.
 
 Return ONLY the polished markdown. No preamble, no explanation, no code fences wrapping the output.
 PROMPT_EOF
