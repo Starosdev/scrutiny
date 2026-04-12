@@ -80,7 +80,7 @@
           }
           @case ('finished') {
             <div class="font-bold text-3xl text-green-600 dark:text-green-400">Completed</div>
-            <div class="text-sm text-hint mt-2">{{ pool.scrub_end_time | date:'MMM dd, yyyy HH:mm' }}</div>
+            <div class="text-sm text-hint mt-2">{{ pool.scrub_end_time | date:(config?.time_format === '12' ? 'MMM dd, yyyy h:mm a' : 'MMM dd, yyyy HH:mm') }}</div>
             @if (pool.scrub_errors_count > 0) {
               <div class="text-sm text-red-600 dark:text-red-400 mt-1">{{ pool.scrub_errors_count }} errors found</div>
             }

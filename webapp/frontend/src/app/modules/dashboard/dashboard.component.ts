@@ -19,6 +19,7 @@ import {Router} from '@angular/router';
 import {TemperaturePipe} from 'app/shared/temperature.pipe';
 import {DeviceTitlePipe} from 'app/shared/device-title.pipe';
 import {DeviceSummaryModel} from 'app/core/models/device-summary-model';
+import {apexShortDateTime} from 'app/shared/time-format.utils';
 
 @Component({
     selector: 'example',
@@ -264,7 +265,7 @@ export class DashboardComponent implements OnInit, OnDestroy
                 shared: true,
                 intersect: false,
                 x: {
-                    format: 'MMM dd, yyyy HH:mm:ss'
+                    format: apexShortDateTime(this.config.time_format, true)
                 },
                 y: {
                     formatter: (value) => {
@@ -288,7 +289,7 @@ export class DashboardComponent implements OnInit, OnDestroy
                         year: 'yyyy',
                         month: "MMM 'yy",
                         day: 'dd MMM',
-                        hour: 'HH:mm'
+                        hour: this.config.time_format === '12' ? 'hh:mm tt' : 'HH:mm'
                     }
                 }
             },

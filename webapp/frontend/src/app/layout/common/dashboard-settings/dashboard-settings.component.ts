@@ -13,6 +13,7 @@ import {
     OverrideProtocol,
     OverrideStatus,
     TemperatureUnit,
+    TimeFormat,
     LineStroke,
     Theme,
     DevicePoweredOnUnit
@@ -37,6 +38,7 @@ export class DashboardSettingsComponent implements OnInit {
     temperatureUnit: string;
     fileSizeSIUnits: boolean;
     poweredOnHoursUnit: string;
+    timeFormat: string;
     lineStroke: string;
     theme: string;
     retrieveSCTTemperatureHistory: boolean;
@@ -152,6 +154,7 @@ export class DashboardSettingsComponent implements OnInit {
                 this.temperatureUnit = config.temperature_unit;
                 this.fileSizeSIUnits = config.file_size_si_units;
                 this.poweredOnHoursUnit = config.powered_on_hours_unit;
+                this.timeFormat = config.time_format;
                 this.lineStroke = config.line_stroke;
                 this.theme = config.theme;
 
@@ -363,6 +366,7 @@ export class DashboardSettingsComponent implements OnInit {
             dashboard_display: this.dashboardDisplay as DashboardDisplay,
             dashboard_sort: this.dashboardSort as DashboardSort,
             temperature_unit: this.temperatureUnit as TemperatureUnit,
+            time_format: this.timeFormat as TimeFormat,
             file_size_si_units: this.fileSizeSIUnits,
             powered_on_hours_unit: this.poweredOnHoursUnit as DevicePoweredOnUnit,
             line_stroke: this.lineStroke as LineStroke,

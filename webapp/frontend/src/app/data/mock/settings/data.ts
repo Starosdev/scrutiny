@@ -7,6 +7,7 @@ export const settings = {
       temperature_unit: 'celsius',
       file_size_si_units: false,
       powered_on_hours_unit: 'humanize',
+      time_format: '24',
       line_stroke: 'smooth',
       metrics: {
           notify_level: 2,

@@ -52,7 +52,7 @@
           class="font-medium text-sm"
         >
           Last Updated on
-          {{ poolSummary.updated_at | date:'MMMM dd, yyyy - HH:mm' }}
+          {{ poolSummary.updated_at | date:(config?.time_format === '12' ? 'MMMM dd, yyyy - h:mm a' : 'MMMM dd, yyyy - HH:mm') }}
         </div>
       }
     </div>
