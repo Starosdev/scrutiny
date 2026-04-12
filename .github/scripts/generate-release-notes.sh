@@ -29,7 +29,8 @@ NEW_DATE=$(git log -1 --format=%aI "$NEW_TAG" 2>/dev/null || date -u +%Y-%m-%dT%
 DEVELOP_JSON=$(mktemp)
 MASTER_JSON=$(mktemp)
 INTEGRATION_JSON=$(mktemp)
-trap 'rm -f "$DEVELOP_JSON" "$MASTER_JSON" "$INTEGRATION_JSON"' EXIT
+DEVELOP_FILTERED_FILE=$(mktemp)
+trap 'rm -f "$DEVELOP_JSON" "$MASTER_JSON" "$INTEGRATION_JSON" "$DEVELOP_FILTERED_FILE"' EXIT
 
 # Fetch PRs merged to develop -- these are the actual feature/fix PRs.
 # Filter to PRs merged between prev tag and new tag dates.
@@ -71,8 +72,14 @@ else
 fi
 
 # Merge all three sources and deduplicate by PR number.
-MERGED_JSON=$(echo "$DEVELOP_FILTERED" | jq -s --argjson master "$(cat "$MASTER_JSON")" --argjson integration "$(cat "$INTEGRATION_JSON")" \
-    '.[0] + $master + $integration | unique_by(.number)')
+# Use --slurpfile (reads from file path) instead of --argjson (shell argument)
+# to avoid hitting ARG_MAX when PR bodies are large.
+echo "$DEVELOP_FILTERED" > "$DEVELOP_FILTERED_FILE"
+MERGED_JSON=$(jq -s \
+    --slurpfile master "$MASTER_JSON" \
+    --slurpfile integration "$INTEGRATION_JSON" \
+    '.[0] + $master[0] + $integration[0] | unique_by(.number)' \
+    "$DEVELOP_FILTERED_FILE")
 
 # Extract summary block from PR body (text between ## Summary and next ## heading).
 # Strips \r to handle GitHub's \r\n line endings.
