@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
-	"gorm.io/gorm"
 )
 
 // AttributeOverride represents a user-configured override for SMART attribute evaluation
@@ -15,7 +14,6 @@ type AttributeOverride struct {
 	ID        uint           `json:"id" gorm:"primaryKey"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 
 	// Required: Protocol type (ATA, NVMe, SCSI)
 	Protocol string `json:"protocol" gorm:"not null;uniqueIndex:idx_override_lookup"`
