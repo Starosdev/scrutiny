@@ -64,7 +64,7 @@
     "@typescript-eslint/eslint-plugin": "^8.58.0",
     "@typescript-eslint/parser": "^8.58.0",
     "apexcharts": "~5.10.4",
-    "eslint": "^8.57.1",
+    "eslint": "^10.2.0",
     "eslint-config-prettier": "^8.10.2",
     "eslint-plugin-prettier": "^4.2.5",
     "jasmine-core": "^4.5.0",
