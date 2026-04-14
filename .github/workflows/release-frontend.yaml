@@ -50,7 +50,7 @@ jobs:
           gh release upload "$VERSION" SHA256SUMS.txt --repo ${{ github.repository }} --clobber
 
       - name: Upload Frontend Asset
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: scrutiny-web-frontend.tar.gz
         env:
