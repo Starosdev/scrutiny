@@ -69,4 +69,8 @@ export class DashboardService {
             })
         );
     }
+
+    runCollectors(): Observable<any> {
+        return this._httpClient.post(getBasePath() + '/api/collectors/run', {});
+    }
 }

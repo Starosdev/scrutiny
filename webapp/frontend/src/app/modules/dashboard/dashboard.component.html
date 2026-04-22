@@ -44,6 +44,30 @@
               <span class="ml-2">Settings</span>
             </button>
 
+            <!-- Run collectors button (Omnibus only) -->
+            <button
+              *ngIf="config?.collector_trigger_enabled && !isTriggering"
+              class="ml-2"
+              mat-flat-button
+              color="primary"
+              (click)="runCollectors()">
+              <mat-icon
+                class="icon-size-20"
+                [svgIcon]="'play_arrow'">
+              </mat-icon>
+              <span class="ml-2">Run collectors</span>
+            </button>
+
+            <!-- Countdown display -->
+            <div *ngIf="countdown > 0" class="ml-4 flex items-center text-secondary font-medium">
+              <mat-progress-spinner
+                class="mr-2"
+                [diameter]="20"
+                [mode]="'indeterminate'">
+              </mat-progress-spinner>
+              Refreshing in {{ countdown }}s...
+            </div>
+
             <!-- Actions menu (mobile) -->
             <div class="hidden xs:flex">
               <button

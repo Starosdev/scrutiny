@@ -145,6 +145,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.GET("/device/:id/replacement-risk", handler.GetDeviceReplacementRisk)         // used by UI to display drive replacement prediction
 			api.POST("/device/:id/collector-error", handler.UploadCollectorError)           // used by Collector to report smartctl errors
 			api.POST("/collector/scan-error", handler.UploadCollectorScanError)             // used by Collector to report scan-level errors (no device context)
+			api.POST("/collectors/run", handler.TriggerCollectors)                          // manual trigger for local collectors
 
 			api.GET("/settings", handler.GetSettings)   //used to get settings
 			api.POST("/settings", handler.SaveSettings) //used to save settings
