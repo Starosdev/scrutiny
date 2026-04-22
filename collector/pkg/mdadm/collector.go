@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 
 	basecollector "github.com/analogj/scrutiny/collector/pkg/collector"
 	"github.com/analogj/scrutiny/collector/pkg/config"
@@ -138,9 +137,8 @@ func (c *Collector) UploadMetrics(array models.MDADMArray, metrics models.MDADMM
 	c.logger.Infof("Uploading metrics for array %s (%s)", array.Name, array.UUID)
 
 	apiEndpoint, _ := url.Parse(c.apiEndpoint.String())
-	// Use UUID in the endpoint path, lowercase it to be safe
-	uuidPath := strings.ToLower(strings.ReplaceAll(array.UUID, ":", ""))
-	apiEndpoint, _ = apiEndpoint.Parse(fmt.Sprintf("api/mdadm/array/%s/metrics", uuidPath))
+	// Use UUID in the endpoint path
+	apiEndpoint, _ = apiEndpoint.Parse(fmt.Sprintf("api/mdadm/array/%s/metrics", array.UUID))
 
 	jsonData, err := json.Marshal(metrics)
 	if err != nil {
