@@ -112,6 +112,15 @@ func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMet
 	if err == nil {
 		rawMdstat, _ := d.getRawMdstat(name)
 		metrics.RawMdstat = rawMdstat
+
+		// Parse sync/check/rebuild/recovery progress from /proc/mdstat if not already set
+		// by mdadm --detail. The "check = X%" line only appears in /proc/mdstat.
+		if metrics.SyncProgress == 0 && rawMdstat != "" {
+			mdstatProgressPattern := regexp.MustCompile(`(?:check|resync|recovery|rebuild)\s*=\s*(\d+(?:\.\d+)?)%`)
+			if m := mdstatProgressPattern.FindStringSubmatch(rawMdstat); m != nil {
+				metrics.SyncProgress, _ = strconv.ParseFloat(m[1], 64)
+			}
+		}
 	}
 	
 	return array, metrics, err
