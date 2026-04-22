@@ -163,18 +163,21 @@ func (sr *scrutinyRepository) SaveMdadmMetrics(ctx context.Context, uuid string,
 	)
 }
 
-// GetMdadmMetricsHistory retrieves historical metrics for an MDADM array
+// GetMdadmMetricsHistory retrieves historical metrics for an MDADM array.
+// Uses schema.fieldsAsCols() instead of aggregateWindow+pivot to preserve string fields
+// (state, raw_mdstat) that aggregateWindow(fn: last) silently drops.
 func (sr *scrutinyRepository) GetMdadmMetricsHistory(ctx context.Context, uuid string, durationKey string) ([]measurements.MDADMMetrics, error) {
 	bucketName := sr.lookupBucketName(durationKey)
 	duration := sr.lookupDuration(durationKey)
 
 	queryStr := fmt.Sprintf(`
+		import "influxdata/influxdb/schema"
 		from(bucket: "%s")
 		|> range(start: %s, stop: %s)
 		|> filter(fn: (r) => r["_measurement"] == "mdadm_array")
 		|> filter(fn: (r) => r["array_uuid"] == params.uuid)
-		|> aggregateWindow(every: 1h, fn: last, createEmpty: false)
-		|> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+		|> schema.fieldsAsCols()
+		|> group()
 		|> sort(columns: ["_time"], desc: false)
 	`, bucketName, duration[0], duration[1])
 
@@ -205,18 +208,21 @@ func (sr *scrutinyRepository) GetMdadmMetricsHistory(ctx context.Context, uuid s
 	return metricsHistory, result.Err()
 }
 
-// GetLatestMdadmMetrics fetches the single absolute latest datapoint without string-dropping aggregation routines.
+// GetLatestMdadmMetrics fetches the single most recent datapoint with all fields preserved.
+// Uses schema.fieldsAsCols() to correctly merge string and numeric fields into a single row.
 func (sr *scrutinyRepository) GetLatestMdadmMetrics(ctx context.Context, uuid string) (*measurements.MDADMMetrics, error) {
 	bucketName := sr.appConfig.GetString(cfgInfluxDBBucket)
 
 	queryStr := fmt.Sprintf(`
+		import "influxdata/influxdb/schema"
 		from(bucket: "%s")
 		|> range(start: -7d)
 		|> filter(fn: (r) => r["_measurement"] == "mdadm_array")
 		|> filter(fn: (r) => r["array_uuid"] == params.uuid)
-		|> last()
+		|> schema.fieldsAsCols()
 		|> group()
-		|> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+		|> sort(columns: ["_time"], desc: true)
+		|> limit(n: 1)
 	`, bucketName)
 
 	params := map[string]interface{}{
