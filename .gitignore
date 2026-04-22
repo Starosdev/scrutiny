@@ -87,3 +87,11 @@ docs/plans/
 
 # Session progress tracking
 OVERRIDE_FIX_PROGRESS.md
+
+# Build Binaries
+/scrutiny-collector-mdadm
+/scrutiny-collector-mdadm-*
+
+# Local Docs
+CONCEPTS.md
+MDADM.MD

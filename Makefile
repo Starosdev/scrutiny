@@ -10,6 +10,7 @@ GO_WORKSPACE ?= /go/src/github.com/analogj/scrutiny
 COLLECTOR_BINARY_NAME = scrutiny-collector-metrics
 COLLECTOR_ZFS_BINARY_NAME = scrutiny-collector-zfs
 COLLECTOR_PERF_BINARY_NAME = scrutiny-collector-performance
+COLLECTOR_MDADM_BINARY_NAME = scrutiny-collector-mdadm
 WEB_BINARY_NAME = scrutiny-web
 LD_FLAGS =
 
@@ -30,6 +31,7 @@ ifdef GOOS
 COLLECTOR_BINARY_NAME := $(COLLECTOR_BINARY_NAME)-$(GOOS)
 COLLECTOR_ZFS_BINARY_NAME := $(COLLECTOR_ZFS_BINARY_NAME)-$(GOOS)
 COLLECTOR_PERF_BINARY_NAME := $(COLLECTOR_PERF_BINARY_NAME)-$(GOOS)
+COLLECTOR_MDADM_BINARY_NAME := $(COLLECTOR_MDADM_BINARY_NAME)-$(GOOS)
 WEB_BINARY_NAME := $(WEB_BINARY_NAME)-$(GOOS)
 LD_FLAGS := $(LD_FLAGS) -X main.goos=$(GOOS)
 endif
@@ -37,6 +39,7 @@ ifdef GOARCH
 COLLECTOR_BINARY_NAME := $(COLLECTOR_BINARY_NAME)-$(GOARCH)
 COLLECTOR_ZFS_BINARY_NAME := $(COLLECTOR_ZFS_BINARY_NAME)-$(GOARCH)
 COLLECTOR_PERF_BINARY_NAME := $(COLLECTOR_PERF_BINARY_NAME)-$(GOARCH)
+COLLECTOR_MDADM_BINARY_NAME := $(COLLECTOR_MDADM_BINARY_NAME)-$(GOARCH)
 WEB_BINARY_NAME := $(WEB_BINARY_NAME)-$(GOARCH)
 LD_FLAGS := $(LD_FLAGS) -X main.goarch=$(GOARCH)
 endif
@@ -44,6 +47,7 @@ ifdef GOARM
 COLLECTOR_BINARY_NAME := $(COLLECTOR_BINARY_NAME)-$(GOARM)
 COLLECTOR_ZFS_BINARY_NAME := $(COLLECTOR_ZFS_BINARY_NAME)-$(GOARM)
 COLLECTOR_PERF_BINARY_NAME := $(COLLECTOR_PERF_BINARY_NAME)-$(GOARM)
+COLLECTOR_MDADM_BINARY_NAME := $(COLLECTOR_MDADM_BINARY_NAME)-$(GOARM)
 WEB_BINARY_NAME := $(WEB_BINARY_NAME)-$(GOARM)
 endif
 # Add .exe extension when building for Windows (native or cross-compile)
@@ -56,6 +60,7 @@ else ifeq ($(GOOS),windows)
 COLLECTOR_BINARY_NAME := $(COLLECTOR_BINARY_NAME).exe
 COLLECTOR_ZFS_BINARY_NAME := $(COLLECTOR_ZFS_BINARY_NAME).exe
 COLLECTOR_PERF_BINARY_NAME := $(COLLECTOR_PERF_BINARY_NAME).exe
+COLLECTOR_MDADM_BINARY_NAME := $(COLLECTOR_MDADM_BINARY_NAME).exe
 WEB_BINARY_NAME := $(WEB_BINARY_NAME).exe
 endif
 
@@ -66,8 +71,8 @@ endif
 all: binary-all
 
 .PHONY: binary-all
-binary-all: binary-collector binary-collector-zfs binary-collector-performance binary-web
-	@echo "built binary-collector, binary-collector-zfs, binary-collector-performance and binary-web targets"
+binary-all: binary-collector binary-collector-zfs binary-collector-performance binary-collector-mdadm binary-web
+	@echo "built binary-collector, binary-collector-zfs, binary-collector-performance, binary-collector-mdadm and binary-web targets"
 
 
 .PHONY: binary-clean
@@ -114,6 +119,16 @@ ifneq ($(OS),Windows_NT)
 	file $(COLLECTOR_PERF_BINARY_NAME) || true
 	ldd $(COLLECTOR_PERF_BINARY_NAME) || true
 	./$(COLLECTOR_PERF_BINARY_NAME) || true
+endif
+
+.PHONY: binary-collector-mdadm
+binary-collector-mdadm: binary-dep
+	go build -buildvcs=false -ldflags "$(LD_FLAGS)" -o $(COLLECTOR_MDADM_BINARY_NAME) $(STATIC_TAGS) ./collector/cmd/collector-mdadm/
+ifneq ($(OS),Windows_NT)
+	chmod +x $(COLLECTOR_MDADM_BINARY_NAME)
+	file $(COLLECTOR_MDADM_BINARY_NAME) || true
+	ldd $(COLLECTOR_MDADM_BINARY_NAME) || true
+	./$(COLLECTOR_MDADM_BINARY_NAME) || true
 endif
 
 .PHONY: binary-web
@@ -166,6 +181,11 @@ docker-collector-zfs:
 docker-collector-performance:
 	@echo "building performance collector docker image"
 	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.collector-performance -t ghcr.io/starosdev/scrutiny-dev:collector-performance .
+
+.PHONY: docker-collector-mdadm
+docker-collector-mdadm:
+	@echo "building MDADM collector docker image"
+	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.collector-mdadm -t ghcr.io/starosdev/scrutiny-dev:collector-mdadm .
 
 .PHONY: docker-web
 docker-web:

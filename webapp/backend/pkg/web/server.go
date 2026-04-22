@@ -178,6 +178,15 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 				zfs.POST("/pool/:guid/label", handler.UpdateZFSPoolLabel)    //used by UI to set pool label
 				zfs.DELETE("/pool/:guid", handler.DeleteZFSPool)             //used by UI to delete pool
 			}
+
+			// MDADM Array API endpoints
+			mdadm := api.Group("/mdadm")
+			{
+				mdadm.POST("/arrays/register", handler.RegisterMdadmArrays)           //used by Collector to register new arrays
+				mdadm.GET("/summary", handler.GetMdadmSummary)                        //used by Dashboard
+				mdadm.POST("/array/:uuid/metrics", handler.UploadMdadmMetrics)        //used by Collector to upload metrics
+				mdadm.GET("/array/:uuid/details", handler.GetMdadmArrayDetails)       //used by Array Details view
+			}
 		}
 	}
 
