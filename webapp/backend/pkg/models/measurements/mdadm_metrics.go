@@ -19,6 +19,7 @@ type MDADMMetrics struct {
 	// Status (fields)
 	State        string  `json:"state"`
 	SyncProgress float64 `json:"sync_progress"`
+	RawMdstat    string  `json:"raw_mdstat"`
 }
 
 // Flatten converts the MDADMMetrics struct to tags and fields for InfluxDB
@@ -35,6 +36,7 @@ func (m *MDADMMetrics) Flatten() (tags map[string]string, fields map[string]inte
 		"spare_devices":   m.SpareDevices,
 		"state":           m.State,
 		"sync_progress":   m.SyncProgress,
+		"raw_mdstat":      m.RawMdstat,
 	}
 
 	return tags, fields
@@ -66,6 +68,9 @@ func NewMDADMMetricsFromInfluxDB(attrs map[string]interface{}) (*MDADMMetrics, e
 	}
 	if val, ok := attrs["sync_progress"]; ok && val != nil {
 		m.SyncProgress = val.(float64)
+	}
+	if val, ok := attrs["raw_mdstat"]; ok && val != nil {
+		m.RawMdstat = val.(string)
 	}
 
 	return &m, nil

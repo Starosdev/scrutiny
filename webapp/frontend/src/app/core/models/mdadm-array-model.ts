@@ -18,6 +18,7 @@ export interface MDADMMetricsHistoryModel {
     spare_devices: number;
     state: string;
     sync_progress: number;
+    raw_mdstat?: string;
 }
 
 export interface MDADMArrayResponseWrapper {
