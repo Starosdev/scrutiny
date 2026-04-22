@@ -28,11 +28,17 @@ func GetMdadmArrayDetails(c *gin.Context) {
 			// Continue with empty history
 		}
 
+		latest, err := dbRepo.GetLatestMdadmMetrics(c.Request.Context(), uuid)
+		if err != nil {
+			logger.Errorf("Failed to get latest MDADM metrics for %s: %v", uuid, err)
+		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
 			"data": gin.H{
-				"array":   array,
-				"history": history,
+				"array":          array,
+				"history":        history,
+				"latest_metrics": latest,
 			},
 		})
 	}

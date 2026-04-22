@@ -148,6 +148,7 @@ func (sr *scrutinyRepository) SaveMdadmMetrics(ctx context.Context, uuid string,
 		SpareDevices:   metrics.SpareDevices,
 		State:          metrics.State,
 		SyncProgress:   metrics.SyncProgress,
+		RawMdstat:      metrics.RawMdstat,
 	}
 
 	tags, fields := influxMetrics.Flatten()
@@ -202,4 +203,38 @@ func (sr *scrutinyRepository) GetMdadmMetricsHistory(ctx context.Context, uuid s
 	}
 
 	return metricsHistory, result.Err()
+}
+
+// GetLatestMdadmMetrics fetches the single absolute latest datapoint without string-dropping aggregation routines.
+func (sr *scrutinyRepository) GetLatestMdadmMetrics(ctx context.Context, uuid string) (*measurements.MDADMMetrics, error) {
+	bucketName := sr.appConfig.GetString(cfgInfluxDBBucket)
+
+	queryStr := fmt.Sprintf(`
+		from(bucket: "%s")
+		|> range(start: -7d)
+		|> filter(fn: (r) => r["_measurement"] == "mdadm_array")
+		|> filter(fn: (r) => r["array_uuid"] == params.uuid)
+		|> last()
+		|> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+	`, bucketName)
+
+	params := map[string]interface{}{
+		"uuid": uuid,
+	}
+
+	result, err := sr.influxQueryApi.QueryWithParams(ctx, queryStr, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query latest MDADM array metrics: %v", err)
+	}
+	defer result.Close()
+
+	if result.Next() {
+		metrics, err := measurements.NewMDADMMetricsFromInfluxDB(result.Record().Values())
+		if err != nil {
+			return nil, err
+		}
+		return metrics, nil
+	}
+
+	return nil, nil
 }

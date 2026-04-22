@@ -32,6 +32,7 @@ export interface MDADMArrayDetailResponseWrapper {
     data: {
         array: MDADMArrayModel;
         history: MDADMMetricsHistoryModel[];
+        latest_metrics: MDADMMetricsHistoryModel;
     };
     errors?: string[];
 }

@@ -152,6 +152,7 @@ func (d *Detect) parseMdadmOutput(name string, output string) (models.MDADMArray
 	sparePattern := regexp.MustCompile(`Spare Devices\s*:\s*(\d+)`)
 	rebuildPattern := regexp.MustCompile(`Rebuild Status\s*:\s*(\d+)%`)
 	resyncPattern := regexp.MustCompile(`Resync Status\s*:\s*(\d+)%`)
+	recoveryPattern := regexp.MustCompile(`Recovery Status\s*:\s*(\d+)%`)
 
 	// Device list starts after the header
 	inDeviceList := false
@@ -178,6 +179,9 @@ func (d *Detect) parseMdadmOutput(name string, output string) (models.MDADMArray
 			progress, _ := strconv.ParseFloat(m[1], 64)
 			metrics.SyncProgress = progress
 		} else if m := resyncPattern.FindStringSubmatch(line); m != nil {
+			progress, _ := strconv.ParseFloat(m[1], 64)
+			metrics.SyncProgress = progress
+		} else if m := recoveryPattern.FindStringSubmatch(line); m != nil {
 			progress, _ := strconv.ParseFloat(m[1], 64)
 			metrics.SyncProgress = progress
 		}
