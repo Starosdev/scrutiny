@@ -166,6 +166,7 @@ func (sr *scrutinyRepository) SaveMdadmMetrics(ctx context.Context, uuid string,
 // GetMdadmMetricsHistory retrieves historical metrics for an MDADM array.
 // Uses schema.fieldsAsCols() instead of aggregateWindow+pivot to preserve string fields
 // (state, raw_mdstat) that aggregateWindow(fn: last) silently drops.
+// Note: UUID is validated at the handler level before reaching this function.
 func (sr *scrutinyRepository) GetMdadmMetricsHistory(ctx context.Context, uuid string, durationKey string) ([]measurements.MDADMMetrics, error) {
 	bucketName := sr.lookupBucketName(durationKey)
 	duration := sr.lookupDuration(durationKey)
@@ -175,19 +176,15 @@ func (sr *scrutinyRepository) GetMdadmMetricsHistory(ctx context.Context, uuid s
 		from(bucket: "%s")
 		|> range(start: %s, stop: %s)
 		|> filter(fn: (r) => r["_measurement"] == "mdadm_array")
-		|> filter(fn: (r) => r["array_uuid"] == params.uuid)
+		|> filter(fn: (r) => r["array_uuid"] == "%s")
 		|> schema.fieldsAsCols()
 		|> group()
 		|> sort(columns: ["_time"], desc: false)
-	`, bucketName, duration[0], duration[1])
+	`, bucketName, duration[0], duration[1], uuid)
 
-	params := map[string]interface{}{
-		"uuid": uuid,
-	}
+	sr.logger.Debugf("GetMdadmMetricsHistory query for uuid=%s bucket=%s", uuid, bucketName)
 
-	sr.logger.Debugf("GetMdadmMetricsHistory query for uuid=%s bucket=%s: %s", uuid, bucketName, queryStr)
-
-	result, err := sr.influxQueryApi.QueryWithParams(ctx, queryStr, params)
+	result, err := sr.influxQueryApi.Query(ctx, queryStr)
 	if err != nil {
 		sr.logger.Errorf("GetMdadmMetricsHistory query failed: %v", err)
 		return nil, fmt.Errorf("failed to query MDADM array metrics: %v", err)
@@ -215,6 +212,7 @@ func (sr *scrutinyRepository) GetMdadmMetricsHistory(ctx context.Context, uuid s
 
 // GetLatestMdadmMetrics fetches the single most recent datapoint with all fields preserved.
 // Uses schema.fieldsAsCols() to correctly merge string and numeric fields into a single row.
+// Note: UUID is validated at the handler level before reaching this function.
 func (sr *scrutinyRepository) GetLatestMdadmMetrics(ctx context.Context, uuid string) (*measurements.MDADMMetrics, error) {
 	bucketName := sr.appConfig.GetString(cfgInfluxDBBucket)
 
@@ -223,20 +221,16 @@ func (sr *scrutinyRepository) GetLatestMdadmMetrics(ctx context.Context, uuid st
 		from(bucket: "%s")
 		|> range(start: -7d)
 		|> filter(fn: (r) => r["_measurement"] == "mdadm_array")
-		|> filter(fn: (r) => r["array_uuid"] == params.uuid)
+		|> filter(fn: (r) => r["array_uuid"] == "%s")
 		|> schema.fieldsAsCols()
 		|> group()
 		|> sort(columns: ["_time"], desc: true)
 		|> limit(n: 1)
-	`, bucketName)
+	`, bucketName, uuid)
 
-	params := map[string]interface{}{
-		"uuid": uuid,
-	}
+	sr.logger.Debugf("GetLatestMdadmMetrics query for uuid=%s", uuid)
 
-	sr.logger.Debugf("GetLatestMdadmMetrics query for uuid=%s: %s", uuid, queryStr)
-
-	result, err := sr.influxQueryApi.QueryWithParams(ctx, queryStr, params)
+	result, err := sr.influxQueryApi.Query(ctx, queryStr)
 	if err != nil {
 		sr.logger.Errorf("GetLatestMdadmMetrics query failed: %v", err)
 		return nil, fmt.Errorf("failed to query latest MDADM array metrics: %v", err)
