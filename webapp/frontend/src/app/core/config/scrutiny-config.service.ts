@@ -56,7 +56,11 @@ export class ScrutinyConfigService {
             this._httpClient.get(getBasePath() + '/api/settings').pipe(
                 map((response: any) => {
                     const merged = this._mergeWithDefaults(this._defaultConfig, response.settings);
-                    return { ...merged, server_version: response.server_version };
+                    return { 
+                        ...merged, 
+                        server_version: response.server_version,
+                        collector_trigger_enabled: response.collector_trigger_enabled
+                    };
                 }),
                 tap((settings: AppConfig) => {
                     this._config.next(settings);

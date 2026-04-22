@@ -41,6 +41,8 @@ export class DashboardComponent implements OnInit, OnDestroy
     showArchived: boolean = false;
     visibleDrives: { [wwn: string]: boolean } = {};
     mdadmArrays: MDADMArrayModel[] = [];
+    isTriggering: boolean = false;
+    countdown: number = 0;
 
     // Private
     private _unsubscribeAll: Subject<void>;
@@ -461,6 +463,32 @@ export class DashboardComponent implements OnInit, OnDestroy
     trackByFn(index: number, item: any): any
     {
         return item.id || index;
+    }
+
+    runCollectors(): void {
+        if (this.isTriggering) {
+            return;
+        }
+
+        this.isTriggering = true;
+        this._dashboardService.runCollectors().subscribe(() => {
+            this.countdown = 15;
+            this._changeDetectorRef.markForCheck();
+
+            const interval = setInterval(() => {
+                this.countdown--;
+                this._changeDetectorRef.markForCheck();
+
+                if (this.countdown <= 0) {
+                    clearInterval(interval);
+                    window.location.reload();
+                }
+            }, 1000);
+        }, (err) => {
+            this.isTriggering = false;
+            this._changeDetectorRef.markForCheck();
+            console.error('Failed to trigger collectors', err);
+        });
     }
 
 }
