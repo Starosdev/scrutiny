@@ -81,5 +81,11 @@
                 </div>
             </div>
         </div>
+
+        <!-- Hardware Status (mdstat) -->
+        <div *ngIf="latestMetrics?.raw_mdstat" class="mt-8 flex flex-col bg-card shadow rounded-2xl p-6">
+            <div class="text-lg font-bold mb-4">Hardware Status (mdstat)</div>
+            <pre class="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-sm font-mono whitespace-pre-wrap">{{ latestMetrics.raw_mdstat }}</pre>
+        </div>
     </div>
 </div>

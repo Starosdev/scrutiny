@@ -93,7 +93,44 @@ func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMet
 		return models.MDADMArray{}, models.MDADMMetrics{}, fmt.Errorf("failed to run mdadm --detail %s: %w", devicePath, err)
 	}
 
-	return d.parseMdadmOutput(name, string(output))
+	array, metrics, err := d.parseMdadmOutput(name, string(output))
+	if err == nil {
+		rawMdstat, _ := d.getRawMdstat(name)
+		metrics.RawMdstat = rawMdstat
+	}
+	
+	return array, metrics, err
+}
+
+// getRawMdstat extracts the specific multi-line block for an array from /proc/mdstat
+func (d *Detect) getRawMdstat(name string) (string, error) {
+	file, err := os.Open("/proc/mdstat")
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	var block []string
+	inBlock := false
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		
+		if strings.HasPrefix(line, name+" :") {
+			inBlock = true
+		} else if inBlock && (!strings.HasPrefix(line, " ") && len(strings.TrimSpace(line)) > 0) {
+			// A new array block starts with a non-space character (like md1 : ...)
+			// or Personalities line.
+			break
+		}
+
+		if inBlock {
+			block = append(block, line)
+		}
+	}
+
+	return strings.Join(block, "\n"), scanner.Err()
 }
 
 // parseMdadmOutput extracts array metadata and metrics from mdadm output

@@ -19,7 +19,8 @@ type MDADMMetrics struct {
 	WorkingDevices int     `json:"working_devices"`
 	FailedDevices  int     `json:"failed_devices"`
 	SpareDevices   int     `json:"spare_devices"`
-	SyncProgress   float64 `json:"sync_progress,omitempty"`
+	SyncProgress   float64   `json:"sync_progress,omitempty"`
+	RawMdstat      string    `json:"raw_mdstat,omitempty"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
