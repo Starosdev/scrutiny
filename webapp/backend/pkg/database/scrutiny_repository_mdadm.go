@@ -215,6 +215,7 @@ func (sr *scrutinyRepository) GetLatestMdadmMetrics(ctx context.Context, uuid st
 		|> filter(fn: (r) => r["_measurement"] == "mdadm_array")
 		|> filter(fn: (r) => r["array_uuid"] == params.uuid)
 		|> last()
+		|> group()
 		|> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
 	`, bucketName)
 
