@@ -150,9 +150,10 @@ func (d *Detect) parseMdadmOutput(name string, output string) (models.MDADMArray
 	workingPattern := regexp.MustCompile(`Working Devices\s*:\s*(\d+)`)
 	failedPattern := regexp.MustCompile(`Failed Devices\s*:\s*(\d+)`)
 	sparePattern := regexp.MustCompile(`Spare Devices\s*:\s*(\d+)`)
-	rebuildPattern := regexp.MustCompile(`Rebuild Status\s*:\s*(\d+)%`)
-	resyncPattern := regexp.MustCompile(`Resync Status\s*:\s*(\d+)%`)
-	recoveryPattern := regexp.MustCompile(`Recovery Status\s*:\s*(\d+)%`)
+	rebuildPattern := regexp.MustCompile(`Rebuild Status\s*:\s*(\d+(?:\.\d+)?)%`)
+	resyncPattern := regexp.MustCompile(`Resync Status\s*:\s*(\d+(?:\.\d+)?)%`)
+	recoveryPattern := regexp.MustCompile(`Recovery Status\s*:\s*(\d+(?:\.\d+)?)%`)
+	checkPattern := regexp.MustCompile(`check\s*=\s*(\d+(?:\.\d+)?)%`)
 
 	// Device list starts after the header
 	inDeviceList := false
@@ -182,6 +183,9 @@ func (d *Detect) parseMdadmOutput(name string, output string) (models.MDADMArray
 			progress, _ := strconv.ParseFloat(m[1], 64)
 			metrics.SyncProgress = progress
 		} else if m := recoveryPattern.FindStringSubmatch(line); m != nil {
+			progress, _ := strconv.ParseFloat(m[1], 64)
+			metrics.SyncProgress = progress
+		} else if m := checkPattern.FindStringSubmatch(line); m != nil {
 			progress, _ := strconv.ParseFloat(m[1], 64)
 			metrics.SyncProgress = progress
 		}
