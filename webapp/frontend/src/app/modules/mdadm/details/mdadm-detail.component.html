@@ -37,7 +37,14 @@
                     </div>
                     <div class="flex justify-between border-b pb-2">
                         <span class="text-secondary">Status</span>
-                        <span class="font-bold text-green-600 dark:text-green-400 uppercase">ACTIVE</span>
+                        <span class="font-bold uppercase"
+                              [ngClass]="{'text-green-600 dark:text-green-400': latestMetrics?.state !== 'degraded', 'text-red-500': latestMetrics?.state === 'degraded'}">
+                           {{ latestMetrics?.state || 'ACTIVE' }}
+                        </span>
+                    </div>
+                    <div *ngIf="latestMetrics?.sync_progress > 0 && latestMetrics?.sync_progress < 100" class="flex justify-between border-b pb-2">
+                        <span class="text-secondary">Sync Progress</span>
+                        <span class="font-medium text-blue-500">{{ latestMetrics?.sync_progress }}%</span>
                     </div>
                 </div>
 
@@ -55,7 +62,7 @@
             <div class="md:col-span-2 flex flex-col bg-card shadow rounded-2xl p-6">
                 <div class="text-lg font-bold mb-4">Health History</div>
                 <div class="flex-auto h-80">
-                    <apx-chart *ngIf="chartOptions"
+                    <apx-chart *ngIf="chartOptions && history?.length > 0"
                                [chart]="chartOptions.chart"
                                [colors]="chartOptions.colors"
                                [series]="chartOptions.series"
@@ -65,8 +72,11 @@
                                [yaxis]="chartOptions.yaxis"
                                [legend]="chartOptions.legend">
                     </apx-chart>
-                    <div *ngIf="!chartOptions" class="flex items-center justify-center h-full text-secondary">
+                    <div *ngIf="!chartOptions && history === null" class="flex items-center justify-center h-full text-secondary">
                         Loading history data...
+                    </div>
+                    <div *ngIf="history?.length === 0" class="flex items-center justify-center h-full text-secondary">
+                        Insufficient history data. Check back later once more data points are collected!
                     </div>
                 </div>
             </div>
