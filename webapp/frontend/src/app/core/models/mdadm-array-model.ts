@@ -8,6 +8,9 @@ export interface MDADMArrayModel {
     muted: boolean;
     created_at: string;
     updated_at: string;
+    // Latest metrics (populated by summary endpoint)
+    state?: string;
+    sync_progress?: number;
 }
 
 export interface MDADMMetricsHistoryModel {

@@ -34,7 +34,7 @@
                             <div class="flex items-center">
                                 <div class="px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide"
                                      [ngClass]="getArrayStatusColorClass(array)">
-                                    ACTIVE
+                                    {{ array.state || 'UNKNOWN' }}
                                 </div>
                             </div>
                         </div>
@@ -53,6 +53,18 @@
                                      class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs text-secondary">
                                     +{{ array.devices.length - 4 }} more
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Sync Progress -->
+                        <div *ngIf="array.sync_progress > 0 && array.sync_progress < 100" class="flex flex-col">
+                            <div class="flex items-center justify-between text-secondary mb-1">
+                                <div>Sync Progress</div>
+                                <div class="font-medium text-blue-500">{{ array.sync_progress }}%</div>
+                            </div>
+                            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                <div class="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                                     [style.width.%]="array.sync_progress"></div>
                             </div>
                         </div>
                     </div>
