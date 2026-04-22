@@ -20,6 +20,21 @@ type Detect struct {
 	Config config.Interface
 }
 
+// mdstatPaths lists the paths to check for mdstat, in priority order.
+// /host/proc/mdstat is used when running in Docker (bind-mounted from host).
+// /proc/mdstat is the native path on bare metal.
+var mdstatPaths = []string{"/host/proc/mdstat", "/proc/mdstat"}
+
+// openMdstat opens the first available mdstat file.
+func openMdstat() (*os.File, error) {
+	for _, path := range mdstatPaths {
+		if f, err := os.Open(path); err == nil {
+			return f, nil
+		}
+	}
+	return nil, fmt.Errorf("mdstat not found at any of: %v", mdstatPaths)
+}
+
 // Start detects all MDADM arrays on the system
 func (d *Detect) Start() ([]models.MDADMArray, []models.MDADMMetrics, error) {
 	// 1. Discover arrays from /proc/mdstat
@@ -52,12 +67,12 @@ func (d *Detect) Start() ([]models.MDADMArray, []models.MDADMMetrics, error) {
 
 // parseMdstat parses /proc/mdstat to discover active arrays
 func (d *Detect) parseMdstat() ([]string, error) {
-	file, err := os.Open("/proc/mdstat")
+	file, err := openMdstat()
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to open /proc/mdstat: %w", err)
+		return nil, fmt.Errorf("failed to open mdstat: %w", err)
 	}
 	defer file.Close()
 
@@ -104,7 +119,7 @@ func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMet
 
 // getRawMdstat extracts the specific multi-line block for an array from /proc/mdstat
 func (d *Detect) getRawMdstat(name string) (string, error) {
-	file, err := os.Open("/proc/mdstat")
+	file, err := openMdstat()
 	if err != nil {
 		return "", err
 	}
