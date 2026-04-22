@@ -20,6 +20,8 @@ import {TemperaturePipe} from 'app/shared/temperature.pipe';
 import {DeviceTitlePipe} from 'app/shared/device-title.pipe';
 import {DeviceSummaryModel} from 'app/core/models/device-summary-model';
 import {apexShortDateTime} from 'app/shared/time-format.utils';
+import {MDADMService} from 'app/modules/mdadm/mdadm.service';
+import {MDADMArrayModel} from 'app/core/models/mdadm-array-model';
 
 @Component({
     selector: 'example',
@@ -36,8 +38,9 @@ export class DashboardComponent implements OnInit, OnDestroy
     temperatureOptions: ApexOptions;
     tempDurationKey = 'forever'
     config: AppConfig;
-    showArchived: boolean;
+    showArchived: boolean = false;
     visibleDrives: { [wwn: string]: boolean } = {};
+    mdadmArrays: MDADMArrayModel[] = [];
 
     // Private
     private _unsubscribeAll: Subject<void>;
@@ -54,6 +57,7 @@ export class DashboardComponent implements OnInit, OnDestroy
      */
     constructor(
         private readonly _dashboardService: DashboardService,
+        private readonly _mdadmService: MDADMService,
         private readonly _configService: ScrutinyConfigService,
         private readonly _changeDetectorRef: ChangeDetectorRef,
         public dialog: MatDialog,
@@ -114,6 +118,14 @@ export class DashboardComponent implements OnInit, OnDestroy
                 }
                 // Prepare the chart data
                 this._prepareChartData();
+            });
+
+        // Get MDADM data
+        this._mdadmService.getSummaryData()
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe((arrays) => {
+                this.mdadmArrays = arrays;
+                this._changeDetectorRef.markForCheck();
             });
     }
 

@@ -30,6 +30,9 @@ services:
       # See docs/ZFS_POOL_MONITORING.md for details
       # COLLECTOR_ZFS_CRON_SCHEDULE: "*/15 * * * *"
       # COLLECTOR_ZFS_RUN_STARTUP: "true"
+      # Enable MDADM RAID monitoring (uncomment to enable)
+      # COLLECTOR_MDADM_CRON_SCHEDULE: "*/15 * * * *"
+      # COLLECTOR_MDADM_RUN_STARTUP: "true"
       # Authentication (disabled by default, see docs/AUTH.md)
       # SCRUTINY_WEB_AUTH_ENABLED: 'true'
       # SCRUTINY_WEB_AUTH_TOKEN: 'your-secret-api-token'

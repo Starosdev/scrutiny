@@ -47,6 +47,9 @@ export const appRoutes: Route[] = [
             {path: 'zfs-pools', loadChildren: () => import('app/modules/zfs-pools/zfs-pools.module').then(m => m.ZFSPoolsModule)},
             {path: 'zfs-pool/:guid', loadChildren: () => import('app/modules/zfs-pool-detail/zfs-pool-detail.module').then(m => m.ZFSPoolDetailModule)},
 
+            // MDADM RAID
+            {path: 'mdadm', loadChildren: () => import('app/modules/mdadm/mdadm.module').then(m => m.MDADMModule)},
+
             // Workload Insights
             {path: 'workload', loadChildren: () => import('app/modules/workload/workload.module').then(m => m.WorkloadModule)},
 

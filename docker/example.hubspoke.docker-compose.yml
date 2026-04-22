@@ -127,3 +127,18 @@ services:
   #     # NVMe: pass both controller and namespace for performance benchmarks
   #     # - "/dev/nvme0"
   #     # - "/dev/nvme0n1"
+  # MDADM Software RAID Collector (optional - only needed if you use Linux mdadm RAID)
+  # collector-mdadm:
+  #   restart: unless-stopped
+  #   image: 'ghcr.io/starosdev/scrutiny:latest-collector-mdadm'
+  #   cap_add:
+  #     - SYS_ADMIN # Required for mdadm --detail and block device access
+  #   volumes:
+  #     - '/dev:/dev' # Mapping the whole /dev is recommended for RAID discovery
+  #   environment:
+  #     COLLECTOR_MDADM_API_ENDPOINT: 'http://web:8080'
+  #     COLLECTOR_MDADM_HOST_ID: 'raid-host'
+  #     COLLECTOR_MDADM_RUN_STARTUP: 'true'
+  #   depends_on:
+  #     web:
+  #       condition: service_healthy

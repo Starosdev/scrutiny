@@ -1,0 +1,75 @@
+<div class="flex flex-col flex-auto min-w-0">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row flex-0 sm:items-center sm:justify-between p-6 sm:py-8 sm:px-10 border-b bg-card dark:bg-transparent">
+        <div class="flex-1 min-w-0">
+            <!-- Breadcrumbs -->
+            <div class="flex flex-wrap items-center font-medium">
+                <div>
+                    <a class="whitespace-nowrap text-primary-500 cursor-pointer" (click)="goBack()">MDADM RAID</a>
+                </div>
+                <div class="flex items-center ml-1 whitespace-nowrap">
+                    <mat-icon class="icon-size-5 text-secondary" [svgIcon]="'heroicons_solid:chevron-right'"></mat-icon>
+                    <span class="ml-1 text-secondary">{{ array?.name }}</span>
+                </div>
+            </div>
+            <div class="mt-2">
+                <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight leading-7 sm:leading-10 truncate">
+                    {{ array?.label || array?.name }}
+                </h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main -->
+    <div class="flex-auto p-6 sm:p-10">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Overview Card -->
+            <div class="md:col-span-1 flex flex-col bg-card shadow rounded-2xl p-6">
+                <div class="text-lg font-bold mb-4">Overview</div>
+                <div class="space-y-4">
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-secondary">Level</span>
+                        <span class="font-medium uppercase">{{ array?.level }}</span>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-secondary">UUID</span>
+                        <span class="font-mono text-xs uppercase">{{ array?.uuid }}</span>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-secondary">Status</span>
+                        <span class="font-bold text-green-600 dark:text-green-400 uppercase">ACTIVE</span>
+                    </div>
+                </div>
+
+                <div class="mt-8 text-lg font-bold mb-4">Member Devices</div>
+                <div class="space-y-2">
+                    <div *ngFor="let dev of array?.devices"
+                         class="flex items-center p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border">
+                        <mat-icon class="icon-size-5 text-secondary mr-3" [svgIcon]="'heroicons_outline:server'"></mat-icon>
+                        <span class="font-mono">{{ dev }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Card -->
+            <div class="md:col-span-2 flex flex-col bg-card shadow rounded-2xl p-6">
+                <div class="text-lg font-bold mb-4">Health History</div>
+                <div class="flex-auto h-80">
+                    <apx-chart *ngIf="chartOptions"
+                               [chart]="chartOptions.chart"
+                               [colors]="chartOptions.colors"
+                               [series]="chartOptions.series"
+                               [stroke]="chartOptions.stroke"
+                               [tooltip]="chartOptions.tooltip"
+                               [xaxis]="chartOptions.xaxis"
+                               [yaxis]="chartOptions.yaxis"
+                               [legend]="chartOptions.legend">
+                    </apx-chart>
+                    <div *ngIf="!chartOptions" class="flex items-center justify-center h-full text-secondary">
+                        Loading history data...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
