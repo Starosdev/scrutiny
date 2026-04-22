@@ -26,6 +26,7 @@ import { apexShortDateTime } from 'app/shared/time-format.utils';
 export class MDADMDetailComponent implements OnInit, OnDestroy {
     array: MDADMArrayModel;
     history: MDADMMetricsHistoryModel[];
+    latestMetrics: MDADMMetricsHistoryModel;
     chartOptions: ApexOptions;
     config: AppConfig;
 
@@ -56,6 +57,9 @@ export class MDADMDetailComponent implements OnInit, OnDestroy {
             .subscribe((response) => {
                 this.array = response.data.array;
                 this.history = response.data.history;
+                if (this.history && this.history.length > 0) {
+                    this.latestMetrics = this.history[this.history.length - 1];
+                }
                 this._prepareChartData();
                 this._changeDetectorRef.markForCheck();
             });
