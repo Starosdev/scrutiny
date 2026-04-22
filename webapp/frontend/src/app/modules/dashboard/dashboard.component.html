@@ -168,8 +168,21 @@
                           <div class="text-md text-secondary mt-1">{{ array.level }}</div>
                         </div>
                       </div>
-                      <div class="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 uppercase">
-                        ACTIVE
+                      <div class="px-2 py-1 rounded text-xs font-semibold uppercase"
+                           [ngClass]="getMdadmArrayStatusColorClass(array)">
+                        {{ array.state || 'UNKNOWN' }}
+                      </div>
+                    </div>
+
+                    <!-- Sync Progress -->
+                    <div *ngIf="array.sync_progress > 0 && array.sync_progress < 100" class="flex flex-col mt-4">
+                      <div class="flex items-center justify-between text-secondary mb-1">
+                        <div class="text-xs">Sync Progress</div>
+                        <div class="text-xs font-medium text-blue-500">{{ array.sync_progress }}%</div>
+                      </div>
+                      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                        <div class="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                             [style.width.%]="array.sync_progress"></div>
                       </div>
                     </div>
                   </a>
