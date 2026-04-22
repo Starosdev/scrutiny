@@ -80,7 +80,14 @@ func (d *Detect) parseMdstat() ([]string, error) {
 // getArrayDetail runs mdadm --detail and parses its output
 func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMetrics, error) {
 	devicePath := fmt.Sprintf("/dev/%s", name)
-	cmd := exec.Command("mdadm", "--detail", devicePath)
+	
+	var cmd *exec.Cmd
+	if os.Getuid() == 0 {
+		cmd = exec.Command("mdadm", "--detail", devicePath)
+	} else {
+		cmd = exec.Command("sudo", "mdadm", "--detail", devicePath)
+	}
+	
 	output, err := cmd.Output()
 	if err != nil {
 		return models.MDADMArray{}, models.MDADMMetrics{}, fmt.Errorf("failed to run mdadm --detail %s: %w", devicePath, err)
