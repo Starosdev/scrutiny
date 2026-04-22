@@ -102,3 +102,7 @@ OVERRIDE_FIX_PROGRESS.md
 CONCEPTS.md
 MDADM.MD
 scratch.md
+
+# Scratch Scripts
+scratch.go
+test_flux.go

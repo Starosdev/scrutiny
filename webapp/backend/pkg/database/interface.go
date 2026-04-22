@@ -114,6 +114,7 @@ type DeviceRepo interface {
 	// MDADM Array metrics
 	SaveMdadmMetrics(ctx context.Context, uuid string, metrics collector.MDADMMetrics) error
 	GetMdadmMetricsHistory(ctx context.Context, uuid string, durationKey string) ([]measurements.MDADMMetrics, error)
+	GetLatestMdadmMetrics(ctx context.Context, uuid string) (*measurements.MDADMMetrics, error)
 
 	// Attribute Override operations
 	GetAttributeOverrides(ctx context.Context) ([]models.AttributeOverride, error)
