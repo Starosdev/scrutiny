@@ -56,7 +56,7 @@ export class MDADMDetailComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe((response) => {
                 this.array = response.data.array;
-                this.history = response.data.history;
+                this.history = response.data.history || [];
                 this.latestMetrics = response.data.latest_metrics || null;
                 this._prepareChartData();
                 this._changeDetectorRef.markForCheck();
