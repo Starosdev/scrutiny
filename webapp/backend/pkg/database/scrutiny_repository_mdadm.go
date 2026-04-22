@@ -185,8 +185,11 @@ func (sr *scrutinyRepository) GetMdadmMetricsHistory(ctx context.Context, uuid s
 		"uuid": uuid,
 	}
 
+	sr.logger.Debugf("GetMdadmMetricsHistory query for uuid=%s bucket=%s: %s", uuid, bucketName, queryStr)
+
 	result, err := sr.influxQueryApi.QueryWithParams(ctx, queryStr, params)
 	if err != nil {
+		sr.logger.Errorf("GetMdadmMetricsHistory query failed: %v", err)
 		return nil, fmt.Errorf("failed to query MDADM array metrics: %v", err)
 	}
 	defer result.Close()
@@ -204,6 +207,8 @@ func (sr *scrutinyRepository) GetMdadmMetricsHistory(ctx context.Context, uuid s
 
 		metricsHistory = append(metricsHistory, *metrics)
 	}
+
+	sr.logger.Debugf("GetMdadmMetricsHistory returned %d records, resultErr=%v", len(metricsHistory), result.Err())
 
 	return metricsHistory, result.Err()
 }
@@ -229,8 +234,11 @@ func (sr *scrutinyRepository) GetLatestMdadmMetrics(ctx context.Context, uuid st
 		"uuid": uuid,
 	}
 
+	sr.logger.Debugf("GetLatestMdadmMetrics query for uuid=%s: %s", uuid, queryStr)
+
 	result, err := sr.influxQueryApi.QueryWithParams(ctx, queryStr, params)
 	if err != nil {
+		sr.logger.Errorf("GetLatestMdadmMetrics query failed: %v", err)
 		return nil, fmt.Errorf("failed to query latest MDADM array metrics: %v", err)
 	}
 	defer result.Close()
