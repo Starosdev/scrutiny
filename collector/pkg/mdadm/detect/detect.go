@@ -2,14 +2,13 @@ package detect
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/analogj/scrutiny/collector/pkg/config"
 	"github.com/analogj/scrutiny/collector/pkg/mdadm/models"
@@ -124,12 +123,18 @@ func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMet
 			}
 		}
 
-		// Get filesystem-level used bytes if the array is mounted.
-		usedBytes, statErr := d.getMountUsage(devicePath)
+		// Get filesystem-level used bytes via lsblk.
+		// Using lsblk is more robust in Docker as it can often see usage
+		// info even if the mount point is not browseable in the jail.
+		usedBytes, fsSize, statErr := d.getLsblkUsage(devicePath)
 		if statErr != nil {
-			d.Logger.Debugf("Could not get mount usage for %s (may not be mounted): %v", devicePath, statErr)
+			d.Logger.Debugf("Could not get lsblk usage for %s: %v", devicePath, statErr)
 		} else {
 			metrics.UsedBytes = usedBytes
+			// If mdadm didn't report a size (rare), use the filesystem size as fallback
+			if metrics.ArraySize == 0 {
+				metrics.ArraySize = fsSize
+			}
 		}
 	}
 	
@@ -167,57 +172,61 @@ func (d *Detect) getRawMdstat(name string) (string, error) {
 	return strings.Join(block, "\n"), scanner.Err()
 }
 
-// mountsPaths lists candidate locations for /proc/mounts, Docker-first.
-var mountsPaths = []string{"/host/proc/mounts", "/proc/mounts"}
+// lsblkOutput represents the JSON structure from lsblk -J
+type lsblkOutput struct {
+	Blockdevices []lsblkDevice `json:"blockdevices"`
+}
 
-// getMountUsage finds the mount point for devicePath and returns the number
-// of bytes currently used on the filesystem (total - free). Returns an error
-// if the device is not mounted or statfs fails.
-func (d *Detect) getMountUsage(devicePath string) (int64, error) {
-	// Resolve symlinks so /dev/md0 and /dev/md/myarray match the same entry.
-	resolved, err := filepath.EvalSymlinks(devicePath)
+type lsblkDevice struct {
+	Name     string         `json:"name"`
+	Fssize   json.Number    `json:"fssize"`
+	Fsused   json.Number    `json:"fsused"`
+	Children []lsblkDevice `json:"children"`
+}
+
+// getLsblkUsage runs lsblk on the device and returns used bytes and total size
+func (d *Detect) getLsblkUsage(devicePath string) (int64, int64, error) {
+	// lsblk -b (bytes) -J (json)
+	cmd := exec.Command("lsblk", "-b", "-J", "-o", "NAME,FSSIZE,FSUSED", devicePath)
+	output, err := cmd.Output()
 	if err != nil {
-		resolved = devicePath // best-effort fallback
+		return 0, 0, err
 	}
 
-	mountPoint := ""
-	for _, path := range mountsPaths {
-		f, err := os.Open(path)
-		if err != nil {
-			continue
+	var data lsblkOutput
+	if err := json.Unmarshal(output, &data); err != nil {
+		return 0, 0, err
+	}
+
+	if len(data.Blockdevices) == 0 {
+		return 0, 0, fmt.Errorf("no devices returned by lsblk")
+	}
+
+	// Traverse the device and its children to find the first one with usage info
+	var findUsage func(lsblkDevice) (int64, int64)
+	findUsage = func(dev lsblkDevice) (int64, int64) {
+		used, _ := dev.Fsused.Int64()
+		size, _ := dev.Fssize.Int64()
+
+		if used > 0 || size > 0 {
+			return used, size
 		}
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			fields := strings.Fields(scanner.Text())
-			if len(fields) < 2 {
-				continue
+
+		for _, child := range dev.Children {
+			u, s := findUsage(child)
+			if u > 0 || s > 0 {
+				return u, s
 			}
-			dev := fields[0]
-			if dev == devicePath || dev == resolved {
-				mountPoint = fields[1]
-				break
-			}
 		}
-		f.Close()
-		if mountPoint != "" {
-			break
-		}
+		return 0, 0
 	}
 
-	if mountPoint == "" {
-		return 0, fmt.Errorf("device %s not found in /proc/mounts", devicePath)
+	u, s := findUsage(data.Blockdevices[0])
+	if u == 0 && s == 0 {
+		return 0, 0, fmt.Errorf("no filesystem usage info found for %s", devicePath)
 	}
 
-	var stat syscall.Statfs_t
-	if err := syscall.Statfs(mountPoint, &stat); err != nil {
-		return 0, fmt.Errorf("statfs(%s): %w", mountPoint, err)
-	}
-
-	// Bfree = total free blocks (including reserved root blocks)
-	// Bavail = free blocks available to unprivileged users
-	// We use Bfree so the "used" figure matches what df reports.
-	usedBlocks := stat.Blocks - stat.Bfree
-	return int64(usedBlocks) * stat.Bsize, nil
+	return u, s, nil
 }
 
 // parseMdadmOutput extracts array metadata and metrics from mdadm output
