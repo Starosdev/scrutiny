@@ -50,7 +50,7 @@
                         <span class="text-secondary">Array Size</span>
                         <span class="font-medium">{{ latestMetrics?.array_size | fileSize:config?.file_size_si_units }}</span>
                     </div>
-                    <div *ngIf="latestMetrics?.used_bytes" class="flex justify-between border-b pb-2">
+                    <div *ngIf="latestMetrics?.used_bytes !== undefined && latestMetrics?.used_bytes !== null" class="flex justify-between border-b pb-2">
                         <span class="text-secondary">Used</span>
                         <span class="font-medium">{{ latestMetrics?.used_bytes | fileSize:config?.file_size_si_units }}</span>
                     </div>
