@@ -50,9 +50,9 @@
                         <span class="text-secondary">Array Size</span>
                         <span class="font-medium">{{ latestMetrics?.array_size | fileSize:config?.file_size_si_units }}</span>
                     </div>
-                    <div *ngIf="latestMetrics?.used_dev_size" class="flex justify-between border-b pb-2">
-                        <span class="text-secondary">Used Per Device</span>
-                        <span class="font-medium">{{ latestMetrics?.used_dev_size | fileSize:config?.file_size_si_units }}</span>
+                    <div *ngIf="latestMetrics?.used_bytes" class="flex justify-between border-b pb-2">
+                        <span class="text-secondary">Used</span>
+                        <span class="font-medium">{{ latestMetrics?.used_bytes | fileSize:config?.file_size_si_units }}</span>
                     </div>
                 </div>
 

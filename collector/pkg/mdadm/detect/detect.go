@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/analogj/scrutiny/collector/pkg/config"
 	"github.com/analogj/scrutiny/collector/pkg/mdadm/models"
@@ -121,6 +123,14 @@ func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMet
 				metrics.SyncProgress, _ = strconv.ParseFloat(m[1], 64)
 			}
 		}
+
+		// Get filesystem-level used bytes if the array is mounted.
+		usedBytes, statErr := d.getMountUsage(devicePath)
+		if statErr != nil {
+			d.Logger.Debugf("Could not get mount usage for %s (may not be mounted): %v", devicePath, statErr)
+		} else {
+			metrics.UsedBytes = usedBytes
+		}
 	}
 	
 	return array, metrics, err
@@ -157,6 +167,59 @@ func (d *Detect) getRawMdstat(name string) (string, error) {
 	return strings.Join(block, "\n"), scanner.Err()
 }
 
+// mountsPaths lists candidate locations for /proc/mounts, Docker-first.
+var mountsPaths = []string{"/host/proc/mounts", "/proc/mounts"}
+
+// getMountUsage finds the mount point for devicePath and returns the number
+// of bytes currently used on the filesystem (total - free). Returns an error
+// if the device is not mounted or statfs fails.
+func (d *Detect) getMountUsage(devicePath string) (int64, error) {
+	// Resolve symlinks so /dev/md0 and /dev/md/myarray match the same entry.
+	resolved, err := filepath.EvalSymlinks(devicePath)
+	if err != nil {
+		resolved = devicePath // best-effort fallback
+	}
+
+	mountPoint := ""
+	for _, path := range mountsPaths {
+		f, err := os.Open(path)
+		if err != nil {
+			continue
+		}
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			fields := strings.Fields(scanner.Text())
+			if len(fields) < 2 {
+				continue
+			}
+			dev := fields[0]
+			if dev == devicePath || dev == resolved {
+				mountPoint = fields[1]
+				break
+			}
+		}
+		f.Close()
+		if mountPoint != "" {
+			break
+		}
+	}
+
+	if mountPoint == "" {
+		return 0, fmt.Errorf("device %s not found in /proc/mounts", devicePath)
+	}
+
+	var stat syscall.Statfs_t
+	if err := syscall.Statfs(mountPoint, &stat); err != nil {
+		return 0, fmt.Errorf("statfs(%s): %w", mountPoint, err)
+	}
+
+	// Bfree = total free blocks (including reserved root blocks)
+	// Bavail = free blocks available to unprivileged users
+	// We use Bfree so the "used" figure matches what df reports.
+	usedBlocks := stat.Blocks - stat.Bfree
+	return int64(usedBlocks) * stat.Bsize, nil
+}
+
 // parseMdadmOutput extracts array metadata and metrics from mdadm output
 func (d *Detect) parseMdadmOutput(name string, output string) (models.MDADMArray, models.MDADMMetrics, error) {
 	array := models.MDADMArray{
@@ -178,10 +241,8 @@ func (d *Detect) parseMdadmOutput(name string, output string) (models.MDADMArray
 	resyncPattern := regexp.MustCompile(`Resync Status\s*:\s*(\d+(?:\.\d+)?)%`)
 	recoveryPattern := regexp.MustCompile(`Recovery Status\s*:\s*(\d+(?:\.\d+)?)%`)
 	checkPattern := regexp.MustCompile(`check\s*=\s*(\d+(?:\.\d+)?)%`)
-	// "Array Size      :  209584128 (...)" — value is in KiB
+	// "Array Size : 209584128 (...)" — value is in KiB
 	arraySizePattern := regexp.MustCompile(`Array Size\s*:\s*(\d+)`)
-	// "Used Dev Size   :  104792064 (...)" — value is in KiB
-	usedDevSizePattern := regexp.MustCompile(`Used Dev Size\s*:\s*(\d+)`)
 
 	// Device list starts after the header
 	inDeviceList := false
@@ -220,10 +281,6 @@ func (d *Detect) parseMdadmOutput(name string, output string) (models.MDADMArray
 			// mdadm reports size in KiB; convert to bytes
 			kb, _ := strconv.ParseInt(m[1], 10, 64)
 			metrics.ArraySize = kb * 1024
-		} else if m := usedDevSizePattern.FindStringSubmatch(line); m != nil {
-			// mdadm reports size in KiB; convert to bytes
-			kb, _ := strconv.ParseInt(m[1], 10, 64)
-			metrics.UsedDevSize = kb * 1024
 		}
 
 		if strings.Contains(line, "Number   Major   Minor   RaidDevice State") {

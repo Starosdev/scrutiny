@@ -22,8 +22,9 @@ type MDADMMetrics struct {
 	RawMdstat    string  `json:"raw_mdstat"`
 
 	// Storage sizes in bytes (fields)
-	ArraySize   int64 `json:"array_size"`
-	UsedDevSize int64 `json:"used_dev_size"`
+	ArraySize int64 `json:"array_size"`
+	// UsedBytes is the filesystem-level used space from statfs on the mount point
+	UsedBytes int64 `json:"used_bytes"`
 }
 
 // Flatten converts the MDADMMetrics struct to tags and fields for InfluxDB
@@ -42,7 +43,7 @@ func (m *MDADMMetrics) Flatten() (tags map[string]string, fields map[string]inte
 		"sync_progress":   m.SyncProgress,
 		"raw_mdstat":      m.RawMdstat,
 		"array_size":      m.ArraySize,
-		"used_dev_size":   m.UsedDevSize,
+		"used_bytes":      m.UsedBytes,
 	}
 
 	return tags, fields
@@ -81,8 +82,8 @@ func NewMDADMMetricsFromInfluxDB(attrs map[string]interface{}) (*MDADMMetrics, e
 	if val, ok := attrs["array_size"]; ok && val != nil {
 		m.ArraySize = val.(int64)
 	}
-	if val, ok := attrs["used_dev_size"]; ok && val != nil {
-		m.UsedDevSize = val.(int64)
+	if val, ok := attrs["used_bytes"]; ok && val != nil {
+		m.UsedBytes = val.(int64)
 	}
 
 	return &m, nil

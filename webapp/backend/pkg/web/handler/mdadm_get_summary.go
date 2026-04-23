@@ -33,7 +33,7 @@ func GetMdadmSummary(c *gin.Context) {
 		State        string  `json:"state,omitempty"`
 		SyncProgress float64 `json:"sync_progress,omitempty"`
 		ArraySize    int64   `json:"array_size,omitempty"`
-		UsedDevSize  int64   `json:"used_dev_size,omitempty"`
+		UsedBytes    int64   `json:"used_bytes,omitempty"`
 	}
 
 	summaries := make([]ArraySummary, 0, len(arrays))
@@ -56,7 +56,7 @@ func GetMdadmSummary(c *gin.Context) {
 			summary.State = latest.State
 			summary.SyncProgress = latest.SyncProgress
 			summary.ArraySize = latest.ArraySize
-			summary.UsedDevSize = latest.UsedDevSize
+			summary.UsedBytes = latest.UsedBytes
 		}
 
 		summaries = append(summaries, summary)
