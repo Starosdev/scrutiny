@@ -20,7 +20,8 @@ type MDADMMetrics struct {
 	SyncProgress   float64   `json:"sync_progress,omitempty"`
 	RawMdstat      string    `json:"raw_mdstat,omitempty"`
 	UpdatedAt      time.Time `json:"updated_at"`
-	// Storage sizes in bytes (KiB from mdadm --detail, converted to bytes by collector)
-	ArraySize   int64 `json:"array_size,omitempty"`
-	UsedDevSize int64 `json:"used_dev_size,omitempty"`
+	// Storage sizes in bytes
+	ArraySize int64 `json:"array_size,omitempty"`
+	// UsedBytes is the filesystem-level used space from statfs (0 if not mounted)
+	UsedBytes int64 `json:"used_bytes,omitempty"`
 }

@@ -81,7 +81,7 @@ Consistency Policy : resync
 	assert.Equal(t, 0, metrics.SpareDevices)
 	// 1048512 KiB * 1024 = 1073676288 bytes
 	assert.Equal(t, int64(1073676288), metrics.ArraySize)
-	assert.Equal(t, int64(1073676288), metrics.UsedDevSize)
+	// Note: UsedBytes is populated by getMountUsage (statfs) in getArrayDetail, not by parseMdadmOutput.
 }
 
 func TestDetect_ParseMdadmOutput_Syncing(t *testing.T) {
@@ -127,8 +127,7 @@ Consistency Policy : resync
 	assert.Equal(t, 45.0, metrics.SyncProgress)
 	assert.Equal(t, "clean, degraded, recovering", metrics.State)
 	assert.Equal(t, []string{"/dev/sda", "/dev/sdb", "/dev/sdc"}, array.Devices)
-	// 2097024 KiB * 1024 = 2147352576 bytes (array size for raid5 with 3x1GiB)
+	// 2097024 KiB * 1024 = 2147352576 bytes (array size)
 	assert.Equal(t, int64(2147352576), metrics.ArraySize)
-	// 1048512 KiB * 1024 = 1073676288 bytes (used per device)
-	assert.Equal(t, int64(1073676288), metrics.UsedDevSize)
+	// Note: UsedBytes is populated by getMountUsage (statfs) in getArrayDetail, not by parseMdadmOutput.
 }

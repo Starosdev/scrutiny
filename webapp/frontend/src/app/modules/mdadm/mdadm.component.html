@@ -62,9 +62,9 @@
                                 <div class="font-semibold text-xs uppercase tracking-wider">Size</div>
                                 <div class="font-medium text-lg leading-none">{{ array.array_size | fileSize:config?.file_size_si_units }}</div>
                             </div>
-                            <div *ngIf="array.used_dev_size" class="flex items-center justify-between text-secondary">
-                                <div class="text-xs">Used Per Device</div>
-                                <div class="text-xs font-medium">{{ array.used_dev_size | fileSize:config?.file_size_si_units }}</div>
+                            <div *ngIf="array.used_bytes" class="flex items-center justify-between text-secondary">
+                                <div class="text-xs">Used</div>
+                                <div class="text-xs font-medium">{{ array.used_bytes | fileSize:config?.file_size_si_units }}</div>
                             </div>
                         </div>
 
