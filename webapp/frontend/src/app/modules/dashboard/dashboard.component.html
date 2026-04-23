@@ -185,6 +185,12 @@
                              [style.width.%]="array.sync_progress"></div>
                       </div>
                     </div>
+
+                    <!-- Array Size -->
+                    <div *ngIf="array.array_size" class="flex items-center justify-between mt-4 text-secondary">
+                      <div class="text-xs">Array Size</div>
+                      <div class="text-xs font-medium">{{ array.array_size | fileSize:config?.file_size_si_units }}</div>
+                    </div>
                   </a>
                 </div>
               }

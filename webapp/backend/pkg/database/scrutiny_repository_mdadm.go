@@ -149,6 +149,8 @@ func (sr *scrutinyRepository) SaveMdadmMetrics(ctx context.Context, uuid string,
 		State:          metrics.State,
 		SyncProgress:   metrics.SyncProgress,
 		RawMdstat:      metrics.RawMdstat,
+		ArraySize:      metrics.ArraySize,
+		UsedDevSize:    metrics.UsedDevSize,
 	}
 
 	tags, fields := influxMetrics.Flatten()

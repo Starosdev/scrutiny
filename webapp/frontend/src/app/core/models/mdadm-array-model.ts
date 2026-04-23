@@ -11,6 +11,8 @@ export interface MDADMArrayModel {
     // Latest metrics (populated by summary endpoint)
     state?: string;
     sync_progress?: number;
+    array_size?: number;
+    used_dev_size?: number;
 }
 
 export interface MDADMMetricsHistoryModel {
@@ -22,6 +24,8 @@ export interface MDADMMetricsHistoryModel {
     state: string;
     sync_progress: number;
     raw_mdstat?: string;
+    array_size?: number;
+    used_dev_size?: number;
 }
 
 export interface MDADMArrayResponseWrapper {

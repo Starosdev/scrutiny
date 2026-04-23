@@ -178,6 +178,10 @@ func (d *Detect) parseMdadmOutput(name string, output string) (models.MDADMArray
 	resyncPattern := regexp.MustCompile(`Resync Status\s*:\s*(\d+(?:\.\d+)?)%`)
 	recoveryPattern := regexp.MustCompile(`Recovery Status\s*:\s*(\d+(?:\.\d+)?)%`)
 	checkPattern := regexp.MustCompile(`check\s*=\s*(\d+(?:\.\d+)?)%`)
+	// "Array Size      :  209584128 (...)" — value is in KiB
+	arraySizePattern := regexp.MustCompile(`Array Size\s*:\s*(\d+)`)
+	// "Used Dev Size   :  104792064 (...)" — value is in KiB
+	usedDevSizePattern := regexp.MustCompile(`Used Dev Size\s*:\s*(\d+)`)
 
 	// Device list starts after the header
 	inDeviceList := false
@@ -212,6 +216,14 @@ func (d *Detect) parseMdadmOutput(name string, output string) (models.MDADMArray
 		} else if m := checkPattern.FindStringSubmatch(line); m != nil {
 			progress, _ := strconv.ParseFloat(m[1], 64)
 			metrics.SyncProgress = progress
+		} else if m := arraySizePattern.FindStringSubmatch(line); m != nil {
+			// mdadm reports size in KiB; convert to bytes
+			kb, _ := strconv.ParseInt(m[1], 10, 64)
+			metrics.ArraySize = kb * 1024
+		} else if m := usedDevSizePattern.FindStringSubmatch(line); m != nil {
+			// mdadm reports size in KiB; convert to bytes
+			kb, _ := strconv.ParseInt(m[1], 10, 64)
+			metrics.UsedDevSize = kb * 1024
 		}
 
 		if strings.Contains(line, "Number   Major   Minor   RaidDevice State") {
