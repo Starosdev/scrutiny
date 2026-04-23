@@ -32,6 +32,8 @@ func GetMdadmSummary(c *gin.Context) {
 		// Latest metrics (populated from InfluxDB)
 		State        string  `json:"state,omitempty"`
 		SyncProgress float64 `json:"sync_progress,omitempty"`
+		ArraySize    int64   `json:"array_size,omitempty"`
+		UsedDevSize  int64   `json:"used_dev_size,omitempty"`
 	}
 
 	summaries := make([]ArraySummary, 0, len(arrays))
@@ -53,6 +55,8 @@ func GetMdadmSummary(c *gin.Context) {
 		} else if latest != nil {
 			summary.State = latest.State
 			summary.SyncProgress = latest.SyncProgress
+			summary.ArraySize = latest.ArraySize
+			summary.UsedDevSize = latest.UsedDevSize
 		}
 
 		summaries = append(summaries, summary)
