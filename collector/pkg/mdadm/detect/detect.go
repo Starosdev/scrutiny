@@ -2,13 +2,13 @@ package detect
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/analogj/scrutiny/collector/pkg/config"
 	"github.com/analogj/scrutiny/collector/pkg/mdadm/models"
@@ -123,18 +123,12 @@ func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMet
 			}
 		}
 
-		// Get filesystem-level used bytes via lsblk.
-		// Using lsblk is more robust in Docker as it can often see usage
-		// info even if the mount point is not browseable in the jail.
-		usedBytes, fsSize, statErr := d.getLsblkUsage(devicePath)
+		// Get filesystem-level used bytes if the array is mounted in the container.
+		usedBytes, statErr := d.getMountUsage(devicePath)
 		if statErr != nil {
-			d.Logger.Debugf("Could not get lsblk usage for %s: %v", devicePath, statErr)
+			d.Logger.Debugf("Could not get mount usage for %s (may not be mounted in container): %v", devicePath, statErr)
 		} else {
 			metrics.UsedBytes = usedBytes
-			// If mdadm didn't report a size (rare), use the filesystem size as fallback
-			if metrics.ArraySize == 0 {
-				metrics.ArraySize = fsSize
-			}
 		}
 	}
 	
@@ -172,61 +166,66 @@ func (d *Detect) getRawMdstat(name string) (string, error) {
 	return strings.Join(block, "\n"), scanner.Err()
 }
 
-// lsblkOutput represents the JSON structure from lsblk -J
-type lsblkOutput struct {
-	Blockdevices []lsblkDevice `json:"blockdevices"`
-}
+// getMountUsage uses device IDs (Major:Minor) to reliably connect the RAID device 
+// to a mount point in the container, regardless of naming/symlinks.
+func (d *Detect) getMountUsage(devicePath string) (int64, error) {
+	// 1. Get the device ID (rdev) for the RAID device
+	var devStat syscall.Stat_t
+	if err := syscall.Stat(devicePath, &devStat); err != nil {
+		return 0, fmt.Errorf("stat(%s): %w", devicePath, err)
+	}
+	targetDevID := devStat.Rdev
 
-type lsblkDevice struct {
-	Name     string         `json:"name"`
-	Fssize   json.Number    `json:"fssize"`
-	Fsused   json.Number    `json:"fsused"`
-	Children []lsblkDevice `json:"children"`
-}
-
-// getLsblkUsage runs lsblk on the device and returns used bytes and total size
-func (d *Detect) getLsblkUsage(devicePath string) (int64, int64, error) {
-	// lsblk -b (bytes) -J (json)
-	cmd := exec.Command("lsblk", "-b", "-J", "-o", "NAME,FSSIZE,FSUSED", devicePath)
-	output, err := cmd.Output()
+	// 2. Scan /proc/self/mountinfo to find the mount point with this device ID
+	// Format: [id] [parent_id] [major:minor] [root] [mount_point] ...
+	f, err := os.Open("/proc/self/mountinfo")
 	if err != nil {
-		return 0, 0, err
+		return 0, err
 	}
+	defer f.Close()
 
-	var data lsblkOutput
-	if err := json.Unmarshal(output, &data); err != nil {
-		return 0, 0, err
-	}
-
-	if len(data.Blockdevices) == 0 {
-		return 0, 0, fmt.Errorf("no devices returned by lsblk")
-	}
-
-	// Traverse the device and its children to find the first one with usage info
-	var findUsage func(lsblkDevice) (int64, int64)
-	findUsage = func(dev lsblkDevice) (int64, int64) {
-		used, _ := dev.Fsused.Int64()
-		size, _ := dev.Fssize.Int64()
-
-		if used > 0 || size > 0 {
-			return used, size
+	mountPoint := ""
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		fields := strings.Fields(scanner.Text())
+		if len(fields) < 5 {
+			continue
 		}
 
-		for _, child := range dev.Children {
-			u, s := findUsage(child)
-			if u > 0 || s > 0 {
-				return u, s
-			}
+		// Parse the major:minor field (e.g. "9:0")
+		mm := strings.Split(fields[2], ":")
+		if len(mm) != 2 {
+			continue
 		}
-		return 0, 0
+		major, _ := strconv.ParseUint(mm[0], 10, 32)
+		minor, _ := strconv.ParseUint(mm[1], 10, 32)
+		
+		// Linux encodes device IDs in a specific way in Stat_t (Rdev)
+		// and mountinfo uses the logical major:minor.
+		// We use NewDev/Mkdev logic to compare.
+		if targetDevID == uint64(unixMkdev(uint32(major), uint32(minor))) {
+			mountPoint = fields[4]
+			break
+		}
 	}
 
-	u, s := findUsage(data.Blockdevices[0])
-	if u == 0 && s == 0 {
-		return 0, 0, fmt.Errorf("no filesystem usage info found for %s", devicePath)
+	if mountPoint == "" {
+		return 0, fmt.Errorf("no mount point found for device ID %d:%d", (targetDevID>>8)&0xfff, targetDevID&0xff)
 	}
 
-	return u, s, nil
+	// 3. Statfs the discovered mount point
+	var stat syscall.Statfs_t
+	if err := syscall.Statfs(mountPoint, &stat); err != nil {
+		return 0, fmt.Errorf("statfs(%s): %w", mountPoint, err)
+	}
+
+	usedBlocks := stat.Blocks - stat.Bfree
+	return int64(usedBlocks) * stat.Bsize, nil
+}
+
+// unixMkdev mimics the Linux MKDEV macro
+func unixMkdev(major, minor uint32) uint64 {
+	return uint64((minor & 0xff) | ((major & 0xfff) << 8) | ((minor & ^uint32(0xff)) << 12) | ((major & ^uint32(0xfff)) << 32))
 }
 
 // parseMdadmOutput extracts array metadata and metrics from mdadm output
