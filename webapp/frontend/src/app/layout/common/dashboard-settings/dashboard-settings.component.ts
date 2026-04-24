@@ -102,7 +102,7 @@ export class DashboardSettingsComponent implements OnInit {
     newOverride: Partial<AttributeOverride> = {
         protocol: 'ATA',
         attribute_id: '',
-        action: ''
+        action: 'ignore'
     };
 
     // Notification URL management
@@ -224,6 +224,9 @@ export class DashboardSettingsComponent implements OnInit {
         if (!this.newOverride.protocol || !this.newOverride.attribute_id) {
             return;
         }
+        if (this.newOverride.action === '' && this.newOverride.warn_above == null && this.newOverride.fail_above == null) {
+            return;
+        }
 
         const override: AttributeOverride = {
             protocol: this.newOverride.protocol as OverrideProtocol,
@@ -243,7 +246,7 @@ export class DashboardSettingsComponent implements OnInit {
                 this.newOverride = {
                     protocol: 'ATA',
                     attribute_id: '',
-                    action: ''
+                    action: 'ignore'
                 };
             });
     }
