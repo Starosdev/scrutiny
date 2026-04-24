@@ -646,3 +646,39 @@ func TestMissedPingPayload_MessageContainsLastSeen(t *testing.T) {
 	require.Contains(t, payload.Message, lastSeen.Format(time.RFC3339))
 	require.Contains(t, payload.Message, "Please check that the collector is running")
 }
+
+func TestNormalizeGotifyURL_Port8080_AddsDisableTLS(t *testing.T) {
+	t.Parallel()
+	result := normalizeGotifyURL("gotify://192.168.2.135:8080/A-iI4ewTwguZo_V")
+	require.Equal(t, "gotify://192.168.2.135:8080/A-iI4ewTwguZo_V?disabletls=Yes", result)
+}
+
+func TestNormalizeGotifyURL_Port80_AddsDisableTLS(t *testing.T) {
+	t.Parallel()
+	result := normalizeGotifyURL("gotify://gotify-host:80/mytoken123456789")
+	require.Equal(t, "gotify://gotify-host:80/mytoken123456789?disabletls=Yes", result)
+}
+
+func TestNormalizeGotifyURL_Port443_NoChange(t *testing.T) {
+	t.Parallel()
+	raw := "gotify://gotify-host:443/mytoken123456789"
+	require.Equal(t, raw, normalizeGotifyURL(raw))
+}
+
+func TestNormalizeGotifyURL_NoPort_NoChange(t *testing.T) {
+	t.Parallel()
+	raw := "gotify://gotify-host/mytoken123456789"
+	require.Equal(t, raw, normalizeGotifyURL(raw))
+}
+
+func TestNormalizeGotifyURL_AlreadyHasDisableTLS_NoChange(t *testing.T) {
+	t.Parallel()
+	raw := "gotify://192.168.2.135:8080/token?disabletls=No"
+	require.Equal(t, raw, normalizeGotifyURL(raw))
+}
+
+func TestNormalizeGotifyURL_NonGotifyURL_NoChange(t *testing.T) {
+	t.Parallel()
+	raw := "slack://token-a/token-b/token-c"
+	require.Equal(t, raw, normalizeGotifyURL(raw))
+}
