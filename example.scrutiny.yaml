@@ -316,7 +316,8 @@ failures:
 #    - "slack://[botname@]token-a/token-b/token-c"
 #    - "smtp://username:password@host:port/?fromAddress=fromAddress&toAddresses=recipient1[,recipient2,...]"
 #    - "teams://token-a/token-b/token-c"
-#    - "gotify://gotify-host/token"
+#    - "gotify://gotify-host/token"                         # HTTPS (default)
+#    - "gotify://gotify-host:8080/token?disabletls=Yes"     # HTTP (required for plain-HTTP deployments)
 #    - "pushbullet://api-token[/device/#channel/email]"
 #    - "ifttt://key/?events=event1[,event2,...]&value1=value1&value2=value2&value3=value3"
 #    - "mattermost://[username@]mattermost-host/token[/channel]"
