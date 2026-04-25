@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.51.0](https://github.com/Starosdev/scrutiny/compare/v1.50.0...v1.51.0) (2026-04-25)
+
+### Features
+
+* **frontend:** time format preference, Gotify HTTP fix, settings overrides fixes ([#478](https://github.com/Starosdev/scrutiny/issues/478)) ([fb66415](https://github.com/Starosdev/scrutiny/commit/fb664158b1aa513ab39a9ac404f41c7fd16b06c3)), closes [#472](https://github.com/Starosdev/scrutiny/issues/472) [#475](https://github.com/Starosdev/scrutiny/issues/475) [#476](https://github.com/Starosdev/scrutiny/issues/476)
+
 ## [1.50.0](https://github.com/Starosdev/scrutiny/compare/v1.49.2...v1.50.0) (2026-04-12)
 
 ### Features
