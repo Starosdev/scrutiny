@@ -355,6 +355,31 @@ func (n *Notify) SendToUrls(urls []string) error {
 	return n.sendToUrls(urls)
 }
 
+// normalizeGotifyURL adds disabletls=Yes to gotify:// URLs whose host port is 80,
+// 8080, or 8008 (common plain-HTTP Gotify deployments) when the parameter is not
+// already present. Without this the shoutrrr library defaults to HTTPS and the
+// request fails silently for HTTP-only Gotify installs.
+func normalizeGotifyURL(rawURL string) string {
+	if !strings.HasPrefix(rawURL, "gotify://") {
+		return rawURL
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	port := parsed.Port()
+	if port != "80" && port != "8080" && port != "8008" {
+		return rawURL
+	}
+	q := parsed.Query()
+	if q.Get("disabletls") != "" {
+		return rawURL
+	}
+	q.Set("disabletls", "Yes")
+	parsed.RawQuery = q.Encode()
+	return parsed.String()
+}
+
 // sendToUrls routes URLs to the appropriate sender (webhook, script, or shoutrrr)
 // and dispatches them in parallel.
 func (n *Notify) sendToUrls(urls []string) error {
@@ -369,7 +394,8 @@ func (n *Notify) sendToUrls(urls []string) error {
 		case strings.HasPrefix(u, "script://"):
 			notifyScripts = append(notifyScripts, u)
 		default:
-			notifyShoutrrr = append(notifyShoutrrr, u)
+			normalized := normalizeGotifyURL(u)
+			notifyShoutrrr = append(notifyShoutrrr, normalized)
 		}
 	}
 
