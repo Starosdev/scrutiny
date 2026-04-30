@@ -8,6 +8,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule as MatMenuModule } from '@angular/material/menu';
 import { MatProgressBarModule as MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule as MatTableModule } from '@angular/material/table';
 import { NgApexchartsModule } from 'ng-apexcharts';
@@ -28,6 +29,7 @@ import { DashboardDeviceModule } from 'app/layout/common/dashboard-device/dashbo
         MatIconModule,
         MatMenuModule,
         MatProgressBarModule,
+        MatProgressSpinnerModule,
         MatSortModule,
         MatTableModule,
         MatCheckboxModule,

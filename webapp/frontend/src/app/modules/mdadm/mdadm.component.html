@@ -1,0 +1,96 @@
+<div class="flex flex-col flex-auto min-w-0">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row flex-0 sm:items-center sm:justify-between p-6 sm:py-8 sm:px-10 border-b bg-card dark:bg-transparent">
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center">
+                <mat-icon class="icon-size-5 text-secondary" [svgIcon]="'heroicons_solid:database'"></mat-icon>
+                <div class="ml-2 text-secondary font-medium uppercase tracking-wider">MDADM RAID</div>
+            </div>
+            <div class="mt-2">
+                <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight leading-7 sm:leading-10 truncate">
+                    RAID Arrays
+                </h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main -->
+    <div class="flex-auto p-6 sm:p-10">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            <ng-container *ngFor="let array of arrays; trackBy: trackByFn">
+                <a class="flex flex-col h-96 shadow rounded-2xl overflow-hidden bg-card hover:bg-hover transition-colors duration-150 ease-in-out cursor-pointer"
+                   [routerLink]="['./', array.uuid]">
+                    <div class="flex flex-col p-6 space-y-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900">
+                                    <mat-icon class="text-blue-600 dark:text-blue-400" [svgIcon]="'heroicons_outline:database'"></mat-icon>
+                                </div>
+                                <div class="ml-4 truncate">
+                                    <div class="text-lg font-bold leading-none truncate">{{ array.label || array.name }}</div>
+                                    <div class="text-md text-secondary mt-1">{{ array.level }}</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide"
+                                     [ngClass]="getArrayStatusColorClass(array)">
+                                    {{ array.state || 'UNKNOWN' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col">
+                            <div class="flex items-center justify-between text-secondary">
+                                <div>Devices</div>
+                                <div>{{ array.devices.length }}</div>
+                            </div>
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <div *ngFor="let dev of array.devices.slice(0, 4)"
+                                     class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono text-secondary">
+                                    {{ dev }}
+                                </div>
+                                <div *ngIf="array.devices.length > 4"
+                                     class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs text-secondary">
+                                    +{{ array.devices.length - 4 }} more
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Storage Size -->
+                        <div *ngIf="array.array_size" class="flex flex-col space-y-1">
+                            <div class="flex items-center justify-between text-secondary">
+                                <div class="font-semibold text-xs uppercase tracking-wider">Size</div>
+                                <div class="font-medium text-lg leading-none">{{ array.array_size | fileSize:config?.file_size_si_units }}</div>
+                            </div>
+                            <div *ngIf="array.used_bytes !== undefined && array.used_bytes !== null" class="flex items-center justify-between text-secondary">
+                                <div class="text-xs">Used</div>
+                                <div class="text-xs font-medium">{{ array.used_bytes | fileSize:config?.file_size_si_units }}</div>
+                            </div>
+                        </div>
+
+                        <!-- Sync Progress -->
+                        <div *ngIf="array.sync_progress > 0 && array.sync_progress < 100" class="flex flex-col">
+                            <div class="flex items-center justify-between text-secondary mb-1">
+                                <div>Sync Progress</div>
+                                <div class="font-medium text-blue-500">{{ array.sync_progress }}%</div>
+                            </div>
+                            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                <div class="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                                     [style.width.%]="array.sync_progress"></div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </ng-container>
+        </div>
+
+        <!-- No data template -->
+        <ng-container *ngIf="arrays.length === 0">
+            <div class="flex flex-col items-center justify-center h-full p-12">
+                <mat-icon class="icon-size-24 text-secondary" [svgIcon]="'heroicons_outline:database'"></mat-icon>
+                <h1 class="mt-8 text-2xl font-bold tracking-tight text-secondary">No MDADM arrays found</h1>
+                <p class="mt-2 text-lg text-secondary">Ensure the MDADM collector is running and correctly configured.</p>
+            </div>
+        </ng-container>
+    </div>
+</div>

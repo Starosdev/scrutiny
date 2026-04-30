@@ -101,6 +101,21 @@ type DeviceRepo interface {
 	SaveZFSPoolMetrics(ctx context.Context, pool models.ZFSPool) error
 	GetZFSPoolMetricsHistory(ctx context.Context, guid string, durationKey string) ([]measurements.ZFSPoolMetrics, error)
 
+	// MDADM Array operations
+	RegisterMdadmArray(ctx context.Context, array models.MDADMArray) error
+	GetMdadmArrays(ctx context.Context) ([]models.MDADMArray, error)
+	GetMdadmArrayDetails(ctx context.Context, uuid string) (models.MDADMArray, error)
+	UpdateMdadmArrayArchived(ctx context.Context, uuid string, archived bool) error
+	UpdateMdadmArrayMuted(ctx context.Context, uuid string, muted bool) error
+	UpdateMdadmArrayLabel(ctx context.Context, uuid string, label string) error
+	DeleteMdadmArray(ctx context.Context, uuid string) error
+	GetMdadmArraysSummary(ctx context.Context) (map[string]*models.MDADMArray, error)
+
+	// MDADM Array metrics
+	SaveMdadmMetrics(ctx context.Context, uuid string, metrics collector.MDADMMetrics) error
+	GetMdadmMetricsHistory(ctx context.Context, uuid string, durationKey string) ([]measurements.MDADMMetrics, error)
+	GetLatestMdadmMetrics(ctx context.Context, uuid string) (*measurements.MDADMMetrics, error)
+
 	// Attribute Override operations
 	GetAttributeOverrides(ctx context.Context) ([]models.AttributeOverride, error)
 	// GetAllOverridesForDisplay returns all overrides for display in the settings UI.
