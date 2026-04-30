@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.52.0](https://github.com/Starosdev/scrutiny/compare/v1.51.0...v1.52.0) (2026-04-30)
+
+### Features
+
+* **settings:** attribute override validation, time format preference, and bug fixes ([#481](https://github.com/Starosdev/scrutiny/issues/481)) ([4218085](https://github.com/Starosdev/scrutiny/commit/42180850fd1947f4d9b2b063fc4a2c3531f0cf88)), closes [#445](https://github.com/Starosdev/scrutiny/issues/445) [#476](https://github.com/Starosdev/scrutiny/issues/476) [#480](https://github.com/Starosdev/scrutiny/issues/480) [#475](https://github.com/Starosdev/scrutiny/issues/475) [#472](https://github.com/Starosdev/scrutiny/issues/472) [#443](https://github.com/Starosdev/scrutiny/issues/443) [#418](https://github.com/Starosdev/scrutiny/issues/418) [#419](https://github.com/Starosdev/scrutiny/issues/419) [#423](https://github.com/Starosdev/scrutiny/issues/423) [#476](https://github.com/Starosdev/scrutiny/issues/476) [#475](https://github.com/Starosdev/scrutiny/issues/475) [#472](https://github.com/Starosdev/scrutiny/issues/472) [#443](https://github.com/Starosdev/scrutiny/issues/443) [#418](https://github.com/Starosdev/scrutiny/issues/418)
+
 ## [1.51.0](https://github.com/Starosdev/scrutiny/compare/v1.50.0...v1.51.0) (2026-04-25)
 
 ### Features
