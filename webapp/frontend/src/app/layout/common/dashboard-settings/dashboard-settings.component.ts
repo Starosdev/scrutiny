@@ -227,6 +227,12 @@ export class DashboardSettingsComponent implements OnInit {
         if (this.newOverride.action === '' && this.newOverride.warn_above == null && this.newOverride.fail_above == null) {
             return;
         }
+        if (this.newOverride.action === 'force_status' && !this.newOverride.status) {
+            return;
+        }
+        if (this.newOverride.action === '' && this.newOverride.warn_above != null && this.newOverride.fail_above != null && this.newOverride.warn_above >= this.newOverride.fail_above) {
+            return;
+        }
 
         const override: AttributeOverride = {
             protocol: this.newOverride.protocol as OverrideProtocol,
