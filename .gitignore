@@ -58,8 +58,14 @@ scrutiny.db
 /dist/
 vendor
 /scrutiny
-/scrutiny-collector-metrics-*
+/scrutiny-web
 /scrutiny-web-*
+/scrutiny-collector-metrics
+/scrutiny-collector-metrics-*
+/scrutiny-collector-zfs
+/scrutiny-collector-zfs-*
+/scrutiny-collector-performance
+/scrutiny-collector-performance-*
 scrutiny-*.db
 scrutiny_test.db
 scrutiny.yaml
@@ -89,3 +95,16 @@ docs/plans/
 
 # Session progress tracking
 OVERRIDE_FIX_PROGRESS.md
+
+# Build Binaries
+/scrutiny-collector-mdadm
+/scrutiny-collector-mdadm-*
+
+# Local Docs
+CONCEPTS.md
+MDADM.MD
+scratch.md
+
+# Scratch Scripts
+scratch.go
+test_flux.go
