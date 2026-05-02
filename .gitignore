@@ -76,6 +76,7 @@ PLANNING.md
 
 # Claude Code
 .claude/
+.codex/
 AGENTS.md
 
 # Local compiled binaries
