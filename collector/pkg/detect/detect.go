@@ -147,6 +147,7 @@ func (d *Detect) SmartCtlInfo(device *models.Device) error {
 	device.Capacity = availableDeviceInfo.Capacity()
 	device.FormFactor = availableDeviceInfo.FormFactor.Name
 	device.DeviceProtocol = availableDeviceInfo.Device.Protocol
+	device.SmartSupport = availableDeviceInfo.SmartSupport
 	// Only set DeviceType if not already populated (e.g., from user override or scan)
 	if len(device.DeviceType) == 0 {
 		device.DeviceType = availableDeviceInfo.Device.Type

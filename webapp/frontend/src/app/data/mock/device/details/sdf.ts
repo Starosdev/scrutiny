@@ -15,7 +15,7 @@ export const sdf = {
             'rotational_speed': 0,
             'capacity': 6001175126016,
             'form_factor': '',
-            'smart_support': false,
+            'smart_support': { 'available': false },
             'device_protocol': '',
             'device_type': '',
             'label': '',

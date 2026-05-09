@@ -16,7 +16,7 @@ export const sda = {
             'rotational_speed': 0,
             'capacity': 500107862016,
             'form_factor': '',
-            'smart_support': false,
+            'smart_support': { 'available': false },
             'device_protocol': 'NVMe',
             'device_type': '',
             'label': '',
