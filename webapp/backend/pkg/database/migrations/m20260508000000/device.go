@@ -30,10 +30,10 @@ type Device struct {
 	HostId                    string              `json:"host_id"`
 	CollectorVersion          string              `json:"collector_version"`
 	SmartDisplayMode          string              `json:"smart_display_mode" gorm:"default:'scrutiny'"`
+	SmartSupport              common.SmartSupport `json:"smart_support"`
 	Capacity                  int64               `json:"capacity"`
 	RotationSpeed             int                 `json:"rotational_speed"`
 	MissedPingTimeoutOverride int                 `json:"missed_ping_timeout_override" gorm:"default:0"`
-	SmartSupport              common.SmartSupport `json:"smart_support"`
 	DeviceStatus              pkg.DeviceStatus    `json:"device_status"`
 	Archived                  bool                `json:"archived"`
 	Muted                     bool                `json:"muted"`
