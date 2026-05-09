@@ -19,7 +19,6 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   deploy-production:
@@ -30,6 +29,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Normalize image name
+        id: image_name
+        run: |
+          set -euo pipefail
+          echo "value=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -54,8 +59,8 @@ jobs:
           file: docker/Dockerfile
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-omnibus
+            ${{ env.REGISTRY }}/${{ steps.image_name.outputs.value }}:latest
+            ${{ env.REGISTRY }}/${{ steps.image_name.outputs.value }}:latest-omnibus
           cache-from: type=gha,scope=production-omnibus
           cache-to: type=gha,mode=max,scope=production-omnibus
 
