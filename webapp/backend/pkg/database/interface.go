@@ -13,9 +13,9 @@ import (
 
 // HealthCheckStatus represents the status of a single health check
 type HealthCheckStatus struct {
-	Status    string `json:"status"`           // "ok" or "error"
-	LatencyMs int64  `json:"latency_ms"`       // Response time in milliseconds
-	Error     string `json:"error,omitempty"`  // Error message if status is "error"
+	Status    string `json:"status"`          // "ok" or "error"
+	LatencyMs int64  `json:"latency_ms"`      // Response time in milliseconds
+	Error     string `json:"error,omitempty"` // Error message if status is "error"
 }
 
 // HealthCheckResult contains the results of all health checks
@@ -46,6 +46,7 @@ type DeviceRepo interface {
 	UpdateDeviceSmartDisplayMode(ctx context.Context, deviceID string, mode string) error
 	UpdateDeviceHasForcedFailure(ctx context.Context, deviceID string, hasForcedFailure bool) error
 	UpdateDeviceMissedPingTimeout(ctx context.Context, deviceID string, timeoutMinutes int) error
+	MergeDevices(ctx context.Context, sourceDeviceID string, destinationDeviceID string) error
 	DeleteDevice(ctx context.Context, deviceID string) error
 	// RecalculateDeviceStatusFromHistory re-evaluates device status from stored SMART data
 	// with current overrides applied. Used when overrides are added/modified/deleted.

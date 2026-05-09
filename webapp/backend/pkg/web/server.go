@@ -31,15 +31,15 @@ const configKeyMqttEnabled = "web.mqtt.enabled"
 const indexFile = "index.html"
 
 type AppEngine struct {
-	Config             config.Interface
-	Logger             *logrus.Entry
-	MetricsCollector   *metrics.Collector
-	MqttPublisher      *mqtt.Publisher
-	NotificationGate   *notify.NotificationGate
-	MissedPingMonitor  *MissedPingMonitor
-	HeartbeatMonitor   *HeartbeatMonitor
-	UptimeKumaMonitor  *UptimeKumaMonitor
-	ReportScheduler    *reports.Scheduler
+	Config            config.Interface
+	Logger            *logrus.Entry
+	MetricsCollector  *metrics.Collector
+	MqttPublisher     *mqtt.Publisher
+	NotificationGate  *notify.NotificationGate
+	MissedPingMonitor *MissedPingMonitor
+	HeartbeatMonitor  *HeartbeatMonitor
+	UptimeKumaMonitor *UptimeKumaMonitor
+	ReportScheduler   *reports.Scheduler
 }
 
 func (ae *AppEngine) registerMiddleware(r *gin.Engine, logger *logrus.Entry) {
@@ -113,15 +113,15 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 
 			api.GET("/health", handler.HealthCheck)
 			api.HEAD("/health", handler.HealthCheck)
-			api.POST("/health/notify", handler.SendTestNotification)        //check if notifications are configured correctly
+			api.POST("/health/notify", handler.SendTestNotification)           //check if notifications are configured correctly
 			api.GET("/health/missed-ping-status", handler.GetMissedPingStatus) //get missed ping monitor diagnostic status
-			api.POST("/health/uptime-kuma-test", handler.TestUptimeKumaPush) // test Uptime Kuma push monitor
-			api.POST("/health/mqtt-sync", handler.MqttSync)                 // re-sync all MQTT discovery entities with HA
+			api.POST("/health/uptime-kuma-test", handler.TestUptimeKumaPush)   // test Uptime Kuma push monitor
+			api.POST("/health/mqtt-sync", handler.MqttSync)                    // re-sync all MQTT discovery entities with HA
 
 			api.POST("/devices/register", handler.RegisterDevices)         //used by Collector to register new devices and retrieve filtered list
 			api.GET("/summary", handler.GetDevicesSummary)                 //used by Dashboard
-			api.GET("/summary/temp", handler.GetDevicesSummaryTempHistory)       // used by Dashboard (Temperature history dropdown)
-			api.GET("/summary/workload", handler.GetWorkloadInsights)           // used by Workload Insights page
+			api.GET("/summary/temp", handler.GetDevicesSummaryTempHistory) // used by Dashboard (Temperature history dropdown)
+			api.GET("/summary/workload", handler.GetWorkloadInsights)      // used by Workload Insights page
 
 			// Prometheus metrics endpoint (only registered if enabled)
 			if ae.Config.GetBool(configKeyMetricsEnabled) {
@@ -130,21 +130,22 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 
 			api.POST("/device/:id/smart", handler.UploadDeviceMetrics) // used by Collector to upload data
 			api.POST("/device/:id/selftest", handler.UploadDeviceSelfTests)
-			api.GET("/device/:id/details", handler.GetDeviceDetails)   // used by Details
-			api.POST("/device/:id/archive", handler.ArchiveDevice)     // used by UI to archive device
-			api.POST("/device/:id/unarchive", handler.UnarchiveDevice) // used by UI to unarchive device
-			api.POST("/device/:id/mute", handler.MuteDevice)           // used by UI to mute device
-			api.POST("/device/:id/unmute", handler.UnmuteDevice)       // used by UI to unmute device
-			api.POST("/device/:id/reset-status", handler.ResetDeviceStatus) // used by UI to reset device failed status
-			api.POST("/device/:id/label", handler.UpdateDeviceLabel)                         // used by UI to set device label
-			api.POST("/device/:id/smart-display-mode", handler.UpdateDeviceSmartDisplayMode)       // used by UI to set SMART attribute display mode
+			api.GET("/device/:id/details", handler.GetDeviceDetails)                           // used by Details
+			api.POST("/device/:id/archive", handler.ArchiveDevice)                             // used by UI to archive device
+			api.POST("/device/:id/unarchive", handler.UnarchiveDevice)                         // used by UI to unarchive device
+			api.POST("/device/:id/mute", handler.MuteDevice)                                   // used by UI to mute device
+			api.POST("/device/:id/unmute", handler.UnmuteDevice)                               // used by UI to unmute device
+			api.POST("/device/:id/reset-status", handler.ResetDeviceStatus)                    // used by UI to reset device failed status
+			api.POST("/device/:id/label", handler.UpdateDeviceLabel)                           // used by UI to set device label
+			api.POST("/device/:id/smart-display-mode", handler.UpdateDeviceSmartDisplayMode)   // used by UI to set SMART attribute display mode
 			api.POST("/device/:id/missed-ping-timeout", handler.UpdateDeviceMissedPingTimeout) // used by UI to set per-device missed ping timeout override
-			api.DELETE("/device/:id", handler.DeleteDevice)                                  // used by UI to delete device
-			api.POST("/device/:id/performance", handler.UploadDevicePerformance)            // used by Collector to upload performance benchmarks
-			api.GET("/device/:id/performance", handler.GetDevicePerformance)                // used by UI to view performance history
-			api.GET("/device/:id/replacement-risk", handler.GetDeviceReplacementRisk)         // used by UI to display drive replacement prediction
-			api.POST("/device/:id/collector-error", handler.UploadCollectorError)           // used by Collector to report smartctl errors
-			api.POST("/collector/scan-error", handler.UploadCollectorScanError)             // used by Collector to report scan-level errors (no device context)
+			api.POST("/device/:id/merge_into", handler.MergeDeviceInto)                        // used by API/CLI to merge duplicate devices
+			api.DELETE("/device/:id", handler.DeleteDevice)                                    // used by UI to delete device
+			api.POST("/device/:id/performance", handler.UploadDevicePerformance)               // used by Collector to upload performance benchmarks
+			api.GET("/device/:id/performance", handler.GetDevicePerformance)                   // used by UI to view performance history
+			api.GET("/device/:id/replacement-risk", handler.GetDeviceReplacementRisk)          // used by UI to display drive replacement prediction
+			api.POST("/device/:id/collector-error", handler.UploadCollectorError)              // used by Collector to report smartctl errors
+			api.POST("/collector/scan-error", handler.UploadCollectorScanError)                // used by Collector to report scan-level errors (no device context)
 
 			api.GET("/settings", handler.GetSettings)   //used to get settings
 			api.POST("/settings", handler.SaveSettings) //used to save settings
@@ -167,16 +168,16 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			// ZFS Pool API endpoints
 			zfs := api.Group("/zfs")
 			{
-				zfs.POST("/pools/register", handler.RegisterZFSPools)        //used by ZFS Collector to register pools
-				zfs.GET("/summary", handler.GetZFSPoolsSummary)              //used by ZFS Dashboard
+				zfs.POST("/pools/register", handler.RegisterZFSPools)         //used by ZFS Collector to register pools
+				zfs.GET("/summary", handler.GetZFSPoolsSummary)               //used by ZFS Dashboard
 				zfs.POST("/pool/:guid/metrics", handler.UploadZFSPoolMetrics) //used by ZFS Collector to upload metrics
-				zfs.GET("/pool/:guid/details", handler.GetZFSPoolDetails)    //used by ZFS Pool Details view
-				zfs.POST("/pool/:guid/archive", handler.ArchiveZFSPool)      //used by UI to archive pool
-				zfs.POST("/pool/:guid/unarchive", handler.UnarchiveZFSPool)  //used by UI to unarchive pool
-				zfs.POST("/pool/:guid/mute", handler.MuteZFSPool)            //used by UI to mute pool
-				zfs.POST("/pool/:guid/unmute", handler.UnmuteZFSPool)        //used by UI to unmute pool
-				zfs.POST("/pool/:guid/label", handler.UpdateZFSPoolLabel)    //used by UI to set pool label
-				zfs.DELETE("/pool/:guid", handler.DeleteZFSPool)             //used by UI to delete pool
+				zfs.GET("/pool/:guid/details", handler.GetZFSPoolDetails)     //used by ZFS Pool Details view
+				zfs.POST("/pool/:guid/archive", handler.ArchiveZFSPool)       //used by UI to archive pool
+				zfs.POST("/pool/:guid/unarchive", handler.UnarchiveZFSPool)   //used by UI to unarchive pool
+				zfs.POST("/pool/:guid/mute", handler.MuteZFSPool)             //used by UI to mute pool
+				zfs.POST("/pool/:guid/unmute", handler.UnmuteZFSPool)         //used by UI to unmute pool
+				zfs.POST("/pool/:guid/label", handler.UpdateZFSPoolLabel)     //used by UI to set pool label
+				zfs.DELETE("/pool/:guid", handler.DeleteZFSPool)              //used by UI to delete pool
 			}
 		}
 	}
@@ -186,7 +187,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 	frontendPath := ae.Config.GetString("web.src.frontend.path")
 	browserPath := filepath.Join(frontendPath, "browser")
 	indexPath := filepath.Join(browserPath, indexFile)
-	
+
 	// Use browser subdirectory if it exists, otherwise use the configured path directly
 	actualFrontendPath := frontendPath
 	if utils.FileExists(indexPath) {
@@ -198,24 +199,24 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 
 	// Create file server - it will automatically use the MIME types registered globally above
 	fileServer := http.FileServer(http.Dir(actualFrontendPath))
-	
+
 	// Serve static files with proper MIME types and SPA routing support
 	base.GET("/web", func(c *gin.Context) {
 		c.File(filepath.Join(actualFrontendPath, indexFile))
 	})
-	
+
 	base.GET("/web/*filepath", func(c *gin.Context) {
 		file := c.Param("filepath")
 		if file == "" || file == "/" {
 			c.File(filepath.Join(actualFrontendPath, indexFile))
 			return
 		}
-		
+
 		// Remove leading slash if present
 		if strings.HasPrefix(file, "/") {
 			file = file[1:]
 		}
-		
+
 		// Check if file exists
 		fullPath := filepath.Join(actualFrontendPath, file)
 		if !utils.FileExists(fullPath) {
@@ -223,7 +224,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			c.File(filepath.Join(actualFrontendPath, indexFile))
 			return
 		}
-		
+
 		// Serve the file using the file server
 		// MIME type will be automatically set based on registered types above
 		c.Request.URL.Path = "/" + file
