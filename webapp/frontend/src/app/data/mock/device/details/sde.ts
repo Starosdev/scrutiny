@@ -15,7 +15,7 @@ export const sde = {
             'rotational_speed': 0,
             'capacity': 14000519643136,
             'form_factor': '',
-            'smart_support': false,
+            'smart_support': { 'available': false },
             'device_protocol': 'SCSI',
             'device_type': '',
             'label': '',

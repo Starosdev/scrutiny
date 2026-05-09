@@ -76,6 +76,9 @@ PLANNING.md
 
 # Claude Code
 .claude/
+.codex/
+# Local repo instructions
+AGENTS.md
 
 # Local compiled binaries
 collector-dev

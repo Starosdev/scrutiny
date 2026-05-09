@@ -17,8 +17,11 @@ func TestUpdateFromCollectorSmartInfo_ShouldPopulateModelName(t *testing.T) {
 		ModelName:       "SEAGATE ST4000NM0043",
 		FirmwareVersion: "0004",
 	}
+	enabled := true
 	smartInfo.Device.Protocol = "SCSI"
 	smartInfo.SmartStatus.Passed = true
+	smartInfo.SmartSupport.Available = true
+	smartInfo.SmartSupport.Enabled = &enabled
 
 	// test
 	err := device.UpdateFromCollectorSmartInfo(smartInfo)
@@ -28,6 +31,9 @@ func TestUpdateFromCollectorSmartInfo_ShouldPopulateModelName(t *testing.T) {
 	require.Equal(t, "SEAGATE ST4000NM0043", device.ModelName)
 	require.Equal(t, "0004", device.Firmware)
 	require.Equal(t, "SCSI", device.DeviceProtocol)
+	require.True(t, device.SmartSupport.Available)
+	require.NotNil(t, device.SmartSupport.Enabled)
+	require.True(t, *device.SmartSupport.Enabled)
 }
 
 func TestUpdateFromCollectorSmartInfo_ShouldPopulateModelNameForAta(t *testing.T) {
@@ -42,6 +48,7 @@ func TestUpdateFromCollectorSmartInfo_ShouldPopulateModelNameForAta(t *testing.T
 	}
 	smartInfo.Device.Protocol = "ATA"
 	smartInfo.SmartStatus.Passed = true
+	smartInfo.SmartSupport.Available = true
 
 	// test
 	err := device.UpdateFromCollectorSmartInfo(smartInfo)
@@ -50,4 +57,5 @@ func TestUpdateFromCollectorSmartInfo_ShouldPopulateModelNameForAta(t *testing.T
 	require.NoError(t, err)
 	require.Equal(t, "WDC WD140EDFZ-11A0VA0", device.ModelName)
 	require.Equal(t, "ATA", device.DeviceProtocol)
+	require.True(t, device.SmartSupport.Available)
 }

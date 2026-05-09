@@ -232,6 +232,20 @@ func (mr *MockDeviceRepoMockRecorder) GetDevicesLastSeenTimes(ctx interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDevicesLastSeenTimes", reflect.TypeOf((*MockDeviceRepo)(nil).GetDevicesLastSeenTimes), ctx)
 }
 
+// MergeDevices mocks base method.
+func (m *MockDeviceRepo) MergeDevices(ctx context.Context, sourceDeviceID, destinationDeviceID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MergeDevices", ctx, sourceDeviceID, destinationDeviceID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MergeDevices indicates an expected call of MergeDevices.
+func (mr *MockDeviceRepoMockRecorder) MergeDevices(ctx, sourceDeviceID, destinationDeviceID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MergeDevices", reflect.TypeOf((*MockDeviceRepo)(nil).MergeDevices), ctx, sourceDeviceID, destinationDeviceID)
+}
+
 // GetLatestSmartSubmission mocks base method.
 func (m *MockDeviceRepo) GetLatestSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error) {
 	m.ctrl.T.Helper()

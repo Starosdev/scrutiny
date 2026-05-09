@@ -3,6 +3,7 @@ package models
 import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models/common"
 	"time"
 )
 
@@ -28,18 +29,18 @@ type Device struct {
 	DeviceSerialID string `json:"device_serial_id"`
 	DeviceLabel    string `json:"device_label"`
 
-	Manufacturer   string `json:"manufacturer"`
-	ModelName      string `json:"model_name"`
-	InterfaceType  string `json:"interface_type"`
-	InterfaceSpeed string `json:"interface_speed"`
-	SerialNumber   string `json:"serial_number"`
-	Firmware       string `json:"firmware"`
-	RotationSpeed  int    `json:"rotational_speed"`
-	Capacity       int64  `json:"capacity"`
-	FormFactor     string `json:"form_factor"`
-	SmartSupport   bool   `json:"smart_support"`
-	DeviceProtocol string `json:"device_protocol"` //protocol determines which smart attribute types are available (ATA, NVMe, SCSI)
-	DeviceType     string `json:"device_type"`     //device type is used for querying with -d/t flag, should only be used by collector.
+	Manufacturer   string              `json:"manufacturer"`
+	ModelName      string              `json:"model_name"`
+	InterfaceType  string              `json:"interface_type"`
+	InterfaceSpeed string              `json:"interface_speed"`
+	SerialNumber   string              `json:"serial_number"`
+	Firmware       string              `json:"firmware"`
+	RotationSpeed  int                 `json:"rotational_speed"`
+	Capacity       int64               `json:"capacity"`
+	FormFactor     string              `json:"form_factor"`
+	SmartSupport   common.SmartSupport `json:"smart_support"`
+	DeviceProtocol string              `json:"device_protocol"` // protocol determines which smart attribute types are available (ATA, NVMe, SCSI)
+	DeviceType     string              `json:"device_type"`     // device type is used for querying with -d/t flag, should only be used by collector.
 
 	// User provided metadata
 	Label            string `json:"label"`
@@ -48,8 +49,8 @@ type Device struct {
 	SmartDisplayMode string `json:"smart_display_mode" gorm:"default:'scrutiny'"` // "scrutiny", "raw", or "normalized"
 
 	// Data set by Scrutiny
-	DeviceStatus     pkg.DeviceStatus `json:"device_status"`
-	HasForcedFailure          bool             `json:"has_forced_failure" gorm:"default:false"` // True when override with action=force_status, status=failed is applied
+	DeviceStatus              pkg.DeviceStatus `json:"device_status"`
+	HasForcedFailure          bool             `json:"has_forced_failure" gorm:"default:false"`       // True when override with action=force_status, status=failed is applied
 	MissedPingTimeoutOverride int              `json:"missed_ping_timeout_override" gorm:"default:0"` // Per-device override for missed ping timeout (0 = use global)
 }
 
@@ -172,6 +173,7 @@ func (dv *Device) UpdateFromCollectorSmartInfo(info collector.SmartInfo) error {
 	dv.ModelName = info.ModelName
 	dv.Firmware = info.FirmwareVersion
 	dv.DeviceProtocol = info.Device.Protocol
+	dv.SmartSupport = info.SmartSupport
 
 	if !info.SmartStatus.Passed {
 		dv.DeviceStatus = pkg.DeviceStatusSet(dv.DeviceStatus, pkg.DeviceStatusFailedSmart)
