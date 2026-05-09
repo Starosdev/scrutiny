@@ -69,6 +69,14 @@ We follow a predictable release cadence to balance new features with stability:
 
 Releases are created manually, not on every commit. Track upcoming work on the [Release Schedule](https://github.com/users/Starosdev/projects/1) project board.
 
+## Deployments
+
+This repository also owns the testing and production deployment definitions for Scrutiny.
+
+- Testing deploys from the `testing` branch through [`Deploy Testing Stack`](./.github/workflows/deploy-testing.yml)
+- Production deploys from the `master` branch through [`Automated Release and Deploy`](./.github/workflows/release-and-deploy.yml)
+- Deployment compose files, env templates, and host expectations live in [docs/DEPLOYMENTS.md](./docs/DEPLOYMENTS.md)
+
 # Introduction
 
 If you run a server with more than a couple of hard drives, you're probably already familiar with S.M.A.R.T and the `smartd` daemon. If not, it's an incredible open source project described as the following:
