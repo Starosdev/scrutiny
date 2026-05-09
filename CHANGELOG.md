@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.53.0](https://github.com/Starosdev/scrutiny/compare/v1.52.0...v1.53.0) (2026-05-09)
+
+### Features
+
+* device merge endpoint, time format preference, and multiple fixes ([#497](https://github.com/Starosdev/scrutiny/issues/497)) ([03de887](https://github.com/Starosdev/scrutiny/commit/03de887138ce3d705be54cc6c8effb870199b8ba)), closes [#490](https://github.com/Starosdev/scrutiny/issues/490) [#445](https://github.com/Starosdev/scrutiny/issues/445) [#488](https://github.com/Starosdev/scrutiny/issues/488) [#480](https://github.com/Starosdev/scrutiny/issues/480) [#475](https://github.com/Starosdev/scrutiny/issues/475) [#472](https://github.com/Starosdev/scrutiny/issues/472) [#443](https://github.com/Starosdev/scrutiny/issues/443) [#423](https://github.com/Starosdev/scrutiny/issues/423) [#426](https://github.com/Starosdev/scrutiny/issues/426) [#427](https://github.com/Starosdev/scrutiny/issues/427) [#428](https://github.com/Starosdev/scrutiny/issues/428) [#429](https://github.com/Starosdev/scrutiny/issues/429) [#490](https://github.com/Starosdev/scrutiny/issues/490) [#488](https://github.com/Starosdev/scrutiny/issues/488) [#480](https://github.com/Starosdev/scrutiny/issues/480) [#475](https://github.com/Starosdev/scrutiny/issues/475) [#472](https://github.com/Starosdev/scrutiny/issues/472) [#445](https://github.com/Starosdev/scrutiny/issues/445) [#443](https://github.com/Starosdev/scrutiny/issues/443) [#426](https://github.com/Starosdev/scrutiny/issues/426) [#423](https://github.com/Starosdev/scrutiny/issues/423)
+
 ## [1.52.0](https://github.com/Starosdev/scrutiny/compare/v1.51.0...v1.52.0) (2026-04-30)
 
 ### Features
