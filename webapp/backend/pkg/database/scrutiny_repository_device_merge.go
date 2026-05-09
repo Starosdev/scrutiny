@@ -28,11 +28,11 @@ func (sr *scrutinyRepository) MergeDevices(ctx context.Context, sourceDeviceID s
 		return fmt.Errorf("could not find destination device: %w", err)
 	}
 
-	if err := sr.copyInfluxDeviceHistory(ctx, sourceDevice, destinationDevice); err != nil {
+	if err := sr.copyInfluxDeviceHistory(ctx, &sourceDevice, &destinationDevice); err != nil {
 		return err
 	}
 
-	if err := sr.deleteInfluxDeviceHistory(ctx, sourceDevice); err != nil {
+	if err := sr.deleteInfluxDeviceHistory(ctx, &sourceDevice); err != nil {
 		return err
 	}
 
@@ -51,7 +51,7 @@ func (sr *scrutinyRepository) MergeDevices(ctx context.Context, sourceDeviceID s
 	})
 }
 
-func (sr *scrutinyRepository) copyInfluxDeviceHistory(ctx context.Context, sourceDevice, destinationDevice models.Device) error {
+func (sr *scrutinyRepository) copyInfluxDeviceHistory(ctx context.Context, sourceDevice, destinationDevice *models.Device) error {
 	for _, bucket := range sr.deviceHistoryBuckets() {
 		for _, measurement := range []string{"smart", "temp", "performance"} {
 			points, err := sr.queryDeviceMeasurementPoints(ctx, bucket, measurement, sourceDevice.WWN, destinationDevice)
@@ -68,8 +68,8 @@ func (sr *scrutinyRepository) copyInfluxDeviceHistory(ctx context.Context, sourc
 	return nil
 }
 
-func (sr *scrutinyRepository) deleteInfluxDeviceHistory(ctx context.Context, sourceDevice models.Device) error {
-	if sourceDevice.WWN == "" {
+func (sr *scrutinyRepository) deleteInfluxDeviceHistory(ctx context.Context, sourceDevice *models.Device) error {
+	if sourceDevice == nil || sourceDevice.WWN == "" {
 		return nil
 	}
 
@@ -99,7 +99,7 @@ func (sr *scrutinyRepository) deviceHistoryBuckets() []string {
 	return buckets
 }
 
-func (sr *scrutinyRepository) queryDeviceMeasurementPoints(ctx context.Context, bucket string, measurement string, sourceWWN string, destinationDevice models.Device) ([]*write.Point, error) {
+func (sr *scrutinyRepository) queryDeviceMeasurementPoints(ctx context.Context, bucket string, measurement string, sourceWWN string, destinationDevice *models.Device) ([]*write.Point, error) {
 	if sourceWWN == "" {
 		return nil, nil
 	}
@@ -143,7 +143,7 @@ from(bucket: "%s")
 	return points, nil
 }
 
-func measurementTags(measurement string, values map[string]interface{}, destinationDevice models.Device) map[string]string {
+func measurementTags(measurement string, values map[string]interface{}, destinationDevice *models.Device) map[string]string {
 	tags := map[string]string{
 		"device_wwn": destinationDevice.WWN,
 		"device_id":  destinationDevice.DeviceID,

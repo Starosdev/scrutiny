@@ -33,9 +33,9 @@ type Device struct {
 	Capacity                  int64               `json:"capacity"`
 	RotationSpeed             int                 `json:"rotational_speed"`
 	MissedPingTimeoutOverride int                 `json:"missed_ping_timeout_override" gorm:"default:0"`
+	SmartSupport              common.SmartSupport `json:"smart_support"`
 	DeviceStatus              pkg.DeviceStatus    `json:"device_status"`
 	Archived                  bool                `json:"archived"`
 	Muted                     bool                `json:"muted"`
-	SmartSupport              common.SmartSupport `json:"smart_support"`
 	HasForcedFailure          bool                `json:"has_forced_failure" gorm:"default:false"`
 }

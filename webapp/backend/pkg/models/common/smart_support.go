@@ -10,8 +10,8 @@ import (
 )
 
 type SmartSupport struct {
-	Available bool  `json:"available"`
 	Enabled   *bool `json:"enabled,omitempty"`
+	Available bool  `json:"available"`
 }
 
 func (s SmartSupport) Value() (driver.Value, error) {
@@ -82,7 +82,7 @@ func (SmartSupport) GormDataType() string {
 }
 
 func (SmartSupport) GormDBDataType(db *gorm.DB, _ *schema.Field) string {
-	switch db.Dialector.Name() {
+	switch db.Name() {
 	case "postgres":
 		return "JSONB"
 	case "sqlite":

@@ -113,8 +113,8 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 
 			api.GET("/health", handler.HealthCheck)
 			api.HEAD("/health", handler.HealthCheck)
-			api.POST("/health/notify", handler.SendTestNotification)           //check if notifications are configured correctly
-			api.GET("/health/missed-ping-status", handler.GetMissedPingStatus) //get missed ping monitor diagnostic status
+			api.POST("/health/notify", handler.SendTestNotification)           // check if notifications are configured correctly
+			api.GET("/health/missed-ping-status", handler.GetMissedPingStatus) // get missed ping monitor diagnostic status
 			api.POST("/health/uptime-kuma-test", handler.TestUptimeKumaPush)   // test Uptime Kuma push monitor
 			api.POST("/health/mqtt-sync", handler.MqttSync)                    // re-sync all MQTT discovery entities with HA
 
