@@ -1,0 +1,17 @@
+services:
+  scrutiny:
+    container_name: scrutiny-testing
+    image: ${SCRUTINY_IMAGE:-ghcr.io/starosdev/scrutiny:testing}
+    restart: unless-stopped
+    cap_add:
+      - SYS_RAWIO
+      - SYS_ADMIN
+    ports:
+      - "${SCRUTINY_WEB_PORT:-8080}:8080"
+      - "${SCRUTINY_INFLUXDB_PORT:-8086}:8086"
+    volumes:
+      - /run/udev:/run/udev:ro
+      - "${SCRUTINY_CONFIG_DIR:-./config}:/opt/scrutiny/config"
+      - "${SCRUTINY_INFLUXDB_DIR:-./influxdb}:/opt/scrutiny/influxdb"
+    environment:
+      TZ: ${TZ:-UTC}
