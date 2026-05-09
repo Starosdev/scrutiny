@@ -12,7 +12,7 @@
       "rotational_speed": 0,
       "capacity": 500107862016,
       "form_factor": "",
-      "smart_support": false
+      "smart_support": {"available": false}
     },
     {
       "wwn": "0x5000cca264eb01d7",
@@ -26,7 +26,7 @@
       "rotational_speed": 0,
       "capacity": 14000519643136,
       "form_factor": "",
-      "smart_support": false
+      "smart_support": {"available": false}
     },
     {
       "wwn": "0x5000cca264ec3183",
@@ -40,7 +40,7 @@
       "rotational_speed": 0,
       "capacity": 14000519643136,
       "form_factor": "",
-      "smart_support": false
+      "smart_support": {"available": false}
     },
     {
       "wwn": "0x5000cca252c859cc",
@@ -54,7 +54,7 @@
       "rotational_speed": 0,
       "capacity": 8001563222016,
       "form_factor": "",
-      "smart_support": false
+      "smart_support": {"available": false}
     },
     {
       "wwn": "0x5000cca264ebc248",
@@ -68,7 +68,7 @@
       "rotational_speed": 0,
       "capacity": 14000519643136,
       "form_factor": "",
-      "smart_support": false
+      "smart_support": {"available": false}
     },
     {
       "wwn": "0x50014ee20b2a72a9",
@@ -82,7 +82,7 @@
       "rotational_speed": 0,
       "capacity": 6001175126016,
       "form_factor": "",
-      "smart_support": false
+      "smart_support": {"available": false}
     },
     {
       "wwn": "0x5000c500673e6b5f",
@@ -96,7 +96,7 @@
       "rotational_speed": 0,
       "capacity": 6001175126016,
       "form_factor": "",
-      "smart_support": false
+      "smart_support": {"available": false}
     }
   ]
 }

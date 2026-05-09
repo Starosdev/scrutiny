@@ -41,6 +41,10 @@
     "value": 66560
   },
   "nvme_number_of_namespaces": 16,
+  "smart_support": {
+    "available": true,
+    "enabled": true
+  },
   "local_time": {
     "time_t": 1706045146,
     "asctime": "Tue Jan 23 21:25:46 2024 UTC"

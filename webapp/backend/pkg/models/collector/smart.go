@@ -1,5 +1,7 @@
 package collector
 
+import "github.com/analogj/scrutiny/webapp/backend/pkg/models/common"
+
 type SmartInfo struct {
 	JSONFormatVersion []int `json:"json_format_version"`
 	Smartctl          struct {
@@ -67,6 +69,7 @@ type SmartInfo struct {
 	SmartStatus struct {
 		Passed bool `json:"passed"`
 	} `json:"smart_status"`
+	SmartSupport common.SmartSupport `json:"smart_support"`
 
 	PowerOnTime struct {
 		Hours int64 `json:"hours"`
@@ -143,21 +146,21 @@ type SmartInfo struct {
 				ErrorNumber         int `json:"error_number"`
 				LifetimeHours       int `json:"lifetime_hours"`
 				CompletionRegisters struct {
-					Error  int `json:"error"`
-					Status int `json:"status"`
-					Count  int `json:"count"`
+					Error  int    `json:"error"`
+					Status int    `json:"status"`
+					Count  int    `json:"count"`
 					Lba    uint64 `json:"lba"`
-					Device int `json:"device"`
+					Device int    `json:"device"`
 				} `json:"completion_registers"`
 				ErrorDescription string `json:"error_description"`
 				PreviousCommands []struct {
 					Registers struct {
-						Command       int `json:"command"`
-						Features      int `json:"features"`
-						Count         int `json:"count"`
+						Command       int    `json:"command"`
+						Features      int    `json:"features"`
+						Count         int    `json:"count"`
 						Lba           uint64 `json:"lba"`
-						Device        int `json:"device"`
-						DeviceControl int `json:"device_control"`
+						Device        int    `json:"device"`
+						DeviceControl int    `json:"device_control"`
 					} `json:"registers"`
 					PowerupMilliseconds int    `json:"powerup_milliseconds"`
 					CommandName         string `json:"command_name"`

@@ -1,3 +1,8 @@
+export interface SmartSupportModel {
+    available: boolean;
+    enabled?: boolean;
+}
+
 // maps to webapp/backend/pkg/models/device.go
 export interface DeviceModel {
     archived?: boolean;
@@ -18,7 +23,7 @@ export interface DeviceModel {
     rotational_speed: number;
     capacity: number;
     form_factor: string;
-    smart_support: boolean;
+    smart_support: SmartSupportModel;
     device_protocol: string;
     device_type: string;
 

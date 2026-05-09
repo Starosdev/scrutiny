@@ -12,7 +12,7 @@
       "rotational_speed": 0,
       "capacity": 480103981056,
       "form_factor": "",
-      "smart_support": false,
+      "smart_support": {"available": false},
       "device_protocol": "NVMe",
       "device_type": "nvme"
     }

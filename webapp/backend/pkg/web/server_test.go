@@ -294,6 +294,15 @@ func (suite *ServerTestSuite) TestRegisterDevicesRoute() {
 
 	//assert
 	require.Equal(suite.T(), 200, w.Code)
+	var response struct {
+		Success bool            `json:"success"`
+		Data    []models.Device `json:"data"`
+	}
+	err = json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), response.Success)
+	require.NotEmpty(suite.T(), response.Data)
+	require.False(suite.T(), response.Data[0].SmartSupport.Available)
 }
 
 func (suite *ServerTestSuite) TestUploadDeviceMetricsRoute() {
@@ -821,19 +830,19 @@ func (suite *ServerTestSuite) TestStaticFileMimeTypes() {
 	parentPath, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
-	
+
 	// Create test static files with various extensions
 	testFiles := map[string]string{
-		"test.js":     "console.log('test');",
-		"test.mjs":    "export default {};",
-		"test.css":    "body { margin: 0; }",
-		"test.json":   `{"test": true}`,
-		"test.svg":    "<svg></svg>",
-		"test.woff":   "fake woff content",
-		"test.woff2":  "fake woff2 content",
-		"test.ttf":    "fake ttf content",
-		"test.otf":    "fake otf content",
-		"test.eot":    "fake eot content",
+		"test.js":    "console.log('test');",
+		"test.mjs":   "export default {};",
+		"test.css":   "body { margin: 0; }",
+		"test.json":  `{"test": true}`,
+		"test.svg":   "<svg></svg>",
+		"test.woff":  "fake woff content",
+		"test.woff2": "fake woff2 content",
+		"test.ttf":   "fake ttf content",
+		"test.otf":   "fake otf content",
+		"test.eot":   "fake eot content",
 	}
 	helperCreateTestStaticFiles(suite.T(), parentPath, testFiles)
 
@@ -902,7 +911,7 @@ func (suite *ServerTestSuite) TestStaticFileMimeTypes() {
 		actualContentType := w.Header().Get("Content-Type")
 		// Go's http.FileServer may add charset parameter (e.g., "text/css; charset=utf-8")
 		// Check that Content-Type starts with expected MIME type
-		require.True(suite.T(), strings.HasPrefix(actualContentType, expectedMimeType), 
+		require.True(suite.T(), strings.HasPrefix(actualContentType, expectedMimeType),
 			"Incorrect MIME type for file: %s, expected to start with: %s, got: %s", filename, expectedMimeType, actualContentType)
 	}
 }
@@ -911,7 +920,7 @@ func (suite *ServerTestSuite) TestBrowserSubdirectoryDetection() {
 	//setup
 	parentPath, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(parentPath)
-	
+
 	// Create browser subdirectory with index.html
 	browserPath := path.Join(parentPath, "browser")
 	err := os.MkdirAll(browserPath, 0755)
@@ -919,7 +928,7 @@ func (suite *ServerTestSuite) TestBrowserSubdirectoryDetection() {
 	indexPath := path.Join(browserPath, "index.html")
 	err = ioutil.WriteFile(indexPath, []byte("<html><body>Browser subdirectory</body></html>"), 0644)
 	require.NoError(suite.T(), err)
-	
+
 	// Create a test file in browser subdirectory
 	testFilePath := path.Join(browserPath, "test.js")
 	err = ioutil.WriteFile(testFilePath, []byte("console.log('test');"), 0644)
@@ -973,7 +982,7 @@ func (suite *ServerTestSuite) TestBrowserSubdirectoryDetection() {
 	//assert
 	require.Equal(suite.T(), 200, w.Code)
 	require.Contains(suite.T(), w.Body.String(), "Browser subdirectory")
-	
+
 	//test - verify test.js file is served from browser subdirectory with correct MIME type
 	w2 := httptest.NewRecorder()
 	req2, _ := http.NewRequest("GET", suite.Basepath+"/web/test.js", nil)
@@ -992,7 +1001,7 @@ func (suite *ServerTestSuite) TestBrowserSubdirectoryDetection_NoBrowserDir() {
 	parentPath, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
-	
+
 	// Create a test file in parent path
 	testFilePath := path.Join(parentPath, "test.js")
 	err := ioutil.WriteFile(testFilePath, []byte("console.log('test');"), 0644)
@@ -1045,7 +1054,7 @@ func (suite *ServerTestSuite) TestBrowserSubdirectoryDetection_NoBrowserDir() {
 
 	//assert
 	require.Equal(suite.T(), 200, w.Code)
-	
+
 	//test - verify test.js file is served from parent path with correct MIME type
 	w2 := httptest.NewRecorder()
 	req2, _ := http.NewRequest("GET", suite.Basepath+"/web/test.js", nil)
