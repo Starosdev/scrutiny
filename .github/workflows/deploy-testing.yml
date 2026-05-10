@@ -1,4 +1,4 @@
-name: Deploy Testing Stack
+name: Publish Testing Image
 
 on:
   push:
@@ -21,8 +21,8 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  build-and-deploy:
-    name: Build and Deploy Testing
+  build-and-publish:
+    name: Build and Publish Testing
     runs-on: ubuntu-latest
 
     steps:
@@ -62,48 +62,3 @@ jobs:
             ${{ env.REGISTRY }}/${{ steps.image_name.outputs.value }}:develop-omnibus
           cache-from: type=gha,scope=testing-omnibus
           cache-to: type=gha,mode=max,scope=testing-omnibus
-
-      - name: Install NetBird
-        run: |
-          set -euo pipefail
-          curl -fsSL https://pkgs.netbird.io/install.sh | sh
-          sudo netbird service start
-
-      - name: Join NetBird network
-        env:
-          NETBIRD_SETUP_KEY: ${{ secrets.NETBIRD_SETUP_KEY }}
-        run: |
-          set -euo pipefail
-          if [ -z "${NETBIRD_SETUP_KEY}" ]; then
-            echo "NETBIRD_SETUP_KEY is required"
-            exit 1
-          fi
-          sudo netbird up --setup-key "${NETBIRD_SETUP_KEY}"
-          sudo netbird status
-
-      - name: Deploy via SSH
-        env:
-          SCRUTINY_TESTING_HOST: ${{ secrets.SCRUTINY_TESTING_HOST }}
-          SCRUTINY_TESTING_USER: ${{ secrets.SCRUTINY_TESTING_USER }}
-          SCRUTINY_TESTING_SSH_KEY: ${{ secrets.SCRUTINY_TESTING_SSH_KEY }}
-        run: |
-          set -euo pipefail
-
-          if [ -z "${SCRUTINY_TESTING_HOST}" ] || [ -z "${SCRUTINY_TESTING_USER}" ] || [ -z "${SCRUTINY_TESTING_SSH_KEY}" ]; then
-            echo "Missing one or more testing deployment secrets"
-            exit 1
-          fi
-
-          mkdir -p ~/.ssh
-          printf '%s\n' "$SCRUTINY_TESTING_SSH_KEY" > ~/.ssh/scrutiny_testing_key
-          chmod 600 ~/.ssh/scrutiny_testing_key
-          ssh-keyscan -H "$SCRUTINY_TESTING_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-
-          ssh -i ~/.ssh/scrutiny_testing_key -o StrictHostKeyChecking=yes "${SCRUTINY_TESTING_USER}@${SCRUTINY_TESTING_HOST}" \
-            "bash /mnt/user/appdata/scrutiny/repo/ops/deploy-testing.sh"
-
-      - name: Leave NetBird network
-        if: always()
-        run: |
-          set -euo pipefail
-          sudo netbird down || true

@@ -1,4 +1,4 @@
-name: Automated Release and Deploy
+name: Publish Production Image
 
 on:
   push:
@@ -21,11 +21,9 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  deploy-production:
-    name: Deploy Production
+  build-and-publish-production:
+    name: Build and Publish Production
     runs-on: ubuntu-latest
-    environment: production
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -63,48 +61,3 @@ jobs:
             ${{ env.REGISTRY }}/${{ steps.image_name.outputs.value }}:latest-omnibus
           cache-from: type=gha,scope=production-omnibus
           cache-to: type=gha,mode=max,scope=production-omnibus
-
-      - name: Install NetBird
-        run: |
-          set -euo pipefail
-          curl -fsSL https://pkgs.netbird.io/install.sh | sh
-          sudo netbird service start
-
-      - name: Join NetBird network
-        env:
-          NETBIRD_SETUP_KEY: ${{ secrets.NETBIRD_SETUP_KEY }}
-        run: |
-          set -euo pipefail
-          if [ -z "${NETBIRD_SETUP_KEY}" ]; then
-            echo "NETBIRD_SETUP_KEY is required"
-            exit 1
-          fi
-          sudo netbird up --setup-key "${NETBIRD_SETUP_KEY}"
-          sudo netbird status
-
-      - name: Deploy via SSH
-        env:
-          SCRUTINY_PRODUCTION_HOST: ${{ secrets.SCRUTINY_PRODUCTION_HOST }}
-          SCRUTINY_PRODUCTION_USER: ${{ secrets.SCRUTINY_PRODUCTION_USER }}
-          SCRUTINY_PRODUCTION_SSH_KEY: ${{ secrets.SCRUTINY_PRODUCTION_SSH_KEY }}
-        run: |
-          set -euo pipefail
-
-          if [ -z "${SCRUTINY_PRODUCTION_HOST}" ] || [ -z "${SCRUTINY_PRODUCTION_USER}" ] || [ -z "${SCRUTINY_PRODUCTION_SSH_KEY}" ]; then
-            echo "Missing one or more production deployment secrets"
-            exit 1
-          fi
-
-          mkdir -p ~/.ssh
-          printf '%s\n' "$SCRUTINY_PRODUCTION_SSH_KEY" > ~/.ssh/scrutiny_production_key
-          chmod 600 ~/.ssh/scrutiny_production_key
-          ssh-keyscan -H "$SCRUTINY_PRODUCTION_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-
-          ssh -i ~/.ssh/scrutiny_production_key -o StrictHostKeyChecking=yes "${SCRUTINY_PRODUCTION_USER}@${SCRUTINY_PRODUCTION_HOST}" \
-            "bash /mnt/user/appdata/scrutiny/repo/ops/deploy-production.sh"
-
-      - name: Leave NetBird network
-        if: always()
-        run: |
-          set -euo pipefail
-          sudo netbird down || true
