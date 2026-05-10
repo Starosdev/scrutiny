@@ -159,6 +159,8 @@ See [docs/TROUBLESHOOTING_DEVICE_COLLECTOR.md](./docs/TROUBLESHOOTING_DEVICE_COL
 
 If you're using Docker, getting started is as simple as running the following command:
 
+For a component-level overview of how Omnibus and Hub/Spoke fit together, see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+
 > See [docker/example.omnibus.docker-compose.yml](docker/example.omnibus.docker-compose.yml) for a docker-compose file.
 
 ```bash
