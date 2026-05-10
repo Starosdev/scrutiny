@@ -26,6 +26,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260315000000"
 	_ "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260401000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260508000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260510000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -1030,6 +1031,15 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				}
 
 				return tx.AutoMigrate(&m20260508000000.Device{})
+			},
+		},
+		{
+			ID: "m20260510000000", // add filesystem capacity snapshots and host visibility state
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&m20260510000000.FilesystemCapacity{},
+					&m20260510000000.FilesystemHostStatus{},
+				)
 			},
 		},
 	})
