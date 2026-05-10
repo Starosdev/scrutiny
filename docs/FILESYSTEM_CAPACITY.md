@@ -16,6 +16,12 @@ Use the dedicated filesystem collector:
 scrutiny-collector-filesystem run
 ```
 
+In the omnibus image, this binary is available at:
+
+```bash
+/opt/scrutiny/bin/scrutiny-collector-filesystem run
+```
+
 The collector reads host-visible mount information and uploads per-filesystem snapshots containing:
 
 - host ID

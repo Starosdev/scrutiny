@@ -71,6 +71,7 @@ COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/
 COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny-collector-metrics /opt/scrutiny/bin/
 COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny-collector-zfs /opt/scrutiny/bin/
 COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny-collector-performance /opt/scrutiny/bin/
+COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny-collector-filesystem /opt/scrutiny/bin/
 COPY --link --from=frontendbuild --chmod=644 /go/src/github.com/analogj/scrutiny/webapp/frontend/dist/treo/browser /opt/scrutiny/web
 RUN chmod 0644 /etc/cron.d/scrutiny && \
     chmod 0644 /etc/cron.d/scrutiny-zfs && \

@@ -161,6 +161,7 @@ jobs:
             scrutiny-collector-metrics-*
             scrutiny-collector-zfs-*
             scrutiny-collector-performance-*
+            scrutiny-collector-filesystem-*
 
   upload-assets:
     name: Upload Release Assets
