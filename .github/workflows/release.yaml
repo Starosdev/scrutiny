@@ -76,6 +76,10 @@ jobs:
             conventional-changelog-conventionalcommits
         env:
           GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
+        # semantic-release updates webapp/backend/pkg/version/version.go in the
+        # release commit. The build job must compile the tagged release commit,
+        # not the pre-release workspace state, so runtime banners and API
+        # version surfaces stay on the semantic version.
 
       - name: Get previous tag
         id: prev_tag
@@ -136,6 +140,8 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: v${{ needs.release.outputs.new_release_version }}
+      # Build from the published release tag so the binaries embed the same
+      # VERSION constant that semantic-release committed for that release.
       - name: Setup Go
         uses: actions/setup-go@v6
         with:

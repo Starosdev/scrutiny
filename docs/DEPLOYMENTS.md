@@ -2,6 +2,8 @@
 
 This repository owns the Scrutiny image publishing workflows.
 
+For release-version verification details, see [RELEASE_VERSION_VERIFICATION.md](./RELEASE_VERSION_VERIFICATION.md).
+
 ## Environment Mapping
 
 | Environment | Branch | Workflow | Published Image | Notes |
