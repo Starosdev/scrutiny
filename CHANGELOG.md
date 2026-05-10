@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.53.1](https://github.com/Starosdev/scrutiny/compare/v1.53.0...v1.53.1) (2026-05-10)
+
+### Bug Fixes
+
+* **ci:** normalize GHCR image tags to lowercase in deploy workflows ([#504](https://github.com/Starosdev/scrutiny/issues/504)) ([a4e5262](https://github.com/Starosdev/scrutiny/commit/a4e526275ce1bf82d540b3e68c5cb100f0f7286c))
+
 ## [1.53.0](https://github.com/Starosdev/scrutiny/compare/v1.52.0...v1.53.0) (2026-05-09)
 
 ### Features
