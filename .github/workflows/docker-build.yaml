@@ -7,6 +7,7 @@ on:
       - develop
     paths:
       - 'webapp/**'
+      - '!webapp/backend/pkg/version/version.go'
       - 'collector/**'
       - 'docker/**'
       - 'Makefile'
@@ -195,7 +196,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
         with:
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          platforms: linux/amd64,linux/arm64
           context: .
           file: docker/Dockerfile.collector-performance
           push: true
@@ -254,7 +255,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
         with:
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          platforms: linux/amd64,linux/arm64
           context: .
           file: docker/Dockerfile.web
           push: true
