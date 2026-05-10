@@ -159,6 +159,8 @@ See [docs/TROUBLESHOOTING_DEVICE_COLLECTOR.md](./docs/TROUBLESHOOTING_DEVICE_COL
 
 If you're using Docker, getting started is as simple as running the following command:
 
+For a component-level overview of how Omnibus and Hub/Spoke fit together, see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+
 > See [docker/example.omnibus.docker-compose.yml](docker/example.omnibus.docker-compose.yml) for a docker-compose file.
 
 ```bash
@@ -193,6 +195,8 @@ the following Docker images:
 - `ghcr.io/starosdev/scrutiny:latest-web` - Contains the Web UI and API. Only one container necessary
 - `influxdb:2.2` - InfluxDB image, used by the Web container to persist SMART data. Only one container necessary.
   See [docs/TROUBLESHOOTING_INFLUXDB.md](./docs/TROUBLESHOOTING_INFLUXDB.md)
+
+Default CI image publishing currently builds `latest-web` and `latest-collector-performance` for `linux/amd64` and `linux/arm64`. The `arm/v7` variants are no longer part of the default GitHub Actions Docker matrix.
 
 > See [docker/example.hubspoke.docker-compose.yml](docker/example.hubspoke.docker-compose.yml) for a docker-compose file.
 
