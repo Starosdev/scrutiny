@@ -68,7 +68,6 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsSL https://pkgs.netbird.io/install.sh | sh
-          sudo netbird service install
           sudo netbird service start
 
       - name: Join NetBird network
