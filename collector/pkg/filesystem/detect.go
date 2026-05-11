@@ -47,6 +47,14 @@ var excludedFSTypes = map[string]struct{}{
 	"zfs":         {},
 }
 
+var excludedMountPoints = map[string]struct{}{
+	"/etc/hostname":          {},
+	"/etc/hosts":             {},
+	"/etc/resolv.conf":       {},
+	"/opt/scrutiny/config":   {},
+	"/opt/scrutiny/influxdb": {},
+}
+
 // CollectLinuxSnapshots collects filesystem snapshots from /proc/mounts.
 func CollectLinuxSnapshots(hostID string, now time.Time) ([]models.FilesystemCapacity, models.FilesystemHostStatus, error) {
 	file, err := os.Open("/proc/mounts")
@@ -75,7 +83,7 @@ func collectSnapshots(reader io.Reader, hostID string, now time.Time, statfsFn f
 	failedEligibleCount := 0
 
 	for _, mount := range mounts {
-		if isExcludedFilesystem(mount.FSType) {
+		if isExcludedFilesystem(mount.FSType) || isExcludedMountPoint(mount.MountPoint) {
 			continue
 		}
 
@@ -149,6 +157,11 @@ func parseMounts(reader io.Reader) ([]mountEntry, error) {
 
 func isExcludedFilesystem(fsType string) bool {
 	_, excluded := excludedFSTypes[fsType]
+	return excluded
+}
+
+func isExcludedMountPoint(mountPoint string) bool {
+	_, excluded := excludedMountPoints[mountPoint]
 	return excluded
 }
 

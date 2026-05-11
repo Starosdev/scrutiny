@@ -14,6 +14,8 @@ const sampleMounts = `sysfs /sys sysfs rw 0 0
 proc /proc proc rw 0 0
 /dev/sda1 / ext4 rw 0 0
 /dev/sdb1 /data xfs rw 0 0
+/dev/loop2 /etc/hosts xfs rw 0 0
+shfs /opt/scrutiny/config fuse.shfs rw 0 0
 overlay /var/lib/docker/overlay2/abc overlay rw 0 0
 tank/home /tank/home zfs rw 0 0
 `
@@ -28,6 +30,8 @@ func TestCollectSnapshotsFiltersPseudoFilesystemsAndZFS(t *testing.T) {
 			return statfsResult{totalBytes: 1000, availableBytes: 250}, nil
 		case "/data":
 			return statfsResult{totalBytes: 2000, availableBytes: 500}, nil
+		case "/etc/hosts", "/opt/scrutiny/config":
+			return statfsResult{}, errors.New("excluded path should not be inspected")
 		default:
 			return statfsResult{}, errors.New("unexpected path")
 		}
@@ -41,6 +45,29 @@ func TestCollectSnapshotsFiltersPseudoFilesystemsAndZFS(t *testing.T) {
 	require.Equal(t, "/", snapshots[0].MountPoint)
 	require.Equal(t, "/data", snapshots[1].MountPoint)
 	require.InDelta(t, 75.0, snapshots[0].UsedPercent, 0.001)
+}
+
+func TestCollectSnapshotsFiltersContainerSpecificMountPoints(t *testing.T) {
+	now := time.Unix(100, 0).UTC()
+	reader := strings.NewReader(`/dev/loop2 /etc/hostname xfs rw 0 0
+/dev/loop2 /etc/hosts xfs rw 0 0
+/dev/loop2 /etc/resolv.conf xfs rw 0 0
+shfs /opt/scrutiny/config fuse.shfs rw 0 0
+shfs /opt/scrutiny/influxdb fuse.shfs rw 0 0
+shfs /mnt/user fuse.shfs rw 0 0
+`)
+
+	snapshots, status, err := collectSnapshots(reader, "host-a", now, func(path string) (statfsResult, error) {
+		if path != "/mnt/user" {
+			return statfsResult{}, errors.New("excluded path should not be inspected")
+		}
+		return statfsResult{totalBytes: 1000, availableBytes: 250}, nil
+	})
+	require.NoError(t, err)
+	require.Len(t, snapshots, 1)
+	require.Equal(t, "/mnt/user", snapshots[0].MountPoint)
+	require.Equal(t, models.FilesystemHostStatusAvailable, status.Status)
+	require.Equal(t, 1, status.FilesystemCount)
 }
 
 func TestCollectSnapshotsMarksUnavailableWhenEligibleMountsCannotBeRead(t *testing.T) {
