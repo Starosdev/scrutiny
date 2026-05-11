@@ -22,6 +22,13 @@ In the omnibus image, this binary is available at:
 /opt/scrutiny/bin/scrutiny-collector-filesystem run
 ```
 
+In omnibus deployments, automatic collection is disabled by default. Enable it with:
+
+```bash
+COLLECTOR_FILESYSTEM_CRON_SCHEDULE="*/15 * * * *"
+COLLECTOR_FILESYSTEM_RUN_STARTUP="true"
+```
+
 The collector reads host-visible mount information and uploads per-filesystem snapshots containing:
 
 - host ID

@@ -76,6 +76,7 @@ COPY --link --from=frontendbuild --chmod=644 /go/src/github.com/analogj/scrutiny
 RUN chmod 0644 /etc/cron.d/scrutiny && \
     chmod 0644 /etc/cron.d/scrutiny-zfs && \
     chmod 0644 /etc/cron.d/scrutiny-performance && \
+    chmod 0644 /etc/cron.d/scrutiny-filesystem && \
     rm -f /etc/cron.daily/* && \
     mkdir -p /opt/scrutiny/web && \
     mkdir -p /opt/scrutiny/config && \
