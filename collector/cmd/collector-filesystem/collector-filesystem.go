@@ -142,7 +142,8 @@ func main() {
 						collectorLogger.Debug(string(settingsData))
 					}
 
-					filesystemCollector, err := filesystem.CreateCollector(
+					var filesystemCollector *filesystem.Collector
+					filesystemCollector, err = filesystem.CreateCollector(
 						appConfig,
 						collectorLogger,
 						appConfig.GetString("api.endpoint"),
