@@ -8,50 +8,42 @@ import (
 )
 
 type DeviceWrapper struct {
-	Success bool     `json:"success"`
 	Errors  []error  `json:"errors"`
 	Data    []Device `json:"data"`
+	Success bool     `json:"success"`
 }
 
 type Device struct {
-	//GORM attributes, see: http://gorm.io/docs/conventions.html
-	Archived  bool `json:"archived"`
-	Muted     bool `json:"muted"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time
-
-	DeviceID string `json:"device_id" gorm:"column:device_id;primary_key"`
-	WWN      string `json:"wwn"`
-
-	DeviceName     string `json:"device_name"`
-	DeviceUUID     string `json:"device_uuid"`
-	DeviceSerialID string `json:"device_serial_id"`
-	DeviceLabel    string `json:"device_label"`
-
-	Manufacturer   string              `json:"manufacturer"`
-	ModelName      string              `json:"model_name"`
-	InterfaceType  string              `json:"interface_type"`
-	InterfaceSpeed string              `json:"interface_speed"`
-	SerialNumber   string              `json:"serial_number"`
-	Firmware       string              `json:"firmware"`
-	RotationSpeed  int                 `json:"rotational_speed"`
-	Capacity       int64               `json:"capacity"`
-	FormFactor     string              `json:"form_factor"`
-	SmartSupport   common.SmartSupport `json:"smart_support"`
-	DeviceProtocol string              `json:"device_protocol"` // protocol determines which smart attribute types are available (ATA, NVMe, SCSI)
-	DeviceType     string              `json:"device_type"`     // device type is used for querying with -d/t flag, should only be used by collector.
-
-	// User provided metadata
-	Label            string `json:"label"`
-	HostId           string `json:"host_id"`
-	CollectorVersion string `json:"collector_version"`
-	SmartDisplayMode string `json:"smart_display_mode" gorm:"default:'scrutiny'"` // "scrutiny", "raw", or "normalized"
-
-	// Data set by Scrutiny
-	DeviceStatus              pkg.DeviceStatus `json:"device_status"`
-	HasForcedFailure          bool             `json:"has_forced_failure" gorm:"default:false"`       // True when override with action=force_status, status=failed is applied
-	MissedPingTimeoutOverride int              `json:"missed_ping_timeout_override" gorm:"default:0"` // Per-device override for missed ping timeout (0 = use global)
+	UpdatedAt                 time.Time
+	CreatedAt                 time.Time
+	DeletedAt                 *time.Time
+	InterfaceSpeed            string              `json:"interface_speed"`
+	Firmware                  string              `json:"firmware"`
+	DeviceID                  string              `json:"device_id" gorm:"column:device_id;primary_key"`
+	WWN                       string              `json:"wwn"`
+	DeviceName                string              `json:"device_name"`
+	DeviceUUID                string              `json:"device_uuid"`
+	DeviceSerialID            string              `json:"device_serial_id"`
+	DeviceLabel               string              `json:"device_label"`
+	Manufacturer              string              `json:"manufacturer"`
+	ModelName                 string              `json:"model_name"`
+	InterfaceType             string              `json:"interface_type"`
+	SmartDisplayMode          string              `json:"smart_display_mode" gorm:"default:'scrutiny'"`
+	SerialNumber              string              `json:"serial_number"`
+	CollectorVersion          string              `json:"collector_version"`
+	HostId                    string              `json:"host_id"`
+	Label                     string              `json:"label"`
+	FormFactor                string              `json:"form_factor"`
+	SmartSupport              common.SmartSupport `json:"smart_support"`
+	DeviceProtocol            string              `json:"device_protocol"`
+	DeviceType                string              `json:"device_type"`
+	Capacity                  int64               `json:"capacity"`
+	RotationSpeed             int                 `json:"rotational_speed"`
+	MissedPingTimeoutOverride int                 `json:"missed_ping_timeout_override" gorm:"default:0"`
+	Muted                     bool                `json:"muted"`
+	Archived                  bool                `json:"archived"`
+	DeviceStatus              pkg.DeviceStatus    `json:"device_status"`
+	HasForcedFailure          bool                `json:"has_forced_failure" gorm:"default:false"`
 }
 
 func (dv *Device) IsAta() bool {
