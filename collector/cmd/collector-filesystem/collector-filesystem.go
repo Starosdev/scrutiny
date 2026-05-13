@@ -119,7 +119,9 @@ func main() {
 						appConfig.Set("api.token", c.String(flagAPIToken))
 					}
 
-					collectorLogger, logFile, err := CreateLogger(appConfig)
+					var collectorLogger *logrus.Entry
+					var logFile *os.File
+					collectorLogger, logFile, err = CreateLogger(appConfig)
 					if logFile != nil {
 						defer logFile.Close()
 					}

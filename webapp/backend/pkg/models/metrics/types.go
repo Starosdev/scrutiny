@@ -9,19 +9,19 @@ import (
 
 // DeviceMetricsData stores metrics data for a single device
 type DeviceMetricsData struct {
-	Device    models.Device      `json:"device"`
-	SmartData measurements.Smart `json:"smart_data"`
 	UpdatedAt time.Time          `json:"updated_at"`
+	SmartData measurements.Smart `json:"smart_data"`
+	Device    models.Device      `json:"device"`
 }
 
 // ZFSPoolMetricsData stores metrics data for a single ZFS pool.
 type ZFSPoolMetricsData struct {
-	Pool      models.ZFSPool `json:"pool"`
 	UpdatedAt time.Time      `json:"updated_at"`
+	Pool      models.ZFSPool `json:"pool"`
 }
 
 // WorkloadMetricsData stores workload metrics data for a single device.
 type WorkloadMetricsData struct {
-	Insight   models.WorkloadInsight `json:"insight"`
 	UpdatedAt time.Time              `json:"updated_at"`
+	Insight   models.WorkloadInsight `json:"insight"`
 }

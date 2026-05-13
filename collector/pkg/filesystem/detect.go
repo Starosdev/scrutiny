@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
@@ -163,24 +162,4 @@ func isExcludedFilesystem(fsType string) bool {
 func isExcludedMountPoint(mountPoint string) bool {
 	_, excluded := excludedMountPoints[mountPoint]
 	return excluded
-}
-
-func statfsForPath(path string) (statfsResult, error) {
-	var stat syscall.Statfs_t
-	if err := syscall.Statfs(path, &stat); err != nil {
-		return statfsResult{}, err
-	}
-
-	bsize := int64(stat.Bsize)
-	if bsize <= 0 {
-		return statfsResult{}, fmt.Errorf("unexpected block size %d", stat.Bsize)
-	}
-
-	totalBytes := int64(stat.Blocks) * bsize
-	availableBytes := int64(stat.Bavail) * bsize
-
-	return statfsResult{
-		totalBytes:     totalBytes,
-		availableBytes: availableBytes,
-	}, nil
 }

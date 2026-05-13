@@ -47,8 +47,8 @@ func (sr *scrutinyRepository) GetFilesystemSummary(ctx context.Context) (map[str
 	}
 
 	filesystemsByHost := make(map[string][]models.FilesystemCapacity)
-	for _, filesystem := range filesystems {
-		filesystemsByHost[filesystem.HostID] = append(filesystemsByHost[filesystem.HostID], filesystem)
+	for i := range filesystems {
+		filesystemsByHost[filesystems[i].HostID] = append(filesystemsByHost[filesystems[i].HostID], filesystems[i])
 	}
 
 	hostStatuses := make(map[string]*models.FilesystemHostStatus)
