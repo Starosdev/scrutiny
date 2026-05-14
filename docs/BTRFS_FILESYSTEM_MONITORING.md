@@ -2,6 +2,8 @@
 
 Scrutiny can monitor Btrfs filesystem health alongside S.M.A.R.T, generic filesystem capacity, ZFS, and workload metrics. This guide explains how to package and run the dedicated Btrfs collector.
 
+For the live-host validation workflow used to confirm parser behavior, see [BTRFS_REAL_HOST_VALIDATION.md](BTRFS_REAL_HOST_VALIDATION.md).
+
 ## Features
 
 - Filesystem registration by UUID, label, host, and mount point
