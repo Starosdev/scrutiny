@@ -46,6 +46,8 @@ export const appRoutes: Route[] = [
             // ZFS Pools
             {path: 'zfs-pools', loadChildren: () => import('app/modules/zfs-pools/zfs-pools.module').then(m => m.ZFSPoolsModule)},
             {path: 'zfs-pool/:guid', loadChildren: () => import('app/modules/zfs-pool-detail/zfs-pool-detail.module').then(m => m.ZFSPoolDetailModule)},
+            {path: 'btrfs-filesystems', loadChildren: () => import('app/modules/btrfs-filesystems/btrfs-filesystems.module').then(m => m.BtrfsFilesystemsModule)},
+            {path: 'btrfs-filesystem/:uuid', loadChildren: () => import('app/modules/btrfs-filesystem-detail/btrfs-filesystem-detail.module').then(m => m.BtrfsFilesystemDetailModule)},
 
             // Workload Insights
             {path: 'workload', loadChildren: () => import('app/modules/workload/workload.module').then(m => m.WorkloadModule)},
