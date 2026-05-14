@@ -233,10 +233,13 @@ export class DashboardComponent implements OnInit, OnDestroy
                 foreColor : 'inherit',
                 width     : '100%',
                 height    : '100%',
+                parentHeightOffset: 0,
                 type      : 'area',
                 sparkline : {
                     enabled: false
                 },
+                redrawOnParentResize: true,
+                redrawOnWindowResize: true,
                 toolbar: {
                     show: false
                 },
@@ -254,6 +257,16 @@ export class DashboardComponent implements OnInit, OnDestroy
                 colors : ['#b2bef4', '#c7b2f4', '#b2dff4', '#b2f4e8', '#e8b2f4', '#b2f4c7'],
                 opacity: 0.5,
                 type   : 'gradient'
+            },
+            legend: {
+                show: true,
+                position: 'bottom',
+                horizontalAlign: 'left',
+                fontSize: '12px',
+                itemMargin: {
+                    horizontal: 10,
+                    vertical: 4
+                }
             },
             series : this._deviceDataTemperatureSeries(),
             stroke : {
