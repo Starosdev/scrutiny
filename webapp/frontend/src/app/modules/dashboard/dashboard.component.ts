@@ -147,6 +147,10 @@ export class DashboardComponent implements OnInit, OnDestroy
         this.router.navigate([currentUrl]);
     }
 
+    deviceDashboardTitle(deviceSummary: DeviceSummaryModel): string {
+        return DeviceTitlePipe.deviceDashboardTitle(deviceSummary.device);
+    }
+
     private _deviceDataTemperatureSeries(): any[] {
         const deviceTemperatureSeries = []
 
@@ -161,7 +165,7 @@ export class DashboardComponent implements OnInit, OnDestroy
                 continue
             }
 
-            const deviceName = DeviceTitlePipe.deviceTitleWithFallback(deviceSummary.device, this.config.dashboard_display)
+            const deviceName = DeviceTitlePipe.deviceDashboardTitle(deviceSummary.device)
 
             const deviceSeriesMetadata = {
                 name: deviceName,

@@ -267,7 +267,7 @@
                         <mat-checkbox
                           [checked]="visibleDrives[device.key]"
                           (click)="toggleDriveVisibility(device.key); $event.stopPropagation()">
-                          {{ device.value.device | deviceTitle:config?.dashboard_display }}
+                          {{ deviceDashboardTitle(device.value) }}
                         </mat-checkbox>
                       </button>
                     }
