@@ -11,6 +11,7 @@ COLLECTOR_BINARY_NAME = scrutiny-collector-metrics
 COLLECTOR_ZFS_BINARY_NAME = scrutiny-collector-zfs
 COLLECTOR_PERF_BINARY_NAME = scrutiny-collector-performance
 COLLECTOR_FILESYSTEM_BINARY_NAME = scrutiny-collector-filesystem
+COLLECTOR_BTRFS_BINARY_NAME = scrutiny-collector-btrfs
 WEB_BINARY_NAME = scrutiny-web
 LD_FLAGS =
 
@@ -32,6 +33,7 @@ COLLECTOR_BINARY_NAME := $(COLLECTOR_BINARY_NAME)-$(GOOS)
 COLLECTOR_ZFS_BINARY_NAME := $(COLLECTOR_ZFS_BINARY_NAME)-$(GOOS)
 COLLECTOR_PERF_BINARY_NAME := $(COLLECTOR_PERF_BINARY_NAME)-$(GOOS)
 COLLECTOR_FILESYSTEM_BINARY_NAME := $(COLLECTOR_FILESYSTEM_BINARY_NAME)-$(GOOS)
+COLLECTOR_BTRFS_BINARY_NAME := $(COLLECTOR_BTRFS_BINARY_NAME)-$(GOOS)
 WEB_BINARY_NAME := $(WEB_BINARY_NAME)-$(GOOS)
 LD_FLAGS := $(LD_FLAGS) -X main.goos=$(GOOS)
 endif
@@ -40,6 +42,7 @@ COLLECTOR_BINARY_NAME := $(COLLECTOR_BINARY_NAME)-$(GOARCH)
 COLLECTOR_ZFS_BINARY_NAME := $(COLLECTOR_ZFS_BINARY_NAME)-$(GOARCH)
 COLLECTOR_PERF_BINARY_NAME := $(COLLECTOR_PERF_BINARY_NAME)-$(GOARCH)
 COLLECTOR_FILESYSTEM_BINARY_NAME := $(COLLECTOR_FILESYSTEM_BINARY_NAME)-$(GOARCH)
+COLLECTOR_BTRFS_BINARY_NAME := $(COLLECTOR_BTRFS_BINARY_NAME)-$(GOARCH)
 WEB_BINARY_NAME := $(WEB_BINARY_NAME)-$(GOARCH)
 LD_FLAGS := $(LD_FLAGS) -X main.goarch=$(GOARCH)
 endif
@@ -48,6 +51,7 @@ COLLECTOR_BINARY_NAME := $(COLLECTOR_BINARY_NAME)-$(GOARM)
 COLLECTOR_ZFS_BINARY_NAME := $(COLLECTOR_ZFS_BINARY_NAME)-$(GOARM)
 COLLECTOR_PERF_BINARY_NAME := $(COLLECTOR_PERF_BINARY_NAME)-$(GOARM)
 COLLECTOR_FILESYSTEM_BINARY_NAME := $(COLLECTOR_FILESYSTEM_BINARY_NAME)-$(GOARM)
+COLLECTOR_BTRFS_BINARY_NAME := $(COLLECTOR_BTRFS_BINARY_NAME)-$(GOARM)
 WEB_BINARY_NAME := $(WEB_BINARY_NAME)-$(GOARM)
 endif
 # Add .exe extension when building for Windows (native or cross-compile)
@@ -56,12 +60,14 @@ COLLECTOR_BINARY_NAME := $(COLLECTOR_BINARY_NAME).exe
 COLLECTOR_ZFS_BINARY_NAME := $(COLLECTOR_ZFS_BINARY_NAME).exe
 COLLECTOR_PERF_BINARY_NAME := $(COLLECTOR_PERF_BINARY_NAME).exe
 COLLECTOR_FILESYSTEM_BINARY_NAME := $(COLLECTOR_FILESYSTEM_BINARY_NAME).exe
+COLLECTOR_BTRFS_BINARY_NAME := $(COLLECTOR_BTRFS_BINARY_NAME).exe
 WEB_BINARY_NAME := $(WEB_BINARY_NAME).exe
 else ifeq ($(GOOS),windows)
 COLLECTOR_BINARY_NAME := $(COLLECTOR_BINARY_NAME).exe
 COLLECTOR_ZFS_BINARY_NAME := $(COLLECTOR_ZFS_BINARY_NAME).exe
 COLLECTOR_PERF_BINARY_NAME := $(COLLECTOR_PERF_BINARY_NAME).exe
 COLLECTOR_FILESYSTEM_BINARY_NAME := $(COLLECTOR_FILESYSTEM_BINARY_NAME).exe
+COLLECTOR_BTRFS_BINARY_NAME := $(COLLECTOR_BTRFS_BINARY_NAME).exe
 WEB_BINARY_NAME := $(WEB_BINARY_NAME).exe
 endif
 
@@ -72,8 +78,8 @@ endif
 all: binary-all
 
 .PHONY: binary-all
-binary-all: binary-collector binary-collector-zfs binary-collector-performance binary-collector-filesystem binary-web
-	@echo "built binary-collector, binary-collector-zfs, binary-collector-performance, binary-collector-filesystem and binary-web targets"
+binary-all: binary-collector binary-collector-zfs binary-collector-performance binary-collector-filesystem binary-collector-btrfs binary-web
+	@echo "built binary-collector, binary-collector-zfs, binary-collector-performance, binary-collector-filesystem, binary-collector-btrfs and binary-web targets"
 
 
 .PHONY: binary-clean
@@ -130,6 +136,16 @@ ifneq ($(OS),Windows_NT)
 	file $(COLLECTOR_FILESYSTEM_BINARY_NAME) || true
 	ldd $(COLLECTOR_FILESYSTEM_BINARY_NAME) || true
 	./$(COLLECTOR_FILESYSTEM_BINARY_NAME) || true
+endif
+
+.PHONY: binary-collector-btrfs
+binary-collector-btrfs: binary-dep
+	go build -buildvcs=false -ldflags "$(LD_FLAGS)" -o $(COLLECTOR_BTRFS_BINARY_NAME) $(STATIC_TAGS) ./collector/cmd/collector-btrfs/
+ifneq ($(OS),Windows_NT)
+	chmod +x $(COLLECTOR_BTRFS_BINARY_NAME)
+	file $(COLLECTOR_BTRFS_BINARY_NAME) || true
+	ldd $(COLLECTOR_BTRFS_BINARY_NAME) || true
+	./$(COLLECTOR_BTRFS_BINARY_NAME) || true
 endif
 
 .PHONY: binary-web
