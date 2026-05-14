@@ -199,6 +199,11 @@ docker-collector-performance:
 	@echo "building performance collector docker image"
 	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.collector-performance -t ghcr.io/starosdev/scrutiny-dev:collector-performance .
 
+.PHONY: docker-collector-btrfs
+docker-collector-btrfs:
+	@echo "building Btrfs collector docker image"
+	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.collector-btrfs -t ghcr.io/starosdev/scrutiny-dev:collector-btrfs .
+
 .PHONY: docker-web
 docker-web:
 	@echo "building web docker image"

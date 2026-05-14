@@ -17,9 +17,10 @@ Issue `#496` was investigated against the current release flow on May 10, 2026.
   - `scrutiny-web-darwin-arm64`
   - `scrutiny-collector-metrics-darwin-arm64`
   - `scrutiny-collector-zfs-darwin-arm64`
+  - `scrutiny-collector-btrfs-darwin-arm64`
   - `scrutiny-collector-performance-darwin-arm64`
 - Ran each binary with no arguments and confirmed the startup banner showed the expected semantic version, for example `darwin.arm64-1.53.1`.
-- Built the same four binaries locally from the `v1.53.1` tag using:
+- Built the same five binaries locally from the `v1.53.1` tag using:
 
 ```bash
 GOOS=darwin GOARCH=arm64 go build -buildvcs=false \
