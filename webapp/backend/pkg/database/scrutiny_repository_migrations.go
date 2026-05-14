@@ -691,17 +691,18 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 
 				// Backfill: compute device_id for all existing devices
 				var devices []struct {
+					RowID        int64 `gorm:"column:row_id"`
 					WWN          string
 					ModelName    string
 					SerialNumber string
 				}
-				if err := tx.Raw("SELECT wwn, model_name, serial_number FROM devices").Scan(&devices).Error; err != nil {
+				if err := tx.Raw("SELECT rowid AS row_id, COALESCE(wwn, '') AS wwn, model_name, serial_number FROM devices").Scan(&devices).Error; err != nil {
 					return fmt.Errorf("could not query devices for backfill: %w", err)
 				}
 
 				for _, dev := range devices {
 					id := deviceid.Generate(dev.ModelName, dev.SerialNumber, dev.WWN)
-					if err := tx.Exec("UPDATE devices SET device_id = ? WHERE wwn = ?", id, dev.WWN).Error; err != nil {
+					if err := tx.Exec("UPDATE devices SET device_id = ? WHERE rowid = ?", id, dev.RowID).Error; err != nil {
 						return fmt.Errorf("could not backfill device_id for %s: %w", dev.WWN, err)
 					}
 				}
