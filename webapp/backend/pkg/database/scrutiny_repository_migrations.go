@@ -27,6 +27,7 @@ import (
 	_ "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260401000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260508000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260510000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260514000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -1040,6 +1041,15 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				return tx.AutoMigrate(
 					&m20260510000000.FilesystemCapacity{},
 					&m20260510000000.FilesystemHostStatus{},
+				)
+			},
+		},
+		{
+			ID: "m20260514000000", // add Btrfs filesystem and device tables
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&m20260514000000.BtrfsFilesystem{},
+					&m20260514000000.BtrfsDevice{},
 				)
 			},
 		},

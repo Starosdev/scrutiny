@@ -47,6 +47,7 @@ func createMigrationTestRepository(t *testing.T) *scrutinyRepository {
 		"m20260225000000",
 		"m20260226000000",
 		"m20260301000000",
+		"m20260514000000",
 	}
 	for _, id := range appliedMigrations {
 		require.NoError(t, db.Exec(`INSERT INTO migrations (id) VALUES (?)`, id).Error)
