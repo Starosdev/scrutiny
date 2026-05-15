@@ -37,8 +37,8 @@
                     </div>
                     <div class="flex justify-between border-b pb-2">
                         <span class="text-secondary">Status</span>
-                        <span class="font-bold uppercase"
-                              [ngClass]="{'text-green-600 dark:text-green-400': latestMetrics?.state !== 'degraded', 'text-red-500': latestMetrics?.state === 'degraded'}">
+                        <span class="font-bold uppercase px-2 py-1 rounded text-xs tracking-wide"
+                              [ngClass]="latestStatusColorClass()">
                            {{ latestMetrics?.state || 'ACTIVE' }}
                         </span>
                     </div>

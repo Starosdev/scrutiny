@@ -15,6 +15,7 @@ import { MDADMArrayModel, MDADMMetricsHistoryModel } from 'app/core/models/mdadm
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { AppConfig } from 'app/core/config/app.config';
 import { apexShortDateTime } from 'app/shared/time-format.utils';
+import { getMdadmArrayStatusColorClass } from 'app/modules/mdadm/mdadm-status.util';
 
 @Component({
     selector: 'mdadm-detail',
@@ -121,5 +122,9 @@ export class MDADMDetailComponent implements OnInit, OnDestroy {
 
     goBack(): void {
         this._router.navigate(['/mdadm']);
+    }
+
+    latestStatusColorClass(): string {
+        return getMdadmArrayStatusColorClass(this.latestMetrics?.state);
     }
 }

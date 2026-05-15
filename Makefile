@@ -141,6 +141,8 @@ ifneq ($(OS),Windows_NT)
 	file $(COLLECTOR_MDADM_BINARY_NAME) || true
 	ldd $(COLLECTOR_MDADM_BINARY_NAME) || true
 	./$(COLLECTOR_MDADM_BINARY_NAME) || true
+endif
+
 .PHONY: binary-collector-filesystem
 binary-collector-filesystem: binary-dep
 	go build -buildvcs=false -ldflags "$(LD_FLAGS)" -o $(COLLECTOR_FILESYSTEM_BINARY_NAME) $(STATIC_TAGS) ./collector/cmd/collector-filesystem/

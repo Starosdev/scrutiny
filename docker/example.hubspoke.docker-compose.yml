@@ -153,6 +153,7 @@ services:
   #     - SYS_ADMIN # Required for mdadm --detail and block device access
   #   volumes:
   #     - '/dev:/dev' # Mapping the whole /dev is recommended for RAID discovery
+  #     - '/proc/mdstat:/host/proc/mdstat:ro' # Required so the container can read host mdstat
   #   environment:
   #     COLLECTOR_MDADM_API_ENDPOINT: 'http://web:8080'
   #     COLLECTOR_MDADM_HOST_ID: 'raid-host'
