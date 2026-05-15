@@ -30,7 +30,6 @@ func TriggerCollectors(c *gin.Context) {
 			"scrutiny-collector-metrics",
 			"scrutiny-collector-zfs",
 			"scrutiny-collector-mdadm",
-			"scrutiny-collector-performance",
 		}
 
 		logger.Info("Starting manual sequential collector run")
