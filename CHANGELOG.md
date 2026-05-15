@@ -2,6 +2,24 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.55.0](https://github.com/Starosdev/scrutiny/compare/v1.54.1...v1.55.0) (2026-05-15)
+
+### Features
+
+* add filesystem capacity monitoring ([#359](https://github.com/Starosdev/scrutiny/issues/359)) ([a5dce7f](https://github.com/Starosdev/scrutiny/commit/a5dce7f0c67896186d949c5d0845a07bdb3dcc2b))
+* enable omnibus filesystem collector scheduling ([1cd0249](https://github.com/Starosdev/scrutiny/commit/1cd0249429e7dd16727c714841c2a771b2192114))
+* export ZFS and workload Prometheus metrics ([4f00eda](https://github.com/Starosdev/scrutiny/commit/4f00eda7ae2b241ae54b1ea8588642bbaf92e79c))
+
+### Bug Fixes
+
+* **ci:** isolate docker build caches per image job ([a86fc4b](https://github.com/Starosdev/scrutiny/commit/a86fc4b517c9e0012d0e658f66053e31f9fa7102))
+* clear PR 519 backend lint failures ([83af9c6](https://github.com/Starosdev/scrutiny/commit/83af9c60075d38523f068e0490b9987f2ecb26fc))
+* **database:** handle missing WWNs in device_id backfill ([d92f824](https://github.com/Starosdev/scrutiny/commit/d92f824c0b3e955d8279dab6af0cf5b115c11810))
+* filter container-only filesystem mounts ([28b7f41](https://github.com/Starosdev/scrutiny/commit/28b7f414542cf30ab7c575f95caa19e382031190))
+* **lint:** resolve golangci-lint and Windows build failures ([f3fb235](https://github.com/Starosdev/scrutiny/commit/f3fb23572b9dc5f83aa9bde0f2504312fec268e4))
+* **lint:** resolve second err shadow in collector-filesystem action handler ([20c32a7](https://github.com/Starosdev/scrutiny/commit/20c32a7e3eca3e075765a0dc35aeffdcf5e2ebeb))
+* package filesystem collector in omnibus image ([01bcc0c](https://github.com/Starosdev/scrutiny/commit/01bcc0cf7a819f8a4c25ff058671a371007ef19f))
+
 ## [1.54.0](https://github.com/Starosdev/scrutiny/compare/v1.53.1...v1.54.0) (2026-05-14)
 
 ### Features
