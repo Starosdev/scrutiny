@@ -28,6 +28,7 @@ flowchart LR
 - InfluxDB stores time-series drive metrics and historical readings.
 - SQLite stores application metadata such as device records, settings, and UI-managed configuration.
 - The frontend is delivered by the same web/API service, so all browser traffic terminates at the omnibus container.
+- Frontend settings are loaded in two stages: the Angular app starts from bundled defaults, then merges persisted settings from `/api/settings`. Browser code should assume a complete default-backed config exists immediately and treat the API fetch as hydration, not first-time initialization.
 
 ## Hub/Spoke
 
@@ -57,6 +58,7 @@ flowchart LR
 - The hub's web/API service aggregates data from all spokes and serves the frontend.
 - InfluxDB remains the time-series store for SMART history.
 - SQLite remains the metadata store for device records, settings, and other app state managed by the web/API layer.
+- The same frontend config rule applies here: client code should render against bundled defaults first, then merge hub-provided settings when the API response arrives.
 
 ## Component Roles
 
