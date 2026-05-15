@@ -123,10 +123,87 @@
           </div>
         }
 
+        @if (hasFilesystemData()) {
+          <div class="flex flex-col w-full mb-6 px-4">
+            <div class="mb-4">
+              <div class="font-bold text-md text-secondary uppercase tracking-wider">Filesystem Capacity</div>
+              <div class="text-sm text-hint font-medium">Logical filesystem free space reported by the collector</div>
+            </div>
+
+            @for (hostId of filesystemHosts(); track hostId) {
+              <div class="flex flex-col bg-card shadow-md rounded p-6 mb-4">
+                <div class="flex items-center justify-between mb-4">
+                  <div>
+                    <div class="font-bold text-md">{{ hostId }}</div>
+                    @if (filesystemStatusForHost(hostId)?.updated_at) {
+                      <div class="text-sm text-hint">
+                        Updated {{ filesystemStatusForHost(hostId)?.updated_at | date:(config?.time_format === '12' ? 'MMMM dd, yyyy - h:mm a' : 'MMMM dd, yyyy - HH:mm') }}
+                      </div>
+                    }
+                  </div>
+                  <div
+                    class="text-sm px-2 py-0.5 rounded-full text-white"
+                    [class.bg-gray-500]="filesystemStatusForHost(hostId)?.status === 'available'"
+                    [class.bg-yellow-600]="filesystemStatusForHost(hostId)?.status === 'unavailable'">
+                    {{ filesystemStatusForHost(hostId)?.status | titlecase }}
+                  </div>
+                </div>
+
+                @if (filesystemStatusForHost(hostId)?.status === 'unavailable') {
+                  <div class="text-sm text-hint">
+                    {{ filesystemStatusForHost(hostId)?.reason || 'Collector cannot inspect host mounts for this host.' }}
+                  </div>
+                } @else if (filesystemsForHost(hostId).length === 0) {
+                  <div class="text-sm text-hint">
+                    No eligible filesystems were reported for this host.
+                  </div>
+                } @else {
+                  <div class="flex flex-wrap -mx-3">
+                    @for (filesystem of filesystemsForHost(hostId); track filesystem.mount_point) {
+                      <div class="flex gt-sm:w-1/2 w-full p-3">
+                        <div class="w-full border rounded p-4">
+                          <div class="flex items-start justify-between">
+                            <div>
+                              <div class="font-semibold text-base">{{ filesystem.mount_point }}</div>
+                              <div class="text-sm text-hint">
+                                {{ filesystem.source_device }} · {{ filesystem.filesystem_type }}
+                              </div>
+                            </div>
+                            <div class="text-right">
+                              <div class="font-semibold text-lg">
+                                {{ filesystem.available_bytes | fileSize:config?.file_size_si_units }}
+                              </div>
+                              <div class="text-sm text-hint">free</div>
+                            </div>
+                          </div>
+
+                          <div class="mt-4">
+                            <div class="flex justify-between text-sm mb-1">
+                              <span>{{ filesystem.used_percent | number:'1.0-1' }}% used</span>
+                              <span>{{ filesystem.total_bytes | fileSize:config?.file_size_si_units }} total</span>
+                            </div>
+                            <div class="h-2 w-full bg-gray-200 rounded overflow-hidden">
+                              <div
+                                class="h-full"
+                                [ngClass]="filesystemUsageClass(filesystem)"
+                                [style.width.%]="filesystem.used_percent">
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+
         <!-- Drive Temperatures -->
-        <div class="flex flex-auto w-full min-w-80 h-90 p-4">
-          <div class="flex flex-col flex-auto bg-card shadow-md rounded">
-            <div class="flex flex-col p-6 pr-4 pb-4">
+        <div class="flex flex-auto w-full min-w-80 h-90 min-h-0 p-4">
+          <div class="flex flex-col flex-auto min-h-0 bg-card shadow-md rounded overflow-hidden">
+            <div class="flex flex-col flex-none p-6 pr-4 pb-4">
               <div class="flex items-center justify-between">
                 <div class="flex flex-col">
                   <div class="font-bold text-md text-secondary uppercase tracking-wider mr-4">
@@ -190,7 +267,7 @@
                         <mat-checkbox
                           [checked]="visibleDrives[device.key]"
                           (click)="toggleDriveVisibility(device.key); $event.stopPropagation()">
-                          {{ device.value.device | deviceTitle:config?.dashboard_display }}
+                          {{ deviceDashboardTitle(device.value) }}
                         </mat-checkbox>
                       </button>
                     }
@@ -199,15 +276,16 @@
               </div>
             </div>
 
-            <div class="flex flex-col flex-auto temp-chart-wrapper">
+            <div class="flex flex-col flex-auto min-h-0 temp-chart-wrapper">
               @if (temperatureOptions) {
                 <apx-chart
                   #tempChart
-                  class="flex-auto w-full h-full"
+                  class="flex-auto w-full min-h-0"
                   [chart]="temperatureOptions.chart"
                   [colors]="temperatureOptions.colors"
                   [dataLabels]="temperatureOptions.dataLabels"
                   [fill]="temperatureOptions.fill"
+                  [legend]="temperatureOptions.legend"
                   [markers]="temperatureOptions.markers"
                   [series]="temperatureOptions.series"
                   [stroke]="temperatureOptions.stroke"

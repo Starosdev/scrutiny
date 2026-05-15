@@ -26,6 +26,8 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260315000000"
 	_ "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260401000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260508000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260510000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260514000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -690,17 +692,18 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 
 				// Backfill: compute device_id for all existing devices
 				var devices []struct {
+					RowID        int64 `gorm:"column:row_id"`
 					WWN          string
 					ModelName    string
 					SerialNumber string
 				}
-				if err := tx.Raw("SELECT wwn, model_name, serial_number FROM devices").Scan(&devices).Error; err != nil {
+				if err := tx.Raw("SELECT rowid AS row_id, COALESCE(wwn, '') AS wwn, model_name, serial_number FROM devices").Scan(&devices).Error; err != nil {
 					return fmt.Errorf("could not query devices for backfill: %w", err)
 				}
 
 				for _, dev := range devices {
 					id := deviceid.Generate(dev.ModelName, dev.SerialNumber, dev.WWN)
-					if err := tx.Exec("UPDATE devices SET device_id = ? WHERE wwn = ?", id, dev.WWN).Error; err != nil {
+					if err := tx.Exec("UPDATE devices SET device_id = ? WHERE rowid = ?", id, dev.RowID).Error; err != nil {
 						return fmt.Errorf("could not backfill device_id for %s: %w", dev.WWN, err)
 					}
 				}
@@ -1030,6 +1033,24 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				}
 
 				return tx.AutoMigrate(&m20260508000000.Device{})
+			},
+		},
+		{
+			ID: "m20260510000000", // add filesystem capacity snapshots and host visibility state
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&m20260510000000.FilesystemCapacity{},
+					&m20260510000000.FilesystemHostStatus{},
+				)
+			},
+		},
+		{
+			ID: "m20260514000000", // add Btrfs filesystem and device tables
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&m20260514000000.BtrfsFilesystem{},
+					&m20260514000000.BtrfsDevice{},
+				)
 			},
 		},
 	})

@@ -3,6 +3,7 @@ import {DashboardService} from './dashboard.service';
 import {of} from 'rxjs';
 import {summary} from 'app/data/mock/summary/data'
 import {temp_history} from 'app/data/mock/summary/temp_history'
+import {filesystem_summary} from 'app/data/mock/summary/filesystem_summary'
 import {DeviceSummaryModel} from 'app/core/models/device-summary-model';
 import {SmartTemperatureModel} from 'app/core/models/measurements/smart-temperature-model';
 
@@ -32,6 +33,18 @@ describe('DashboardService', () => {
 
         service.getSummaryTempData('weekly').subscribe(value => {
             expect(value).toBe(temp_history.data.temp_history as { [key: string]: SmartTemperatureModel[] });
+            done();
+        });
+        expect(httpClientSpy.get.calls.count())
+            .withContext('one call')
+            .toBe(1);
+    });
+
+    it('should unwrap and return getFilesystemSummaryData() (HttpClient called once)', (done: DoneFn) => {
+        httpClientSpy.get.and.returnValue(of(filesystem_summary));
+
+        service.getFilesystemSummaryData().subscribe(value => {
+            expect(value).toEqual(filesystem_summary.data);
             done();
         });
         expect(httpClientSpy.get.calls.count())

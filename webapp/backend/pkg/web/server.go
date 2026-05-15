@@ -118,10 +118,12 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.POST("/health/uptime-kuma-test", handler.TestUptimeKumaPush)   // test Uptime Kuma push monitor
 			api.POST("/health/mqtt-sync", handler.MqttSync)                    // re-sync all MQTT discovery entities with HA
 
-			api.POST("/devices/register", handler.RegisterDevices)         //used by Collector to register new devices and retrieve filtered list
-			api.GET("/summary", handler.GetDevicesSummary)                 //used by Dashboard
-			api.GET("/summary/temp", handler.GetDevicesSummaryTempHistory) // used by Dashboard (Temperature history dropdown)
-			api.GET("/summary/workload", handler.GetWorkloadInsights)      // used by Workload Insights page
+			api.POST("/devices/register", handler.RegisterDevices)            // used by Collector to register new devices and retrieve filtered list
+			api.GET("/summary", handler.GetDevicesSummary)                    // used by Dashboard
+			api.GET("/summary/temp", handler.GetDevicesSummaryTempHistory)    // used by Dashboard (Temperature history dropdown)
+			api.GET("/summary/workload", handler.GetWorkloadInsights)         // used by Workload Insights page
+			api.GET("/filesystems/summary", handler.GetFilesystemSummary)     // used by Dashboard filesystem capacity panel
+			api.POST("/filesystems/summary", handler.UploadFilesystemSummary) // used by Filesystem Collector to upload data
 
 			// Prometheus metrics endpoint (only registered if enabled)
 			if ae.Config.GetBool(configKeyMetricsEnabled) {
@@ -178,6 +180,20 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 				zfs.POST("/pool/:guid/unmute", handler.UnmuteZFSPool)         // used by UI to unmute pool
 				zfs.POST("/pool/:guid/label", handler.UpdateZFSPoolLabel)     // used by UI to set pool label
 				zfs.DELETE("/pool/:guid", handler.DeleteZFSPool)              // used by UI to delete pool
+			}
+
+			btrfs := api.Group("/btrfs")
+			{
+				btrfs.POST("/filesystems/register", handler.RegisterBtrfsFilesystems)
+				btrfs.GET("/summary", handler.GetBtrfsFilesystemsSummary)
+				btrfs.POST("/filesystem/:uuid/metrics", handler.UploadBtrfsMetrics)
+				btrfs.GET("/filesystem/:uuid/details", handler.GetBtrfsFilesystemDetails)
+				btrfs.POST("/filesystem/:uuid/archive", handler.ArchiveBtrfsFilesystem)
+				btrfs.POST("/filesystem/:uuid/unarchive", handler.UnarchiveBtrfsFilesystem)
+				btrfs.POST("/filesystem/:uuid/mute", handler.MuteBtrfsFilesystem)
+				btrfs.POST("/filesystem/:uuid/unmute", handler.UnmuteBtrfsFilesystem)
+				btrfs.POST("/filesystem/:uuid/label", handler.UpdateBtrfsFilesystemLabel)
+				btrfs.DELETE("/filesystem/:uuid", handler.DeleteBtrfsFilesystem)
 			}
 		}
 	}

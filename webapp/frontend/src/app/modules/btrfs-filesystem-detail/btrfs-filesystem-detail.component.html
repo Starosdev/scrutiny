@@ -1,0 +1,84 @@
+@if (filesystem) {
+  <div class="flex flex-col flex-auto w-full p-8 xs:p-2">
+    <div class="flex items-center justify-between mb-8">
+      <div class="flex items-center">
+        <button mat-icon-button (click)="goBack()" class="mr-4">
+          <mat-icon [svgIcon]="'heroicons_outline:arrow-left'"></mat-icon>
+        </button>
+        <div>
+          <h2 class="m-0">{{ getFilesystemTitle() }}</h2>
+          <div class="text-secondary tracking-tight">{{ filesystem.mount_point }} ({{ filesystem.uuid }})</div>
+        </div>
+      </div>
+      <div class="flex items-center">
+        <button mat-stroked-button (click)="toggleMuted()">
+          <mat-icon class="icon-size-20" [svgIcon]="filesystem.muted ? 'notifications_off' : 'notifications'"></mat-icon>
+          <span class="ml-2">{{ filesystem.muted ? 'Unmute' : 'Mute' }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <treo-card class="p-6">
+        <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Status</div>
+        <div class="font-bold text-3xl" [ngClass]="filesystem.status === 'ONLINE' ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'">{{ filesystem.status }}</div>
+      </treo-card>
+      <treo-card class="p-6">
+        <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Usage</div>
+        <div class="font-bold text-3xl">{{ filesystem.used | fileSize:config?.file_size_si_units }}</div>
+        <div class="text-sm text-hint mt-2">{{ filesystem.device_size | fileSize:config?.file_size_si_units }} total</div>
+      </treo-card>
+      <treo-card class="p-6">
+        <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Profiles</div>
+        <div class="font-bold text-xl">{{ filesystem.data_profile || 'n/a' }}</div>
+        <div class="text-sm text-hint mt-2">Metadata {{ filesystem.metadata_profile || 'n/a' }}</div>
+      </treo-card>
+      <treo-card class="p-6">
+        <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Scrub</div>
+        <div class="font-bold text-3xl">{{ filesystem.scrub_state }}</div>
+        @if (filesystem.scrub_finished_at) {
+          <div class="text-sm text-hint mt-2">{{ filesystem.scrub_finished_at | date:(config?.time_format === '12' ? 'MMM dd, yyyy h:mm a' : 'MMM dd, yyyy HH:mm') }}</div>
+        }
+      </treo-card>
+    </div>
+
+    <treo-card class="p-6 mb-8">
+      <div class="font-semibold text-lg mb-4">Devices</div>
+      @if (filesystem.devices && filesystem.devices.length > 0) {
+        <div class="space-y-3">
+          @for (device of filesystem.devices; track device.row_id) {
+            <div class="flex items-center justify-between py-3 px-4 rounded hover:bg-hover">
+              <div>
+                <div class="font-medium">{{ device.path || ('devid ' + device.id) }}</div>
+                <div class="text-xs text-hint">Device {{ device.id }} · {{ device.size | fileSize:config?.file_size_si_units }}</div>
+              </div>
+              <div class="text-right">
+                @if (device.missing) {
+                  <div class="text-yellow-600 dark:text-yellow-400 font-medium">Missing</div>
+                }
+                @if (getErrorCount(device) > 0) {
+                  <div class="text-xs text-red-600 dark:text-red-400">Errors: {{ getErrorCount(device) }}</div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="text-hint">No device information available</div>
+      }
+    </treo-card>
+
+    @if (usageOptions) {
+      <treo-card class="p-6">
+        <div class="font-semibold text-lg mb-4">Usage History</div>
+        <div class="h-64">
+          <apx-chart class="flex-auto w-full h-full" [chart]="usageOptions.chart" [colors]="usageOptions.colors" [fill]="usageOptions.fill" [series]="usageOptions.series" [stroke]="usageOptions.stroke" [tooltip]="usageOptions.tooltip" [xaxis]="usageOptions.xaxis" [yaxis]="usageOptions.yaxis"></apx-chart>
+        </div>
+      </treo-card>
+    }
+  </div>
+} @else {
+  <div class="flex items-center justify-center h-full">
+    <div class="text-hint">Loading filesystem details...</div>
+  </div>
+}
