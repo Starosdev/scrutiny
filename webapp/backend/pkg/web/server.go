@@ -124,6 +124,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.GET("/summary/workload", handler.GetWorkloadInsights)         // used by Workload Insights page
 			api.GET("/filesystems/summary", handler.GetFilesystemSummary)     // used by Dashboard filesystem capacity panel
 			api.POST("/filesystems/summary", handler.UploadFilesystemSummary) // used by Filesystem Collector to upload data
+			api.POST("/collectors/run", handler.TriggerCollectors)            // used by Dashboard to trigger local collectors in omnibus mode
 
 			// Prometheus metrics endpoint (only registered if enabled)
 			if ae.Config.GetBool(configKeyMetricsEnabled) {
@@ -194,6 +195,15 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 				btrfs.POST("/filesystem/:uuid/unmute", handler.UnmuteBtrfsFilesystem)
 				btrfs.POST("/filesystem/:uuid/label", handler.UpdateBtrfsFilesystemLabel)
 				btrfs.DELETE("/filesystem/:uuid", handler.DeleteBtrfsFilesystem)
+			}
+
+			// MDADM Array API endpoints
+			mdadm := api.Group("/mdadm")
+			{
+				mdadm.POST("/arrays/register", handler.RegisterMdadmArrays)           //used by Collector to register new arrays
+				mdadm.GET("/summary", handler.GetMdadmSummary)                        //used by Dashboard
+				mdadm.POST("/array/:uuid/metrics", handler.UploadMdadmMetrics)        //used by Collector to upload metrics
+				mdadm.GET("/array/:uuid/details", handler.GetMdadmArrayDetails)       //used by Array Details view
 			}
 		}
 	}

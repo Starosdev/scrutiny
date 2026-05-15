@@ -20,6 +20,8 @@ import {TemperaturePipe} from 'app/shared/temperature.pipe';
 import {DeviceTitlePipe} from 'app/shared/device-title.pipe';
 import {DeviceSummaryModel} from 'app/core/models/device-summary-model';
 import {apexShortDateTime} from 'app/shared/time-format.utils';
+import {MDADMService} from 'app/modules/mdadm/mdadm.service';
+import {MDADMArrayModel} from 'app/core/models/mdadm-array-model';
 import { FilesystemCapacityModel, FilesystemHostStatusModel } from 'app/core/models/filesystem-summary-model';
 
 @Component({
@@ -38,8 +40,11 @@ export class DashboardComponent implements OnInit, OnDestroy
     temperatureOptions: ApexOptions;
     tempDurationKey = 'forever'
     config: AppConfig;
-    showArchived: boolean;
+    showArchived: boolean = false;
     visibleDrives: { [wwn: string]: boolean } = {};
+    mdadmArrays: MDADMArrayModel[] = [];
+    isTriggering: boolean = false;
+    countdown: number = 0;
 
     // Private
     private _unsubscribeAll: Subject<void>;
@@ -56,6 +61,7 @@ export class DashboardComponent implements OnInit, OnDestroy
      */
     constructor(
         private readonly _dashboardService: DashboardService,
+        private readonly _mdadmService: MDADMService,
         private readonly _configService: ScrutinyConfigService,
         private readonly _changeDetectorRef: ChangeDetectorRef,
         public dialog: MatDialog,
@@ -118,6 +124,12 @@ export class DashboardComponent implements OnInit, OnDestroy
                 this._prepareChartData();
             });
 
+        // Get MDADM data
+        this._mdadmService.getSummaryData()
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe((arrays) => {
+                this.mdadmArrays = arrays;
+            });
         this._dashboardService.getFilesystemSummaryData()
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe((data) => {
@@ -496,6 +508,20 @@ export class DashboardComponent implements OnInit, OnDestroy
             });
     }
 
+    getMdadmArrayStatusColorClass(array: MDADMArrayModel): string {
+        const state = (array.state || '').toLowerCase();
+        if (state.includes('degraded') || state.includes('inactive')) {
+            return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900';
+        }
+        if (state.includes('checking') || state.includes('resync') || state.includes('recover') || state.includes('rebuild')) {
+            return 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900';
+        }
+        if (state.includes('clean') || state.includes('active')) {
+            return 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900';
+        }
+        return 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800';
+    }
+
     /**
      * Track by function for ngFor loops
      *
@@ -505,6 +531,32 @@ export class DashboardComponent implements OnInit, OnDestroy
     trackByFn(index: number, item: any): any
     {
         return item.id || index;
+    }
+
+    runCollectors(): void {
+        if (this.isTriggering) {
+            return;
+        }
+
+        this.isTriggering = true;
+        this._dashboardService.runCollectors().subscribe(() => {
+            this.countdown = 15;
+            this._changeDetectorRef.markForCheck();
+
+            const interval = setInterval(() => {
+                this.countdown--;
+                this._changeDetectorRef.markForCheck();
+
+                if (this.countdown <= 0) {
+                    clearInterval(interval);
+                    window.location.reload();
+                }
+            }, 1000);
+        }, (err) => {
+            this.isTriggering = false;
+            this._changeDetectorRef.markForCheck();
+            console.error('Failed to trigger collectors', err);
+        });
     }
 
 }

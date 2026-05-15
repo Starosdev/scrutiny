@@ -4,11 +4,16 @@ services:
     image: ghcr.io/starosdev/scrutiny:latest
     cap_add:
       - SYS_RAWIO
-      - SYS_ADMIN  # Required for NVMe devices
+      - SYS_ADMIN  # Required for NVMe devices and MDADM
     ports:
       - "8080:8080"
     volumes:
       - ./config/prod:/opt/scrutiny/config
       - ./influxdb/prod:/opt/scrutiny/influxdb
+      - /run/udev:/run/udev:ro
+      - /dev:/dev:ro
+      # MDADM: Mount host /proc/mdstat to /host/proc/mdstat since Docker
+      # blocks direct mounts into /proc. The collector checks this path first.
+      - /proc/mdstat:/host/proc/mdstat:ro
     environment:
       - TZ=America/Los_Angeles

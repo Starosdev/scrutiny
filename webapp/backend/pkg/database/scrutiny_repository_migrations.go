@@ -25,6 +25,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260301000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260315000000"
 	_ "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260401000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260421000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260508000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260510000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260514000000"
@@ -946,6 +947,12 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				}
 
 				return nil
+			},
+		},
+		{
+			ID: "m20260421000000", // add mdadm_arrays table
+			Migrate: func(tx *gorm.DB) error {
+				return m20260421000000.Migrate(tx)
 			},
 		},
 		{

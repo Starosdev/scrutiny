@@ -49,6 +49,9 @@ export const appRoutes: Route[] = [
             {path: 'btrfs-filesystems', loadChildren: () => import('app/modules/btrfs-filesystems/btrfs-filesystems.module').then(m => m.BtrfsFilesystemsModule)},
             {path: 'btrfs-filesystem/:uuid', loadChildren: () => import('app/modules/btrfs-filesystem-detail/btrfs-filesystem-detail.module').then(m => m.BtrfsFilesystemDetailModule)},
 
+            // MDADM RAID
+            {path: 'mdadm', loadChildren: () => import('app/modules/mdadm/mdadm.module').then(m => m.MDADMModule)},
+
             // Workload Insights
             {path: 'workload', loadChildren: () => import('app/modules/workload/workload.module').then(m => m.WorkloadModule)},
 

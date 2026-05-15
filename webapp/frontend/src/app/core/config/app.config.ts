@@ -143,8 +143,9 @@ export interface AppConfig {
         report_pdf_path?: string
     }
 
-    // Server version (populated from API response, not stored in settings)
+    // Server capabilities (populated from API response, not stored in settings)
     server_version?: string;
+    collector_trigger_enabled?: boolean;
 }
 
 /**

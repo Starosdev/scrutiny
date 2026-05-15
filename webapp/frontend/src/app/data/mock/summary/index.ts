@@ -4,6 +4,7 @@ import { TreoMockApi } from '@treo/lib/mock-api/mock-api.interfaces';
 import { TreoMockApiService } from '@treo/lib/mock-api/mock-api.service';
 import { summary as summaryData } from 'app/data/mock/summary/data';
 import { filesystem_summary as filesystemSummaryData } from 'app/data/mock/summary/filesystem_summary';
+import { mdadm_summary as mdadmSummaryData } from 'app/data/mock/summary/mdadm_summary';
 
 @Injectable({
     providedIn: 'root'
@@ -13,6 +14,7 @@ export class SummaryMockApi implements TreoMockApi
     // Private
     private _summary: any;
     private _filesystemSummary: any;
+    private _mdadmSummary: any;
 
     /**
      * Constructor
@@ -26,6 +28,7 @@ export class SummaryMockApi implements TreoMockApi
         // Set the data
         this._summary = summaryData;
         this._filesystemSummary = filesystemSummaryData;
+        this._mdadmSummary = mdadmSummaryData;
 
         // Register the API endpoints
         this.register();
@@ -92,6 +95,16 @@ export class SummaryMockApi implements TreoMockApi
                 return [
                     200,
                     _.cloneDeep(this._filesystemSummary)
+                ];
+            });
+
+        this._treoMockApiService
+            .onGet('/api/mdadm/summary')
+            .reply(() => {
+
+                return [
+                    200,
+                    _.cloneDeep(this._mdadmSummary)
                 ];
             });
     }
