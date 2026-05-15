@@ -54,8 +54,26 @@ func UploadMdadmMetrics(c *gin.Context) {
 					appConfig := c.MustGet("CONFIG").(config.Interface)
 					notification := notify.NewMDADMNotify(logger, appConfig, array, metrics)
 					notification.LoadDatabaseUrls(c.Request.Context(), dbRepo)
-					if err := notification.Send(); err != nil {
-						logger.Errorf("Failed to send MDADM notification: %v", err)
+
+					// Route through notification gate for rate limiting and quiet hours
+					if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
+						if gate, ok := gateVal.(*notify.NotificationGate); ok {
+							settings, settingsErr := dbRepo.LoadSettings(c.Request.Context())
+							if settingsErr != nil {
+								logger.Warnf("Failed to load settings for notification gate: %v", settingsErr)
+							}
+							if settings != nil {
+								gate.TrySend(&notification, settings, false)
+							} else {
+								if sendErr := notification.Send(); sendErr != nil {
+									logger.Warnf("Failed to send MDADM notification for array %s: %v", uuid, sendErr)
+								}
+							}
+						}
+					} else {
+						if sendErr := notification.Send(); sendErr != nil {
+							logger.Warnf("Failed to send MDADM notification for array %s: %v", uuid, sendErr)
+						}
 					}
 				}
 			} else {
