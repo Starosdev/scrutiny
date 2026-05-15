@@ -136,6 +136,10 @@ export class LayoutComponent implements OnInit, OnDestroy {
      */
     private _updateLayout(): void
     {
+        if (!this.config) {
+            return;
+        }
+
         // Get the current activated route
         let route = this._activatedRoute;
         while ( route.firstChild )
