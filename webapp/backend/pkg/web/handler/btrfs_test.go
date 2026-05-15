@@ -43,7 +43,7 @@ func setupBtrfsRouter(t *testing.T, configure func(*mock_database.MockDeviceRepo
 func TestRegisterBtrfsFilesystems(t *testing.T) {
 	filesystem := models.BtrfsFilesystem{UUID: "11111111-2222-3333-4444-555555555555"}
 	router := setupBtrfsRouter(t, func(repo *mock_database.MockDeviceRepo) {
-		repo.EXPECT().RegisterBtrfsFilesystem(gomock.Any(), filesystem).Return(nil)
+		repo.EXPECT().RegisterBtrfsFilesystem(gomock.Any(), &filesystem).Return(nil)
 	})
 	router.POST("/api/btrfs/filesystems/register", handler.RegisterBtrfsFilesystems)
 
@@ -88,8 +88,8 @@ func TestUploadBtrfsMetricsPreservesDevices(t *testing.T) {
 	var captured models.BtrfsFilesystem
 	router := setupBtrfsRouter(t, func(repo *mock_database.MockDeviceRepo) {
 		repo.EXPECT().RegisterBtrfsFilesystem(gomock.Any(), gomock.Any()).DoAndReturn(
-			func(_ context.Context, fs models.BtrfsFilesystem) error {
-				captured = fs
+			func(_ context.Context, fs *models.BtrfsFilesystem) error {
+				captured = *fs
 				return nil
 			},
 		)

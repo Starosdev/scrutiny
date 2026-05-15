@@ -26,8 +26,8 @@ func RegisterBtrfsFilesystems(c *gin.Context) {
 	})
 
 	errs := []error{}
-	for _, filesystem := range filesystems {
-		if err := deviceRepo.RegisterBtrfsFilesystem(c, filesystem); err != nil {
+	for i := range filesystems {
+		if err := deviceRepo.RegisterBtrfsFilesystem(c, &filesystems[i]); err != nil {
 			errs = append(errs, err)
 		}
 	}

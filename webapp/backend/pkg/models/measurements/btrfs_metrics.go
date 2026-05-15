@@ -2,27 +2,27 @@ package measurements
 
 import "time"
 
+//nolint:govet // Keep measurement fields ordered to match the serialized metric payload.
 type BtrfsMetrics struct {
-	Date           time.Time `json:"date"`
-	FilesystemUUID string    `json:"filesystem_uuid"`
-	HostID         string    `json:"host_id"`
-	Label          string    `json:"label"`
-
-	DeviceSize        int64   `json:"device_size"`
-	DeviceAllocated   int64   `json:"device_allocated"`
-	DeviceUnallocated int64   `json:"device_unallocated"`
-	DeviceMissing     int64   `json:"device_missing"`
-	Used              int64   `json:"used"`
-	FreeEstimated     int64   `json:"free_estimated"`
-	FreeStatfs        int64   `json:"free_statfs"`
-	DataRatio         float64 `json:"data_ratio"`
-	MetadataRatio     float64 `json:"metadata_ratio"`
-	Status            string  `json:"status"`
-	ScrubState        string  `json:"scrub_state"`
-	ScrubReadErrors   int64   `json:"scrub_read_errors"`
-	ScrubCsumErrors   int64   `json:"scrub_csum_errors"`
-	ScrubVerifyErrors int64   `json:"scrub_verify_errors"`
-	ScrubSuperErrors  int64   `json:"scrub_super_errors"`
+	FilesystemUUID    string    `json:"filesystem_uuid"`
+	HostID            string    `json:"host_id"`
+	Label             string    `json:"label"`
+	Date              time.Time `json:"date"`
+	DeviceSize        int64     `json:"device_size"`
+	DeviceAllocated   int64     `json:"device_allocated"`
+	DeviceUnallocated int64     `json:"device_unallocated"`
+	DeviceMissing     int64     `json:"device_missing"`
+	Used              int64     `json:"used"`
+	FreeEstimated     int64     `json:"free_estimated"`
+	FreeStatfs        int64     `json:"free_statfs"`
+	ScrubReadErrors   int64     `json:"scrub_read_errors"`
+	ScrubCsumErrors   int64     `json:"scrub_csum_errors"`
+	ScrubVerifyErrors int64     `json:"scrub_verify_errors"`
+	ScrubSuperErrors  int64     `json:"scrub_super_errors"`
+	DataRatio         float64   `json:"data_ratio"`
+	MetadataRatio     float64   `json:"metadata_ratio"`
+	Status            string    `json:"status"`
+	ScrubState        string    `json:"scrub_state"`
 }
 
 func (m *BtrfsMetrics) Flatten() (map[string]string, map[string]interface{}) {

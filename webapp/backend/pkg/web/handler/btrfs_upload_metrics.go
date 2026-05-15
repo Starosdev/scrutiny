@@ -29,12 +29,12 @@ func UploadBtrfsMetrics(c *gin.Context) {
 	}
 
 	filesystem.UUID = uuid
-	if err := deviceRepo.RegisterBtrfsFilesystem(c, filesystem); err != nil {
+	if err := deviceRepo.RegisterBtrfsFilesystem(c, &filesystem); err != nil {
 		logger.Errorln("An error occurred while updating Btrfs filesystem", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
 	}
-	if err := deviceRepo.SaveBtrfsMetrics(c, filesystem); err != nil {
+	if err := deviceRepo.SaveBtrfsMetrics(c, &filesystem); err != nil {
 		logger.Errorln("An error occurred while saving Btrfs metrics", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return

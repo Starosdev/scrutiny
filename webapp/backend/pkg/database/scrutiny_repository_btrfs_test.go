@@ -37,14 +37,14 @@ func TestRegisterBtrfsFilesystemReplacesDevices(t *testing.T) {
 			{DeviceID: 1, Path: "/dev/sda1", Size: 100},
 		},
 	}
-	require.NoError(t, repo.RegisterBtrfsFilesystem(ctx, filesystem))
+	require.NoError(t, repo.RegisterBtrfsFilesystem(ctx, &filesystem))
 
 	filesystem.DeviceCount = 2
 	filesystem.Devices = []models.BtrfsDevice{
 		{DeviceID: 1, Path: "/dev/sda1", Size: 100},
 		{DeviceID: 2, Path: "/dev/sdb1", Size: 200},
 	}
-	require.NoError(t, repo.RegisterBtrfsFilesystem(ctx, filesystem))
+	require.NoError(t, repo.RegisterBtrfsFilesystem(ctx, &filesystem))
 
 	loaded, err := repo.GetBtrfsFilesystemDetails(ctx, filesystem.UUID)
 	require.NoError(t, err)
@@ -61,7 +61,7 @@ func TestBtrfsFilesystemActions(t *testing.T) {
 		HostID: "atlas",
 		Status: models.BtrfsFilesystemStatusOnline,
 	}
-	require.NoError(t, repo.RegisterBtrfsFilesystem(ctx, filesystem))
+	require.NoError(t, repo.RegisterBtrfsFilesystem(ctx, &filesystem))
 	require.NoError(t, repo.UpdateBtrfsFilesystemArchived(ctx, filesystem.UUID, true))
 	require.NoError(t, repo.UpdateBtrfsFilesystemMuted(ctx, filesystem.UUID, true))
 	require.NoError(t, repo.UpdateBtrfsFilesystemLabel(ctx, filesystem.UUID, "tank"))

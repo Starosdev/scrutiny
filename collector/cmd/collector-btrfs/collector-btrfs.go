@@ -119,12 +119,12 @@ func main() {
 						appConfig.Set("api.token", c.String(flagAPIToken))
 					}
 
-					collectorLogger, logFile, err := CreateLogger(appConfig)
+					collectorLogger, logFile, loggerErr := CreateLogger(appConfig)
 					if logFile != nil {
 						defer logFile.Close()
 					}
-					if err != nil {
-						return err
+					if loggerErr != nil {
+						return loggerErr
 					}
 
 					settingsMap := appConfig.AllSettings()
@@ -140,13 +140,13 @@ func main() {
 						collectorLogger.Debug(string(settingsData))
 					}
 
-					btrfsCollector, err := btrfs.CreateCollector(
+					btrfsCollector, collectorErr := btrfs.CreateCollector(
 						appConfig,
 						collectorLogger,
 						appConfig.GetString("api.endpoint"),
 					)
-					if err != nil {
-						return err
+					if collectorErr != nil {
+						return collectorErr
 					}
 
 					return btrfsCollector.Run()

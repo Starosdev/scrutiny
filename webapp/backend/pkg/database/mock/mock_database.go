@@ -708,7 +708,7 @@ func (mr *MockDeviceRepoMockRecorder) RecalculateDeviceStatusFromHistory(ctx, de
 }
 
 // RegisterBtrfsFilesystem mocks base method.
-func (m *MockDeviceRepo) RegisterBtrfsFilesystem(ctx context.Context, filesystem models.BtrfsFilesystem) error {
+func (m *MockDeviceRepo) RegisterBtrfsFilesystem(ctx context.Context, filesystem *models.BtrfsFilesystem) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterBtrfsFilesystem", ctx, filesystem)
 	ret0, _ := ret[0].(error)
@@ -793,7 +793,7 @@ func (mr *MockDeviceRepoMockRecorder) SaveAttributeOverride(ctx, override interf
 }
 
 // SaveBtrfsMetrics mocks base method.
-func (m *MockDeviceRepo) SaveBtrfsMetrics(ctx context.Context, filesystem models.BtrfsFilesystem) error {
+func (m *MockDeviceRepo) SaveBtrfsMetrics(ctx context.Context, filesystem *models.BtrfsFilesystem) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SaveBtrfsMetrics", ctx, filesystem)
 	ret0, _ := ret[0].(error)
