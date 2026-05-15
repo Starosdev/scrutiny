@@ -72,6 +72,44 @@ func TestGetBtrfsFilesystemDetails(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code)
 }
 
+func TestUploadBtrfsMetricsPreservesDevices(t *testing.T) {
+	uuid := "11111111-2222-3333-4444-555555555555"
+	filesystem := models.BtrfsFilesystem{
+		UUID:        uuid,
+		HostID:      "zeus",
+		Status:      models.BtrfsFilesystemStatusOnline,
+		MountPoint:  "/mnt/cache_ssd",
+		DeviceCount: 1,
+		Devices: []models.BtrfsDevice{
+			{DeviceID: 1, Path: "/dev/sdn1", Size: 4000785960960},
+		},
+	}
+
+	var captured models.BtrfsFilesystem
+	router := setupBtrfsRouter(t, func(repo *mock_database.MockDeviceRepo) {
+		repo.EXPECT().RegisterBtrfsFilesystem(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(_ context.Context, fs models.BtrfsFilesystem) error {
+				captured = fs
+				return nil
+			},
+		)
+		repo.EXPECT().SaveBtrfsMetrics(gomock.Any(), gomock.Any()).Return(nil)
+	})
+	router.POST("/api/btrfs/filesystem/:uuid/metrics", handler.UploadBtrfsMetrics)
+
+	body, _ := json.Marshal(filesystem)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPost, "/api/btrfs/filesystem/"+uuid+"/metrics", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, 1, captured.DeviceCount)
+	require.Len(t, captured.Devices, 1)
+	require.Equal(t, 1, captured.Devices[0].DeviceID)
+	require.Equal(t, "/dev/sdn1", captured.Devices[0].Path)
+}
+
 func TestUpdateBtrfsFilesystemLabel(t *testing.T) {
 	uuid := "11111111-2222-3333-4444-555555555555"
 	router := setupBtrfsRouter(t, func(repo *mock_database.MockDeviceRepo) {

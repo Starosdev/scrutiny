@@ -127,7 +127,7 @@ func (d *Detect) inspectFilesystem(mountPoint string) (Filesystem, error) {
 		fs.HostID = d.Config.GetString("host.id")
 	}
 
-	showOutput, err := d.RunCommand("btrfs", "filesystem", "show", mountPoint)
+	showOutput, err := d.RunCommand("btrfs", "filesystem", "show", "--raw", mountPoint)
 	if err != nil {
 		return fs, fmt.Errorf("btrfs filesystem show failed: %w", err)
 	}

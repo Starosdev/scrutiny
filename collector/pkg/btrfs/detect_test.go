@@ -100,7 +100,7 @@ func TestDetectStartEnumeratesMountedFilesystems(t *testing.T) {
 `)
 
 	commandOutputs := map[string][]byte{
-		"btrfs filesystem show /": []byte(`Label: 'tank'  uuid: 11111111-2222-3333-4444-555555555555
+		"btrfs filesystem show --raw /": []byte(`Label: 'tank'  uuid: 11111111-2222-3333-4444-555555555555
 	Total devices 2 FS bytes used 512.00MiB
 	devid    1 size 1073741824 used 805306368 path /dev/sda1
 	devid    2 size 1073741824 used 268435456 path /dev/sdb1
@@ -165,6 +165,9 @@ Error summary:    no errors found
 	require.Equal(t, "11111111-2222-3333-4444-555555555555", filesystems[0].UUID)
 	require.Equal(t, "/", filesystems[0].MountPoint)
 	require.Equal(t, FilesystemStatusOnline, filesystems[0].Status)
+	require.Equal(t, 2, filesystems[0].DeviceCount)
+	require.Len(t, filesystems[0].Devices, 2)
+	require.Equal(t, 1, filesystems[0].Devices[0].ID)
 }
 
 func TestDetectMarksDegradedWhenDeviceMissing(t *testing.T) {
@@ -172,7 +175,7 @@ func TestDetectMarksDegradedWhenDeviceMissing(t *testing.T) {
 `)
 
 	commandOutputs := map[string][]byte{
-		"btrfs filesystem show /": []byte(`Label: none  uuid: 99999999-2222-3333-4444-555555555555
+		"btrfs filesystem show --raw /": []byte(`Label: none  uuid: 99999999-2222-3333-4444-555555555555
 	Total devices 2 FS bytes used 512.00MiB
 	devid    1 size 1073741824 used 805306368 path /dev/sda1
 	devid    2 size 1073741824 used 0 path missing
