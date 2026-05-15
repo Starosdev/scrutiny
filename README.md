@@ -73,9 +73,15 @@ Releases are created manually, not on every commit. Track upcoming work on the [
 
 This repository also owns the testing and production deployment definitions for Scrutiny.
 
-- Testing deploys from the `testing` branch through [`Deploy Testing Stack`](./.github/workflows/deploy-testing.yml)
+- Testing images publish from the `develop` branch through [`Deploy Testing Stack`](./.github/workflows/deploy-testing.yml)
 - Production deploys from the `master` branch through [`Automated Release and Deploy`](./.github/workflows/release-and-deploy.yml)
-- Zeus testing and production are separate host appdata trees. Use [`docs/DEPLOYMENTS.md`](./docs/DEPLOYMENTS.md) for the current path and port mapping before running host-side deploy helpers.
+- Zeus production and testing are separate host appdata trees:
+  - production: `/mnt/user/appdata/scrutiny`
+  - testing: `/mnt/user/appdata/scrutiny-dev`
+- Zeus host-side deploy helpers target the live appdata-root compose files, not the repo `deploy/*` example compose files:
+  - production helper: `/mnt/user/appdata/scrutiny/docker-compose.yml`
+  - testing helper: `/mnt/user/appdata/scrutiny-dev/docker-compose.yml`
+- Host smoke checks require `/api/health` to return `200`, while the root path may legitimately redirect depending on auth or proxy behavior.
 - Deployment compose files, env templates, and host expectations live in [docs/DEPLOYMENTS.md](./docs/DEPLOYMENTS.md)
 
 # Introduction
