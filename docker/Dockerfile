@@ -51,16 +51,31 @@ RUN sed -i 's/Components: main/Components: main contrib/' /etc/apt/sources.list.
     && apt-get install -y --no-install-recommends -t trixie-backports smartmontools \
     && rm -rf /var/lib/apt/lists/* \
     && update-ca-certificates \
+    && download_and_extract_xz() { \
+           url="$1"; \
+           archive="$2"; \
+           checksum_file="${archive}.sha256"; \
+           curl --fail --location --show-error --silent \
+               --retry 5 --retry-all-errors --retry-delay 2 --max-time 300 \
+               "$url" --output "$archive" \
+           && curl --fail --location --show-error --silent \
+               --retry 5 --retry-all-errors --retry-delay 2 --max-time 60 \
+               "${url}.sha256" --output "$checksum_file" \
+           && awk -v archive="$archive" '{print $1 "  " archive}' "$checksum_file" | sha256sum -c - \
+           && xz -t "$archive" \
+           && tar -Jxpf "$archive" -C / \
+           && rm -f "$archive" "$checksum_file"; \
+       } \
     && case ${TARGETARCH} in \
            "amd64")  S6_ARCH=x86_64  ;; \
            "arm64")  S6_ARCH=aarch64  ;; \
        esac \
-    && curl https://github.com/just-containers/s6-overlay/releases/download/v${S6VER}/s6-overlay-noarch.tar.xz -L -s --output /tmp/s6-overlay-noarch.tar.xz \
-    && tar -Jxpf /tmp/s6-overlay-noarch.tar.xz -C / \
-    && rm -rf /tmp/s6-overlay-noarch.tar.xz \
-    && curl https://github.com/just-containers/s6-overlay/releases/download/v${S6VER}/s6-overlay-${S6_ARCH}.tar.xz -L -s --output /tmp/s6-overlay-${S6_ARCH}.tar.xz \
-    && tar -Jxpf /tmp/s6-overlay-${S6_ARCH}.tar.xz -C / \
-    && rm -rf /tmp/s6-overlay-${S6_ARCH}.tar.xz
+    && download_and_extract_xz \
+        "https://github.com/just-containers/s6-overlay/releases/download/v${S6VER}/s6-overlay-noarch.tar.xz" \
+        /tmp/s6-overlay-noarch.tar.xz \
+    && download_and_extract_xz \
+        "https://github.com/just-containers/s6-overlay/releases/download/v${S6VER}/s6-overlay-${S6_ARCH}.tar.xz" \
+        /tmp/s6-overlay-${S6_ARCH}.tar.xz
 RUN curl -L https://dl.influxdata.com/influxdb/releases/influxdb2-${INFLUXVER}-${TARGETARCH}.deb --output /tmp/influxdb2-${INFLUXVER}-${TARGETARCH}.deb \
     && dpkg -i --force-all /tmp/influxdb2-${INFLUXVER}-${TARGETARCH}.deb \
     && rm -rf /tmp/influxdb2-${INFLUXVER}-${TARGETARCH}.deb
