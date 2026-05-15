@@ -12,19 +12,20 @@ import (
 	"gorm.io/gorm"
 )
 
-func (sr *scrutinyRepository) RegisterBtrfsFilesystem(ctx context.Context, filesystem models.BtrfsFilesystem) error {
+func (sr *scrutinyRepository) RegisterBtrfsFilesystem(ctx context.Context, filesystem *models.BtrfsFilesystem) error {
 	filesystem.UpdatedAt = time.Now()
 
 	var existing models.BtrfsFilesystem
 	result := sr.gormClient.WithContext(ctx).Where(queryUUID, filesystem.UUID).First(&existing)
 
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		if err := sr.gormClient.WithContext(ctx).Create(&filesystem).Error; err != nil {
+	switch {
+	case errors.Is(result.Error, gorm.ErrRecordNotFound):
+		if err := sr.gormClient.WithContext(ctx).Create(filesystem).Error; err != nil {
 			return err
 		}
-	} else if result.Error != nil {
+	case result.Error != nil:
 		return result.Error
-	} else {
+	default:
 		if err := sr.gormClient.WithContext(ctx).Model(&existing).Updates(map[string]interface{}{
 			"host_id":              filesystem.HostID,
 			"label":                filesystem.Label,
@@ -154,7 +155,7 @@ func (sr *scrutinyRepository) DeleteBtrfsFilesystem(ctx context.Context, uuid st
 			bucket,
 			time.Now().AddDate(-10, 0, 0),
 			time.Now(),
-			fmt.Sprintf(`filesystem_uuid="%s"`, uuid),
+			fmt.Sprintf(`filesystem_uuid=%q`, uuid),
 		); err != nil {
 			return err
 		}
@@ -174,7 +175,7 @@ func (sr *scrutinyRepository) GetBtrfsFilesystemsSummary(ctx context.Context) (m
 	return summary, nil
 }
 
-func (sr *scrutinyRepository) SaveBtrfsMetrics(ctx context.Context, filesystem models.BtrfsFilesystem) error {
+func (sr *scrutinyRepository) SaveBtrfsMetrics(ctx context.Context, filesystem *models.BtrfsFilesystem) error {
 	metrics := measurements.BtrfsMetrics{
 		Date:              time.Now(),
 		FilesystemUUID:    filesystem.UUID,

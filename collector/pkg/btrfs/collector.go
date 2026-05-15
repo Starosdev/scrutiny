@@ -65,7 +65,8 @@ func (c *Collector) Run() error {
 	c.logger.Infof("Found %d Btrfs filesystem(s)", len(filesystems))
 
 	valid := make([]Filesystem, 0, len(filesystems))
-	for _, filesystem := range filesystems {
+	for i := range filesystems {
+		filesystem := filesystems[i]
 		if filesystem.UUID != "" {
 			valid = append(valid, filesystem)
 		}
@@ -80,7 +81,8 @@ func (c *Collector) Run() error {
 		return errors.ApiServerCommunicationError("An error occurred while registering Btrfs filesystems")
 	}
 
-	for _, filesystem := range wrapper.Data {
+	for i := range wrapper.Data {
+		filesystem := &wrapper.Data[i]
 		if err := c.UploadMetrics(filesystem); err != nil {
 			c.logger.Errorf("Failed to upload metrics for filesystem %s: %v", filesystem.UUID, err)
 		}
@@ -123,7 +125,7 @@ func (c *Collector) RegisterFilesystems(filesystems []Filesystem) (*FilesystemWr
 	return &responseWrapper, nil
 }
 
-func (c *Collector) UploadMetrics(filesystem Filesystem) error {
+func (c *Collector) UploadMetrics(filesystem *Filesystem) error {
 	c.logger.Infof("Uploading metrics for Btrfs filesystem %s", filesystem.UUID)
 
 	apiEndpoint, _ := url.Parse(c.apiEndpoint.String())

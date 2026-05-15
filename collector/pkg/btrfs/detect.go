@@ -131,16 +131,16 @@ func (d *Detect) inspectFilesystem(mountPoint string) (Filesystem, error) {
 	if err != nil {
 		return fs, fmt.Errorf("btrfs filesystem show failed: %w", err)
 	}
-	if err := parseFilesystemShow(&fs, string(showOutput)); err != nil {
-		return fs, err
+	if parseErr := parseFilesystemShow(&fs, string(showOutput)); parseErr != nil {
+		return fs, parseErr
 	}
 
 	usageOutput, err := d.RunCommand("btrfs", "filesystem", "usage", "--raw", mountPoint)
 	if err != nil {
 		return fs, fmt.Errorf("btrfs filesystem usage failed: %w", err)
 	}
-	if err := parseFilesystemUsage(&fs, string(usageOutput)); err != nil {
-		return fs, err
+	if parseErr := parseFilesystemUsage(&fs, string(usageOutput)); parseErr != nil {
+		return fs, parseErr
 	}
 
 	deviceStatsOutput, err := d.RunCommand("btrfs", "device", "stats", mountPoint)
