@@ -173,9 +173,6 @@ func UploadDeviceMetrics(c *gin.Context) {
 	if collectorVal, exists := c.Get("METRICS_COLLECTOR"); exists {
 		if collector, ok := collectorVal.(*metrics.Collector); ok && collector != nil {
 			collector.UpdateDeviceMetrics(&updatedDevice, &smartData)
-			if err := collector.RefreshWorkloadMetrics(deviceRepo, c); err != nil {
-				logger.Warnf("Failed to refresh Prometheus workload metrics for device %s: %v", device.DeviceID, err)
-			}
 		}
 	}
 

@@ -23,7 +23,6 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
         { icon: 'home', label: 'Home', route: '/mobile-home', exactMatch: true },
         { icon: 'storage', label: 'Drives', route: '/dashboard', exactMatch: true },
         { icon: 'dns', label: 'ZFS', route: '/zfs-pools', exactMatch: true },
-        { icon: 'folder', label: 'Btrfs', route: '/btrfs-filesystems', exactMatch: true },
         { icon: 'speed', label: 'Workload', route: '/workload', exactMatch: true },
         { icon: 'settings', label: 'Settings', route: '/mobile-settings', exactMatch: true },
     ];
@@ -79,6 +78,6 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
     }
 
     private _isDetailRoute(url: string): boolean {
-        return url.startsWith('/device/') || url.startsWith('/zfs-pool/') || url.startsWith('/btrfs-filesystem/');
+        return url.startsWith('/device/') || url.startsWith('/zfs-pool/');
     }
 }

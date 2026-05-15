@@ -92,17 +92,6 @@ The frontend is written in Angular. If you're working on the frontend and can us
     ```
 3. open your browser and visit [http://localhost:4200/web](http://localhost:4200/web)
 
-## Frontend config initialization rule
-
-Frontend code should treat application config as available immediately from defaults, then hydrated asynchronously from `/api/settings`.
-
-- `ScrutinyConfigService` is expected to emit a complete default-backed `AppConfig` on first subscription.
-- Components should not rely on config streams starting as `null` or waiting for router/media events to settle before reading config fields.
-- Server-loaded settings should merge over defaults so nested config reads remain safe during startup and after login redirects.
-- Keep defensive guards in route/layout code anyway. Router and media observers can still fire before a component finishes its own local initialization.
-
-This avoids startup races where layout or theme code reads `config.layout` before the initial settings request completes.
-
 # Modifying both Scrutiny Backend and Frontend Applications
 If you're developing a feature that requires changes to the backend and the frontend, or a frontend feature that requires real data,
 you'll need to follow the steps below:

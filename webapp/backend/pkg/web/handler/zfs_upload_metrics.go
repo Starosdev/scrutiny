@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
-	"github.com/analogj/scrutiny/webapp/backend/pkg/metrics"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
@@ -46,14 +45,6 @@ func UploadZFSPoolMetrics(c *gin.Context) {
 		logger.Errorln("An error occurred while saving ZFS pool metrics", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
-	}
-
-	if collectorVal, exists := c.Get("METRICS_COLLECTOR"); exists {
-		if collector, ok := collectorVal.(*metrics.Collector); ok && collector != nil {
-			if err := collector.RefreshZFSPoolMetrics(deviceRepo, c); err != nil {
-				logger.Warnf("Failed to refresh Prometheus ZFS metrics for pool %s: %v", guid, err)
-			}
-		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})

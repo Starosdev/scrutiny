@@ -28,42 +28,61 @@ const (
 
 // ZFSPoolWrapper wraps the response for ZFS pool API calls
 type ZFSPoolWrapper struct {
+	Success bool      `json:"success"`
 	Errors  []error   `json:"errors,omitempty"`
 	Data    []ZFSPool `json:"data"`
-	Success bool      `json:"success"`
 }
 
 // ZFSPool represents a ZFS storage pool
 type ZFSPool struct {
-	CreatedAt            time.Time     `json:"created_at"`
-	UpdatedAt            time.Time     `json:"updated_at"`
-	DeletedAt            *time.Time    `json:"deleted_at,omitempty"`
-	ScrubEndTime         *time.Time    `json:"scrub_end_time,omitempty"`
-	ScrubStartTime       *time.Time    `json:"scrub_start_time,omitempty"`
-	ScrubState           ZFSScrubState `json:"scrub_state"`
-	HostID               string        `json:"host_id"`
-	Health               string        `json:"health"`
-	Label                string        `json:"label,omitempty"`
-	GUID                 string        `json:"guid" gorm:"primary_key"`
-	Status               ZFSPoolStatus `json:"status"`
-	Name                 string        `json:"name"`
-	Vdevs                []ZFSVdev     `json:"vdevs,omitempty" gorm:"foreignKey:PoolGUID;references:GUID"`
-	Fragmentation        int           `json:"fragmentation"`
-	ScrubErrorsCount     int64         `json:"scrub_errors_count"`
-	CapacityPercent      float64       `json:"capacity_percent"`
-	Free                 int64         `json:"free"`
-	ScrubScannedBytes    int64         `json:"scrub_scanned_bytes"`
-	ScrubIssuedBytes     int64         `json:"scrub_issued_bytes"`
-	ScrubTotalBytes      int64         `json:"scrub_total_bytes"`
-	Ashift               int           `json:"ashift"`
-	ScrubPercentComplete float64       `json:"scrub_percent_complete"`
-	TotalReadErrors      int64         `json:"total_read_errors"`
-	TotalWriteErrors     int64         `json:"total_write_errors"`
-	TotalChecksumErrors  int64         `json:"total_checksum_errors"`
-	Allocated            int64         `json:"allocated"`
-	Size                 int64         `json:"size"`
-	Muted                bool          `json:"muted"`
-	Archived             bool          `json:"archived"`
+	// GORM attributes
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+
+	// Pool identifier (GUID) - primary key
+	GUID   string `json:"guid" gorm:"primary_key"`
+	Name   string `json:"name"`
+	HostID string `json:"host_id"`
+
+	// Pool status
+	Status ZFSPoolStatus `json:"status"`
+	Health string        `json:"health"`
+
+	// Capacity metrics (in bytes)
+	Size            int64   `json:"size"`
+	Allocated       int64   `json:"allocated"`
+	Free            int64   `json:"free"`
+	Fragmentation   int     `json:"fragmentation"`
+	CapacityPercent float64 `json:"capacity_percent"`
+
+	// Pool configuration
+	Ashift int `json:"ashift"`
+
+	// Scrub status (stored as JSON in SQLite)
+	ScrubState          ZFSScrubState `json:"scrub_state"`
+	ScrubStartTime      *time.Time    `json:"scrub_start_time,omitempty"`
+	ScrubEndTime        *time.Time    `json:"scrub_end_time,omitempty"`
+	ScrubScannedBytes   int64         `json:"scrub_scanned_bytes"`
+	ScrubIssuedBytes    int64         `json:"scrub_issued_bytes"`
+	ScrubTotalBytes     int64         `json:"scrub_total_bytes"`
+	ScrubErrorsCount    int64         `json:"scrub_errors_count"`
+	ScrubPercentComplete float64      `json:"scrub_percent_complete"`
+
+	// Aggregate error counts (sum of all vdevs)
+	TotalReadErrors     int64 `json:"total_read_errors"`
+	TotalWriteErrors    int64 `json:"total_write_errors"`
+	TotalChecksumErrors int64 `json:"total_checksum_errors"`
+
+	// User provided metadata
+	Label string `json:"label,omitempty"`
+
+	// Pool management flags
+	Archived bool `json:"archived"`
+	Muted    bool `json:"muted"`
+
+	// Vdevs associated with this pool (loaded via preload, not stored in this table)
+	Vdevs []ZFSVdev `json:"vdevs,omitempty" gorm:"foreignKey:PoolGUID;references:GUID"`
 }
 
 // IsHealthy returns true if the pool status is ONLINE

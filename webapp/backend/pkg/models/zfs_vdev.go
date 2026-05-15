@@ -23,20 +23,33 @@ const (
 
 // ZFSVdev represents a virtual device in a ZFS pool
 type ZFSVdev struct {
-	ParentID       *uint         `json:"parent_id,omitempty" gorm:"index"`
-	GUID           string        `json:"guid,omitempty"`
-	PoolGUID       string        `json:"pool_guid" gorm:"index;not null"`
-	Name           string        `json:"name"`
-	Type           ZFSVdevType   `json:"type"`
-	Status         ZFSPoolStatus `json:"status"`
-	Path           string        `json:"path,omitempty"`
-	Children       []ZFSVdev     `json:"children,omitempty" gorm:"foreignKey:ParentID;references:ID"`
-	ID             uint          `json:"id" gorm:"primary_key;autoIncrement"`
-	ReadErrors     int64         `json:"read_errors"`
-	WriteErrors    int64         `json:"write_errors"`
-	ChecksumErrors int64         `json:"checksum_errors"`
-	Size           int64         `json:"size,omitempty"`
-	Allocated      int64         `json:"allocated,omitempty"`
+	// Primary key
+	ID uint `json:"id" gorm:"primary_key;autoIncrement"`
+
+	// Foreign key to pool
+	PoolGUID string `json:"pool_guid" gorm:"index;not null"`
+
+	// Vdev hierarchy - ParentID is null for top-level vdevs
+	ParentID *uint `json:"parent_id,omitempty" gorm:"index"`
+
+	// Vdev properties
+	Name   string        `json:"name"`
+	Type   ZFSVdevType   `json:"type"`
+	Status ZFSPoolStatus `json:"status"`
+	GUID   string        `json:"guid,omitempty"`
+	Path   string        `json:"path,omitempty"` // Device path for leaf vdevs (e.g., /dev/sda)
+
+	// Error counters
+	ReadErrors     int64 `json:"read_errors"`
+	WriteErrors    int64 `json:"write_errors"`
+	ChecksumErrors int64 `json:"checksum_errors"`
+
+	// Size information (for leaf vdevs)
+	Size      int64 `json:"size,omitempty"`
+	Allocated int64 `json:"allocated,omitempty"`
+
+	// Children vdevs (populated when loading hierarchy)
+	Children []ZFSVdev `json:"children,omitempty" gorm:"foreignKey:ParentID;references:ID"`
 }
 
 // IsLeaf returns true if this vdev has no children (is a disk or file)

@@ -41,31 +41,3 @@ else
     # Disable performance cron if no schedule set (comment out the cron line)
     sed -i 's|^{COLLECTOR_PERF_CRON_SCHEDULE}|# Performance collector disabled (set COLLECTOR_PERF_CRON_SCHEDULE to enable)|g' /etc/cron.d/scrutiny-performance
 fi
-
-# Filesystem Collector cron schedule (disabled by default - requires host mount visibility)
-COLLECTOR_FILESYSTEM_CRON_SCHEDULE=${COLLECTOR_FILESYSTEM_CRON_SCHEDULE:-""}
-
-if [ -n "${COLLECTOR_FILESYSTEM_CRON_SCHEDULE}" ]; then
-    # strip quotes if present
-    [[ "${COLLECTOR_FILESYSTEM_CRON_SCHEDULE}" == \"*\" || "${COLLECTOR_FILESYSTEM_CRON_SCHEDULE}" == \'*\' ]] && COLLECTOR_FILESYSTEM_CRON_SCHEDULE="${COLLECTOR_FILESYSTEM_CRON_SCHEDULE:1:-1}"
-
-    # replace placeholder with correct value
-    sed -i 's|{COLLECTOR_FILESYSTEM_CRON_SCHEDULE}|'"${COLLECTOR_FILESYSTEM_CRON_SCHEDULE}"'|g' /etc/cron.d/scrutiny-filesystem
-else
-    # Disable filesystem cron if no schedule set (comment out the cron line)
-    sed -i 's|^{COLLECTOR_FILESYSTEM_CRON_SCHEDULE}|# Filesystem collector disabled (set COLLECTOR_FILESYSTEM_CRON_SCHEDULE to enable)|g' /etc/cron.d/scrutiny-filesystem
-fi
-
-# Btrfs Collector cron schedule (disabled by default - requires host mount and Btrfs visibility)
-COLLECTOR_BTRFS_CRON_SCHEDULE=${COLLECTOR_BTRFS_CRON_SCHEDULE:-""}
-
-if [ -n "${COLLECTOR_BTRFS_CRON_SCHEDULE}" ]; then
-    # strip quotes if present
-    [[ "${COLLECTOR_BTRFS_CRON_SCHEDULE}" == \"*\" || "${COLLECTOR_BTRFS_CRON_SCHEDULE}" == \'*\' ]] && COLLECTOR_BTRFS_CRON_SCHEDULE="${COLLECTOR_BTRFS_CRON_SCHEDULE:1:-1}"
-
-    # replace placeholder with correct value
-    sed -i 's|{COLLECTOR_BTRFS_CRON_SCHEDULE}|'"${COLLECTOR_BTRFS_CRON_SCHEDULE}"'|g' /etc/cron.d/scrutiny-btrfs
-else
-    # Disable Btrfs cron if no schedule set (comment out the cron line)
-    sed -i 's|^{COLLECTOR_BTRFS_CRON_SCHEDULE}|# Btrfs collector disabled (set COLLECTOR_BTRFS_CRON_SCHEDULE to enable)|g' /etc/cron.d/scrutiny-btrfs
-fi

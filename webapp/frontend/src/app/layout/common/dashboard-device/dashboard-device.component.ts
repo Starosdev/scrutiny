@@ -74,10 +74,6 @@ export class DashboardDeviceComponent implements OnInit {
         }
     }
 
-    deviceDashboardTitle(): string {
-        return DeviceTitlePipe.deviceDashboardTitle(this.deviceSummary.device);
-    }
-
     openArchiveDialog(): void {
         if(this.deviceSummary.device.archived){
             this._archiveService.unarchiveDevice(this.deviceSummary.device.device_id).subscribe((result) => {

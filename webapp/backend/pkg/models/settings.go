@@ -8,51 +8,68 @@ package models
 //}
 
 type Settings struct {
-	Metrics struct {
-		NotificationQuietStart        string `json:"notification_quiet_start" mapstructure:"notification_quiet_start"`
-		ReportPDFPath                 string `json:"report_pdf_path" mapstructure:"report_pdf_path"`
-		ReportMonthlyTime             string `json:"report_monthly_time" mapstructure:"report_monthly_time"`
-		ReportWeeklyTime              string `json:"report_weekly_time" mapstructure:"report_weekly_time"`
-		ReportDailyTime               string `json:"report_daily_time" mapstructure:"report_daily_time"`
-		UptimeKumaPushURL             string `json:"uptime_kuma_push_url" mapstructure:"uptime_kuma_push_url"`
-		ReplacementRiskNotifyCategory string `json:"replacement_risk_notify_category" mapstructure:"replacement_risk_notify_category"`
-		NotificationQuietEnd          string `json:"notification_quiet_end" mapstructure:"notification_quiet_end"`
-		MissedPingCooldownMinutes     int    `json:"missed_ping_cooldown_minutes" mapstructure:"missed_ping_cooldown_minutes"`
-		NotificationRateLimit         int    `json:"notification_rate_limit" mapstructure:"notification_rate_limit"`
-		NotifyLevel                   int    `json:"notify_level" mapstructure:"notify_level"`
-		StatusFilterAttributes        int    `json:"status_filter_attributes" mapstructure:"status_filter_attributes"`
-		StatusThreshold               int    `json:"status_threshold" mapstructure:"status_threshold"`
-		MissedPingCheckIntervalMins   int    `json:"missed_ping_check_interval_mins" mapstructure:"missed_ping_check_interval_mins"`
-		ReportMonthlyDay              int    `json:"report_monthly_day" mapstructure:"report_monthly_day"`
-		HeartbeatIntervalHours        int    `json:"heartbeat_interval_hours" mapstructure:"heartbeat_interval_hours"`
-		ReportWeeklyDay               int    `json:"report_weekly_day" mapstructure:"report_weekly_day"`
-		MissedPingTimeoutMinutes      int    `json:"missed_ping_timeout_minutes" mapstructure:"missed_ping_timeout_minutes"`
-		UptimeKumaIntervalSeconds     int    `json:"uptime_kuma_interval_seconds" mapstructure:"uptime_kuma_interval_seconds"`
-		ReportEnabled                 bool   `json:"report_enabled" mapstructure:"report_enabled"`
-		ReportDailyEnabled            bool   `json:"report_daily_enabled" mapstructure:"report_daily_enabled"`
-		NotifyOnMissedPing            bool   `json:"notify_on_missed_ping" mapstructure:"notify_on_missed_ping"`
-		ReportWeeklyEnabled           bool   `json:"report_weekly_enabled" mapstructure:"report_weekly_enabled"`
-		UptimeKumaEnabled             bool   `json:"uptime_kuma_enabled" mapstructure:"uptime_kuma_enabled"`
-		RepeatNotifications           bool   `json:"repeat_notifications" mapstructure:"repeat_notifications"`
-		ReportMonthlyEnabled          bool   `json:"report_monthly_enabled" mapstructure:"report_monthly_enabled"`
-		HeartbeatEnabled              bool   `json:"heartbeat_enabled" mapstructure:"heartbeat_enabled"`
-		NotifyOnReplacementRisk       bool   `json:"notify_on_replacement_risk" mapstructure:"notify_on_replacement_risk"`
-		ReportPDFEnabled              bool   `json:"report_pdf_enabled" mapstructure:"report_pdf_enabled"`
-		NotifyOnCollectorError        bool   `json:"notify_on_collector_error" mapstructure:"notify_on_collector_error"`
-	} `json:"metrics" mapstructure:"metrics"`
 	Theme              string `json:"theme" mapstructure:"theme"`
 	Layout             string `json:"layout" mapstructure:"layout"`
 	DashboardDisplay   string `json:"dashboard_display" mapstructure:"dashboard_display"`
 	DashboardSort      string `json:"dashboard_sort" mapstructure:"dashboard_sort"`
 	TemperatureUnit    string `json:"temperature_unit" mapstructure:"temperature_unit"`
+	FileSizeSIUnits    bool   `json:"file_size_si_units" mapstructure:"file_size_si_units"`
 	LineStroke         string `json:"line_stroke" mapstructure:"line_stroke"`
 	PoweredOnHoursUnit string `json:"powered_on_hours_unit" mapstructure:"powered_on_hours_unit"`
 	TimeFormat         string `json:"time_format" mapstructure:"time_format"`
-	FileSizeSIUnits    bool   `json:"file_size_si_units" mapstructure:"file_size_si_units"`
-	Collector          struct {
+
+	Collector struct {
 		RetrieveSCTHistory bool `json:"retrieve_sct_temperature_history" mapstructure:"retrieve_sct_temperature_history"`
-	} `json:"collector" mapstructure:"collector"` // Missed collector ping notification settings
-	// Scheduled report settings
+	} `json:"collector" mapstructure:"collector"`
+
+	Metrics struct {
+		NotifyLevel            int  `json:"notify_level" mapstructure:"notify_level"`
+		StatusFilterAttributes int  `json:"status_filter_attributes" mapstructure:"status_filter_attributes"`
+		StatusThreshold        int  `json:"status_threshold" mapstructure:"status_threshold"`
+		RepeatNotifications    bool `json:"repeat_notifications" mapstructure:"repeat_notifications"`
+
+		// Missed collector ping notification settings
+		NotifyOnMissedPing          bool `json:"notify_on_missed_ping" mapstructure:"notify_on_missed_ping"`
+		MissedPingTimeoutMinutes    int  `json:"missed_ping_timeout_minutes" mapstructure:"missed_ping_timeout_minutes"`
+		MissedPingCheckIntervalMins int  `json:"missed_ping_check_interval_mins" mapstructure:"missed_ping_check_interval_mins"`
+
+		// Notification cooldown / rate limiting
+		MissedPingCooldownMinutes int `json:"missed_ping_cooldown_minutes" mapstructure:"missed_ping_cooldown_minutes"`
+		NotificationRateLimit     int `json:"notification_rate_limit" mapstructure:"notification_rate_limit"`
+
+		// Quiet hours
+		NotificationQuietStart string `json:"notification_quiet_start" mapstructure:"notification_quiet_start"`
+		NotificationQuietEnd   string `json:"notification_quiet_end" mapstructure:"notification_quiet_end"`
+
+		// Collector error notification settings
+		NotifyOnCollectorError bool `json:"notify_on_collector_error" mapstructure:"notify_on_collector_error"`
+
+		// Replacement risk notification settings
+		NotifyOnReplacementRisk         bool   `json:"notify_on_replacement_risk" mapstructure:"notify_on_replacement_risk"`
+		ReplacementRiskNotifyCategory   string `json:"replacement_risk_notify_category" mapstructure:"replacement_risk_notify_category"`
+
+		// Heartbeat notification settings
+		HeartbeatEnabled       bool `json:"heartbeat_enabled" mapstructure:"heartbeat_enabled"`
+		HeartbeatIntervalHours int  `json:"heartbeat_interval_hours" mapstructure:"heartbeat_interval_hours"`
+
+		// Uptime Kuma push monitor settings
+		UptimeKumaEnabled         bool   `json:"uptime_kuma_enabled" mapstructure:"uptime_kuma_enabled"`
+		UptimeKumaPushURL         string `json:"uptime_kuma_push_url" mapstructure:"uptime_kuma_push_url"`
+		UptimeKumaIntervalSeconds int    `json:"uptime_kuma_interval_seconds" mapstructure:"uptime_kuma_interval_seconds"`
+
+		// Scheduled report settings
+		ReportEnabled        bool   `json:"report_enabled" mapstructure:"report_enabled"`
+		ReportDailyEnabled   bool   `json:"report_daily_enabled" mapstructure:"report_daily_enabled"`
+		ReportDailyTime      string `json:"report_daily_time" mapstructure:"report_daily_time"`
+		ReportWeeklyEnabled  bool   `json:"report_weekly_enabled" mapstructure:"report_weekly_enabled"`
+		ReportWeeklyDay      int    `json:"report_weekly_day" mapstructure:"report_weekly_day"`
+		ReportWeeklyTime     string `json:"report_weekly_time" mapstructure:"report_weekly_time"`
+		ReportMonthlyEnabled bool   `json:"report_monthly_enabled" mapstructure:"report_monthly_enabled"`
+		ReportMonthlyDay     int    `json:"report_monthly_day" mapstructure:"report_monthly_day"`
+		ReportMonthlyTime    string `json:"report_monthly_time" mapstructure:"report_monthly_time"`
+		ReportPDFEnabled     bool   `json:"report_pdf_enabled" mapstructure:"report_pdf_enabled"`
+		ReportPDFPath        string `json:"report_pdf_path" mapstructure:"report_pdf_path"`
+	} `json:"metrics" mapstructure:"metrics"`
 }
 
 // defaultStr sets *p to def if *p is empty.
@@ -94,8 +111,8 @@ func (s *Settings) ApplyDefaults() {
 
 	// Metrics: numeric fields where 0 is not a valid value.
 	// Note: StatusFilterAttributes defaults to 0 (All), which is the zero value, so no check needed.
-	defaultInt(&s.Metrics.NotifyLevel, 2)     // MetricsNotifyLevelFail
-	defaultInt(&s.Metrics.StatusThreshold, 3) // MetricsStatusThresholdBoth
+	defaultInt(&s.Metrics.NotifyLevel, 2)            // MetricsNotifyLevelFail
+	defaultInt(&s.Metrics.StatusThreshold, 3)         // MetricsStatusThresholdBoth
 	defaultInt(&s.Metrics.MissedPingTimeoutMinutes, 60)
 	defaultInt(&s.Metrics.MissedPingCheckIntervalMins, 5)
 	defaultInt(&s.Metrics.HeartbeatIntervalHours, 24)
@@ -106,7 +123,7 @@ func (s *Settings) ApplyDefaults() {
 
 	// Metrics: scheduled report defaults
 	defaultStr(&s.Metrics.ReportDailyTime, "08:00")
-	defaultInt(&s.Metrics.ReportWeeklyDay, 1) // Monday
+	defaultInt(&s.Metrics.ReportWeeklyDay, 1)  // Monday
 	defaultStr(&s.Metrics.ReportWeeklyTime, "08:00")
 	defaultInt(&s.Metrics.ReportMonthlyDay, 1) // 1st of the month
 	defaultStr(&s.Metrics.ReportMonthlyTime, "08:00")

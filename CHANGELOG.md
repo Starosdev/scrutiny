@@ -2,16 +2,6 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
-## [1.54.0](https://github.com/Starosdev/scrutiny/compare/v1.53.1...v1.54.0) (2026-05-14)
-
-### Features
-
-* **collector:** add filesystem capacity monitoring and Prometheus metrics ([#359](https://github.com/Starosdev/scrutiny/issues/359), [#298](https://github.com/Starosdev/scrutiny/issues/298)) ([#508](https://github.com/Starosdev/scrutiny/issues/508)) ([3ae7e93](https://github.com/Starosdev/scrutiny/commit/3ae7e9384b9d7aa2deb391c441b6ebd8dba9f28c))
-
-### Bug Fixes
-
-* manual release trigger ([7b8f8e3](https://github.com/Starosdev/scrutiny/commit/7b8f8e3edb78a58ef08e0009c6fff2cc2b632c43))
-
 ## [1.53.1](https://github.com/Starosdev/scrutiny/compare/v1.53.0...v1.53.1) (2026-05-10)
 
 ### Bug Fixes

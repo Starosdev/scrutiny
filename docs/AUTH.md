@@ -38,7 +38,6 @@ Then configure each collector with the same token. See [Collector Authentication
 | `api.token` (metrics) | `COLLECTOR_METRICS_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the metrics collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
 | `api.token` (performance) | `COLLECTOR_PERF_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the performance collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
 | `api.token` (zfs) | `COLLECTOR_ZFS_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the ZFS collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
-| `api.token` (btrfs) | `COLLECTOR_BTRFS_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the Btrfs collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
 
 ## Public Endpoints
 
@@ -113,18 +112,6 @@ Configure the token using any of these methods (in order of precedence):
         token: 'your-secret-api-token-here'
     ```
 
-### Btrfs Collector (scrutiny-collector-btrfs)
-
-Configure the token using any of these methods (in order of precedence):
-
-1. **CLI flag**: `--api-token your-secret-api-token-here`
-2. **Environment variable**: `COLLECTOR_BTRFS_API_TOKEN=your-secret-api-token-here` (falls back to `COLLECTOR_API_TOKEN`)
-3. **Config file** (`collector-btrfs.yaml` or `collector.yaml`):
-    ```yaml
-    api:
-        token: 'your-secret-api-token-here'
-    ```
-
 ### Backward Compatibility
 
 When authentication is disabled on the server (the default), collectors work without any token configuration. No changes are required to existing collector setups until you explicitly enable auth.
@@ -178,59 +165,6 @@ scrape_configs:
 | `false` | set | Requires the metrics token |
 | `true` | (empty) | Requires the master API token or a valid JWT |
 | `true` | set | Accepts the metrics token **or** the master API token / JWT |
-
-### Exported Metric Families
-
-The Prometheus exporter is a current-state surface for scraping and alerting. Historical analysis remains in InfluxDB and the workload or ZFS dashboards built on top of it.
-
-The `/api/metrics` endpoint now exposes:
-
-- Existing SMART and device inventory metrics.
-- ZFS pool metrics for size, allocated and free bytes, capacity, fragmentation, aggregate error counts, and scrub progress.
-- Workload metrics for daily read and write activity, total read and write bytes, read/write ratio, calculation time span, and data point count.
-- Optional workload endurance and spike metrics when those values can be derived from the available SMART history.
-
-Prometheus workload metrics use the same `week` duration window as the backend workload summary endpoint. They are derived current-state estimates, not raw point-in-time counters and not full historical exports.
-
-### Categorical Metrics
-
-Categorical values are exported in two forms:
-
-- One-hot gauges for label-friendly Prometheus queries.
-- Numeric code gauges for compact alert rules or dashboards that prefer enum mappings.
-- Unknown or empty ZFS status and scrub values are exported as one-hot samples with the label value `unknown`, and as numeric code `0`.
-
-#### ZFS Status Codes
-
-| Value | Code |
-|---|---|
-| unknown or empty | `0` |
-| `ONLINE` | `1` |
-| `DEGRADED` | `2` |
-| `FAULTED` | `3` |
-| `OFFLINE` | `4` |
-| `REMOVED` | `5` |
-| `UNAVAIL` | `6` |
-
-#### ZFS Scrub State Codes
-
-| Value | Code |
-|---|---|
-| unknown or empty | `0` |
-| `none` | `1` |
-| `scanning` | `2` |
-| `finished` | `3` |
-| `canceled` | `4` |
-
-#### Workload Intensity Codes
-
-| Value | Code |
-|---|---|
-| `unknown` | `0` |
-| `idle` | `1` |
-| `light` | `2` |
-| `medium` | `3` |
-| `heavy` | `4` |
 
 ## JWT Session Persistence
 

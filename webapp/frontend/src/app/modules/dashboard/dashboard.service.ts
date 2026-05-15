@@ -7,7 +7,6 @@ import {DeviceSummaryResponseWrapper} from 'app/core/models/device-summary-respo
 import {DeviceSummaryModel} from 'app/core/models/device-summary-model';
 import {SmartTemperatureModel} from 'app/core/models/measurements/smart-temperature-model';
 import {DeviceSummaryTempResponseWrapper} from 'app/core/models/device-summary-temp-response-wrapper';
-import { FilesystemSummaryResponseWrapper, FilesystemCapacityModel, FilesystemHostStatusModel } from 'app/core/models/filesystem-summary-model';
 
 @Injectable({
     providedIn: 'root'
@@ -67,14 +66,6 @@ export class DashboardService {
         return this._httpClient.get(getBasePath() + '/api/summary/temp', {params: params}).pipe(
             map((response: DeviceSummaryTempResponseWrapper) => {
                 return response.data.temp_history
-            })
-        );
-    }
-
-    getFilesystemSummaryData(): Observable<{ filesystems: Record<string, FilesystemCapacityModel[]>; hosts: Record<string, FilesystemHostStatusModel> }> {
-        return this._httpClient.get(getBasePath() + '/api/filesystems/summary').pipe(
-            map((response: FilesystemSummaryResponseWrapper) => {
-                return response.data
             })
         );
     }

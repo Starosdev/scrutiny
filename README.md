@@ -75,7 +75,6 @@ This repository also owns the testing and production deployment definitions for 
 
 - Testing deploys from the `testing` branch through [`Deploy Testing Stack`](./.github/workflows/deploy-testing.yml)
 - Production deploys from the `master` branch through [`Automated Release and Deploy`](./.github/workflows/release-and-deploy.yml)
-- Zeus testing and production are separate host appdata trees. Use [`docs/DEPLOYMENTS.md`](./docs/DEPLOYMENTS.md) for the current path and port mapping before running host-side deploy helpers.
 - Deployment compose files, env templates, and host expectations live in [docs/DEPLOYMENTS.md](./docs/DEPLOYMENTS.md)
 
 # Introduction

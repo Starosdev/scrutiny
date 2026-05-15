@@ -29,30 +29,6 @@ example {
     max-width: none !important;
 }
 
-.temp-chart-wrapper {
-    min-height: 0;
-    overflow: hidden;
-    padding: 0 1rem 1rem;
-}
-
-.temp-chart-wrapper apx-chart {
-    display: block;
-    min-height: 0;
-    height: 100%;
-}
-
-.temp-chart-wrapper .apexcharts-canvas,
-.temp-chart-wrapper .apexcharts-svg,
-.temp-chart-wrapper .apexcharts-inner {
-    max-width: 100%;
-}
-
-.temp-chart-wrapper .apexcharts-legend {
-    max-height: 4.5rem;
-    overflow-y: auto;
-    padding: 0 0.25rem 0.5rem;
-}
-
 .dashboard-placeholder {
     align-items: center;
     justify-content: center;

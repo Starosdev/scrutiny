@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"sort"
 	"strconv"
 	"strings"
 
@@ -61,22 +60,4 @@ func SelectLatestSmartResult(smartResults []measurements.Smart) *measurements.Sm
 		}
 	}
 	return latest
-}
-
-func metricValue[T comparable](current T, candidate T) float64 {
-	if current == candidate {
-		return 1
-	}
-	return 0
-}
-
-func orderedKeys[K ~string, V any](m map[K]V) []K {
-	keys := make([]K, 0, len(m))
-	for key := range m {
-		keys = append(keys, key)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
-	})
-	return keys
 }

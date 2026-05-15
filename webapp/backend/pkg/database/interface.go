@@ -65,19 +65,6 @@ type DeviceRepo interface {
 
 	GetSummary(ctx context.Context) (map[string]*models.DeviceSummary, error)
 	GetSmartTemperatureHistory(ctx context.Context, durationKey string) (map[string][]measurements.SmartTemperature, error)
-	SaveFilesystemSummary(ctx context.Context, payload models.FilesystemSummaryUpload) error
-	GetFilesystemSummary(ctx context.Context) (map[string][]models.FilesystemCapacity, map[string]*models.FilesystemHostStatus, error)
-
-	RegisterBtrfsFilesystem(ctx context.Context, filesystem models.BtrfsFilesystem) error
-	GetBtrfsFilesystems(ctx context.Context) ([]models.BtrfsFilesystem, error)
-	GetBtrfsFilesystemDetails(ctx context.Context, uuid string) (models.BtrfsFilesystem, error)
-	UpdateBtrfsFilesystemArchived(ctx context.Context, uuid string, archived bool) error
-	UpdateBtrfsFilesystemMuted(ctx context.Context, uuid string, muted bool) error
-	UpdateBtrfsFilesystemLabel(ctx context.Context, uuid string, label string) error
-	DeleteBtrfsFilesystem(ctx context.Context, uuid string) error
-	GetBtrfsFilesystemsSummary(ctx context.Context) (map[string]*models.BtrfsFilesystem, error)
-	SaveBtrfsMetrics(ctx context.Context, filesystem models.BtrfsFilesystem) error
-	GetBtrfsMetricsHistory(ctx context.Context, uuid string, durationKey string) ([]measurements.BtrfsMetrics, error)
 
 	// GetDevicesLastSeenTimes returns a map of device WWN to the timestamp of their last SMART submission.
 	// This is used for missed collector ping detection.
