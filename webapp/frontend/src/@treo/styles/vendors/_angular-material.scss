@@ -1,2 +1,4 @@
-// Include core Angular Material styles from '~@angular/material/theming'
-@include mat-core();
+@use '@angular/material' as mat;
+
+// Include core Angular Material styles.
+@include mat.core();

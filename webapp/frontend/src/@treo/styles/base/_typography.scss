@@ -1,13 +1,15 @@
+@use '@angular/material' as mat;
+
 // -----------------------------------------------------------------------------------------------------
 // @ Angular Material typography config
 // -----------------------------------------------------------------------------------------------------
-@include angular-material-typography(
-        mat-typography-config(
+@include mat.all-component-typographies(
+        mat.m2-define-legacy-typography-config(
             $font-family: $treo-font-sans,
-            $title: mat-typography-level(1.25rem, 2rem, 600),
-            $body-2: mat-typography-level(0.875rem, 1.5rem, 600),
-            $button: mat-typography-level(0.875rem, 0.875rem, 500),
-            $input: mat-typography-level(0.875rem, 1.2857142857, 400) // line-height: 20px
+            $title: mat.m2-define-typography-level(1.25rem, 2rem, 600),
+            $body-2: mat.m2-define-typography-level(0.875rem, 1.5rem, 600),
+            $button: mat.m2-define-typography-level(0.875rem, 0.875rem, 500),
+            $input: mat.m2-define-typography-level(0.875rem, 1.2857142857, 400) // line-height: 20px
         )
 );
 
