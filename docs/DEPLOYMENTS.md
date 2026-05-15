@@ -16,7 +16,7 @@ For release-version verification details, see [RELEASE_VERSION_VERIFICATION.md](
 - Check out the repo
 - Normalize the GHCR image name to lowercase
 - Build the omnibus image for `linux/amd64` and `linux/arm64`
-- Build the default `web` and `collector-performance` images for `linux/amd64` and `linux/arm64`
+- Build the default `web`, `collector-performance`, `collector-zfs`, and `collector-btrfs` images for `linux/amd64` and `linux/arm64`
 - Exclude `webapp/backend/pkg/version/version.go` from the Docker workflow path trigger so release-version sync commits do not rebuild images on their own
 - Push the published tags to GHCR
 
@@ -38,5 +38,21 @@ If Zeus should move to a new image, do that from the host by pulling the publish
 - production image path: `ghcr.io/starosdev/scrutiny:latest`
 - develop port: `8680`
 - production port: `8580`
+- production appdata root: `/mnt/user/appdata/scrutiny`
+- Zeus testing appdata root: `/mnt/user/appdata/scrutiny-dev`
+
+## Current Zeus Host Layout
+
+Zeus does not currently run testing and production from the same appdata tree.
+
+- Production uses `/mnt/user/appdata/scrutiny`
+- Testing uses `/mnt/user/appdata/scrutiny-dev`
+
+That distinction matters for both manual host rollouts and the helper scripts in `ops/`:
+
+- `ops/deploy-production.sh` should target the production tree under `/mnt/user/appdata/scrutiny`
+- `ops/deploy-testing.sh` should target the Zeus testing tree under `/mnt/user/appdata/scrutiny-dev`
+
+If you point the testing deploy helper at `/mnt/user/appdata/scrutiny`, you will be operating on the production environment instead of Zeus testing.
 
 The `deploy/` and `ops/` files in this repo remain available if you want repo-owned host scripts, but they are not invoked by GitHub Actions anymore.

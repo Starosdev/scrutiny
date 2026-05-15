@@ -148,4 +148,25 @@ describe('DeviceTitlePipe', () => {
             });
         })
     })
+
+    describe('#deviceDashboardTitle', () => {
+        it('prefers the custom label and keeps the device path visible', () => {
+            const formatted = DeviceTitlePipe.deviceDashboardTitle({
+                label: 'Backup Drive 1',
+                device_name: 'sda',
+                device_type: 'ata',
+                model_name: 'Samsung'
+            } as DeviceModel);
+            expect(formatted).toEqual('Backup Drive 1 - /dev/sda - Samsung');
+        });
+
+        it('falls back to the normal device name when no custom label is set', () => {
+            const formatted = DeviceTitlePipe.deviceDashboardTitle({
+                device_name: 'sdb',
+                device_type: 'nvme',
+                model_name: 'WD'
+            } as DeviceModel);
+            expect(formatted).toEqual('/dev/sdb - nvme - WD');
+        });
+    });
 });

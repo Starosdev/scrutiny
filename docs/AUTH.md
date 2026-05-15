@@ -38,6 +38,7 @@ Then configure each collector with the same token. See [Collector Authentication
 | `api.token` (metrics) | `COLLECTOR_METRICS_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the metrics collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
 | `api.token` (performance) | `COLLECTOR_PERF_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the performance collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
 | `api.token` (zfs) | `COLLECTOR_ZFS_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the ZFS collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
+| `api.token` (btrfs) | `COLLECTOR_BTRFS_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the Btrfs collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
 
 ## Public Endpoints
 
@@ -107,6 +108,18 @@ Configure the token using any of these methods (in order of precedence):
 1. **CLI flag**: `--api-token your-secret-api-token-here`
 2. **Environment variable**: `COLLECTOR_ZFS_API_TOKEN=your-secret-api-token-here` (falls back to `COLLECTOR_API_TOKEN`)
 3. **Config file** (`collector-zfs.yaml` or `collector.yaml`):
+    ```yaml
+    api:
+        token: 'your-secret-api-token-here'
+    ```
+
+### Btrfs Collector (scrutiny-collector-btrfs)
+
+Configure the token using any of these methods (in order of precedence):
+
+1. **CLI flag**: `--api-token your-secret-api-token-here`
+2. **Environment variable**: `COLLECTOR_BTRFS_API_TOKEN=your-secret-api-token-here` (falls back to `COLLECTOR_API_TOKEN`)
+3. **Config file** (`collector-btrfs.yaml` or `collector.yaml`):
     ```yaml
     api:
         token: 'your-secret-api-token-here'

@@ -201,9 +201,9 @@
         }
 
         <!-- Drive Temperatures -->
-        <div class="flex flex-auto w-full min-w-80 h-90 p-4">
-          <div class="flex flex-col flex-auto bg-card shadow-md rounded">
-            <div class="flex flex-col p-6 pr-4 pb-4">
+        <div class="flex flex-auto w-full min-w-80 h-90 min-h-0 p-4">
+          <div class="flex flex-col flex-auto min-h-0 bg-card shadow-md rounded overflow-hidden">
+            <div class="flex flex-col flex-none p-6 pr-4 pb-4">
               <div class="flex items-center justify-between">
                 <div class="flex flex-col">
                   <div class="font-bold text-md text-secondary uppercase tracking-wider mr-4">
@@ -267,7 +267,7 @@
                         <mat-checkbox
                           [checked]="visibleDrives[device.key]"
                           (click)="toggleDriveVisibility(device.key); $event.stopPropagation()">
-                          {{ device.value.device | deviceTitle:config?.dashboard_display }}
+                          {{ deviceDashboardTitle(device.value) }}
                         </mat-checkbox>
                       </button>
                     }
@@ -276,15 +276,16 @@
               </div>
             </div>
 
-            <div class="flex flex-col flex-auto temp-chart-wrapper">
+            <div class="flex flex-col flex-auto min-h-0 temp-chart-wrapper">
               @if (temperatureOptions) {
                 <apx-chart
                   #tempChart
-                  class="flex-auto w-full h-full"
+                  class="flex-auto w-full min-h-0"
                   [chart]="temperatureOptions.chart"
                   [colors]="temperatureOptions.colors"
                   [dataLabels]="temperatureOptions.dataLabels"
                   [fill]="temperatureOptions.fill"
+                  [legend]="temperatureOptions.legend"
                   [markers]="temperatureOptions.markers"
                   [series]="temperatureOptions.series"
                   [stroke]="temperatureOptions.stroke"
