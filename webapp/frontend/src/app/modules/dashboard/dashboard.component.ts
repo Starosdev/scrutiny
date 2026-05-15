@@ -20,6 +20,7 @@ import {TemperaturePipe} from 'app/shared/temperature.pipe';
 import {DeviceTitlePipe} from 'app/shared/device-title.pipe';
 import {DeviceSummaryModel} from 'app/core/models/device-summary-model';
 import {apexShortDateTime} from 'app/shared/time-format.utils';
+import { FilesystemCapacityModel, FilesystemHostStatusModel } from 'app/core/models/filesystem-summary-model';
 
 @Component({
     selector: 'example',
@@ -33,6 +34,7 @@ export class DashboardComponent implements OnInit, OnDestroy
 {
     summaryData: { [key: string]: DeviceSummaryModel };
     hostGroups: { [hostId: string]: string[] } = {}
+    filesystemSummaryData: { filesystems: Record<string, FilesystemCapacityModel[]>; hosts: Record<string, FilesystemHostStatusModel> } | null = null;
     temperatureOptions: ApexOptions;
     tempDurationKey = 'forever'
     config: AppConfig;
@@ -114,6 +116,13 @@ export class DashboardComponent implements OnInit, OnDestroy
                 }
                 // Prepare the chart data
                 this._prepareChartData();
+            });
+
+        this._dashboardService.getFilesystemSummaryData()
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe((data) => {
+                this.filesystemSummaryData = data;
+                this._changeDetectorRef.markForCheck();
             });
     }
 
@@ -344,6 +353,36 @@ export class DashboardComponent implements OnInit, OnDestroy
             }
         }
         return deviceSummaries
+    }
+
+    filesystemHosts(): string[] {
+        if (!this.filesystemSummaryData?.hosts) {
+            return [];
+        }
+        return Object.keys(this.filesystemSummaryData.hosts).sort();
+    }
+
+    filesystemsForHost(hostId: string): FilesystemCapacityModel[] {
+        return [...(this.filesystemSummaryData?.filesystems?.[hostId] || [])]
+            .sort((left, right) => left.mount_point.localeCompare(right.mount_point));
+    }
+
+    filesystemStatusForHost(hostId: string): FilesystemHostStatusModel | null {
+        return this.filesystemSummaryData?.hosts?.[hostId] || null;
+    }
+
+    hasFilesystemData(): boolean {
+        return this.filesystemHosts().length > 0;
+    }
+
+    filesystemUsageClass(filesystem: FilesystemCapacityModel): string {
+        if (filesystem.used_percent >= 90) {
+            return 'bg-red-500';
+        }
+        if (filesystem.used_percent >= 80) {
+            return 'bg-yellow-500';
+        }
+        return 'bg-green-500';
     }
 
     /**

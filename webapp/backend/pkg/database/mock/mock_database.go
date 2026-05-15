@@ -365,6 +365,36 @@ func (mr *MockDeviceRepoMockRecorder) GetSmartTemperatureHistory(ctx, durationKe
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSmartTemperatureHistory", reflect.TypeOf((*MockDeviceRepo)(nil).GetSmartTemperatureHistory), ctx, durationKey)
 }
 
+// SaveFilesystemSummary mocks base method.
+func (m *MockDeviceRepo) SaveFilesystemSummary(ctx context.Context, payload models.FilesystemSummaryUpload) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveFilesystemSummary", ctx, payload)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveFilesystemSummary indicates an expected call of SaveFilesystemSummary.
+func (mr *MockDeviceRepoMockRecorder) SaveFilesystemSummary(ctx, payload interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveFilesystemSummary", reflect.TypeOf((*MockDeviceRepo)(nil).SaveFilesystemSummary), ctx, payload)
+}
+
+// GetFilesystemSummary mocks base method.
+func (m *MockDeviceRepo) GetFilesystemSummary(ctx context.Context) (map[string][]models.FilesystemCapacity, map[string]*models.FilesystemHostStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetFilesystemSummary", ctx)
+	ret0, _ := ret[0].(map[string][]models.FilesystemCapacity)
+	ret1, _ := ret[1].(map[string]*models.FilesystemHostStatus)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetFilesystemSummary indicates an expected call of GetFilesystemSummary.
+func (mr *MockDeviceRepoMockRecorder) GetFilesystemSummary(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFilesystemSummary", reflect.TypeOf((*MockDeviceRepo)(nil).GetFilesystemSummary), ctx)
+}
+
 // GetSummary mocks base method.
 func (m *MockDeviceRepo) GetSummary(ctx context.Context) (map[string]*models.DeviceSummary, error) {
 	m.ctrl.T.Helper()
