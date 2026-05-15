@@ -84,7 +84,19 @@ func (c *Collector) Run() error {
 	}
 
 	// Upload metrics for each registered array
+	registeredArrays := make(map[string]bool)
+	if arrayWrapper != nil && arrayWrapper.Data != nil {
+		for _, regArray := range arrayWrapper.Data {
+			registeredArrays[regArray.UUID] = true
+		}
+	}
+
 	for i, array := range arrays {
+		if !registeredArrays[array.UUID] {
+			c.logger.Debugf("Skipping metrics upload for unregistered array %s (%s)", array.Name, array.UUID)
+			continue
+		}
+
 		if err := c.UploadMetrics(array, metrics[i]); err != nil {
 			c.logger.Errorf("Failed to upload metrics for array %s (%s): %v", array.Name, array.UUID, err)
 			// Continue with other arrays
