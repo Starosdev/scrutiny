@@ -13,9 +13,9 @@ import (
 
 // HealthCheckStatus represents the status of a single health check
 type HealthCheckStatus struct {
-	Status    string `json:"status"`           // "ok" or "error"
-	LatencyMs int64  `json:"latency_ms"`       // Response time in milliseconds
-	Error     string `json:"error,omitempty"`  // Error message if status is "error"
+	Status    string `json:"status"`          // "ok" or "error"
+	LatencyMs int64  `json:"latency_ms"`      // Response time in milliseconds
+	Error     string `json:"error,omitempty"` // Error message if status is "error"
 }
 
 // HealthCheckResult contains the results of all health checks
@@ -46,6 +46,7 @@ type DeviceRepo interface {
 	UpdateDeviceSmartDisplayMode(ctx context.Context, deviceID string, mode string) error
 	UpdateDeviceHasForcedFailure(ctx context.Context, deviceID string, hasForcedFailure bool) error
 	UpdateDeviceMissedPingTimeout(ctx context.Context, deviceID string, timeoutMinutes int) error
+	MergeDevices(ctx context.Context, sourceDeviceID string, destinationDeviceID string) error
 	DeleteDevice(ctx context.Context, deviceID string) error
 	// RecalculateDeviceStatusFromHistory re-evaluates device status from stored SMART data
 	// with current overrides applied. Used when overrides are added/modified/deleted.
@@ -64,6 +65,19 @@ type DeviceRepo interface {
 
 	GetSummary(ctx context.Context) (map[string]*models.DeviceSummary, error)
 	GetSmartTemperatureHistory(ctx context.Context, durationKey string) (map[string][]measurements.SmartTemperature, error)
+	SaveFilesystemSummary(ctx context.Context, payload models.FilesystemSummaryUpload) error
+	GetFilesystemSummary(ctx context.Context) (map[string][]models.FilesystemCapacity, map[string]*models.FilesystemHostStatus, error)
+
+	RegisterBtrfsFilesystem(ctx context.Context, filesystem models.BtrfsFilesystem) error
+	GetBtrfsFilesystems(ctx context.Context) ([]models.BtrfsFilesystem, error)
+	GetBtrfsFilesystemDetails(ctx context.Context, uuid string) (models.BtrfsFilesystem, error)
+	UpdateBtrfsFilesystemArchived(ctx context.Context, uuid string, archived bool) error
+	UpdateBtrfsFilesystemMuted(ctx context.Context, uuid string, muted bool) error
+	UpdateBtrfsFilesystemLabel(ctx context.Context, uuid string, label string) error
+	DeleteBtrfsFilesystem(ctx context.Context, uuid string) error
+	GetBtrfsFilesystemsSummary(ctx context.Context) (map[string]*models.BtrfsFilesystem, error)
+	SaveBtrfsMetrics(ctx context.Context, filesystem models.BtrfsFilesystem) error
+	GetBtrfsMetricsHistory(ctx context.Context, uuid string, durationKey string) ([]measurements.BtrfsMetrics, error)
 
 	// GetDevicesLastSeenTimes returns a map of device WWN to the timestamp of their last SMART submission.
 	// This is used for missed collector ping detection.

@@ -3,6 +3,7 @@ import * as _ from 'lodash';
 import { TreoMockApi } from '@treo/lib/mock-api/mock-api.interfaces';
 import { TreoMockApiService } from '@treo/lib/mock-api/mock-api.service';
 import { summary as summaryData } from 'app/data/mock/summary/data';
+import { filesystem_summary as filesystemSummaryData } from 'app/data/mock/summary/filesystem_summary';
 
 @Injectable({
     providedIn: 'root'
@@ -11,6 +12,7 @@ export class SummaryMockApi implements TreoMockApi
 {
     // Private
     private _summary: any;
+    private _filesystemSummary: any;
 
     /**
      * Constructor
@@ -23,6 +25,7 @@ export class SummaryMockApi implements TreoMockApi
     {
         // Set the data
         this._summary = summaryData;
+        this._filesystemSummary = filesystemSummaryData;
 
         // Register the API endpoints
         this.register();
@@ -79,6 +82,16 @@ export class SummaryMockApi implements TreoMockApi
                             temp_history: tempHistory
                         }
                     }
+                ];
+            });
+
+        this._treoMockApiService
+            .onGet('/api/filesystems/summary')
+            .reply(() => {
+
+                return [
+                    200,
+                    _.cloneDeep(this._filesystemSummary)
                 ];
             });
     }

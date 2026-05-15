@@ -413,6 +413,9 @@ func TestDetect_SmartCtlInfo(t *testing.T) {
 		assert.Equal(t, someDeviceProtocol, someDevice.DeviceProtocol)
 		assert.Equal(t, someDeviceType, someDevice.DeviceType)
 		assert.Equal(t, someCapacity, someDevice.Capacity)
+		require.True(t, someDevice.SmartSupport.Available)
+		require.NotNil(t, someDevice.SmartSupport.Enabled)
+		require.True(t, *someDevice.SmartSupport.Enabled)
 	})
 }
 

@@ -22,6 +22,7 @@ import {DeviceSummaryModel} from 'app/core/models/device-summary-model';
 import {apexShortDateTime} from 'app/shared/time-format.utils';
 import {MDADMService} from 'app/modules/mdadm/mdadm.service';
 import {MDADMArrayModel} from 'app/core/models/mdadm-array-model';
+import { FilesystemCapacityModel, FilesystemHostStatusModel } from 'app/core/models/filesystem-summary-model';
 
 @Component({
     selector: 'example',
@@ -35,6 +36,7 @@ export class DashboardComponent implements OnInit, OnDestroy
 {
     summaryData: { [key: string]: DeviceSummaryModel };
     hostGroups: { [hostId: string]: string[] } = {}
+    filesystemSummaryData: { filesystems: Record<string, FilesystemCapacityModel[]>; hosts: Record<string, FilesystemHostStatusModel> } | null = null;
     temperatureOptions: ApexOptions;
     tempDurationKey = 'forever'
     config: AppConfig;
@@ -127,6 +129,10 @@ export class DashboardComponent implements OnInit, OnDestroy
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe((arrays) => {
                 this.mdadmArrays = arrays;
+        this._dashboardService.getFilesystemSummaryData()
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe((data) => {
+                this.filesystemSummaryData = data;
                 this._changeDetectorRef.markForCheck();
             });
     }
@@ -152,6 +158,10 @@ export class DashboardComponent implements OnInit, OnDestroy
         this.router.navigate([currentUrl]);
     }
 
+    deviceDashboardTitle(deviceSummary: DeviceSummaryModel): string {
+        return DeviceTitlePipe.deviceDashboardTitle(deviceSummary.device);
+    }
+
     private _deviceDataTemperatureSeries(): any[] {
         const deviceTemperatureSeries = []
 
@@ -166,7 +176,7 @@ export class DashboardComponent implements OnInit, OnDestroy
                 continue
             }
 
-            const deviceName = DeviceTitlePipe.deviceTitleWithFallback(deviceSummary.device, this.config.dashboard_display)
+            const deviceName = DeviceTitlePipe.deviceDashboardTitle(deviceSummary.device)
 
             const deviceSeriesMetadata = {
                 name: deviceName,
@@ -238,10 +248,13 @@ export class DashboardComponent implements OnInit, OnDestroy
                 foreColor : 'inherit',
                 width     : '100%',
                 height    : '100%',
+                parentHeightOffset: 0,
                 type      : 'area',
                 sparkline : {
                     enabled: false
                 },
+                redrawOnParentResize: true,
+                redrawOnWindowResize: true,
                 toolbar: {
                     show: false
                 },
@@ -259,6 +272,16 @@ export class DashboardComponent implements OnInit, OnDestroy
                 colors : ['#b2bef4', '#c7b2f4', '#b2dff4', '#b2f4e8', '#e8b2f4', '#b2f4c7'],
                 opacity: 0.5,
                 type   : 'gradient'
+            },
+            legend: {
+                show: true,
+                position: 'bottom',
+                horizontalAlign: 'left',
+                fontSize: '12px',
+                itemMargin: {
+                    horizontal: 10,
+                    vertical: 4
+                }
             },
             series : this._deviceDataTemperatureSeries(),
             stroke : {
@@ -358,6 +381,36 @@ export class DashboardComponent implements OnInit, OnDestroy
             }
         }
         return deviceSummaries
+    }
+
+    filesystemHosts(): string[] {
+        if (!this.filesystemSummaryData?.hosts) {
+            return [];
+        }
+        return Object.keys(this.filesystemSummaryData.hosts).sort();
+    }
+
+    filesystemsForHost(hostId: string): FilesystemCapacityModel[] {
+        return [...(this.filesystemSummaryData?.filesystems?.[hostId] || [])]
+            .sort((left, right) => left.mount_point.localeCompare(right.mount_point));
+    }
+
+    filesystemStatusForHost(hostId: string): FilesystemHostStatusModel | null {
+        return this.filesystemSummaryData?.hosts?.[hostId] || null;
+    }
+
+    hasFilesystemData(): boolean {
+        return this.filesystemHosts().length > 0;
+    }
+
+    filesystemUsageClass(filesystem: FilesystemCapacityModel): string {
+        if (filesystem.used_percent >= 90) {
+            return 'bg-red-500';
+        }
+        if (filesystem.used_percent >= 80) {
+            return 'bg-yellow-500';
+        }
+        return 'bg-green-500';
     }
 
     /**

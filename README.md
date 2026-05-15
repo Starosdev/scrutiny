@@ -69,6 +69,15 @@ We follow a predictable release cadence to balance new features with stability:
 
 Releases are created manually, not on every commit. Track upcoming work on the [Release Schedule](https://github.com/users/Starosdev/projects/1) project board.
 
+## Deployments
+
+This repository also owns the testing and production deployment definitions for Scrutiny.
+
+- Testing deploys from the `testing` branch through [`Deploy Testing Stack`](./.github/workflows/deploy-testing.yml)
+- Production deploys from the `master` branch through [`Automated Release and Deploy`](./.github/workflows/release-and-deploy.yml)
+- Zeus testing and production are separate host appdata trees. Use [`docs/DEPLOYMENTS.md`](./docs/DEPLOYMENTS.md) for the current path and port mapping before running host-side deploy helpers.
+- Deployment compose files, env templates, and host expectations live in [docs/DEPLOYMENTS.md](./docs/DEPLOYMENTS.md)
+
 # Introduction
 
 If you run a server with more than a couple of hard drives, you're probably already familiar with S.M.A.R.T and the `smartd` daemon. If not, it's an incredible open source project described as the following:
@@ -151,6 +160,8 @@ See [docs/TROUBLESHOOTING_DEVICE_COLLECTOR.md](./docs/TROUBLESHOOTING_DEVICE_COL
 
 If you're using Docker, getting started is as simple as running the following command:
 
+For a component-level overview of how Omnibus and Hub/Spoke fit together, see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+
 > See [docker/example.omnibus.docker-compose.yml](docker/example.omnibus.docker-compose.yml) for a docker-compose file.
 
 ```bash
@@ -185,6 +196,8 @@ the following Docker images:
 - `ghcr.io/starosdev/scrutiny:latest-web` - Contains the Web UI and API. Only one container necessary
 - `influxdb:2.2` - InfluxDB image, used by the Web container to persist SMART data. Only one container necessary.
   See [docs/TROUBLESHOOTING_INFLUXDB.md](./docs/TROUBLESHOOTING_INFLUXDB.md)
+
+Default CI image publishing currently builds `latest-web` and `latest-collector-performance` for `linux/amd64` and `linux/arm64`. The `arm/v7` variants are no longer part of the default GitHub Actions Docker matrix.
 
 > See [docker/example.hubspoke.docker-compose.yml](docker/example.hubspoke.docker-compose.yml) for a docker-compose file.
 

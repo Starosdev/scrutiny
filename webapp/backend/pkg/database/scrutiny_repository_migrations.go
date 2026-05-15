@@ -26,6 +26,9 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260315000000"
 	_ "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260401000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260421000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260508000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260510000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260514000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -690,17 +693,18 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 
 				// Backfill: compute device_id for all existing devices
 				var devices []struct {
+					RowID        int64 `gorm:"column:row_id"`
 					WWN          string
 					ModelName    string
 					SerialNumber string
 				}
-				if err := tx.Raw("SELECT wwn, model_name, serial_number FROM devices").Scan(&devices).Error; err != nil {
+				if err := tx.Raw("SELECT rowid AS row_id, COALESCE(wwn, '') AS wwn, model_name, serial_number FROM devices").Scan(&devices).Error; err != nil {
 					return fmt.Errorf("could not query devices for backfill: %w", err)
 				}
 
 				for _, dev := range devices {
 					id := deviceid.Generate(dev.ModelName, dev.SerialNumber, dev.WWN)
-					if err := tx.Exec("UPDATE devices SET device_id = ? WHERE wwn = ?", id, dev.WWN).Error; err != nil {
+					if err := tx.Exec("UPDATE devices SET device_id = ? WHERE rowid = ?", id, dev.RowID).Error; err != nil {
 						return fmt.Errorf("could not backfill device_id for %s: %w", dev.WWN, err)
 					}
 				}
@@ -949,6 +953,108 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 			ID: "m20260421000000", // add mdadm_arrays table
 			Migrate: func(tx *gorm.DB) error {
 				return m20260421000000.Migrate(tx)
+			ID: "m20260508000000", // store device smart_support as structured JSON
+			Migrate: func(tx *gorm.DB) error {
+				createSQL := `CREATE TABLE devices_new (
+					device_id TEXT PRIMARY KEY,
+					wwn TEXT,
+					created_at DATETIME,
+					updated_at DATETIME,
+					deleted_at DATETIME,
+					device_name TEXT,
+					device_uuid TEXT,
+					device_serial_id TEXT,
+					device_label TEXT,
+					manufacturer TEXT,
+					model_name TEXT,
+					interface_type TEXT,
+					interface_speed TEXT,
+					serial_number TEXT,
+					firmware TEXT,
+					rotation_speed INTEGER,
+					capacity INTEGER,
+					form_factor TEXT,
+					smart_support TEXT,
+					device_protocol TEXT,
+					device_type TEXT,
+					label TEXT,
+					host_id TEXT,
+					collector_version TEXT,
+					smart_display_mode TEXT DEFAULT 'scrutiny',
+					device_status INTEGER,
+					has_forced_failure NUMERIC DEFAULT 0,
+					archived NUMERIC,
+					muted NUMERIC,
+					missed_ping_timeout_override INTEGER DEFAULT 0
+				)`
+				if err := tx.Exec(createSQL).Error; err != nil {
+					return fmt.Errorf("failed to create devices_new for smart_support migration: %w", err)
+				}
+
+				copySQL := `INSERT INTO devices_new (
+					device_id, wwn, created_at, updated_at, deleted_at,
+					device_name, device_uuid, device_serial_id, device_label,
+					manufacturer, model_name, interface_type, interface_speed,
+					serial_number, firmware, rotation_speed, capacity,
+					form_factor, smart_support, device_protocol, device_type,
+					label, host_id, collector_version, smart_display_mode,
+					device_status, has_forced_failure, archived, muted,
+					missed_ping_timeout_override
+				) SELECT
+					device_id, wwn, created_at, updated_at, deleted_at,
+					device_name, device_uuid, device_serial_id, device_label,
+					manufacturer, model_name, interface_type, interface_speed,
+					serial_number, firmware, rotation_speed, capacity,
+					form_factor,
+					CASE
+						WHEN smart_support IS NULL THEN '{"available":false}'
+						WHEN typeof(smart_support) IN ('integer', 'real') THEN
+							CASE WHEN CAST(smart_support AS INTEGER) <> 0 THEN '{"available":true}' ELSE '{"available":false}' END
+						WHEN lower(trim(CAST(smart_support AS TEXT))) IN ('true', '1') THEN '{"available":true}'
+						WHEN lower(trim(CAST(smart_support AS TEXT))) IN ('false', '0', '') THEN '{"available":false}'
+						ELSE CAST(smart_support AS TEXT)
+					END,
+					device_protocol, device_type,
+					label, host_id, collector_version, smart_display_mode,
+					device_status, has_forced_failure, archived, muted,
+					missed_ping_timeout_override
+				FROM devices`
+				if err := tx.Exec(copySQL).Error; err != nil {
+					return fmt.Errorf("failed to copy devices for smart_support migration: %w", err)
+				}
+
+				if err := tx.Exec("DROP TABLE devices").Error; err != nil {
+					return fmt.Errorf("failed to drop devices during smart_support migration: %w", err)
+				}
+				if err := tx.Exec("ALTER TABLE devices_new RENAME TO devices").Error; err != nil {
+					return fmt.Errorf("failed to rename devices during smart_support migration: %w", err)
+				}
+				if err := tx.Exec("CREATE UNIQUE INDEX idx_devices_wwn ON devices(wwn) WHERE wwn IS NOT NULL AND wwn != ''").Error; err != nil {
+					return fmt.Errorf("failed to recreate idx_devices_wwn: %w", err)
+				}
+				if err := tx.Exec("CREATE INDEX idx_devices_deleted_at ON devices(deleted_at)").Error; err != nil {
+					return fmt.Errorf("failed to recreate idx_devices_deleted_at: %w", err)
+				}
+
+				return tx.AutoMigrate(&m20260508000000.Device{})
+			},
+		},
+		{
+			ID: "m20260510000000", // add filesystem capacity snapshots and host visibility state
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&m20260510000000.FilesystemCapacity{},
+					&m20260510000000.FilesystemHostStatus{},
+				)
+			},
+		},
+		{
+			ID: "m20260514000000", // add Btrfs filesystem and device tables
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&m20260514000000.BtrfsFilesystem{},
+					&m20260514000000.BtrfsDevice{},
+				)
 			},
 		},
 	})

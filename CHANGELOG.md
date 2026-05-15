@@ -2,6 +2,34 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.54.0](https://github.com/Starosdev/scrutiny/compare/v1.53.1...v1.54.0) (2026-05-14)
+
+### Features
+
+* **collector:** add filesystem capacity monitoring and Prometheus metrics ([#359](https://github.com/Starosdev/scrutiny/issues/359), [#298](https://github.com/Starosdev/scrutiny/issues/298)) ([#508](https://github.com/Starosdev/scrutiny/issues/508)) ([3ae7e93](https://github.com/Starosdev/scrutiny/commit/3ae7e9384b9d7aa2deb391c441b6ebd8dba9f28c))
+
+### Bug Fixes
+
+* manual release trigger ([7b8f8e3](https://github.com/Starosdev/scrutiny/commit/7b8f8e3edb78a58ef08e0009c6fff2cc2b632c43))
+
+## [1.53.1](https://github.com/Starosdev/scrutiny/compare/v1.53.0...v1.53.1) (2026-05-10)
+
+### Bug Fixes
+
+* **ci:** normalize GHCR image tags to lowercase in deploy workflows ([#504](https://github.com/Starosdev/scrutiny/issues/504)) ([a4e5262](https://github.com/Starosdev/scrutiny/commit/a4e526275ce1bf82d540b3e68c5cb100f0f7286c))
+
+## [1.53.0](https://github.com/Starosdev/scrutiny/compare/v1.52.0...v1.53.0) (2026-05-09)
+
+### Features
+
+* device merge endpoint, time format preference, and multiple fixes ([#497](https://github.com/Starosdev/scrutiny/issues/497)) ([03de887](https://github.com/Starosdev/scrutiny/commit/03de887138ce3d705be54cc6c8effb870199b8ba)), closes [#490](https://github.com/Starosdev/scrutiny/issues/490) [#445](https://github.com/Starosdev/scrutiny/issues/445) [#488](https://github.com/Starosdev/scrutiny/issues/488) [#480](https://github.com/Starosdev/scrutiny/issues/480) [#475](https://github.com/Starosdev/scrutiny/issues/475) [#472](https://github.com/Starosdev/scrutiny/issues/472) [#443](https://github.com/Starosdev/scrutiny/issues/443) [#423](https://github.com/Starosdev/scrutiny/issues/423) [#426](https://github.com/Starosdev/scrutiny/issues/426) [#427](https://github.com/Starosdev/scrutiny/issues/427) [#428](https://github.com/Starosdev/scrutiny/issues/428) [#429](https://github.com/Starosdev/scrutiny/issues/429) [#490](https://github.com/Starosdev/scrutiny/issues/490) [#488](https://github.com/Starosdev/scrutiny/issues/488) [#480](https://github.com/Starosdev/scrutiny/issues/480) [#475](https://github.com/Starosdev/scrutiny/issues/475) [#472](https://github.com/Starosdev/scrutiny/issues/472) [#445](https://github.com/Starosdev/scrutiny/issues/445) [#443](https://github.com/Starosdev/scrutiny/issues/443) [#426](https://github.com/Starosdev/scrutiny/issues/426) [#423](https://github.com/Starosdev/scrutiny/issues/423)
+
+## [1.52.0](https://github.com/Starosdev/scrutiny/compare/v1.51.0...v1.52.0) (2026-04-30)
+
+### Features
+
+* **settings:** attribute override validation, time format preference, and bug fixes ([#481](https://github.com/Starosdev/scrutiny/issues/481)) ([4218085](https://github.com/Starosdev/scrutiny/commit/42180850fd1947f4d9b2b063fc4a2c3531f0cf88)), closes [#445](https://github.com/Starosdev/scrutiny/issues/445) [#476](https://github.com/Starosdev/scrutiny/issues/476) [#480](https://github.com/Starosdev/scrutiny/issues/480) [#475](https://github.com/Starosdev/scrutiny/issues/475) [#472](https://github.com/Starosdev/scrutiny/issues/472) [#443](https://github.com/Starosdev/scrutiny/issues/443) [#418](https://github.com/Starosdev/scrutiny/issues/418) [#419](https://github.com/Starosdev/scrutiny/issues/419) [#423](https://github.com/Starosdev/scrutiny/issues/423) [#476](https://github.com/Starosdev/scrutiny/issues/476) [#475](https://github.com/Starosdev/scrutiny/issues/475) [#472](https://github.com/Starosdev/scrutiny/issues/472) [#443](https://github.com/Starosdev/scrutiny/issues/443) [#418](https://github.com/Starosdev/scrutiny/issues/418)
+
 ## [1.51.0](https://github.com/Starosdev/scrutiny/compare/v1.50.0...v1.51.0) (2026-04-25)
 
 ### Features
