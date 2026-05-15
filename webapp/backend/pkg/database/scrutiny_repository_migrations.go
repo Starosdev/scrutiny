@@ -953,6 +953,9 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 			ID: "m20260421000000", // add mdadm_arrays table
 			Migrate: func(tx *gorm.DB) error {
 				return m20260421000000.Migrate(tx)
+			},
+		},
+		{
 			ID: "m20260508000000", // store device smart_support as structured JSON
 			Migrate: func(tx *gorm.DB) error {
 				createSQL := `CREATE TABLE devices_new (

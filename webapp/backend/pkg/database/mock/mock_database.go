@@ -69,6 +69,20 @@ func (mr *MockDeviceRepoMockRecorder) DeleteAttributeOverride(ctx, id interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAttributeOverride", reflect.TypeOf((*MockDeviceRepo)(nil).DeleteAttributeOverride), ctx, id)
 }
 
+// DeleteBtrfsFilesystem mocks base method.
+func (m *MockDeviceRepo) DeleteBtrfsFilesystem(ctx context.Context, uuid string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteBtrfsFilesystem", ctx, uuid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteBtrfsFilesystem indicates an expected call of DeleteBtrfsFilesystem.
+func (mr *MockDeviceRepoMockRecorder) DeleteBtrfsFilesystem(ctx, uuid interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteBtrfsFilesystem", reflect.TypeOf((*MockDeviceRepo)(nil).DeleteBtrfsFilesystem), ctx, uuid)
+}
+
 // DeleteDevice mocks base method.
 func (m *MockDeviceRepo) DeleteDevice(ctx context.Context, deviceID string) error {
 	m.ctrl.T.Helper()
@@ -185,6 +199,66 @@ func (mr *MockDeviceRepoMockRecorder) GetAvailableInfluxDBBuckets(ctx interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableInfluxDBBuckets", reflect.TypeOf((*MockDeviceRepo)(nil).GetAvailableInfluxDBBuckets), ctx)
 }
 
+// GetBtrfsFilesystemDetails mocks base method.
+func (m *MockDeviceRepo) GetBtrfsFilesystemDetails(ctx context.Context, uuid string) (models.BtrfsFilesystem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBtrfsFilesystemDetails", ctx, uuid)
+	ret0, _ := ret[0].(models.BtrfsFilesystem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBtrfsFilesystemDetails indicates an expected call of GetBtrfsFilesystemDetails.
+func (mr *MockDeviceRepoMockRecorder) GetBtrfsFilesystemDetails(ctx, uuid interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBtrfsFilesystemDetails", reflect.TypeOf((*MockDeviceRepo)(nil).GetBtrfsFilesystemDetails), ctx, uuid)
+}
+
+// GetBtrfsFilesystems mocks base method.
+func (m *MockDeviceRepo) GetBtrfsFilesystems(ctx context.Context) ([]models.BtrfsFilesystem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBtrfsFilesystems", ctx)
+	ret0, _ := ret[0].([]models.BtrfsFilesystem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBtrfsFilesystems indicates an expected call of GetBtrfsFilesystems.
+func (mr *MockDeviceRepoMockRecorder) GetBtrfsFilesystems(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBtrfsFilesystems", reflect.TypeOf((*MockDeviceRepo)(nil).GetBtrfsFilesystems), ctx)
+}
+
+// GetBtrfsFilesystemsSummary mocks base method.
+func (m *MockDeviceRepo) GetBtrfsFilesystemsSummary(ctx context.Context) (map[string]*models.BtrfsFilesystem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBtrfsFilesystemsSummary", ctx)
+	ret0, _ := ret[0].(map[string]*models.BtrfsFilesystem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBtrfsFilesystemsSummary indicates an expected call of GetBtrfsFilesystemsSummary.
+func (mr *MockDeviceRepoMockRecorder) GetBtrfsFilesystemsSummary(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBtrfsFilesystemsSummary", reflect.TypeOf((*MockDeviceRepo)(nil).GetBtrfsFilesystemsSummary), ctx)
+}
+
+// GetBtrfsMetricsHistory mocks base method.
+func (m *MockDeviceRepo) GetBtrfsMetricsHistory(ctx context.Context, uuid, durationKey string) ([]measurements.BtrfsMetrics, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBtrfsMetricsHistory", ctx, uuid, durationKey)
+	ret0, _ := ret[0].([]measurements.BtrfsMetrics)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBtrfsMetricsHistory indicates an expected call of GetBtrfsMetricsHistory.
+func (mr *MockDeviceRepoMockRecorder) GetBtrfsMetricsHistory(ctx, uuid, durationKey interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBtrfsMetricsHistory", reflect.TypeOf((*MockDeviceRepo)(nil).GetBtrfsMetricsHistory), ctx, uuid, durationKey)
+}
+
 // GetDeviceByID mocks base method.
 func (m *MockDeviceRepo) GetDeviceByID(ctx context.Context, deviceID string) (models.Device, error) {
 	m.ctrl.T.Helper()
@@ -260,6 +334,22 @@ func (mr *MockDeviceRepoMockRecorder) GetDevicesLastSeenTimes(ctx interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDevicesLastSeenTimes", reflect.TypeOf((*MockDeviceRepo)(nil).GetDevicesLastSeenTimes), ctx)
 }
 
+// GetFilesystemSummary mocks base method.
+func (m *MockDeviceRepo) GetFilesystemSummary(ctx context.Context) (map[string][]models.FilesystemCapacity, map[string]*models.FilesystemHostStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetFilesystemSummary", ctx)
+	ret0, _ := ret[0].(map[string][]models.FilesystemCapacity)
+	ret1, _ := ret[1].(map[string]*models.FilesystemHostStatus)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetFilesystemSummary indicates an expected call of GetFilesystemSummary.
+func (mr *MockDeviceRepoMockRecorder) GetFilesystemSummary(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFilesystemSummary", reflect.TypeOf((*MockDeviceRepo)(nil).GetFilesystemSummary), ctx)
+}
+
 // GetLatestMdadmMetrics mocks base method.
 func (m *MockDeviceRepo) GetLatestMdadmMetrics(ctx context.Context, uuid string) (*measurements.MDADMMetrics, error) {
 	m.ctrl.T.Helper()
@@ -273,18 +363,6 @@ func (m *MockDeviceRepo) GetLatestMdadmMetrics(ctx context.Context, uuid string)
 func (mr *MockDeviceRepoMockRecorder) GetLatestMdadmMetrics(ctx, uuid interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestMdadmMetrics", reflect.TypeOf((*MockDeviceRepo)(nil).GetLatestMdadmMetrics), ctx, uuid)
-// MergeDevices mocks base method.
-func (m *MockDeviceRepo) MergeDevices(ctx context.Context, sourceDeviceID, destinationDeviceID string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MergeDevices", ctx, sourceDeviceID, destinationDeviceID)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// MergeDevices indicates an expected call of MergeDevices.
-func (mr *MockDeviceRepoMockRecorder) MergeDevices(ctx, sourceDeviceID, destinationDeviceID interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MergeDevices", reflect.TypeOf((*MockDeviceRepo)(nil).MergeDevices), ctx, sourceDeviceID, destinationDeviceID)
 }
 
 // GetLatestSmartSubmission mocks base method.
@@ -307,25 +385,6 @@ func (m *MockDeviceRepo) GetMdadmArrayDetails(ctx context.Context, uuid string) 
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMdadmArrayDetails", ctx, uuid)
 	ret0, _ := ret[0].(models.MDADMArray)
-// DeleteBtrfsFilesystem mocks base method.
-func (m *MockDeviceRepo) DeleteBtrfsFilesystem(ctx context.Context, uuid string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteBtrfsFilesystem", ctx, uuid)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeleteBtrfsFilesystem indicates an expected call of DeleteBtrfsFilesystem.
-func (mr *MockDeviceRepoMockRecorder) DeleteBtrfsFilesystem(ctx, uuid interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteBtrfsFilesystem", reflect.TypeOf((*MockDeviceRepo)(nil).DeleteBtrfsFilesystem), ctx, uuid)
-}
-
-// GetBtrfsFilesystemDetails mocks base method.
-func (m *MockDeviceRepo) GetBtrfsFilesystemDetails(ctx context.Context, uuid string) (models.BtrfsFilesystem, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBtrfsFilesystemDetails", ctx, uuid)
-	ret0, _ := ret[0].(models.BtrfsFilesystem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -341,17 +400,6 @@ func (m *MockDeviceRepo) GetMdadmArrays(ctx context.Context) ([]models.MDADMArra
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMdadmArrays", ctx)
 	ret0, _ := ret[0].([]models.MDADMArray)
-// GetBtrfsFilesystemDetails indicates an expected call of GetBtrfsFilesystemDetails.
-func (mr *MockDeviceRepoMockRecorder) GetBtrfsFilesystemDetails(ctx, uuid interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBtrfsFilesystemDetails", reflect.TypeOf((*MockDeviceRepo)(nil).GetBtrfsFilesystemDetails), ctx, uuid)
-}
-
-// GetBtrfsFilesystems mocks base method.
-func (m *MockDeviceRepo) GetBtrfsFilesystems(ctx context.Context) ([]models.BtrfsFilesystem, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBtrfsFilesystems", ctx)
-	ret0, _ := ret[0].([]models.BtrfsFilesystem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -367,17 +415,6 @@ func (m *MockDeviceRepo) GetMdadmArraysSummary(ctx context.Context) (map[string]
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMdadmArraysSummary", ctx)
 	ret0, _ := ret[0].(map[string]*models.MDADMArray)
-// GetBtrfsFilesystems indicates an expected call of GetBtrfsFilesystems.
-func (mr *MockDeviceRepoMockRecorder) GetBtrfsFilesystems(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBtrfsFilesystems", reflect.TypeOf((*MockDeviceRepo)(nil).GetBtrfsFilesystems), ctx)
-}
-
-// GetBtrfsFilesystemsSummary mocks base method.
-func (m *MockDeviceRepo) GetBtrfsFilesystemsSummary(ctx context.Context) (map[string]*models.BtrfsFilesystem, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBtrfsFilesystemsSummary", ctx)
-	ret0, _ := ret[0].(map[string]*models.BtrfsFilesystem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -393,17 +430,6 @@ func (m *MockDeviceRepo) GetMdadmMetricsHistory(ctx context.Context, uuid, durat
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMdadmMetricsHistory", ctx, uuid, durationKey)
 	ret0, _ := ret[0].([]measurements.MDADMMetrics)
-// GetBtrfsFilesystemsSummary indicates an expected call of GetBtrfsFilesystemsSummary.
-func (mr *MockDeviceRepoMockRecorder) GetBtrfsFilesystemsSummary(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBtrfsFilesystemsSummary", reflect.TypeOf((*MockDeviceRepo)(nil).GetBtrfsFilesystemsSummary), ctx)
-}
-
-// GetBtrfsMetricsHistory mocks base method.
-func (m *MockDeviceRepo) GetBtrfsMetricsHistory(ctx context.Context, uuid, durationKey string) ([]measurements.BtrfsMetrics, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBtrfsMetricsHistory", ctx, uuid, durationKey)
-	ret0, _ := ret[0].([]measurements.BtrfsMetrics)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -412,80 +438,6 @@ func (m *MockDeviceRepo) GetBtrfsMetricsHistory(ctx context.Context, uuid, durat
 func (mr *MockDeviceRepoMockRecorder) GetMdadmMetricsHistory(ctx, uuid, durationKey interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMdadmMetricsHistory", reflect.TypeOf((*MockDeviceRepo)(nil).GetMdadmMetricsHistory), ctx, uuid, durationKey)
-// GetBtrfsMetricsHistory indicates an expected call of GetBtrfsMetricsHistory.
-func (mr *MockDeviceRepoMockRecorder) GetBtrfsMetricsHistory(ctx, uuid, durationKey interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBtrfsMetricsHistory", reflect.TypeOf((*MockDeviceRepo)(nil).GetBtrfsMetricsHistory), ctx, uuid, durationKey)
-}
-
-// RegisterBtrfsFilesystem mocks base method.
-func (m *MockDeviceRepo) RegisterBtrfsFilesystem(ctx context.Context, filesystem models.BtrfsFilesystem) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RegisterBtrfsFilesystem", ctx, filesystem)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// RegisterBtrfsFilesystem indicates an expected call of RegisterBtrfsFilesystem.
-func (mr *MockDeviceRepoMockRecorder) RegisterBtrfsFilesystem(ctx, filesystem interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterBtrfsFilesystem", reflect.TypeOf((*MockDeviceRepo)(nil).RegisterBtrfsFilesystem), ctx, filesystem)
-}
-
-// SaveBtrfsMetrics mocks base method.
-func (m *MockDeviceRepo) SaveBtrfsMetrics(ctx context.Context, filesystem models.BtrfsFilesystem) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveBtrfsMetrics", ctx, filesystem)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SaveBtrfsMetrics indicates an expected call of SaveBtrfsMetrics.
-func (mr *MockDeviceRepoMockRecorder) SaveBtrfsMetrics(ctx, filesystem interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveBtrfsMetrics", reflect.TypeOf((*MockDeviceRepo)(nil).SaveBtrfsMetrics), ctx, filesystem)
-}
-
-// UpdateBtrfsFilesystemArchived mocks base method.
-func (m *MockDeviceRepo) UpdateBtrfsFilesystemArchived(ctx context.Context, uuid string, archived bool) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateBtrfsFilesystemArchived", ctx, uuid, archived)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateBtrfsFilesystemArchived indicates an expected call of UpdateBtrfsFilesystemArchived.
-func (mr *MockDeviceRepoMockRecorder) UpdateBtrfsFilesystemArchived(ctx, uuid, archived interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBtrfsFilesystemArchived", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateBtrfsFilesystemArchived), ctx, uuid, archived)
-}
-
-// UpdateBtrfsFilesystemLabel mocks base method.
-func (m *MockDeviceRepo) UpdateBtrfsFilesystemLabel(ctx context.Context, uuid, label string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateBtrfsFilesystemLabel", ctx, uuid, label)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateBtrfsFilesystemLabel indicates an expected call of UpdateBtrfsFilesystemLabel.
-func (mr *MockDeviceRepoMockRecorder) UpdateBtrfsFilesystemLabel(ctx, uuid, label interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBtrfsFilesystemLabel", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateBtrfsFilesystemLabel), ctx, uuid, label)
-}
-
-// UpdateBtrfsFilesystemMuted mocks base method.
-func (m *MockDeviceRepo) UpdateBtrfsFilesystemMuted(ctx context.Context, uuid string, muted bool) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateBtrfsFilesystemMuted", ctx, uuid, muted)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateBtrfsFilesystemMuted indicates an expected call of UpdateBtrfsFilesystemMuted.
-func (mr *MockDeviceRepoMockRecorder) UpdateBtrfsFilesystemMuted(ctx, uuid, muted interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBtrfsFilesystemMuted", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateBtrfsFilesystemMuted), ctx, uuid, muted)
 }
 
 // GetMergedOverrides mocks base method.
@@ -605,36 +557,6 @@ func (m *MockDeviceRepo) GetSmartTemperatureHistory(ctx context.Context, duratio
 func (mr *MockDeviceRepoMockRecorder) GetSmartTemperatureHistory(ctx, durationKey interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSmartTemperatureHistory", reflect.TypeOf((*MockDeviceRepo)(nil).GetSmartTemperatureHistory), ctx, durationKey)
-}
-
-// SaveFilesystemSummary mocks base method.
-func (m *MockDeviceRepo) SaveFilesystemSummary(ctx context.Context, payload models.FilesystemSummaryUpload) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveFilesystemSummary", ctx, payload)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SaveFilesystemSummary indicates an expected call of SaveFilesystemSummary.
-func (mr *MockDeviceRepoMockRecorder) SaveFilesystemSummary(ctx, payload interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveFilesystemSummary", reflect.TypeOf((*MockDeviceRepo)(nil).SaveFilesystemSummary), ctx, payload)
-}
-
-// GetFilesystemSummary mocks base method.
-func (m *MockDeviceRepo) GetFilesystemSummary(ctx context.Context) (map[string][]models.FilesystemCapacity, map[string]*models.FilesystemHostStatus, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetFilesystemSummary", ctx)
-	ret0, _ := ret[0].(map[string][]models.FilesystemCapacity)
-	ret1, _ := ret[1].(map[string]*models.FilesystemHostStatus)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// GetFilesystemSummary indicates an expected call of GetFilesystemSummary.
-func (mr *MockDeviceRepoMockRecorder) GetFilesystemSummary(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFilesystemSummary", reflect.TypeOf((*MockDeviceRepo)(nil).GetFilesystemSummary), ctx)
 }
 
 // GetSummary mocks base method.
@@ -757,6 +679,20 @@ func (mr *MockDeviceRepoMockRecorder) LoadSettings(ctx interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadSettings", reflect.TypeOf((*MockDeviceRepo)(nil).LoadSettings), ctx)
 }
 
+// MergeDevices mocks base method.
+func (m *MockDeviceRepo) MergeDevices(ctx context.Context, sourceDeviceID, destinationDeviceID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MergeDevices", ctx, sourceDeviceID, destinationDeviceID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MergeDevices indicates an expected call of MergeDevices.
+func (mr *MockDeviceRepoMockRecorder) MergeDevices(ctx, sourceDeviceID, destinationDeviceID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MergeDevices", reflect.TypeOf((*MockDeviceRepo)(nil).MergeDevices), ctx, sourceDeviceID, destinationDeviceID)
+}
+
 // RecalculateDeviceStatusFromHistory mocks base method.
 func (m *MockDeviceRepo) RecalculateDeviceStatusFromHistory(ctx context.Context, deviceID string) error {
 	m.ctrl.T.Helper()
@@ -769,6 +705,20 @@ func (m *MockDeviceRepo) RecalculateDeviceStatusFromHistory(ctx context.Context,
 func (mr *MockDeviceRepoMockRecorder) RecalculateDeviceStatusFromHistory(ctx, deviceID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecalculateDeviceStatusFromHistory", reflect.TypeOf((*MockDeviceRepo)(nil).RecalculateDeviceStatusFromHistory), ctx, deviceID)
+}
+
+// RegisterBtrfsFilesystem mocks base method.
+func (m *MockDeviceRepo) RegisterBtrfsFilesystem(ctx context.Context, filesystem models.BtrfsFilesystem) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RegisterBtrfsFilesystem", ctx, filesystem)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RegisterBtrfsFilesystem indicates an expected call of RegisterBtrfsFilesystem.
+func (mr *MockDeviceRepoMockRecorder) RegisterBtrfsFilesystem(ctx, filesystem interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterBtrfsFilesystem", reflect.TypeOf((*MockDeviceRepo)(nil).RegisterBtrfsFilesystem), ctx, filesystem)
 }
 
 // RegisterDevice mocks base method.
@@ -840,6 +790,34 @@ func (m *MockDeviceRepo) SaveAttributeOverride(ctx context.Context, override *mo
 func (mr *MockDeviceRepoMockRecorder) SaveAttributeOverride(ctx, override interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveAttributeOverride", reflect.TypeOf((*MockDeviceRepo)(nil).SaveAttributeOverride), ctx, override)
+}
+
+// SaveBtrfsMetrics mocks base method.
+func (m *MockDeviceRepo) SaveBtrfsMetrics(ctx context.Context, filesystem models.BtrfsFilesystem) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveBtrfsMetrics", ctx, filesystem)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveBtrfsMetrics indicates an expected call of SaveBtrfsMetrics.
+func (mr *MockDeviceRepoMockRecorder) SaveBtrfsMetrics(ctx, filesystem interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveBtrfsMetrics", reflect.TypeOf((*MockDeviceRepo)(nil).SaveBtrfsMetrics), ctx, filesystem)
+}
+
+// SaveFilesystemSummary mocks base method.
+func (m *MockDeviceRepo) SaveFilesystemSummary(ctx context.Context, payload models.FilesystemSummaryUpload) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveFilesystemSummary", ctx, payload)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveFilesystemSummary indicates an expected call of SaveFilesystemSummary.
+func (mr *MockDeviceRepoMockRecorder) SaveFilesystemSummary(ctx, payload interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveFilesystemSummary", reflect.TypeOf((*MockDeviceRepo)(nil).SaveFilesystemSummary), ctx, payload)
 }
 
 // SaveMdadmMetrics mocks base method.
@@ -953,6 +931,48 @@ func (m *MockDeviceRepo) SetSettingValue(ctx context.Context, key, value string)
 func (mr *MockDeviceRepoMockRecorder) SetSettingValue(ctx, key, value interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSettingValue", reflect.TypeOf((*MockDeviceRepo)(nil).SetSettingValue), ctx, key, value)
+}
+
+// UpdateBtrfsFilesystemArchived mocks base method.
+func (m *MockDeviceRepo) UpdateBtrfsFilesystemArchived(ctx context.Context, uuid string, archived bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateBtrfsFilesystemArchived", ctx, uuid, archived)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateBtrfsFilesystemArchived indicates an expected call of UpdateBtrfsFilesystemArchived.
+func (mr *MockDeviceRepoMockRecorder) UpdateBtrfsFilesystemArchived(ctx, uuid, archived interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBtrfsFilesystemArchived", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateBtrfsFilesystemArchived), ctx, uuid, archived)
+}
+
+// UpdateBtrfsFilesystemLabel mocks base method.
+func (m *MockDeviceRepo) UpdateBtrfsFilesystemLabel(ctx context.Context, uuid, label string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateBtrfsFilesystemLabel", ctx, uuid, label)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateBtrfsFilesystemLabel indicates an expected call of UpdateBtrfsFilesystemLabel.
+func (mr *MockDeviceRepoMockRecorder) UpdateBtrfsFilesystemLabel(ctx, uuid, label interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBtrfsFilesystemLabel", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateBtrfsFilesystemLabel), ctx, uuid, label)
+}
+
+// UpdateBtrfsFilesystemMuted mocks base method.
+func (m *MockDeviceRepo) UpdateBtrfsFilesystemMuted(ctx context.Context, uuid string, muted bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateBtrfsFilesystemMuted", ctx, uuid, muted)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateBtrfsFilesystemMuted indicates an expected call of UpdateBtrfsFilesystemMuted.
+func (mr *MockDeviceRepoMockRecorder) UpdateBtrfsFilesystemMuted(ctx, uuid, muted interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBtrfsFilesystemMuted", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateBtrfsFilesystemMuted), ctx, uuid, muted)
 }
 
 // UpdateDevice mocks base method.

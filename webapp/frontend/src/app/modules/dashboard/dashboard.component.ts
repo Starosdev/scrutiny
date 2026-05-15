@@ -129,6 +129,7 @@ export class DashboardComponent implements OnInit, OnDestroy
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe((arrays) => {
                 this.mdadmArrays = arrays;
+            });
         this._dashboardService.getFilesystemSummaryData()
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe((data) => {
