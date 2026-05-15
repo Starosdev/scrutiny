@@ -346,3 +346,28 @@ func TestValidateGUID(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateUUID(t *testing.T) {
+	tests := []struct {
+		name    string
+		uuid    string
+		wantErr bool
+	}{
+		{name: "valid lowercase uuid", uuid: "11111111-2222-3333-4444-555555555555", wantErr: false},
+		{name: "uppercase uuid rejected", uuid: "11111111-2222-3333-4444-55555555555A", wantErr: true},
+		{name: "missing dashes", uuid: "11111111222233334444555555555555", wantErr: true},
+		{name: "injection", uuid: `11111111-2222-3333-4444-555555555555" or 1=1`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateUUID(tt.uuid)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Equal(t, ErrInvalidUUID, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

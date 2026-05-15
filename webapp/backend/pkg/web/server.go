@@ -181,6 +181,20 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 				zfs.POST("/pool/:guid/label", handler.UpdateZFSPoolLabel)     // used by UI to set pool label
 				zfs.DELETE("/pool/:guid", handler.DeleteZFSPool)              // used by UI to delete pool
 			}
+
+			btrfs := api.Group("/btrfs")
+			{
+				btrfs.POST("/filesystems/register", handler.RegisterBtrfsFilesystems)
+				btrfs.GET("/summary", handler.GetBtrfsFilesystemsSummary)
+				btrfs.POST("/filesystem/:uuid/metrics", handler.UploadBtrfsMetrics)
+				btrfs.GET("/filesystem/:uuid/details", handler.GetBtrfsFilesystemDetails)
+				btrfs.POST("/filesystem/:uuid/archive", handler.ArchiveBtrfsFilesystem)
+				btrfs.POST("/filesystem/:uuid/unarchive", handler.UnarchiveBtrfsFilesystem)
+				btrfs.POST("/filesystem/:uuid/mute", handler.MuteBtrfsFilesystem)
+				btrfs.POST("/filesystem/:uuid/unmute", handler.UnmuteBtrfsFilesystem)
+				btrfs.POST("/filesystem/:uuid/label", handler.UpdateBtrfsFilesystemLabel)
+				btrfs.DELETE("/filesystem/:uuid", handler.DeleteBtrfsFilesystem)
+			}
 		}
 	}
 

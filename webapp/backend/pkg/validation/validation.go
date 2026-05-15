@@ -25,6 +25,7 @@ var (
 
 	// ErrInvalidGUID is returned when GUID format validation fails
 	ErrInvalidGUID = errors.New("invalid GUID format: must be a decimal number or hexadecimal with 0x prefix")
+	ErrInvalidUUID = errors.New("invalid UUID format: must be lowercase UUID 8-4-4-4-12")
 )
 
 // ValidateWWN validates that a WWN (World Wide Name) follows the expected format.
@@ -56,6 +57,13 @@ func ValidateDeviceIdentifier(id string) error {
 // Used to determine whether to resolve by device_id or by WWN.
 func IsUUIDFormat(id string) bool {
 	return uuidRegex.MatchString(id)
+}
+
+func ValidateUUID(id string) error {
+	if !uuidRegex.MatchString(id) {
+		return ErrInvalidUUID
+	}
+	return nil
 }
 
 // ValidateGUID validates that a ZFS pool GUID follows the expected format.
