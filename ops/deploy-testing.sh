@@ -3,13 +3,14 @@ set -euo pipefail
 
 REPO_DIR="${SCRUTINY_REPO_DIR:-/mnt/user/appdata/scrutiny-dev/repo}"
 ENV_FILE="${SCRUTINY_ENV_FILE:-/mnt/user/appdata/scrutiny-dev/testing.env}"
-COMPOSE_FILE="${SCRUTINY_COMPOSE_FILE:-$REPO_DIR/deploy/testing/docker-compose.yml}"
-PROJECT="${SCRUTINY_PROJECT_NAME:-scrutiny_testing}"
+APPDATA_ROOT="${SCRUTINY_APPDATA_ROOT:-${REPO_DIR%/repo}}"
+COMPOSE_FILE="${SCRUTINY_COMPOSE_FILE:-$APPDATA_ROOT/docker-compose.yml}"
+PROJECT="${SCRUTINY_PROJECT_NAME:-scrutiny-dev}"
 BRANCH="${SCRUTINY_DEPLOY_BRANCH:-develop}"
 
 echo "=== Scrutiny Testing Deploy ==="
 echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-echo "Target appdata root: ${REPO_DIR%/repo}"
+echo "Target appdata root: $APPDATA_ROOT"
 
 cd "$REPO_DIR"
 git fetch origin "$BRANCH"

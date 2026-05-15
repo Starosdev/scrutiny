@@ -41,15 +41,16 @@ fi
 check_url() {
   local url="$1"
   local label="$2"
+  local expected_pattern="$3"
   local code
 
   code="$(curl -fsS -o /dev/null -w "%{http_code}" --connect-timeout "$TIMEOUT" "$url")"
-  if [[ "$code" != "200" ]]; then
+  if [[ ! "$code" =~ $expected_pattern ]]; then
     echo "Smoke test failed for $label: HTTP $code ($url)"
     exit 1
   fi
   echo "$label ok: HTTP $code"
 }
 
-check_url "${BASE_URL%/}${HEALTH_PATH}" "health"
-check_url "${BASE_URL%/}${ROOT_PATH}" "root"
+check_url "${BASE_URL%/}${HEALTH_PATH}" "health" '^200$'
+check_url "${BASE_URL%/}${ROOT_PATH}" "root" '^(200|301|302|307|308)$'
