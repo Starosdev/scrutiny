@@ -22,6 +22,15 @@ For release-version verification details, see [RELEASE_VERSION_VERIFICATION.md](
 
 They do not SSH to Zeus, join NetBird, or restart any remote stack.
 
+## Manual Release Workflow
+
+Production releases are created manually through `.github/workflows/release.yaml` via `workflow_dispatch`.
+
+- Semantic versioning still comes from conventional commits and `semantic-release`.
+- Raw release notes are generated deterministically from merged pull requests between the previous tag and the new tag.
+- The generator uses merged PR metadata as the source of truth, renders note content from each PR's `## Summary` block plus linked issues, and validates that no extracted summary items were dropped before it emits notes.
+- OpenAI polishing is optional and wording-only. If the polish step changes the entry structure or drops sub-bullets, the workflow falls back to the raw deterministic notes.
+
 ## Required GitHub Secrets
 
 - `GITHUB_TOKEN`

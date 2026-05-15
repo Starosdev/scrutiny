@@ -25,6 +25,7 @@ A predictable release cadence with a GitHub Project board for tracking what ship
 
 - **`release.yaml`** -- Removed push triggers to `master`/`beta`. Releases are manual only via `workflow_dispatch`.
 - **`docker-build.yaml`** -- No changes. Docker images still auto-build on push to `master` and `develop`.
+- **Release notes path** -- Raw release notes are generated deterministically from merged PR summaries and linked issues. OpenAI is allowed only to polish wording; if that rewrite drops structure or bullets, the workflow falls back to the raw notes.
 
 ### GitHub Project Board
 
