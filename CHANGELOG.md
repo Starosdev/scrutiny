@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.54.1](https://github.com/Starosdev/scrutiny/compare/v1.54.0...v1.54.1) (2026-05-14)
+
+### Bug Fixes
+
+* **ci,database:** isolate docker build caches and fix WWN backfill migration ([#511](https://github.com/Starosdev/scrutiny/issues/511)) ([f660fca](https://github.com/Starosdev/scrutiny/commit/f660fca9d748361c1ad9185bcf563944012bc7d2)), closes [#506](https://github.com/Starosdev/scrutiny/issues/506) [#509](https://github.com/Starosdev/scrutiny/issues/509) [#506](https://github.com/Starosdev/scrutiny/issues/506) [#509](https://github.com/Starosdev/scrutiny/issues/509)
+
 ## [1.54.0](https://github.com/Starosdev/scrutiny/compare/v1.53.1...v1.54.0) (2026-05-14)
 
 ### Features
