@@ -1,3 +1,5 @@
+@use "../../tailwind/exported/variables";
+
 // -----------------------------------------------------------------------------------------------------
 // @ Manually forked from TailwindCSS preflight.css
 // -----------------------------------------------------------------------------------------------------
@@ -190,7 +192,7 @@ pre,
 code,
 kbd,
 samp {
-    font-family: $treo-font-mono;
+    font-family: variables.$treo-font-mono;
 }
 
 /**

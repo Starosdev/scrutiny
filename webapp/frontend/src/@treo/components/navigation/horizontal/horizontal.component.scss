@@ -1,4 +1,5 @@
-@import 'treo';
+@use "sass:map";
+@use 'treo';
 
 // Root navigation specific
 treo-horizontal-navigation {
@@ -143,11 +144,11 @@ treo-horizontal-navigation {
 // -----------------------------------------------------------------------------------------------------
 // @ Theming
 // -----------------------------------------------------------------------------------------------------
-@include treo-theme {
+@include treo.treo-theme {
 
-    $background: map-get($theme, background);
-    $primary: map-get($theme, primary);
-    $is-dark: map-get($theme, is-dark);
+    $background: map.get(treo.$theme, background);
+    $primary: map.get(treo.$theme, primary);
+    $is-dark: map.get(treo.$theme, is-dark);
 
     // Root navigation specific
     treo-horizontal-navigation {
@@ -158,12 +159,12 @@ treo-horizontal-navigation {
             treo-horizontal-navigation-basic-item,
             treo-horizontal-navigation-branch-item {
 
-                @include treo-breakpoint('gt-xs') {
+                @include treo.treo-breakpoint('gt-xs') {
 
                     &:hover {
 
                         .treo-horizontal-navigation-item-wrapper {
-                            background: map-get($background, hover);
+                            background: map.get($background, hover);
                         }
                     }
                 }
@@ -175,19 +176,19 @@ treo-horizontal-navigation {
                 .treo-horizontal-navigation-item-active {
 
                     .treo-horizontal-navigation-item-title {
-                        color: map-get($primary, default) !important;
+                        color: map.get($primary, default) !important;
                     }
 
                     .treo-horizontal-navigation-item-subtitle {
                         @if ($is-dark) {
-                            color: map-get($primary, 600) !important;
+                            color: map.get($primary, 600) !important;
                         } @else {
-                            color: map-get($primary, 400) !important;
+                            color: map.get($primary, 400) !important;
                         }
                     }
 
                     .treo-horizontal-navigation-item-icon {
-                        color: map-get($primary, default) !important;
+                        color: map.get($primary, default) !important;
                     }
                 }
             }
@@ -198,7 +199,7 @@ treo-horizontal-navigation {
                 .treo-horizontal-navigation-menu-active {
 
                     .treo-horizontal-navigation-item-wrapper {
-                        background: map-get($background, hover);
+                        background: map.get($background, hover);
                     }
                 }
             }
@@ -214,19 +215,19 @@ treo-horizontal-navigation {
             .treo-horizontal-navigation-item-active {
 
                 .treo-horizontal-navigation-item-title {
-                    color: map-get($primary, default) !important;
+                    color: map.get($primary, default) !important;
                 }
 
                 .treo-horizontal-navigation-item-subtitle {
                     @if ($is-dark) {
-                        color: map-get($primary, 600) !important;
+                        color: map.get($primary, 600) !important;
                     } @else {
-                        color: map-get($primary, 400) !important;
+                        color: map.get($primary, 400) !important;
                     }
                 }
 
                 .treo-horizontal-navigation-item-icon {
-                    color: map-get($primary, default) !important;
+                    color: map.get($primary, default) !important;
                 }
             }
         }

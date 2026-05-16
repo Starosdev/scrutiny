@@ -1,4 +1,5 @@
-@import 'treo';
+@use "sass:map";
+@use 'treo';
 
 material-layout {
     position: relative;
@@ -51,12 +52,12 @@ material-layout {
                 box-shadow: 0 0 25px 0 rgba(0, 0, 0, 0.1), 0 0 10px 0 rgba(0, 0, 0, 0.04);
                 overflow: hidden;
 
-                @include treo-breakpoint('lt-md') {
+                @include treo.treo-breakpoint('lt-md') {
                     margin-top: 32px;
                     padding: 12px 0;
                 }
 
-                @include treo-breakpoint('xs') {
+                @include treo.treo-breakpoint('xs') {
                     width: 100%;
                     margin: 0;
                     padding: 0;
@@ -78,7 +79,7 @@ material-layout {
                     position: relative;
                     padding: 0 24px;
 
-                    @include treo-breakpoint('lt-md') {
+                    @include treo.treo-breakpoint('lt-md') {
                         padding: 0 16px;
                     }
                 }
@@ -147,11 +148,11 @@ material-layout {
                         text-overflow: ellipsis;
                     }
 
-                    @include treo-breakpoint('lt-lg') {
+                    @include treo.treo-breakpoint('lt-lg') {
                         max-width: 150px;
                     }
 
-                    @include treo-breakpoint('lt-md') {
+                    @include treo.treo-breakpoint('lt-md') {
                         display: none;
                     }
                 }
@@ -183,7 +184,7 @@ material-layout {
             margin: 0 32px;
             box-shadow: 0 0 25px 0 rgba(0, 0, 0, 0.1), 0 0 10px 0 rgba(0, 0, 0, 0.04);
 
-            @include treo-breakpoint('xs') {
+            @include treo.treo-breakpoint('xs') {
                 width: 100%;
                 margin: 0;
                 box-shadow: none;
@@ -212,13 +213,13 @@ material-layout {
             border-top-width: 1px;
             box-shadow: 0 0 25px 0 rgba(0, 0, 0, 0.1), 0 0 10px 0 rgba(0, 0, 0, 0.04);
 
-            @include treo-breakpoint('xs') {
+            @include treo.treo-breakpoint('xs') {
                 width: 100%;
                 margin: 0;
                 box-shadow: none;
             }
 
-            @include treo-breakpoint('xs') {
+            @include treo.treo-breakpoint('xs') {
                 height: 56px;
                 max-height: 56px;
                 min-height: 56px;
@@ -252,27 +253,27 @@ material-layout {
 // -----------------------------------------------------------------------------------------------------
 // @ Theming
 // -----------------------------------------------------------------------------------------------------
-@include treo-theme {
+@include treo.treo-theme {
 
-    $background: map-get($theme, background);
-    $foreground: map-get($theme, foreground);
-    $primary: map-get($theme, primary);
-    $is-dark: map-get($theme, is-dark);
+    $background: map.get(treo.$theme, background);
+    $foreground: map.get(treo.$theme, foreground);
+    $primary: map.get(treo.$theme, primary);
+    $is-dark: map.get(treo.$theme, is-dark);
 
     material-layout {
 
         > .wrapper {
             @if ($is-dark) {
-                background: map-get($background, card);
+                background: map.get($background, card);
             } @else {
-                background: treo-color('cool-gray', 200);
+                background: treo.treo-color('cool-gray', 200);
             }
 
             > .header {
-                background: map-get($primary, 700);
+                background: map.get($primary, 700);
 
                 .container {
-                    background: map-get($background, card);
+                    background: map.get($background, card);
 
                     .logo {
 
@@ -292,14 +293,14 @@ material-layout {
             }
 
             > .content {
-                background: map-get($background, background);
+                background: map.get($background, background);
             }
 
             > .footer {
                 @if (not $is-dark) {
-                    background: map-get($background, card);
+                    background: map.get($background, card);
                 }
-                color: map-get($foreground, secondary-text);
+                color: map.get($foreground, secondary-text);
             }
         }
     }

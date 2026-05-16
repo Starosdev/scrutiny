@@ -1,3 +1,6 @@
+@use "sass:map";
+@use "../../tailwind/exported/variables";
+
 // -----------------------------------------------------------------------------------------------------
 // @ Mixins
 // -----------------------------------------------------------------------------------------------------
@@ -12,7 +15,7 @@
 ///
 @mixin treo-breakpoint($breakpoint) {
 
-    $mediaQuery: map-get($treo-breakpoints, $breakpoint);
+    $mediaQuery: map.get(variables.$treo-breakpoints, $breakpoint);
 
     @if ($mediaQuery != null) {
 

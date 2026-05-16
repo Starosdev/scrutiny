@@ -1,11 +1,12 @@
-@import 'treo';
+@use "sass:map";
+@use 'treo';
 
 treo-card {
     position: relative;
     display: flex;
     border-radius: 8px;
     overflow: hidden;
-    @include treo-elevation('md');
+    @include treo.treo-elevation('md');
 
     // Flippable
     &.treo-card-flippable {
@@ -13,7 +14,7 @@ treo-card {
         overflow: visible;
         transform-style: preserve-3d;
         transition: transform 1s;
-        @include treo-elevation('none');
+        @include treo.treo-elevation('none');
 
         &.treo-card-flipped {
 
@@ -39,7 +40,7 @@ treo-card {
             border-radius: 8px;
             transition: transform 0.5s ease-out 0s, visibility 0s ease-in 0.2s, opacity 0s ease-in 0.2s;
             backface-visibility: hidden;
-            @include treo-elevation('md');
+            @include treo.treo-elevation('md');
         }
 
         .treo-card-front {
@@ -67,18 +68,18 @@ treo-card {
 // -----------------------------------------------------------------------------------------------------
 // @ Theming
 // -----------------------------------------------------------------------------------------------------
-@include treo-theme {
-    $background: map-get($theme, background);
+@include treo.treo-theme {
+    $background: map.get(treo.$theme, background);
 
     treo-card {
-        background: map-get($background, card);
+        background: map.get($background, card);
 
         &.treo-card-flippable {
             background: transparent;
 
             .treo-card-front,
             .treo-card-back {
-                background: map-get($background, card);
+                background: map.get($background, card);
             }
         }
     }

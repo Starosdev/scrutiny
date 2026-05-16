@@ -1,4 +1,5 @@
-@import 'treo';
+@use "sass:map";
+@use 'treo';
 
 $treo-drawer-width: 320;
 
@@ -132,15 +133,15 @@ treo-drawer {
 // -----------------------------------------------------------------------------------------------------
 // @ Theming
 // -----------------------------------------------------------------------------------------------------
-@include treo-theme {
+@include treo.treo-theme {
 
-    $background: map-get($theme, background);
+    $background: map.get(treo.$theme, background);
 
     treo-drawer {
-        background: map-get($background, card);
+        background: map.get($background, card);
 
         .treo-drawer-content {
-            background: map-get($background, card);
+            background: map.get($background, card);
         }
     }
 }

@@ -1,19 +1,23 @@
+@use "sass:map";
+@use "utilities/colors";
+@use "utilities/theming";
+
 @use '@angular/material' as mat;
 
 // -----------------------------------------------------------------------------------------------------
 // @ Apply Angular Material theme and generate Treo color classes for the theme
 // -----------------------------------------------------------------------------------------------------
-@include treo-theme {
+@include theming.treo-theme {
 
     // Generate Angular Material theme
-    @include mat.all-component-themes($theme);
+    @include mat.all-component-themes(theming.$theme);
 
     // Generate Treo color classes for the theme
-    @include treo-color-classes(
+    @include colors.treo-color-classes(
             (
-                primary: map-get($theme, primary),
-                accent: map-get($theme, accent),
-                warn: map-get($theme, warn)
+                primary: map.get(theming.$theme, primary),
+                accent: map.get(theming.$theme, accent),
+                warn: map.get(theming.$theme, warn)
             )
     );
 }

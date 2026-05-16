@@ -1,3 +1,6 @@
+@use "sass:map";
+@use "utilities/theming";
+
 // -----------------------------------------------------------------------------------------------------
 // @ Highlight.js color scheme overrides
 // -----------------------------------------------------------------------------------------------------
@@ -5,10 +8,10 @@
 // -----------------------------------------------------------------------------------------------------
 // @ Theming
 // -----------------------------------------------------------------------------------------------------
-@include treo-theme {
+@include theming.treo-theme {
 
-    $foreground: map-get($theme, foreground);
-    $is-dark: map-get($theme, is-dark);
+    $foreground: map.get(theming.$theme, foreground);
+    $is-dark: map.get(theming.$theme, is-dark);
 
     // DARK COLOR SCHEME
     @if ($is-dark) {

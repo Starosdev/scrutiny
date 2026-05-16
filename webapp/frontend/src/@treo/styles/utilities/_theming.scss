@@ -1,3 +1,7 @@
+@use "../../../styles/themes";
+
+$theme: null !default;
+
 // -----------------------------------------------------------------------------------------------------
 // @ Mixins
 // -----------------------------------------------------------------------------------------------------
@@ -10,7 +14,7 @@
 ///
 @mixin treo-theme($encapsulated: false) {
 
-    @each $class-name, $theme in $treo-themes {
+    @each $class-name, $theme in themes.$treo-themes {
 
         // Set the theme as global so it can be accessible from outside
         $theme: $theme !global;

@@ -1,4 +1,5 @@
-@import 'treo';
+@use "sass:map";
+@use 'treo';
 
 example {
 
@@ -7,14 +8,14 @@ example {
 // -----------------------------------------------------------------------------------------------------
 // @ Theming
 // -----------------------------------------------------------------------------------------------------
-@include treo-theme {
+@include treo.treo-theme {
 
-    $background: map-get($theme, background);
-    $foreground: map-get($theme, foreground);
-    $primary: map-get($theme, primary);
-    $accent: map-get($theme, accent);
-    $warn: map-get($theme, warn);
-    $is-dark: map-get($theme, is-dark);
+    $background: map.get(treo.$theme, background);
+    $foreground: map.get(treo.$theme, foreground);
+    $primary: map.get(treo.$theme, primary);
+    $accent: map.get(treo.$theme, accent);
+    $warn: map.get(treo.$theme, warn);
+    $is-dark: map.get(treo.$theme, is-dark);
 
     example {
 

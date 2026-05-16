@@ -1,4 +1,5 @@
-@import 'treo';
+@use "sass:map";
+@use 'treo';
 
 $treo-vertical-navigation-width: 280;
 
@@ -471,12 +472,12 @@ treo-vertical-navigation {
 // -----------------------------------------------------------------------------------------------------
 // @ Theming
 // -----------------------------------------------------------------------------------------------------
-@include treo-theme {
+@include treo.treo-theme {
 
-    $background: map-get($theme, background);
-    $foreground: map-get($theme, foreground);
-    $primary: map-get($theme, primary);
-    $is-dark: map-get($theme, is-dark);
+    $background: map.get(treo.$theme, background);
+    $foreground: map.get(treo.$theme, foreground);
+    $primary: map.get(treo.$theme, primary);
+    $is-dark: map.get(treo.$theme, is-dark);
 
     treo-vertical-navigation {
 
@@ -496,22 +497,22 @@ treo-vertical-navigation {
 
             // Normal state
             .treo-vertical-navigation-item-icon {
-                color: treo-color('cool-gray', 400);
+                color: treo.treo-color('cool-gray', 400);
             }
 
             .treo-vertical-navigation-item-title {
                 @if ($is-dark) {
-                    color: treo-color('cool-gray', 300);
+                    color: treo.treo-color('cool-gray', 300);
                 } @else {
-                    color: treo-color('cool-gray', 600);
+                    color: treo.treo-color('cool-gray', 600);
                 }
             }
 
             .treo-vertical-navigation-item-subtitle {
                 @if ($is-dark) {
-                    color: treo-color('cool-gray', 400);
+                    color: treo.treo-color('cool-gray', 400);
                 } @else {
-                    color: treo-color('cool-gray', 500);
+                    color: treo.treo-color('cool-gray', 500);
                 }
             }
 
@@ -520,30 +521,30 @@ treo-vertical-navigation {
                 @if ($is-dark) {
                     background-color: rgba(0, 0, 0, 0.25);
                 } @else {
-                    background-color: treo-color('cool-gray', 100);
+                    background-color: treo.treo-color('cool-gray', 100);
                 }
 
                 .treo-vertical-navigation-item-icon {
                     @if ($is-dark) {
-                        color: treo-color('cool-gray', 100);
+                        color: treo.treo-color('cool-gray', 100);
                     } @else {
-                        color: treo-color('cool-gray', 500);
+                        color: treo.treo-color('cool-gray', 500);
                     }
                 }
 
                 .treo-vertical-navigation-item-title {
                     @if ($is-dark) {
-                        color: treo-color('cool-gray', 50);
+                        color: treo.treo-color('cool-gray', 50);
                     } @else {
-                        color: treo-color('cool-gray', 900);
+                        color: treo.treo-color('cool-gray', 900);
                     }
                 }
 
                 .treo-vertical-navigation-item-subtitle {
                     @if ($is-dark) {
-                        color: treo-color('cool-gray', 300);
+                        color: treo.treo-color('cool-gray', 300);
                     } @else {
-                        color: treo-color('cool-gray', 700);
+                        color: treo.treo-color('cool-gray', 700);
                     }
                 }
             }
@@ -557,9 +558,9 @@ treo-vertical-navigation {
                 .treo-vertical-navigation-item-subtitle,
                 .treo-vertical-navigation-item-arrow {
                     @if ($is-dark) {
-                        color: treo-color('cool-gray', 600);
+                        color: treo.treo-color('cool-gray', 600);
                     } @else {
-                        color: treo-color('cool-gray', 300);
+                        color: treo.treo-color('cool-gray', 300);
                     }
                 }
             }
@@ -579,31 +580,31 @@ treo-vertical-navigation {
                         @if ($is-dark) {
                             background-color: rgba(0, 0, 0, 0.25);
                         } @else {
-                            background-color: treo-color('gray', 50);
+                            background-color: treo.treo-color('gray', 50);
                         }
 
                         .treo-vertical-navigation-item-icon {
                             @if ($is-dark) {
-                                color: treo-color('cool-gray', 100);
+                                color: treo.treo-color('cool-gray', 100);
                             } @else {
-                                color: treo-color('cool-gray', 500);
+                                color: treo.treo-color('cool-gray', 500);
                             }
                         }
 
                         .treo-vertical-navigation-item-title,
                         .treo-vertical-navigation-item-arrow {
                             @if ($is-dark) {
-                                color: treo-color('cool-gray', 50);
+                                color: treo.treo-color('cool-gray', 50);
                             } @else {
-                                color: treo-color('cool-gray', 900);
+                                color: treo.treo-color('cool-gray', 900);
                             }
                         }
 
                         .treo-vertical-navigation-item-subtitle {
                             @if ($is-dark) {
-                                color: treo-color('cool-gray', 300);
+                                color: treo.treo-color('cool-gray', 300);
                             } @else {
-                                color: treo-color('cool-gray', 700);
+                                color: treo.treo-color('cool-gray', 700);
                             }
                         }
                     }
@@ -622,26 +623,26 @@ treo-vertical-navigation {
 
                         .treo-vertical-navigation-item-icon {
                             @if ($is-dark) {
-                                color: treo-color('cool-gray', 100);
+                                color: treo.treo-color('cool-gray', 100);
                             } @else {
-                                color: treo-color('cool-gray', 500);
+                                color: treo.treo-color('cool-gray', 500);
                             }
                         }
 
                         .treo-vertical-navigation-item-title,
                         .treo-vertical-navigation-item-arrow {
                             @if ($is-dark) {
-                                color: treo-color('cool-gray', 50);
+                                color: treo.treo-color('cool-gray', 50);
                             } @else {
-                                color: treo-color('cool-gray', 900);
+                                color: treo.treo-color('cool-gray', 900);
                             }
                         }
 
                         .treo-vertical-navigation-item-subtitle {
                             @if ($is-dark) {
-                                color: treo-color('cool-gray', 300);
+                                color: treo.treo-color('cool-gray', 300);
                             } @else {
-                                color: treo-color('cool-gray', 700);
+                                color: treo.treo-color('cool-gray', 700);
                             }
                         }
                     }
@@ -657,19 +658,19 @@ treo-vertical-navigation {
                 .treo-vertical-navigation-item {
 
                     .treo-vertical-navigation-item-icon {
-                        color: treo-color('cool-gray', 400);
+                        color: treo.treo-color('cool-gray', 400);
                     }
 
                     .treo-vertical-navigation-item-title {
                         @if ($is-dark) {
-                            color: map-get($primary, 400);
+                            color: map.get($primary, 400);
                         } @else {
-                            color: map-get($primary, 600);
+                            color: map.get($primary, 600);
                         }
                     }
 
                     .treo-vertical-navigation-item-subtitle {
-                        color: treo-color('cool-gray', 500);
+                        color: treo.treo-color('cool-gray', 500);
                     }
                 }
             }
@@ -682,11 +683,11 @@ treo-vertical-navigation {
             .treo-vertical-navigation-item {
 
                 .treo-vertical-navigation-item-title {
-                    color: treo-color('cool-gray', 300);
+                    color: treo.treo-color('cool-gray', 300);
                 }
 
                 .treo-vertical-navigation-item-subtitle {
-                    color: treo-color('cool-gray', 400);
+                    color: treo.treo-color('cool-gray', 400);
                 }
 
                 // Active state
@@ -694,15 +695,15 @@ treo-vertical-navigation {
                     background-color: rgba(0, 0, 0, 0.25);
 
                     .treo-vertical-navigation-item-icon {
-                        color: treo-color('cool-gray', 100);
+                        color: treo.treo-color('cool-gray', 100);
                     }
 
                     .treo-vertical-navigation-item-title {
-                        color: treo-color('cool-gray', 50);
+                        color: treo.treo-color('cool-gray', 50);
                     }
 
                     .treo-vertical-navigation-item-subtitle {
-                        color: treo-color('cool-gray', 300);
+                        color: treo.treo-color('cool-gray', 300);
                     }
                 }
 
@@ -714,7 +715,7 @@ treo-vertical-navigation {
                     .treo-vertical-navigation-item-title,
                     .treo-vertical-navigation-item-subtitle,
                     .treo-vertical-navigation-item-arrow {
-                        color: treo-color('cool-gray', 600);
+                        color: treo.treo-color('cool-gray', 600);
                     }
                 }
             }
@@ -733,16 +734,16 @@ treo-vertical-navigation {
                             background-color: rgba(0, 0, 0, 0.25);
 
                             .treo-vertical-navigation-item-icon {
-                                color: treo-color('cool-gray', 100);
+                                color: treo.treo-color('cool-gray', 100);
                             }
 
                             .treo-vertical-navigation-item-title,
                             .treo-vertical-navigation-item-arrow {
-                                color: treo-color('cool-gray', 50);
+                                color: treo.treo-color('cool-gray', 50);
                             }
 
                             .treo-vertical-navigation-item-subtitle {
-                                color: treo-color('cool-gray', 300);
+                                color: treo.treo-color('cool-gray', 300);
                             }
                         }
                     }
@@ -759,16 +760,16 @@ treo-vertical-navigation {
                         .treo-vertical-navigation-item {
 
                             .treo-vertical-navigation-item-icon {
-                                color: treo-color('cool-gray', 100);
+                                color: treo.treo-color('cool-gray', 100);
                             }
 
                             .treo-vertical-navigation-item-title,
                             .treo-vertical-navigation-item-arrow {
-                                color: treo-color('cool-gray', 50);
+                                color: treo.treo-color('cool-gray', 50);
                             }
 
                             .treo-vertical-navigation-item-subtitle {
-                                color: treo-color('cool-gray', 300);
+                                color: treo.treo-color('cool-gray', 300);
                             }
                         }
                     }
@@ -783,7 +784,7 @@ treo-vertical-navigation {
                     .treo-vertical-navigation-item {
 
                         .treo-vertical-navigation-item-title {
-                            color: map-get($primary, 400);
+                            color: map.get($primary, 400);
                         }
                     }
                 }

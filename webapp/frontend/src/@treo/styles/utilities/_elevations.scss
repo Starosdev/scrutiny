@@ -1,3 +1,6 @@
+@use "sass:map";
+@use "../../tailwind/exported/variables";
+
 // -----------------------------------------------------------------------------------------------------
 // @ Mixins
 // -----------------------------------------------------------------------------------------------------
@@ -14,12 +17,16 @@
 @mixin treo-elevation($elevation: 'default', $important: false, $color: rgb(0, 0, 0)) {
 
     // Get the shadow value
-    $shadow: map-get($treo-elevations, $elevation);
+    $shadow: map.get(variables.$treo-elevations, $elevation);
 
     // Throw an error if the shadow does not exist
     @if ($shadow == null) {
         @error 'Elevation `' + $elevation + '` does not exists!';
     }
 
-    box-shadow: #{$shadow} if($important, !important, null);
+    box-shadow: #{$shadow};
+
+    @if ($important) {
+        box-shadow: #{$shadow} !important;
+    }
 }
