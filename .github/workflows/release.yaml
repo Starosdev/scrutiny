@@ -95,10 +95,23 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
+          set -euo pipefail
           chmod +x .github/scripts/generate-release-notes.sh
           chmod +x .github/scripts/polish-release-notes.sh
-          RAW_NOTES=$(.github/scripts/generate-release-notes.sh "${{ steps.prev_tag.outputs.tag }}" "v${{ steps.semantic.outputs.new_release_version }}")
-          echo "$RAW_NOTES" | .github/scripts/polish-release-notes.sh > /tmp/release-notes.md
+          .github/scripts/generate-release-notes.sh "${{ steps.prev_tag.outputs.tag }}" "v${{ steps.semantic.outputs.new_release_version }}" > /tmp/release-notes-raw.md
+          .github/scripts/polish-release-notes.sh < /tmp/release-notes-raw.md > /tmp/release-notes-polished.md
+
+          RAW_ENTRY_COUNT=$(grep -c '^- \*\*' /tmp/release-notes-raw.md || true)
+          RAW_BULLET_COUNT=$(grep -c '^  - ' /tmp/release-notes-raw.md || true)
+          POLISHED_ENTRY_COUNT=$(grep -c '^- \*\*' /tmp/release-notes-polished.md || true)
+          POLISHED_BULLET_COUNT=$(grep -c '^  - ' /tmp/release-notes-polished.md || true)
+
+          if [ "$POLISHED_ENTRY_COUNT" -ne "$RAW_ENTRY_COUNT" ] || [ "$POLISHED_BULLET_COUNT" -lt "$RAW_BULLET_COUNT" ]; then
+            echo "Polish step dropped or collapsed release-note items; using raw deterministic notes instead."
+            cp /tmp/release-notes-raw.md /tmp/release-notes.md
+          else
+            cp /tmp/release-notes-polished.md /tmp/release-notes.md
+          fi
 
       - name: Update release notes
         if: steps.semantic.outputs.new_release_published == 'true'

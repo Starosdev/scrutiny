@@ -7,6 +7,7 @@ This note documents how release binaries get their version string and how to ver
 - `webapp/backend/pkg/version/version.go` stores the shared `VERSION` constant used by the web binary, collector banners, and API `server_version`.
 - `.releaserc.json` updates that constant during the semantic-release prepare step.
 - `.github/workflows/release.yaml` builds binaries from `ref: v${{ needs.release.outputs.new_release_version }}`, which means the release job compiles the tagged release commit after the version constant has been updated.
+- That same workflow is manual-only via `workflow_dispatch` and now generates raw release notes deterministically from merged PR summaries before any optional wording polish is applied.
 - `Makefile` passes only `main.goos` and `main.goarch` through `-ldflags`. It does not overwrite `version.VERSION`.
 
 ## Verified Paths

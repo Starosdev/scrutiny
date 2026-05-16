@@ -30,11 +30,11 @@ Rewrite the following release notes to be clear, concise, and user-facing. Follo
    - **Title** ([#PR](url)) - Closes [#N](url)
      - sub-bullet 1
      - sub-bullet 2
-2. Keep ALL markdown structure exactly as-is: headings (##, ###), dash list items (- **...**), and blank lines between entries. Do NOT add horizontal rules (---) between entries.
+2. Keep ALL markdown structure exactly as-is: headings (##, ###), dash list items (- **...**), sub-bullet counts, ordering, and blank lines between entries. Do NOT add horizontal rules (---) between entries.
 3. Keep ALL PR links ([#NNN](url)) and issue close references (Closes [#N](url), Fixes [#N](url)) exactly as-is. Do not modify URLs or numbers.
 4. Rewrite the bold title to be a clear, concise phrase a non-developer can understand. Do not include conventional commit prefixes.
 5. Rewrite sub-bullets to focus on what changed for the user, not implementation details. Avoid referencing internal function names, database columns, or code structure. Keep 2 spaces of indentation before each sub-bullet.
-6. Keep 2-3 sub-bullets per entry. Combine related points if there are more. Keep single bullets if there is only one.
+6. Preserve every existing sub-bullet. Do not combine, remove, or reorder sub-bullets.
 7. Do not invent new information. Only rephrase what is already there.
 8. Do not add emojis.
 9. Use backticks for config keys, file paths, CLI flags, and command names.

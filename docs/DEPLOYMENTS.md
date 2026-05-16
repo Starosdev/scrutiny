@@ -22,6 +22,15 @@ For release-version verification details, see [RELEASE_VERSION_VERIFICATION.md](
 
 They do not SSH to Zeus, join NetBird, or restart any remote stack.
 
+## Manual Release Workflow
+
+Production releases are created manually through `.github/workflows/release.yaml` via `workflow_dispatch`.
+
+- Semantic versioning still comes from conventional commits and `semantic-release`.
+- Raw release notes are generated deterministically from merged pull requests between the previous tag and the new tag.
+- The generator uses merged PR metadata as the source of truth, renders note content from each PR's `## Summary` block plus linked issues, and validates that no extracted summary items were dropped before it emits notes.
+- OpenAI polishing is optional and wording-only. If the polish step changes the entry structure or drops sub-bullets, the workflow falls back to the raw deterministic notes.
+
 ## Required GitHub Secrets
 
 - `GITHUB_TOKEN`
@@ -40,6 +49,8 @@ If Zeus should move to a new image, do that from the host by pulling the publish
 - production port: `8580`
 - production appdata root: `/mnt/user/appdata/scrutiny`
 - Zeus testing appdata root: `/mnt/user/appdata/scrutiny-dev`
+- production compose file: `/mnt/user/appdata/scrutiny/docker-compose.yml`
+- testing compose file: `/mnt/user/appdata/scrutiny-dev/docker-compose.yml`
 
 ## Current Zeus Host Layout
 
@@ -50,9 +61,26 @@ Zeus does not currently run testing and production from the same appdata tree.
 
 That distinction matters for both manual host rollouts and the helper scripts in `ops/`:
 
-- `ops/deploy-production.sh` should target the production tree under `/mnt/user/appdata/scrutiny`
-- `ops/deploy-testing.sh` should target the Zeus testing tree under `/mnt/user/appdata/scrutiny-dev`
+- `ops/deploy-production.sh` should target `/mnt/user/appdata/scrutiny/docker-compose.yml` with compose project `scrutiny`
+- `ops/deploy-testing.sh` should target `/mnt/user/appdata/scrutiny-dev/docker-compose.yml` with compose project `scrutiny-dev`
 
 If you point the testing deploy helper at `/mnt/user/appdata/scrutiny`, you will be operating on the production environment instead of Zeus testing.
 
-The `deploy/` and `ops/` files in this repo remain available if you want repo-owned host scripts, but they are not invoked by GitHub Actions anymore.
+The `deploy/` compose files in this repo remain available as repo-owned examples, but the Zeus helpers default to the live appdata-root compose files because those are what the host actually runs today.
+
+## Zeus MDADM Testing Notes
+
+Zeus is a valid host for MDADM deploy-path verification:
+
+- pull and restart the `develop-omnibus` image there
+- bind-mount `/proc/mdstat` into the container as `/host/proc/mdstat`
+- verify authenticated API routes such as `POST /api/collectors/run` and `GET /api/mdadm/summary`
+
+Zeus is not a reliable host for end-to-end MDADM array-ingestion validation.
+
+- Zeus runs Unraid
+- Unraid's `/proc/mdstat` content does not match the standard Linux `mdadm` array-line format that the current detector parses
+- the collector can see `/host/proc/mdstat` and still report `No MDADM arrays found`
+
+Use Zeus to verify image rollout, auth, route availability, and container mount wiring.
+Use a standard Linux host with real `mdadm` arrays to validate actual MDADM discovery and summary population.
