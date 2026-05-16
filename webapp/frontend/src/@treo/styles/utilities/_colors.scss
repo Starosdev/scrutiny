@@ -1,3 +1,7 @@
+@use "sass:map";
+@use "sass:meta";
+@use "../../tailwind/exported/variables";
+
 @use '@angular/material' as mat;
 
 // -----------------------------------------------------------------------------------------------------
@@ -15,7 +19,7 @@
 @function treo-color($color, $hue: 500, $opacity: 1) {
 
     // Get the color palette
-    $palette: map-get($treo-colors, $color);
+    $palette: map.get(variables.$treo-colors, $color);
 
     // Make sure the palette is available
     @if ($palette == null) {
@@ -23,7 +27,7 @@
     }
 
     // Get the color
-    $color: map-get($palette, $hue);
+    $color: map.get($palette, $hue);
 
     // Make sure the hue is available
     @if ($color == null) {
@@ -31,7 +35,7 @@
     }
 
     // Apply the opacity if possible
-    @if (type-of($color) == color) {
+    @if (meta.type-of($color) == color) {
         $color: rgba($color, $opacity);
     }
 
@@ -50,7 +54,7 @@
 @function treo-contrast($contrast, $hue: 500, $opacity: 1) {
 
     // Get the color palette
-    $palette: map-get($treo-colors, $contrast);
+    $palette: map.get(variables.$treo-colors, $contrast);
 
     // Make sure the palette is available
     @if ($palette == null) {
@@ -58,7 +62,7 @@
     }
 
     // Get the contrast
-    $contrast: map-get(map-get($palette, contrast), $hue);
+    $contrast: map.get(map.get($palette, contrast), $hue);
 
     // Make sure the hue is available
     @if ($contrast == null) {
@@ -66,7 +70,7 @@
     }
 
     // Apply the opacity if possible
-    @if (type-of($contrast) == color) {
+    @if (meta.type-of($contrast) == color) {
         $color: rgba($contrast, $opacity);
     }
 
@@ -84,7 +88,7 @@
 @function _treo-modify-angular-material-theme-colors($theme) {
 
     // Store the is-dark for convenience
-    $is-dark: map-get($theme, is-dark);
+    $is-dark: map.get($theme, is-dark);
 
     // Generate the modified foreground palette based on
     // Angular Material's mat-xxx-theme-foreground map
@@ -132,10 +136,10 @@
     // and 'background' palettes, add them from above but
     // keep everything else original
     $modified-theme: (
-        primary: map-get($theme, primary),
-        accent: map-get($theme, accent),
-        warn: map-get($theme, warn),
-        is-dark: map-get($theme, is-dark),
+        primary: map.get($theme, primary),
+        accent: map.get($theme, accent),
+        warn: map.get($theme, warn),
+        is-dark: map.get($theme, is-dark),
         foreground: $foreground,
         background: $background
     );
@@ -203,7 +207,7 @@
 /// @param {Map} $text - Text color
 ///
 @function treo-palette($palette, $default: 500, $lighter: 100, $darker: 700, $text: $default) {
-    @return mat.m2-define-palette(map-get($treo-colors, $palette), $default, $lighter, $darker, $text);
+    @return mat.m2-define-palette(map.get(variables.$treo-colors, $palette), $default, $lighter, $darker, $text);
 }
 
 // -----------------------------------------------------------------------------------------------------
@@ -296,8 +300,8 @@
         @each $hue in (100, 200, 300, 400, 500, 600, 700, 800, 900) {
 
             // Get color and contrast
-            $color: map-get($palette, $hue);
-            $contrast: map-get($palette, '#{$hue}-contrast');
+            $color: map.get($palette, $hue);
+            $contrast: map.get($palette, '#{$hue}-contrast');
 
             // If both color and its contrasting color exist, generate the color classes...
             @if ($color != null and $contrast != null) {

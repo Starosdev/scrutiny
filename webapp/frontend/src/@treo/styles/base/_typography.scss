@@ -1,3 +1,9 @@
+@use "sass:map";
+@use "utilities/colors";
+@use "utilities/elevations";
+@use "utilities/theming";
+@use "../../tailwind/exported/variables";
+
 @use '@angular/material' as mat;
 
 // -----------------------------------------------------------------------------------------------------
@@ -5,7 +11,7 @@
 // -----------------------------------------------------------------------------------------------------
 @include mat.all-component-typographies(
         mat.m2-define-legacy-typography-config(
-            $font-family: $treo-font-sans,
+            $font-family: variables.$treo-font-sans,
             $title: mat.m2-define-typography-level(1.25rem, 2rem, 600),
             $body-2: mat.m2-define-typography-level(0.875rem, 1.5rem, 600),
             $button: mat.m2-define-typography-level(0.875rem, 0.875rem, 500),
@@ -22,7 +28,7 @@ html {
 
 body {
     font-size: 0.875rem;
-    font-family: $treo-font-sans;
+    font-family: variables.$treo-font-sans;
 }
 
 // Headings
@@ -116,7 +122,7 @@ a {
 // -----------------------------------------------------------------------------------------------------
 code,
 pre {
-    font-family: $treo-font-mono;
+    font-family: variables.$treo-font-mono;
     font-size: 14px;
     line-height: 1.6;
     border-radius: 4px;
@@ -138,7 +144,7 @@ pre {
 pre {
     padding: 24px;
     margin: 0;
-    @include treo-elevation();
+    @include elevations.treo-elevation();
 }
 
 :not(pre) > code {
@@ -412,11 +418,11 @@ pre {
 // -----------------------------------------------------------------------------------------------------
 // @ Theming
 // -----------------------------------------------------------------------------------------------------
-@include treo-theme {
+@include theming.treo-theme {
 
-    $foreground: map-get($theme, foreground);
-    $primary: map-get($theme, primary);
-    $is-dark: map-get($theme, is-dark);
+    $foreground: map.get(theming.$theme, foreground);
+    $primary: map.get(theming.$theme, primary);
+    $is-dark: map.get(theming.$theme, is-dark);
 
     // -----------------------------------------------------------------------------------------------------
     // @ General
@@ -424,23 +430,23 @@ pre {
 
     // Link helper for applying default 'a' style
     .link {
-        color: map-get($primary, default);
-        border-bottom-color: map-get($primary, default);
+        color: map.get($primary, default);
+        border-bottom-color: map.get($primary, default);
     }
 
     // Breadcrumb
     .breadcrumb {
 
         .path {
-            color: map-get($primary, default);
+            color: map.get($primary, default);
 
             &.current {
-                color: map-get($foreground, secondary-text);
+                color: map.get($foreground, secondary-text);
             }
         }
 
         .separator {
-            color: map-get($foreground, secondary-text);
+            color: map.get($foreground, secondary-text);
         }
     }
 
@@ -450,8 +456,8 @@ pre {
     code,
     pre {
         @if ($is-dark) {
-            color: treo-color('cool-gray', 400);
-            background: treo-color('cool-gray', 800);
+            color: colors.treo-color('cool-gray', 400);
+            background: colors.treo-color('cool-gray', 800);
         } @else {
             background: #FFFFFF;
             color: #728FCB;
@@ -460,11 +466,11 @@ pre {
 
     :not(pre) > code {
         @if ($is-dark) {
-            color: treo-color('cool-gray', 400);
-            background: treo-color('cool-gray', 700);
+            color: colors.treo-color('cool-gray', 400);
+            background: colors.treo-color('cool-gray', 700);
         } @else {
-            color: treo-color('cool-gray', 500);
-            background: treo-color('cool-gray', 200);
+            color: colors.treo-color('cool-gray', 500);
+            background: colors.treo-color('cool-gray', 200);
         }
     }
 
@@ -474,8 +480,8 @@ pre {
     .rich-text {
 
         a {
-            color: map-get($primary, default);
-            border-bottom-color: map-get($primary, default);
+            color: map.get($primary, default);
+            border-bottom-color: map.get($primary, default);
         }
 
         mark {

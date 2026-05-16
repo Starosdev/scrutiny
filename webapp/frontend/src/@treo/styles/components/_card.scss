@@ -1,3 +1,9 @@
+@use "sass:map";
+@use "utilities/breakpoints";
+@use "utilities/colors";
+@use "utilities/icons";
+@use "utilities/theming";
+
 // -----------------------------------------------------------------------------------------------------
 // @ Extended styles for treo-card
 // -----------------------------------------------------------------------------------------------------
@@ -6,7 +12,7 @@ treo-card {
     &.auth-card {
         margin: 8px;
 
-        @include treo-breakpoint('xs') {
+        @include breakpoints.treo-breakpoint('xs') {
             justify-content: center;
             width: 100%;
             height: 100%;
@@ -29,13 +35,13 @@ treo-card {
             max-width: 1200px;
             width: calc(100% - 16px);
 
-            @include treo-breakpoint('lt-md') {
+            @include breakpoints.treo-breakpoint('lt-md') {
                 width: auto;
             }
 
             .form-container {
 
-                @include treo-breakpoint('gt-sm') {
+                @include breakpoints.treo-breakpoint('gt-sm') {
                     padding: 64px;
                 }
             }
@@ -61,14 +67,14 @@ treo-card {
             box-shadow: none;
             border-radius: 0;
 
-            @include treo-breakpoint('lt-md') {
+            @include breakpoints.treo-breakpoint('lt-md') {
                 justify-content: center;
             }
 
             .form-container {
                 width: 45%;
 
-                @include treo-breakpoint('lt-md') {
+                @include breakpoints.treo-breakpoint('lt-md') {
                     width: auto;
                     padding: 40px;
                 }
@@ -76,7 +82,7 @@ treo-card {
                 .form {
                     margin: auto 32px auto auto;
 
-                    @include treo-breakpoint('lt-md') {
+                    @include breakpoints.treo-breakpoint('lt-md') {
                         margin: 0;
                     }
                 }
@@ -91,7 +97,7 @@ treo-card {
                 .form {
                     margin: auto auto auto 32px;
 
-                    @include treo-breakpoint('lt-md') {
+                    @include breakpoints.treo-breakpoint('lt-md') {
                         margin: 0;
                     }
                 }
@@ -109,7 +115,7 @@ treo-card {
             order: 1;
             padding: 48px;
 
-            @include treo-breakpoint('xs') {
+            @include breakpoints.treo-breakpoint('xs') {
                 padding: 40px;
             }
 
@@ -118,7 +124,7 @@ treo-card {
                 min-width: 320px;
                 max-width: 320px;
 
-                @include treo-breakpoint('xs') {
+                @include breakpoints.treo-breakpoint('xs') {
                     max-width: 0;
                 }
 
@@ -217,7 +223,7 @@ treo-card {
                             }
 
                             .mat-icon {
-                                @include treo-icon-size(20);
+                                @include icons.treo-icon-size(20);
                             }
                         }
                     }
@@ -246,7 +252,7 @@ treo-card {
             order: 2;
             overflow: hidden;
 
-            @include treo-breakpoint('lt-md') {
+            @include breakpoints.treo-breakpoint('lt-md') {
                 display: none;
             }
 
@@ -299,16 +305,16 @@ treo-card {
 // -----------------------------------------------------------------------------------------------------
 // @ Theming
 // -----------------------------------------------------------------------------------------------------
-@include treo-theme {
+@include theming.treo-theme {
 
-    $foreground: map-get($theme, foreground);
-    $is-dark: map-get($theme, is-dark);
+    $foreground: map.get(theming.$theme, foreground);
+    $is-dark: map.get(theming.$theme, is-dark);
 
     treo-card {
 
         &.auth-card {
 
-            @include treo-breakpoint('xs') {
+            @include breakpoints.treo-breakpoint('xs') {
                 background: transparent;
             }
 
@@ -316,7 +322,7 @@ treo-card {
             &.fullscreen,
             &.fullscreen-alt {
 
-                @include treo-breakpoint('lt-md') {
+                @include breakpoints.treo-breakpoint('lt-md') {
                     background: transparent;
                 }
             }
@@ -328,18 +334,18 @@ treo-card {
                     .form-footer {
 
                         span {
-                            color: map-get($foreground, secondary-text);
+                            color: map.get($foreground, secondary-text);
                         }
                     }
 
                     .sso {
 
                         .separator {
-                            color: map-get($foreground, secondary-text);
+                            color: map.get($foreground, secondary-text);
 
                             &:before,
                             &:after {
-                                background: map-get($foreground, divider);
+                                background: map.get($foreground, divider);
                             }
                         }
                     }
@@ -349,9 +355,9 @@ treo-card {
             // Content container
             .content-container {
                 @if ($is-dark) {
-                    background: treo-color('cool-gray', 700);
+                    background: colors.treo-color('cool-gray', 700);
                 } @else {
-                    background: treo-color('indigo', 700);
+                    background: colors.treo-color('indigo', 700);
                 }
                 color: white;
 
@@ -359,9 +365,9 @@ treo-card {
 
                     path {
                         @if ($is-dark) {
-                            fill: treo-color('cool-gray', 900);
+                            fill: colors.treo-color('cool-gray', 900);
                         } @else {
-                            fill: treo-color('indigo', 100);
+                            fill: colors.treo-color('indigo', 100);
                         }
                     }
                 }

@@ -10,15 +10,29 @@
 /// @param {Boolean} $important - Set the '!important' tag on the rules
 ///
 @mixin treo-icon-size($size, $important: false) {
-    width: #{($size) + 'px'} if($important, !important, null);
-    height: #{($size) + 'px'} if($important, !important, null);
-    min-width: #{($size) + 'px'} if($important, !important, null);
-    min-height: #{($size) + 'px'} if($important, !important, null);
-    font-size: #{($size) + 'px'} if($important, !important, null);
-    line-height: #{($size) + 'px'} if($important, !important, null);
+    width: #{($size) + 'px'};
+    height: #{($size) + 'px'};
+    min-width: #{($size) + 'px'};
+    min-height: #{($size) + 'px'};
+    font-size: #{($size) + 'px'};
+    line-height: #{($size) + 'px'};
 
     svg {
-        width: #{($size) + 'px'} if($important, !important, null);
-        height: #{($size) + 'px'} if($important, !important, null);
+        width: #{($size) + 'px'};
+        height: #{($size) + 'px'};
+    }
+
+    @if ($important) {
+        width: #{($size) + 'px'} !important;
+        height: #{($size) + 'px'} !important;
+        min-width: #{($size) + 'px'} !important;
+        min-height: #{($size) + 'px'} !important;
+        font-size: #{($size) + 'px'} !important;
+        line-height: #{($size) + 'px'} !important;
+
+        svg {
+            width: #{($size) + 'px'} !important;
+            height: #{($size) + 'px'} !important;
+        }
     }
 }

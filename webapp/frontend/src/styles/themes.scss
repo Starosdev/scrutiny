@@ -1,3 +1,5 @@
+@use "utilities/colors";
+
 // @formatter:off
 
 // -----------------------------------------------------------------------------------------------------
@@ -23,17 +25,17 @@ $treo-themes: (
     // -----------------------------------------------------------------------------------------------------
 
     // Dark theme
-    'treo-theme-dark': treo-dark-theme(
-            treo-palette('teal'),
-            treo-palette('pink', 500),
-            treo-palette('red', 400)
+    'treo-theme-dark': colors.treo-dark-theme(
+            colors.treo-palette('teal'),
+            colors.treo-palette('pink', 500),
+            colors.treo-palette('red', 400)
     ),
 
     // Light theme
-    'treo-theme-light': treo-light-theme(
-            treo-palette('indigo', 600),
-            treo-palette('cool-gray', 800),
-            treo-palette('red', 700)
+    'treo-theme-light': colors.treo-light-theme(
+            colors.treo-palette('indigo', 600),
+            colors.treo-palette('cool-gray', 800),
+            colors.treo-palette('red', 700)
     ),
 
     // -----------------------------------------------------------------------------------------------------
@@ -53,16 +55,16 @@ $treo-themes: (
     // -----------------------------------------------------------------------------------------------------
 
     // Dark theme - DO NOT REMOVE
-    'theme-dark': treo-dark-theme(
-            treo-palette('white'),
-            treo-palette('gray', 800),
-            treo-palette('red', 800)
+    'theme-dark': colors.treo-dark-theme(
+            colors.treo-palette('white'),
+            colors.treo-palette('gray', 800),
+            colors.treo-palette('red', 800)
     ),
 
     // Light theme - DO NOT REMOVE
-    'theme-light': treo-light-theme(
-            treo-palette('black'),
-            treo-palette('gray', 800),
-            treo-palette('red', 800)
+    'theme-light': colors.treo-light-theme(
+            colors.treo-palette('black'),
+            colors.treo-palette('gray', 800),
+            colors.treo-palette('red', 800)
     )
 );

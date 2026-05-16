@@ -1,4 +1,5 @@
-@import 'treo';
+@use "sass:map";
+@use 'treo';
 
 treo-message {
     display: block;
@@ -109,7 +110,7 @@ treo-message {
             margin-left: auto;
 
             .mat-icon {
-                @include treo-icon-size(20);
+                @include treo.treo-icon-size(20);
             }
         }
     }
@@ -132,7 +133,7 @@ treo-message {
             overflow: hidden;
             border-left-width: 4px;
             border-radius: 4px;
-            @include treo-elevation('xl');
+            @include treo.treo-elevation('xl');
         }
     }
 
@@ -166,14 +167,14 @@ treo-message {
 // -----------------------------------------------------------------------------------------------------
 // @ Theming
 // -----------------------------------------------------------------------------------------------------
-@include treo-theme {
+@include treo.treo-theme {
 
-    $background: map-get($theme, background);
-    $foreground: map-get($theme, foreground);
-    $primary: map-get($theme, primary);
-    $accent: map-get($theme, accent);
-    $warn: map-get($theme, warn);
-    $is-dark: map-get($theme, is-dark);
+    $background: map.get(treo.$theme, background);
+    $foreground: map.get(treo.$theme, foreground);
+    $primary: map.get(treo.$theme, primary);
+    $accent: map.get(treo.$theme, accent);
+    $warn: map.get(treo.$theme, warn);
+    $is-dark: map.get(treo.$theme, is-dark);
 
     treo-message {
 
@@ -189,10 +190,10 @@ treo-message {
         &.treo-message-appearance-border {
 
             .treo-message-container {
-                background: map-get($background, card);
+                background: map.get($background, card);
 
                 .treo-message-message {
-                    color: map-get($foreground, secondary-text);
+                    color: map.get($foreground, secondary-text);
                 }
             }
 
@@ -200,11 +201,11 @@ treo-message {
             &.treo-message-type-primary {
 
                 .treo-message-container {
-                    border-left-color: map-get($primary, default);
+                    border-left-color: map.get($primary, default);
 
                     .treo-message-title,
                     .treo-message-icon {
-                        color: map-get($primary, default);
+                        color: map.get($primary, default);
                     }
                 }
             }
@@ -213,11 +214,11 @@ treo-message {
             &.treo-message-type-accent {
 
                 .treo-message-container {
-                    border-left-color: map-get($accent, default);
+                    border-left-color: map.get($accent, default);
 
                     .treo-message-title,
                     .treo-message-icon {
-                        color: map-get($accent, default);
+                        color: map.get($accent, default);
                     }
                 }
             }
@@ -226,11 +227,11 @@ treo-message {
             &.treo-message-type-warn {
 
                 .treo-message-container {
-                    border-left-color: map-get($warn, default);
+                    border-left-color: map.get($warn, default);
 
                     .treo-message-title,
                     .treo-message-icon {
-                        color: map-get($warn, default);
+                        color: map.get($warn, default);
                     }
                 }
             }
@@ -239,11 +240,11 @@ treo-message {
             &.treo-message-type-basic {
 
                 .treo-message-container {
-                    border-left-color: treo-color('cool-gray', 600);
+                    border-left-color: treo.treo-color('cool-gray', 600);
 
                     .treo-message-title,
                     .treo-message-icon {
-                        color: treo-color('cool-gray', 600);
+                        color: treo.treo-color('cool-gray', 600);
                     }
                 }
             }
@@ -252,11 +253,11 @@ treo-message {
             &.treo-message-type-info {
 
                 .treo-message-container {
-                    border-left-color: treo-color('blue', 600);
+                    border-left-color: treo.treo-color('blue', 600);
 
                     .treo-message-title,
                     .treo-message-icon {
-                        color: treo-color('blue', 700);
+                        color: treo.treo-color('blue', 700);
                     }
                 }
             }
@@ -265,11 +266,11 @@ treo-message {
             &.treo-message-type-success {
 
                 .treo-message-container {
-                    border-left-color: treo-color('green', 500);
+                    border-left-color: treo.treo-color('green', 500);
 
                     .treo-message-title,
                     .treo-message-icon {
-                        color: treo-color('green', 500);
+                        color: treo.treo-color('green', 500);
                     }
                 }
             }
@@ -278,11 +279,11 @@ treo-message {
             &.treo-message-type-warning {
 
                 .treo-message-container {
-                    border-left-color: treo-color('yellow', 400);
+                    border-left-color: treo.treo-color('yellow', 400);
 
                     .treo-message-title,
                     .treo-message-icon {
-                        color: treo-color('yellow', 400);
+                        color: treo.treo-color('yellow', 400);
                     }
                 }
             }
@@ -291,11 +292,11 @@ treo-message {
             &.treo-message-type-error {
 
                 .treo-message-container {
-                    border-left-color: treo-color('red', 600);
+                    border-left-color: treo.treo-color('red', 600);
 
                     .treo-message-title,
                     .treo-message-icon {
-                        color: treo-color('red', 700);
+                        color: treo.treo-color('red', 700);
                     }
                 }
             }
@@ -308,12 +309,12 @@ treo-message {
             &.treo-message-type-primary {
 
                 .treo-message-container {
-                    background: map-get($primary, default);
-                    color: map-get($primary, default-contrast);
+                    background: map.get($primary, default);
+                    color: map.get($primary, default-contrast);
 
                     code {
-                        background: map-get($primary, 600);
-                        color: map-get($primary, '600-contrast');
+                        background: map.get($primary, 600);
+                        color: map.get($primary, '600-contrast');
                     }
                 }
             }
@@ -322,12 +323,12 @@ treo-message {
             &.treo-message-type-accent {
 
                 .treo-message-container {
-                    background: map-get($accent, default);
-                    color: map-get($accent, default-contrast);
+                    background: map.get($accent, default);
+                    color: map.get($accent, default-contrast);
 
                     code {
-                        background: map-get($accent, 600);
-                        color: map-get($accent, '600-contrast');
+                        background: map.get($accent, 600);
+                        color: map.get($accent, '600-contrast');
                     }
                 }
             }
@@ -336,12 +337,12 @@ treo-message {
             &.treo-message-type-warn {
 
                 .treo-message-container {
-                    background: map-get($warn, default);
-                    color: map-get($warn, default-contrast);
+                    background: map.get($warn, default);
+                    color: map.get($warn, default-contrast);
 
                     code {
-                        background: map-get($warn, 800);
-                        color: map-get($warn, '800-contrast');
+                        background: map.get($warn, 800);
+                        color: map.get($warn, '800-contrast');
                     }
                 }
             }
@@ -350,12 +351,12 @@ treo-message {
             &.treo-message-type-basic {
 
                 .treo-message-container {
-                    background: treo-color('cool-gray', 500);
-                    color: treo-color('cool-gray', 50);
+                    background: treo.treo-color('cool-gray', 500);
+                    color: treo.treo-color('cool-gray', 50);
 
                     code {
-                        background: treo-color('cool-gray', 600);
-                        color: treo-color('cool-gray', 50);
+                        background: treo.treo-color('cool-gray', 600);
+                        color: treo.treo-color('cool-gray', 50);
                     }
                 }
             }
@@ -364,12 +365,12 @@ treo-message {
             &.treo-message-type-info {
 
                 .treo-message-container {
-                    background: treo-color('blue', 600);
-                    color: treo-color('blue', 50);
+                    background: treo.treo-color('blue', 600);
+                    color: treo.treo-color('blue', 50);
 
                     code {
-                        background: treo-color('blue', 800);
-                        color: treo-color('blue', 50);
+                        background: treo.treo-color('blue', 800);
+                        color: treo.treo-color('blue', 50);
                     }
                 }
             }
@@ -378,12 +379,12 @@ treo-message {
             &.treo-message-type-success {
 
                 .treo-message-container {
-                    background: treo-color('green', 500);
-                    color: treo-color('green', 50);
+                    background: treo.treo-color('green', 500);
+                    color: treo.treo-color('green', 50);
 
                     code {
-                        background: treo-color('green', 600);
-                        color: treo-color('green', 50);
+                        background: treo.treo-color('green', 600);
+                        color: treo.treo-color('green', 50);
                     }
                 }
             }
@@ -392,12 +393,12 @@ treo-message {
             &.treo-message-type-warning {
 
                 .treo-message-container {
-                    background: treo-color('yellow', 400);
-                    color: treo-color('yellow', 50);
+                    background: treo.treo-color('yellow', 400);
+                    color: treo.treo-color('yellow', 50);
 
                     code {
-                        background: treo-color('yellow', 600);
-                        color: treo-color('yellow', 50);
+                        background: treo.treo-color('yellow', 600);
+                        color: treo.treo-color('yellow', 50);
                     }
                 }
             }
@@ -406,12 +407,12 @@ treo-message {
             &.treo-message-type-error {
 
                 .treo-message-container {
-                    background: treo-color('red', 600);
-                    color: treo-color('red', 50);
+                    background: treo.treo-color('red', 600);
+                    color: treo.treo-color('red', 50);
 
                     code {
-                        background: treo-color('red', 800);
-                        color: treo-color('red', 50);
+                        background: treo.treo-color('red', 800);
+                        color: treo.treo-color('red', 50);
                     }
                 }
             }
@@ -426,17 +427,17 @@ treo-message {
                 .treo-message-container {
                     @if ($is-dark) {
                         background: transparent;
-                        color: map-get($primary, 300);
-                        box-shadow: inset 0 0 0 1px map-get($primary, 300);
+                        color: map.get($primary, 300);
+                        box-shadow: inset 0 0 0 1px map.get($primary, 300);
                     } @else {
-                        background: map-get($primary, 50);
-                        color: map-get($primary, 800);
-                        box-shadow: inset 0 0 0 1px map-get($primary, 400);
+                        background: map.get($primary, 50);
+                        color: map.get($primary, 800);
+                        box-shadow: inset 0 0 0 1px map.get($primary, 400);
                     }
 
                     code {
-                        background: map-get($primary, 200);
-                        color: map-get($primary, 800);
+                        background: map.get($primary, 200);
+                        color: map.get($primary, 800);
                     }
                 }
             }
@@ -447,17 +448,17 @@ treo-message {
                 .treo-message-container {
                     @if ($is-dark) {
                         background: transparent;
-                        color: map-get($accent, 300);
-                        box-shadow: inset 0 0 0 1px map-get($accent, 300);
+                        color: map.get($accent, 300);
+                        box-shadow: inset 0 0 0 1px map.get($accent, 300);
                     } @else {
-                        background: map-get($accent, 50);
-                        color: map-get($accent, 800);
-                        box-shadow: inset 0 0 0 1px map-get($accent, 400);
+                        background: map.get($accent, 50);
+                        color: map.get($accent, 800);
+                        box-shadow: inset 0 0 0 1px map.get($accent, 400);
                     }
 
                     code {
-                        background: map-get($accent, 200);
-                        color: map-get($accent, 800);
+                        background: map.get($accent, 200);
+                        color: map.get($accent, 800);
                     }
                 }
             }
@@ -468,17 +469,17 @@ treo-message {
                 .treo-message-container {
                     @if ($is-dark) {
                         background: transparent;
-                        color: map-get($warn, 300);
-                        box-shadow: inset 0 0 0 1px map-get($warn, 300);
+                        color: map.get($warn, 300);
+                        box-shadow: inset 0 0 0 1px map.get($warn, 300);
                     } @else {
-                        background: map-get($warn, 50);
-                        color: map-get($warn, 800);
-                        box-shadow: inset 0 0 0 1px map-get($warn, 400);
+                        background: map.get($warn, 50);
+                        color: map.get($warn, 800);
+                        box-shadow: inset 0 0 0 1px map.get($warn, 400);
                     }
 
                     code {
-                        background: map-get($warn, 200);
-                        color: map-get($warn, 800);
+                        background: map.get($warn, 200);
+                        color: map.get($warn, 800);
                     }
                 }
             }
@@ -489,17 +490,17 @@ treo-message {
                 .treo-message-container {
                     @if ($is-dark) {
                         background: transparent;
-                        color: treo-color('cool-gray', 300);
-                        box-shadow: inset 0 0 0 1px treo-color('cool-gray', 300);
+                        color: treo.treo-color('cool-gray', 300);
+                        box-shadow: inset 0 0 0 1px treo.treo-color('cool-gray', 300);
                     } @else {
-                        background: treo-color('cool-gray', 50);
-                        color: treo-color('cool-gray', 800);
-                        box-shadow: inset 0 0 0 1px treo-color('cool-gray', 400);
+                        background: treo.treo-color('cool-gray', 50);
+                        color: treo.treo-color('cool-gray', 800);
+                        box-shadow: inset 0 0 0 1px treo.treo-color('cool-gray', 400);
                     }
 
                     code {
-                        background: treo-color('cool-gray', 200);
-                        color: treo-color('cool-gray', 800);
+                        background: treo.treo-color('cool-gray', 200);
+                        color: treo.treo-color('cool-gray', 800);
                     }
                 }
             }
@@ -510,17 +511,17 @@ treo-message {
                 .treo-message-container {
                     @if ($is-dark) {
                         background: transparent;
-                        color: treo-color('blue', 300);
-                        box-shadow: inset 0 0 0 1px treo-color('blue', 300);
+                        color: treo.treo-color('blue', 300);
+                        box-shadow: inset 0 0 0 1px treo.treo-color('blue', 300);
                     } @else {
-                        background: treo-color('blue', 50);
-                        color: treo-color('blue', 800);
-                        box-shadow: inset 0 0 0 1px treo-color('blue', 400);
+                        background: treo.treo-color('blue', 50);
+                        color: treo.treo-color('blue', 800);
+                        box-shadow: inset 0 0 0 1px treo.treo-color('blue', 400);
                     }
 
                     code {
-                        background: treo-color('blue', 200);
-                        color: treo-color('blue', 800);
+                        background: treo.treo-color('blue', 200);
+                        color: treo.treo-color('blue', 800);
                     }
                 }
             }
@@ -531,17 +532,17 @@ treo-message {
                 .treo-message-container {
                     @if ($is-dark) {
                         background: transparent;
-                        color: treo-color('green', 300);
-                        box-shadow: inset 0 0 0 1px treo-color('green', 300);
+                        color: treo.treo-color('green', 300);
+                        box-shadow: inset 0 0 0 1px treo.treo-color('green', 300);
                     } @else {
-                        background: treo-color('green', 50);
-                        color: treo-color('green', 800);
-                        box-shadow: inset 0 0 0 1px treo-color('green', 400);
+                        background: treo.treo-color('green', 50);
+                        color: treo.treo-color('green', 800);
+                        box-shadow: inset 0 0 0 1px treo.treo-color('green', 400);
                     }
 
                     code {
-                        background: treo-color('green', 200);
-                        color: treo-color('green', 800);
+                        background: treo.treo-color('green', 200);
+                        color: treo.treo-color('green', 800);
                     }
                 }
             }
@@ -552,17 +553,17 @@ treo-message {
                 .treo-message-container {
                     @if ($is-dark) {
                         background: transparent;
-                        color: treo-color('yellow', 300);
-                        box-shadow: inset 0 0 0 1px treo-color('yellow', 300);
+                        color: treo.treo-color('yellow', 300);
+                        box-shadow: inset 0 0 0 1px treo.treo-color('yellow', 300);
                     } @else {
-                        background: treo-color('yellow', 50);
-                        color: treo-color('yellow', 800);
-                        box-shadow: inset 0 0 0 1px treo-color('yellow', 400);
+                        background: treo.treo-color('yellow', 50);
+                        color: treo.treo-color('yellow', 800);
+                        box-shadow: inset 0 0 0 1px treo.treo-color('yellow', 400);
                     }
 
                     code {
-                        background: treo-color('yellow', 200);
-                        color: treo-color('yellow', 800);
+                        background: treo.treo-color('yellow', 200);
+                        color: treo.treo-color('yellow', 800);
                     }
                 }
             }
@@ -573,17 +574,17 @@ treo-message {
                 .treo-message-container {
                     @if ($is-dark) {
                         background: transparent;
-                        color: treo-color('red', 500);
-                        box-shadow: inset 0 0 0 1px treo-color('red', 500);
+                        color: treo.treo-color('red', 500);
+                        box-shadow: inset 0 0 0 1px treo.treo-color('red', 500);
                     } @else {
-                        background: treo-color('red', 50);
-                        color: treo-color('red', 800);
-                        box-shadow: inset 0 0 0 1px treo-color('red', 400);
+                        background: treo.treo-color('red', 50);
+                        color: treo.treo-color('red', 800);
+                        box-shadow: inset 0 0 0 1px treo.treo-color('red', 400);
                     }
 
                     code {
-                        background: treo-color('red', 200);
-                        color: treo-color('red', 800);
+                        background: treo.treo-color('red', 200);
+                        color: treo.treo-color('red', 800);
                     }
                 }
             }
