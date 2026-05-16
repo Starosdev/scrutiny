@@ -2,6 +2,13 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.55.1](https://github.com/Starosdev/scrutiny/compare/v1.55.0...v1.55.1) (2026-05-16)
+
+### Bug Fixes
+
+* harden release notes generation ([cf1fd49](https://github.com/Starosdev/scrutiny/commit/cf1fd49dd42e6aff75fe874c69b09f8c35c86ad3))
+* **ops:** align Zeus deploy helpers with live stacks ([a4a32a3](https://github.com/Starosdev/scrutiny/commit/a4a32a377eb115abc00ffe17c0f8231efb67c6f2))
+
 ## [1.55.0](https://github.com/Starosdev/scrutiny/compare/v1.54.1...v1.55.0) (2026-05-15)
 
 ### Features
