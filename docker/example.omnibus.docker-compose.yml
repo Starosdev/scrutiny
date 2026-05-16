@@ -23,6 +23,15 @@ services:
       - "8086:8086" # influxDB admin
     volumes:
       - /run/udev:/run/udev:ro
+      # Mounting devices individually with device tends to work better
+      - /dev:/dev:ro
+      # MDADM: Docker blocks direct mounts into /proc, so the collector
+      # checks /host/proc/mdstat first, then falls back to /proc/mdstat.
+      # Comment out if you don't use MDADM RAID arrays.
+      # This only proves the container can read the host file.
+      # Platforms such as Unraid expose non-standard mdstat content and may
+      # still produce an empty MDADM summary even with this mount present.
+      - /proc/mdstat:/host/proc/mdstat:ro
       - ./config:/opt/scrutiny/config
       - ./influxdb:/opt/scrutiny/influxdb
     # environment:

@@ -45,6 +45,19 @@ For distributed deployments, separate templates are available:
 
 See [Hub/Spoke Installation](INSTALL_HUB_SPOKE.md) for architecture details.
 
+## MDADM Note
+
+Unraid is not a good end-to-end validation target for the Linux MDADM feature in this repository.
+
+- you can still mount `/proc/mdstat` into the container for smoke testing
+- that validates deploy wiring and confirms the container can read the host file
+- but Unraid exposes array information in a different format than the standard Linux `mdadm` layout
+- the current MDADM detector expects standard lines such as `md0 : active ...`
+
+Because of that, an Unraid host can still return an empty MDADM summary even when `/host/proc/mdstat` is mounted correctly.
+
+For real MDADM array-ingestion validation, use a standard Linux host with actual `mdadm` arrays.
+
 ## Third-Party Docker Images
 
 As a docker image can be created using various OS bases, the image choice is entirely the users choice. Recommendations of a specific image from a specific maintainer is beyond the scope of this guide. However, to provide some context given the number of questions posed regarding the various versions available:

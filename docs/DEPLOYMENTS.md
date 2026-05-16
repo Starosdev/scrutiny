@@ -67,3 +67,20 @@ That distinction matters for both manual host rollouts and the helper scripts in
 If you point the testing deploy helper at `/mnt/user/appdata/scrutiny`, you will be operating on the production environment instead of Zeus testing.
 
 The `deploy/` compose files in this repo remain available as repo-owned examples, but the Zeus helpers default to the live appdata-root compose files because those are what the host actually runs today.
+
+## Zeus MDADM Testing Notes
+
+Zeus is a valid host for MDADM deploy-path verification:
+
+- pull and restart the `develop-omnibus` image there
+- bind-mount `/proc/mdstat` into the container as `/host/proc/mdstat`
+- verify authenticated API routes such as `POST /api/collectors/run` and `GET /api/mdadm/summary`
+
+Zeus is not a reliable host for end-to-end MDADM array-ingestion validation.
+
+- Zeus runs Unraid
+- Unraid's `/proc/mdstat` content does not match the standard Linux `mdadm` array-line format that the current detector parses
+- the collector can see `/host/proc/mdstat` and still report `No MDADM arrays found`
+
+Use Zeus to verify image rollout, auth, route availability, and container mount wiring.
+Use a standard Linux host with real `mdadm` arrays to validate actual MDADM discovery and summary population.
