@@ -140,6 +140,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.POST("/device/:id/unmute", handler.UnmuteDevice)                               // used by UI to unmute device
 			api.POST("/device/:id/reset-status", handler.ResetDeviceStatus)                    // used by UI to reset device failed status
 			api.POST("/device/:id/label", handler.UpdateDeviceLabel)                           // used by UI to set device label
+			api.POST("/device/:id/max-tbw", handler.UpdateDeviceMaxTBW)                        // used by UI to set per-device rated TBW
 			api.POST("/device/:id/smart-display-mode", handler.UpdateDeviceSmartDisplayMode)   // used by UI to set SMART attribute display mode
 			api.POST("/device/:id/missed-ping-timeout", handler.UpdateDeviceMissedPingTimeout) // used by UI to set per-device missed ping timeout override
 			api.POST("/device/:id/merge_into", handler.MergeDeviceInto)                        // used by API/CLI to merge duplicate devices

@@ -29,6 +29,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260508000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260510000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260514000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260516000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -1058,6 +1059,12 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 					&m20260514000000.BtrfsFilesystem{},
 					&m20260514000000.BtrfsDevice{},
 				)
+			},
+		},
+		{
+			ID: "m20260516000000", // add per-device endurance overrides
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&m20260516000000.DeviceEnduranceOverride{})
 			},
 		},
 	})

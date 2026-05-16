@@ -74,6 +74,10 @@ export class DetailService {
         return this._httpClient.post(getBasePath() + `/api/device/${deviceId}/label`, { label });
     }
 
+    setMaxTBW(deviceId: string, maxTBW: number): Observable<any> {
+        return this._httpClient.post(getBasePath() + `/api/device/${deviceId}/max-tbw`, { max_tbw: maxTBW });
+    }
+
     setSmartDisplayMode(deviceId: string, mode: string): Observable<any> {
         return this._httpClient.post(getBasePath() + `/api/device/${deviceId}/smart-display-mode`, { smart_display_mode: mode });
     }

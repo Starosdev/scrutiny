@@ -33,6 +33,7 @@ type Device struct {
 	CollectorVersion          string              `json:"collector_version"`
 	HostId                    string              `json:"host_id"`
 	Label                     string              `json:"label"`
+	MaxTBW                    *float64            `json:"max_tbw,omitempty" gorm:"-"`
 	FormFactor                string              `json:"form_factor"`
 	SmartSupport              common.SmartSupport `json:"smart_support"`
 	DeviceProtocol            string              `json:"device_protocol"`

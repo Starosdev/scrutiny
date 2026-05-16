@@ -238,6 +238,13 @@
               <div class="text-secondary text-md">TBs Written</div>
             </div>
           }
+          <div class="my-2 col-span-1">
+            <div class="flex items-center gap-2">
+              <span>{{device?.max_tbw != null ? (device.max_tbw | number:'1.0-2') + ' TB' : 'Not set'}}</span>
+              <button mat-stroked-button type="button" (click)="updateMaxTBW(); $event.stopPropagation()">Set</button>
+            </div>
+            <div class="text-secondary text-md">Rated TBW</div>
+          </div>
           @if (getTBsRead() !== null) {
             <div class="my-2 col-span-1">
               <div>{{getTBsRead() | number:'1.2-2'}} TB</div>

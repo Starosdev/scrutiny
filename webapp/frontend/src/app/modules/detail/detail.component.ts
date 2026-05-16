@@ -408,6 +408,25 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         return null;
     }
 
+    updateMaxTBW(): void {
+        const currentValue = this.device?.max_tbw != null ? String(this.device.max_tbw) : '';
+        const input = window.prompt('Enter rated TBW for this drive', currentValue);
+        if (input == null) {
+            return;
+        }
+
+        const parsed = Number(input.trim());
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+            return;
+        }
+
+        this._detailService.setMaxTBW(this.device.device_id, parsed)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(() => {
+                this.device.max_tbw = parsed;
+            });
+    }
+
     isAta(): boolean {
         return this.device?.device_protocol === 'ATA'
     }

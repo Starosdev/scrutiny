@@ -98,6 +98,12 @@
                     @if (row.endurance.estimated_lifespan_days > 0) {
                       <div class="text-xs text-hint mt-1">Est. remaining: {{ formatDays(row.endurance.estimated_lifespan_days) }}</div>
                     }
+                    @if (row.endurance.tbw_rated > 0) {
+                      <div class="text-xs text-hint mt-1">
+                        TBW: {{ row.endurance.tbw_so_far | number:'1.2-2' }} / {{ row.endurance.tbw_rated | number:'1.0-2' }} TB
+                        ({{ row.endurance.tbw_used_percent | number:'1.0-2' }}%)
+                      </div>
+                    }
                   </div>
                 }
               </div>
@@ -175,14 +181,22 @@
                 <th mat-header-cell *matHeaderCellDef mat-sort-header>Endurance</th>
                 <td mat-cell *matCellDef="let row">
                   @if (row.endurance?.available) {
-                    <div class="flex items-center">
-                      <mat-progress-bar
-                        class="endurance-bar mr-2"
-                        mode="determinate"
-                        [color]="enduranceColor(row.endurance.percentage_used)"
-                        [value]="row.endurance.percentage_used">
-                      </mat-progress-bar>
-                      <span class="text-sm whitespace-nowrap">{{ row.endurance.percentage_used }}%</span>
+                    <div>
+                      <div class="flex items-center">
+                        <mat-progress-bar
+                          class="endurance-bar mr-2"
+                          mode="determinate"
+                          [color]="enduranceColor(row.endurance.percentage_used)"
+                          [value]="row.endurance.percentage_used">
+                        </mat-progress-bar>
+                        <span class="text-sm whitespace-nowrap">{{ row.endurance.percentage_used }}%</span>
+                      </div>
+                      @if (row.endurance.tbw_rated > 0) {
+                        <div class="text-xs text-hint mt-1">
+                          {{ row.endurance.tbw_so_far | number:'1.2-2' }} / {{ row.endurance.tbw_rated | number:'1.0-2' }} TB
+                          ({{ row.endurance.tbw_used_percent | number:'1.0-2' }}%)
+                        </div>
+                      }
                     </div>
                   } @else {
                     <span class="text-gray-400">N/A</span>

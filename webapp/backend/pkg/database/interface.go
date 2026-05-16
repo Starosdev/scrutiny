@@ -43,6 +43,7 @@ type DeviceRepo interface {
 	UpdateDeviceArchived(ctx context.Context, deviceID string, archived bool) error
 	UpdateDeviceMuted(ctx context.Context, deviceID string, muted bool) error
 	UpdateDeviceLabel(ctx context.Context, deviceID string, label string) error
+	UpdateDeviceMaxTBW(ctx context.Context, deviceID string, maxTBW float64) error
 	UpdateDeviceSmartDisplayMode(ctx context.Context, deviceID string, mode string) error
 	UpdateDeviceHasForcedFailure(ctx context.Context, deviceID string, hasForcedFailure bool) error
 	UpdateDeviceMissedPingTimeout(ctx context.Context, deviceID string, timeoutMinutes int) error
