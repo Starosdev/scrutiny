@@ -16,11 +16,12 @@ export class MobileSettingsComponent {
     constructor(private readonly dialog: MatDialog) {}
 
     openSettings(): void {
+        const theme = document.body.classList.contains('treo-theme-dark') ? 'treo-theme-dark' : 'treo-theme-light';
         this.dialog.open(DashboardSettingsComponent, {
             width: '100vw',
             maxWidth: '100vw',
             height: '100vh',
-            panelClass: 'mobile-settings-dialog'
+            panelClass: ['mobile-settings-dialog', theme]
         });
     }
 }

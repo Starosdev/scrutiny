@@ -31,3 +31,26 @@
         color: #CFD8E3 !important;
     }
 }
+
+// Mat-Select dropdown panel in dark mode (passed to panelClass)
+.treo-theme-dark .theme-select-panel {
+    background-color: #1e293b !important;
+}
+.treo-theme-light .theme-select-panel {
+    background-color: #ffffff !important;
+}
+
+// Ensure proper dialog background and text color for settings dialogs
+.treo-theme-dark.mat-mdc-dialog-container .mdc-dialog__surface,
+.treo-theme-dark .mat-mdc-dialog-surface {
+    background-color: #1e293b !important;
+    color: #e2e8f0 !important;
+}
+
+// Ensure option text color is readable in dark mode
+.treo-theme-dark .theme-select-panel .mat-mdc-option {
+    color: #e2e8f0 !important;
+}
+.treo-theme-dark .theme-select-panel .mat-mdc-select-value-text {
+    color: #e2e8f0 !important;
+}

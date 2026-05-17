@@ -6,7 +6,7 @@
 
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Dark Mode</mat-label>
-                <mat-select [(ngModel)]="theme">
+                <mat-select panelClass="theme-select-panel" [(ngModel)]="theme">
                     <mat-option value="system">System</mat-option>
                     <mat-option value="dark">Dark</mat-option>
                     <mat-option value="light">Light</mat-option>
@@ -17,7 +17,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Display Title</mat-label>
-                <mat-select [(ngModel)]="dashboardDisplay">
+                <mat-select panelClass="theme-select-panel" [(ngModel)]="dashboardDisplay">
                     <mat-option value="name">Name</mat-option>
                     <mat-option value="serial_id">Serial ID</mat-option>
                     <mat-option value="uuid">UUID</mat-option>
@@ -27,7 +27,7 @@
 
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">
                 <mat-label>Sort By</mat-label>
-                <mat-select [(ngModel)]="dashboardSort">
+                <mat-select panelClass="theme-select-panel" [(ngModel)]="dashboardSort">
                     <mat-option value="status_desc">Status (Failed First)</mat-option>
                     <mat-option value="status_asc">Status (Passed First)</mat-option>
                     <mat-option value="title_asc">Title (A-Z)</mat-option>
@@ -45,7 +45,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Temperature</mat-label>
-                <mat-select [(ngModel)]="temperatureUnit">
+                <mat-select panelClass="theme-select-panel" [(ngModel)]="temperatureUnit">
                     <mat-option value="celsius">Celsius</mat-option>
                     <mat-option value="fahrenheit">Fahrenheit</mat-option>
                 </mat-select>
@@ -53,7 +53,7 @@
 
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Time Format</mat-label>
-                <mat-select [(ngModel)]="timeFormat">
+                <mat-select panelClass="theme-select-panel" [(ngModel)]="timeFormat">
                     <mat-option value="24">24-hour (15:00)</mat-option>
                     <mat-option value="12">12-hour (3:00 PM)</mat-option>
                 </mat-select>
@@ -63,7 +63,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>File Size</mat-label>
-                <mat-select [(ngModel)]="fileSizeSIUnits">
+                <mat-select panelClass="theme-select-panel" [(ngModel)]="fileSizeSIUnits">
                     <mat-option [value]=true>SI Units (GB)</mat-option>
                     <mat-option [value]=false>Binary Units (GiB)</mat-option>
                 </mat-select>
@@ -73,7 +73,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Powered On Format</mat-label>
-                <mat-select [(ngModel)]="poweredOnHoursUnit">
+                <mat-select panelClass="theme-select-panel" [(ngModel)]="poweredOnHoursUnit">
                     <mat-option value="humanize">Humanize</mat-option>
                     <mat-option value="device_hours">Device Hours</mat-option>
                 </mat-select>
@@ -81,7 +81,7 @@
 
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Line stroke</mat-label>
-                <mat-select [(ngModel)]="lineStroke">
+                <mat-select panelClass="theme-select-panel" [(ngModel)]="lineStroke">
                     <mat-option value="smooth">Smooth</mat-option>
                     <mat-option value="straight">Straight</mat-option>
                     <mat-option value="stepline">Stepline</mat-option>
@@ -92,7 +92,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Device Status - Thresholds</mat-label>
-                <mat-select [(ngModel)]=statusThreshold>
+                <mat-select panelClass="theme-select-panel" [(ngModel)]=statusThreshold>
                     <mat-option [value]=1>Smart</mat-option>
                     <mat-option [value]=2>Scrutiny</mat-option>
                     <mat-option [value]=3>Both</mat-option>
@@ -104,7 +104,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Notify - Level</mat-label>
-                <mat-select [(ngModel)]=notifyLevel>
+                <mat-select panelClass="theme-select-panel" [(ngModel)]=notifyLevel>
                     <mat-option [value]=1>Warn</mat-option>
                     <mat-option [value]=2>Fail</mat-option>
                 </mat-select>
@@ -115,7 +115,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Notify - Filter Attributes</mat-label>
-                <mat-select [(ngModel)]=statusFilterAttributes>
+                <mat-select panelClass="theme-select-panel" [(ngModel)]=statusFilterAttributes>
                     <mat-option [value]=0>All</mat-option>
                     <mat-option [value]=1>Critical</mat-option>
                 </mat-select>
@@ -125,7 +125,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Repeat Notifications</mat-label>
-                <mat-select [(ngModel)]=repeatNotifications>
+                <mat-select panelClass="theme-select-panel" [(ngModel)]=repeatNotifications>
                     <mat-option [value]=true>Always</mat-option>
                     <mat-option [value]=false>Only when the value has changed</mat-option>
                 </mat-select>
@@ -135,7 +135,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Retrieve SCT Temperature History</mat-label>
-                <mat-select [(ngModel)]=retrieveSCTTemperatureHistory>
+                <mat-select panelClass="theme-select-panel" [(ngModel)]=retrieveSCTTemperatureHistory>
                     <mat-option [value]=true>Enabled</mat-option>
                     <mat-option [value]=false>Disabled</mat-option>
                 </mat-select>
@@ -146,7 +146,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Notify on Collector smartctl Errors</mat-label>
-                <mat-select [(ngModel)]="notifyOnCollectorError">
+                <mat-select panelClass="theme-select-panel" [(ngModel)]="notifyOnCollectorError">
                     <mat-option [value]="true">Enabled</mat-option>
                     <mat-option [value]="false">Disabled</mat-option>
                 </mat-select>
@@ -158,7 +158,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Notify on Missed Collector Ping</mat-label>
-                <mat-select [(ngModel)]="notifyOnMissedPing">
+                <mat-select panelClass="theme-select-panel" [(ngModel)]="notifyOnMissedPing">
                     <mat-option [value]="true">Enabled</mat-option>
                     <mat-option [value]="false">Disabled</mat-option>
                 </mat-select>
@@ -215,7 +215,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Heartbeat Notifications</mat-label>
-                <mat-select [(ngModel)]="heartbeatEnabled">
+                <mat-select panelClass="theme-select-panel" [(ngModel)]="heartbeatEnabled">
                     <mat-option [value]="true">Enabled</mat-option>
                     <mat-option [value]="false">Disabled</mat-option>
                 </mat-select>
@@ -235,7 +235,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Uptime Kuma Push Monitor</mat-label>
-                <mat-select [(ngModel)]="uptimeKumaEnabled">
+                <mat-select panelClass="theme-select-panel" [(ngModel)]="uptimeKumaEnabled">
                     <mat-option [value]="true">Enabled</mat-option>
                     <mat-option [value]="false">Disabled</mat-option>
                 </mat-select>
@@ -291,7 +291,7 @@
                 <div class="flex flex-col gt-md:flex-row">
                     <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                         <mat-label>Scheduled Reports</mat-label>
-                        <mat-select [(ngModel)]="reportEnabled">
+                        <mat-select panelClass="theme-select-panel" [(ngModel)]="reportEnabled">
                             <mat-option [value]="true">Enabled</mat-option>
                             <mat-option [value]="false">Disabled</mat-option>
                         </mat-select>
@@ -303,7 +303,7 @@
                     <div class="flex flex-col mt-5 gt-md:flex-row">
                         <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                             <mat-label>Daily Report</mat-label>
-                            <mat-select [(ngModel)]="reportDailyEnabled">
+                            <mat-select panelClass="theme-select-panel" [(ngModel)]="reportDailyEnabled">
                                 <mat-option [value]="true">Enabled</mat-option>
                                 <mat-option [value]="false">Disabled</mat-option>
                             </mat-select>
@@ -319,7 +319,7 @@
                     <div class="flex flex-col mt-5 gt-md:flex-row">
                         <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                             <mat-label>Weekly Report</mat-label>
-                            <mat-select [(ngModel)]="reportWeeklyEnabled">
+                            <mat-select panelClass="theme-select-panel" [(ngModel)]="reportWeeklyEnabled">
                                 <mat-option [value]="true">Enabled</mat-option>
                                 <mat-option [value]="false">Disabled</mat-option>
                             </mat-select>
@@ -327,7 +327,7 @@
 
                         <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3" *ngIf="reportWeeklyEnabled">
                             <mat-label>Day of Week</mat-label>
-                            <mat-select [(ngModel)]="reportWeeklyDay">
+                            <mat-select panelClass="theme-select-panel" [(ngModel)]="reportWeeklyDay">
                                 <mat-option [value]="0">Sunday</mat-option>
                                 <mat-option [value]="1">Monday</mat-option>
                                 <mat-option [value]="2">Tuesday</mat-option>
@@ -347,7 +347,7 @@
                     <div class="flex flex-col mt-5 gt-md:flex-row">
                         <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                             <mat-label>Monthly Report</mat-label>
-                            <mat-select [(ngModel)]="reportMonthlyEnabled">
+                            <mat-select panelClass="theme-select-panel" [(ngModel)]="reportMonthlyEnabled">
                                 <mat-option [value]="true">Enabled</mat-option>
                                 <mat-option [value]="false">Disabled</mat-option>
                             </mat-select>
@@ -368,7 +368,7 @@
                     <div class="flex flex-col mt-5 gt-md:flex-row">
                         <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                             <mat-label>PDF Generation</mat-label>
-                            <mat-select [(ngModel)]="reportPDFEnabled">
+                            <mat-select panelClass="theme-select-panel" [(ngModel)]="reportPDFEnabled">
                                 <mat-option [value]="true">Enabled</mat-option>
                                 <mat-option [value]="false">Disabled</mat-option>
                             </mat-select>
@@ -450,7 +450,7 @@
                     <div class="flex flex-wrap gap-4">
                         <mat-form-field class="flex-1 min-w-[120px]">
                             <mat-label>Protocol</mat-label>
-                            <mat-select [(ngModel)]="newOverride.protocol">
+                            <mat-select panelClass="theme-select-panel" [(ngModel)]="newOverride.protocol">
                                 <mat-option *ngFor="let p of protocols" [value]="p">{{p}}</mat-option>
                             </mat-select>
                         </mat-form-field>
@@ -463,7 +463,7 @@
 
                         <mat-form-field class="flex-1 min-w-[120px]">
                             <mat-label>Action</mat-label>
-                            <mat-select [(ngModel)]="newOverride.action">
+                            <mat-select panelClass="theme-select-panel" [(ngModel)]="newOverride.action">
                                 <mat-option *ngFor="let a of actions" [value]="a.value">{{a.label}}</mat-option>
                             </mat-select>
                         </mat-form-field>
@@ -471,7 +471,7 @@
                         <mat-form-field class="flex-1 min-w-[120px]"
                                         *ngIf="newOverride.action === 'force_status'">
                             <mat-label>Status</mat-label>
-                            <mat-select [(ngModel)]="newOverride.status">
+                            <mat-select panelClass="theme-select-panel" [(ngModel)]="newOverride.status">
                                 <mat-option *ngFor="let s of statuses" [value]="s">{{s}}</mat-option>
                             </mat-select>
                         </mat-form-field>
@@ -588,7 +588,7 @@
 
                     <mat-form-field class="w-full mb-2">
                         <mat-label>Service</mat-label>
-                        <mat-select [(ngModel)]="selectedService">
+                        <mat-select panelClass="theme-select-panel" [(ngModel)]="selectedService">
                             <mat-option value="custom">Custom Shoutrrr URL</mat-option>
                             <mat-option value="smtp">SMTP Email</mat-option>
                             <mat-option value="discord">Discord</mat-option>
