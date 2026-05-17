@@ -1,13 +1,9 @@
 package models
 
-import "time"
-
 // DeviceEnduranceOverride stores user-supplied rated endurance values for a device.
 type DeviceEnduranceOverride struct {
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	WWN       string    `json:"wwn" gorm:"primaryKey"`
-	MaxTBW    float64   `json:"max_tbw"`
+	WWN    string  `json:"wwn" gorm:"primaryKey"`
+	MaxTBW float64 `json:"max_tbw"`
 }
 
 func (DeviceEnduranceOverride) TableName() string {
