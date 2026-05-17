@@ -10,10 +10,9 @@ import { sde } from 'app/data/mock/device/details/sde';
 import { sdf } from 'app/data/mock/device/details/sdf';
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
-export class DetailsMockApi implements TreoMockApi
-{
+export class DetailsMockApi implements TreoMockApi {
     // Private
     private _details: any;
 
@@ -22,10 +21,7 @@ export class DetailsMockApi implements TreoMockApi
      *
      * @param _treoMockApiService
      */
-    constructor(
-        private readonly _treoMockApiService: TreoMockApiService
-    )
-    {
+    constructor(private readonly _treoMockApiService: TreoMockApiService) {
         // Register the API endpoints
         this.register();
     }
@@ -37,56 +33,25 @@ export class DetailsMockApi implements TreoMockApi
     /**
      * Register
      */
-    register(): void
-    {
-        this._treoMockApiService
-            .onGet('/api/device/0x5002538e40a22954/details')
-            .reply(() => {
+    register(): void {
+        this._treoMockApiService.onGet('/api/device/0x5002538e40a22954/details').reply(() => {
+            return [200, _.cloneDeep(sda)];
+        });
 
-                return [
-                    200,
-                    _.cloneDeep(sda)
-                ];
-            });
+        this._treoMockApiService.onGet('/api/device/0x5000cca264eb01d7/details').reply(() => {
+            return [200, _.cloneDeep(sdb)];
+        });
 
-        this._treoMockApiService
-            .onGet('/api/device/0x5000cca264eb01d7/details')
-            .reply(() => {
+        this._treoMockApiService.onGet('/api/device/0x5000cca264ec3183/details').reply(() => {
+            return [200, _.cloneDeep(sdc)];
+        });
 
-                return [
-                    200,
-                    _.cloneDeep(sdb)
-                ];
-            });
+        this._treoMockApiService.onGet('/api/device/0x5000cca252c859cc/details').reply(() => {
+            return [200, _.cloneDeep(sdd)];
+        });
 
-        this._treoMockApiService
-            .onGet('/api/device/0x5000cca264ec3183/details')
-            .reply(() => {
-
-                return [
-                    200,
-                    _.cloneDeep(sdc)
-                ];
-            });
-
-        this._treoMockApiService
-            .onGet('/api/device/0x5000cca252c859cc/details')
-            .reply(() => {
-
-                return [
-                    200,
-                    _.cloneDeep(sdd)
-                ];
-            });
-
-        this._treoMockApiService
-            .onGet('/api/device/0x5000cca264ebc248/details')
-            .reply(() => {
-
-                return [
-                    200,
-                    _.cloneDeep(sdf)
-                ];
-            });
+        this._treoMockApiService.onGet('/api/device/0x5000cca264ebc248/details').reply(() => {
+            return [200, _.cloneDeep(sdf)];
+        });
     }
 }

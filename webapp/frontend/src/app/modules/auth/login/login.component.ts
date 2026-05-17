@@ -9,7 +9,7 @@ import { take } from 'rxjs/operators';
     templateUrl: './login.component.html',
     styleUrls: ['./login.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    standalone: false,
 })
 export class LoginComponent implements OnInit {
     tokenForm: FormGroup;
@@ -23,19 +23,14 @@ export class LoginComponent implements OnInit {
 
     private returnUrl: string = '/dashboard';
 
-    constructor(
-        private readonly _fb: FormBuilder,
-        private readonly _authService: AuthService,
-        private readonly _router: Router,
-        private readonly _route: ActivatedRoute
-    ) {
+    constructor(private readonly _fb: FormBuilder, private readonly _authService: AuthService, private readonly _router: Router, private readonly _route: ActivatedRoute) {
         this.tokenForm = this._fb.group({
-            token: ['', Validators.required]
+            token: ['', Validators.required],
         });
 
         this.passwordForm = this._fb.group({
             username: ['', Validators.required],
-            password: ['', Validators.required]
+            password: ['', Validators.required],
         });
     }
 
@@ -46,11 +41,9 @@ export class LoginComponent implements OnInit {
             return;
         }
 
-        this.returnUrl = this.sanitizeReturnUrl(
-            this._route.snapshot.queryParams['returnUrl']
-        );
+        this.returnUrl = this.sanitizeReturnUrl(this._route.snapshot.queryParams['returnUrl']);
 
-        this._authService.loginMethods$.pipe(take(1)).subscribe(methods => {
+        this._authService.loginMethods$.pipe(take(1)).subscribe((methods) => {
             this.loginMethods = methods;
             this.showPasswordTab = methods.includes('password');
         });
@@ -76,7 +69,7 @@ export class LoginComponent implements OnInit {
             error: (err) => {
                 this.isLoading = false;
                 this.errorMessage = err.error?.error || 'Login failed. Please try again.';
-            }
+            },
         });
     }
 
@@ -101,7 +94,7 @@ export class LoginComponent implements OnInit {
             error: (err) => {
                 this.isLoading = false;
                 this.errorMessage = err.error?.error || 'Login failed. Please try again.';
-            }
+            },
         });
     }
 

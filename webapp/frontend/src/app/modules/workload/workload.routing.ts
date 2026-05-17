@@ -7,7 +7,7 @@ export const workloadRoutes: Route[] = [
         path: '',
         component: WorkloadComponent,
         resolve: {
-            workload: WorkloadResolver
-        }
-    }
+            workload: WorkloadResolver,
+        },
+    },
 ];

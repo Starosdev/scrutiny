@@ -19,18 +19,8 @@ const modules = [
 ];
 
 @NgModule({
-    declarations: [
-        LayoutComponent,
-    ],
-    imports     : [
-        TreoDrawerModule,
-        SharedModule,
-        ...modules
-    ],
-    exports     : [
-        ...modules
-    ]
+    declarations: [LayoutComponent],
+    imports: [TreoDrawerModule, SharedModule, ...modules],
+    exports: [...modules],
 })
-export class LayoutModule
-{
-}
+export class LayoutModule {}

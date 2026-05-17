@@ -2,18 +2,16 @@ import { Injectable } from '@angular/core';
 import { TreoDrawerComponent } from '@treo/components/drawer/drawer.component';
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
-export class TreoDrawerService
-{
+export class TreoDrawerService {
     // Private
     private _componentRegistry: Map<string, TreoDrawerComponent>;
 
     /**
      * Constructor
      */
-    constructor()
-    {
+    constructor() {
         // Set the defaults
         this._componentRegistry = new Map<string, TreoDrawerComponent>();
     }
@@ -28,8 +26,7 @@ export class TreoDrawerService
      * @param name
      * @param component
      */
-    registerComponent(name: string, component: TreoDrawerComponent): void
-    {
+    registerComponent(name: string, component: TreoDrawerComponent): void {
         this._componentRegistry.set(name, component);
     }
 
@@ -38,8 +35,7 @@ export class TreoDrawerService
      *
      * @param name
      */
-    deregisterComponent(name: string): void
-    {
+    deregisterComponent(name: string): void {
         this._componentRegistry.delete(name);
     }
 
@@ -48,8 +44,7 @@ export class TreoDrawerService
      *
      * @param name
      */
-    getComponent(name: string): TreoDrawerComponent
-    {
+    getComponent(name: string): TreoDrawerComponent {
         return this._componentRegistry.get(name);
     }
 }

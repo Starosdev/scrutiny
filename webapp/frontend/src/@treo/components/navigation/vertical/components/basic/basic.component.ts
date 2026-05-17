@@ -10,10 +10,9 @@ import { TreoNavigationItem } from '@treo/components/navigation/navigation.types
     templateUrl: './basic.component.html',
     styles: [],
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false
+    standalone: false,
 })
-export class TreoVerticalNavigationBasicItemComponent implements OnInit, OnDestroy
-{
+export class TreoVerticalNavigationBasicItemComponent implements OnInit, OnDestroy {
     // Item
     @Input()
     item: TreoNavigationItem;
@@ -32,11 +31,7 @@ export class TreoVerticalNavigationBasicItemComponent implements OnInit, OnDestr
      * @param {TreoNavigationService} _treoNavigationService
      * @param {ChangeDetectorRef} _changeDetectorRef
      */
-    constructor(
-        private readonly _treoNavigationService: TreoNavigationService,
-        private readonly _changeDetectorRef: ChangeDetectorRef
-    )
-    {
+    constructor(private readonly _treoNavigationService: TreoNavigationService, private readonly _changeDetectorRef: ChangeDetectorRef) {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
     }
@@ -48,16 +43,12 @@ export class TreoVerticalNavigationBasicItemComponent implements OnInit, OnDestr
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Get the parent navigation component
         this._treoVerticalNavigationComponent = this._treoNavigationService.getComponent(this.name);
 
         // Subscribe to onRefreshed on the navigation component
-        this._treoVerticalNavigationComponent.onRefreshed.pipe(
-            takeUntil(this._unsubscribeAll)
-        ).subscribe(() => {
-
+        this._treoVerticalNavigationComponent.onRefreshed.pipe(takeUntil(this._unsubscribeAll)).subscribe(() => {
             // Mark for check
             this._changeDetectorRef.markForCheck();
         });
@@ -66,8 +57,7 @@ export class TreoVerticalNavigationBasicItemComponent implements OnInit, OnDestr
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();

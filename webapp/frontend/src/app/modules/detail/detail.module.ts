@@ -11,17 +11,15 @@ import { MatMenuModule as MatMenuModule } from '@angular/material/menu';
 import { MatProgressBarModule as MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule as MatTableModule } from '@angular/material/table';
-import { MatTooltipModule as MatTooltipModule } from '@angular/material/tooltip'
+import { MatTooltipModule as MatTooltipModule } from '@angular/material/tooltip';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { TreoCardModule } from '@treo/components/card';
-import {DetailSettingsModule} from 'app/layout/common/detail-settings/detail-settings.module';
-import {AttributeHistoryDialogModule} from 'app/layout/common/attribute-history-dialog/attribute-history-dialog.module';
+import { DetailSettingsModule } from 'app/layout/common/detail-settings/detail-settings.module';
+import { AttributeHistoryDialogModule } from 'app/layout/common/attribute-history-dialog/attribute-history-dialog.module';
 
 @NgModule({
-    declarations: [
-        DetailComponent
-    ],
-    imports     : [
+    declarations: [DetailComponent],
+    imports: [
         RouterModule.forChild(detailRoutes),
         MatButtonModule,
         MatButtonToggleModule,
@@ -37,8 +35,6 @@ import {AttributeHistoryDialogModule} from 'app/layout/common/attribute-history-
         SharedModule,
         DetailSettingsModule,
         AttributeHistoryDialogModule,
-    ]
+    ],
 })
-export class DetailModule
-{
-}
+export class DetailModule {}

@@ -5,10 +5,10 @@ import { MDADMDetailComponent } from 'app/modules/mdadm/details/mdadm-detail.com
 export const mdadmRoutes: Route[] = [
     {
         path: '',
-        component: MDADMComponent
+        component: MDADMComponent,
     },
     {
         path: ':uuid',
-        component: MDADMDetailComponent
-    }
+        component: MDADMDetailComponent,
+    },
 ];

@@ -12,21 +12,10 @@ import { ThemeToggleModule } from 'app/layout/common/theme-toggle/theme-toggle.m
 import { SharedModule } from 'app/shared/shared.module';
 import { MaterialLayoutComponent } from 'app/layout/layouts/horizontal/material/material.component';
 
-@NgModule({ declarations: [
-        MaterialLayoutComponent
-    ],
-    exports: [
-        MaterialLayoutComponent
-    ], imports: [RouterModule,
-        MatButtonModule,
-        MatDividerModule,
-        MatIconModule,
-        MatMenuModule,
-        TreoNavigationModule,
-        SearchModule,
-        ThemeToggleModule,
-        MatTooltipModule,
-        SharedModule], providers: [provideHttpClient(withInterceptorsFromDi())] })
-export class MaterialLayoutModule
-{
-}
+@NgModule({
+    declarations: [MaterialLayoutComponent],
+    exports: [MaterialLayoutComponent],
+    imports: [RouterModule, MatButtonModule, MatDividerModule, MatIconModule, MatMenuModule, TreoNavigationModule, SearchModule, ThemeToggleModule, MatTooltipModule, SharedModule],
+    providers: [provideHttpClient(withInterceptorsFromDi())],
+})
+export class MaterialLayoutModule {}

@@ -6,15 +6,13 @@ import { getBasePath } from 'app/app.routing';
 import { ZFSPoolDetailsResponseWrapper } from 'app/core/models/zfs-pool-summary-model';
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
 export class ZFSPoolDetailService {
     // Observables
     private _data: BehaviorSubject<ZFSPoolDetailsResponseWrapper>;
 
-    constructor(
-        private readonly _httpClient: HttpClient
-    ) {
+    constructor(private readonly _httpClient: HttpClient) {
         this._data = new BehaviorSubject(null);
     }
 

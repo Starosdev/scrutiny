@@ -10,7 +10,7 @@ import { versionInfo } from 'environments/versions';
     templateUrl: './mobile-layout.component.html',
     styleUrls: ['./mobile-layout.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    standalone: false,
 })
 export class MobileLayoutComponent implements OnInit, OnDestroy {
     appVersion: string;
@@ -29,11 +29,9 @@ export class MobileLayoutComponent implements OnInit, OnDestroy {
             this._router.navigate(['/mobile-home'], { replaceUrl: true });
         }
 
-        this._authService.authEnabled$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(enabled => {
-                this.authEnabled = enabled;
-            });
+        this._authService.authEnabled$.pipe(takeUntil(this._unsubscribeAll)).subscribe((enabled) => {
+            this.authEnabled = enabled;
+        });
     }
 
     ngOnDestroy(): void {

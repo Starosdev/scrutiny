@@ -1,4 +1,4 @@
-import {TimeFormat} from 'app/core/config/app.config';
+import { TimeFormat } from 'app/core/config/app.config';
 
 // Angular date pipe / formatDate() format tokens
 const ANGULAR_TIME_24 = 'HH:mm';
@@ -17,9 +17,7 @@ function is12(fmt: TimeFormat): boolean {
 }
 
 export function angularDateFormat(datepart: string, timeFormat: TimeFormat, includeSeconds = false): string {
-    const time = is12(timeFormat)
-        ? (includeSeconds ? ANGULAR_TIME_12_SEC : ANGULAR_TIME_12)
-        : (includeSeconds ? ANGULAR_TIME_24_SEC : ANGULAR_TIME_24);
+    const time = is12(timeFormat) ? (includeSeconds ? ANGULAR_TIME_12_SEC : ANGULAR_TIME_12) : includeSeconds ? ANGULAR_TIME_24_SEC : ANGULAR_TIME_24;
     return datepart ? `${datepart} ${time}` : time;
 }
 
@@ -32,9 +30,7 @@ export function angularShortDateTime(timeFormat: TimeFormat): string {
 }
 
 export function apexDateFormat(datepart: string, timeFormat: TimeFormat, includeSeconds = false): string {
-    const time = is12(timeFormat)
-        ? (includeSeconds ? APEX_TIME_12_SEC : APEX_TIME_12)
-        : (includeSeconds ? APEX_TIME_24_SEC : APEX_TIME_24);
+    const time = is12(timeFormat) ? (includeSeconds ? APEX_TIME_12_SEC : APEX_TIME_12) : includeSeconds ? APEX_TIME_24_SEC : APEX_TIME_24;
     return datepart ? `${datepart} ${time}` : time;
 }
 

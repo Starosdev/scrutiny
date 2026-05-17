@@ -16,7 +16,7 @@ interface TabItem {
     templateUrl: './mobile-tab-bar.component.html',
     styleUrls: ['./mobile-tab-bar.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    standalone: false,
 })
 export class MobileTabBarComponent implements OnInit, OnDestroy {
     tabs: TabItem[] = [
@@ -42,27 +42,27 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
         this.activeRoute = this._router.url;
         this.isDetailPage = this._isDetailRoute(this._router.url);
 
-        this._router.events.pipe(
-            filter(event => event instanceof NavigationEnd),
-            takeUntil(this._unsubscribeAll)
-        ).subscribe((event: NavigationEnd) => {
-            this.activeRoute = event.urlAfterRedirects;
-            this.isDetailPage = this._isDetailRoute(event.urlAfterRedirects);
-        });
+        this._router.events
+            .pipe(
+                filter((event) => event instanceof NavigationEnd),
+                takeUntil(this._unsubscribeAll)
+            )
+            .subscribe((event: NavigationEnd) => {
+                this.activeRoute = event.urlAfterRedirects;
+                this.isDetailPage = this._isDetailRoute(event.urlAfterRedirects);
+            });
 
-        this._dashboardService.data$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(data => {
-                if (data) {
-                    this.drivesNeedAttention = 0;
-                    for (const wwn in data) {
-                        const status = data[wwn].device?.device_status;
-                        if (status && status > 0 && !data[wwn].device?.archived) {
-                            this.drivesNeedAttention++;
-                        }
+        this._dashboardService.data$.pipe(takeUntil(this._unsubscribeAll)).subscribe((data) => {
+            if (data) {
+                this.drivesNeedAttention = 0;
+                for (const wwn in data) {
+                    const status = data[wwn].device?.device_status;
+                    if (status && status > 0 && !data[wwn].device?.archived) {
+                        this.drivesNeedAttention++;
                     }
                 }
-            });
+            }
+        });
     }
 
     ngOnDestroy(): void {

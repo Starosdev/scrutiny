@@ -7,32 +7,32 @@ import { TreoMockApiService } from '@treo/lib/mock-api/mock-api.service';
     providers: [
         TreoMockApiService,
         {
-            provide : HTTP_INTERCEPTORS,
+            provide: HTTP_INTERCEPTORS,
             useClass: TreoMockApiInterceptor,
-            multi   : true
-        }
-    ]
+            multi: true,
+        },
+    ],
 })
-export class TreoMockApiModule
-{
+export class TreoMockApiModule {
     /**
      * forRoot method for setting user configuration
      *
      * @param mockDataServices
      */
-    static forRoot(mockDataServices: any[]): ModuleWithProviders<TreoMockApiModule>
-    {
+    static forRoot(mockDataServices: any[]): ModuleWithProviders<TreoMockApiModule> {
         return {
-            ngModule : TreoMockApiModule,
+            ngModule: TreoMockApiModule,
             providers: [
                 ...mockDataServices,
                 {
-                    provide   : APP_INITIALIZER,
-                    deps      :mockDataServices,
-                    useFactory: (...services) => () => {},
-                    multi     : true
+                    provide: APP_INITIALIZER,
+                    deps: mockDataServices,
+                    useFactory:
+                        (...services) =>
+                        () => {},
+                    multi: true,
                 },
-            ]
+            ],
         };
     }
 }

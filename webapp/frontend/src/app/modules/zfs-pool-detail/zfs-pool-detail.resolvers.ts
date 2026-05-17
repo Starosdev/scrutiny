@@ -6,14 +6,10 @@ import { ZFSPoolDetailService } from 'app/modules/zfs-pool-detail/zfs-pool-detai
 import { ZFSPoolDetailsResponseWrapper } from 'app/core/models/zfs-pool-summary-model';
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
 export class ZFSPoolDetailResolver {
-    constructor(
-        private readonly _zfsPoolDetailService: ZFSPoolDetailService,
-        private readonly _router: Router
-    ) {
-    }
+    constructor(private readonly _zfsPoolDetailService: ZFSPoolDetailService, private readonly _router: Router) {}
 
     resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<ZFSPoolDetailsResponseWrapper> {
         return this._zfsPoolDetailService.getData(route.params.guid).pipe(

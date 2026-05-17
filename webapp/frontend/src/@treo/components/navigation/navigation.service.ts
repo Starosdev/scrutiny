@@ -2,10 +2,9 @@ import { Injectable } from '@angular/core';
 import { TreoNavigationItem } from '@treo/components/navigation/navigation.types';
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
-export class TreoNavigationService
-{
+export class TreoNavigationService {
     // Private
     private _componentRegistry: Map<string, any>;
     private _navigationStore: Map<string, TreoNavigationItem[]>;
@@ -13,8 +12,7 @@ export class TreoNavigationService
     /**
      * Constructor
      */
-    constructor()
-    {
+    constructor() {
         // Set the private defaults
         this._componentRegistry = new Map<string, any>();
         this._navigationStore = new Map<string, any>();
@@ -30,8 +28,7 @@ export class TreoNavigationService
      * @param name
      * @param component
      */
-    registerComponent(name: string, component: any): void
-    {
+    registerComponent(name: string, component: any): void {
         this._componentRegistry.set(name, component);
     }
 
@@ -40,8 +37,7 @@ export class TreoNavigationService
      *
      * @param name
      */
-    deregisterComponent(name: string): void
-    {
+    deregisterComponent(name: string): void {
         this._componentRegistry.delete(name);
     }
 
@@ -50,8 +46,7 @@ export class TreoNavigationService
      *
      * @param name
      */
-    getComponent(name: string): any
-    {
+    getComponent(name: string): any {
         return this._componentRegistry.get(name);
     }
 
@@ -61,8 +56,7 @@ export class TreoNavigationService
      * @param key
      * @param navigation
      */
-    storeNavigation(key: string, navigation: TreoNavigationItem[]): void
-    {
+    storeNavigation(key: string, navigation: TreoNavigationItem[]): void {
         // Add to the store
         this._navigationStore.set(key, navigation);
     }
@@ -73,8 +67,7 @@ export class TreoNavigationService
      * @param key
      * @returns {any}
      */
-    getNavigation(key: string): TreoNavigationItem[]
-    {
+    getNavigation(key: string): TreoNavigationItem[] {
         return this._navigationStore.get(key);
     }
 
@@ -83,11 +76,9 @@ export class TreoNavigationService
      *
      * @param key
      */
-    deleteNavigation(key: string): void
-    {
+    deleteNavigation(key: string): void {
         // Check if the navigation exists
-        if ( !this._navigationStore.has(key) )
-        {
+        if (!this._navigationStore.has(key)) {
             console.warn(`Navigation with the key '${key}' does not exist in the store.`);
         }
 
@@ -103,20 +94,15 @@ export class TreoNavigationService
      * @param flatNavigation
      * @returns {TreoNavigationItem[]}
      */
-    getFlatNavigation(navigation: TreoNavigationItem[], flatNavigation: TreoNavigationItem[] = []): TreoNavigationItem[]
-    {
-        for ( const item of navigation )
-        {
-            if ( item.type === 'basic' )
-            {
+    getFlatNavigation(navigation: TreoNavigationItem[], flatNavigation: TreoNavigationItem[] = []): TreoNavigationItem[] {
+        for (const item of navigation) {
+            if (item.type === 'basic') {
                 flatNavigation.push(item);
                 continue;
             }
 
-            if ( item.type === 'aside' || item.type === 'collapsable' || item.type === 'group' )
-            {
-                if ( item.children )
-                {
+            if (item.type === 'aside' || item.type === 'collapsable' || item.type === 'group') {
+                if (item.children) {
                     this.getFlatNavigation(item.children, flatNavigation);
                 }
             }
@@ -132,21 +118,16 @@ export class TreoNavigationService
      * @param id
      * @param navigation
      */
-    getItem(id: string, navigation: TreoNavigationItem[]): TreoNavigationItem | null
-    {
-        for ( const item of navigation )
-        {
-            if ( item.id === id )
-            {
+    getItem(id: string, navigation: TreoNavigationItem[]): TreoNavigationItem | null {
+        for (const item of navigation) {
+            if (item.id === id) {
                 return item;
             }
 
-            if ( item.children )
-            {
+            if (item.children) {
                 const childItem = this.getItem(id, item.children);
 
-                if ( childItem )
-                {
+                if (childItem) {
                     return childItem;
                 }
             }
@@ -163,25 +144,16 @@ export class TreoNavigationService
      * @param navigation
      * @param parent
      */
-    getItemParent(
-        id: string,
-        navigation: TreoNavigationItem[],
-        parent: TreoNavigationItem[] | TreoNavigationItem
-    ): TreoNavigationItem[] | TreoNavigationItem | null
-    {
-        for ( const item of navigation )
-        {
-            if ( item.id === id )
-            {
+    getItemParent(id: string, navigation: TreoNavigationItem[], parent: TreoNavigationItem[] | TreoNavigationItem): TreoNavigationItem[] | TreoNavigationItem | null {
+        for (const item of navigation) {
+            if (item.id === id) {
                 return parent;
             }
 
-            if ( item.children )
-            {
+            if (item.children) {
                 const childItem = this.getItemParent(id, item.children, item);
 
-                if ( childItem )
-                {
+                if (childItem) {
                     return childItem;
                 }
             }

@@ -11,10 +11,9 @@ import { TreoNavigationItem } from '@treo/components/navigation/navigation.types
     templateUrl: './branch.component.html',
     styles: [],
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false
+    standalone: false,
 })
-export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDestroy
-{
+export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDestroy {
     // Child
     @Input()
     child: boolean;
@@ -24,7 +23,7 @@ export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDe
     item: TreoNavigationItem;
 
     // Mat menu
-    @ViewChild('matMenu', {static: true})
+    @ViewChild('matMenu', { static: true })
     matMenu: MatMenu;
 
     // Name
@@ -41,11 +40,7 @@ export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDe
      * @param {TreoNavigationService} _treoNavigationService
      * @param {ChangeDetectorRef} _changeDetectorRef
      */
-    constructor(
-        private readonly _treoNavigationService: TreoNavigationService,
-        private readonly _changeDetectorRef: ChangeDetectorRef
-    )
-    {
+    constructor(private readonly _treoNavigationService: TreoNavigationService, private readonly _changeDetectorRef: ChangeDetectorRef) {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 
@@ -60,16 +55,12 @@ export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDe
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Get the parent navigation component
         this._treoHorizontalNavigationComponent = this._treoNavigationService.getComponent(this.name);
 
         // Subscribe to onRefreshed on the navigation component
-        this._treoHorizontalNavigationComponent.onRefreshed.pipe(
-            takeUntil(this._unsubscribeAll)
-        ).subscribe(() => {
-
+        this._treoHorizontalNavigationComponent.onRefreshed.pipe(takeUntil(this._unsubscribeAll)).subscribe(() => {
             // Mark for check
             this._changeDetectorRef.markForCheck();
         });
@@ -78,8 +69,7 @@ export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDe
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();
@@ -92,8 +82,7 @@ export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDe
     /**
      * Trigger the change detection
      */
-    triggerChangeDetection(): void
-    {
+    triggerChangeDetection(): void {
         // Mark for check
         this._changeDetectorRef.markForCheck();
     }

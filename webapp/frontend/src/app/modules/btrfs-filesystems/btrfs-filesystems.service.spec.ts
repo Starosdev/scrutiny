@@ -14,7 +14,7 @@ describe('BtrfsFilesystemsService', () => {
     it('should unwrap and return getSummaryData()', (done: DoneFn) => {
         const response = { success: true, data: { filesystems: { abc: { uuid: 'abc' } } } } as any;
         httpClientSpy.get.and.returnValue(of(response));
-        service.getSummaryData().subscribe(value => {
+        service.getSummaryData().subscribe((value) => {
             expect(value).toEqual(response.data.filesystems);
             done();
         });

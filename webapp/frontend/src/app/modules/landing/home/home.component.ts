@@ -5,14 +5,11 @@ import { Component, ViewEncapsulation } from '@angular/core';
     templateUrl: './home.component.html',
     styleUrls: ['./home.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    standalone: false,
 })
-export class LandingHomeComponent
-{
+export class LandingHomeComponent {
     /**
      * Constructor
      */
-    constructor()
-    {
-    }
+    constructor() {}
 }

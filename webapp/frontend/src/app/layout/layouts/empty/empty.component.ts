@@ -6,18 +6,16 @@ import { Subject } from 'rxjs';
     templateUrl: './empty.component.html',
     styleUrls: ['./empty.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    standalone: false,
 })
-export class EmptyLayoutComponent implements OnDestroy
-{
+export class EmptyLayoutComponent implements OnDestroy {
     // Private
     private _unsubscribeAll: Subject<void>;
 
     /**
      * Constructor
      */
-    constructor()
-    {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
     }
@@ -29,8 +27,7 @@ export class EmptyLayoutComponent implements OnDestroy
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();

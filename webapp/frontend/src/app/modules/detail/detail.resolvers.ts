@@ -1,20 +1,15 @@
-import {Injectable} from '@angular/core';
+import { Injectable } from '@angular/core';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot } from '@angular/router';
-import {Observable, of} from 'rxjs';
-import {catchError} from 'rxjs/operators';
-import {DetailService} from 'app/modules/detail/detail.service';
-import {DeviceDetailsResponseWrapper} from 'app/core/models/device-details-response-wrapper';
+import { Observable, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { DetailService } from 'app/modules/detail/detail.service';
+import { DeviceDetailsResponseWrapper } from 'app/core/models/device-details-response-wrapper';
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
-export class DetailResolver  {
-    constructor(
-        private readonly _detailService: DetailService,
-        private readonly _router: Router
-    )
-    {
-    }
+export class DetailResolver {
+    constructor(private readonly _detailService: DetailService, private readonly _router: Router) {}
 
     // -----------------------------------------------------------------------------------------------------
     // @ Public methods

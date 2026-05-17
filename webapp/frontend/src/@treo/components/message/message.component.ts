@@ -6,16 +6,15 @@ import { TreoMessageAppearance, TreoMessageType } from '@treo/components/message
 import { TreoMessageService } from '@treo/components/message/message.service';
 
 @Component({
-    selector       : 'treo-message',
-    templateUrl    : './message.component.html',
-    styleUrls      : ['./message.component.scss'],
-    encapsulation  : ViewEncapsulation.None,
+    selector: 'treo-message',
+    templateUrl: './message.component.html',
+    styleUrls: ['./message.component.scss'],
+    encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    animations     : TreoAnimations,
-    exportAs       : 'treoMessage'
+    animations: TreoAnimations,
+    exportAs: 'treoMessage',
 })
-export class TreoMessageComponent implements OnInit, OnDestroy
-{
+export class TreoMessageComponent implements OnInit, OnDestroy {
     // Name
     @Input()
     name: string;
@@ -46,8 +45,7 @@ export class TreoMessageComponent implements OnInit, OnDestroy
         private readonly _changeDetectorRef: ChangeDetectorRef,
         private readonly _elementRef: ElementRef,
         private readonly _renderer2: Renderer2
-    )
-    {
+    ) {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 
@@ -70,11 +68,9 @@ export class TreoMessageComponent implements OnInit, OnDestroy
      * @param value
      */
     @Input()
-    set appearance(value: TreoMessageAppearance)
-    {
+    set appearance(value: TreoMessageAppearance) {
         // If the value is the same, return...
-        if ( this._appearance === value )
-        {
+        if (this._appearance === value) {
             return;
         }
 
@@ -86,8 +82,7 @@ export class TreoMessageComponent implements OnInit, OnDestroy
         this._appearance = value;
     }
 
-    get appearance(): TreoMessageAppearance
-    {
+    get appearance(): TreoMessageAppearance {
         return this._appearance;
     }
 
@@ -97,26 +92,19 @@ export class TreoMessageComponent implements OnInit, OnDestroy
      * @param value
      */
     @Input()
-    set dismissed(value: null | boolean)
-    {
+    set dismissed(value: null | boolean) {
         // If the value is the same, return...
-        if ( this._dismissed === value )
-        {
+        if (this._dismissed === value) {
             return;
         }
 
         // Update the class name
-        if ( value === null )
-        {
+        if (value === null) {
             this._renderer2.removeClass(this._elementRef.nativeElement, 'treo-message-dismissible');
-        }
-        else if ( value === false )
-        {
+        } else if (value === false) {
             this._renderer2.addClass(this._elementRef.nativeElement, 'treo-message-dismissible');
             this._renderer2.addClass(this._elementRef.nativeElement, 'treo-message-dismissed');
-        }
-        else
-        {
+        } else {
             this._renderer2.addClass(this._elementRef.nativeElement, 'treo-message-dismissible');
             this._renderer2.removeClass(this._elementRef.nativeElement, 'treo-message-dismissed');
         }
@@ -125,8 +113,7 @@ export class TreoMessageComponent implements OnInit, OnDestroy
         this._dismissed = value;
     }
 
-    get dismissed(): null | boolean
-    {
+    get dismissed(): null | boolean {
         return this._dismissed;
     }
 
@@ -136,21 +123,16 @@ export class TreoMessageComponent implements OnInit, OnDestroy
      * @param value
      */
     @Input()
-    set showIcon(value: boolean)
-    {
+    set showIcon(value: boolean) {
         // If the value is the same, return...
-        if ( this._showIcon === value )
-        {
+        if (this._showIcon === value) {
             return;
         }
 
         // Update the class name
-        if ( value )
-        {
+        if (value) {
             this._renderer2.addClass(this._elementRef.nativeElement, 'treo-message-show-icon');
-        }
-        else
-        {
+        } else {
             this._renderer2.removeClass(this._elementRef.nativeElement, 'treo-message-show-icon');
         }
 
@@ -158,8 +140,7 @@ export class TreoMessageComponent implements OnInit, OnDestroy
         this._showIcon = value;
     }
 
-    get showIcon(): boolean
-    {
+    get showIcon(): boolean {
         return this._showIcon;
     }
 
@@ -169,11 +150,9 @@ export class TreoMessageComponent implements OnInit, OnDestroy
      * @param value
      */
     @Input()
-    set type(value: TreoMessageType)
-    {
+    set type(value: TreoMessageType) {
         // If the value is the same, return...
-        if ( this._type === value )
-        {
+        if (this._type === value) {
             return;
         }
 
@@ -185,8 +164,7 @@ export class TreoMessageComponent implements OnInit, OnDestroy
         this._type = value;
     }
 
-    get type(): TreoMessageType
-    {
+    get type(): TreoMessageType {
         return this._type;
     }
 
@@ -197,12 +175,10 @@ export class TreoMessageComponent implements OnInit, OnDestroy
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Subscribe to the service calls if only
         // a name provided for the message box
-        if ( this.name )
-        {
+        if (this.name) {
             // Subscribe to the dismiss calls
             this._treoMessageService.onDismiss
                 .pipe(
@@ -210,7 +186,6 @@ export class TreoMessageComponent implements OnInit, OnDestroy
                     takeUntil(this._unsubscribeAll)
                 )
                 .subscribe(() => {
-
                     // Dismiss the message box
                     this.dismiss();
                 });
@@ -222,7 +197,6 @@ export class TreoMessageComponent implements OnInit, OnDestroy
                     takeUntil(this._unsubscribeAll)
                 )
                 .subscribe(() => {
-
                     // Show the message box
                     this.show();
                 });
@@ -232,8 +206,7 @@ export class TreoMessageComponent implements OnInit, OnDestroy
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();
@@ -246,11 +219,9 @@ export class TreoMessageComponent implements OnInit, OnDestroy
     /**
      * Dismiss the message box
      */
-    dismiss(): void
-    {
+    dismiss(): void {
         // Return, if already dismissed
-        if ( this.dismissed )
-        {
+        if (this.dismissed) {
             return;
         }
 
@@ -267,11 +238,9 @@ export class TreoMessageComponent implements OnInit, OnDestroy
     /**
      * Show the dismissed message box
      */
-    show(): void
-    {
+    show(): void {
         // Return, if not dismissed
-        if ( !this.dismissed )
-        {
+        if (!this.dismissed) {
             return;
         }
 

@@ -1,11 +1,4 @@
-import {
-    ChangeDetectionStrategy,
-    ChangeDetectorRef,
-    Component,
-    OnDestroy,
-    OnInit,
-    ViewEncapsulation
-} from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -22,7 +15,7 @@ import { getMdadmArrayStatusColorClass } from 'app/modules/mdadm/mdadm-status.ut
     templateUrl: './mdadm-detail.component.html',
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false
+    standalone: false,
 })
 export class MDADMDetailComponent implements OnInit, OnDestroy {
     array: MDADMArrayModel;
@@ -46,14 +39,13 @@ export class MDADMDetailComponent implements OnInit, OnDestroy {
     ngOnInit(): void {
         const uuid = this._route.snapshot.paramMap.get('uuid');
 
-        this._configService.config$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((config) => {
-                this.config = config;
-                this._changeDetectorRef.markForCheck();
-            });
+        this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config) => {
+            this.config = config;
+            this._changeDetectorRef.markForCheck();
+        });
 
-        this._mdadmService.getDetails(uuid)
+        this._mdadmService
+            .getDetails(uuid)
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe((response) => {
                 this.array = response.data.array;
@@ -74,49 +66,49 @@ export class MDADMDetailComponent implements OnInit, OnDestroy {
             return;
         }
 
-        const activeData = this.history.map(m => ({ x: new Date(m.date), y: m.active_devices }));
-        const failedData = this.history.map(m => ({ x: new Date(m.date), y: m.failed_devices }));
+        const activeData = this.history.map((m) => ({ x: new Date(m.date), y: m.active_devices }));
+        const failedData = this.history.map((m) => ({ x: new Date(m.date), y: m.failed_devices }));
 
         this.chartOptions = {
             chart: {
                 animations: {
                     speed: 400,
-                    animateGradually: { enabled: false }
+                    animateGradually: { enabled: false },
                 },
                 fontFamily: 'inherit',
                 foreColor: 'inherit',
                 width: '100%',
                 height: 350,
                 type: 'line',
-                sparkline: { enabled: false }
+                sparkline: { enabled: false },
             },
             colors: ['#38a169', '#e53e3e'], // Green for active, Red for failed
             series: [
                 { name: 'Active Devices', data: activeData },
-                { name: 'Failed Devices', data: failedData }
+                { name: 'Failed Devices', data: failedData },
             ],
             stroke: {
                 curve: 'smooth',
-                width: 3
+                width: 3,
             },
             tooltip: {
                 theme: 'dark',
                 x: {
-                    format: apexShortDateTime(this.config.time_format, true)
-                }
+                    format: apexShortDateTime(this.config.time_format, true),
+                },
             },
             xaxis: {
                 type: 'datetime',
-                labels: { datetimeUTC: false }
+                labels: { datetimeUTC: false },
             },
             yaxis: {
                 min: 0,
-                forceNiceScale: true
+                forceNiceScale: true,
             },
             legend: {
                 position: 'top',
-                horizontalAlign: 'right'
-            }
+                horizontalAlign: 'right',
+            },
         };
     }
 

@@ -1,29 +1,26 @@
-import {Pipe, PipeTransform} from '@angular/core';
-import {MetricsStatusThreshold} from '../core/config/app.config';
-import {DeviceModel} from '../core/models/device-model';
+import { Pipe, PipeTransform } from '@angular/core';
+import { MetricsStatusThreshold } from '../core/config/app.config';
+import { DeviceModel } from '../core/models/device-model';
 
 const DEVICE_STATUS_NAMES: { [key: number]: string } = {
     0: 'passed',
     1: 'failed',
     2: 'failed',
-    3: 'failed'
+    3: 'failed',
 };
 
 const DEVICE_STATUS_NAMES_WITH_REASON: { [key: number]: string } = {
     0: 'passed',
     1: 'failed: smart',
     2: 'failed: scrutiny',
-    3: 'failed: both'
+    3: 'failed: both',
 };
-
 
 @Pipe({
     name: 'deviceStatus',
-    standalone: false
+    standalone: false,
 })
 export class DeviceStatusPipe implements PipeTransform {
-
-
     static deviceStatusForModelWithThreshold(
         deviceModel: DeviceModel,
         hasSmartResults: boolean = true,
@@ -32,23 +29,23 @@ export class DeviceStatusPipe implements PipeTransform {
     ): string {
         // no smart data, so treat the device status as unknown
         if (!hasSmartResults) {
-            return 'unknown'
+            return 'unknown';
         }
 
         // If user has forced a failure via override, always show as failed
         // regardless of threshold setting
         if (deviceModel.has_forced_failure) {
-            return includeReason ? 'failed: override' : 'failed'
+            return includeReason ? 'failed: override' : 'failed';
         }
 
-        let statusNameLookup = DEVICE_STATUS_NAMES
+        let statusNameLookup = DEVICE_STATUS_NAMES;
         if (includeReason) {
-            statusNameLookup = DEVICE_STATUS_NAMES_WITH_REASON
+            statusNameLookup = DEVICE_STATUS_NAMES_WITH_REASON;
         }
         // determine the device status, by comparing it against the allowed threshold
         // tslint:disable-next-line:no-bitwise
-        const deviceStatus = deviceModel.device_status & threshold
-        return statusNameLookup[deviceStatus]
+        const deviceStatus = deviceModel.device_status & threshold;
+        return statusNameLookup[deviceStatus];
     }
 
     // static deviceStatusForModelWithThreshold(deviceModel: DeviceModel | any, threshold: MetricsStatusThreshold): string {
@@ -66,13 +63,7 @@ export class DeviceStatusPipe implements PipeTransform {
     //     return 'unknown'
     // }
 
-    transform(
-        deviceModel: DeviceModel,
-        hasSmartResults: boolean = true,
-        threshold: MetricsStatusThreshold = MetricsStatusThreshold.Both,
-        includeReason: boolean = false
-    ): string {
-        return DeviceStatusPipe.deviceStatusForModelWithThreshold(deviceModel, hasSmartResults, threshold, includeReason)
+    transform(deviceModel: DeviceModel, hasSmartResults: boolean = true, threshold: MetricsStatusThreshold = MetricsStatusThreshold.Both, includeReason: boolean = false): string {
+        return DeviceStatusPipe.deviceStatusForModelWithThreshold(deviceModel, hasSmartResults, threshold, includeReason);
     }
-
 }

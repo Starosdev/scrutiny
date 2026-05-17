@@ -10,10 +10,9 @@ import { TreoNavigationItem } from '@treo/components/navigation/navigation.types
     templateUrl: './group.component.html',
     styles: [],
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false
+    standalone: false,
 })
-export class TreoVerticalNavigationGroupItemComponent implements OnInit, OnDestroy
-{
+export class TreoVerticalNavigationGroupItemComponent implements OnInit, OnDestroy {
     // Auto collapse
     @Input()
     autoCollapse: boolean;
@@ -36,11 +35,7 @@ export class TreoVerticalNavigationGroupItemComponent implements OnInit, OnDestr
      * @param {TreoNavigationService} _treoNavigationService
      * @param {ChangeDetectorRef} _changeDetectorRef
      */
-    constructor(
-        private readonly _treoNavigationService: TreoNavigationService,
-        private readonly _changeDetectorRef: ChangeDetectorRef
-    )
-    {
+    constructor(private readonly _treoNavigationService: TreoNavigationService, private readonly _changeDetectorRef: ChangeDetectorRef) {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
     }
@@ -52,16 +47,12 @@ export class TreoVerticalNavigationGroupItemComponent implements OnInit, OnDestr
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Get the parent navigation component
         this._treoVerticalNavigationComponent = this._treoNavigationService.getComponent(this.name);
 
         // Subscribe to onRefreshed on the navigation component
-        this._treoVerticalNavigationComponent.onRefreshed.pipe(
-            takeUntil(this._unsubscribeAll)
-        ).subscribe(() => {
-
+        this._treoVerticalNavigationComponent.onRefreshed.pipe(takeUntil(this._unsubscribeAll)).subscribe(() => {
             // Mark for check
             this._changeDetectorRef.markForCheck();
         });
@@ -70,8 +61,7 @@ export class TreoVerticalNavigationGroupItemComponent implements OnInit, OnDestr
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();
@@ -87,8 +77,7 @@ export class TreoVerticalNavigationGroupItemComponent implements OnInit, OnDestr
      * @param index
      * @param item
      */
-    trackByFn(index: number, item: any): any
-    {
+    trackByFn(index: number, item: any): any {
         return item.id || index;
     }
 }

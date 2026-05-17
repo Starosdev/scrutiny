@@ -6,20 +6,15 @@ import { TreoMockApiRequestHandler } from '@treo/lib/mock-api/mock-api.request-h
 import { TreoMockApiService } from '@treo/lib/mock-api/mock-api.service';
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
-export class TreoMockApiInterceptor implements HttpInterceptor
-{
+export class TreoMockApiInterceptor implements HttpInterceptor {
     /**
      * Constructor
      *
      * @param {TreoMockApiService} _treoMockApiService
      */
-    constructor(
-        private readonly _treoMockApiService: TreoMockApiService
-    )
-    {
-    }
+    constructor(private readonly _treoMockApiService: TreoMockApiService) {}
 
     /**
      * Intercept
@@ -27,26 +22,21 @@ export class TreoMockApiInterceptor implements HttpInterceptor
      * @param request
      * @param next
      */
-    intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>>
-    {
+    intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
         // Try to get the request handler
         let urlPath = request.url;
 
-        try
-        {
+        try {
             const url = new URL(request.url);
             urlPath = url.pathname;
-        }
-        catch (e)
-        {
+        } catch (e) {
             // relative URL, leave as-is
         }
 
         const requestHandler: TreoMockApiRequestHandler = this._treoMockApiService.requestHandlers[request.method.toLowerCase()].get(urlPath);
 
         // If the request handler exists..
-        if ( requestHandler )
-        {
+        if (requestHandler) {
             // Set the intercepted request on the requestHandler
             requestHandler.interceptedRequest = request;
 
@@ -54,14 +44,12 @@ export class TreoMockApiInterceptor implements HttpInterceptor
             return requestHandler.replyCallback.pipe(
                 delay(requestHandler.delay),
                 switchMap((response) => {
-
                     // Throw a not found response, if there is no response data
-                    if ( !response )
-                    {
+                    if (!response) {
                         response = new HttpErrorResponse({
-                            error     : 'NOT FOUND',
-                            status    : 404,
-                            statusText: 'NOT FOUND'
+                            error: 'NOT FOUND',
+                            status: 404,
+                            statusText: 'NOT FOUND',
                         });
 
                         return throwError(response);
@@ -70,17 +58,16 @@ export class TreoMockApiInterceptor implements HttpInterceptor
                     // Parse the response data
                     const data = {
                         status: response[0],
-                        body  : response[1]
+                        body: response[1],
                     };
 
                     // If the status is in between 200 and 300,
                     // it's a success response
-                    if ( data.status >= 200 && data.status < 300 )
-                    {
+                    if (data.status >= 200 && data.status < 300) {
                         response = new HttpResponse({
-                            body      : data.body,
-                            status    : data.status,
-                            statusText: 'OK'
+                            body: data.body,
+                            status: data.status,
+                            statusText: 'OK',
                         });
 
                         return of(response);
@@ -88,14 +75,14 @@ export class TreoMockApiInterceptor implements HttpInterceptor
 
                     // Error response
                     response = new HttpErrorResponse({
-                        error     : data.body.error,
-                        status    : data.status,
-                        statusText: 'ERROR'
+                        error: data.body.error,
+                        status: data.status,
+                        statusText: 'ERROR',
                     });
 
                     return throwError(response);
-
-                }));
+                })
+            );
         }
 
         // Pass through if the request handler does not exists

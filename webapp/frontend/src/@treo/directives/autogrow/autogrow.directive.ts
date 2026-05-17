@@ -3,10 +3,9 @@ import { Subject } from 'rxjs';
 
 @Directive({
     selector: 'textarea[treoAutogrow]',
-    exportAs: 'treoAutogrow'
+    exportAs: 'treoAutogrow',
 })
-export class TreoAutogrowDirective implements OnInit, OnDestroy
-{
+export class TreoAutogrowDirective implements OnInit, OnDestroy {
     @HostBinding('rows')
     rows: number;
 
@@ -20,11 +19,7 @@ export class TreoAutogrowDirective implements OnInit, OnDestroy
      * @param {ElementRef} _elementRef
      * @param {Renderer2} _renderer2
      */
-    constructor(
-        private readonly _elementRef: ElementRef,
-        private readonly _renderer2: Renderer2
-    )
-    {
+    constructor(private readonly _elementRef: ElementRef, private readonly _renderer2: Renderer2) {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 
@@ -43,14 +38,12 @@ export class TreoAutogrowDirective implements OnInit, OnDestroy
      * @param value
      */
     @Input('treoAutogrowVerticalPadding')
-    set padding(value)
-    {
+    set padding(value) {
         // Store the value
         this._padding = value;
     }
 
-    get padding(): number
-    {
+    get padding(): number {
         return this._padding;
     }
 
@@ -61,8 +54,7 @@ export class TreoAutogrowDirective implements OnInit, OnDestroy
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Set base styles
         this._renderer2.setStyle(this._elementRef.nativeElement, 'resize', 'none');
         this._renderer2.setStyle(this._elementRef.nativeElement, 'overflow', 'hidden');
@@ -76,8 +68,7 @@ export class TreoAutogrowDirective implements OnInit, OnDestroy
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();
@@ -94,8 +85,7 @@ export class TreoAutogrowDirective implements OnInit, OnDestroy
      */
     @HostListener('input')
     @HostListener('ngModelChange')
-    private _resize(): void
-    {
+    private _resize(): void {
         // Set the height to 'auto' so we can correctly read the scrollHeight
         this._renderer2.setStyle(this._elementRef.nativeElement, 'height', 'auto');
 

@@ -6,7 +6,7 @@ import { getBasePath } from 'app/app.routing';
 import { BtrfsFilesystemDetailsResponseWrapper } from 'app/core/models/btrfs-filesystem-summary-model';
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
 export class BtrfsFilesystemDetailService {
     private _data: BehaviorSubject<BtrfsFilesystemDetailsResponseWrapper>;
@@ -20,9 +20,9 @@ export class BtrfsFilesystemDetailService {
     }
 
     getData(uuid: string): Observable<BtrfsFilesystemDetailsResponseWrapper> {
-        return this._httpClient.get(getBasePath() + `/api/btrfs/filesystem/${uuid}/details`).pipe(
-            tap((response: BtrfsFilesystemDetailsResponseWrapper) => this._data.next(response))
-        );
+        return this._httpClient
+            .get(getBasePath() + `/api/btrfs/filesystem/${uuid}/details`)
+            .pipe(tap((response: BtrfsFilesystemDetailsResponseWrapper) => this._data.next(response)));
     }
 
     setMuted(uuid: string, muted: boolean): Observable<any> {

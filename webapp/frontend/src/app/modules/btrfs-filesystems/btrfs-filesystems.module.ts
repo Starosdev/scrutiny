@@ -15,6 +15,18 @@ import { BtrfsFilesystemCardModule } from 'app/layout/common/btrfs-filesystem-ca
 
 @NgModule({
     declarations: [BtrfsFilesystemsComponent],
-    imports: [RouterModule.forChild(btrfsFilesystemsRoutes), MatButtonModule, MatDividerModule, MatTooltipModule, MatIconModule, MatMenuModule, MatProgressBarModule, MatSortModule, MatTableModule, SharedModule, BtrfsFilesystemCardModule]
+    imports: [
+        RouterModule.forChild(btrfsFilesystemsRoutes),
+        MatButtonModule,
+        MatDividerModule,
+        MatTooltipModule,
+        MatIconModule,
+        MatMenuModule,
+        MatProgressBarModule,
+        MatSortModule,
+        MatTableModule,
+        SharedModule,
+        BtrfsFilesystemCardModule,
+    ],
 })
 export class BtrfsFilesystemsModule {}

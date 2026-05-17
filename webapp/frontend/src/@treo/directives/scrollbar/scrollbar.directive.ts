@@ -14,10 +14,9 @@ import { ScrollbarGeometry, ScrollbarPosition } from '@treo/directives/scrollbar
 @Directive({
     selector: '[treoScrollbar]',
     exportAs: 'treoScrollbar',
-    standalone: false
+    standalone: false,
 })
-export class TreoScrollbarDirective implements OnInit, OnDestroy
-{
+export class TreoScrollbarDirective implements OnInit, OnDestroy {
     isMobile: boolean;
     ps: PerfectScrollbar | any;
 
@@ -34,12 +33,7 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      * @param {Platform} _platform
      * @param {Router} _router
      */
-    constructor(
-        private readonly _elementRef: ElementRef,
-        private readonly _platform: Platform,
-        private readonly _router: Router
-    )
-    {
+    constructor(private readonly _elementRef: ElementRef, private readonly _platform: Platform, private readonly _router: Router) {
         // Set the private defaults
         this._animation = null;
         this._options = {};
@@ -60,8 +54,7 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      * @param value
      */
     @Input()
-    set treoScrollbarOptions(value: any)
-    {
+    set treoScrollbarOptions(value: any) {
         // Merge the options
         this._options = _.merge({}, this._options, value);
 
@@ -75,8 +68,7 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
         });
     }
 
-    get treoScrollbarOptions(): any
-    {
+    get treoScrollbarOptions(): any {
         // Return the options
         return this._options;
     }
@@ -87,17 +79,14 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      * @param value
      */
     @Input('treoScrollbar')
-    set enabled(value: boolean | '')
-    {
+    set enabled(value: boolean | '') {
         // If the value is an empty string, interpret it as 'true'
-        if ( value === '' )
-        {
+        if (value === '') {
             value = true;
         }
 
         // If the value is the same, return...
-        if ( this._enabled === value )
-        {
+        if (this._enabled === value) {
             return;
         }
 
@@ -105,20 +94,16 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
         this._enabled = value;
 
         // If enabled...
-        if ( this.enabled )
-        {
+        if (this.enabled) {
             // Init the directive
             this._init();
-        }
-        else
-        {
+        } else {
             // Otherwise destroy it
             this._destroy();
         }
     }
 
-    get enabled(): boolean | ''
-    {
+    get enabled(): boolean | '' {
         // Return the enabled status
         return this._enabled;
     }
@@ -126,8 +111,7 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
     /**
      * Getter for _elementRef
      */
-    get elementRef(): ElementRef
-    {
+    get elementRef(): ElementRef {
         return this._elementRef;
     }
 
@@ -138,16 +122,11 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Subscribe to window resize event
         fromEvent(window, 'resize')
-            .pipe(
-                takeUntil(this._unsubscribeAll),
-                debounceTime(150)
-            )
+            .pipe(takeUntil(this._unsubscribeAll), debounceTime(150))
             .subscribe(() => {
-
                 // Update the PerfectScrollbar
                 this.update();
             });
@@ -156,8 +135,7 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         this._destroy();
 
         // Unsubscribe from all subscriptions
@@ -174,23 +152,19 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      *
      * @private
      */
-    private _init(): void
-    {
+    private _init(): void {
         // Return, if already initialized
-        if ( this.ps )
-        {
+        if (this.ps) {
             return;
         }
 
         // Check if is mobile
-        if ( this._platform.ANDROID || this._platform.IOS )
-        {
+        if (this._platform.ANDROID || this._platform.IOS) {
             this.isMobile = true;
         }
 
         // Return if it's mobile or the platform is not a browser
-        if ( this.isMobile || !this._platform.isBrowser )
-        {
+        if (this.isMobile || !this._platform.isBrowser) {
             // Silently set the enabled to false
             this._enabled = false;
 
@@ -198,7 +172,7 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
         }
 
         // Initialize the PerfectScrollbar
-        this.ps = new PerfectScrollbar(this._elementRef.nativeElement, {...this.treoScrollbarOptions});
+        this.ps = new PerfectScrollbar(this._elementRef.nativeElement, { ...this.treoScrollbarOptions });
     }
 
     /**
@@ -206,10 +180,8 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      *
      * @private
      */
-    private _destroy(): void
-    {
-        if ( !this.ps )
-        {
+    private _destroy(): void {
+        if (!this.ps) {
             return;
         }
 
@@ -227,10 +199,8 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
     /**
      * Update the scrollbar
      */
-    update(): void
-    {
-        if ( !this.ps )
-        {
+    update(): void {
+        if (!this.ps) {
             return;
         }
 
@@ -241,8 +211,7 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
     /**
      * Destroy the scrollbar
      */
-    destroy(): void
-    {
+    destroy(): void {
         this.ngOnDestroy();
     }
 
@@ -251,13 +220,13 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      *
      * @param prefix
      */
-    geometry(prefix: string = 'scroll'): ScrollbarGeometry
-    {
+    geometry(prefix: string = 'scroll'): ScrollbarGeometry {
         const scrollbarGeometry = new ScrollbarGeometry(
             this._elementRef.nativeElement[prefix + 'Left'],
             this._elementRef.nativeElement[prefix + 'Top'],
             this._elementRef.nativeElement[prefix + 'Width'],
-            this._elementRef.nativeElement[prefix + 'Height']);
+            this._elementRef.nativeElement[prefix + 'Height']
+        );
 
         return scrollbarGeometry;
     }
@@ -267,23 +236,13 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      *
      * @param absolute
      */
-    position(absolute: boolean = false): ScrollbarPosition
-    {
+    position(absolute: boolean = false): ScrollbarPosition {
         let scrollbarPosition;
 
-        if ( !absolute && this.ps )
-        {
-            scrollbarPosition = new ScrollbarPosition(
-                this.ps.reach.x || 0,
-                this.ps.reach.y || 0
-            );
-        }
-        else
-        {
-            scrollbarPosition = new ScrollbarPosition(
-                this._elementRef.nativeElement.scrollLeft,
-                this._elementRef.nativeElement.scrollTop
-            );
+        if (!absolute && this.ps) {
+            scrollbarPosition = new ScrollbarPosition(this.ps.reach.x || 0, this.ps.reach.y || 0);
+        } else {
+            scrollbarPosition = new ScrollbarPosition(this._elementRef.nativeElement.scrollLeft, this._elementRef.nativeElement.scrollTop);
         }
 
         return scrollbarPosition;
@@ -296,21 +255,15 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      * @param y
      * @param speed
      */
-    scrollTo(x: number, y?: number, speed?: number): void
-    {
-        if ( y == null && speed == null )
-        {
+    scrollTo(x: number, y?: number, speed?: number): void {
+        if (y == null && speed == null) {
             this.animateScrolling('scrollTop', x, speed);
-        }
-        else
-        {
-            if ( x != null )
-            {
+        } else {
+            if (x != null) {
                 this.animateScrolling('scrollLeft', x, speed);
             }
 
-            if ( y != null )
-            {
+            if (y != null) {
                 this.animateScrolling('scrollTop', y, speed);
             }
         }
@@ -322,8 +275,7 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      * @param {number} x
      * @param {number} speed
      */
-    scrollToX(x: number, speed?: number): void
-    {
+    scrollToX(x: number, speed?: number): void {
         this.animateScrolling('scrollLeft', x, speed);
     }
 
@@ -333,8 +285,7 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      * @param {number} y
      * @param {number} speed
      */
-    scrollToY(y: number, speed?: number): void
-    {
+    scrollToY(y: number, speed?: number): void {
         this.animateScrolling('scrollTop', y, speed);
     }
 
@@ -344,8 +295,7 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      * @param {number} offset
      * @param {number} speed
      */
-    scrollToTop(offset: number = 0, speed?: number): void
-    {
+    scrollToTop(offset: number = 0, speed?: number): void {
         this.animateScrolling('scrollTop', offset, speed);
     }
 
@@ -355,8 +305,7 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      * @param {number} offset
      * @param {number} speed
      */
-    scrollToBottom(offset: number = 0, speed?: number): void
-    {
+    scrollToBottom(offset: number = 0, speed?: number): void {
         const top = this._elementRef.nativeElement.scrollHeight - this._elementRef.nativeElement.clientHeight;
         this.animateScrolling('scrollTop', top - offset, speed);
     }
@@ -367,8 +316,7 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      * @param {number} offset
      * @param {number} speed
      */
-    scrollToLeft(offset: number = 0, speed?: number): void
-    {
+    scrollToLeft(offset: number = 0, speed?: number): void {
         this.animateScrolling('scrollLeft', offset, speed);
     }
 
@@ -378,8 +326,7 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      * @param {number} offset
      * @param {number} speed
      */
-    scrollToRight(offset: number = 0, speed?: number): void
-    {
+    scrollToRight(offset: number = 0, speed?: number): void {
         const left = this._elementRef.nativeElement.scrollWidth - this._elementRef.nativeElement.clientWidth;
         this.animateScrolling('scrollLeft', left - offset, speed);
     }
@@ -392,22 +339,18 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      * @param {boolean} ignoreVisible If true, scrollToElement won't happen if element is already inside the current viewport
      * @param {number} speed
      */
-    scrollToElement(qs: string, offset: number = 0, ignoreVisible: boolean = false, speed?: number): void
-    {
+    scrollToElement(qs: string, offset: number = 0, ignoreVisible: boolean = false, speed?: number): void {
         const element = this._elementRef.nativeElement.querySelector(qs);
 
-        if ( !element )
-        {
+        if (!element) {
             return;
         }
 
         const elementPos = element.getBoundingClientRect();
         const scrollerPos = this._elementRef.nativeElement.getBoundingClientRect();
 
-        if ( this._elementRef.nativeElement.classList.contains('ps--active-x') )
-        {
-            if ( ignoreVisible && elementPos.right <= (scrollerPos.right - Math.abs(offset)) )
-            {
+        if (this._elementRef.nativeElement.classList.contains('ps--active-x')) {
+            if (ignoreVisible && elementPos.right <= scrollerPos.right - Math.abs(offset)) {
                 return;
             }
 
@@ -417,10 +360,8 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
             this.animateScrolling('scrollLeft', position + offset, speed);
         }
 
-        if ( this._elementRef.nativeElement.classList.contains('ps--active-y') )
-        {
-            if ( ignoreVisible && elementPos.bottom <= (scrollerPos.bottom - Math.abs(offset)) )
-            {
+        if (this._elementRef.nativeElement.classList.contains('ps--active-y')) {
+            if (ignoreVisible && elementPos.bottom <= scrollerPos.bottom - Math.abs(offset)) {
                 return;
             }
 
@@ -438,20 +379,15 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
      * @param value
      * @param speed
      */
-    animateScrolling(target: string, value: number, speed?: number): void
-    {
-        if ( this._animation )
-        {
+    animateScrolling(target: string, value: number, speed?: number): void {
+        if (this._animation) {
             window.cancelAnimationFrame(this._animation);
             this._animation = null;
         }
 
-        if ( !speed || typeof window === 'undefined' )
-        {
+        if (!speed || typeof window === 'undefined') {
             this._elementRef.nativeElement[target] = value;
-        }
-        else if ( value !== this._elementRef.nativeElement[target] )
-        {
+        } else if (value !== this._elementRef.nativeElement[target]) {
             let newValue = 0;
             let scrollCount = 0;
 
@@ -465,14 +401,10 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy
                 newValue = Math.round(value + cosParameter + cosParameter * Math.cos(scrollCount));
 
                 // Only continue animation if scroll position has not changed
-                if ( this._elementRef.nativeElement[target] === oldValue )
-                {
-                    if ( scrollCount >= Math.PI )
-                    {
+                if (this._elementRef.nativeElement[target] === oldValue) {
+                    if (scrollCount >= Math.PI) {
                         this.animateScrolling(target, value, 0);
-                    }
-                    else
-                    {
+                    } else {
                         this._elementRef.nativeElement[target] = newValue;
 
                         // On a zoomed out page the resulting offset may differ

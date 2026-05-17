@@ -6,17 +6,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { ThemeToggleComponent } from 'app/layout/common/theme-toggle/theme-toggle.component';
 
 @NgModule({
-    declarations: [
-        ThemeToggleComponent
-    ],
-    imports: [
-        CommonModule,
-        MatButtonModule,
-        MatIconModule,
-        MatTooltipModule
-    ],
-    exports: [
-        ThemeToggleComponent
-    ]
+    declarations: [ThemeToggleComponent],
+    imports: [CommonModule, MatButtonModule, MatIconModule, MatTooltipModule],
+    exports: [ThemeToggleComponent],
 })
 export class ThemeToggleModule {}

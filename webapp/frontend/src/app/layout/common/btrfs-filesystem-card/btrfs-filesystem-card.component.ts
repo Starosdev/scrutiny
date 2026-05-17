@@ -46,8 +46,12 @@ export class BtrfsFilesystemCardComponent {
     }
 
     getUsageClass(percent: number): string {
-        if (percent >= 90) { return 'bg-red-500'; }
-        if (percent >= 80) { return 'bg-yellow-500'; }
+        if (percent >= 90) {
+            return 'bg-red-500';
+        }
+        if (percent >= 80) {
+            return 'bg-yellow-500';
+        }
         return 'bg-green-500';
     }
 

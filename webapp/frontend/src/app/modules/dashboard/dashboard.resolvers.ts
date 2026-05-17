@@ -1,23 +1,19 @@
-import {Injectable} from '@angular/core';
+import { Injectable } from '@angular/core';
 import { ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
-import {Observable} from 'rxjs';
-import {DashboardService} from 'app/modules/dashboard/dashboard.service';
-import {DeviceSummaryModel} from 'app/core/models/device-summary-model';
+import { Observable } from 'rxjs';
+import { DashboardService } from 'app/modules/dashboard/dashboard.service';
+import { DeviceSummaryModel } from 'app/core/models/device-summary-model';
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
-export class DashboardResolver  {
+export class DashboardResolver {
     /**
      * Constructor
      *
      * @param {FinanceService} _dashboardService
      */
-    constructor(
-        private readonly _dashboardService: DashboardService
-    )
-    {
-    }
+    constructor(private readonly _dashboardService: DashboardService) {}
 
     // -----------------------------------------------------------------------------------------------------
     // @ Public methods

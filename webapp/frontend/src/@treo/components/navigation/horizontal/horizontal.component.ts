@@ -12,10 +12,9 @@ import { TreoNavigationService } from '@treo/components/navigation/navigation.se
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
     exportAs: 'treoHorizontalNavigation',
-    standalone: false
+    standalone: false,
 })
-export class TreoHorizontalNavigationComponent implements OnInit, OnDestroy
-{
+export class TreoHorizontalNavigationComponent implements OnInit, OnDestroy {
     onRefreshed: BehaviorSubject<boolean | null>;
 
     // Name
@@ -32,11 +31,7 @@ export class TreoHorizontalNavigationComponent implements OnInit, OnDestroy
      * @param {TreoNavigationService} _treoNavigationService
      * @param {ChangeDetectorRef} _changeDetectorRef
      */
-    constructor(
-        private readonly _treoNavigationService: TreoNavigationService,
-        private readonly _changeDetectorRef: ChangeDetectorRef
-    )
-    {
+    constructor(private readonly _treoNavigationService: TreoNavigationService, private readonly _changeDetectorRef: ChangeDetectorRef) {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 
@@ -52,8 +47,7 @@ export class TreoHorizontalNavigationComponent implements OnInit, OnDestroy
      * Setter & getter for data
      */
     @Input()
-    set navigation(value: TreoNavigationItem[])
-    {
+    set navigation(value: TreoNavigationItem[]) {
         // Store the data
         this._navigation = value;
 
@@ -61,8 +55,7 @@ export class TreoHorizontalNavigationComponent implements OnInit, OnDestroy
         this._changeDetectorRef.markForCheck();
     }
 
-    get navigation(): TreoNavigationItem[]
-    {
+    get navigation(): TreoNavigationItem[] {
         return this._navigation;
     }
 
@@ -73,8 +66,7 @@ export class TreoHorizontalNavigationComponent implements OnInit, OnDestroy
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Register the navigation component
         this._treoNavigationService.registerComponent(this.name, this);
     }
@@ -82,8 +74,7 @@ export class TreoHorizontalNavigationComponent implements OnInit, OnDestroy
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Deregister the navigation component from the registry
         this._treoNavigationService.deregisterComponent(this.name);
 
@@ -99,8 +90,7 @@ export class TreoHorizontalNavigationComponent implements OnInit, OnDestroy
     /**
      * Refresh the component to apply the changes
      */
-    refresh(): void
-    {
+    refresh(): void {
         // Mark for check
         this._changeDetectorRef.markForCheck();
 
@@ -114,8 +104,7 @@ export class TreoHorizontalNavigationComponent implements OnInit, OnDestroy
      * @param index
      * @param item
      */
-    trackByFn(index: number, item: any): any
-    {
+    trackByFn(index: number, item: any): any {
         return item.id || index;
     }
 }

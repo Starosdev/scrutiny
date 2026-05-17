@@ -8,7 +8,7 @@ import { versionInfo } from 'environments/versions';
     templateUrl: './mobile-settings.component.html',
     styleUrls: ['./mobile-settings.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    standalone: false,
 })
 export class MobileSettingsComponent {
     appVersion: string = versionInfo.version;
@@ -20,7 +20,7 @@ export class MobileSettingsComponent {
             width: '100vw',
             maxWidth: '100vw',
             height: '100vh',
-            panelClass: 'mobile-settings-dialog'
+            panelClass: 'mobile-settings-dialog',
         });
     }
 }

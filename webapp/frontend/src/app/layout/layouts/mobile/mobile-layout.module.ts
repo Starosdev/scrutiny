@@ -9,20 +9,8 @@ import { SharedModule } from 'app/shared/shared.module';
 import { MobileLayoutComponent } from './mobile-layout.component';
 
 @NgModule({
-    declarations: [
-        MobileLayoutComponent
-    ],
-    exports: [
-        MobileLayoutComponent
-    ],
-    imports: [
-        RouterModule,
-        MatButtonModule,
-        MatIconModule,
-        MatTooltipModule,
-        MobileTabBarModule,
-        ThemeToggleModule,
-        SharedModule
-    ]
+    declarations: [MobileLayoutComponent],
+    exports: [MobileLayoutComponent],
+    imports: [RouterModule, MatButtonModule, MatIconModule, MatTooltipModule, MobileTabBarModule, ThemeToggleModule, SharedModule],
 })
 export class MobileLayoutModule {}

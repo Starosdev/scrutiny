@@ -15,9 +15,7 @@ import { NgApexchartsModule } from 'ng-apexcharts';
 import { TreoCardModule } from '@treo/components/card';
 
 @NgModule({
-    declarations: [
-        ZFSPoolDetailComponent
-    ],
+    declarations: [ZFSPoolDetailComponent],
     imports: [
         RouterModule.forChild(zfsPoolDetailRoutes),
         MatButtonModule,
@@ -31,7 +29,6 @@ import { TreoCardModule } from '@treo/components/card';
         NgApexchartsModule,
         TreoCardModule,
         SharedModule,
-    ]
+    ],
 })
-export class ZFSPoolDetailModule {
-}
+export class ZFSPoolDetailModule {}

@@ -9,7 +9,7 @@ import { AppConfig, Theme } from 'app/core/config/app.config';
     templateUrl: './theme-toggle.component.html',
     styleUrls: ['./theme-toggle.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    standalone: false,
 })
 export class ThemeToggleComponent implements OnInit, OnDestroy {
     currentTheme: Theme = 'light';
@@ -19,11 +19,9 @@ export class ThemeToggleComponent implements OnInit, OnDestroy {
     constructor(private readonly _configService: ScrutinyConfigService) {}
 
     ngOnInit(): void {
-        this._configService.config$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((config: AppConfig) => {
-                this.currentTheme = config.theme || 'light';
-            });
+        this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {
+            this.currentTheme = config.theme || 'light';
+        });
     }
 
     ngOnDestroy(): void {
@@ -33,19 +31,27 @@ export class ThemeToggleComponent implements OnInit, OnDestroy {
 
     get currentIcon(): string {
         switch (this.currentTheme) {
-            case 'light': return 'heroicons_outline:sun';
-            case 'dark': return 'heroicons_outline:moon';
-            case 'system': return 'heroicons_outline:desktop-computer';
-            default: return 'heroicons_outline:sun';
+            case 'light':
+                return 'heroicons_outline:sun';
+            case 'dark':
+                return 'heroicons_outline:moon';
+            case 'system':
+                return 'heroicons_outline:desktop-computer';
+            default:
+                return 'heroicons_outline:sun';
         }
     }
 
     get currentLabel(): string {
         switch (this.currentTheme) {
-            case 'light': return 'Light';
-            case 'dark': return 'Dark';
-            case 'system': return 'System';
-            default: return 'Light';
+            case 'light':
+                return 'Light';
+            case 'dark':
+                return 'Dark';
+            case 'system':
+                return 'System';
+            default:
+                return 'Light';
         }
     }
 

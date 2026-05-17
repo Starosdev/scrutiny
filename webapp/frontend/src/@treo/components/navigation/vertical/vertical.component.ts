@@ -1,4 +1,22 @@
-import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostBinding, HostListener, Input, OnDestroy, OnInit, Output, QueryList, Renderer2, ViewChild, ViewChildren, ViewEncapsulation } from '@angular/core';
+import {
+    AfterViewInit,
+    ChangeDetectionStrategy,
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    EventEmitter,
+    HostBinding,
+    HostListener,
+    Input,
+    OnDestroy,
+    OnInit,
+    Output,
+    QueryList,
+    Renderer2,
+    ViewChild,
+    ViewChildren,
+    ViewEncapsulation,
+} from '@angular/core';
 import { animate, AnimationBuilder, AnimationPlayer, style } from '@angular/animations';
 import { NavigationEnd, Router } from '@angular/router';
 import { ScrollStrategy, ScrollStrategyOptions } from '@angular/cdk/overlay';
@@ -17,10 +35,9 @@ import { TreoScrollbarDirective } from '@treo/directives/scrollbar/scrollbar.dir
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
     exportAs: 'treoVerticalNavigation',
-    standalone: false
+    standalone: false,
 })
-export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, OnDestroy
-{
+export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, OnDestroy {
     activeAsideItemId: null | string;
     onCollapsableItemCollapsed: BehaviorSubject<TreoNavigationItem | null>;
     onCollapsableItemExpanded: BehaviorSubject<TreoNavigationItem | null>;
@@ -93,8 +110,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
         private readonly _renderer2: Renderer2,
         private readonly _router: Router,
         private readonly _scrollStrategyOptions: ScrollStrategyOptions
-    )
-    {
+    ) {
         // Set the private defaults
         this._animationsEnabled = false;
         this._asideOverlay = null;
@@ -138,11 +154,9 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      * @param value
      */
     @Input()
-    set appearance(value: TreoVerticalNavigationAppearance)
-    {
+    set appearance(value: TreoVerticalNavigationAppearance) {
         // If the value is the same, return...
-        if ( this._appearance === value )
-        {
+        if (this._appearance === value) {
             return;
         }
 
@@ -163,8 +177,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
         this.appearanceChanged.next(this.appearance);
     }
 
-    get appearance(): TreoVerticalNavigationAppearance
-    {
+    get appearance(): TreoVerticalNavigationAppearance {
         return this._appearance;
     }
 
@@ -172,48 +185,36 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      * Setter for treoScrollbarDirectives
      */
     @ViewChildren(TreoScrollbarDirective)
-    set treoScrollbarDirectives(treoScrollbarDirectives: QueryList<TreoScrollbarDirective>)
-    {
+    set treoScrollbarDirectives(treoScrollbarDirectives: QueryList<TreoScrollbarDirective>) {
         // Store the directives
         this._treoScrollbarDirectives = treoScrollbarDirectives;
 
         // Return, if there are no directives
-        if ( treoScrollbarDirectives.length === 0 )
-        {
+        if (treoScrollbarDirectives.length === 0) {
             return;
         }
 
         // Unsubscribe the previous subscriptions
-        if ( this._treoScrollbarDirectivesSubscription )
-        {
+        if (this._treoScrollbarDirectivesSubscription) {
             this._treoScrollbarDirectivesSubscription.unsubscribe();
         }
 
         // Update the scrollbars on collapsable items' collapse/expand
-        this._treoScrollbarDirectivesSubscription =
-            merge(
-                this.onCollapsableItemCollapsed,
-                this.onCollapsableItemExpanded
-            )
-                .pipe(
-                    takeUntil(this._unsubscribeAll),
-                    delay(250)
-                )
-                .subscribe(() => {
-
-                    // Loop through the scrollbars and update them
-                    treoScrollbarDirectives.forEach((treoScrollbarDirective) => {
-                        treoScrollbarDirective.update();
-                    });
+        this._treoScrollbarDirectivesSubscription = merge(this.onCollapsableItemCollapsed, this.onCollapsableItemExpanded)
+            .pipe(takeUntil(this._unsubscribeAll), delay(250))
+            .subscribe(() => {
+                // Loop through the scrollbars and update them
+                treoScrollbarDirectives.forEach((treoScrollbarDirective) => {
+                    treoScrollbarDirective.update();
                 });
+            });
     }
 
     /**
      * Setter & getter for data
      */
     @Input()
-    set navigation(value: TreoNavigationItem[])
-    {
+    set navigation(value: TreoNavigationItem[]) {
         // Store the data
         this._navigation = value;
 
@@ -221,8 +222,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
         this._changeDetectorRef.markForCheck();
     }
 
-    get navigation(): TreoNavigationItem[]
-    {
+    get navigation(): TreoNavigationItem[] {
         return this._navigation;
     }
 
@@ -232,11 +232,9 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      * @param value
      */
     @Input()
-    set inner(value: boolean)
-    {
+    set inner(value: boolean) {
         // If the value is the same, return...
-        if ( this._inner === value )
-        {
+        if (this._inner === value) {
             return;
         }
 
@@ -244,18 +242,14 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
         this._inner = value;
 
         // Update the class
-        if ( this.inner )
-        {
+        if (this.inner) {
             this._renderer2.addClass(this._elementRef.nativeElement, 'treo-vertical-navigation-inner');
-        }
-        else
-        {
+        } else {
             this._renderer2.removeClass(this._elementRef.nativeElement, 'treo-vertical-navigation-inner');
         }
     }
 
-    get inner(): boolean
-    {
+    get inner(): boolean {
         return this._inner;
     }
 
@@ -265,11 +259,9 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      * @param value
      */
     @Input()
-    set mode(value: TreoVerticalNavigationMode)
-    {
+    set mode(value: TreoVerticalNavigationMode) {
         // If the value is the same, return...
-        if ( this._mode === value )
-        {
+        if (this._mode === value) {
             return;
         }
 
@@ -277,21 +269,18 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
         this._disableAnimations();
 
         // If the mode changes: 'over -> side'
-        if ( this.mode === 'over' && value === 'side' )
-        {
+        if (this.mode === 'over' && value === 'side') {
             // Hide the overlay
             this._hideOverlay();
         }
 
         // If the mode changes: 'side -> over'
-        if ( this.mode === 'side' && value === 'over' )
-        {
+        if (this.mode === 'side' && value === 'over') {
             // Close the aside
             this.closeAside();
 
             // If the navigation is opened
-            if ( this.opened )
-            {
+            if (this.opened) {
                 // Show the overlay
                 this._showOverlay();
             }
@@ -321,8 +310,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
         }, 500);
     }
 
-    get mode(): TreoVerticalNavigationMode
-    {
+    get mode(): TreoVerticalNavigationMode {
         return this._mode;
     }
 
@@ -332,18 +320,15 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      * @param value
      */
     @Input()
-    set opened(value: boolean | '')
-    {
+    set opened(value: boolean | '') {
         // If the value is the same, return...
-        if ( this._opened === value )
-        {
+        if (this._opened === value) {
             return;
         }
 
         // If the provided value is an empty string,
         // take that as a 'true'
-        if ( value === '' )
-        {
+        if (value === '') {
             value = true;
         }
 
@@ -352,26 +337,19 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
 
         // If the navigation opened, and the mode
         // is 'over', show the overlay
-        if ( this.mode === 'over' )
-        {
-            if ( this._opened )
-            {
+        if (this.mode === 'over') {
+            if (this._opened) {
                 this._showOverlay();
-            }
-            else
-            {
+            } else {
                 this._hideOverlay();
             }
         }
 
-        if ( this.opened )
-        {
+        if (this.opened) {
             // Update styles and classes
             this._renderer2.setStyle(this._elementRef.nativeElement, 'visibility', 'visible');
             this._renderer2.addClass(this._elementRef.nativeElement, 'treo-vertical-navigation-opened');
-        }
-        else
-        {
+        } else {
             // Update styles and classes
             this._renderer2.setStyle(this._elementRef.nativeElement, 'visibility', 'hidden');
             this._renderer2.removeClass(this._elementRef.nativeElement, 'treo-vertical-navigation-opened');
@@ -381,8 +359,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
         this.openedChanged.next(this.opened);
     }
 
-    get opened(): boolean | ''
-    {
+    get opened(): boolean | '' {
         return this._opened;
     }
 
@@ -392,11 +369,9 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      * @param value
      */
     @Input()
-    set position(value: TreoVerticalNavigationPosition)
-    {
+    set position(value: TreoVerticalNavigationPosition) {
         // If the value is the same, return...
-        if ( this._position === value )
-        {
+        if (this._position === value) {
             return;
         }
 
@@ -417,8 +392,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
         this.positionChanged.next(this.position);
     }
 
-    get position(): TreoVerticalNavigationPosition
-    {
+    get position(): TreoVerticalNavigationPosition {
         return this._position;
     }
 
@@ -428,30 +402,24 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      * @param value
      */
     @Input()
-    set transparentOverlay(value: boolean | '')
-    {
+    set transparentOverlay(value: boolean | '') {
         // If the value is the same, return...
-        if ( this._opened === value )
-        {
+        if (this._opened === value) {
             return;
         }
 
         // If the provided value is an empty string,
         // take that as a 'true' and set the opened value
-        if ( value === '' )
-        {
+        if (value === '') {
             // Set the opened value
             this._transparentOverlay = true;
-        }
-        else
-        {
+        } else {
             // Set the transparent overlay value
             this._transparentOverlay = value;
         }
     }
 
-    get transparentOverlay(): boolean | ''
-    {
+    get transparentOverlay(): boolean | '' {
         return this._transparentOverlay;
     }
 
@@ -462,21 +430,18 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Register the navigation component
         this._treoNavigationService.registerComponent(this.name, this);
 
         // Subscribe to the 'NavigationEnd' event
         this._router.events
             .pipe(
-                filter(event => event instanceof NavigationEnd),
+                filter((event) => event instanceof NavigationEnd),
                 takeUntil(this._unsubscribeAll)
             )
             .subscribe(() => {
-
-                if ( this.mode === 'over' && this.opened )
-                {
+                if (this.mode === 'over' && this.opened) {
                     // Close the navigation
                     this.close();
                 }
@@ -486,32 +451,25 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
     /**
      * After view init
      */
-    ngAfterViewInit(): void
-    {
+    ngAfterViewInit(): void {
         setTimeout(() => {
-
             // If 'navigation content' element doesn't have
             // perfect scrollbar activated on it...
-            if ( !this._navigationContentEl.nativeElement.classList.contains('ps') )
-            {
+            if (!this._navigationContentEl.nativeElement.classList.contains('ps')) {
                 // Find the active item
                 const activeItem = this._navigationContentEl.nativeElement.querySelector('.treo-vertical-navigation-item-active');
 
                 // If the active item exists, scroll it into view
-                if ( activeItem )
-                {
+                if (activeItem) {
                     activeItem.scrollIntoView();
                 }
             }
             // Otherwise
-            else
-            {
+            else {
                 // Go through all the scrollbar directives
                 this._treoScrollbarDirectives.forEach((treoScrollbarDirective) => {
-
                     // Skip if not enabled
-                    if ( !treoScrollbarDirective.enabled )
-                    {
+                    if (!treoScrollbarDirective.enabled) {
                         return;
                     }
 
@@ -525,8 +483,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Deregister the navigation component from the registry
         this._treoNavigationService.deregisterComponent(this.name);
 
@@ -544,11 +501,9 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      *
      * @private
      */
-    private _enableAnimations(): void
-    {
+    private _enableAnimations(): void {
         // If the animations are already enabled, return...
-        if ( this._animationsEnabled )
-        {
+        if (this._animationsEnabled) {
             return;
         }
 
@@ -561,11 +516,9 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      *
      * @private
      */
-    private _disableAnimations(): void
-    {
+    private _disableAnimations(): void {
         // If the animations are already disabled, return...
-        if ( !this._animationsEnabled )
-        {
+        if (!this._animationsEnabled) {
             return;
         }
 
@@ -578,11 +531,9 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      *
      * @private
      */
-    private _showOverlay(): void
-    {
+    private _showOverlay(): void {
         // If there is already an overlay, return...
-        if ( this._asideOverlay )
-        {
+        if (this._asideOverlay) {
             return;
         }
 
@@ -593,8 +544,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
         this._overlay.classList.add('treo-vertical-navigation-overlay');
 
         // Add a class depending on the transparentOverlay option
-        if ( this.transparentOverlay )
-        {
+        if (this.transparentOverlay) {
             this._overlay.classList.add('treo-vertical-navigation-overlay-transparent');
         }
 
@@ -605,11 +555,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
         this._scrollStrategy.enable();
 
         // Create the enter animation and attach it to the player
-        this._player =
-            this._animationBuilder
-                .build([
-                    animate('300ms cubic-bezier(0.25, 0.8, 0.25, 1)', style({opacity: 1}))
-                ]).create(this._overlay);
+        this._player = this._animationBuilder.build([animate('300ms cubic-bezier(0.25, 0.8, 0.25, 1)', style({ opacity: 1 }))]).create(this._overlay);
 
         // Play the animation
         this._player.play();
@@ -623,29 +569,21 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      *
      * @private
      */
-    private _hideOverlay(): void
-    {
-        if ( !this._overlay )
-        {
+    private _hideOverlay(): void {
+        if (!this._overlay) {
             return;
         }
 
         // Create the leave animation and attach it to the player
-        this._player =
-            this._animationBuilder
-                .build([
-                    animate('300ms cubic-bezier(0.25, 0.8, 0.25, 1)', style({opacity: 0}))
-                ]).create(this._overlay);
+        this._player = this._animationBuilder.build([animate('300ms cubic-bezier(0.25, 0.8, 0.25, 1)', style({ opacity: 0 }))]).create(this._overlay);
 
         // Play the animation
         this._player.play();
 
         // Once the animation is done...
         this._player.onDone(() => {
-
             // If the overlay still exists...
-            if ( this._overlay )
-            {
+            if (this._overlay) {
                 // Remove the event listener
                 this._overlay.removeEventListener('click', this._handleOverlayClick);
 
@@ -664,11 +602,9 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      *
      * @private
      */
-    private _showAsideOverlay(): void
-    {
+    private _showAsideOverlay(): void {
         // If there is already an overlay, return...
-        if ( this._asideOverlay )
-        {
+        if (this._asideOverlay) {
             return;
         }
 
@@ -682,11 +618,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
         this._renderer2.appendChild(this._elementRef.nativeElement.parentElement, this._asideOverlay);
 
         // Create the enter animation and attach it to the player
-        this._player =
-            this._animationBuilder
-                .build([
-                    animate('300ms cubic-bezier(0.25, 0.8, 0.25, 1)', style({opacity: 1}))
-                ]).create(this._asideOverlay);
+        this._player = this._animationBuilder.build([animate('300ms cubic-bezier(0.25, 0.8, 0.25, 1)', style({ opacity: 1 }))]).create(this._asideOverlay);
 
         // Play the animation
         this._player.play();
@@ -700,29 +632,21 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      *
      * @private
      */
-    private _hideAsideOverlay(): void
-    {
-        if ( !this._asideOverlay )
-        {
+    private _hideAsideOverlay(): void {
+        if (!this._asideOverlay) {
             return;
         }
 
         // Create the leave animation and attach it to the player
-        this._player =
-            this._animationBuilder
-                .build([
-                    animate('300ms cubic-bezier(0.25, 0.8, 0.25, 1)', style({opacity: 0}))
-                ]).create(this._asideOverlay);
+        this._player = this._animationBuilder.build([animate('300ms cubic-bezier(0.25, 0.8, 0.25, 1)', style({ opacity: 0 }))]).create(this._asideOverlay);
 
         // Play the animation
         this._player.play();
 
         // Once the animation is done...
         this._player.onDone(() => {
-
             // If the aside overlay still exists...
-            if ( this._asideOverlay )
-            {
+            if (this._asideOverlay) {
                 // Remove the event listener
                 this._asideOverlay.removeEventListener('click', this._handleAsideOverlayClick);
 
@@ -739,8 +663,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      * @protected
      */
     @HostListener('mouseenter')
-    protected _onMouseenter(): void
-    {
+    protected _onMouseenter(): void {
         // Enable the animations
         this._enableAnimations();
 
@@ -754,8 +677,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      * @protected
      */
     @HostListener('mouseleave')
-    protected _onMouseleave(): void
-    {
+    protected _onMouseleave(): void {
         // Enable the animations
         this._enableAnimations();
 
@@ -770,8 +692,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
     /**
      * Refresh the component to apply the changes
      */
-    refresh(): void
-    {
+    refresh(): void {
         // Mark for check
         this._changeDetectorRef.markForCheck();
 
@@ -782,8 +703,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
     /**
      * Open the navigation
      */
-    open(): void
-    {
+    open(): void {
         // Enable the animations
         this._enableAnimations();
 
@@ -794,8 +714,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
     /**
      * Close the navigation
      */
-    close(): void
-    {
+    close(): void {
         // Enable the animations
         this._enableAnimations();
 
@@ -809,15 +728,11 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
     /**
      * Toggle the opened status
      */
-    toggle(): void
-    {
+    toggle(): void {
         // Toggle
-        if ( this.opened )
-        {
+        if (this.opened) {
             this.close();
-        }
-        else
-        {
+        } else {
             this.open();
         }
     }
@@ -827,11 +742,9 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      *
      * @param item
      */
-    openAside(item: TreoNavigationItem): void
-    {
+    openAside(item: TreoNavigationItem): void {
         // Return if the item is disabled
-        if ( item.disabled )
-        {
+        if (item.disabled) {
             return;
         }
 
@@ -848,8 +761,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
     /**
      * Close the aside
      */
-    closeAside(): void
-    {
+    closeAside(): void {
         // Close
         this.activeAsideItemId = null;
 
@@ -865,15 +777,11 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      *
      * @param item
      */
-    toggleAside(item: TreoNavigationItem): void
-    {
+    toggleAside(item: TreoNavigationItem): void {
         // Toggle
-        if ( this.activeAsideItemId === item.id )
-        {
+        if (this.activeAsideItemId === item.id) {
             this.closeAside();
-        }
-        else
-        {
+        } else {
             this.openAside(item);
         }
     }
@@ -884,8 +792,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      * @param index
      * @param item
      */
-    trackByFn(index: number, item: any): any
-    {
+    trackByFn(index: number, item: any): any {
         return item.id || index;
     }
 }

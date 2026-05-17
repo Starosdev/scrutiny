@@ -1,82 +1,84 @@
-<div class="relative flex flex-col flex-auto p-6 pr-3 pb-3 bg-card rounded border-l-4 shadow-md overflow-hidden"
-  [ngClass]="{
-    'border-green': !filesystemSummary.archived && filesystemSummary.status === 'ONLINE',
-    'border-yellow': !filesystemSummary.archived && filesystemSummary.status !== 'ONLINE',
-    'border-gray': filesystemSummary.archived,
-    'text-disabled': filesystemSummary.archived
-  }">
-  <div class="flex items-center">
-    <div class="flex flex-col">
-      <a [routerLink]="'/btrfs-filesystem/' + filesystemSummary.uuid" class="font-bold text-md text-secondary uppercase tracking-wider">
-        {{ getFilesystemTitle(filesystemSummary) }}
-        @if (filesystemSummary.muted) {
-          <mat-icon class="muted-icon ml-1" [svgIcon]="'notifications_off'"></mat-icon>
+<div
+    class="relative flex flex-col flex-auto p-6 pr-3 pb-3 bg-card rounded border-l-4 shadow-md overflow-hidden"
+    [ngClass]="{
+        'border-green': !filesystemSummary.archived && filesystemSummary.status === 'ONLINE',
+        'border-yellow': !filesystemSummary.archived && filesystemSummary.status !== 'ONLINE',
+        'border-gray': filesystemSummary.archived,
+        'text-disabled': filesystemSummary.archived
+    }"
+>
+    <div class="flex items-center">
+        <div class="flex flex-col">
+            <a [routerLink]="'/btrfs-filesystem/' + filesystemSummary.uuid" class="font-bold text-md text-secondary uppercase tracking-wider">
+                {{ getFilesystemTitle(filesystemSummary) }}
+                @if (filesystemSummary.muted) {
+                <mat-icon class="muted-icon ml-1" [svgIcon]="'notifications_off'"></mat-icon>
+                }
+            </a>
+            <div [ngClass]="classFilesystemLastUpdatedOn(filesystemSummary)" class="font-medium text-sm">
+                Last Updated on {{ filesystemSummary.updated_at | date : (config?.time_format === '12' ? 'MMMM dd, yyyy - h:mm a' : 'MMMM dd, yyyy - HH:mm') }}
+            </div>
+        </div>
+
+        <div class="ml-auto flex items-center">
+            @if (filesystemSummary.archived) {
+            <mat-icon [svgIcon]="'archive'"></mat-icon>
+            }
+            <button mat-icon-button [matMenuTriggerFor]="filesystemActionsMenu">
+                <mat-icon [svgIcon]="'more_vert'"></mat-icon>
+            </button>
+            <mat-menu #filesystemActionsMenu="matMenu">
+                <a mat-menu-item [routerLink]="'/btrfs-filesystem/' + filesystemSummary.uuid">
+                    <span class="flex items-center">
+                        <mat-icon class="icon-size-20 mr-3" [svgIcon]="'assessment'"></mat-icon>
+                        <span>View Details</span>
+                    </span>
+                </a>
+                <a mat-menu-item (click)="archiveFilesystem()">
+                    <span class="flex items-center">
+                        <mat-icon class="icon-size-20 mr-3" [svgIcon]="filesystemSummary.archived ? 'unarchive' : 'archive'"></mat-icon>
+                        <span>{{ filesystemSummary.archived ? 'Unarchive' : 'Archive' }} Filesystem</span>
+                    </span>
+                </a>
+                <a mat-menu-item (click)="deleteFilesystem()">
+                    <span class="flex items-center">
+                        <mat-icon class="icon-size-20 mr-3" [svgIcon]="'delete_forever'"></mat-icon>
+                        <span>Delete Filesystem</span>
+                    </span>
+                </a>
+            </mat-menu>
+        </div>
+    </div>
+
+    <div class="flex flex-row flex-wrap mt-4 -mx-6">
+        <div class="flex flex-col mx-6 my-3 xs:w-full">
+            <div class="font-semibold text-xs text-hint uppercase tracking-wider">Status</div>
+            <div [ngClass]="getStatusColorClass(filesystemSummary.status)" class="mt-2 font-medium text-3xl leading-none">{{ filesystemSummary.status }}</div>
+        </div>
+
+        <div class="flex flex-col mx-6 my-3 xs:w-full">
+            <div class="font-semibold text-xs text-hint uppercase tracking-wider">Usage</div>
+            <div class="mt-2 font-medium text-3xl leading-none">{{ getUsagePercent(filesystemSummary) }}%</div>
+            <div class="mt-1 h-1 w-24 bg-gray-200 rounded overflow-hidden">
+                <div class="h-full" [ngClass]="getUsageClass(getUsagePercent(filesystemSummary))" [style.width.%]="getUsagePercent(filesystemSummary)"></div>
+            </div>
+        </div>
+
+        <div class="flex flex-col mx-6 my-3 xs:w-full">
+            <div class="font-semibold text-xs text-hint uppercase tracking-wider">Mount</div>
+            <div class="mt-2 font-medium text-xl leading-none">{{ filesystemSummary.mount_point }}</div>
+        </div>
+
+        <div class="flex flex-col mx-6 my-3 xs:w-full">
+            <div class="font-semibold text-xs text-hint uppercase tracking-wider">Scrub</div>
+            <div class="mt-2 font-medium text-xl leading-none">{{ filesystemSummary.scrub_state }}</div>
+        </div>
+
+        @if (getErrorCount(filesystemSummary) > 0) {
+        <div class="flex flex-col mx-6 my-3 xs:w-full">
+            <div class="font-semibold text-xs text-hint uppercase tracking-wider">Errors</div>
+            <div class="mt-2 font-medium text-3xl leading-none text-red-600 dark:text-red-400">{{ getErrorCount(filesystemSummary) }}</div>
+        </div>
         }
-      </a>
-      <div [ngClass]="classFilesystemLastUpdatedOn(filesystemSummary)" class="font-medium text-sm">
-        Last Updated on {{ filesystemSummary.updated_at | date:(config?.time_format === '12' ? 'MMMM dd, yyyy - h:mm a' : 'MMMM dd, yyyy - HH:mm') }}
-      </div>
     </div>
-
-    <div class="ml-auto flex items-center">
-      @if (filesystemSummary.archived) {
-        <mat-icon [svgIcon]="'archive'"></mat-icon>
-      }
-      <button mat-icon-button [matMenuTriggerFor]="filesystemActionsMenu">
-        <mat-icon [svgIcon]="'more_vert'"></mat-icon>
-      </button>
-      <mat-menu #filesystemActionsMenu="matMenu">
-        <a mat-menu-item [routerLink]="'/btrfs-filesystem/' + filesystemSummary.uuid">
-          <span class="flex items-center">
-            <mat-icon class="icon-size-20 mr-3" [svgIcon]="'assessment'"></mat-icon>
-            <span>View Details</span>
-          </span>
-        </a>
-        <a mat-menu-item (click)="archiveFilesystem()">
-          <span class="flex items-center">
-            <mat-icon class="icon-size-20 mr-3" [svgIcon]="filesystemSummary.archived ? 'unarchive' : 'archive'"></mat-icon>
-            <span>{{ filesystemSummary.archived ? 'Unarchive' : 'Archive' }} Filesystem</span>
-          </span>
-        </a>
-        <a mat-menu-item (click)="deleteFilesystem()">
-          <span class="flex items-center">
-            <mat-icon class="icon-size-20 mr-3" [svgIcon]="'delete_forever'"></mat-icon>
-            <span>Delete Filesystem</span>
-          </span>
-        </a>
-      </mat-menu>
-    </div>
-  </div>
-
-  <div class="flex flex-row flex-wrap mt-4 -mx-6">
-    <div class="flex flex-col mx-6 my-3 xs:w-full">
-      <div class="font-semibold text-xs text-hint uppercase tracking-wider">Status</div>
-      <div [ngClass]="getStatusColorClass(filesystemSummary.status)" class="mt-2 font-medium text-3xl leading-none">{{ filesystemSummary.status }}</div>
-    </div>
-
-    <div class="flex flex-col mx-6 my-3 xs:w-full">
-      <div class="font-semibold text-xs text-hint uppercase tracking-wider">Usage</div>
-      <div class="mt-2 font-medium text-3xl leading-none">{{ getUsagePercent(filesystemSummary) }}%</div>
-      <div class="mt-1 h-1 w-24 bg-gray-200 rounded overflow-hidden">
-        <div class="h-full" [ngClass]="getUsageClass(getUsagePercent(filesystemSummary))" [style.width.%]="getUsagePercent(filesystemSummary)"></div>
-      </div>
-    </div>
-
-    <div class="flex flex-col mx-6 my-3 xs:w-full">
-      <div class="font-semibold text-xs text-hint uppercase tracking-wider">Mount</div>
-      <div class="mt-2 font-medium text-xl leading-none">{{ filesystemSummary.mount_point }}</div>
-    </div>
-
-    <div class="flex flex-col mx-6 my-3 xs:w-full">
-      <div class="font-semibold text-xs text-hint uppercase tracking-wider">Scrub</div>
-      <div class="mt-2 font-medium text-xl leading-none">{{ filesystemSummary.scrub_state }}</div>
-    </div>
-
-    @if (getErrorCount(filesystemSummary) > 0) {
-      <div class="flex flex-col mx-6 my-3 xs:w-full">
-        <div class="font-semibold text-xs text-hint uppercase tracking-wider">Errors</div>
-        <div class="mt-2 font-medium text-3xl leading-none text-red-600 dark:text-red-400">{{ getErrorCount(filesystemSummary) }}</div>
-      </div>
-    }
-  </div>
 </div>
