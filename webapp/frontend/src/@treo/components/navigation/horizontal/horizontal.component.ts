@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { TreoAnimations } from '@treo/animations';
 import { TreoNavigationItem } from '@treo/components/navigation/navigation.types';
@@ -15,6 +15,9 @@ import { TreoNavigationService } from '@treo/components/navigation/navigation.se
     standalone: false,
 })
 export class TreoHorizontalNavigationComponent implements OnInit, OnDestroy {
+    private readonly _treoNavigationService = inject(TreoNavigationService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+
     onRefreshed: BehaviorSubject<boolean | null>;
 
     // Name
@@ -31,7 +34,7 @@ export class TreoHorizontalNavigationComponent implements OnInit, OnDestroy {
      * @param {TreoNavigationService} _treoNavigationService
      * @param {ChangeDetectorRef} _changeDetectorRef
      */
-    constructor(private readonly _treoNavigationService: TreoNavigationService, private readonly _changeDetectorRef: ChangeDetectorRef) {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 

@@ -1,15 +1,10 @@
-import { ModuleWithProviders, NgModule } from '@angular/core';
+import { ModuleWithProviders, NgModule, inject } from '@angular/core';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { TREO_APP_CONFIG } from '@treo/services/config/config.constants';
 
 @NgModule()
 export class ScrutinyConfigModule {
-    /**
-     * Constructor
-     *
-     * @param {ScrutinyConfigService} _scrutinyConfigService
-     */
-    constructor(private readonly _scrutinyConfigService: ScrutinyConfigService) {}
+    private readonly _scrutinyConfigService = inject(ScrutinyConfigService);
 
     /**
      * forRoot method for setting user configuration

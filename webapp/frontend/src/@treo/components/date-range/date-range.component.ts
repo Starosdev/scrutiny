@@ -13,6 +13,7 @@ import {
     ViewChild,
     ViewContainerRef,
     ViewEncapsulation,
+    inject,
 } from '@angular/core';
 import { ControlValueAccessor, FormControl, NG_VALUE_ACCESSOR, Validators } from '@angular/forms';
 import { Overlay } from '@angular/cdk/overlay';
@@ -39,6 +40,12 @@ dayjs.extend(isBetween);
     ],
 })
 export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy {
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+    private readonly _elementRef = inject(ElementRef);
+    private readonly _overlay = inject(Overlay);
+    private readonly _renderer2 = inject(Renderer2);
+    private readonly _viewContainerRef = inject(ViewContainerRef);
+
     // Range changed
     @Output()
     readonly rangeChanged: EventEmitter<{ start: string; end: string }>;
@@ -83,13 +90,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy {
      * @param {Renderer2} _renderer2
      * @param {ViewContainerRef} _viewContainerRef
      */
-    constructor(
-        private readonly _changeDetectorRef: ChangeDetectorRef,
-        private readonly _elementRef: ElementRef,
-        private readonly _overlay: Overlay,
-        private readonly _renderer2: Renderer2,
-        private readonly _viewContainerRef: ViewContainerRef
-    ) {
+    constructor() {
         // Set the private defaults
         this._defaultClassNames = true;
         this._onChange = () => {};

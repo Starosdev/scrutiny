@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
@@ -13,6 +13,8 @@ import { FilesystemSummaryResponseWrapper, FilesystemCapacityModel, FilesystemHo
     providedIn: 'root',
 })
 export class DashboardService {
+    private readonly _httpClient = inject(HttpClient);
+
     // Observables
     private _data: BehaviorSubject<{ [p: string]: DeviceSummaryModel }>;
 
@@ -21,7 +23,7 @@ export class DashboardService {
      *
      * @param {HttpClient} _httpClient
      */
-    constructor(private readonly _httpClient: HttpClient) {
+    constructor() {
         // Set the private defaults
         this._data = new BehaviorSubject(null);
     }

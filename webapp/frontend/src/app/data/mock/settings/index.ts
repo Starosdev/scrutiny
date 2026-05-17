@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { TreoMockApi } from '@treo/lib/mock-api/mock-api.interfaces';
 import { TreoMockApiService } from '@treo/lib/mock-api/mock-api.service';
 import { settings as settingsData } from 'app/data/mock/settings/data';
@@ -9,9 +9,11 @@ import { settings as settingsData } from 'app/data/mock/settings/data';
     providedIn: 'root',
 })
 export class SettingsMockApi implements TreoMockApi {
+    private readonly _treoMockApiService = inject(TreoMockApiService);
+
     private _settings: any;
 
-    constructor(private readonly _treoMockApiService: TreoMockApiService) {
+    constructor() {
         this._settings = settingsData;
         this.register();
     }

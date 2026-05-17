@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import {
     AppConfig,
@@ -32,6 +32,11 @@ import { takeUntil } from 'rxjs/operators';
     standalone: false,
 })
 export class DashboardSettingsComponent implements OnInit {
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly _overrideService = inject(AttributeOverrideService);
+    private readonly _notifyUrlService = inject(NotifyUrlService);
+    private readonly _httpClient = inject(HttpClient);
+
     dashboardDisplay: string;
     dashboardSort: string;
     temperatureUnit: string;
@@ -131,12 +136,7 @@ export class DashboardSettingsComponent implements OnInit {
     // Private
     private _unsubscribeAll: Subject<void>;
 
-    constructor(
-        private readonly _configService: ScrutinyConfigService,
-        private readonly _overrideService: AttributeOverrideService,
-        private readonly _notifyUrlService: NotifyUrlService,
-        private readonly _httpClient: HttpClient
-    ) {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
     }

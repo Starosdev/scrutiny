@@ -1,4 +1,4 @@
-import { Component, Inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef as MatDialogRef } from '@angular/material/dialog';
 import { DashboardDeviceDeleteDialogService } from 'app/layout/common/dashboard-device-delete-dialog/dashboard-device-delete-dialog.service';
 
@@ -9,11 +9,12 @@ import { DashboardDeviceDeleteDialogService } from 'app/layout/common/dashboard-
     standalone: false,
 })
 export class DashboardDeviceDeleteDialogComponent {
-    constructor(
-        public dialogRef: MatDialogRef<DashboardDeviceDeleteDialogComponent>,
-        @Inject(MAT_DIALOG_DATA) public data: { deviceId: string; title: string },
-        private _deleteService: DashboardDeviceDeleteDialogService
-    ) {}
+    dialogRef = inject<MatDialogRef<DashboardDeviceDeleteDialogComponent>>(MatDialogRef);
+    data = inject<{
+        deviceId: string;
+        title: string;
+    }>(MAT_DIALOG_DATA);
+    private _deleteService = inject(DashboardDeviceDeleteDialogService);
 
     onDeleteClick(): void {
         this._deleteService.deleteDevice(this.data.deviceId).subscribe((data) => {

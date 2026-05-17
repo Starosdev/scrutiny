@@ -1,17 +1,20 @@
-import { Inject, Injectable, DOCUMENT } from '@angular/core';
+import { Injectable, DOCUMENT, inject } from '@angular/core';
 
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, take } from 'rxjs/operators';
 
 @Injectable()
 export class TreoSplashScreenService {
+    private _document = inject(DOCUMENT);
+    private _router = inject(Router);
+
     /**
      * Constructor
      *
      * @param {DOCUMENT} _document
      * @param {Router} _router
      */
-    constructor(@Inject(DOCUMENT) private _document: any, private _router: Router) {
+    constructor() {
         // Initialize
         this._init();
     }

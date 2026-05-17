@@ -1,4 +1,4 @@
-import { Component, ElementRef, EventEmitter, HostBinding, HostListener, Input, OnDestroy, OnInit, Output, Renderer2, ViewEncapsulation } from '@angular/core';
+import { Component, ElementRef, EventEmitter, HostBinding, HostListener, Input, OnDestroy, OnInit, Output, Renderer2, ViewEncapsulation, inject } from '@angular/core';
 import { animate, AnimationBuilder, AnimationPlayer, style } from '@angular/animations';
 import { TreoDrawerMode, TreoDrawerPosition } from '@treo/components/drawer/drawer.types';
 import { TreoDrawerService } from '@treo/components/drawer/drawer.service';
@@ -12,6 +12,11 @@ import { TreoDrawerService } from '@treo/components/drawer/drawer.service';
     standalone: false,
 })
 export class TreoDrawerComponent implements OnInit, OnDestroy {
+    private readonly _animationBuilder = inject(AnimationBuilder);
+    private readonly _treoDrawerService = inject(TreoDrawerService);
+    private readonly _elementRef = inject(ElementRef);
+    private readonly _renderer2 = inject(Renderer2);
+
     // Name
     @Input()
     name: string;
@@ -52,12 +57,7 @@ export class TreoDrawerComponent implements OnInit, OnDestroy {
      * @param {ElementRef} _elementRef
      * @param {Renderer2} _renderer2
      */
-    constructor(
-        private readonly _animationBuilder: AnimationBuilder,
-        private readonly _treoDrawerService: TreoDrawerService,
-        private readonly _elementRef: ElementRef,
-        private readonly _renderer2: Renderer2
-    ) {
+    constructor() {
         // Set the private defaults
         this._animationsEnabled = false;
         this._overlay = null;

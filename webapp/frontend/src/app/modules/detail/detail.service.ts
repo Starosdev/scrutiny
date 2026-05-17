@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -11,6 +11,8 @@ import { ReplacementRiskResponseWrapper } from 'app/core/models/replacement-risk
     providedIn: 'root',
 })
 export class DetailService {
+    private readonly _httpClient = inject(HttpClient);
+
     // Observables
     private _data: BehaviorSubject<DeviceDetailsResponseWrapper>;
 
@@ -19,7 +21,7 @@ export class DetailService {
      *
      * @param {HttpClient} _httpClient
      */
-    constructor(private readonly _httpClient: HttpClient) {
+    constructor() {
         // Set the private defaults
         this._data = new BehaviorSubject(null);
     }

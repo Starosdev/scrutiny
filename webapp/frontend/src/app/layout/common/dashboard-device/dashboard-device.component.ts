@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
 import dayjs from 'dayjs';
 import { takeUntil } from 'rxjs/operators';
 import { AppConfig } from 'app/core/config/app.config';
@@ -19,7 +19,11 @@ import { DashboardDeviceArchiveDialogService } from '../dashboard-device-archive
     standalone: false,
 })
 export class DashboardDeviceComponent implements OnInit {
-    constructor(private readonly _configService: ScrutinyConfigService, private readonly _archiveService: DashboardDeviceArchiveDialogService, public dialog: MatDialog) {
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly _archiveService = inject(DashboardDeviceArchiveDialogService);
+    dialog = inject(MatDialog);
+
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
     }

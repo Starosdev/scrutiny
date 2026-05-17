@@ -1,4 +1,4 @@
-import { NgModule, Optional, SkipSelf } from '@angular/core';
+import { NgModule, inject } from '@angular/core';
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import { TreoMediaWatcherModule } from '@treo/services/media-watcher/media-watcher.module';
 import { TreoSplashScreenModule } from '@treo/services/splash-screen/splash-screen.module';
@@ -21,7 +21,9 @@ export class TreoModule {
      *
      * @param parentModule
      */
-    constructor(@Optional() @SkipSelf() parentModule?: TreoModule) {
+    constructor() {
+        const parentModule = inject(TreoModule, { optional: true, skipSelf: true });
+
         if (parentModule) {
             throw new Error('TreoModule has already been loaded. Import this module in the AppModule only!');
         }

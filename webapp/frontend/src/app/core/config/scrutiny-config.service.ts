@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { TREO_APP_CONFIG } from '@treo/services/config/config.constants';
 import { BehaviorSubject, Observable } from 'rxjs';
@@ -11,12 +11,16 @@ import { merge } from 'lodash';
     providedIn: 'root',
 })
 export class ScrutinyConfigService {
+    private readonly _httpClient = inject(HttpClient);
+
     // Private
     private _config: BehaviorSubject<AppConfig>;
     private _defaultConfig: AppConfig;
     private _hasLoadedRemoteConfig = false;
 
-    constructor(private readonly _httpClient: HttpClient, @Inject(TREO_APP_CONFIG) defaultConfig: AppConfig) {
+    constructor() {
+        const defaultConfig = inject<AppConfig>(TREO_APP_CONFIG);
+
         // Set the private defaults
         this._defaultConfig = merge({}, defaultConfig);
         this._config = new BehaviorSubject(this._defaultConfig);

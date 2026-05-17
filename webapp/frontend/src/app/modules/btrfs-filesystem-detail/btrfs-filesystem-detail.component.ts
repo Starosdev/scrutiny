@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ApexOptions } from 'ng-apexcharts';
@@ -19,18 +19,16 @@ import { BtrfsFilesystemDetailService } from 'app/modules/btrfs-filesystem-detai
     standalone: false,
 })
 export class BtrfsFilesystemDetailComponent implements OnInit, OnDestroy {
+    private readonly _btrfsFilesystemDetailService = inject(BtrfsFilesystemDetailService);
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+    private readonly router = inject(Router);
+
     filesystem: BtrfsFilesystemModel;
     metricsHistory: BtrfsMetricsHistoryModel[];
     usageOptions: ApexOptions;
     config: AppConfig;
     private _unsubscribeAll: Subject<void> = new Subject();
-
-    constructor(
-        private readonly _btrfsFilesystemDetailService: BtrfsFilesystemDetailService,
-        private readonly _configService: ScrutinyConfigService,
-        private readonly _changeDetectorRef: ChangeDetectorRef,
-        private readonly router: Router
-    ) {}
 
     ngOnInit(): void {
         this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -23,7 +23,7 @@ interface SimpleResponse {
     providedIn: 'root',
 })
 export class NotifyUrlService {
-    constructor(private readonly http: HttpClient) {}
+    private readonly http = inject(HttpClient);
 
     getNotifyUrls(): Observable<NotifyUrlEntry[]> {
         return this.http.get<NotifyUrlsResponse>(getBasePath() + '/api/settings/notify-urls').pipe(map((response) => response.data || []));

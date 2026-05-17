@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
@@ -10,9 +10,11 @@ import { BtrfsFilesystemModel } from 'app/core/models/btrfs-filesystem-model';
     providedIn: 'root',
 })
 export class BtrfsFilesystemsService {
+    private readonly _httpClient = inject(HttpClient);
+
     private _data: BehaviorSubject<Record<string, BtrfsFilesystemModel>>;
 
-    constructor(private readonly _httpClient: HttpClient) {
+    constructor() {
         this._data = new BehaviorSubject(null);
     }
 

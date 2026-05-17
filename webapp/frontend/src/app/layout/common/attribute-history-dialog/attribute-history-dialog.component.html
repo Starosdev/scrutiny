@@ -23,7 +23,8 @@
                 </tr>
             </thead>
             <tbody>
-                <tr *ngFor="let item of historyData" class="border-b last:border-b-0">
+                @for (item of historyData; track item.date) {
+                <tr class="border-b last:border-b-0">
                     <td class="py-2 px-3 text-secondary">{{ item.date }}</td>
                     <td class="py-2 px-3 text-right font-medium">{{ item.value }}</td>
                     <td class="py-2 px-3 text-center">
@@ -48,6 +49,7 @@
                         </span>
                     </td>
                 </tr>
+                }
             </tbody>
         </table>
     </div>

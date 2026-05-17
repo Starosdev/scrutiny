@@ -1,8 +1,8 @@
 <div
     [ngClass]="{
         'border-green':
-            !deviceSummary.device.archived && deviceStatusForModelWithThreshold(deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold) == 'passed',
-        'border-red': !deviceSummary.device.archived && deviceStatusForModelWithThreshold(deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold) == 'failed',
+            !deviceSummary.device.archived && deviceStatusForModelWithThreshold(deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold) === 'passed',
+        'border-red': !deviceSummary.device.archived && deviceStatusForModelWithThreshold(deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold) === 'failed',
         'border-gray': deviceSummary.device.archived,
         'text-disabled': deviceSummary.device.archived
     }"
@@ -10,11 +10,11 @@
 >
     <!-- Status watermark icon -->
     <div class="absolute bottom-0 right-0 w-24 h-24 -m-6">
-        @if ( deviceStatusForModelWithThreshold( deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold ) == 'passed' ) {
+        @if (deviceStatusForModelWithThreshold(deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold) === 'passed') {
         <mat-icon class="icon-size-96 opacity-12 text-green" [svgIcon]="'heroicons_outline:check-circle'"></mat-icon>
-        } @if ( deviceStatusForModelWithThreshold( deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold ) == 'failed' ) {
+        } @else if (deviceStatusForModelWithThreshold(deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold) === 'failed') {
         <mat-icon class="icon-size-96 opacity-12 text-red" [svgIcon]="'heroicons_outline:exclamation-circle'"></mat-icon>
-        } @if ( deviceStatusForModelWithThreshold( deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold ) == 'unknown' ) {
+        } @else if (deviceStatusForModelWithThreshold(deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold) === 'unknown') {
         <mat-icon class="icon-size-96 opacity-12 text-yellow" [svgIcon]="'heroicons_outline:question-mark-circle'"></mat-icon>
         }
     </div>

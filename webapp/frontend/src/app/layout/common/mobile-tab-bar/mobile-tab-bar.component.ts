@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { filter, takeUntil } from 'rxjs/operators';
@@ -19,6 +19,9 @@ interface TabItem {
     standalone: false,
 })
 export class MobileTabBarComponent implements OnInit, OnDestroy {
+    private readonly _router = inject(Router);
+    private readonly _dashboardService = inject(DashboardService);
+
     tabs: TabItem[] = [
         { icon: 'home', label: 'Home', route: '/mobile-home', exactMatch: true },
         { icon: 'storage', label: 'Drives', route: '/dashboard', exactMatch: true },
@@ -34,7 +37,7 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
 
     private _unsubscribeAll: Subject<void>;
 
-    constructor(private readonly _router: Router, private readonly _dashboardService: DashboardService) {
+    constructor() {
         this._unsubscribeAll = new Subject();
     }
 

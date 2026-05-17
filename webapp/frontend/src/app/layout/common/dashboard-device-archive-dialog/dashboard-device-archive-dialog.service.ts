@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { getBasePath } from 'app/app.routing';
@@ -7,12 +7,7 @@ import { getBasePath } from 'app/app.routing';
     providedIn: 'root',
 })
 export class DashboardDeviceArchiveDialogService {
-    /**
-     * Constructor
-     *
-     * @param {HttpClient} _httpClient
-     */
-    constructor(private readonly _httpClient: HttpClient) {}
+    private readonly _httpClient = inject(HttpClient);
 
     // -----------------------------------------------------------------------------------------------------
     // @ Public methods

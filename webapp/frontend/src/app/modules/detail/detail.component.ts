@@ -1,5 +1,5 @@
 import humanizeDuration from 'humanize-duration';
-import { AfterViewInit, Component, Inject, LOCALE_ID, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, LOCALE_ID, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { Location, formatDate } from '@angular/common';
 import { ApexOptions } from 'ng-apexcharts';
 import { AppConfig } from 'app/core/config/app.config';
@@ -47,6 +47,14 @@ const AttributeStatusFailedScrutiny = 4;
     standalone: false,
 })
 export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
+    private readonly _detailService = inject(DetailService);
+    dialog = inject(MatDialog);
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly _overrideService = inject(AttributeOverrideService);
+    private readonly _location = inject(Location);
+    private readonly _mediaWatcherService = inject(TreoMediaWatcherService);
+    locale = inject(LOCALE_ID);
+
     /**
      * Constructor
      *
@@ -57,15 +65,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     isMobile: boolean = false;
 
-    constructor(
-        private readonly _detailService: DetailService,
-        public dialog: MatDialog,
-        private readonly _configService: ScrutinyConfigService,
-        private readonly _overrideService: AttributeOverrideService,
-        private readonly _location: Location,
-        private readonly _mediaWatcherService: TreoMediaWatcherService,
-        @Inject(LOCALE_ID) public locale: string
-    ) {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 

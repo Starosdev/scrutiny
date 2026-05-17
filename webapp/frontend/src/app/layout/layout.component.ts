@@ -1,4 +1,4 @@
-import { Component, Inject, OnDestroy, OnInit, ViewEncapsulation, DOCUMENT } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewEncapsulation, DOCUMENT, inject } from '@angular/core';
 
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { MatSlideToggleChange as MatSlideToggleChange } from '@angular/material/slide-toggle';
@@ -18,6 +18,13 @@ import { AppConfig, Theme } from 'app/core/config/app.config';
     standalone: false,
 })
 export class LayoutComponent implements OnInit, OnDestroy {
+    private readonly _activatedRoute = inject(ActivatedRoute);
+    private readonly _scrutinyConfigService = inject(ScrutinyConfigService);
+    private readonly _treoDrawerService = inject(TreoDrawerService);
+    private _document = inject(DOCUMENT);
+    private _router = inject(Router);
+    private _treoMediaWatcherService = inject(TreoMediaWatcherService);
+
     config: AppConfig;
     layout: Layout;
     theme: Theme;
@@ -36,14 +43,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
      * @param {DOCUMENT} _document
      * @param {Router} _router
      */
-    constructor(
-        private readonly _activatedRoute: ActivatedRoute,
-        private readonly _scrutinyConfigService: ScrutinyConfigService,
-        private readonly _treoDrawerService: TreoDrawerService,
-        @Inject(DOCUMENT) private _document: any,
-        private _router: Router,
-        private _treoMediaWatcherService: TreoMediaWatcherService
-    ) {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 

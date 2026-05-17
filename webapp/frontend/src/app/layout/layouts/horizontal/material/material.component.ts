@@ -1,4 +1,4 @@
-import { Component, HostBinding, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, HostBinding, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { ActivatedRoute, Data, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -15,6 +15,12 @@ import { versionInfo } from 'environments/versions';
     standalone: false,
 })
 export class MaterialLayoutComponent implements OnInit, OnDestroy {
+    private readonly _activatedRoute = inject(ActivatedRoute);
+    private readonly _authService = inject(AuthService);
+    private readonly _treoMediaWatcherService = inject(TreoMediaWatcherService);
+    private readonly _treoNavigationService = inject(TreoNavigationService);
+    private readonly _router = inject(Router);
+
     appVersion: string;
     authEnabled: boolean = false;
     data: any;
@@ -37,13 +43,7 @@ export class MaterialLayoutComponent implements OnInit, OnDestroy {
      * @param {TreoNavigationService} _treoNavigationService
      * @param {Router} _router
      */
-    constructor(
-        private readonly _activatedRoute: ActivatedRoute,
-        private readonly _authService: AuthService,
-        private readonly _treoMediaWatcherService: TreoMediaWatcherService,
-        private readonly _treoNavigationService: TreoNavigationService,
-        private readonly _router: Router
-    ) {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 

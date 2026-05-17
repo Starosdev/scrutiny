@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AppConfig } from 'app/core/config/app.config';
@@ -16,14 +16,16 @@ import { BtrfsFilesystemsService } from 'app/modules/btrfs-filesystems/btrfs-fil
     standalone: false,
 })
 export class BtrfsFilesystemsComponent implements OnInit, OnDestroy {
+    private readonly _btrfsFilesystemsService = inject(BtrfsFilesystemsService);
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly router = inject(Router);
+
     summaryData: Record<string, BtrfsFilesystemModel>;
     hostGroups: { [hostId: string]: string[] } = {};
     config: AppConfig;
     showArchived: boolean;
 
     private _unsubscribeAll: Subject<void> = new Subject();
-
-    constructor(private readonly _btrfsFilesystemsService: BtrfsFilesystemsService, private readonly _configService: ScrutinyConfigService, private readonly router: Router) {}
 
     ngOnInit(): void {
         this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {

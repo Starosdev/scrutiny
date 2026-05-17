@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import * as _ from 'lodash';
 import { TreoMockApi } from '@treo/lib/mock-api/mock-api.interfaces';
 import { TreoMockApiService } from '@treo/lib/mock-api/mock-api.service';
@@ -13,6 +13,8 @@ import { sdf } from 'app/data/mock/device/details/sdf';
     providedIn: 'root',
 })
 export class DetailsMockApi implements TreoMockApi {
+    private readonly _treoMockApiService = inject(TreoMockApiService);
+
     // Private
     private _details: any;
 
@@ -21,7 +23,7 @@ export class DetailsMockApi implements TreoMockApi {
      *
      * @param _treoMockApiService
      */
-    constructor(private readonly _treoMockApiService: TreoMockApiService) {
+    constructor() {
         // Register the API endpoints
         this.register();
     }

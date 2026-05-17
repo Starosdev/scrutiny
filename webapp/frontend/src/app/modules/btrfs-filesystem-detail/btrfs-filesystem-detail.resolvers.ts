@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot } from '@angular/router';
 import { Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -7,7 +7,8 @@ import { BtrfsFilesystemDetailsResponseWrapper } from 'app/core/models/btrfs-fil
 
 @Injectable({ providedIn: 'root' })
 export class BtrfsFilesystemDetailResolver {
-    constructor(private readonly _btrfsFilesystemDetailService: BtrfsFilesystemDetailService, private readonly _router: Router) {}
+    private readonly _btrfsFilesystemDetailService = inject(BtrfsFilesystemDetailService);
+    private readonly _router = inject(Router);
 
     resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<BtrfsFilesystemDetailsResponseWrapper> {
         return this._btrfsFilesystemDetailService.getData(route.params.uuid).pipe(
