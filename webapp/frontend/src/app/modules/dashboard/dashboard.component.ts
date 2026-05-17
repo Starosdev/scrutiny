@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild, ViewEncapsulation, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ApexOptions, ChartComponent } from 'ng-apexcharts';
@@ -25,6 +25,13 @@ import { FilesystemCapacityModel, FilesystemHostStatusModel } from 'app/core/mod
     standalone: false,
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+    private readonly _dashboardService = inject(DashboardService);
+    private readonly _mdadmService = inject(MDADMService);
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+    dialog = inject(MatDialog);
+    private readonly router = inject(Router);
+
     summaryData: { [key: string]: DeviceSummaryModel };
     hostGroups: { [hostId: string]: string[] } = {};
     filesystemSummaryData: { filesystems: Record<string, FilesystemCapacityModel[]>; hosts: Record<string, FilesystemHostStatusModel> } | null = null;
@@ -50,14 +57,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
      * @param {MatDialog} dialog
      * @param {Router} router
      */
-    constructor(
-        private readonly _dashboardService: DashboardService,
-        private readonly _mdadmService: MDADMService,
-        private readonly _configService: ScrutinyConfigService,
-        private readonly _changeDetectorRef: ChangeDetectorRef,
-        public dialog: MatDialog,
-        private readonly router: Router
-    ) {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
         this.systemPrefersDark = globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;

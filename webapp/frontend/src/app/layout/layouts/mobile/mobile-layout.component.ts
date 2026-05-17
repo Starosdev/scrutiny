@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -13,12 +13,15 @@ import { versionInfo } from 'environments/versions';
     standalone: false,
 })
 export class MobileLayoutComponent implements OnInit, OnDestroy {
+    private readonly _authService = inject(AuthService);
+    private readonly _router = inject(Router);
+
     appVersion: string;
     authEnabled: boolean = false;
 
     private _unsubscribeAll: Subject<void>;
 
-    constructor(private readonly _authService: AuthService, private readonly _router: Router) {
+    constructor() {
         this._unsubscribeAll = new Subject();
         this.appVersion = versionInfo.version;
     }

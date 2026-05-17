@@ -1,8 +1,8 @@
 <div
     [ngClass]="{
-        'border-green': !poolSummary.archived && getPoolStatus(poolSummary) == 'passed',
-        'border-red': !poolSummary.archived && getPoolStatus(poolSummary) == 'failed',
-        'border-yellow': !poolSummary.archived && getPoolStatus(poolSummary) == 'unknown',
+        'border-green': !poolSummary.archived && getPoolStatus(poolSummary) === 'passed',
+        'border-red': !poolSummary.archived && getPoolStatus(poolSummary) === 'failed',
+        'border-yellow': !poolSummary.archived && getPoolStatus(poolSummary) === 'unknown',
         'border-gray': poolSummary.archived,
         'text-disabled': poolSummary.archived
     }"
@@ -10,11 +10,11 @@
 >
     <!-- Status watermark icon -->
     <div class="absolute bottom-0 right-0 w-24 h-24 -m-6">
-        @if (getPoolStatus(poolSummary) == 'passed') {
+        @if (getPoolStatus(poolSummary) === 'passed') {
         <mat-icon class="icon-size-96 opacity-12 text-green-600 dark:text-green-400" [svgIcon]="'heroicons_outline:check-circle'"></mat-icon>
-        } @if (getPoolStatus(poolSummary) == 'failed') {
+        } @else if (getPoolStatus(poolSummary) === 'failed') {
         <mat-icon class="icon-size-96 opacity-12 text-red-600 dark:text-red-400" [svgIcon]="'heroicons_outline:exclamation-circle'"></mat-icon>
-        } @if (getPoolStatus(poolSummary) == 'unknown') {
+        } @else if (getPoolStatus(poolSummary) === 'unknown') {
         <mat-icon class="icon-size-96 opacity-12 text-yellow-600 dark:text-yellow-400" [svgIcon]="'heroicons_outline:question-mark-circle'"></mat-icon>
         }
     </div>

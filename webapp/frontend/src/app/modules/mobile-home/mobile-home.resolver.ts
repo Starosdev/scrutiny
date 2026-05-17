@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Resolve } from '@angular/router';
 import { forkJoin, Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -9,7 +9,8 @@ import { ZFSPoolsService } from 'app/modules/zfs-pools/zfs-pools.service';
     providedIn: 'root',
 })
 export class MobileHomeResolver implements Resolve<any> {
-    constructor(private readonly _dashboardService: DashboardService, private readonly _zfsPoolsService: ZFSPoolsService) {}
+    private readonly _dashboardService = inject(DashboardService);
+    private readonly _zfsPoolsService = inject(ZFSPoolsService);
 
     resolve(): Observable<any> {
         return forkJoin({

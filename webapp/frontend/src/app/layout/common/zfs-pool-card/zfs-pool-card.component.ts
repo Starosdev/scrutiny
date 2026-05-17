@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { Subject } from 'rxjs';
@@ -16,7 +16,10 @@ import { ZFSPoolsService } from 'app/modules/zfs-pools/zfs-pools.service';
     standalone: false,
 })
 export class ZFSPoolCardComponent {
-    constructor(private readonly _zfsPoolsService: ZFSPoolsService, public dialog: MatDialog) {
+    private readonly _zfsPoolsService = inject(ZFSPoolsService);
+    dialog = inject(MatDialog);
+
+    constructor() {
         this._unsubscribeAll = new Subject();
     }
 

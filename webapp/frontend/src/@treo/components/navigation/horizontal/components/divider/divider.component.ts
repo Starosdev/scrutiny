@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { TreoHorizontalNavigationComponent } from '@treo/components/navigation/horizontal/horizontal.component';
@@ -13,6 +13,9 @@ import { TreoNavigationItem } from '@treo/components/navigation/navigation.types
     standalone: false,
 })
 export class TreoHorizontalNavigationDividerItemComponent implements OnInit, OnDestroy {
+    private readonly _treoNavigationService = inject(TreoNavigationService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+
     // Item
     @Input()
     item: TreoNavigationItem;
@@ -31,7 +34,7 @@ export class TreoHorizontalNavigationDividerItemComponent implements OnInit, OnD
      * @param {TreoNavigationService} _treoNavigationService
      * @param {ChangeDetectorRef} _changeDetectorRef
      */
-    constructor(private readonly _treoNavigationService: TreoNavigationService, private readonly _changeDetectorRef: ChangeDetectorRef) {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
     }

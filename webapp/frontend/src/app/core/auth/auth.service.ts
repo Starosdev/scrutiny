@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, of, firstValueFrom } from 'rxjs';
@@ -24,6 +24,9 @@ interface LoginResponse {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+    private readonly _http = inject(HttpClient);
+    private readonly _router = inject(Router);
+
     private _authEnabled = new BehaviorSubject<boolean>(false);
     private _isLoggedIn = new BehaviorSubject<boolean>(false);
     private _loginMethods = new BehaviorSubject<string[]>([]);
@@ -32,8 +35,6 @@ export class AuthService {
     readonly authEnabled$ = this._authEnabled.asObservable();
     readonly isLoggedIn$ = this._isLoggedIn.asObservable();
     readonly loginMethods$ = this._loginMethods.asObservable();
-
-    constructor(private readonly _http: HttpClient, private readonly _router: Router) {}
 
     get authEnabled(): boolean {
         return this._authEnabled.value;

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { WorkloadService } from 'app/modules/workload/workload.service';
@@ -20,6 +20,12 @@ import { ViewChild, AfterViewInit } from '@angular/core';
     standalone: false,
 })
 export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
+    private readonly _workloadService = inject(WorkloadService);
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+    private readonly _mediaWatcherService = inject(TreoMediaWatcherService);
+    private readonly router = inject(Router);
+
     workloadData: Record<string, WorkloadInsightModel>;
     config: AppConfig;
     durationKey = 'week';
@@ -31,13 +37,7 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
     @ViewChild(MatSort) sort: MatSort;
     private _unsubscribeAll: Subject<void>;
 
-    constructor(
-        private readonly _workloadService: WorkloadService,
-        private readonly _configService: ScrutinyConfigService,
-        private readonly _changeDetectorRef: ChangeDetectorRef,
-        private readonly _mediaWatcherService: TreoMediaWatcherService,
-        private readonly router: Router
-    ) {
+    constructor() {
         this._unsubscribeAll = new Subject();
         this.dataSource = new MatTableDataSource([]);
     }

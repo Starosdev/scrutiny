@@ -1,4 +1,17 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, Renderer2, ViewEncapsulation } from '@angular/core';
+import {
+    ChangeDetectionStrategy,
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    EventEmitter,
+    Input,
+    OnDestroy,
+    OnInit,
+    Output,
+    Renderer2,
+    ViewEncapsulation,
+    inject,
+} from '@angular/core';
 import { Subject } from 'rxjs';
 import { filter, takeUntil } from 'rxjs/operators';
 import { TreoAnimations } from '@treo/animations';
@@ -15,6 +28,11 @@ import { TreoMessageService } from '@treo/components/message/message.service';
     exportAs: 'treoMessage',
 })
 export class TreoMessageComponent implements OnInit, OnDestroy {
+    private readonly _treoMessageService = inject(TreoMessageService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+    private readonly _elementRef = inject(ElementRef);
+    private readonly _renderer2 = inject(Renderer2);
+
     // Name
     @Input()
     name: string;
@@ -40,12 +58,7 @@ export class TreoMessageComponent implements OnInit, OnDestroy {
      * @param {ElementRef} _elementRef
      * @param {Renderer2} _renderer2
      */
-    constructor(
-        private readonly _treoMessageService: TreoMessageService,
-        private readonly _changeDetectorRef: ChangeDetectorRef,
-        private readonly _elementRef: ElementRef,
-        private readonly _renderer2: Renderer2
-    ) {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 

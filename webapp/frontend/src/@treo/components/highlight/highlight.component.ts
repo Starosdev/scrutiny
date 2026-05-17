@@ -12,6 +12,7 @@ import {
     ViewChild,
     ViewContainerRef,
     ViewEncapsulation,
+    inject,
 } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { TreoHighlightService } from '@treo/components/highlight/highlight.service';
@@ -25,6 +26,13 @@ import { TreoHighlightService } from '@treo/components/highlight/highlight.servi
     exportAs: 'treoHighlight',
 })
 export class TreoHighlightComponent implements AfterViewInit {
+    private readonly _treoHighlightService = inject(TreoHighlightService);
+    private readonly _domSanitizer = inject(DomSanitizer);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+    private readonly _elementRef = inject(ElementRef);
+    private readonly _renderer2 = inject(Renderer2);
+    private readonly _viewContainerRef = inject(ViewContainerRef);
+
     highlightedCode: string;
     viewRef: EmbeddedViewRef<any>;
 
@@ -45,14 +53,7 @@ export class TreoHighlightComponent implements AfterViewInit {
      * @param {Renderer2} _renderer2
      * @param {ViewContainerRef} _viewContainerRef
      */
-    constructor(
-        private readonly _treoHighlightService: TreoHighlightService,
-        private readonly _domSanitizer: DomSanitizer,
-        private readonly _changeDetectorRef: ChangeDetectorRef,
-        private readonly _elementRef: ElementRef,
-        private readonly _renderer2: Renderer2,
-        private readonly _viewContainerRef: ViewContainerRef
-    ) {
+    constructor() {
         // Set the private defaults
         this._code = '';
         this._lang = '';

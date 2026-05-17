@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest, HttpResponse } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
 import { delay, switchMap } from 'rxjs/operators';
@@ -9,12 +9,7 @@ import { TreoMockApiService } from '@treo/lib/mock-api/mock-api.service';
     providedIn: 'root',
 })
 export class TreoMockApiInterceptor implements HttpInterceptor {
-    /**
-     * Constructor
-     *
-     * @param {TreoMockApiService} _treoMockApiService
-     */
-    constructor(private readonly _treoMockApiService: TreoMockApiService) {}
+    private readonly _treoMockApiService = inject(TreoMockApiService);
 
     /**
      * Intercept

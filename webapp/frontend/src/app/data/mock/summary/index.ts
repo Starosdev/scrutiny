@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import * as _ from 'lodash';
 import { TreoMockApi } from '@treo/lib/mock-api/mock-api.interfaces';
 import { TreoMockApiService } from '@treo/lib/mock-api/mock-api.service';
@@ -10,6 +10,8 @@ import { mdadm_summary as mdadmSummaryData } from 'app/data/mock/summary/mdadm_s
     providedIn: 'root',
 })
 export class SummaryMockApi implements TreoMockApi {
+    private readonly _treoMockApiService = inject(TreoMockApiService);
+
     // Private
     private _summary: any;
     private _filesystemSummary: any;
@@ -20,7 +22,7 @@ export class SummaryMockApi implements TreoMockApi {
      *
      * @param _treoMockApiService
      */
-    constructor(private readonly _treoMockApiService: TreoMockApiService) {
+    constructor() {
         // Set the data
         this._summary = summaryData;
         this._filesystemSummary = filesystemSummaryData;

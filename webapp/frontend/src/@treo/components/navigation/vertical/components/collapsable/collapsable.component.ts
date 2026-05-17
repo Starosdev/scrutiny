@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostBinding, Input, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostBinding, Input, OnDestroy, OnInit, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { filter, takeUntil } from 'rxjs/operators';
@@ -16,6 +16,10 @@ import { TreoNavigationItem } from '@treo/components/navigation/navigation.types
     standalone: false,
 })
 export class TreoVerticalNavigationCollapsableItemComponent implements OnInit, OnDestroy {
+    private readonly _treoNavigationService = inject(TreoNavigationService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+    private readonly _router = inject(Router);
+
     // Auto collapse
     @Input()
     autoCollapse: boolean;
@@ -47,7 +51,7 @@ export class TreoVerticalNavigationCollapsableItemComponent implements OnInit, O
      * @param {ChangeDetectorRef} _changeDetectorRef
      * @param {Router} _router
      */
-    constructor(private readonly _treoNavigationService: TreoNavigationService, private readonly _changeDetectorRef: ChangeDetectorRef, private readonly _router: Router) {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 

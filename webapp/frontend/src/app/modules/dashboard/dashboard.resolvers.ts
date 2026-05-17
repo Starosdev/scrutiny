@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 import { Observable } from 'rxjs';
 import { DashboardService } from 'app/modules/dashboard/dashboard.service';
@@ -8,12 +8,7 @@ import { DeviceSummaryModel } from 'app/core/models/device-summary-model';
     providedIn: 'root',
 })
 export class DashboardResolver {
-    /**
-     * Constructor
-     *
-     * @param {FinanceService} _dashboardService
-     */
-    constructor(private readonly _dashboardService: DashboardService) {}
+    private readonly _dashboardService = inject(DashboardService);
 
     // -----------------------------------------------------------------------------------------------------
     // @ Public methods

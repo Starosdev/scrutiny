@@ -1,4 +1,4 @@
-import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, Renderer2, ViewChild, ViewEncapsulation } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, Renderer2, ViewChild, ViewEncapsulation, inject } from '@angular/core';
 import { UntypedFormControl } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { MatFormField as MatFormField } from '@angular/material/form-field';
@@ -17,6 +17,10 @@ import { getBasePath } from 'app/app.routing';
     standalone: false,
 })
 export class SearchComponent implements OnInit, OnDestroy {
+    private readonly _elementRef = inject(ElementRef);
+    private readonly _httpClient = inject(HttpClient);
+    private readonly _renderer2 = inject(Renderer2);
+
     results: any[] | null;
     searchControl: UntypedFormControl;
 
@@ -44,7 +48,7 @@ export class SearchComponent implements OnInit, OnDestroy {
      * @param {HttpClient} _httpClient
      * @param {Renderer2} _renderer2
      */
-    constructor(private readonly _elementRef: ElementRef, private readonly _httpClient: HttpClient, private readonly _renderer2: Renderer2) {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 

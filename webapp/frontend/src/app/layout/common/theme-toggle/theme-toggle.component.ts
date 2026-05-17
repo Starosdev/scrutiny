@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
@@ -12,11 +12,11 @@ import { AppConfig, Theme } from 'app/core/config/app.config';
     standalone: false,
 })
 export class ThemeToggleComponent implements OnInit, OnDestroy {
+    private readonly _configService = inject(ScrutinyConfigService);
+
     currentTheme: Theme = 'light';
 
     private _unsubscribeAll: Subject<void> = new Subject();
-
-    constructor(private readonly _configService: ScrutinyConfigService) {}
 
     ngOnInit(): void {
         this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {

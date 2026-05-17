@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { ApexOptions } from 'ng-apexcharts';
 
@@ -18,10 +18,11 @@ export interface AttributeHistoryData {
     standalone: false,
 })
 export class AttributeHistoryDialogComponent implements OnInit {
+    dialogRef = inject<MatDialogRef<AttributeHistoryDialogComponent>>(MatDialogRef);
+    data = inject<AttributeHistoryData>(MAT_DIALOG_DATA);
+
     chartOptions: Partial<ApexOptions>;
     historyData: Array<{ date: string; value: number; status: string }> = [];
-
-    constructor(public dialogRef: MatDialogRef<AttributeHistoryDialogComponent>, @Inject(MAT_DIALOG_DATA) public data: AttributeHistoryData) {}
 
     ngOnInit(): void {
         this._prepareChartOptions();

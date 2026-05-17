@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot } from '@angular/router';
 import { Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -9,7 +9,8 @@ import { DeviceDetailsResponseWrapper } from 'app/core/models/device-details-res
     providedIn: 'root',
 })
 export class DetailResolver {
-    constructor(private readonly _detailService: DetailService, private readonly _router: Router) {}
+    private readonly _detailService = inject(DetailService);
+    private readonly _router = inject(Router);
 
     // -----------------------------------------------------------------------------------------------------
     // @ Public methods

@@ -1,4 +1,4 @@
-import { Directive, ElementRef, HostBinding, HostListener, Input, OnDestroy, OnInit, Renderer2 } from '@angular/core';
+import { Directive, ElementRef, HostBinding, HostListener, Input, OnDestroy, OnInit, Renderer2, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 
 @Directive({
@@ -6,6 +6,9 @@ import { Subject } from 'rxjs';
     exportAs: 'treoAutogrow',
 })
 export class TreoAutogrowDirective implements OnInit, OnDestroy {
+    private readonly _elementRef = inject(ElementRef);
+    private readonly _renderer2 = inject(Renderer2);
+
     @HostBinding('rows')
     rows: number;
 
@@ -19,7 +22,7 @@ export class TreoAutogrowDirective implements OnInit, OnDestroy {
      * @param {ElementRef} _elementRef
      * @param {Renderer2} _renderer2
      */
-    constructor(private readonly _elementRef: ElementRef, private readonly _renderer2: Renderer2) {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 

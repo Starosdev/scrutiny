@@ -1,8 +1,7 @@
-import { Inject, Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import * as _ from 'lodash';
 import { TREO_APP_CONFIG } from '@treo/services/config/config.constants';
-import { AppConfig } from 'app/core/config/app.config';
 
 const SCRUTINY_CONFIG_LOCAL_STORAGE_KEY = 'scrutiny';
 
@@ -12,12 +11,13 @@ const SCRUTINY_CONFIG_LOCAL_STORAGE_KEY = 'scrutiny';
 export class TreoConfigService {
     // Private
     private _config: BehaviorSubject<any>;
+    private readonly defaultConfig = inject(TREO_APP_CONFIG);
 
     /**
      * Constructor
      */
-    constructor(@Inject(TREO_APP_CONFIG) defaultConfig: any) {
-        let currentScrutinyConfig = defaultConfig;
+    constructor() {
+        let currentScrutinyConfig = this.defaultConfig;
 
         const localConfigStr = localStorage.getItem(SCRUTINY_CONFIG_LOCAL_STORAGE_KEY);
         if (localConfigStr) {

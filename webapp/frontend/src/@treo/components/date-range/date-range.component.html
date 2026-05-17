@@ -1,14 +1,18 @@
 <div class="range" (click)="openPickerPanel()" #pickerPanelOrigin>
     <div class="start">
         <div class="date">{{ range.startDate }}</div>
-        <div class="time" *ngIf="range.startTime">{{ range.startTime }}</div>
+        @if (range.startTime) {
+        <div class="time">{{ range.startTime }}</div>
+        }
     </div>
 
     <div class="separator">-</div>
 
     <div class="end">
         <div class="date">{{ range.endDate }}</div>
-        <div class="time" *ngIf="range.endTime">{{ range.endTime }}</div>
+        @if (range.endTime) {
+        <div class="time">{{ range.endTime }}</div>
+        }
     </div>
 </div>
 
@@ -33,10 +37,12 @@
             </mat-month-view>
         </div>
 
-        <mat-form-field class="treo-mat-no-subscript time start-time" *ngIf="timeRange">
+        @if (timeRange) {
+        <mat-form-field class="treo-mat-no-subscript time start-time">
             <input matInput [autocomplete]="'off'" [formControl]="startTimeFormControl" (blur)="updateStartTime($event)" tabindex="3" />
             <mat-label>Start time</mat-label>
         </mat-form-field>
+        }
     </div>
 
     <!-- End -->
@@ -59,9 +65,11 @@
             </mat-month-view>
         </div>
 
-        <mat-form-field class="treo-mat-no-subscript time end-time" *ngIf="timeRange">
+        @if (timeRange) {
+        <mat-form-field class="treo-mat-no-subscript time end-time">
             <input matInput [formControl]="endTimeFormControl" (blur)="updateEndTime($event)" tabindex="4" />
             <mat-label>End time</mat-label>
         </mat-form-field>
+        }
     </div>
 </ng-template>

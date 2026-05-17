@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -8,12 +8,7 @@ import { getBasePath } from 'app/app.routing';
     providedIn: 'root',
 })
 export class DashboardDeviceDeleteDialogService {
-    /**
-     * Constructor
-     *
-     * @param {HttpClient} _httpClient
-     */
-    constructor(private readonly _httpClient: HttpClient) {}
+    private readonly _httpClient = inject(HttpClient);
 
     // -----------------------------------------------------------------------------------------------------
     // @ Public methods

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { MatDialog } from '@angular/material/dialog';
@@ -15,7 +15,8 @@ dayjs.extend(relativeTime);
     standalone: false,
 })
 export class BtrfsFilesystemCardComponent {
-    constructor(private readonly _btrfsFilesystemsService: BtrfsFilesystemsService, public dialog: MatDialog) {}
+    private readonly _btrfsFilesystemsService = inject(BtrfsFilesystemsService);
+    dialog = inject(MatDialog);
 
     @Input() filesystemSummary: BtrfsFilesystemModel;
     @Input() config: AppConfig;

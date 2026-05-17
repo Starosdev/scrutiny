@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -31,6 +31,10 @@ interface AttentionItem {
     standalone: false,
 })
 export class MobileHomeComponent implements OnInit, OnDestroy {
+    private readonly _dashboardService = inject(DashboardService);
+    private readonly _zfsPoolsService = inject(ZFSPoolsService);
+    private readonly _router = inject(Router);
+
     driveCounts: HealthCounts = { healthy: 0, warning: 0, critical: 0 };
     zfsCounts: HealthCounts = { healthy: 0, warning: 0, critical: 0 };
     attentionItems: AttentionItem[] = [];
@@ -38,7 +42,7 @@ export class MobileHomeComponent implements OnInit, OnDestroy {
 
     private _unsubscribeAll: Subject<void>;
 
-    constructor(private readonly _dashboardService: DashboardService, private readonly _zfsPoolsService: ZFSPoolsService, private readonly _router: Router) {
+    constructor() {
         this._unsubscribeAll = new Subject();
     }
 

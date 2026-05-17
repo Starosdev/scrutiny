@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ZFSPoolsService } from 'app/modules/zfs-pools/zfs-pools.service';
@@ -16,6 +16,10 @@ import { ZFSPoolModel } from 'app/core/models/zfs-pool-model';
     standalone: false,
 })
 export class ZFSPoolsComponent implements OnInit, OnDestroy {
+    private readonly _zfsPoolsService = inject(ZFSPoolsService);
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly router = inject(Router);
+
     summaryData: Record<string, ZFSPoolModel>;
     hostGroups: { [hostId: string]: string[] } = {};
     config: AppConfig;
@@ -23,7 +27,7 @@ export class ZFSPoolsComponent implements OnInit, OnDestroy {
 
     private _unsubscribeAll: Subject<void>;
 
-    constructor(private readonly _zfsPoolsService: ZFSPoolsService, private readonly _configService: ScrutinyConfigService, private readonly router: Router) {
+    constructor() {
         this._unsubscribeAll = new Subject();
     }
 

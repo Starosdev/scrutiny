@@ -21,9 +21,9 @@
             <div
                 class="treo-vertical-navigation-item-badge-content"
                 [ngClass]="[
-                    item.badge.style != undefined ? 'treo-vertical-navigation-item-badge-style-' + item.badge.style : '',
-                    item.badge.background != undefined && !item.badge.background.startsWith('#') ? item.badge.background : '',
-                    item.badge.color != undefined && !item.badge.color.startsWith('#') ? item.badge.color : ''
+                    item.badge.style !== undefined ? 'treo-vertical-navigation-item-badge-style-' + item.badge.style : '',
+                    item.badge.background !== undefined && !item.badge.background.startsWith('#') ? item.badge.background : '',
+                    item.badge.color !== undefined && !item.badge.color.startsWith('#') ? item.badge.color : ''
                 ]"
                 [ngStyle]="{ 'background-color': item.badge.background, color: item.badge.color }"
             >

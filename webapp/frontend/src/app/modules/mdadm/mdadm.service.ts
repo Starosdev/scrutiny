@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
@@ -9,10 +9,12 @@ import { MDADMArrayModel, MDADMArrayResponseWrapper, MDADMArrayDetailResponseWra
     providedIn: 'root',
 })
 export class MDADMService {
+    private readonly _httpClient = inject(HttpClient);
+
     // Observables
     private _data: BehaviorSubject<MDADMArrayModel[]>;
 
-    constructor(private readonly _httpClient: HttpClient) {
+    constructor() {
         this._data = new BehaviorSubject(null);
     }
 

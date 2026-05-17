@@ -76,11 +76,11 @@
                             <span
                                 class="inline-flex items-center font-bold text-xs px-2 py-2px rounded-full tracking-wide uppercase"
                                 [ngClass]="{
-                                    'red-200': deviceStatusForModelWithThreshold(device, !!smart_results, config.metrics.status_threshold) == 'failed',
-                                    'green-200': device?.device_status == 0
+                                    'red-200': deviceStatusForModelWithThreshold(device, !!smart_results, config.metrics.status_threshold) === 'failed',
+                                    'green-200': device?.device_status === 0
                                 }"
                             >
-                                <span class="w-2 h-2 rounded-full mr-2" [ngClass]="{ 'bg-red': device?.device_status != 0, 'bg-green': device?.device_status == 0 }"></span>
+                                <span class="w-2 h-2 rounded-full mr-2" [ngClass]="{ 'bg-red': device?.device_status !== 0, 'bg-green': device?.device_status === 0 }"></span>
                                 <span class="pr-2px leading-relaxed whitespace-no-wrap">{{
                                     device | deviceStatus : !!smart_results : config.metrics.status_threshold : true
                                 }}</span>
@@ -114,7 +114,7 @@
                         <div>{{ device?.device_label }}</div>
                         <div class="text-secondary text-md">Device Label</div>
                     </div>
-                    } @if (device?.device_type && device?.device_type != 'ata' && device?.device_type != 'scsi') {
+                    } @if (device?.device_type && device?.device_type !== 'ata' && device?.device_type !== 'scsi') {
                     <div class="my-2 col-span-1">
                         <div>{{ device?.device_type | uppercase }}</div>
                         <div class="text-secondary text-md">Device Type</div>
@@ -190,7 +190,7 @@
                     }
                     <div class="my-2 col-span-1">
                         <div class="flex items-center gap-2">
-                            <span>{{ device?.max_tbw != null ? (device.max_tbw | number : '1.0-2') + ' TB' : 'Not set' }}</span>
+                            <span>{{ device?.max_tbw !== null && device?.max_tbw !== undefined ? (device.max_tbw | number : '1.0-2') + ' TB' : 'Not set' }}</span>
                             <button mat-stroked-button type="button" (click)="updateMaxTBW(); $event.stopPropagation()">Set</button>
                         </div>
                         <div class="text-secondary text-md">Rated TBW</div>
@@ -310,11 +310,13 @@
                     <div class="font-bold text-md text-secondary uppercase tracking-wider">S.M.A.R.T {{ device?.device_protocol }} Attributes</div>
                     <div class="text-sm text-hint font-medium">{{ this.smartAttributeDataSource.data.length }} visible, {{ getHiddenAttributes() }} hidden</div>
                 </div>
-                <mat-button-toggle-group *ngIf="isAta()" [value]="displayMode" (change)="setDisplayMode($event.value)" class="display-mode-toggle">
+                @if (isAta()) {
+                <mat-button-toggle-group [value]="displayMode" (change)="setDisplayMode($event.value)" class="display-mode-toggle">
                     <mat-button-toggle value="scrutiny">Scrutiny</mat-button-toggle>
                     <mat-button-toggle value="raw">Raw</mat-button-toggle>
                     <mat-button-toggle value="normalized">Norm</mat-button-toggle>
                 </mat-button-toggle-group>
+                }
             </div>
 
             @for (attribute of smartAttributeDataSource.data; track attribute.attribute_id) {
@@ -416,11 +418,13 @@
                             <div class="text-sm text-hint font-medium">{{ this.smartAttributeDataSource.data.length }} visible, {{ getHiddenAttributes() }} hidden</div>
                         </div>
                         <!-- Display Mode Toggle - only for ATA devices -->
-                        <mat-button-toggle-group *ngIf="isAta()" [value]="displayMode" (change)="setDisplayMode($event.value)" class="display-mode-toggle">
+                        @if (isAta()) {
+                        <mat-button-toggle-group [value]="displayMode" (change)="setDisplayMode($event.value)" class="display-mode-toggle">
                             <mat-button-toggle value="scrutiny">Scrutiny</mat-button-toggle>
                             <mat-button-toggle value="raw">Raw</mat-button-toggle>
                             <mat-button-toggle value="normalized">Normalized</mat-button-toggle>
                         </mat-button-toggle-group>
+                        }
                     </div>
                 </div>
                 <div class="overflow-auto">
@@ -603,7 +607,7 @@
                         <!-- Expanded Content Column - The detail row is made up of this one column that spans across all columns -->
                         <ng-container matColumnDef="expandedDetail">
                             <td mat-cell *matCellDef="let attribute" [attr.colspan]="smartAttributeTableColumns.length">
-                                <div class="attribute-detail" [@detailExpand]="attribute == expandedAttribute ? 'expanded' : 'collapsed'">
+                                <div class="attribute-detail" [@detailExpand]="attribute === expandedAttribute ? 'expanded' : 'collapsed'">
                                     <div class="flex flex-auto w-1/3 min-w-80 py-4">
                                         <div class="flex flex-col flex-auto justify-end text-md pb-3">
                                             {{ getAttributeDescription(attribute) }}

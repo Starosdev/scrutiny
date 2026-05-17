@@ -1,10 +1,12 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BreakpointObserver, BreakpointState } from '@angular/cdk/layout';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { treoBreakpoints } from '@treo/tailwind/exported/variables';
 
 @Injectable()
 export class TreoMediaWatcherService {
+    private readonly _breakpointObserver = inject(BreakpointObserver);
+
     private _onMediaChange: BehaviorSubject<{ matchingAliases: string[]; matchingRules: any }>;
 
     /**
@@ -12,7 +14,7 @@ export class TreoMediaWatcherService {
      *
      * @param {BreakpointObserver} _breakpointObserver
      */
-    constructor(private readonly _breakpointObserver: BreakpointObserver) {
+    constructor() {
         // Set the defaults
         this._onMediaChange = new BehaviorSubject(null);
 

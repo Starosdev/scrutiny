@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -18,6 +18,12 @@ import { getMdadmArrayStatusColorClass } from 'app/modules/mdadm/mdadm-status.ut
     standalone: false,
 })
 export class MDADMDetailComponent implements OnInit, OnDestroy {
+    private readonly _mdadmService = inject(MDADMService);
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly _route = inject(ActivatedRoute);
+    private readonly _router = inject(Router);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+
     array: MDADMArrayModel;
     history: MDADMMetricsHistoryModel[];
     latestMetrics: MDADMMetricsHistoryModel;
@@ -26,13 +32,7 @@ export class MDADMDetailComponent implements OnInit, OnDestroy {
 
     private _unsubscribeAll: Subject<void>;
 
-    constructor(
-        private readonly _mdadmService: MDADMService,
-        private readonly _configService: ScrutinyConfigService,
-        private readonly _route: ActivatedRoute,
-        private readonly _router: Router,
-        private readonly _changeDetectorRef: ChangeDetectorRef
-    ) {
+    constructor() {
         this._unsubscribeAll = new Subject();
     }
 

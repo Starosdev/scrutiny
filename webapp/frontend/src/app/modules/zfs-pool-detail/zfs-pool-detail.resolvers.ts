@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot } from '@angular/router';
 import { Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -9,7 +9,8 @@ import { ZFSPoolDetailsResponseWrapper } from 'app/core/models/zfs-pool-summary-
     providedIn: 'root',
 })
 export class ZFSPoolDetailResolver {
-    constructor(private readonly _zfsPoolDetailService: ZFSPoolDetailService, private readonly _router: Router) {}
+    private readonly _zfsPoolDetailService = inject(ZFSPoolDetailService);
+    private readonly _router = inject(Router);
 
     resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<ZFSPoolDetailsResponseWrapper> {
         return this._zfsPoolDetailService.getData(route.params.guid).pipe(

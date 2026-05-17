@@ -16,6 +16,7 @@ import {
     ViewChild,
     ViewChildren,
     ViewEncapsulation,
+    inject,
 } from '@angular/core';
 import { animate, AnimationBuilder, AnimationPlayer, style } from '@angular/animations';
 import { NavigationEnd, Router } from '@angular/router';
@@ -38,6 +39,14 @@ import { TreoScrollbarDirective } from '@treo/directives/scrollbar/scrollbar.dir
     standalone: false,
 })
 export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, OnDestroy {
+    private readonly _animationBuilder = inject(AnimationBuilder);
+    private readonly _treoNavigationService = inject(TreoNavigationService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+    private readonly _elementRef = inject(ElementRef);
+    private readonly _renderer2 = inject(Renderer2);
+    private readonly _router = inject(Router);
+    private readonly _scrollStrategyOptions = inject(ScrollStrategyOptions);
+
     activeAsideItemId: null | string;
     onCollapsableItemCollapsed: BehaviorSubject<TreoNavigationItem | null>;
     onCollapsableItemExpanded: BehaviorSubject<TreoNavigationItem | null>;
@@ -102,15 +111,7 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
      * @param {Router} _router
      * @param {ScrollStrategyOptions} _scrollStrategyOptions
      */
-    constructor(
-        private readonly _animationBuilder: AnimationBuilder,
-        private readonly _treoNavigationService: TreoNavigationService,
-        private readonly _changeDetectorRef: ChangeDetectorRef,
-        private readonly _elementRef: ElementRef,
-        private readonly _renderer2: Renderer2,
-        private readonly _router: Router,
-        private readonly _scrollStrategyOptions: ScrollStrategyOptions
-    ) {
+    constructor() {
         // Set the private defaults
         this._animationsEnabled = false;
         this._asideOverlay = null;

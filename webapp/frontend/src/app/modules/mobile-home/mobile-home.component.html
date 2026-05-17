@@ -60,7 +60,7 @@
                 <span class="status-badge" [class]="item.status">
                     {{ item.status }}
                 </span>
-                @if (item.temperature != null) {
+                @if (item.temperature !== null && item.temperature !== undefined) {
                 <span class="attention-temp">{{ item.temperature }}C</span>
                 }
                 <mat-icon class="chevron">chevron_right</mat-icon>

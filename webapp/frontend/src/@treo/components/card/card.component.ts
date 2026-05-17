@@ -1,4 +1,4 @@
-import { Component, ElementRef, Input, Renderer2, ViewEncapsulation } from '@angular/core';
+import { Component, ElementRef, Input, Renderer2, ViewEncapsulation, inject } from '@angular/core';
 import { TreoAnimations } from '@treo/animations';
 
 @Component({
@@ -11,6 +11,9 @@ import { TreoAnimations } from '@treo/animations';
     standalone: false,
 })
 export class TreoCardComponent {
+    private readonly _renderer2 = inject(Renderer2);
+    private readonly _elementRef = inject(ElementRef);
+
     expanded: boolean;
     flipped: boolean;
 
@@ -23,7 +26,7 @@ export class TreoCardComponent {
      * @param {Renderer2} _renderer2
      * @param {ElementRef} _elementRef
      */
-    constructor(private readonly _renderer2: Renderer2, private readonly _elementRef: ElementRef) {
+    constructor() {
         // Set the defaults
         this.expanded = false;
         this.flippable = false;

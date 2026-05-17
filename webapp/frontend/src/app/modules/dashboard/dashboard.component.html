@@ -27,16 +27,20 @@
                     </button>
 
                     <!-- Run collectors button (Omnibus only) -->
-                    <button *ngIf="config?.collector_trigger_enabled && !isTriggering" class="ml-2" mat-flat-button color="primary" (click)="runCollectors()">
+                    @if (config?.collector_trigger_enabled && !isTriggering) {
+                    <button class="ml-2" mat-flat-button color="primary" (click)="runCollectors()">
                         <mat-icon class="icon-size-20" [svgIcon]="'play_arrow'"> </mat-icon>
                         <span class="ml-2">Run collectors</span>
                     </button>
+                    }
 
                     <!-- Countdown display -->
-                    <div *ngIf="countdown > 0" class="ml-4 flex items-center text-secondary font-medium">
+                    @if (countdown > 0) {
+                    <div class="ml-4 flex items-center text-secondary font-medium">
                         <mat-progress-spinner class="mr-2" [diameter]="20" [mode]="'indeterminate'"> </mat-progress-spinner>
                         Refreshing in {{ countdown }}s...
                     </div>
+                    }
 
                     <!-- Actions menu (mobile) -->
                     <div class="hidden xs:flex">
@@ -129,7 +133,8 @@
                             </div>
 
                             <!-- Sync Progress -->
-                            <div *ngIf="array.sync_progress > 0 && array.sync_progress < 100" class="flex flex-col mt-4">
+                            @if (array.sync_progress > 0 && array.sync_progress < 100) {
+                            <div class="flex flex-col mt-4">
                                 <div class="flex items-center justify-between text-secondary mb-1">
                                     <div class="text-xs">Sync Progress</div>
                                     <div class="text-xs font-medium text-blue-500">{{ array.sync_progress }}%</div>
@@ -138,16 +143,21 @@
                                     <div class="bg-blue-500 h-1.5 rounded-full transition-all duration-300" [style.width.%]="array.sync_progress"></div>
                                 </div>
                             </div>
+                            }
 
                             <!-- Array Size / Used -->
-                            <div *ngIf="array.array_size" class="flex items-center justify-between mt-4 text-secondary">
+                            @if (array.array_size) {
+                            <div class="flex items-center justify-between mt-4 text-secondary">
                                 <div class="text-xs">Array Size</div>
                                 <div class="text-xs font-medium">{{ array.array_size | fileSize : config?.file_size_si_units }}</div>
                             </div>
-                            <div *ngIf="array.used_bytes !== undefined && array.used_bytes !== null" class="flex items-center justify-between mt-1 text-secondary">
+                            }
+                            @if (array.used_bytes !== undefined && array.used_bytes !== null) {
+                            <div class="flex items-center justify-between mt-1 text-secondary">
                                 <div class="text-xs">Used</div>
                                 <div class="text-xs font-medium">{{ array.used_bytes | fileSize : config?.file_size_si_units }}</div>
                             </div>
+                            }
                         </a>
                     </div>
                     }

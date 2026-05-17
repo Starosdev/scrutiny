@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from 'app/core/auth/auth.service';
@@ -12,6 +12,11 @@ import { take } from 'rxjs/operators';
     standalone: false,
 })
 export class LoginComponent implements OnInit {
+    private readonly _fb = inject(FormBuilder);
+    private readonly _authService = inject(AuthService);
+    private readonly _router = inject(Router);
+    private readonly _route = inject(ActivatedRoute);
+
     tokenForm: FormGroup;
     passwordForm: FormGroup;
     errorMessage: string = '';
@@ -23,7 +28,7 @@ export class LoginComponent implements OnInit {
 
     private returnUrl: string = '/dashboard';
 
-    constructor(private readonly _fb: FormBuilder, private readonly _authService: AuthService, private readonly _router: Router, private readonly _route: ActivatedRoute) {
+    constructor() {
         this.tokenForm = this._fb.group({
             token: ['', Validators.required],
         });

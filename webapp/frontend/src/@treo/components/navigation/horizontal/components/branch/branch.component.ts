@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { MatMenu as MatMenu } from '@angular/material/menu';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -14,6 +14,9 @@ import { TreoNavigationItem } from '@treo/components/navigation/navigation.types
     standalone: false,
 })
 export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDestroy {
+    private readonly _treoNavigationService = inject(TreoNavigationService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+
     // Child
     @Input()
     child: boolean;
@@ -40,7 +43,7 @@ export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDe
      * @param {TreoNavigationService} _treoNavigationService
      * @param {ChangeDetectorRef} _changeDetectorRef
      */
-    constructor(private readonly _treoNavigationService: TreoNavigationService, private readonly _changeDetectorRef: ChangeDetectorRef) {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 

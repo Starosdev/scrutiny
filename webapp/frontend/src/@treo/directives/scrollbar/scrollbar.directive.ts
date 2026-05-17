@@ -1,4 +1,4 @@
-import { Directive, ElementRef, Input, OnDestroy, OnInit } from '@angular/core';
+import { Directive, ElementRef, Input, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Platform } from '@angular/cdk/platform';
 import { fromEvent, Subject } from 'rxjs';
@@ -17,6 +17,10 @@ import { ScrollbarGeometry, ScrollbarPosition } from '@treo/directives/scrollbar
     standalone: false,
 })
 export class TreoScrollbarDirective implements OnInit, OnDestroy {
+    private readonly _elementRef = inject(ElementRef);
+    private readonly _platform = inject(Platform);
+    private readonly _router = inject(Router);
+
     isMobile: boolean;
     ps: PerfectScrollbar | any;
 
@@ -33,7 +37,7 @@ export class TreoScrollbarDirective implements OnInit, OnDestroy {
      * @param {Platform} _platform
      * @param {Router} _router
      */
-    constructor(private readonly _elementRef: ElementRef, private readonly _platform: Platform, private readonly _router: Router) {
+    constructor() {
         // Set the private defaults
         this._animation = null;
         this._options = {};
