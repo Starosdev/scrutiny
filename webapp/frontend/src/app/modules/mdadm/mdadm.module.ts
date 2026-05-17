@@ -9,7 +9,6 @@ import { MDADMDetailComponent } from 'app/modules/mdadm/details/mdadm-detail.com
 import { mdadmRoutes } from 'app/modules/mdadm/mdadm.routing';
 
 @NgModule({
-    declarations: [MDADMComponent, MDADMDetailComponent],
-    imports: [RouterModule.forChild(mdadmRoutes), NgApexchartsModule, SharedModule, MatIconModule, MatButtonModule],
+    imports: [RouterModule.forChild(mdadmRoutes), NgApexchartsModule, SharedModule, MatIconModule, MatButtonModule, MDADMComponent, MDADMDetailComponent],
 })
 export class MDADMModule {}

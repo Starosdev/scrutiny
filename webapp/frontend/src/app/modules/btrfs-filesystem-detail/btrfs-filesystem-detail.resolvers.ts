@@ -10,7 +10,7 @@ export class BtrfsFilesystemDetailResolver {
     private readonly _btrfsFilesystemDetailService = inject(BtrfsFilesystemDetailService);
     private readonly _router = inject(Router);
 
-    resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<BtrfsFilesystemDetailsResponseWrapper> {
+    resolve(route: ActivatedRouteSnapshot, _state: RouterStateSnapshot): Observable<BtrfsFilesystemDetailsResponseWrapper> {
         return this._btrfsFilesystemDetailService.getData(route.params.uuid).pipe(
             catchError((error) => {
                 console.error('Failed to load Btrfs filesystem details:', error);

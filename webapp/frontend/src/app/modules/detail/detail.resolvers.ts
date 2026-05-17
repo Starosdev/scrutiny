@@ -16,7 +16,7 @@ export class DetailResolver {
     // @ Public methods
     // -----------------------------------------------------------------------------------------------------
 
-    resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<DeviceDetailsResponseWrapper> {
+    resolve(route: ActivatedRouteSnapshot, _state: RouterStateSnapshot): Observable<DeviceDetailsResponseWrapper> {
         return this._detailService.getData(route.params.device_id).pipe(
             catchError((error) => {
                 console.error('Failed to load device details:', error);

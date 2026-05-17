@@ -21,7 +21,15 @@ import { TreoVerticalNavigationSpacerItemComponent } from '@treo/components/navi
 import { TreoVerticalNavigationComponent } from '@treo/components/navigation/vertical/vertical.component';
 
 @NgModule({
-    declarations: [
+    imports: [
+        CommonModule,
+        RouterModule,
+        MatButtonModule,
+        MatDividerModule,
+        MatIconModule,
+        MatMenuModule,
+        MatTooltipModule,
+        TreoScrollbarModule,
         TreoHorizontalNavigationBasicItemComponent,
         TreoHorizontalNavigationBranchItemComponent,
         TreoHorizontalNavigationDividerItemComponent,
@@ -35,7 +43,6 @@ import { TreoVerticalNavigationComponent } from '@treo/components/navigation/ver
         TreoVerticalNavigationSpacerItemComponent,
         TreoVerticalNavigationComponent,
     ],
-    imports: [CommonModule, RouterModule, MatButtonModule, MatDividerModule, MatIconModule, MatMenuModule, MatTooltipModule, TreoScrollbarModule],
     exports: [TreoHorizontalNavigationComponent, TreoVerticalNavigationComponent],
 })
 export class TreoNavigationModule {}

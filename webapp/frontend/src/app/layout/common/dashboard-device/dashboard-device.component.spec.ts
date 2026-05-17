@@ -1,9 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
 import { DashboardDeviceComponent } from './dashboard-device.component';
 import { MatDialog as MatDialog } from '@angular/material/dialog';
 import { MatButtonModule as MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+import { MatIconModule, MatIconRegistry } from '@angular/material/icon';
 import { SharedModule } from 'app/shared/shared.module';
 import { MatMenuModule as MatMenuModule } from '@angular/material/menu';
 import { TREO_APP_CONFIG } from '@treo/services/config/config.constants';
@@ -14,30 +13,35 @@ import { HttpClient, provideHttpClient, withInterceptorsFromDi } from '@angular/
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { of } from 'rxjs';
 import { MetricsStatusThreshold } from 'app/core/config/app.config';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { provideRouter } from '@angular/router';
 
 describe('DashboardDeviceComponent', () => {
     let component: DashboardDeviceComponent;
     let fixture: ComponentFixture<DashboardDeviceComponent>;
 
     const matDialogSpy = jasmine.createSpyObj('MatDialog', ['open']);
-    let configService: ScrutinyConfigService;
+    const matIconRegistrySpy = jasmine.createSpyObj('MatIconRegistry', ['getNamedSvgIcon']);
     let httpClientSpy: jasmine.SpyObj<HttpClient>;
 
     beforeEach(() => {
         httpClientSpy = jasmine.createSpyObj('HttpClient', ['get']);
-        configService = new ScrutinyConfigService(httpClientSpy, {});
+        matIconRegistrySpy.getNamedSvgIcon.and.callFake(() => of(document.createElementNS('http://www.w3.org/2000/svg', 'svg')));
 
         TestBed.configureTestingModule({
-            declarations: [DashboardDeviceComponent],
-            imports: [MatButtonModule, MatIconModule, MatMenuModule, SharedModule],
+            imports: [NoopAnimationsModule, MatButtonModule, MatIconModule, MatMenuModule, SharedModule, DashboardDeviceComponent],
             providers: [
                 { provide: MatDialog, useValue: matDialogSpy },
+                { provide: MatIconRegistry, useValue: matIconRegistrySpy },
                 { provide: TREO_APP_CONFIG, useValue: { dashboard_display: 'name', metrics: { status_threshold: 3 } } },
-                { provide: ScrutinyConfigService, useValue: configService },
+                { provide: HttpClient, useValue: httpClientSpy },
+                provideRouter([]),
                 provideHttpClient(withInterceptorsFromDi()),
                 provideHttpClientTesting(),
             ],
         }).compileComponents();
+
+        TestBed.inject(ScrutinyConfigService);
     });
 
     beforeEach(() => {

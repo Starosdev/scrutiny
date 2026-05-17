@@ -6,8 +6,7 @@ import { NgApexchartsModule } from 'ng-apexcharts';
 import { AttributeHistoryDialogComponent } from './attribute-history-dialog.component';
 
 @NgModule({
-    declarations: [AttributeHistoryDialogComponent],
-    imports: [CommonModule, MatDialogModule, MatButtonModule, NgApexchartsModule],
+    imports: [CommonModule, MatDialogModule, MatButtonModule, NgApexchartsModule, AttributeHistoryDialogComponent],
     exports: [AttributeHistoryDialogComponent],
 })
 export class AttributeHistoryDialogModule {}

@@ -10,8 +10,7 @@ import { SharedModule } from 'app/shared/shared.module';
 import { MatDialogModule } from '@angular/material/dialog';
 
 @NgModule({
-    declarations: [ZFSPoolCardComponent],
-    imports: [CommonModule, RouterModule, MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, SharedModule, MatDialogModule],
+    imports: [CommonModule, RouterModule, MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, SharedModule, MatDialogModule, ZFSPoolCardComponent],
     exports: [ZFSPoolCardComponent],
 })
 export class ZFSPoolCardModule {}

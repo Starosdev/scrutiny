@@ -2,6 +2,7 @@ import { Component, ElementRef, EventEmitter, HostBinding, HostListener, Input, 
 import { animate, AnimationBuilder, AnimationPlayer, style } from '@angular/animations';
 import { TreoDrawerMode, TreoDrawerPosition } from '@treo/components/drawer/drawer.types';
 import { TreoDrawerService } from '@treo/components/drawer/drawer.service';
+import { TreoDrawerModule } from './drawer.module';
 
 @Component({
     selector: 'treo-drawer',
@@ -9,7 +10,7 @@ import { TreoDrawerService } from '@treo/components/drawer/drawer.service';
     styleUrls: ['./drawer.component.scss'],
     encapsulation: ViewEncapsulation.None,
     exportAs: 'treoDrawer',
-    standalone: false,
+    imports: [TreoDrawerModule],
 })
 export class TreoDrawerComponent implements OnInit, OnDestroy {
     private readonly _animationBuilder = inject(AnimationBuilder);

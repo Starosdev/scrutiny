@@ -24,12 +24,56 @@ import { NotifyUrlService } from 'app/core/config/notify-url.service';
 import { getBasePath } from 'app/app.routing';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose } from '@angular/material/dialog';
+import { CdkScrollable } from '@angular/cdk/scrolling';
+import { MatFormField, MatLabel, MatHint } from '@angular/material/form-field';
+import { MatSelect } from '@angular/material/select';
+import { ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { MatOption } from '@angular/material/autocomplete';
+import { MatInput } from '@angular/material/input';
+import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { MatExpansionPanel, MatExpansionPanelHeader, MatExpansionPanelTitle, MatExpansionPanelDescription } from '@angular/material/expansion';
+import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow } from '@angular/material/table';
+import { MatTooltip } from '@angular/material/tooltip';
 
 @Component({
     selector: 'app-dashboard-settings',
     templateUrl: './dashboard-settings.component.html',
     styleUrls: ['./dashboard-settings.component.scss'],
-    standalone: false,
+    imports: [
+        MatDialogTitle,
+        CdkScrollable,
+        MatDialogContent,
+        MatFormField,
+        MatLabel,
+        MatSelect,
+        ReactiveFormsModule,
+        FormsModule,
+        MatOption,
+        MatHint,
+        MatInput,
+        MatButton,
+        MatIcon,
+        MatExpansionPanel,
+        MatExpansionPanelHeader,
+        MatExpansionPanelTitle,
+        MatExpansionPanelDescription,
+        MatTable,
+        MatColumnDef,
+        MatHeaderCellDef,
+        MatHeaderCell,
+        MatCellDef,
+        MatCell,
+        MatIconButton,
+        MatTooltip,
+        MatHeaderRowDef,
+        MatHeaderRow,
+        MatRowDef,
+        MatRow,
+        MatDialogActions,
+        MatDialogClose,
+    ],
 })
 export class DashboardSettingsComponent implements OnInit {
     private readonly _configService = inject(ScrutinyConfigService);
@@ -332,11 +376,11 @@ export class DashboardSettingsComponent implements OnInit {
                 return `smtp://${auth}${this.smtpHost}:${this.smtpPort}/?from=${encodeURIComponent(this.smtpFrom)}&to=${encodeURIComponent(this.smtpTo)}`;
             }
             case 'discord': {
-                const match = this.discordWebhookUrl.match(/webhooks\/(\d+)\/([^\/\?]+)/);
+                const match = this.discordWebhookUrl.match(/webhooks\/(\d+)\/([^/?]+)/);
                 return match ? `discord://${match[2]}@${match[1]}` : '';
             }
             case 'slack': {
-                const match = this.slackWebhookUrl.match(/services\/([^\/]+)\/([^\/]+)\/([^\/\?]+)/);
+                const match = this.slackWebhookUrl.match(/services\/([^/]+)\/([^/]+)\/([^/?]+)/);
                 return match ? `slack://hook:${match[1]}/${match[2]}/${match[3]}` : '';
             }
             case 'telegram':

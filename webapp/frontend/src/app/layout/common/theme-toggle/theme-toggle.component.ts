@@ -3,13 +3,16 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { AppConfig, Theme } from 'app/core/config/app.config';
+import { MatIconButton } from '@angular/material/button';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
     selector: 'theme-toggle',
     templateUrl: './theme-toggle.component.html',
     styleUrls: ['./theme-toggle.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false,
+    imports: [MatIconButton, MatTooltip, MatIcon],
 })
 export class ThemeToggleComponent implements OnInit, OnDestroy {
     private readonly _configService = inject(ScrutinyConfigService);

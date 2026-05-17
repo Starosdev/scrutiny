@@ -1,6 +1,9 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { ApexOptions } from 'ng-apexcharts';
+import { MAT_DIALOG_DATA, MatDialogRef, MatDialogTitle, MatDialogContent, MatDialogActions } from '@angular/material/dialog';
+import { ApexOptions, ChartComponent } from 'ng-apexcharts';
+import { CdkScrollable } from '@angular/cdk/scrolling';
+import { NgClass } from '@angular/common';
+import { MatButton } from '@angular/material/button';
 
 export interface AttributeHistoryData {
     attributeName: string;
@@ -15,7 +18,7 @@ export interface AttributeHistoryData {
     selector: 'attribute-history-dialog',
     templateUrl: './attribute-history-dialog.component.html',
     styleUrls: ['./attribute-history-dialog.component.scss'],
-    standalone: false,
+    imports: [MatDialogTitle, CdkScrollable, MatDialogContent, ChartComponent, NgClass, MatDialogActions, MatButton],
 })
 export class AttributeHistoryDialogComponent implements OnInit {
     dialogRef = inject<MatDialogRef<AttributeHistoryDialogComponent>>(MatDialogRef);

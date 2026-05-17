@@ -1,17 +1,31 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
-import { MatMenu as MatMenu } from '@angular/material/menu';
+import { MatMenu as MatMenu, MatMenuTrigger, MatMenuItem } from '@angular/material/menu';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { TreoHorizontalNavigationComponent } from '@treo/components/navigation/horizontal/horizontal.component';
 import { TreoNavigationService } from '@treo/components/navigation/navigation.service';
 import { TreoNavigationItem } from '@treo/components/navigation/navigation.types';
+import { NgClass, NgTemplateOutlet, NgStyle } from '@angular/common';
+import { TreoHorizontalNavigationBasicItemComponent } from '../basic/basic.component';
+import { TreoHorizontalNavigationDividerItemComponent } from '../divider/divider.component';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
     selector: 'treo-horizontal-navigation-branch-item',
     templateUrl: './branch.component.html',
     styles: [],
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false,
+    imports: [
+        NgClass,
+        MatMenuTrigger,
+        NgTemplateOutlet,
+        MatMenu,
+        MatMenuItem,
+        TreoHorizontalNavigationBasicItemComponent,
+        TreoHorizontalNavigationDividerItemComponent,
+        MatIcon,
+        NgStyle,
+    ],
 })
 export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDestroy {
     private readonly _treoNavigationService = inject(TreoNavigationService);

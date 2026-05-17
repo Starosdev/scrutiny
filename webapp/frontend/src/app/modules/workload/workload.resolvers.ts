@@ -10,7 +10,7 @@ import { WorkloadInsightModel } from 'app/core/models/workload-insight-model';
 export class WorkloadResolver {
     private readonly _workloadService = inject(WorkloadService);
 
-    resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<Record<string, WorkloadInsightModel>> {
+    resolve(_route: ActivatedRouteSnapshot, _state: RouterStateSnapshot): Observable<Record<string, WorkloadInsightModel>> {
         return this._workloadService.getWorkloadData();
     }
 }

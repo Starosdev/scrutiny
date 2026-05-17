@@ -6,6 +6,13 @@ import { TreoAnimations } from '@treo/animations';
 import { TreoVerticalNavigationComponent } from '@treo/components/navigation/vertical/vertical.component';
 import { TreoNavigationService } from '@treo/components/navigation/navigation.service';
 import { TreoNavigationItem } from '@treo/components/navigation/navigation.types';
+import { NgClass, NgStyle } from '@angular/common';
+import { MatIcon } from '@angular/material/icon';
+import { TreoVerticalNavigationBasicItemComponent } from '../basic/basic.component';
+import { TreoVerticalNavigationDividerItemComponent } from '../divider/divider.component';
+import { TreoVerticalNavigationGroupItemComponent } from '../group/group.component';
+import { TreoVerticalNavigationSpacerItemComponent } from '../spacer/spacer.component';
+import { TreoHorizontalNavigationBasicItemComponent } from '../../../horizontal/components/basic/basic.component';
 
 @Component({
     selector: 'treo-vertical-navigation-collapsable-item',
@@ -13,7 +20,16 @@ import { TreoNavigationItem } from '@treo/components/navigation/navigation.types
     styles: [],
     animations: TreoAnimations,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false,
+    imports: [
+        NgClass,
+        MatIcon,
+        NgStyle,
+        TreoVerticalNavigationBasicItemComponent,
+        TreoVerticalNavigationDividerItemComponent,
+        TreoVerticalNavigationGroupItemComponent,
+        TreoVerticalNavigationSpacerItemComponent,
+        TreoHorizontalNavigationBasicItemComponent,
+    ],
 })
 export class TreoVerticalNavigationCollapsableItemComponent implements OnInit, OnDestroy {
     private readonly _treoNavigationService = inject(TreoNavigationService);

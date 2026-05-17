@@ -16,10 +16,7 @@ const DEVICE_STATUS_NAMES_WITH_REASON: { [key: number]: string } = {
     3: 'failed: both',
 };
 
-@Pipe({
-    name: 'deviceStatus',
-    standalone: false,
-})
+@Pipe({ name: 'deviceStatus' })
 export class DeviceStatusPipe implements PipeTransform {
     static deviceStatusForModelWithThreshold(
         deviceModel: DeviceModel,

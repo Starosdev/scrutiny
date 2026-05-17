@@ -9,13 +9,16 @@ import { TreoDrawerService } from '@treo/components/drawer';
 import { TreoMediaWatcherService } from '@treo/services/media-watcher';
 import { Layout } from 'app/layout/layout.types';
 import { AppConfig, Theme } from 'app/core/config/app.config';
+import { EmptyLayoutComponent } from './layouts/empty/empty.component';
+import { MaterialLayoutComponent } from './layouts/horizontal/material/material.component';
+import { MobileLayoutComponent } from './layouts/mobile/mobile-layout.component';
 
 @Component({
     selector: 'layout',
     templateUrl: './layout.component.html',
     styleUrls: ['./layout.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false,
+    imports: [EmptyLayoutComponent, MaterialLayoutComponent, MobileLayoutComponent],
 })
 export class LayoutComponent implements OnInit, OnDestroy {
     private readonly _activatedRoute = inject(ActivatedRoute);

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { ApexOptions } from 'ng-apexcharts';
+import { ApexOptions, ChartComponent } from 'ng-apexcharts';
 import { AppConfig } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { Router } from '@angular/router';
@@ -9,6 +9,11 @@ import { apexShortDateTime } from 'app/shared/time-format.utils';
 import { BtrfsFilesystemModel, BtrfsDeviceModel } from 'app/core/models/btrfs-filesystem-model';
 import { BtrfsMetricsHistoryModel } from 'app/core/models/btrfs-filesystem-summary-model';
 import { BtrfsFilesystemDetailService } from 'app/modules/btrfs-filesystem-detail/btrfs-filesystem-detail.service';
+import { MatIconButton, MatButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { TreoCardComponent } from '../../../@treo/components/card/card.component';
+import { NgClass, DatePipe } from '@angular/common';
+import { FileSizePipe } from '../../shared/file-size.pipe';
 
 @Component({
     selector: 'btrfs-filesystem-detail',
@@ -16,7 +21,7 @@ import { BtrfsFilesystemDetailService } from 'app/modules/btrfs-filesystem-detai
     styleUrls: ['./btrfs-filesystem-detail.component.scss'],
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false,
+    imports: [MatIconButton, MatIcon, MatButton, TreoCardComponent, NgClass, ChartComponent, DatePipe, FileSizePipe],
 })
 export class BtrfsFilesystemDetailComponent implements OnInit, OnDestroy {
     private readonly _btrfsFilesystemDetailService = inject(BtrfsFilesystemDetailService);

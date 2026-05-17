@@ -122,7 +122,7 @@ describe('DeviceStatusPipe', () => {
             },
         ];
 
-        testCases.forEach((test, index) => {
+        testCases.forEach((test) => {
             it(`if device with status (${test.deviceStatus}), hasSmartResults(${test.hasSmartResults}) and threshold (${test.threshold}), should be ${test.result}`, () => {
                 expect(
                     DeviceStatusPipe.deviceStatusForModelWithThreshold(

@@ -7,7 +7,7 @@ import { MatDialog as MatDialog } from '@angular/material/dialog';
 import { DashboardSettingsComponent } from 'app/layout/common/dashboard-settings/dashboard-settings.component';
 import { AppConfig } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { TemperaturePipe } from 'app/shared/temperature.pipe';
 import { DeviceTitlePipe } from 'app/shared/device-title.pipe';
 import { DeviceSummaryModel } from 'app/core/models/device-summary-model';
@@ -15,6 +15,17 @@ import { apexShortDateTime } from 'app/shared/time-format.utils';
 import { MDADMService } from 'app/modules/mdadm/mdadm.service';
 import { MDADMArrayModel } from 'app/core/models/mdadm-array-model';
 import { FilesystemCapacityModel, FilesystemHostStatusModel } from 'app/core/models/filesystem-summary-model';
+import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { MatMenuTrigger, MatMenu, MatMenuItem } from '@angular/material/menu';
+import { DashboardDeviceComponent } from '../../layout/common/dashboard-device/dashboard-device.component';
+import { NgClass, DecimalPipe, TitleCasePipe, DatePipe, KeyValuePipe } from '@angular/common';
+import { MatCheckbox } from '@angular/material/checkbox';
+import { MatDivider } from '@angular/material/divider';
+import { FileSizePipe } from '../../shared/file-size.pipe';
+import { DeviceSortPipe } from '../../shared/device-sort.pipe';
 
 @Component({
     selector: 'example',
@@ -22,7 +33,28 @@ import { FilesystemCapacityModel, FilesystemHostStatusModel } from 'app/core/mod
     styleUrls: ['./dashboard.component.scss'],
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false,
+    imports: [
+        MatButton,
+        MatIcon,
+        MatTooltip,
+        MatProgressSpinner,
+        MatIconButton,
+        MatMenuTrigger,
+        MatMenu,
+        MatMenuItem,
+        DashboardDeviceComponent,
+        RouterLink,
+        NgClass,
+        MatCheckbox,
+        MatDivider,
+        ChartComponent,
+        DecimalPipe,
+        TitleCasePipe,
+        DatePipe,
+        KeyValuePipe,
+        FileSizePipe,
+        DeviceSortPipe,
+    ],
 })
 export class DashboardComponent implements OnInit, OnDestroy {
     private readonly _dashboardService = inject(DashboardService);
@@ -194,7 +226,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
                 tooltip.tooltipUtil.isInitialSeriesSameLen = () => true;
                 tooltip.tooltipUtil.isXoverlap = () => true;
             }
-        } catch (e) {
+        } catch {
             // Silently fail if ApexCharts internals change
         }
     }

@@ -8,8 +8,15 @@ import { MatDialogModule as MatDialogModule } from '@angular/material/dialog';
 import { DashboardDeviceArchiveDialogComponent } from './dashboard-device-archive-dialog.component';
 
 @NgModule({
-    declarations: [DashboardDeviceArchiveDialogComponent],
-    imports: [RouterModule.forChild([]), RouterModule.forChild(dashboardRoutes), MatButtonModule, MatIconModule, SharedModule, MatDialogModule],
+    imports: [
+        RouterModule.forChild([]),
+        RouterModule.forChild(dashboardRoutes),
+        MatButtonModule,
+        MatIconModule,
+        SharedModule,
+        MatDialogModule,
+        DashboardDeviceArchiveDialogComponent,
+    ],
     exports: [DashboardDeviceArchiveDialogComponent],
     providers: [],
 })

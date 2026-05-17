@@ -20,7 +20,7 @@ export class DashboardResolver {
      * @param route
      * @param state
      */
-    resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<{ [p: string]: DeviceSummaryModel }> {
+    resolve(_route: ActivatedRouteSnapshot, _state: RouterStateSnapshot): Observable<{ [p: string]: DeviceSummaryModel }> {
         return this._dashboardService.getSummaryData();
     }
 }

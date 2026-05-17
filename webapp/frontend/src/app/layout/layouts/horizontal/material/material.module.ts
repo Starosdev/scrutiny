@@ -13,9 +13,20 @@ import { SharedModule } from 'app/shared/shared.module';
 import { MaterialLayoutComponent } from 'app/layout/layouts/horizontal/material/material.component';
 
 @NgModule({
-    declarations: [MaterialLayoutComponent],
     exports: [MaterialLayoutComponent],
-    imports: [RouterModule, MatButtonModule, MatDividerModule, MatIconModule, MatMenuModule, TreoNavigationModule, SearchModule, ThemeToggleModule, MatTooltipModule, SharedModule],
+    imports: [
+        RouterModule,
+        MatButtonModule,
+        MatDividerModule,
+        MatIconModule,
+        MatMenuModule,
+        TreoNavigationModule,
+        SearchModule,
+        ThemeToggleModule,
+        MatTooltipModule,
+        SharedModule,
+        MaterialLayoutComponent,
+    ],
     providers: [provideHttpClient(withInterceptorsFromDi())],
 })
 export class MaterialLayoutModule {}

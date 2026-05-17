@@ -3,8 +3,7 @@ import { CommonModule } from '@angular/common';
 import { TreoCardComponent } from '@treo/components/card/card.component';
 
 @NgModule({
-    declarations: [TreoCardComponent],
-    imports: [CommonModule],
+    imports: [CommonModule, TreoCardComponent],
     exports: [TreoCardComponent],
 })
 export class TreoCardModule {}

@@ -4,13 +4,16 @@ import { takeUntil } from 'rxjs/operators';
 import { TreoVerticalNavigationComponent } from '@treo/components/navigation/vertical/vertical.component';
 import { TreoNavigationService } from '@treo/components/navigation/navigation.service';
 import { TreoNavigationItem } from '@treo/components/navigation/navigation.types';
+import { NgClass, NgTemplateOutlet, NgStyle } from '@angular/common';
+import { RouterLink, RouterLinkActive } from '@angular/router';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
     selector: 'treo-vertical-navigation-basic-item',
     templateUrl: './basic.component.html',
     styles: [],
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false,
+    imports: [NgClass, RouterLink, RouterLinkActive, NgTemplateOutlet, MatIcon, NgStyle],
 })
 export class TreoVerticalNavigationBasicItemComponent implements OnInit, OnDestroy {
     private readonly _treoNavigationService = inject(TreoNavigationService);

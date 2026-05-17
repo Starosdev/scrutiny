@@ -6,6 +6,10 @@ import { MDADMArrayModel } from 'app/core/models/mdadm-array-model';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { AppConfig } from 'app/core/config/app.config';
 import { getMdadmArrayStatusColorClass } from 'app/modules/mdadm/mdadm-status.util';
+import { MatIcon } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
+import { NgClass } from '@angular/common';
+import { FileSizePipe } from '../../shared/file-size.pipe';
 
 @Component({
     selector: 'mdadm',
@@ -13,7 +17,7 @@ import { getMdadmArrayStatusColorClass } from 'app/modules/mdadm/mdadm-status.ut
     styleUrls: ['./mdadm.component.scss'],
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false,
+    imports: [MatIcon, RouterLink, NgClass, FileSizePipe],
 })
 export class MDADMComponent implements OnInit, OnDestroy {
     private readonly _mdadmService = inject(MDADMService);

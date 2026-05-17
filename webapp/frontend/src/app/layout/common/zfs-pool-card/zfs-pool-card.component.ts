@@ -8,12 +8,18 @@ import { MatDialog } from '@angular/material/dialog';
 import { ZFSPoolModel, ZFSPoolStatus } from 'app/core/models/zfs-pool-model';
 import { AppConfig } from 'app/core/config/app.config';
 import { ZFSPoolsService } from 'app/modules/zfs-pools/zfs-pools.service';
+import { NgClass, DatePipe } from '@angular/common';
+import { MatIcon } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
+import { MatIconButton } from '@angular/material/button';
+import { MatMenuTrigger, MatMenu, MatMenuItem } from '@angular/material/menu';
+import { FileSizePipe } from '../../../shared/file-size.pipe';
 
 @Component({
     selector: 'app-zfs-pool-card',
     templateUrl: './zfs-pool-card.component.html',
     styleUrls: ['./zfs-pool-card.component.scss'],
-    standalone: false,
+    imports: [NgClass, MatIcon, RouterLink, MatIconButton, MatMenuTrigger, MatMenu, MatMenuItem, DatePipe, FileSizePipe],
 })
 export class ZFSPoolCardComponent {
     private readonly _zfsPoolsService = inject(ZFSPoolsService);

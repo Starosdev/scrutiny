@@ -1,14 +1,30 @@
 import humanizeDuration from 'humanize-duration';
 import { AfterViewInit, Component, LOCALE_ID, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
-import { Location, formatDate } from '@angular/common';
-import { ApexOptions } from 'ng-apexcharts';
+import { Location, formatDate, NgClass, UpperCasePipe, DecimalPipe, PercentPipe } from '@angular/common';
+import { ApexOptions, ChartComponent } from 'ng-apexcharts';
 import { AppConfig } from 'app/core/config/app.config';
 import { DetailService } from './detail.service';
 import { DetailSettingsComponent } from 'app/layout/common/detail-settings/detail-settings.component';
 import { AttributeHistoryDialogComponent, AttributeHistoryData } from 'app/layout/common/attribute-history-dialog/attribute-history-dialog.component';
 import { MatDialog as MatDialog } from '@angular/material/dialog';
-import { MatSort } from '@angular/material/sort';
-import { MatTableDataSource as MatTableDataSource } from '@angular/material/table';
+import { MatSort, MatSortHeader } from '@angular/material/sort';
+import {
+    MatTableDataSource as MatTableDataSource,
+    MatTable,
+    MatColumnDef,
+    MatHeaderCellDef,
+    MatHeaderCell,
+    MatCellDef,
+    MatCell,
+    MatFooterCellDef,
+    MatFooterCell,
+    MatHeaderRowDef,
+    MatHeaderRow,
+    MatRowDef,
+    MatRow,
+    MatFooterRowDef,
+    MatFooterRow,
+} from '@angular/material/table';
 import { Subject } from 'rxjs';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { animate, state, style, transition, trigger } from '@angular/animations';
@@ -26,6 +42,19 @@ import { FileSizePipe } from 'app/shared/file-size.pipe';
 import { AttributeOverrideService } from 'app/core/config/attribute-override.service';
 import { AttributeOverride, OverrideProtocol } from 'app/core/config/app.config';
 import { angularLongDateTime, apexShortDateTime } from 'app/shared/time-format.utils';
+import { MatIconButton, MatButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatMenuTrigger, MatMenu, MatMenuItem } from '@angular/material/menu';
+import { TreoCardComponent } from '../../../@treo/components/card/card.component';
+import { MatButtonToggleGroup, MatButtonToggle } from '@angular/material/button-toggle';
+import { MatProgressBar } from '@angular/material/progress-bar';
+import { FileSizePipe as FileSizePipe_1 } from '../../shared/file-size.pipe';
+import { DeviceTitlePipe } from '../../shared/device-title.pipe';
+import { DeviceStatusPipe as DeviceStatusPipe_1 } from '../../shared/device-status.pipe';
+import { TemperaturePipe } from '../../shared/temperature.pipe';
+import { DeviceHoursPipe } from '../../shared/device-hours.pipe';
+import { LatencyPipe as LatencyPipe_1 } from '../../shared/latency.pipe';
 
 // from Constants.go - these must match
 const AttributeStatusPassed = 0;
@@ -44,7 +73,46 @@ const AttributeStatusFailedScrutiny = 4;
             transition('expanded <=> collapsed', animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)')),
         ]),
     ],
-    standalone: false,
+    imports: [
+        MatIconButton,
+        MatIcon,
+        MatTooltip,
+        MatButton,
+        MatMenuTrigger,
+        MatMenu,
+        MatMenuItem,
+        TreoCardComponent,
+        NgClass,
+        MatButtonToggleGroup,
+        MatButtonToggle,
+        ChartComponent,
+        MatTable,
+        MatSort,
+        MatColumnDef,
+        MatHeaderCellDef,
+        MatHeaderCell,
+        MatSortHeader,
+        MatCellDef,
+        MatCell,
+        MatFooterCellDef,
+        MatFooterCell,
+        MatHeaderRowDef,
+        MatHeaderRow,
+        MatRowDef,
+        MatRow,
+        MatFooterRowDef,
+        MatFooterRow,
+        MatProgressBar,
+        UpperCasePipe,
+        DecimalPipe,
+        PercentPipe,
+        FileSizePipe_1,
+        DeviceTitlePipe,
+        DeviceStatusPipe_1,
+        TemperaturePipe,
+        DeviceHoursPipe,
+        LatencyPipe_1,
+    ],
 })
 export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     private readonly _detailService = inject(DetailService);
@@ -785,9 +853,9 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
      * Track by function for ngFor loops
      *
      * @param index
-     * @param item
+     * @param _item
      */
-    trackByFn(index: number, item: any): any {
+    trackByFn(index: number, _item: any): any {
         return index;
         // return item.id || index;
     }

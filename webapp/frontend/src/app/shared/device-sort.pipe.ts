@@ -1,10 +1,7 @@
 import { Pipe, PipeTransform } from '@angular/core';
 import { DeviceTitlePipe } from 'app/shared/device-title.pipe';
 
-@Pipe({
-    name: 'deviceSort',
-    standalone: false,
-})
+@Pipe({ name: 'deviceSort' })
 export class DeviceSortPipe implements PipeTransform {
     statusCompareFn(a: any, b: any): number {
         function deviceStatus(deviceSummary): number {

@@ -9,7 +9,7 @@ describe('DetailSettingsComponent', () => {
 
     beforeEach(() => {
         TestBed.configureTestingModule({
-            declarations: [DetailSettingsComponent],
+            imports: [DetailSettingsComponent],
             providers: [{ provide: MAT_DIALOG_DATA, useValue: { curMuted: false, curLabel: '' } }],
         }).compileComponents();
     });

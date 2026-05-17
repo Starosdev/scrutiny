@@ -18,8 +18,7 @@ describe('DashboardDeviceArchiveDialogComponent', () => {
 
     beforeEach(() => {
         TestBed.configureTestingModule({
-            declarations: [DashboardDeviceArchiveDialogComponent],
-            imports: [MatDialogModule, MatButtonModule, MatIconModule, SharedModule],
+            imports: [MatDialogModule, MatButtonModule, MatIconModule, SharedModule, DashboardDeviceArchiveDialogComponent],
             providers: [
                 { provide: MatDialogRef, useValue: matDialogRefSpy },
                 { provide: MAT_DIALOG_DATA, useValue: { deviceId: 'test-device-id', title: 'my-test-device-title' } },

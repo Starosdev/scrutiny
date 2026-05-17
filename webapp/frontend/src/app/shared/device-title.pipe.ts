@@ -1,10 +1,7 @@
 import { Pipe, PipeTransform } from '@angular/core';
 import { DeviceModel } from 'app/core/models/device-model';
 
-@Pipe({
-    name: 'deviceTitle',
-    standalone: false,
-})
+@Pipe({ name: 'deviceTitle' })
 export class DeviceTitlePipe implements PipeTransform {
     private static buildNameTitle(device: DeviceModel): string {
         const titleParts = [];

@@ -18,7 +18,6 @@ import { DetailSettingsModule } from 'app/layout/common/detail-settings/detail-s
 import { AttributeHistoryDialogModule } from 'app/layout/common/attribute-history-dialog/attribute-history-dialog.module';
 
 @NgModule({
-    declarations: [DetailComponent],
     imports: [
         RouterModule.forChild(detailRoutes),
         MatButtonModule,
@@ -35,6 +34,7 @@ import { AttributeHistoryDialogModule } from 'app/layout/common/attribute-histor
         SharedModule,
         DetailSettingsModule,
         AttributeHistoryDialogModule,
+        DetailComponent,
     ],
 })
 export class DetailModule {}

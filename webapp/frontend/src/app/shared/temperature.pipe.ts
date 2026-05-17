@@ -1,10 +1,7 @@
 import { Pipe, PipeTransform } from '@angular/core';
 import { formatNumber } from '@angular/common';
 
-@Pipe({
-    name: 'temperature',
-    standalone: false,
-})
+@Pipe({ name: 'temperature' })
 export class TemperaturePipe implements PipeTransform {
     static celsiusToFahrenheit(celsiusTemp: number): number {
         return (celsiusTemp * 9) / 5 + 32;

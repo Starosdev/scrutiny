@@ -1,7 +1,6 @@
 import { NgModule } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { Overlay } from '@angular/cdk/overlay';
-import { MAT_AUTOCOMPLETE_SCROLL_STRATEGY, MatAutocompleteModule as MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatAutocompleteModule as MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule as MatButtonModule } from '@angular/material/button';
 import { MatSelectModule as MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule as MatFormFieldModule } from '@angular/material/form-field';
@@ -20,7 +19,6 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatChipsModule } from '@angular/material/chips';
 
 @NgModule({
-    declarations: [DashboardSettingsComponent],
     imports: [
         RouterModule.forChild([]),
         MatAutocompleteModule,
@@ -39,6 +37,7 @@ import { MatChipsModule } from '@angular/material/chips';
         MatExpansionModule,
         MatChipsModule,
         SharedModule,
+        DashboardSettingsComponent,
     ],
     exports: [DashboardSettingsComponent],
     providers: [],

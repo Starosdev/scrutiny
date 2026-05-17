@@ -1,4 +1,5 @@
 import { HttpClient } from '@angular/common/http';
+import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { BtrfsFilesystemDetailService } from './btrfs-filesystem-detail.service';
 
@@ -8,7 +9,10 @@ describe('BtrfsFilesystemDetailService', () => {
 
     beforeEach(() => {
         httpClientSpy = jasmine.createSpyObj('HttpClient', ['get', 'post']);
-        service = new BtrfsFilesystemDetailService(httpClientSpy);
+        TestBed.configureTestingModule({
+            providers: [BtrfsFilesystemDetailService, { provide: HttpClient, useValue: httpClientSpy }],
+        });
+        service = TestBed.inject(BtrfsFilesystemDetailService);
     });
 
     it('should return getData()', (done: DoneFn) => {

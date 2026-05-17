@@ -6,6 +6,7 @@ import { DashboardService } from 'app/modules/dashboard/dashboard.service';
 import { ZFSPoolsService } from 'app/modules/zfs-pools/zfs-pools.service';
 import { DeviceSummaryModel } from 'app/core/models/device-summary-model';
 import { ZFSPoolModel } from 'app/core/models/zfs-pool-model';
+import { MatIcon } from '@angular/material/icon';
 
 interface HealthCounts {
     healthy: number;
@@ -28,7 +29,7 @@ interface AttentionItem {
     templateUrl: './mobile-home.component.html',
     styleUrls: ['./mobile-home.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false,
+    imports: [MatIcon],
 })
 export class MobileHomeComponent implements OnInit, OnDestroy {
     private readonly _dashboardService = inject(DashboardService);
