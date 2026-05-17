@@ -10,7 +10,7 @@ describe('AuthGuard', () => {
     beforeEach(() => {
         authServiceSpy = jasmine.createSpyObj('AuthService', [], {
             authEnabled: false,
-            isLoggedIn: false
+            isLoggedIn: false,
         });
         routerSpy = jasmine.createSpyObj('Router', ['createUrlTree']);
         routerSpy.createUrlTree.and.returnValue({} as any);
@@ -36,7 +36,7 @@ describe('AuthGuard', () => {
         const mockState = { url: '/device/abc' } as any;
         guard.canActivate({} as any, mockState);
         expect(routerSpy.createUrlTree).toHaveBeenCalledWith(['/login'], {
-            queryParams: { returnUrl: '/device/abc' }
+            queryParams: { returnUrl: '/device/abc' },
         });
     });
 });

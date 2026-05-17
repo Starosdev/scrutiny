@@ -4,11 +4,7 @@ import { AuthService } from './auth.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthGuard implements CanActivate {
-
-    constructor(
-        private readonly _authService: AuthService,
-        private readonly _router: Router
-    ) {}
+    constructor(private readonly _authService: AuthService, private readonly _router: Router) {}
 
     canActivate(_route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean | UrlTree {
         // If auth is not enabled, always allow access
@@ -23,7 +19,7 @@ export class AuthGuard implements CanActivate {
 
         // Redirect to login with returnUrl so user lands back here after login
         return this._router.createUrlTree(['/login'], {
-            queryParams: { returnUrl: state.url }
+            queryParams: { returnUrl: state.url },
         });
     }
 }

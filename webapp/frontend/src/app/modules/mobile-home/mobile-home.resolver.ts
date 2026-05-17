@@ -6,20 +6,15 @@ import { DashboardService } from 'app/modules/dashboard/dashboard.service';
 import { ZFSPoolsService } from 'app/modules/zfs-pools/zfs-pools.service';
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
 export class MobileHomeResolver implements Resolve<any> {
-    constructor(
-        private readonly _dashboardService: DashboardService,
-        private readonly _zfsPoolsService: ZFSPoolsService
-    ) {}
+    constructor(private readonly _dashboardService: DashboardService, private readonly _zfsPoolsService: ZFSPoolsService) {}
 
     resolve(): Observable<any> {
         return forkJoin({
             smart: this._dashboardService.getSummaryData(),
-            zfs: this._zfsPoolsService.getSummaryData().pipe(
-                catchError(() => of({}))
-            )
+            zfs: this._zfsPoolsService.getSummaryData().pipe(catchError(() => of({}))),
         });
     }
 }

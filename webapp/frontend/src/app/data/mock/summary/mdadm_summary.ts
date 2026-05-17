@@ -14,7 +14,7 @@ export const mdadm_summary = {
             state: 'clean',
             sync_progress: 100,
             array_size: 499963174912,
-            used_bytes: 268435456000
+            used_bytes: 268435456000,
         },
         {
             uuid: '0dcb7b9c-4d96-4d9b-9e62-18d81ef7cb75',
@@ -28,7 +28,7 @@ export const mdadm_summary = {
             state: 'clean, degraded, recovering',
             sync_progress: 42.5,
             array_size: 1999852699648,
-            used_bytes: 1099511627776
-        }
-    ]
+            used_bytes: 1099511627776,
+        },
+    ],
 };

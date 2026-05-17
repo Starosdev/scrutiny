@@ -33,23 +33,9 @@ import { TreoVerticalNavigationComponent } from '@treo/components/navigation/ver
         TreoVerticalNavigationDividerItemComponent,
         TreoVerticalNavigationGroupItemComponent,
         TreoVerticalNavigationSpacerItemComponent,
-        TreoVerticalNavigationComponent
+        TreoVerticalNavigationComponent,
     ],
-    imports     : [
-        CommonModule,
-        RouterModule,
-        MatButtonModule,
-        MatDividerModule,
-        MatIconModule,
-        MatMenuModule,
-        MatTooltipModule,
-        TreoScrollbarModule
-    ],
-    exports     : [
-        TreoHorizontalNavigationComponent,
-        TreoVerticalNavigationComponent
-    ]
+    imports: [CommonModule, RouterModule, MatButtonModule, MatDividerModule, MatIconModule, MatMenuModule, MatTooltipModule, TreoScrollbarModule],
+    exports: [TreoHorizontalNavigationComponent, TreoVerticalNavigationComponent],
 })
-export class TreoNavigationModule
-{
-}
+export class TreoNavigationModule {}

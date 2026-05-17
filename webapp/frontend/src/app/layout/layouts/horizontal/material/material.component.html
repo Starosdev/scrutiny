@@ -1,97 +1,79 @@
 <!-- Navigation -->
 @if (isScreenSmall) {
-  <treo-vertical-navigation class="bg-cool-gray-900 theme-dark"
+<treo-vertical-navigation
+    class="bg-cool-gray-900 theme-dark"
     [appearance]="'classic'"
     [mode]="'over'"
     [name]="'mainNavigation'"
     [navigation]="data.navigation.default"
-    [opened]="false">
+    [opened]="false"
+>
     <div treoVerticalNavigationContentHeader>
-      <a class="logo" routerLink="/dashboard">
-        <img src="assets/images/logo/scrutiny-logo-white-text.png">
-      </a>
+        <a class="logo" routerLink="/dashboard">
+            <img src="assets/images/logo/scrutiny-logo-white-text.png" />
+        </a>
     </div>
-  </treo-vertical-navigation>
+</treo-vertical-navigation>
 }
 
 <!-- Wrapper -->
 <div class="wrapper">
+    <!-- Header -->
+    <div class="header">
+        <!-- Header container -->
+        <div class="container">
+            <!-- Top bar -->
+            <div class="top-bar">
+                <!-- Logo -->
+                @if (!isScreenSmall) {
+                <a class="logo" routerLink="/dashboard">
+                    <img class="logo-text" src="assets/images/logo/scrutiny-logo-dark-text.png" />
+                    <img class="logo-text-on-dark" src="assets/images/logo/scrutiny-logo-white-text.png" />
+                </a>
+                }
 
-  <!-- Header -->
-  <div class="header">
+                <!-- Navigation Links -->
+                @if (!isScreenSmall) {
+                <nav class="nav-links ml-8">
+                    <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link">S.M.A.R.T</a>
+                    <a routerLink="/zfs-pools" routerLinkActive="active" class="nav-link">ZFS Pools</a>
+                    <a routerLink="/mdadm" routerLinkActive="active" class="nav-link">MDADM RAID</a>
+                    <a routerLink="/btrfs-filesystems" routerLinkActive="active" class="nav-link">Btrfs</a>
+                    <a routerLink="/workload" routerLinkActive="active" class="nav-link">Workload</a>
+                </nav>
+                }
 
-    <!-- Header container -->
-    <div class="container">
+                <!-- Spacer -->
+                <div class="spacer"></div>
 
-      <!-- Top bar -->
-      <div class="top-bar">
+                <!-- Theme Toggle -->
+                <theme-toggle class="mr-4"></theme-toggle>
 
-        <!-- Logo -->
-        @if (!isScreenSmall) {
-          <a class="logo"
-            routerLink="/dashboard"
-            >
-            <img class="logo-text"
-              src="assets/images/logo/scrutiny-logo-dark-text.png">
-              <img class="logo-text-on-dark"
-                src="assets/images/logo/scrutiny-logo-white-text.png">
-              </a>
-            }
+                <a class="version-link" href="https://github.com/Starosdev/scrutiny" target="_blank" rel="noopener noreferrer">
+                    <code>{{ appVersion }}</code>
+                </a>
 
-            <!-- Navigation Links -->
-            @if (!isScreenSmall) {
-              <nav class="nav-links ml-8">
-                <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-link">S.M.A.R.T</a>
-                <a routerLink="/zfs-pools" routerLinkActive="active" class="nav-link">ZFS Pools</a>
-                <a routerLink="/mdadm" routerLinkActive="active" class="nav-link">MDADM RAID</a>
-                <a routerLink="/btrfs-filesystems" routerLinkActive="active" class="nav-link">Btrfs</a>
-                <a routerLink="/workload" routerLinkActive="active" class="nav-link">Workload</a>
-              </nav>
-            }
+                @if (authEnabled) {
+                <button mat-icon-button (click)="logout()" matTooltip="Logout" class="ml-2">
+                    <mat-icon svgIcon="heroicons_outline:logout"></mat-icon>
+                </button>
+                }
 
-            <!-- Spacer -->
-            <div class="spacer"></div>
+                <!-- Shortcuts -->
+                <!--                <shortcuts [shortcuts]="data.shortcuts"></shortcuts>-->
 
-            <!-- Theme Toggle -->
-            <theme-toggle class="mr-4"></theme-toggle>
-
-            <a class="version-link"
-              href="https://github.com/Starosdev/scrutiny"
-              target="_blank"
-              rel="noopener noreferrer">
-              <code>{{appVersion}}</code>
-            </a>
-
-            @if (authEnabled) {
-              <button mat-icon-button (click)="logout()" matTooltip="Logout" class="ml-2">
-                <mat-icon svgIcon="heroicons_outline:logout"></mat-icon>
-              </button>
-            }
-
-            <!-- Shortcuts -->
-            <!--                <shortcuts [shortcuts]="data.shortcuts"></shortcuts>-->
-
-            <!-- Notifications -->
-            <!--                <notifications [notifications]="data.notifications"></notifications>-->
-
-
-
-          </div>
-
-
+                <!-- Notifications -->
+                <!--                <notifications [notifications]="data.notifications"></notifications>-->
+            </div>
         </div>
-
-      </div>
-
-      <!-- Content -->
-      <div class="content">
-
-        <!-- *ngIf="true" hack is required here for router-outlet to work correctly. Otherwise,
-        it won't register the changes on the layout and won't update the view. -->
-      @if (true) {
-        <router-outlet></router-outlet>
-      }
-
     </div>
 
-  </div>
+    <!-- Content -->
+    <div class="content">
+        <!-- *ngIf="true" hack is required here for router-outlet to work correctly. Otherwise,
+        it won't register the changes on the layout and won't update the view. -->
+        @if (true) {
+        <router-outlet></router-outlet>
+        }
+    </div>
+</div>

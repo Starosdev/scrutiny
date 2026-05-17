@@ -12,9 +12,7 @@ import { LoginComponent } from './login/login.component';
 import { authRoutes } from './auth.routing';
 
 @NgModule({
-    declarations: [
-        LoginComponent
-    ],
+    declarations: [LoginComponent],
     imports: [
         CommonModule,
         ReactiveFormsModule,
@@ -24,7 +22,7 @@ import { authRoutes } from './auth.routing';
         MatIconModule,
         MatInputModule,
         MatProgressBarModule,
-        MatTabsModule
-    ]
+        MatTabsModule,
+    ],
 })
 export class AuthModule {}

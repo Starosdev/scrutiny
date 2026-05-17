@@ -16,7 +16,7 @@ import { BtrfsFilesystemDetailService } from 'app/modules/btrfs-filesystem-detai
     styleUrls: ['./btrfs-filesystem-detail.component.scss'],
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false
+    standalone: false,
 })
 export class BtrfsFilesystemDetailComponent implements OnInit, OnDestroy {
     filesystem: BtrfsFilesystemModel;
@@ -29,7 +29,7 @@ export class BtrfsFilesystemDetailComponent implements OnInit, OnDestroy {
         private readonly _btrfsFilesystemDetailService: BtrfsFilesystemDetailService,
         private readonly _configService: ScrutinyConfigService,
         private readonly _changeDetectorRef: ChangeDetectorRef,
-        private readonly router: Router,
+        private readonly router: Router
     ) {}
 
     ngOnInit(): void {
@@ -59,17 +59,25 @@ export class BtrfsFilesystemDetailComponent implements OnInit, OnDestroy {
         }
         const usageData = this.metricsHistory.map((m) => ({
             x: new Date(m.date),
-            y: m.device_size > 0 ? Number(((m.used / m.device_size) * 100).toFixed(1)) : 0
+            y: m.device_size > 0 ? Number(((m.used / m.device_size) * 100).toFixed(1)) : 0,
         }));
         this.usageOptions = {
-            chart: { animations: { speed: 400, animateGradually: { enabled: false } }, fontFamily: 'inherit', foreColor: 'inherit', width: '100%', height: '100%', type: 'area', sparkline: { enabled: true } },
+            chart: {
+                animations: { speed: 400, animateGradually: { enabled: false } },
+                fontFamily: 'inherit',
+                foreColor: 'inherit',
+                width: '100%',
+                height: '100%',
+                type: 'area',
+                sparkline: { enabled: true },
+            },
             colors: ['#22c55e'],
             fill: { colors: ['#bbf7d0'], opacity: 0.5, type: 'gradient' },
             series: [{ name: 'Usage', data: usageData }],
             stroke: { curve: 'smooth', width: 2 },
             tooltip: { theme: 'dark', x: { format: apexShortDateTime(this.config.time_format, true) }, y: { formatter: (value) => `${value}%` } },
             xaxis: { type: 'datetime', labels: { datetimeUTC: false } },
-            yaxis: { min: 0, max: 100 }
+            yaxis: { min: 0, max: 100 },
         };
     }
 

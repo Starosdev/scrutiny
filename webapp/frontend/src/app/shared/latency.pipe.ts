@@ -1,11 +1,10 @@
-import {Pipe, PipeTransform} from '@angular/core';
+import { Pipe, PipeTransform } from '@angular/core';
 
 @Pipe({
     name: 'latency',
-    standalone: false
+    standalone: false,
 })
 export class LatencyPipe implements PipeTransform {
-
     static formatLatency(ns: number, dp: number = 1): string {
         if (ns == null || isNaN(ns)) {
             return '--';

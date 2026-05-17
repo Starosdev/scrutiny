@@ -43,50 +43,50 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     ngOnInit(): void {
-        this._mediaWatcherService.onMediaChange$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(({matchingAliases}) => {
-                this.isMobile = matchingAliases.includes('lt-md');
+        this._mediaWatcherService.onMediaChange$.pipe(takeUntil(this._unsubscribeAll)).subscribe(({ matchingAliases }) => {
+            this.isMobile = matchingAliases.includes('lt-md');
+            this._changeDetectorRef.markForCheck();
+        });
+
+        this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {
+            const oldConfig = JSON.stringify(this.config);
+            const newConfig = JSON.stringify(config);
+
+            if (oldConfig !== newConfig) {
+                this.config = config;
+                if (oldConfig) {
+                    this.refreshComponent();
+                }
+            }
+        });
+
+        this._workloadService.data$.pipe(takeUntil(this._unsubscribeAll)).subscribe((data) => {
+            this.workloadData = data;
+            if (data) {
+                const insights = Object.values(data);
+                this.dataSource.data = insights;
+                this.spikeDevices = insights.filter((d) => d.spike?.detected);
                 this._changeDetectorRef.markForCheck();
-            });
-
-        this._configService.config$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((config: AppConfig) => {
-                const oldConfig = JSON.stringify(this.config);
-                const newConfig = JSON.stringify(config);
-
-                if (oldConfig !== newConfig) {
-                    this.config = config;
-                    if (oldConfig) {
-                        this.refreshComponent();
-                    }
-                }
-            });
-
-        this._workloadService.data$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((data) => {
-                this.workloadData = data;
-                if (data) {
-                    const insights = Object.values(data);
-                    this.dataSource.data = insights;
-                    this.spikeDevices = insights.filter(d => d.spike?.detected);
-                    this._changeDetectorRef.markForCheck();
-                }
-            });
+            }
+        });
     }
 
     ngAfterViewInit(): void {
         this.dataSource.sort = this.sort;
         this.dataSource.sortingDataAccessor = (item: WorkloadInsightModel, property: string) => {
             switch (property) {
-                case 'daily_writes': return item.daily_write_bytes;
-                case 'daily_reads': return item.daily_read_bytes;
-                case 'rw_ratio': return item.read_write_ratio;
-                case 'endurance': return item.endurance?.percentage_used ?? -1;
-                case 'est_remaining': return item.endurance?.estimated_lifespan_days ?? -1;
-                default: return item[property];
+                case 'daily_writes':
+                    return item.daily_write_bytes;
+                case 'daily_reads':
+                    return item.daily_read_bytes;
+                case 'rw_ratio':
+                    return item.read_write_ratio;
+                case 'endurance':
+                    return item.endurance?.percentage_used ?? -1;
+                case 'est_remaining':
+                    return item.endurance?.estimated_lifespan_days ?? -1;
+                default:
+                    return item[property];
             }
         };
     }
@@ -107,11 +107,16 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
 
     intensityColor(intensity: string): string {
         switch (intensity) {
-            case 'idle': return 'text-blue-400';
-            case 'light': return 'text-green-500';
-            case 'medium': return 'text-yellow-500';
-            case 'heavy': return 'text-red-500';
-            default: return 'text-gray-400';
+            case 'idle':
+                return 'text-blue-400';
+            case 'light':
+                return 'text-green-500';
+            case 'medium':
+                return 'text-yellow-500';
+            case 'heavy':
+                return 'text-red-500';
+            default:
+                return 'text-gray-400';
         }
     }
 

@@ -7,10 +7,7 @@ import { BtrfsFilesystemDetailsResponseWrapper } from 'app/core/models/btrfs-fil
 
 @Injectable({ providedIn: 'root' })
 export class BtrfsFilesystemDetailResolver {
-    constructor(
-        private readonly _btrfsFilesystemDetailService: BtrfsFilesystemDetailService,
-        private readonly _router: Router
-    ) {}
+    constructor(private readonly _btrfsFilesystemDetailService: BtrfsFilesystemDetailService, private readonly _router: Router) {}
 
     resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<BtrfsFilesystemDetailsResponseWrapper> {
         return this._btrfsFilesystemDetailService.getData(route.params.uuid).pipe(

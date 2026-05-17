@@ -6,13 +6,7 @@ import { MobileHomeComponent } from './mobile-home.component';
 import { mobileHomeRoutes } from './mobile-home.routing';
 
 @NgModule({
-    declarations: [
-        MobileHomeComponent
-    ],
-    imports: [
-        RouterModule.forChild(mobileHomeRoutes),
-        MatIconModule,
-        SharedModule
-    ]
+    declarations: [MobileHomeComponent],
+    imports: [RouterModule.forChild(mobileHomeRoutes), MatIconModule, SharedModule],
 })
 export class MobileHomeModule {}

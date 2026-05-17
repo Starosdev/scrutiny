@@ -1,15 +1,11 @@
 <!-- Container -->
 <div class="container">
-
-  <!-- Content -->
-  <div class="content">
-
-    <!-- *ngIf="true" hack is required here for router-outlet to work correctly. Otherwise,
+    <!-- Content -->
+    <div class="content">
+        <!-- *ngIf="true" hack is required here for router-outlet to work correctly. Otherwise,
     it won't register the changes on the layout and won't update the view. -->
-    @if (true) {
-      <router-outlet></router-outlet>
-    }
-
-  </div>
-
+        @if (true) {
+        <router-outlet></router-outlet>
+        }
+    </div>
 </div>

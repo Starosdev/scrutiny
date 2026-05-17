@@ -7,9 +7,7 @@
                 <div class="ml-2 text-secondary font-medium uppercase tracking-wider">MDADM RAID</div>
             </div>
             <div class="mt-2">
-                <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight leading-7 sm:leading-10 truncate">
-                    RAID Arrays
-                </h2>
+                <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight leading-7 sm:leading-10 truncate">RAID Arrays</h2>
             </div>
         </div>
     </div>
@@ -18,8 +16,10 @@
     <div class="flex-auto p-6 sm:p-10">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             <ng-container *ngFor="let array of arrays; trackBy: trackByFn">
-                <a class="flex flex-col h-96 shadow rounded-2xl overflow-hidden bg-card hover:bg-hover transition-colors duration-150 ease-in-out cursor-pointer"
-                   [routerLink]="['./', array.uuid]">
+                <a
+                    class="flex flex-col h-96 shadow rounded-2xl overflow-hidden bg-card hover:bg-hover transition-colors duration-150 ease-in-out cursor-pointer"
+                    [routerLink]="['./', array.uuid]"
+                >
                     <div class="flex flex-col p-6 space-y-6">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
@@ -32,8 +32,7 @@
                                 </div>
                             </div>
                             <div class="flex items-center">
-                                <div class="px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide"
-                                     [ngClass]="getArrayStatusColorClass(array)">
+                                <div class="px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide" [ngClass]="getArrayStatusColorClass(array)">
                                     {{ array.state || 'UNKNOWN' }}
                                 </div>
                             </div>
@@ -45,12 +44,10 @@
                                 <div>{{ array.devices.length }}</div>
                             </div>
                             <div class="mt-4 flex flex-wrap gap-2">
-                                <div *ngFor="let dev of array.devices.slice(0, 4)"
-                                     class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono text-secondary">
+                                <div *ngFor="let dev of array.devices.slice(0, 4)" class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono text-secondary">
                                     {{ dev }}
                                 </div>
-                                <div *ngIf="array.devices.length > 4"
-                                     class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs text-secondary">
+                                <div *ngIf="array.devices.length > 4" class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs text-secondary">
                                     +{{ array.devices.length - 4 }} more
                                 </div>
                             </div>
@@ -60,11 +57,11 @@
                         <div *ngIf="array.array_size" class="flex flex-col space-y-1">
                             <div class="flex items-center justify-between text-secondary">
                                 <div class="font-semibold text-xs uppercase tracking-wider">Size</div>
-                                <div class="font-medium text-lg leading-none">{{ array.array_size | fileSize:config?.file_size_si_units }}</div>
+                                <div class="font-medium text-lg leading-none">{{ array.array_size | fileSize : config?.file_size_si_units }}</div>
                             </div>
                             <div *ngIf="array.used_bytes !== undefined && array.used_bytes !== null" class="flex items-center justify-between text-secondary">
                                 <div class="text-xs">Used</div>
-                                <div class="text-xs font-medium">{{ array.used_bytes | fileSize:config?.file_size_si_units }}</div>
+                                <div class="text-xs font-medium">{{ array.used_bytes | fileSize : config?.file_size_si_units }}</div>
                             </div>
                         </div>
 
@@ -75,8 +72,7 @@
                                 <div class="font-medium text-blue-500">{{ array.sync_progress }}%</div>
                             </div>
                             <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                <div class="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                                     [style.width.%]="array.sync_progress"></div>
+                                <div class="bg-blue-500 h-2 rounded-full transition-all duration-300" [style.width.%]="array.sync_progress"></div>
                             </div>
                         </div>
                     </div>

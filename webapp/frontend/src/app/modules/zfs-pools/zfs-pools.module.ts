@@ -14,9 +14,7 @@ import { MatTooltipModule as MatTooltipModule } from '@angular/material/tooltip'
 import { ZFSPoolCardModule } from 'app/layout/common/zfs-pool-card/zfs-pool-card.module';
 
 @NgModule({
-    declarations: [
-        ZFSPoolsComponent
-    ],
+    declarations: [ZFSPoolsComponent],
     imports: [
         RouterModule.forChild(zfsPoolsRoutes),
         MatButtonModule,
@@ -28,8 +26,7 @@ import { ZFSPoolCardModule } from 'app/layout/common/zfs-pool-card/zfs-pool-card
         MatSortModule,
         MatTableModule,
         SharedModule,
-        ZFSPoolCardModule
-    ]
+        ZFSPoolCardModule,
+    ],
 })
-export class ZFSPoolsModule {
-}
+export class ZFSPoolsModule {}

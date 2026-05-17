@@ -1,21 +1,21 @@
-import {Component, Inject, OnDestroy, OnInit, ViewEncapsulation, DOCUMENT} from '@angular/core';
+import { Component, Inject, OnDestroy, OnInit, ViewEncapsulation, DOCUMENT } from '@angular/core';
 
-import {ActivatedRoute, NavigationEnd, Router} from '@angular/router';
-import {MatSlideToggleChange as MatSlideToggleChange} from '@angular/material/slide-toggle';
-import {Subject} from 'rxjs';
-import {filter, takeUntil} from 'rxjs/operators';
-import {ScrutinyConfigService} from 'app/core/config/scrutiny-config.service';
-import {TreoDrawerService} from '@treo/components/drawer';
-import {TreoMediaWatcherService} from '@treo/services/media-watcher';
-import {Layout} from 'app/layout/layout.types';
-import {AppConfig, Theme} from 'app/core/config/app.config';
+import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
+import { MatSlideToggleChange as MatSlideToggleChange } from '@angular/material/slide-toggle';
+import { Subject } from 'rxjs';
+import { filter, takeUntil } from 'rxjs/operators';
+import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
+import { TreoDrawerService } from '@treo/components/drawer';
+import { TreoMediaWatcherService } from '@treo/services/media-watcher';
+import { Layout } from 'app/layout/layout.types';
+import { AppConfig, Theme } from 'app/core/config/app.config';
 
 @Component({
     selector: 'layout',
     templateUrl: './layout.component.html',
     styleUrls: ['./layout.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    standalone: false,
 })
 export class LayoutComponent implements OnInit, OnDestroy {
     config: AppConfig;
@@ -43,13 +43,11 @@ export class LayoutComponent implements OnInit, OnDestroy {
         @Inject(DOCUMENT) private _document: any,
         private _router: Router,
         private _treoMediaWatcherService: TreoMediaWatcherService
-    )
-    {
+    ) {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 
         this.systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-
     }
 
     // -----------------------------------------------------------------------------------------------------
@@ -59,58 +57,52 @@ export class LayoutComponent implements OnInit, OnDestroy {
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Subscribe to config changes
-        this._scrutinyConfigService.config$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((config: AppConfig) => {
+        this._scrutinyConfigService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {
+            // Store the config
+            this.config = config;
 
-                // Store the config
-                this.config = config;
+            // Store the theme
+            this.theme = config.theme;
 
-                // Store the theme
-                this.theme = config.theme;
-
-                // Update the selected theme class name on body
-                const themeName = 'treo-theme-' + this.determineTheme(config);
-                const toRemove: string[] = [];
-                this._document.body.classList.forEach((className: string) => {
-                    if (className.startsWith('treo-theme-') && className !== themeName) {
-                        toRemove.push(className);
-                    }
-                });
-                toRemove.forEach((cls: string) => this._document.body.classList.remove(cls));
-                this._document.body.classList.add(themeName);
-
-                // Update the layout
-                this._updateLayout();
+            // Update the selected theme class name on body
+            const themeName = 'treo-theme-' + this.determineTheme(config);
+            const toRemove: string[] = [];
+            this._document.body.classList.forEach((className: string) => {
+                if (className.startsWith('treo-theme-') && className !== themeName) {
+                    toRemove.push(className);
+                }
             });
-
-        // Subscribe to NavigationEnd event
-        this._router.events.pipe(
-            filter(event => event instanceof NavigationEnd),
-            takeUntil(this._unsubscribeAll)
-        ).subscribe(() => {
+            toRemove.forEach((cls: string) => this._document.body.classList.remove(cls));
+            this._document.body.classList.add(themeName);
 
             // Update the layout
             this._updateLayout();
         });
 
-        // Subscribe to media changes to detect mobile breakpoint
-        this._treoMediaWatcherService.onMediaChange$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(({matchingAliases}) => {
-                this._isMobile = matchingAliases.includes('lt-md');
+        // Subscribe to NavigationEnd event
+        this._router.events
+            .pipe(
+                filter((event) => event instanceof NavigationEnd),
+                takeUntil(this._unsubscribeAll)
+            )
+            .subscribe(() => {
+                // Update the layout
                 this._updateLayout();
             });
+
+        // Subscribe to media changes to detect mobile breakpoint
+        this._treoMediaWatcherService.onMediaChange$.pipe(takeUntil(this._unsubscribeAll)).subscribe(({ matchingAliases }) => {
+            this._isMobile = matchingAliases.includes('lt-md');
+            this._updateLayout();
+        });
     }
 
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();
@@ -123,27 +115,25 @@ export class LayoutComponent implements OnInit, OnDestroy {
     /**
      * Checks if theme should be set to dark based on config & system settings
      */
-    private determineTheme(config:AppConfig): string {
+    private determineTheme(config: AppConfig): string {
         if (config.theme === 'system') {
-            return this.systemPrefersDark ? 'dark' : 'light'
+            return this.systemPrefersDark ? 'dark' : 'light';
         } else {
-            return config.theme
+            return config.theme;
         }
     }
 
     /**
      * Update the selected layout
      */
-    private _updateLayout(): void
-    {
+    private _updateLayout(): void {
         if (!this.config) {
             return;
         }
 
         // Get the current activated route
         let route = this._activatedRoute;
-        while ( route.firstChild )
-        {
+        while (route.firstChild) {
             route = route.firstChild;
         }
 
@@ -152,9 +142,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
         // 2. Get the query parameter from the current route and
         // set the layout and save the layout to the config
-        const layoutFromQueryParam = (route.snapshot.queryParamMap.get('layout') as Layout);
-        if ( layoutFromQueryParam )
-        {
+        const layoutFromQueryParam = route.snapshot.queryParamMap.get('layout') as Layout;
+        if (layoutFromQueryParam) {
             this.config.layout = this.layout = layoutFromQueryParam;
         }
 
@@ -176,10 +165,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
         // can have different layouts for different routes.
         const paths = route.pathFromRoot;
         paths.forEach((path) => {
-
             // Check if there is a 'layout' data
-            if ( path.routeConfig && path.routeConfig.data && path.routeConfig.data.layout )
-            {
+            if (path.routeConfig && path.routeConfig.data && path.routeConfig.data.layout) {
                 // Set the layout
                 this.layout = path.routeConfig.data.layout;
             }
@@ -201,16 +188,17 @@ export class LayoutComponent implements OnInit, OnDestroy {
      */
     setLayout(layout: Layout): void {
         // Clear the 'layout' query param to allow layout changes
-        this._router.navigate([], {
-            queryParams: {
-                layout: null
-            },
-            queryParamsHandling: 'merge'
-        }).then(() => {
-
-            // Set the config
-            this._scrutinyConfigService.config = {layout};
-        });
+        this._router
+            .navigate([], {
+                queryParams: {
+                    layout: null,
+                },
+                queryParamsHandling: 'merge',
+            })
+            .then(() => {
+                // Set the config
+                this._scrutinyConfigService.config = { layout };
+            });
     }
 
     /**
@@ -218,8 +206,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
      *
      * @param change
      */
-    setTheme(change: MatSlideToggleChange): void
-    {
-        this._scrutinyConfigService.config = {theme: change.checked ? 'dark' : 'light'};
+    setTheme(change: MatSlideToggleChange): void {
+        this._scrutinyConfigService.config = { theme: change.checked ? 'dark' : 'light' };
     }
 }

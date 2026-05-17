@@ -5,30 +5,21 @@ import { tap } from 'rxjs/operators';
 import { getBasePath } from 'app/app.routing';
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
-export class DashboardDeviceDeleteDialogService
-{
-
-
+export class DashboardDeviceDeleteDialogService {
     /**
      * Constructor
      *
      * @param {HttpClient} _httpClient
      */
-    constructor(
-        private readonly _httpClient: HttpClient
-    )
-    {
-    }
+    constructor(private readonly _httpClient: HttpClient) {}
 
     // -----------------------------------------------------------------------------------------------------
     // @ Public methods
     // -----------------------------------------------------------------------------------------------------
 
-
-    deleteDevice(deviceId: string): Observable<any>
-    {
-        return this._httpClient.delete( `${getBasePath()}/api/device/${deviceId}`, {});
+    deleteDevice(deviceId: string): Observable<any> {
+        return this._httpClient.delete(`${getBasePath()}/api/device/${deviceId}`, {});
     }
 }

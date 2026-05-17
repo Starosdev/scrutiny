@@ -5,17 +5,16 @@ import { takeUntil } from 'rxjs/operators';
 import { TreoMediaWatcherService } from '@treo/services/media-watcher';
 import { TreoNavigationService } from '@treo/components/navigation';
 import { AuthService } from 'app/core/auth/auth.service';
-import {versionInfo} from 'environments/versions';
+import { versionInfo } from 'environments/versions';
 
 @Component({
     selector: 'material-layout',
     templateUrl: './material.component.html',
     styleUrls: ['./material.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    standalone: false,
 })
-export class MaterialLayoutComponent implements OnInit, OnDestroy
-{
+export class MaterialLayoutComponent implements OnInit, OnDestroy {
     appVersion: string;
     authEnabled: boolean = false;
     data: any;
@@ -44,8 +43,7 @@ export class MaterialLayoutComponent implements OnInit, OnDestroy
         private readonly _treoMediaWatcherService: TreoMediaWatcherService,
         private readonly _treoNavigationService: TreoNavigationService,
         private readonly _router: Router
-    )
-    {
+    ) {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 
@@ -53,7 +51,7 @@ export class MaterialLayoutComponent implements OnInit, OnDestroy
         this.fixedHeader = false;
         this.fixedFooter = false;
 
-        this.appVersion = versionInfo.version
+        this.appVersion = versionInfo.version;
     }
 
     // -----------------------------------------------------------------------------------------------------
@@ -63,8 +61,7 @@ export class MaterialLayoutComponent implements OnInit, OnDestroy
     /**
      * Getter for current year
      */
-    get currentYear(): number
-    {
+    get currentYear(): number {
         return new Date().getFullYear();
     }
 
@@ -75,35 +72,28 @@ export class MaterialLayoutComponent implements OnInit, OnDestroy
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Subscribe to the resolved route data
         this._activatedRoute.data.subscribe((data: Data) => {
             this.data = data.initialData;
         });
 
         // Subscribe to auth state
-        this._authService.authEnabled$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(enabled => {
-                this.authEnabled = enabled;
-            });
+        this._authService.authEnabled$.pipe(takeUntil(this._unsubscribeAll)).subscribe((enabled) => {
+            this.authEnabled = enabled;
+        });
 
         // Subscribe to media changes
-        this._treoMediaWatcherService.onMediaChange$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(({matchingAliases}) => {
-
-                // Check if the breakpoint is 'lt-md'
-                this.isScreenSmall = matchingAliases.includes('lt-md');
-            });
+        this._treoMediaWatcherService.onMediaChange$.pipe(takeUntil(this._unsubscribeAll)).subscribe(({ matchingAliases }) => {
+            // Check if the breakpoint is 'lt-md'
+            this.isScreenSmall = matchingAliases.includes('lt-md');
+        });
     }
 
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();
@@ -118,20 +108,17 @@ export class MaterialLayoutComponent implements OnInit, OnDestroy
      *
      * @param key
      */
-    toggleNavigation(key): void
-    {
+    toggleNavigation(key): void {
         // Get the navigation
         const navigation = this._treoNavigationService.getComponent(key);
 
-        if ( navigation )
-        {
+        if (navigation) {
             // Toggle the opened status
             navigation.toggle();
         }
     }
 
-    logout(): void
-    {
+    logout(): void {
         this._authService.logout();
     }
 }

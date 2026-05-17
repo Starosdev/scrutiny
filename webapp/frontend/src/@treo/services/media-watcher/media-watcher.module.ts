@@ -2,20 +2,13 @@ import { NgModule } from '@angular/core';
 import { TreoMediaWatcherService } from '@treo/services/media-watcher/media-watcher.service';
 
 @NgModule({
-    providers: [
-        TreoMediaWatcherService
-    ]
+    providers: [TreoMediaWatcherService],
 })
-export class TreoMediaWatcherModule
-{
+export class TreoMediaWatcherModule {
     /**
      * Constructor
      *
      * @param {TreoMediaWatcherService} _treoMediaWatcherService
      */
-    constructor(
-        private readonly _treoMediaWatcherService: TreoMediaWatcherService
-    )
-    {
-    }
+    constructor(private readonly _treoMediaWatcherService: TreoMediaWatcherService) {}
 }

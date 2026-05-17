@@ -9,19 +9,18 @@ const AUTH_SKIP_PATHS = ['/api/auth/status', '/api/auth/login'];
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
-
     constructor(private readonly _authService: AuthService) {}
 
     intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
         let authReq = req;
 
         // Skip token injection for auth endpoints
-        const shouldSkip = AUTH_SKIP_PATHS.some(path => req.url.includes(path));
+        const shouldSkip = AUTH_SKIP_PATHS.some((path) => req.url.includes(path));
         if (!shouldSkip) {
             const token = this._authService.getToken();
             if (token) {
                 authReq = req.clone({
-                    setHeaders: { Authorization: `Bearer ${token}` }
+                    setHeaders: { Authorization: `Bearer ${token}` },
                 });
             }
         }

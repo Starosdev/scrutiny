@@ -7,7 +7,7 @@ export const zfsPoolsRoutes: Route[] = [
         path: '',
         component: ZFSPoolsComponent,
         resolve: {
-            pools: ZFSPoolsResolver
-        }
-    }
+            pools: ZFSPoolsResolver,
+        },
+    },
 ];

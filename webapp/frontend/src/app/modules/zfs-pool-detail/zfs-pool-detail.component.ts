@@ -1,11 +1,4 @@
-import {
-    ChangeDetectionStrategy,
-    ChangeDetectorRef,
-    Component,
-    OnDestroy,
-    OnInit,
-    ViewEncapsulation
-} from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ApexOptions } from 'ng-apexcharts';
@@ -23,7 +16,7 @@ import { apexShortDateTime } from 'app/shared/time-format.utils';
     styleUrls: ['./zfs-pool-detail.component.scss'],
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false
+    standalone: false,
 })
 export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
     pool: ZFSPoolModel;
@@ -37,31 +30,27 @@ export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
         private readonly _zfsPoolDetailService: ZFSPoolDetailService,
         private readonly _configService: ScrutinyConfigService,
         private readonly _changeDetectorRef: ChangeDetectorRef,
-        private readonly router: Router,
+        private readonly router: Router
     ) {
         this._unsubscribeAll = new Subject();
     }
 
     ngOnInit(): void {
         // Subscribe to config changes
-        this._configService.config$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((config: AppConfig) => {
-                this.config = config;
-                this._changeDetectorRef.markForCheck();
-            });
+        this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {
+            this.config = config;
+            this._changeDetectorRef.markForCheck();
+        });
 
         // Get the data
-        this._zfsPoolDetailService.data$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((data) => {
-                if (data) {
-                    this.pool = data.data.pool;
-                    this.metricsHistory = data.data.metrics_history;
-                    this._prepareChartData();
-                    this._changeDetectorRef.markForCheck();
-                }
-            });
+        this._zfsPoolDetailService.data$.pipe(takeUntil(this._unsubscribeAll)).subscribe((data) => {
+            if (data) {
+                this.pool = data.data.pool;
+                this.metricsHistory = data.data.metrics_history;
+                this._prepareChartData();
+                this._changeDetectorRef.markForCheck();
+            }
+        });
     }
 
     ngOnDestroy(): void {
@@ -78,9 +67,9 @@ export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
             return;
         }
 
-        const capacityData = this.metricsHistory.map(m => ({
+        const capacityData = this.metricsHistory.map((m) => ({
             x: new Date(m.date),
-            y: m.capacity_percent
+            y: m.capacity_percent,
         }));
 
         this.capacityOptions = {
@@ -88,8 +77,8 @@ export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
                 animations: {
                     speed: 400,
                     animateGradually: {
-                        enabled: false
-                    }
+                        enabled: false,
+                    },
                 },
                 fontFamily: 'inherit',
                 foreColor: 'inherit',
@@ -97,42 +86,44 @@ export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
                 height: '100%',
                 type: 'area',
                 sparkline: {
-                    enabled: true
-                }
+                    enabled: true,
+                },
             },
             colors: ['#667eea'],
             fill: {
                 colors: ['#b2bef4'],
                 opacity: 0.5,
-                type: 'gradient'
+                type: 'gradient',
             },
-            series: [{
-                name: 'Capacity',
-                data: capacityData
-            }],
+            series: [
+                {
+                    name: 'Capacity',
+                    data: capacityData,
+                },
+            ],
             stroke: {
                 curve: 'smooth',
-                width: 2
+                width: 2,
             },
             tooltip: {
                 theme: 'dark',
                 x: {
-                    format: apexShortDateTime(this.config.time_format, true)
+                    format: apexShortDateTime(this.config.time_format, true),
                 },
                 y: {
-                    formatter: (value) => `${value}%`
-                }
+                    formatter: (value) => `${value}%`,
+                },
             },
             xaxis: {
                 type: 'datetime',
                 labels: {
-                    datetimeUTC: false
-                }
+                    datetimeUTC: false,
+                },
             },
             yaxis: {
                 min: 0,
-                max: 100
-            }
+                max: 100,
+            },
         };
     }
 

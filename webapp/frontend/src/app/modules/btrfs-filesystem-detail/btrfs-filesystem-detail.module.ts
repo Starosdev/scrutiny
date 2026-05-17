@@ -16,6 +16,19 @@ import { TreoCardModule } from '@treo/components/card';
 
 @NgModule({
     declarations: [BtrfsFilesystemDetailComponent],
-    imports: [RouterModule.forChild(btrfsFilesystemDetailRoutes), MatButtonModule, MatDividerModule, MatTooltipModule, MatIconModule, MatMenuModule, MatProgressBarModule, MatSortModule, MatTableModule, NgApexchartsModule, TreoCardModule, SharedModule]
+    imports: [
+        RouterModule.forChild(btrfsFilesystemDetailRoutes),
+        MatButtonModule,
+        MatDividerModule,
+        MatTooltipModule,
+        MatIconModule,
+        MatMenuModule,
+        MatProgressBarModule,
+        MatSortModule,
+        MatTableModule,
+        NgApexchartsModule,
+        TreoCardModule,
+        SharedModule,
+    ],
 })
 export class BtrfsFilesystemDetailModule {}

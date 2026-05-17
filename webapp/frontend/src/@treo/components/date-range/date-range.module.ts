@@ -23,26 +23,12 @@ export const DAYJS_DATE_FORMATS = {
 };
 
 @NgModule({
-    declarations: [
-        TreoDateRangeComponent
-    ],
-    imports     : [
-        CommonModule,
-        ReactiveFormsModule,
-        MatButtonModule,
-        MatDatepickerModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatIconModule
-    ],
+    declarations: [TreoDateRangeComponent],
+    imports: [CommonModule, ReactiveFormsModule, MatButtonModule, MatDatepickerModule, MatFormFieldModule, MatInputModule, MatIconModule],
     providers: [
         { provide: DateAdapter, useClass: DayjsDateAdapter },
         { provide: MAT_DATE_FORMATS, useValue: DAYJS_DATE_FORMATS },
     ],
-    exports     : [
-        TreoDateRangeComponent
-    ]
+    exports: [TreoDateRangeComponent],
 })
-export class TreoDateRangeModule
-{
-}
+export class TreoDateRangeModule {}

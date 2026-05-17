@@ -1,6 +1,6 @@
-import {ModuleWithProviders, NgModule} from '@angular/core';
-import {ScrutinyConfigService} from 'app/core/config/scrutiny-config.service';
-import {TREO_APP_CONFIG} from '@treo/services/config/config.constants';
+import { ModuleWithProviders, NgModule } from '@angular/core';
+import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
+import { TREO_APP_CONFIG } from '@treo/services/config/config.constants';
 
 @NgModule()
 export class ScrutinyConfigModule {
@@ -9,10 +9,7 @@ export class ScrutinyConfigModule {
      *
      * @param {ScrutinyConfigService} _scrutinyConfigService
      */
-    constructor(
-        private readonly _scrutinyConfigService: ScrutinyConfigService
-    ) {
-    }
+    constructor(private readonly _scrutinyConfigService: ScrutinyConfigService) {}
 
     /**
      * forRoot method for setting user configuration
@@ -25,9 +22,9 @@ export class ScrutinyConfigModule {
             providers: [
                 {
                     provide: TREO_APP_CONFIG,
-                    useValue: config
-                }
-            ]
+                    useValue: config,
+                },
+            ],
         };
     }
 }

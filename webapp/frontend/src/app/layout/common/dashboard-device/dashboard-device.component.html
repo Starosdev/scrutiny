@@ -1,263 +1,163 @@
 <div
-  [ngClass]="{
-    'border-green':
-      !deviceSummary.device.archived &&
-      deviceStatusForModelWithThreshold(
-        deviceSummary.device,
-        !!deviceSummary.smart,
-        config.metrics.status_threshold
-      ) == 'passed',
-    'border-red':
-      !deviceSummary.device.archived &&
-      deviceStatusForModelWithThreshold(
-        deviceSummary.device,
-        !!deviceSummary.smart,
-        config.metrics.status_threshold
-      ) == 'failed',
-    'border-gray': deviceSummary.device.archived,
-    'text-disabled': deviceSummary.device.archived
-  }"
-  class="relative flex flex-col flex-auto p-6 pr-3 pb-3 bg-card rounded border-l-4 shadow-md overflow-hidden"
+    [ngClass]="{
+        'border-green':
+            !deviceSummary.device.archived && deviceStatusForModelWithThreshold(deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold) == 'passed',
+        'border-red': !deviceSummary.device.archived && deviceStatusForModelWithThreshold(deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold) == 'failed',
+        'border-gray': deviceSummary.device.archived,
+        'text-disabled': deviceSummary.device.archived
+    }"
+    class="relative flex flex-col flex-auto p-6 pr-3 pb-3 bg-card rounded border-l-4 shadow-md overflow-hidden"
 >
-  <!-- Status watermark icon -->
-  <div class="absolute bottom-0 right-0 w-24 h-24 -m-6">
-    @if (
-      deviceStatusForModelWithThreshold(
-        deviceSummary.device,
-        !!deviceSummary.smart,
-        config.metrics.status_threshold
-      ) == 'passed'
-    ) {
-      <mat-icon
-        class="icon-size-96 opacity-12 text-green"
-        [svgIcon]="'heroicons_outline:check-circle'"
-      ></mat-icon>
-    }
-    @if (
-      deviceStatusForModelWithThreshold(
-        deviceSummary.device,
-        !!deviceSummary.smart,
-        config.metrics.status_threshold
-      ) == 'failed'
-    ) {
-      <mat-icon
-        class="icon-size-96 opacity-12 text-red"
-        [svgIcon]="'heroicons_outline:exclamation-circle'"
-      ></mat-icon>
-    }
-    @if (
-      deviceStatusForModelWithThreshold(
-        deviceSummary.device,
-        !!deviceSummary.smart,
-        config.metrics.status_threshold
-      ) == 'unknown'
-    ) {
-      <mat-icon
-        class="icon-size-96 opacity-12 text-yellow"
-        [svgIcon]="'heroicons_outline:question-mark-circle'"
-      ></mat-icon>
-    }
-  </div>
-
-  <!-- Header -->
-  <div class="flex items-center">
-    <div class="flex flex-col">
-      <a
-        [routerLink]="'/device/' + deviceSummary.device.device_id"
-        class="font-bold text-md text-secondary uppercase tracking-wider"
-      >
-        {{ deviceDashboardTitle() }}
-        @if (deviceSummary.device.muted) {
-          <mat-icon
-            class="muted-icon ml-1"
-            [svgIcon]="'notifications_off'"
-          ></mat-icon>
+    <!-- Status watermark icon -->
+    <div class="absolute bottom-0 right-0 w-24 h-24 -m-6">
+        @if ( deviceStatusForModelWithThreshold( deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold ) == 'passed' ) {
+        <mat-icon class="icon-size-96 opacity-12 text-green" [svgIcon]="'heroicons_outline:check-circle'"></mat-icon>
+        } @if ( deviceStatusForModelWithThreshold( deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold ) == 'failed' ) {
+        <mat-icon class="icon-size-96 opacity-12 text-red" [svgIcon]="'heroicons_outline:exclamation-circle'"></mat-icon>
+        } @if ( deviceStatusForModelWithThreshold( deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold ) == 'unknown' ) {
+        <mat-icon class="icon-size-96 opacity-12 text-yellow" [svgIcon]="'heroicons_outline:question-mark-circle'"></mat-icon>
         }
-      </a>
-
-      @if (deviceSummary.smart) {
-        <div
-          [ngClass]="classDeviceLastUpdatedOn(deviceSummary)"
-          class="font-medium text-sm"
-        >
-          Last Updated on
-          {{ deviceSummary.smart.collector_date | date:(config?.time_format === '12' ? 'MMMM dd, yyyy - h:mm a' : 'MMMM dd, yyyy - HH:mm') }}
-        </div>
-      }
-
-      @if (deviceSummary.smart?.risk_category && deviceSummary.smart?.risk_category !== 'healthy') {
-        <div class="flex items-center mt-1">
-          <span
-            [ngClass]="{
-              'bg-yellow-100 text-yellow-800': deviceSummary.smart.risk_category === 'monitor',
-              'bg-orange-100 text-orange-800': deviceSummary.smart.risk_category === 'plan_replacement',
-              'bg-red-100 text-red-800': deviceSummary.smart.risk_category === 'replace_soon'
-            }"
-            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-          >
-            {{ riskCategoryLabel(deviceSummary.smart.risk_category) }}
-          </span>
-        </div>
-      }
     </div>
 
-    <!-- Actions -->
-    @if (deviceSummary.device) {
-      <div class="ml-auto flex items-center">
-        @if (deviceSummary.device.archived) {
-          <mat-icon [svgIcon]="'archive'"></mat-icon>
-        }
-
-        <button
-          mat-icon-button
-          [matMenuTriggerFor]="previousStatementMenu"
-        >
-          <mat-icon [svgIcon]="'more_vert'"></mat-icon>
-        </button>
-
-        <mat-menu #previousStatementMenu="matMenu">
-          <a
-            mat-menu-item
-            [routerLink]="'/device/' + deviceSummary.device.device_id"
-          >
-            <span class="flex items-center">
-              <mat-icon
-                class="icon-size-20 mr-3"
-                [svgIcon]="'assessment'"
-              ></mat-icon>
-              <span>View Details</span>
-            </span>
-          </a>
-
-          <a
-            mat-menu-item
-            (click)="openArchiveDialog()"
-          >
-            <span class="flex items-center">
-              <mat-icon
-                class="icon-size-20 mr-3"
-                [svgIcon]="
-                  deviceSummary.device.archived
-                    ? 'unarchive'
-                    : 'archive'
-                "
-              ></mat-icon>
-              <span>
-                {{
-                  deviceSummary.device.archived
-                    ? 'Unarchive'
-                    : 'Archive'
-                }}
-                Device
-              </span>
-            </span>
-          </a>
-
-          <a
-            mat-menu-item
-            (click)="openDeleteDialog()"
-          >
-            <span class="flex items-center">
-              <mat-icon
-                class="icon-size-20 mr-3"
-                [svgIcon]="'delete_forever'"
-              ></mat-icon>
-              <span>Delete Device</span>
-            </span>
-          </a>
-        </mat-menu>
-      </div>
-    }
-  </div>
-
-  <!-- Metrics -->
-  <div class="flex flex-row flex-wrap mt-4 -mx-6">
-    <!-- Status -->
-    <div class="flex flex-col mx-6 my-3 xs:w-full">
-      <div class="font-semibold text-xs text-hint uppercase tracking-wider">
-        Status
-      </div>
-
-      @if (deviceSummary.smart?.collector_date) {
-        <div class="mt-2 font-medium text-3xl leading-none">
-          {{
-            deviceStatusForModelWithThreshold(
-              deviceSummary.device,
-              !!deviceSummary.smart,
-              config.metrics.status_threshold
-            ) | titlecase
-          }}
-        </div>
-      } @else {
-        <div class="mt-2 font-medium text-3xl leading-none">
-          No Data
-        </div>
-      }
-    </div>
-
-    <!-- Temperature -->
-    <div class="flex flex-col mx-6 my-3 xs:w-full">
-      <div class="font-semibold text-xs text-hint uppercase tracking-wider">
-        Temperature
-      </div>
-
-      @if (deviceSummary.smart?.collector_date) {
-        <div class="mt-2 font-medium text-3xl leading-none">
-          {{
-            deviceSummary.smart?.temp
-              | temperature:config.temperature_unit:true
-          }}
-        </div>
-      } @else {
-        <div class="mt-2 font-medium text-3xl leading-none">--</div>
-      }
-    </div>
-
-    <!-- Capacity -->
-    <div class="flex flex-col mx-6 my-3 xs:w-full">
-      <div class="font-semibold text-xs text-hint uppercase tracking-wider">
-        Capacity
-      </div>
-      <div class="mt-2 font-medium text-3xl leading-none">
-        {{
-          deviceSummary.device.capacity
-            | fileSize:config.file_size_si_units
-        }}
-      </div>
-    </div>
-
-    <!-- Powered On -->
-    <div class="flex flex-col mx-6 my-3 xs:w-full">
-      <div class="font-semibold text-xs text-hint uppercase tracking-wider">
-        Powered On
-      </div>
-
-      @if (deviceSummary.smart?.power_on_hours) {
-        <div class="mt-2 font-medium text-3xl leading-none">
-          {{
-            deviceSummary.smart?.power_on_hours
-              | deviceHours:config.powered_on_hours_unit:{
-                  round: true,
-                  largest: 1,
-                  units: ['y', 'd', 'h']
+    <!-- Header -->
+    <div class="flex items-center">
+        <div class="flex flex-col">
+            <a [routerLink]="'/device/' + deviceSummary.device.device_id" class="font-bold text-md text-secondary uppercase tracking-wider">
+                {{ deviceDashboardTitle() }}
+                @if (deviceSummary.device.muted) {
+                <mat-icon class="muted-icon ml-1" [svgIcon]="'notifications_off'"></mat-icon>
                 }
-          }}
+            </a>
+
+            @if (deviceSummary.smart) {
+            <div [ngClass]="classDeviceLastUpdatedOn(deviceSummary)" class="font-medium text-sm">
+                Last Updated on
+                {{ deviceSummary.smart.collector_date | date : (config?.time_format === '12' ? 'MMMM dd, yyyy - h:mm a' : 'MMMM dd, yyyy - HH:mm') }}
+            </div>
+            } @if (deviceSummary.smart?.risk_category && deviceSummary.smart?.risk_category !== 'healthy') {
+            <div class="flex items-center mt-1">
+                <span
+                    [ngClass]="{
+                        'bg-yellow-100 text-yellow-800': deviceSummary.smart.risk_category === 'monitor',
+                        'bg-orange-100 text-orange-800': deviceSummary.smart.risk_category === 'plan_replacement',
+                        'bg-red-100 text-red-800': deviceSummary.smart.risk_category === 'replace_soon'
+                    }"
+                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                >
+                    {{ riskCategoryLabel(deviceSummary.smart.risk_category) }}
+                </span>
+            </div>
+            }
         </div>
-      } @else {
-        <div class="mt-2 font-medium text-3xl leading-none">--</div>
-      }
+
+        <!-- Actions -->
+        @if (deviceSummary.device) {
+        <div class="ml-auto flex items-center">
+            @if (deviceSummary.device.archived) {
+            <mat-icon [svgIcon]="'archive'"></mat-icon>
+            }
+
+            <button mat-icon-button [matMenuTriggerFor]="previousStatementMenu">
+                <mat-icon [svgIcon]="'more_vert'"></mat-icon>
+            </button>
+
+            <mat-menu #previousStatementMenu="matMenu">
+                <a mat-menu-item [routerLink]="'/device/' + deviceSummary.device.device_id">
+                    <span class="flex items-center">
+                        <mat-icon class="icon-size-20 mr-3" [svgIcon]="'assessment'"></mat-icon>
+                        <span>View Details</span>
+                    </span>
+                </a>
+
+                <a mat-menu-item (click)="openArchiveDialog()">
+                    <span class="flex items-center">
+                        <mat-icon class="icon-size-20 mr-3" [svgIcon]="deviceSummary.device.archived ? 'unarchive' : 'archive'"></mat-icon>
+                        <span>
+                            {{ deviceSummary.device.archived ? 'Unarchive' : 'Archive' }}
+                            Device
+                        </span>
+                    </span>
+                </a>
+
+                <a mat-menu-item (click)="openDeleteDialog()">
+                    <span class="flex items-center">
+                        <mat-icon class="icon-size-20 mr-3" [svgIcon]="'delete_forever'"></mat-icon>
+                        <span>Delete Device</span>
+                    </span>
+                </a>
+            </mat-menu>
+        </div>
+        }
     </div>
 
-    <!-- SSD Health (only shown when available) -->
-    @if (getSSDHealth()) {
-      <div class="flex flex-col mx-6 my-3 xs:w-full">
-        <div class="font-semibold text-xs text-hint uppercase tracking-wider">
-          {{ getSSDHealthLabel() }}
+    <!-- Metrics -->
+    <div class="flex flex-row flex-wrap mt-4 -mx-6">
+        <!-- Status -->
+        <div class="flex flex-col mx-6 my-3 xs:w-full">
+            <div class="font-semibold text-xs text-hint uppercase tracking-wider">Status</div>
+
+            @if (deviceSummary.smart?.collector_date) {
+            <div class="mt-2 font-medium text-3xl leading-none">
+                {{ deviceStatusForModelWithThreshold(deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold) | titlecase }}
+            </div>
+            } @else {
+            <div class="mt-2 font-medium text-3xl leading-none">No Data</div>
+            }
         </div>
-        <div class="mt-2 font-medium text-3xl leading-none">
-          {{ getSSDHealthDisplay() }}
+
+        <!-- Temperature -->
+        <div class="flex flex-col mx-6 my-3 xs:w-full">
+            <div class="font-semibold text-xs text-hint uppercase tracking-wider">Temperature</div>
+
+            @if (deviceSummary.smart?.collector_date) {
+            <div class="mt-2 font-medium text-3xl leading-none">
+                {{ deviceSummary.smart?.temp | temperature : config.temperature_unit : true }}
+            </div>
+            } @else {
+            <div class="mt-2 font-medium text-3xl leading-none">--</div>
+            }
         </div>
-      </div>
-    }
-  </div>
+
+        <!-- Capacity -->
+        <div class="flex flex-col mx-6 my-3 xs:w-full">
+            <div class="font-semibold text-xs text-hint uppercase tracking-wider">Capacity</div>
+            <div class="mt-2 font-medium text-3xl leading-none">
+                {{ deviceSummary.device.capacity | fileSize : config.file_size_si_units }}
+            </div>
+        </div>
+
+        <!-- Powered On -->
+        <div class="flex flex-col mx-6 my-3 xs:w-full">
+            <div class="font-semibold text-xs text-hint uppercase tracking-wider">Powered On</div>
+
+            @if (deviceSummary.smart?.power_on_hours) {
+            <div class="mt-2 font-medium text-3xl leading-none">
+                {{
+                    deviceSummary.smart?.power_on_hours
+                        | deviceHours
+                            : config.powered_on_hours_unit
+                            : {
+                                  round: true,
+                                  largest: 1,
+                                  units: ['y', 'd', 'h']
+                              }
+                }}
+            </div>
+            } @else {
+            <div class="mt-2 font-medium text-3xl leading-none">--</div>
+            }
+        </div>
+
+        <!-- SSD Health (only shown when available) -->
+        @if (getSSDHealth()) {
+        <div class="flex flex-col mx-6 my-3 xs:w-full">
+            <div class="font-semibold text-xs text-hint uppercase tracking-wider">
+                {{ getSSDHealthLabel() }}
+            </div>
+            <div class="mt-2 font-medium text-3xl leading-none">
+                {{ getSSDHealthDisplay() }}
+            </div>
+        </div>
+        }
+    </div>
 </div>

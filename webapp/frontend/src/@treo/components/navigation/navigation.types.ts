@@ -1,5 +1,4 @@
-export interface TreoNavigationItem
-{
+export interface TreoNavigationItem {
     id?: string;
     title?: string;
     subtitle?: string;
@@ -15,7 +14,7 @@ export interface TreoNavigationItem
     iconClasses?: string;
     badge?: {
         title?: string;
-        style?: 'rectangle' | 'rounded' | 'simple',
+        style?: 'rectangle' | 'rounded' | 'simple';
         background?: string;
         color?: string;
     };

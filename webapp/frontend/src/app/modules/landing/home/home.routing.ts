@@ -3,7 +3,7 @@ import { LandingHomeComponent } from 'app/modules/landing/home/home.component';
 
 export const landingHomeRoutes: Route[] = [
     {
-        path     : '',
-        component: LandingHomeComponent
-    }
+        path: '',
+        component: LandingHomeComponent,
+    },
 ];

@@ -1,35 +1,42 @@
-import {Layout} from 'app/layout/layout.types';
+import { Layout } from 'app/layout/layout.types';
 
 // Theme type
 export type Theme = 'light' | 'dark' | 'system';
 
 // Device title to display on the dashboard
-export type DashboardDisplay = 'name' | 'serial_id' | 'uuid' | 'label'
+export type DashboardDisplay = 'name' | 'serial_id' | 'uuid' | 'label';
 
 export type DashboardSort =
-    | 'status' | 'status_asc' | 'status_desc'
-    | 'title' | 'title_asc' | 'title_desc'
-    | 'age' | 'age_asc' | 'age_desc'
-    | 'capacity_asc' | 'capacity_desc'
-    | 'temperature_asc' | 'temperature_desc'
+    | 'status'
+    | 'status_asc'
+    | 'status_desc'
+    | 'title'
+    | 'title_asc'
+    | 'title_desc'
+    | 'age'
+    | 'age_asc'
+    | 'age_desc'
+    | 'capacity_asc'
+    | 'capacity_desc'
+    | 'temperature_asc'
+    | 'temperature_desc';
 
-export type TemperatureUnit = 'celsius' | 'fahrenheit'
+export type TemperatureUnit = 'celsius' | 'fahrenheit';
 
-export type LineStroke = 'smooth' | 'straight' | 'stepline'
+export type LineStroke = 'smooth' | 'straight' | 'stepline';
 
-export type DevicePoweredOnUnit = 'humanize' | 'device_hours'
+export type DevicePoweredOnUnit = 'humanize' | 'device_hours';
 
-export type TimeFormat = '12' | '24'
-
+export type TimeFormat = '12' | '24';
 
 export enum MetricsNotifyLevel {
     Warn = 1,
-    Fail = 2
+    Fail = 2,
 }
 
 export enum MetricsStatusFilterAttributes {
     All = 0,
-    Critical = 1
+    Critical = 1,
 }
 
 export enum MetricsStatusThreshold {
@@ -37,7 +44,7 @@ export enum MetricsStatusThreshold {
     Scrutiny = 2,
 
     // shortcut
-    Both = 3
+    Both = 3,
 }
 
 // Protocol types for SMART attribute overrides
@@ -100,48 +107,48 @@ export interface AppConfig {
     line_stroke?: LineStroke;
 
     // Settings from Scrutiny API
-    
+
     collector?: {
-        retrieve_sct_temperature_history?: boolean
-    }
+        retrieve_sct_temperature_history?: boolean;
+    };
 
     metrics?: {
-        notify_level?: MetricsNotifyLevel
-        status_filter_attributes?: MetricsStatusFilterAttributes
-        status_threshold?: MetricsStatusThreshold
-        repeat_notifications?: boolean
+        notify_level?: MetricsNotifyLevel;
+        status_filter_attributes?: MetricsStatusFilterAttributes;
+        status_threshold?: MetricsStatusThreshold;
+        repeat_notifications?: boolean;
         // Collector error notifications
-        notify_on_collector_error?: boolean
+        notify_on_collector_error?: boolean;
         // Missed collector ping notifications
-        notify_on_missed_ping?: boolean
-        missed_ping_timeout_minutes?: number
-        missed_ping_check_interval_mins?: number
+        notify_on_missed_ping?: boolean;
+        missed_ping_timeout_minutes?: number;
+        missed_ping_check_interval_mins?: number;
         // Notification cooldown / rate limiting
-        missed_ping_cooldown_minutes?: number
-        notification_rate_limit?: number
+        missed_ping_cooldown_minutes?: number;
+        notification_rate_limit?: number;
         // Quiet hours
-        notification_quiet_start?: string
-        notification_quiet_end?: string
+        notification_quiet_start?: string;
+        notification_quiet_end?: string;
         // Heartbeat notifications
-        heartbeat_enabled?: boolean
-        heartbeat_interval_hours?: number
+        heartbeat_enabled?: boolean;
+        heartbeat_interval_hours?: number;
         // Uptime Kuma push monitor
-        uptime_kuma_enabled?: boolean
-        uptime_kuma_push_url?: string
-        uptime_kuma_interval_seconds?: number
+        uptime_kuma_enabled?: boolean;
+        uptime_kuma_push_url?: string;
+        uptime_kuma_interval_seconds?: number;
         // Scheduled reports
-        report_enabled?: boolean
-        report_daily_enabled?: boolean
-        report_daily_time?: string
-        report_weekly_enabled?: boolean
-        report_weekly_day?: number
-        report_weekly_time?: string
-        report_monthly_enabled?: boolean
-        report_monthly_day?: number
-        report_monthly_time?: string
-        report_pdf_enabled?: boolean
-        report_pdf_path?: string
-    }
+        report_enabled?: boolean;
+        report_daily_enabled?: boolean;
+        report_daily_time?: string;
+        report_weekly_enabled?: boolean;
+        report_weekly_day?: number;
+        report_weekly_time?: string;
+        report_monthly_enabled?: boolean;
+        report_monthly_day?: number;
+        report_monthly_time?: string;
+        report_pdf_enabled?: boolean;
+        report_pdf_path?: string;
+    };
 
     // Server capabilities (populated from API response, not stored in settings)
     server_version?: string;
@@ -169,9 +176,9 @@ export const appConfig: AppConfig = {
 
     time_format: '24',
     line_stroke: 'smooth',
-    
+
     collector: {
-        retrieve_sct_temperature_history : true,
+        retrieve_sct_temperature_history: true,
     },
 
     metrics: {
@@ -202,7 +209,6 @@ export const appConfig: AppConfig = {
         report_monthly_day: 1,
         report_monthly_time: '08:00',
         report_pdf_enabled: false,
-        report_pdf_path: '/opt/scrutiny/reports'
-    }
+        report_pdf_path: '/opt/scrutiny/reports',
+    },
 };
-

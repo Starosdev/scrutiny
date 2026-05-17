@@ -28,7 +28,7 @@ interface AttentionItem {
     templateUrl: './mobile-home.component.html',
     styleUrls: ['./mobile-home.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    standalone: false,
 })
 export class MobileHomeComponent implements OnInit, OnDestroy {
     driveCounts: HealthCounts = { healthy: 0, warning: 0, critical: 0 };
@@ -38,31 +38,23 @@ export class MobileHomeComponent implements OnInit, OnDestroy {
 
     private _unsubscribeAll: Subject<void>;
 
-    constructor(
-        private readonly _dashboardService: DashboardService,
-        private readonly _zfsPoolsService: ZFSPoolsService,
-        private readonly _router: Router
-    ) {
+    constructor(private readonly _dashboardService: DashboardService, private readonly _zfsPoolsService: ZFSPoolsService, private readonly _router: Router) {
         this._unsubscribeAll = new Subject();
     }
 
     ngOnInit(): void {
-        this._dashboardService.data$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(data => {
-                if (data) {
-                    this._processDriveData(data);
-                    this.loaded = true;
-                }
-            });
+        this._dashboardService.data$.pipe(takeUntil(this._unsubscribeAll)).subscribe((data) => {
+            if (data) {
+                this._processDriveData(data);
+                this.loaded = true;
+            }
+        });
 
-        this._zfsPoolsService.data$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(data => {
-                if (data) {
-                    this._processZFSData(data);
-                }
-            });
+        this._zfsPoolsService.data$.pipe(takeUntil(this._unsubscribeAll)).subscribe((data) => {
+            if (data) {
+                this._processZFSData(data);
+            }
+        });
     }
 
     ngOnDestroy(): void {
@@ -103,16 +95,16 @@ export class MobileHomeComponent implements OnInit, OnDestroy {
                     host: device.device.host_id || '',
                     status: severity,
                     temperature: device.smart?.temp,
-                    route: `/device/${wwn}`
+                    route: `/device/${wwn}`,
                 });
             }
         }
 
         // Merge drive attention items (critical first)
         this.attentionItems = [
-            ...driveAttention.filter(i => i.status === 'critical'),
-            ...driveAttention.filter(i => i.status === 'warning'),
-            ...this.attentionItems.filter(i => i.type === 'zfs')
+            ...driveAttention.filter((i) => i.status === 'critical'),
+            ...driveAttention.filter((i) => i.status === 'warning'),
+            ...this.attentionItems.filter((i) => i.type === 'zfs'),
         ];
     }
 
@@ -137,7 +129,7 @@ export class MobileHomeComponent implements OnInit, OnDestroy {
                     name: pool.name || guid,
                     host: pool.host_id || '',
                     status: 'warning',
-                    route: `/zfs-pool/${guid}`
+                    route: `/zfs-pool/${guid}`,
                 });
             } else {
                 this.zfsCounts.critical++;
@@ -147,16 +139,16 @@ export class MobileHomeComponent implements OnInit, OnDestroy {
                     name: pool.name || guid,
                     host: pool.host_id || '',
                     status: 'critical',
-                    route: `/zfs-pool/${guid}`
+                    route: `/zfs-pool/${guid}`,
                 });
             }
         }
 
         // Merge ZFS attention items
         this.attentionItems = [
-            ...this.attentionItems.filter(i => i.type === 'drive'),
-            ...zfsAttention.filter(i => i.status === 'critical'),
-            ...zfsAttention.filter(i => i.status === 'warning')
+            ...this.attentionItems.filter((i) => i.type === 'drive'),
+            ...zfsAttention.filter((i) => i.status === 'critical'),
+            ...zfsAttention.filter((i) => i.status === 'warning'),
         ];
     }
 }

@@ -1,30 +1,25 @@
-import {Component, EventEmitter, Input, OnInit, Output} from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import dayjs from 'dayjs';
-import {takeUntil} from 'rxjs/operators';
-import {AppConfig} from 'app/core/config/app.config';
-import {ScrutinyConfigService} from 'app/core/config/scrutiny-config.service';
-import {Subject} from 'rxjs';
-import {MatDialog as MatDialog} from '@angular/material/dialog';
-import {DashboardDeviceDeleteDialogComponent} from 'app/layout/common/dashboard-device-delete-dialog/dashboard-device-delete-dialog.component';
-import {DeviceTitlePipe} from 'app/shared/device-title.pipe';
-import {DeviceSummaryModel} from 'app/core/models/device-summary-model';
-import {DeviceStatusPipe} from 'app/shared/device-status.pipe';
-import {DashboardDeviceArchiveDialogComponent} from '../dashboard-device-archive-dialog/dashboard-device-archive-dialog.component';
-import {DashboardDeviceArchiveDialogService} from '../dashboard-device-archive-dialog/dashboard-device-archive-dialog.service';
+import { takeUntil } from 'rxjs/operators';
+import { AppConfig } from 'app/core/config/app.config';
+import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
+import { Subject } from 'rxjs';
+import { MatDialog as MatDialog } from '@angular/material/dialog';
+import { DashboardDeviceDeleteDialogComponent } from 'app/layout/common/dashboard-device-delete-dialog/dashboard-device-delete-dialog.component';
+import { DeviceTitlePipe } from 'app/shared/device-title.pipe';
+import { DeviceSummaryModel } from 'app/core/models/device-summary-model';
+import { DeviceStatusPipe } from 'app/shared/device-status.pipe';
+import { DashboardDeviceArchiveDialogComponent } from '../dashboard-device-archive-dialog/dashboard-device-archive-dialog.component';
+import { DashboardDeviceArchiveDialogService } from '../dashboard-device-archive-dialog/dashboard-device-archive-dialog.service';
 
 @Component({
     selector: 'app-dashboard-device',
     templateUrl: './dashboard-device.component.html',
     styleUrls: ['./dashboard-device.component.scss'],
-    standalone: false
+    standalone: false,
 })
 export class DashboardDeviceComponent implements OnInit {
-
-    constructor(
-        private readonly _configService: ScrutinyConfigService,
-        private readonly _archiveService: DashboardDeviceArchiveDialogService,
-        public dialog: MatDialog,
-    ) {
+    constructor(private readonly _configService: ScrutinyConfigService, private readonly _archiveService: DashboardDeviceArchiveDialogService, public dialog: MatDialog) {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
     }
@@ -38,39 +33,36 @@ export class DashboardDeviceComponent implements OnInit {
 
     private _unsubscribeAll: Subject<void>;
 
-    deviceStatusForModelWithThreshold = DeviceStatusPipe.deviceStatusForModelWithThreshold
+    deviceStatusForModelWithThreshold = DeviceStatusPipe.deviceStatusForModelWithThreshold;
 
     ngOnInit(): void {
         // Subscribe to config changes
-        this._configService.config$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((config: AppConfig) => {
-                this.config = config;
-            });
+        this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {
+            this.config = config;
+        });
     }
-
 
     // -----------------------------------------------------------------------------------------------------
     // @ Public methods
     // -----------------------------------------------------------------------------------------------------
 
     classDeviceLastUpdatedOn(deviceSummary: DeviceSummaryModel): string {
-        const deviceStatus = DeviceStatusPipe.deviceStatusForModelWithThreshold(deviceSummary.device, !!deviceSummary.smart, this.config.metrics.status_threshold)
+        const deviceStatus = DeviceStatusPipe.deviceStatusForModelWithThreshold(deviceSummary.device, !!deviceSummary.smart, this.config.metrics.status_threshold);
         if (deviceStatus === 'failed') {
-            return 'text-red' // if the device has failed, always highlight in red
+            return 'text-red'; // if the device has failed, always highlight in red
         } else if (deviceStatus === 'passed') {
             if (dayjs().subtract(14, 'day').isBefore(dayjs(deviceSummary.smart.collector_date))) {
                 // this device was updated in the last 2 weeks.
-                return 'text-green'
+                return 'text-green';
             } else if (dayjs().subtract(1, 'month').isBefore(dayjs(deviceSummary.smart.collector_date))) {
                 // this device was updated in the last month
-                return 'text-yellow'
+                return 'text-yellow';
             } else {
                 // last updated more than a month ago.
-                return 'text-red'
+                return 'text-red';
             }
         } else {
-            return ''
+            return '';
         }
     }
 
@@ -79,25 +71,25 @@ export class DashboardDeviceComponent implements OnInit {
     }
 
     openArchiveDialog(): void {
-        if(this.deviceSummary.device.archived){
+        if (this.deviceSummary.device.archived) {
             this._archiveService.unarchiveDevice(this.deviceSummary.device.device_id).subscribe((result) => {
-                if(result) {
-                    this.deviceUnarchived.emit(this.deviceSummary.device.device_id)
+                if (result) {
+                    this.deviceUnarchived.emit(this.deviceSummary.device.device_id);
                 }
-            })
+            });
             return;
         }
         const dialogRef = this.dialog.open(DashboardDeviceArchiveDialogComponent, {
             data: {
                 deviceId: this.deviceSummary.device.device_id,
-                title: DeviceTitlePipe.deviceTitleWithFallback(this.deviceSummary.device, this.config.dashboard_display)
-            }
+                title: DeviceTitlePipe.deviceTitleWithFallback(this.deviceSummary.device, this.config.dashboard_display),
+            },
         });
-        dialogRef.afterClosed().subscribe(result => {
-            if(result) {
+        dialogRef.afterClosed().subscribe((result) => {
+            if (result) {
                 this.deviceArchived.emit(this.deviceSummary.device.device_id);
             }
-        })
+        });
     }
 
     openDeleteDialog(): void {
@@ -105,13 +97,13 @@ export class DashboardDeviceComponent implements OnInit {
             // width: '250px',
             data: {
                 deviceId: this.deviceSummary.device.device_id,
-                title: DeviceTitlePipe.deviceTitleWithFallback(this.deviceSummary.device, this.config.dashboard_display)
-            }
+                title: DeviceTitlePipe.deviceTitleWithFallback(this.deviceSummary.device, this.config.dashboard_display),
+            },
         });
 
-        dialogRef.afterClosed().subscribe(result => {
+        dialogRef.afterClosed().subscribe((result) => {
             if (result?.success) {
-                this.deviceDeleted.emit(this.deviceSummary.device.device_id)
+                this.deviceDeleted.emit(this.deviceSummary.device.device_id);
             }
         });
     }
@@ -121,10 +113,14 @@ export class DashboardDeviceComponent implements OnInit {
      */
     riskCategoryLabel(category: string): string {
         switch (category) {
-            case 'monitor':         return 'Monitor';
-            case 'plan_replacement': return 'Plan Replacement';
-            case 'replace_soon':    return 'Replace Soon';
-            default:                return '';
+            case 'monitor':
+                return 'Monitor';
+            case 'plan_replacement':
+                return 'Plan Replacement';
+            case 'replace_soon':
+                return 'Replace Soon';
+            default:
+                return '';
         }
     }
 
@@ -145,14 +141,14 @@ export class DashboardDeviceComponent implements OnInit {
         if (this.deviceSummary.smart.percentage_used != null) {
             return {
                 value: this.deviceSummary.smart.percentage_used,
-                isRemaining: false // percentage_used: higher = more worn
+                isRemaining: false, // percentage_used: higher = more worn
             };
         }
 
         if (this.deviceSummary.smart.wearout_value != null) {
             return {
                 value: this.deviceSummary.smart.wearout_value,
-                isRemaining: true // wearout_value: higher = healthier
+                isRemaining: true, // wearout_value: higher = healthier
             };
         }
 
