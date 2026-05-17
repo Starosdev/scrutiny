@@ -8,7 +8,7 @@ import { BtrfsFilesystemModel } from 'app/core/models/btrfs-filesystem-model';
 export class BtrfsFilesystemsResolver {
     private readonly _btrfsFilesystemsService = inject(BtrfsFilesystemsService);
 
-    resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<Record<string, BtrfsFilesystemModel>> {
+    resolve(_route: ActivatedRouteSnapshot, _state: RouterStateSnapshot): Observable<Record<string, BtrfsFilesystemModel>> {
         return this._btrfsFilesystemsService.getSummaryData();
     }
 }

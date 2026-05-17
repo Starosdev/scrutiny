@@ -10,7 +10,6 @@ import { DashboardDeviceDeleteDialogModule } from 'app/layout/common/dashboard-d
 import { DashboardDeviceArchiveDialogModule } from '../dashboard-device-archive-dialog/dashboard-device-archive-dialog.module';
 
 @NgModule({
-    declarations: [DashboardDeviceComponent],
     imports: [
         RouterModule.forChild([]),
         RouterModule.forChild(dashboardRoutes),
@@ -20,6 +19,7 @@ import { DashboardDeviceArchiveDialogModule } from '../dashboard-device-archive-
         SharedModule,
         DashboardDeviceDeleteDialogModule,
         DashboardDeviceArchiveDialogModule,
+        DashboardDeviceComponent,
     ],
     exports: [DashboardDeviceComponent],
     providers: [],

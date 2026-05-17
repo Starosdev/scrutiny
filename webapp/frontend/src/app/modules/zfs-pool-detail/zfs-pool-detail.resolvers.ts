@@ -12,7 +12,7 @@ export class ZFSPoolDetailResolver {
     private readonly _zfsPoolDetailService = inject(ZFSPoolDetailService);
     private readonly _router = inject(Router);
 
-    resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<ZFSPoolDetailsResponseWrapper> {
+    resolve(route: ActivatedRouteSnapshot, _state: RouterStateSnapshot): Observable<ZFSPoolDetailsResponseWrapper> {
         return this._zfsPoolDetailService.getData(route.params.guid).pipe(
             catchError((error) => {
                 console.error('Failed to load ZFS pool details:', error);

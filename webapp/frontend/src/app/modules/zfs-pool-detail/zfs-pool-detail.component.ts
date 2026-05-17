@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { ApexOptions } from 'ng-apexcharts';
+import { ApexOptions, ChartComponent } from 'ng-apexcharts';
 import { ZFSPoolDetailService } from 'app/modules/zfs-pool-detail/zfs-pool-detail.service';
 import { AppConfig } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
@@ -9,6 +9,13 @@ import { Router } from '@angular/router';
 import { ZFSPoolModel, ZFSPoolStatus, ZFSVdevModel } from 'app/core/models/zfs-pool-model';
 import { ZFSPoolMetricsHistoryModel } from 'app/core/models/zfs-pool-summary-model';
 import { apexShortDateTime } from 'app/shared/time-format.utils';
+import { MatIconButton, MatButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
+import { TreoCardComponent } from '../../../@treo/components/card/card.component';
+import { NgClass, NgTemplateOutlet, DatePipe } from '@angular/common';
+import { MatDivider } from '@angular/material/divider';
+import { FileSizePipe } from '../../shared/file-size.pipe';
 
 @Component({
     selector: 'zfs-pool-detail',
@@ -16,7 +23,7 @@ import { apexShortDateTime } from 'app/shared/time-format.utils';
     styleUrls: ['./zfs-pool-detail.component.scss'],
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false,
+    imports: [MatIconButton, MatIcon, MatButton, MatTooltip, TreoCardComponent, NgClass, MatDivider, NgTemplateOutlet, ChartComponent, DatePipe, FileSizePipe],
 })
 export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
     private readonly _zfsPoolDetailService = inject(ZFSPoolDetailService);

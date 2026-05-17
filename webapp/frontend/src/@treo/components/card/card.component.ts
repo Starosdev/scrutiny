@@ -8,7 +8,6 @@ import { TreoAnimations } from '@treo/animations';
     encapsulation: ViewEncapsulation.None,
     animations: TreoAnimations,
     exportAs: 'treoCard',
-    standalone: false,
 })
 export class TreoCardComponent {
     private readonly _renderer2 = inject(Renderer2);

@@ -6,6 +6,11 @@ import { AppConfig } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { Router } from '@angular/router';
 import { ZFSPoolModel } from 'app/core/models/zfs-pool-model';
+import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { MatMenuTrigger, MatMenu, MatMenuItem } from '@angular/material/menu';
+import { ZFSPoolCardComponent } from '../../layout/common/zfs-pool-card/zfs-pool-card.component';
+import { KeyValuePipe } from '@angular/common';
 
 @Component({
     selector: 'zfs-pools',
@@ -13,7 +18,7 @@ import { ZFSPoolModel } from 'app/core/models/zfs-pool-model';
     styleUrls: ['./zfs-pools.component.scss'],
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false,
+    imports: [MatButton, MatIcon, MatIconButton, MatMenuTrigger, MatMenu, MatMenuItem, ZFSPoolCardComponent, KeyValuePipe],
 })
 export class ZFSPoolsComponent implements OnInit, OnDestroy {
     private readonly _zfsPoolsService = inject(ZFSPoolsService);

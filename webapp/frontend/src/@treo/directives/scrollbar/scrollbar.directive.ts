@@ -14,7 +14,6 @@ import { ScrollbarGeometry, ScrollbarPosition } from '@treo/directives/scrollbar
 @Directive({
     selector: '[treoScrollbar]',
     exportAs: 'treoScrollbar',
-    standalone: false,
 })
 export class TreoScrollbarDirective implements OnInit, OnDestroy {
     private readonly _elementRef = inject(ElementRef);

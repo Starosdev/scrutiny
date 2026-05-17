@@ -24,7 +24,7 @@ export class TreoMockApiInterceptor implements HttpInterceptor {
         try {
             const url = new URL(request.url);
             urlPath = url.pathname;
-        } catch (e) {
+        } catch {
             // relative URL, leave as-is
         }
 

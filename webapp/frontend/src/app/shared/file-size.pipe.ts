@@ -1,9 +1,6 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-@Pipe({
-    name: 'fileSize',
-    standalone: false,
-})
+@Pipe({ name: 'fileSize' })
 export class FileSizePipe implements PipeTransform {
     transform(bytes: number = 0, si = false, dp = 1): string {
         const thresh = si ? 1000 : 1024;

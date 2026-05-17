@@ -34,11 +34,9 @@ describe('DetailComponent', () => {
     let mockConfigService: jasmine.SpyObj<ScrutinyConfigService>;
     let mockOverrideService: jasmine.SpyObj<AttributeOverrideService>;
     let mockDialog: jasmine.SpyObj<MatDialog>;
-    let configSubject: Subject<AppConfig>;
     let dataSubject: Subject<any>;
 
     beforeEach(() => {
-        configSubject = new Subject<AppConfig>();
         dataSubject = new Subject<any>();
 
         const defaultConfig: AppConfig = {
@@ -61,7 +59,6 @@ describe('DetailComponent', () => {
         mockDialog = jasmine.createSpyObj('MatDialog', ['open']);
 
         TestBed.configureTestingModule({
-            declarations: [DetailComponent],
             imports: [
                 SharedModule,
                 FormsModule,
@@ -76,6 +73,7 @@ describe('DetailComponent', () => {
                 MatSelectModule,
                 MatInputModule,
                 DetailSettingsModule,
+                DetailComponent,
             ],
             providers: [
                 { provide: DetailService, useValue: mockDetailService },

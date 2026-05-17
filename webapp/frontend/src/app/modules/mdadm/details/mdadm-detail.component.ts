@@ -2,20 +2,23 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnIni
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { ApexOptions } from 'ng-apexcharts';
+import { ApexOptions, ChartComponent } from 'ng-apexcharts';
 import { MDADMService } from 'app/modules/mdadm/mdadm.service';
 import { MDADMArrayModel, MDADMMetricsHistoryModel } from 'app/core/models/mdadm-array-model';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { AppConfig } from 'app/core/config/app.config';
 import { apexShortDateTime } from 'app/shared/time-format.utils';
 import { getMdadmArrayStatusColorClass } from 'app/modules/mdadm/mdadm-status.util';
+import { MatIcon } from '@angular/material/icon';
+import { NgClass } from '@angular/common';
+import { FileSizePipe } from '../../../shared/file-size.pipe';
 
 @Component({
     selector: 'mdadm-detail',
     templateUrl: './mdadm-detail.component.html',
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false,
+    imports: [MatIcon, NgClass, ChartComponent, FileSizePipe],
 })
 export class MDADMDetailComponent implements OnInit, OnDestroy {
     private readonly _mdadmService = inject(MDADMService);

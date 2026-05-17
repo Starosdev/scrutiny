@@ -27,6 +27,14 @@ import { TreoAnimations } from '@treo/animations';
 import { TreoVerticalNavigationAppearance, TreoNavigationItem, TreoVerticalNavigationMode, TreoVerticalNavigationPosition } from '@treo/components/navigation/navigation.types';
 import { TreoNavigationService } from '@treo/components/navigation/navigation.service';
 import { TreoScrollbarDirective } from '@treo/directives/scrollbar/scrollbar.directive';
+import { TreoScrollbarDirective as TreoScrollbarDirective_1 } from '../../../directives/scrollbar/scrollbar.directive';
+import { TreoVerticalNavigationAsideItemComponent } from './components/aside/aside.component';
+import { TreoVerticalNavigationBasicItemComponent } from './components/basic/basic.component';
+import { TreoVerticalNavigationCollapsableItemComponent } from './components/collapsable/collapsable.component';
+import { TreoVerticalNavigationDividerItemComponent } from './components/divider/divider.component';
+import { TreoVerticalNavigationGroupItemComponent } from './components/group/group.component';
+import { TreoVerticalNavigationSpacerItemComponent } from './components/spacer/spacer.component';
+import { TreoHorizontalNavigationBasicItemComponent } from '../horizontal/components/basic/basic.component';
 
 @Component({
     selector: 'treo-vertical-navigation',
@@ -36,7 +44,16 @@ import { TreoScrollbarDirective } from '@treo/directives/scrollbar/scrollbar.dir
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
     exportAs: 'treoVerticalNavigation',
-    standalone: false,
+    imports: [
+        TreoScrollbarDirective_1,
+        TreoVerticalNavigationAsideItemComponent,
+        TreoVerticalNavigationBasicItemComponent,
+        TreoVerticalNavigationCollapsableItemComponent,
+        TreoVerticalNavigationDividerItemComponent,
+        TreoVerticalNavigationGroupItemComponent,
+        TreoVerticalNavigationSpacerItemComponent,
+        TreoHorizontalNavigationBasicItemComponent,
+    ],
 })
 export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, OnDestroy {
     private readonly _animationBuilder = inject(AnimationBuilder);

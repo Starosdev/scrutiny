@@ -3,6 +3,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { filter, takeUntil } from 'rxjs/operators';
 import { DashboardService } from 'app/modules/dashboard/dashboard.service';
+import { MatIcon } from '@angular/material/icon';
 
 interface TabItem {
     icon: string;
@@ -16,7 +17,7 @@ interface TabItem {
     templateUrl: './mobile-tab-bar.component.html',
     styleUrls: ['./mobile-tab-bar.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false,
+    imports: [MatIcon],
 })
 export class MobileTabBarComponent implements OnInit, OnDestroy {
     private readonly _router = inject(Router);

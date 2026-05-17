@@ -1,4 +1,5 @@
 import { HttpClient } from '@angular/common/http';
+import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
@@ -11,7 +12,12 @@ describe('AuthService', () => {
     beforeEach(() => {
         httpSpy = jasmine.createSpyObj('HttpClient', ['get', 'post']);
         routerSpy = jasmine.createSpyObj('Router', ['navigate']);
-        service = new AuthService(httpSpy, routerSpy);
+
+        TestBed.configureTestingModule({
+            providers: [AuthService, { provide: HttpClient, useValue: httpSpy }, { provide: Router, useValue: routerSpy }],
+        });
+
+        service = TestBed.inject(AuthService);
         localStorage.clear();
     });
 

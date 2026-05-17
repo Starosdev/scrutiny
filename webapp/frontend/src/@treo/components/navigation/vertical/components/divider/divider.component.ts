@@ -10,7 +10,6 @@ import { TreoNavigationItem } from '@treo/components/navigation/navigation.types
     templateUrl: './divider.component.html',
     styles: [],
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false,
 })
 export class TreoVerticalNavigationDividerItemComponent implements OnInit, OnDestroy {
     private readonly _treoNavigationService = inject(TreoNavigationService);

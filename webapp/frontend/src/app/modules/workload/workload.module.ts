@@ -12,7 +12,6 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 @NgModule({
-    declarations: [WorkloadComponent],
     imports: [
         RouterModule.forChild(workloadRoutes),
         MatButtonModule,
@@ -23,6 +22,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         MatTableModule,
         MatTooltipModule,
         SharedModule,
+        WorkloadComponent,
     ],
 })
 export class WorkloadModule {}

@@ -10,7 +10,7 @@ import { ZFSPoolModel } from 'app/core/models/zfs-pool-model';
 export class ZFSPoolsResolver {
     private readonly _zfsPoolsService = inject(ZFSPoolsService);
 
-    resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<Record<string, ZFSPoolModel>> {
+    resolve(_route: ActivatedRouteSnapshot, _state: RouterStateSnapshot): Observable<Record<string, ZFSPoolModel>> {
         return this._zfsPoolsService.getSummaryData();
     }
 }

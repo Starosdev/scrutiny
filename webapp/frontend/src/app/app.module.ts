@@ -24,18 +24,17 @@ const routerConfig: ExtraOptions = {
 let dev = [TreoMockApiModule.forRoot(mockDataServices)];
 
 // if production clear dev imports and set to prod mode
-// @ts-ignore
 if (environment.production) {
     dev = [];
     enableProdMode();
 }
 
 @NgModule({
-    declarations: [AppComponent],
     imports: [
         BrowserModule,
         BrowserAnimationsModule,
         RouterModule.forRoot(appRoutes, routerConfig),
+        AppComponent,
 
         // Treo & Treo Mock API
         TreoModule,

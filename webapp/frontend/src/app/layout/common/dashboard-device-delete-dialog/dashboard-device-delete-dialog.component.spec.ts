@@ -18,8 +18,7 @@ describe('DashboardDeviceDeleteDialogComponent', () => {
 
     beforeEach(() => {
         TestBed.configureTestingModule({
-            declarations: [DashboardDeviceDeleteDialogComponent],
-            imports: [MatDialogModule, MatButtonModule, MatIconModule, SharedModule],
+            imports: [MatDialogModule, MatButtonModule, MatIconModule, SharedModule, DashboardDeviceDeleteDialogComponent],
             providers: [
                 { provide: MatDialogRef, useValue: matDialogRefSpy },
                 { provide: MAT_DIALOG_DATA, useValue: { deviceId: 'test-device-id', title: 'my-test-device-title' } },

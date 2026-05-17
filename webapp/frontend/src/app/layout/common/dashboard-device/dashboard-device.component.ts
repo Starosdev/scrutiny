@@ -11,12 +11,20 @@ import { DeviceSummaryModel } from 'app/core/models/device-summary-model';
 import { DeviceStatusPipe } from 'app/shared/device-status.pipe';
 import { DashboardDeviceArchiveDialogComponent } from '../dashboard-device-archive-dialog/dashboard-device-archive-dialog.component';
 import { DashboardDeviceArchiveDialogService } from '../dashboard-device-archive-dialog/dashboard-device-archive-dialog.service';
+import { NgClass, TitleCasePipe, DatePipe } from '@angular/common';
+import { MatIcon } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
+import { MatIconButton } from '@angular/material/button';
+import { MatMenuTrigger, MatMenu, MatMenuItem } from '@angular/material/menu';
+import { FileSizePipe } from '../../../shared/file-size.pipe';
+import { TemperaturePipe } from '../../../shared/temperature.pipe';
+import { DeviceHoursPipe } from '../../../shared/device-hours.pipe';
 
 @Component({
     selector: 'app-dashboard-device',
     templateUrl: './dashboard-device.component.html',
     styleUrls: ['./dashboard-device.component.scss'],
-    standalone: false,
+    imports: [NgClass, MatIcon, RouterLink, MatIconButton, MatMenuTrigger, MatMenu, MatMenuItem, TitleCasePipe, DatePipe, FileSizePipe, TemperaturePipe, DeviceHoursPipe],
 })
 export class DashboardDeviceComponent implements OnInit {
     private readonly _configService = inject(ScrutinyConfigService);

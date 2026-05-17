@@ -5,6 +5,11 @@ import { MatDialog } from '@angular/material/dialog';
 import { AppConfig } from 'app/core/config/app.config';
 import { BtrfsFilesystemModel, BtrfsFilesystemStatus } from 'app/core/models/btrfs-filesystem-model';
 import { BtrfsFilesystemsService } from 'app/modules/btrfs-filesystems/btrfs-filesystems.service';
+import { NgClass, DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
+import { MatIcon } from '@angular/material/icon';
+import { MatIconButton } from '@angular/material/button';
+import { MatMenuTrigger, MatMenu, MatMenuItem } from '@angular/material/menu';
 
 dayjs.extend(relativeTime);
 
@@ -12,7 +17,7 @@ dayjs.extend(relativeTime);
     selector: 'app-btrfs-filesystem-card',
     templateUrl: './btrfs-filesystem-card.component.html',
     styleUrls: ['./btrfs-filesystem-card.component.scss'],
-    standalone: false,
+    imports: [NgClass, RouterLink, MatIcon, MatIconButton, MatMenuTrigger, MatMenu, MatMenuItem, DatePipe],
 })
 export class BtrfsFilesystemCardComponent {
     private readonly _btrfsFilesystemsService = inject(BtrfsFilesystemsService);

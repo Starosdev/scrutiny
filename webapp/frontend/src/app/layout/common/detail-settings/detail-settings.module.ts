@@ -16,7 +16,6 @@ import { MatSlideToggleModule as MatSlideToggleModule } from '@angular/material/
 import { MatTooltipModule as MatTooltipModule } from '@angular/material/tooltip';
 
 @NgModule({
-    declarations: [DetailSettingsComponent],
     imports: [
         RouterModule.forChild([]),
         MatAutocompleteModule,
@@ -32,6 +31,7 @@ import { MatTooltipModule as MatTooltipModule } from '@angular/material/tooltip'
         MatSliderModule,
         MatSlideToggleModule,
         SharedModule,
+        DetailSettingsComponent,
     ],
     exports: [DetailSettingsComponent],
     providers: [],

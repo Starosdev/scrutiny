@@ -1,4 +1,5 @@
 import { HttpClient } from '@angular/common/http';
+import { TestBed } from '@angular/core/testing';
 import { DashboardService } from './dashboard.service';
 import { of } from 'rxjs';
 import { summary } from 'app/data/mock/summary/data';
@@ -13,7 +14,10 @@ describe('DashboardService', () => {
 
     beforeEach(() => {
         httpClientSpy = jasmine.createSpyObj('HttpClient', ['get']);
-        service = new DashboardService(httpClientSpy);
+        TestBed.configureTestingModule({
+            providers: [DashboardService, { provide: HttpClient, useValue: httpClientSpy }],
+        });
+        service = TestBed.inject(DashboardService);
     });
 
     it('should unwrap and return getSummaryData() (HttpClient called once)', (done: DoneFn) => {

@@ -28,7 +28,7 @@ export class TreoMockApiModule {
                     provide: APP_INITIALIZER,
                     deps: mockDataServices,
                     useFactory:
-                        (...services) =>
+                        (..._services) =>
                         () => {},
                     multi: true,
                 },

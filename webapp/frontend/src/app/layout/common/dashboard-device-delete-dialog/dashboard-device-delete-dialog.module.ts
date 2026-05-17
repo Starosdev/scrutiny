@@ -8,8 +8,15 @@ import { dashboardRoutes } from 'app/modules/dashboard/dashboard.routing';
 import { MatDialogModule as MatDialogModule } from '@angular/material/dialog';
 
 @NgModule({
-    declarations: [DashboardDeviceDeleteDialogComponent],
-    imports: [RouterModule.forChild([]), RouterModule.forChild(dashboardRoutes), MatButtonModule, MatIconModule, SharedModule, MatDialogModule],
+    imports: [
+        RouterModule.forChild([]),
+        RouterModule.forChild(dashboardRoutes),
+        MatButtonModule,
+        MatIconModule,
+        SharedModule,
+        MatDialogModule,
+        DashboardDeviceDeleteDialogComponent,
+    ],
     exports: [DashboardDeviceDeleteDialogComponent],
     providers: [],
 })

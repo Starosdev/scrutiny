@@ -7,9 +7,27 @@ import { AppConfig } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { Router } from '@angular/router';
 import { TreoMediaWatcherService } from '@treo/services/media-watcher';
-import { MatSort, Sort } from '@angular/material/sort';
-import { MatTableDataSource } from '@angular/material/table';
+import { MatSort, MatSortHeader } from '@angular/material/sort';
+import {
+    MatTableDataSource,
+    MatTable,
+    MatColumnDef,
+    MatHeaderCellDef,
+    MatHeaderCell,
+    MatCellDef,
+    MatCell,
+    MatHeaderRowDef,
+    MatHeaderRow,
+    MatRowDef,
+    MatRow,
+} from '@angular/material/table';
 import { ViewChild, AfterViewInit } from '@angular/core';
+import { MatButtonToggleGroup, MatButtonToggle } from '@angular/material/button-toggle';
+import { MatIcon } from '@angular/material/icon';
+import { NgClass, DecimalPipe } from '@angular/common';
+import { MatProgressBar } from '@angular/material/progress-bar';
+import { MatTooltip } from '@angular/material/tooltip';
+import { FileSizePipe } from '../../shared/file-size.pipe';
 
 @Component({
     selector: 'workload',
@@ -17,7 +35,28 @@ import { ViewChild, AfterViewInit } from '@angular/core';
     styleUrls: ['./workload.component.scss'],
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false,
+    imports: [
+        MatButtonToggleGroup,
+        MatButtonToggle,
+        MatIcon,
+        NgClass,
+        MatProgressBar,
+        MatTable,
+        MatSort,
+        MatColumnDef,
+        MatHeaderCellDef,
+        MatHeaderCell,
+        MatSortHeader,
+        MatCellDef,
+        MatCell,
+        MatTooltip,
+        MatHeaderRowDef,
+        MatHeaderRow,
+        MatRowDef,
+        MatRow,
+        DecimalPipe,
+        FileSizePipe,
+    ],
 })
 export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
     private readonly _workloadService = inject(WorkloadService);

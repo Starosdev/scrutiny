@@ -1,18 +1,24 @@
 import { Component, HostBinding, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
-import { ActivatedRoute, Data, Router } from '@angular/router';
+import { ActivatedRoute, Data, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { TreoMediaWatcherService } from '@treo/services/media-watcher';
 import { TreoNavigationService } from '@treo/components/navigation';
 import { AuthService } from 'app/core/auth/auth.service';
 import { versionInfo } from 'environments/versions';
+import { TreoVerticalNavigationComponent } from '../../../../../@treo/components/navigation/vertical/vertical.component';
+import { ThemeToggleComponent } from '../../../common/theme-toggle/theme-toggle.component';
+import { MatIconButton } from '@angular/material/button';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatIcon } from '@angular/material/icon';
+import { MaterialLayoutModule } from './material.module';
 
 @Component({
     selector: 'material-layout',
     templateUrl: './material.component.html',
     styleUrls: ['./material.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false,
+    imports: [TreoVerticalNavigationComponent, RouterLink, RouterLinkActive, ThemeToggleComponent, MatIconButton, MatTooltip, MatIcon, RouterOutlet, MaterialLayoutModule],
 })
 export class MaterialLayoutComponent implements OnInit, OnDestroy {
     private readonly _activatedRoute = inject(ActivatedRoute);

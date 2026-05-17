@@ -18,7 +18,6 @@ import { DashboardSettingsModule } from 'app/layout/common/dashboard-settings/da
 import { DashboardDeviceModule } from 'app/layout/common/dashboard-device/dashboard-device.module';
 
 @NgModule({
-    declarations: [DashboardComponent],
     imports: [
         RouterModule.forChild(dashboardRoutes),
         MatButtonModule,
@@ -35,6 +34,7 @@ import { DashboardDeviceModule } from 'app/layout/common/dashboard-device/dashbo
         SharedModule,
         DashboardSettingsModule,
         DashboardDeviceModule,
+        DashboardComponent,
     ],
 })
 export class DashboardModule {}

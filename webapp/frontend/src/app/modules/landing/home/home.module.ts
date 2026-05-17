@@ -6,7 +6,6 @@ import { LandingHomeComponent } from 'app/modules/landing/home/home.component';
 import { landingHomeRoutes } from 'app/modules/landing/home/home.routing';
 
 @NgModule({
-    declarations: [LandingHomeComponent],
-    imports: [RouterModule.forChild(landingHomeRoutes), MatButtonModule, SharedModule],
+    imports: [RouterModule.forChild(landingHomeRoutes), MatButtonModule, SharedModule, LandingHomeComponent],
 })
 export class LandingHomeModule {}

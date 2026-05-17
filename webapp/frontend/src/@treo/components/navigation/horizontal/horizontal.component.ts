@@ -3,6 +3,9 @@ import { BehaviorSubject, Subject } from 'rxjs';
 import { TreoAnimations } from '@treo/animations';
 import { TreoNavigationItem } from '@treo/components/navigation/navigation.types';
 import { TreoNavigationService } from '@treo/components/navigation/navigation.service';
+import { TreoHorizontalNavigationBasicItemComponent } from './components/basic/basic.component';
+import { TreoHorizontalNavigationBranchItemComponent } from './components/branch/branch.component';
+import { TreoHorizontalNavigationSpacerItemComponent } from './components/spacer/spacer.component';
 
 @Component({
     selector: 'treo-horizontal-navigation',
@@ -12,7 +15,7 @@ import { TreoNavigationService } from '@treo/components/navigation/navigation.se
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
     exportAs: 'treoHorizontalNavigation',
-    standalone: false,
+    imports: [TreoHorizontalNavigationBasicItemComponent, TreoHorizontalNavigationBranchItemComponent, TreoHorizontalNavigationSpacerItemComponent],
 })
 export class TreoHorizontalNavigationComponent implements OnInit, OnDestroy {
     private readonly _treoNavigationService = inject(TreoNavigationService);

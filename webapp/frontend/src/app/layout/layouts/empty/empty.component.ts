@@ -1,12 +1,13 @@
 import { Component, OnDestroy, ViewEncapsulation } from '@angular/core';
 import { Subject } from 'rxjs';
+import { RouterOutlet } from '@angular/router';
 
 @Component({
     selector: 'empty-layout',
     templateUrl: './empty.component.html',
     styleUrls: ['./empty.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false,
+    imports: [RouterOutlet],
 })
 export class EmptyLayoutComponent implements OnDestroy {
     // Private

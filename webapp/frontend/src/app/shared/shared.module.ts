@@ -10,8 +10,7 @@ import { DeviceHoursPipe } from './device-hours.pipe';
 import { LatencyPipe } from './latency.pipe';
 
 @NgModule({
-    declarations: [FileSizePipe, DeviceSortPipe, TemperaturePipe, DeviceTitlePipe, DeviceStatusPipe, DeviceHoursPipe, LatencyPipe],
-    imports: [CommonModule, FormsModule, ReactiveFormsModule],
+    imports: [CommonModule, FormsModule, ReactiveFormsModule, FileSizePipe, DeviceSortPipe, TemperaturePipe, DeviceTitlePipe, DeviceStatusPipe, DeviceHoursPipe, LatencyPipe],
     exports: [CommonModule, FormsModule, ReactiveFormsModule, FileSizePipe, DeviceSortPipe, DeviceTitlePipe, DeviceStatusPipe, TemperaturePipe, DeviceHoursPipe, LatencyPipe],
 })
 export class SharedModule {}

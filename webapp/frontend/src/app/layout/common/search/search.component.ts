@@ -1,11 +1,16 @@
 import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, Renderer2, ViewChild, ViewEncapsulation, inject } from '@angular/core';
-import { UntypedFormControl } from '@angular/forms';
+import { UntypedFormControl, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { MatFormField as MatFormField } from '@angular/material/form-field';
+import { MatFormField as MatFormField, MatPrefix } from '@angular/material/form-field';
 import { Subject } from 'rxjs';
 import { debounceTime, filter, map, takeUntil } from 'rxjs/operators';
 import { TreoAnimations } from '@treo/animations/public-api';
 import { getBasePath } from 'app/app.routing';
+import { MatIconButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { MatInput } from '@angular/material/input';
+import { MatAutocompleteTrigger, MatAutocomplete, MatOption } from '@angular/material/autocomplete';
+import { RouterLink } from '@angular/router';
 
 @Component({
     selector: 'search',
@@ -14,7 +19,7 @@ import { getBasePath } from 'app/app.routing';
     encapsulation: ViewEncapsulation.None,
     exportAs: 'treoSearch',
     animations: TreoAnimations,
-    standalone: false,
+    imports: [MatIconButton, MatIcon, MatFormField, MatPrefix, MatInput, ReactiveFormsModule, MatAutocompleteTrigger, MatAutocomplete, MatOption, RouterLink],
 })
 export class SearchComponent implements OnInit, OnDestroy {
     private readonly _elementRef = inject(ElementRef);

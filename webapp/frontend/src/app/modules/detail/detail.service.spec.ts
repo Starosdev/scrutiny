@@ -1,4 +1,5 @@
 import { HttpClient } from '@angular/common/http';
+import { TestBed } from '@angular/core/testing';
 import { DetailService } from './detail.service';
 import { of } from 'rxjs';
 import { sda } from 'app/data/mock/device/details/sda';
@@ -11,7 +12,10 @@ describe('DetailService', () => {
 
         beforeEach(() => {
             httpClientSpy = jasmine.createSpyObj('HttpClient', ['get']);
-            service = new DetailService(httpClientSpy);
+            TestBed.configureTestingModule({
+                providers: [DetailService, { provide: HttpClient, useValue: httpClientSpy }],
+            });
+            service = TestBed.inject(DetailService);
         });
         it('should return getData() (HttpClient called once)', (done: DoneFn) => {
             httpClientSpy.get.and.returnValue(of(sda));
