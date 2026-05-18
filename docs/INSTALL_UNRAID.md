@@ -47,6 +47,8 @@ See [Hub/Spoke Installation](INSTALL_HUB_SPOKE.md) for architecture details.
 
 ## MDADM Note
 
+For the general Linux deployment and troubleshooting guide, see [MDADM_MONITORING.md](./MDADM_MONITORING.md).
+
 Unraid is not a good end-to-end validation target for the Linux MDADM feature in this repository.
 
 - you can still mount `/proc/mdstat` into the container for smoke testing

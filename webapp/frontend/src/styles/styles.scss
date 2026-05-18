@@ -19,10 +19,25 @@
         }
     }
 
+    .scrutiny-dark-table {
+        --mat-table-background-color: transparent;
+        --mat-table-header-headline-color: #f8fafc;
+        --mat-table-row-item-label-text-color: #e2e8f0;
+        --mat-table-row-item-outline-color: rgba(148, 163, 184, 0.16);
+
+        .bg-blue-100 {
+            color: #1e3a8a !important;
+        }
+
+        .bg-gray-100 {
+            color: #334155 !important;
+        }
+    }
+
     // Fix #165: SMART table text contrast in dark mode
     // Use class selectors for cross-browser compatibility
     // Exclude status badges (green-200, red-200, yellow-200) which need dark text on light bg
-    .mat-mdc-cell > span:not(.green-200):not(.red-200):not(.yellow-200) {
+    .mat-mdc-cell > span:not(.green-200):not(.red-200):not(.yellow-200):not(.bg-blue-100):not(.bg-gray-100) {
         color: #FFFFFF !important;
     }
 
