@@ -24,6 +24,14 @@
         --mat-table-header-headline-color: #f8fafc;
         --mat-table-row-item-label-text-color: #e2e8f0;
         --mat-table-row-item-outline-color: rgba(148, 163, 184, 0.16);
+
+        .bg-blue-100 {
+            color: #1e3a8a !important;
+        }
+
+        .bg-gray-100 {
+            color: #334155 !important;
+        }
     }
 
     // Fix #165: SMART table text contrast in dark mode
