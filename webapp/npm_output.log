@@ -1,7 +1,0 @@
-
-> @treo/starter@1.0.1 start
-> ng serve --open
-
-Prebundling has been configured but will not be used because scripts optimization is enabled.
-An unhandled exception occurred: Port 4200 is already in use. Use '--port' to specify a different port.
-See "/tmp/ng-AhRfce/angular-errors.log" for further details.

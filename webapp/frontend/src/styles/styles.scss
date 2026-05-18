@@ -54,3 +54,18 @@
 .treo-theme-dark .theme-select-panel .mat-mdc-select-value-text {
     color: #e2e8f0 !important;
 }
+
+// Fix transparency on Mat-Menu panels
+.treo-theme-dark .mat-mdc-menu-panel {
+    background-color: #1e293b !important;
+}
+.treo-theme-dark .mat-mdc-menu-item {
+    color: #e2e8f0 !important;
+}
+.treo-theme-dark .mat-mdc-menu-item .mat-icon {
+    color: #e2e8f0 !important;
+}
+
+.treo-theme-light .mat-mdc-menu-panel {
+    background-color: #ffffff !important;
+}
