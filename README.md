@@ -690,6 +690,7 @@ Dots and dashes in key names become underscores.
 | `web.auth.jwt_expiry_hours` | `SCRUTINY_WEB_AUTH_JWT_EXPIRY_HOURS` | `24` |
 | `web.auth.admin_username` | `SCRUTINY_WEB_AUTH_ADMIN_USERNAME` | `admin` |
 | `web.auth.admin_password` | `SCRUTINY_WEB_AUTH_ADMIN_PASSWORD` | `` |
+| `web.docs.public` | `SCRUTINY_WEB_DOCS_PUBLIC` | `false` |
 | `web.mqtt.enabled` | `SCRUTINY_WEB_MQTT_ENABLED` | `false` |
 | `web.mqtt.broker` | `SCRUTINY_WEB_MQTT_BROKER` | `tcp://localhost:1883` |
 | `web.mqtt.username` | `SCRUTINY_WEB_MQTT_USERNAME` | `` |

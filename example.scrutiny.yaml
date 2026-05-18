@@ -122,6 +122,7 @@ web:
   #   web.auth.jwt_expiry_hours -> SCRUTINY_WEB_AUTH_JWT_EXPIRY_HOURS
   #   web.auth.admin_username   -> SCRUTINY_WEB_AUTH_ADMIN_USERNAME
   #   web.auth.admin_password   -> SCRUTINY_WEB_AUTH_ADMIN_PASSWORD
+  #   web.docs.public           -> SCRUTINY_WEB_DOCS_PUBLIC
   auth:
     # Enable API authentication (default: false, all endpoints open)
     # enabled: false
@@ -144,6 +145,13 @@ web:
     # in addition to the API token. Token login is always available.
     # admin_username: 'admin'
     # admin_password: 'your-admin-password-here'
+
+  docs:
+    # Expose Swagger UI (/docs/api) and the OpenAPI spec
+    # (/api/docs/openapi.yaml) without authentication.
+    # Default: false
+    # Recommended: leave false for production-facing deployments.
+    # public: false
 
   # Prometheus metrics endpoint configuration
   metrics:
@@ -423,4 +431,3 @@ failures:
 #  nvme:
 #    critical: true
 #    standard: true
-
