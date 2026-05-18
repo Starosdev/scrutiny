@@ -2,6 +2,13 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.56.1](https://github.com/Starosdev/scrutiny/compare/v1.56.0...v1.56.1) (2026-05-18)
+
+### Bug Fixes
+
+* **release:** handle empty release note sections ([1d186b3](https://github.com/Starosdev/scrutiny/commit/1d186b3419ac0bead4e18a5c94853f52b08d9cc4))
+* **release:** keep asset publishing alive when notes fail ([3d57b3a](https://github.com/Starosdev/scrutiny/commit/3d57b3a9f0fb65c546dc55010c7ec470344c815c))
+
 ## [1.56.0](https://github.com/Starosdev/scrutiny/compare/v1.55.1...v1.56.0) (2026-05-18)
 
 ### Features
