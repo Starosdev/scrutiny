@@ -21,6 +21,7 @@ const testMetricsToken = "test-metrics-scrape-token"
 const pathSummary = "/api/summary"
 const pathMetrics = "/api/metrics"
 const pathHealth = "/api/health"
+const pathOpenAPIDoc = "/api/docs/openapi.yaml"
 const bearerPrefix = "Bearer "
 
 // setupRouter creates a test gin router with the auth middleware and a simple
@@ -65,6 +66,9 @@ func setupRouter(t *testing.T, authEnabled bool, apiToken string, jwtSecret stri
 	})
 	r.POST("/api/auth/login", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": true})
+	})
+	r.GET(pathOpenAPIDoc, func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"openapi": "3.0.3"})
 	})
 
 	return r
@@ -208,6 +212,16 @@ func TestAuthMiddleware_AuthEnabled_PublicRoute_AuthLogin(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/api/auth/login", nil)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestAuthMiddleware_AuthEnabled_PublicRoute_OpenAPISpec(t *testing.T) {
+	router := setupRouter(t, true, testAPIToken, testJWTSecret, "")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", pathOpenAPIDoc, nil)
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)

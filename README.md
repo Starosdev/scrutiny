@@ -136,6 +136,18 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **UI-Configurable Notification URLs** - Manage notification endpoints directly in the web UI (add, edit, test, delete)
 - **Collector-Side Error Notifications** - Receive alerts when smartctl fails to read a drive during collection, not just when SMART attribute thresholds are exceeded
 
+## API Documentation
+
+The Scrutiny API is now documented from a canonical OpenAPI spec:
+
+- OpenAPI: [docs/openapi.yaml](./docs/openapi.yaml)
+- Swagger UI: [docs/swagger-ui.html](./docs/swagger-ui.html)
+- Overview: [docs/API.md](./docs/API.md)
+- Served Swagger UI: `/docs/api`
+- Served OpenAPI spec: `/api/docs/openapi.yaml`
+
+If you change a route in `webapp/backend/pkg/web/server.go`, update `docs/openapi.yaml` in the same change.
+
 # Migration from AnalogJ/scrutiny
 
 If you're currently using the original AnalogJ/scrutiny, migrating is straightforward:

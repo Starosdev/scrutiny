@@ -29,6 +29,9 @@ import (
 const configKeyMetricsEnabled = "web.metrics.enabled"
 const configKeyMqttEnabled = "web.mqtt.enabled"
 const indexFile = "index.html"
+const apiDocsDirName = "docs"
+const swaggerUIFile = "swagger-ui.html"
+const openAPIFile = "openapi.yaml"
 
 type AppEngine struct {
 	Config            config.Interface
@@ -201,12 +204,31 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			// MDADM Array API endpoints
 			mdadm := api.Group("/mdadm")
 			{
-				mdadm.POST("/arrays/register", handler.RegisterMdadmArrays)           //used by Collector to register new arrays
-				mdadm.GET("/summary", handler.GetMdadmSummary)                        //used by Dashboard
-				mdadm.POST("/array/:uuid/metrics", handler.UploadMdadmMetrics)        //used by Collector to upload metrics
-				mdadm.GET("/array/:uuid/details", handler.GetMdadmArrayDetails)       //used by Array Details view
+				mdadm.POST("/arrays/register", handler.RegisterMdadmArrays)     //used by Collector to register new arrays
+				mdadm.GET("/summary", handler.GetMdadmSummary)                  //used by Dashboard
+				mdadm.POST("/array/:uuid/metrics", handler.UploadMdadmMetrics)  //used by Collector to upload metrics
+				mdadm.GET("/array/:uuid/details", handler.GetMdadmArrayDetails) //used by Array Details view
 			}
 		}
+	}
+
+	docsPath := resolveAPIDocsPath(actualDocsBasePath(ae.Config.GetString("web.src.frontend.path")))
+	if docsPath != "" {
+		swaggerUIPath := filepath.Join(docsPath, swaggerUIFile)
+		openAPIPath := filepath.Join(docsPath, openAPIFile)
+
+		base.GET("/docs/api", func(c *gin.Context) {
+			c.File(swaggerUIPath)
+		})
+		base.GET("/docs/api/", func(c *gin.Context) {
+			c.File(swaggerUIPath)
+		})
+		base.GET("/api/docs/openapi.yaml", func(c *gin.Context) {
+			c.File(openAPIPath)
+		})
+		logger.Infof("Serving API docs from %s", docsPath)
+	} else {
+		logger.Warn("API docs not found on disk; /docs/api and /api/docs/openapi.yaml will not be available")
 	}
 
 	//Static request routing
@@ -268,6 +290,26 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 		c.File(filepath.Join(actualFrontendPath, indexFile))
 	})
 	return r
+}
+
+func actualDocsBasePath(frontendPath string) string {
+	return filepath.Dir(frontendPath)
+}
+
+func resolveAPIDocsPath(baseDir string) string {
+	candidates := []string{
+		filepath.Join(baseDir, apiDocsDirName),
+		filepath.Join("/opt/scrutiny", apiDocsDirName),
+		apiDocsDirName,
+	}
+
+	for _, candidate := range candidates {
+		if utils.FileExists(filepath.Join(candidate, swaggerUIFile)) && utils.FileExists(filepath.Join(candidate, openAPIFile)) {
+			return candidate
+		}
+	}
+
+	return ""
 }
 
 func (ae *AppEngine) Start() error {

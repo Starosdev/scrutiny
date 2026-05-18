@@ -17,6 +17,7 @@ var publicPathSuffixes = []string{
 	"/api/health",
 	"/api/auth/status",
 	"/api/auth/login",
+	"/api/docs/openapi.yaml",
 }
 
 // metricsPathSuffix is the path suffix for the Prometheus metrics endpoint,
