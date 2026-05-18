@@ -1,27 +1,17 @@
 <div class="treo-horizontal-navigation-wrapper">
-
-  @for (item of navigation; track item) {
+    @for (item of navigation; track item) {
     <!-- Skip the hidden items -->
     @if ((item.hidden && !item.hidden(item)) || !item.hidden) {
-      <!-- Basic -->
-      @if (item.type === 'basic') {
-        <treo-horizontal-navigation-basic-item class="treo-horizontal-navigation-menu-item"
-          [item]="item"
-        [name]="name"></treo-horizontal-navigation-basic-item>
-      }
-      <!-- Branch: aside, collapsable, group -->
-      @if (item.type === 'aside' || item.type === 'collapsable' || item.type === 'group') {
-        <treo-horizontal-navigation-branch-item class="treo-horizontal-navigation-menu-item"
-          [item]="item"
-        [name]="name"></treo-horizontal-navigation-branch-item>
-      }
-      <!-- Spacer -->
-      @if (item.type === 'spacer') {
-        <treo-horizontal-navigation-spacer-item class="treo-horizontal-navigation-menu-item"
-          [item]="item"
-        [name]="name"></treo-horizontal-navigation-spacer-item>
-      }
+    <!-- Basic -->
+    @if (item.type === 'basic') {
+    <treo-horizontal-navigation-basic-item class="treo-horizontal-navigation-menu-item" [item]="item" [name]="name"></treo-horizontal-navigation-basic-item>
     }
-  }
-
+    <!-- Branch: aside, collapsable, group -->
+    @if (item.type === 'aside' || item.type === 'collapsable' || item.type === 'group') {
+    <treo-horizontal-navigation-branch-item class="treo-horizontal-navigation-menu-item" [item]="item" [name]="name"></treo-horizontal-navigation-branch-item>
+    }
+    <!-- Spacer -->
+    @if (item.type === 'spacer') {
+    <treo-horizontal-navigation-spacer-item class="treo-horizontal-navigation-menu-item" [item]="item" [name]="name"></treo-horizontal-navigation-spacer-item>
+    } } }
 </div>

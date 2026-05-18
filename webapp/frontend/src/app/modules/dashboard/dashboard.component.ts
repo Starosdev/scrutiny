@@ -1,28 +1,31 @@
-import {
-    ChangeDetectionStrategy,
-    ChangeDetectorRef,
-    Component,
-    OnDestroy,
-    OnInit,
-    ViewChild,
-    ViewEncapsulation
-} from '@angular/core';
-import {Subject} from 'rxjs';
-import {takeUntil} from 'rxjs/operators';
-import {ApexOptions, ChartComponent} from 'ng-apexcharts';
-import {DashboardService} from 'app/modules/dashboard/dashboard.service';
-import {MatDialog as MatDialog} from '@angular/material/dialog';
-import {DashboardSettingsComponent} from 'app/layout/common/dashboard-settings/dashboard-settings.component';
-import {AppConfig} from 'app/core/config/app.config';
-import {ScrutinyConfigService} from 'app/core/config/scrutiny-config.service';
-import {Router} from '@angular/router';
-import {TemperaturePipe} from 'app/shared/temperature.pipe';
-import {DeviceTitlePipe} from 'app/shared/device-title.pipe';
-import {DeviceSummaryModel} from 'app/core/models/device-summary-model';
-import {apexShortDateTime} from 'app/shared/time-format.utils';
-import {MDADMService} from 'app/modules/mdadm/mdadm.service';
-import {MDADMArrayModel} from 'app/core/models/mdadm-array-model';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild, ViewEncapsulation, inject } from '@angular/core';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { ApexOptions, ChartComponent } from 'ng-apexcharts';
+import { DashboardService } from 'app/modules/dashboard/dashboard.service';
+import { MatDialog as MatDialog } from '@angular/material/dialog';
+import { DashboardSettingsComponent } from 'app/layout/common/dashboard-settings/dashboard-settings.component';
+import { AppConfig } from 'app/core/config/app.config';
+import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
+import { Router, RouterLink } from '@angular/router';
+import { TemperaturePipe } from 'app/shared/temperature.pipe';
+import { DeviceTitlePipe } from 'app/shared/device-title.pipe';
+import { DeviceSummaryModel } from 'app/core/models/device-summary-model';
+import { apexShortDateTime } from 'app/shared/time-format.utils';
+import { MDADMService } from 'app/modules/mdadm/mdadm.service';
+import { MDADMArrayModel } from 'app/core/models/mdadm-array-model';
 import { FilesystemCapacityModel, FilesystemHostStatusModel } from 'app/core/models/filesystem-summary-model';
+import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { MatMenuTrigger, MatMenu, MatMenuItem } from '@angular/material/menu';
+import { DashboardDeviceComponent } from '../../layout/common/dashboard-device/dashboard-device.component';
+import { NgClass, DecimalPipe, TitleCasePipe, DatePipe, KeyValuePipe } from '@angular/common';
+import { MatCheckbox } from '@angular/material/checkbox';
+import { MatDivider } from '@angular/material/divider';
+import { FileSizePipe } from '../../shared/file-size.pipe';
+import { DeviceSortPipe } from '../../shared/device-sort.pipe';
 
 @Component({
     selector: 'example',
@@ -30,15 +33,42 @@ import { FilesystemCapacityModel, FilesystemHostStatusModel } from 'app/core/mod
     styleUrls: ['./dashboard.component.scss'],
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false
+    imports: [
+        MatButton,
+        MatIcon,
+        MatTooltip,
+        MatProgressSpinner,
+        MatIconButton,
+        MatMenuTrigger,
+        MatMenu,
+        MatMenuItem,
+        DashboardDeviceComponent,
+        RouterLink,
+        NgClass,
+        MatCheckbox,
+        MatDivider,
+        ChartComponent,
+        DecimalPipe,
+        TitleCasePipe,
+        DatePipe,
+        KeyValuePipe,
+        FileSizePipe,
+        DeviceSortPipe,
+    ],
 })
-export class DashboardComponent implements OnInit, OnDestroy
-{
+export class DashboardComponent implements OnInit, OnDestroy {
+    private readonly _dashboardService = inject(DashboardService);
+    private readonly _mdadmService = inject(MDADMService);
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+    dialog = inject(MatDialog);
+    private readonly router = inject(Router);
+
     summaryData: { [key: string]: DeviceSummaryModel };
-    hostGroups: { [hostId: string]: string[] } = {}
+    hostGroups: { [hostId: string]: string[] } = {};
     filesystemSummaryData: { filesystems: Record<string, FilesystemCapacityModel[]>; hosts: Record<string, FilesystemHostStatusModel> } | null = null;
     temperatureOptions: ApexOptions;
-    tempDurationKey = 'forever'
+    tempDurationKey = 'forever';
     config: AppConfig;
     showArchived: boolean = false;
     visibleDrives: { [wwn: string]: boolean } = {};
@@ -59,15 +89,7 @@ export class DashboardComponent implements OnInit, OnDestroy
      * @param {MatDialog} dialog
      * @param {Router} router
      */
-    constructor(
-        private readonly _dashboardService: DashboardService,
-        private readonly _mdadmService: MDADMService,
-        private readonly _configService: ScrutinyConfigService,
-        private readonly _changeDetectorRef: ChangeDetectorRef,
-        public dialog: MatDialog,
-        private readonly router: Router,
-    )
-    {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
         this.systemPrefersDark = globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
@@ -80,57 +102,51 @@ export class DashboardComponent implements OnInit, OnDestroy
     /**
      * On init
      */
-    ngOnInit(): void
-    {
-
+    ngOnInit(): void {
         // Subscribe to config changes
-        this._configService.config$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((config: AppConfig) => {
+        this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {
+            // check if the old config and the new config do not match.
+            const oldConfig = JSON.stringify(this.config);
+            const newConfig = JSON.stringify(config);
 
-                // check if the old config and the new config do not match.
-                const oldConfig = JSON.stringify(this.config)
-                const newConfig = JSON.stringify(config)
+            if (oldConfig !== newConfig) {
+                // Store the config
+                this.config = config;
 
-                if(oldConfig !== newConfig){
-                    // Store the config
-                    this.config = config;
-
-                    if(oldConfig){
-                        this.refreshComponent()
-                    }
+                if (oldConfig) {
+                    this.refreshComponent();
                 }
-            });
+            }
+        });
 
         // Get the data
-        this._dashboardService.data$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((data) => {
+        this._dashboardService.data$.pipe(takeUntil(this._unsubscribeAll)).subscribe((data) => {
+            // Store the data
+            this.summaryData = data;
 
-                // Store the data
-                this.summaryData = data;
+            // generate group data.
+            for (const wwn in this.summaryData) {
+                const hostid = this.summaryData[wwn].device.host_id;
+                const hostDeviceList = this.hostGroups[hostid] || [];
+                hostDeviceList.push(wwn);
+                this.hostGroups[hostid] = hostDeviceList;
 
-                // generate group data.
-                for (const wwn in this.summaryData) {
-                    const hostid = this.summaryData[wwn].device.host_id
-                    const hostDeviceList = this.hostGroups[hostid] || []
-                    hostDeviceList.push(wwn)
-                    this.hostGroups[hostid] = hostDeviceList
-
-                    // Initialize drive visibility (default to visible)
-                    this.visibleDrives[wwn] ??= true;
-                }
-                // Prepare the chart data
-                this._prepareChartData();
-            });
+                // Initialize drive visibility (default to visible)
+                this.visibleDrives[wwn] ??= true;
+            }
+            // Prepare the chart data
+            this._prepareChartData();
+        });
 
         // Get MDADM data
-        this._mdadmService.getSummaryData()
+        this._mdadmService
+            .getSummaryData()
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe((arrays) => {
                 this.mdadmArrays = arrays;
             });
-        this._dashboardService.getFilesystemSummaryData()
+        this._dashboardService
+            .getFilesystemSummaryData()
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe((data) => {
                 this.filesystemSummaryData = data;
@@ -141,8 +157,7 @@ export class DashboardComponent implements OnInit, OnDestroy
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();
@@ -152,7 +167,6 @@ export class DashboardComponent implements OnInit, OnDestroy
     // @ Private methods
     // -----------------------------------------------------------------------------------------------------
     private refreshComponent(): void {
-
         const currentUrl = this.router.url;
         this.router.routeReuseStrategy.shouldReuseRoute = () => false;
         this.router.onSameUrlNavigation = 'reload';
@@ -164,45 +178,45 @@ export class DashboardComponent implements OnInit, OnDestroy
     }
 
     private _deviceDataTemperatureSeries(): any[] {
-        const deviceTemperatureSeries = []
+        const deviceTemperatureSeries = [];
 
         for (const wwn in this.summaryData) {
             // Skip drives that are hidden by the filter
             if (this.visibleDrives[wwn] === false) {
-                continue
+                continue;
             }
 
-            const deviceSummary = this.summaryData[wwn]
+            const deviceSummary = this.summaryData[wwn];
             if (!deviceSummary.temp_history) {
-                continue
+                continue;
             }
 
-            const deviceName = DeviceTitlePipe.deviceDashboardTitle(deviceSummary.device)
+            const deviceName = DeviceTitlePipe.deviceDashboardTitle(deviceSummary.device);
 
             const deviceSeriesMetadata = {
                 name: deviceName,
-                data: []
-            }
+                data: [],
+            };
 
-            for(const tempHistory of deviceSummary.temp_history){
+            for (const tempHistory of deviceSummary.temp_history) {
                 const newDate = new Date(tempHistory.date);
                 let temperature;
                 switch (this.config.temperature_unit) {
                     case 'celsius':
                         temperature = tempHistory.temp;
-                        break
+                        break;
                     case 'fahrenheit':
-                        temperature = TemperaturePipe.celsiusToFahrenheit(tempHistory.temp)
-                        break
+                        temperature = TemperaturePipe.celsiusToFahrenheit(tempHistory.temp);
+                        break;
                 }
                 deviceSeriesMetadata.data.push({
                     x: newDate,
-                    y: temperature
-                })
+                    y: temperature,
+                });
             }
-            deviceTemperatureSeries.push(deviceSeriesMetadata)
+            deviceTemperatureSeries.push(deviceSeriesMetadata);
         }
-        return deviceTemperatureSeries
+        return deviceTemperatureSeries;
     }
 
     private _patchSharedTooltip(chartContext: any): void {
@@ -212,7 +226,7 @@ export class DashboardComponent implements OnInit, OnDestroy
                 tooltip.tooltipUtil.isInitialSeriesSameLen = () => true;
                 tooltip.tooltipUtil.isXoverlap = () => true;
             }
-        } catch (e) {
+        } catch {
             // Silently fail if ApexCharts internals change
         }
     }
@@ -233,31 +247,30 @@ export class DashboardComponent implements OnInit, OnDestroy
      *
      * @private
      */
-    private _prepareChartData(): void
-    {
+    private _prepareChartData(): void {
         const temperatureUnit = this.config.temperature_unit === 'celsius' ? 'C' : 'F';
 
         this.temperatureOptions = {
-            chart  : {
+            chart: {
                 animations: {
-                    speed           : 400,
+                    speed: 400,
                     animateGradually: {
-                        enabled: false
-                    }
+                        enabled: false,
+                    },
                 },
                 fontFamily: 'inherit',
-                foreColor : 'inherit',
-                width     : '100%',
-                height    : '100%',
+                foreColor: 'inherit',
+                width: '100%',
+                height: '100%',
                 parentHeightOffset: 0,
-                type      : 'area',
-                sparkline : {
-                    enabled: false
+                type: 'area',
+                sparkline: {
+                    enabled: false,
                 },
                 redrawOnParentResize: true,
                 redrawOnWindowResize: true,
                 toolbar: {
-                    show: false
+                    show: false,
                 },
                 events: {
                     mounted: (chartContext) => {
@@ -265,14 +278,14 @@ export class DashboardComponent implements OnInit, OnDestroy
                     },
                     updated: (chartContext) => {
                         this._patchSharedTooltip(chartContext);
-                    }
-                }
+                    },
+                },
             },
-            colors : ['#667eea', '#9066ea', '#66c0ea', '#66ead2', '#d266ea', '#66ea90'],
-            fill   : {
-                colors : ['#b2bef4', '#c7b2f4', '#b2dff4', '#b2f4e8', '#e8b2f4', '#b2f4c7'],
+            colors: ['#667eea', '#9066ea', '#66c0ea', '#66ead2', '#d266ea', '#66ea90'],
+            fill: {
+                colors: ['#b2bef4', '#c7b2f4', '#b2dff4', '#b2f4e8', '#e8b2f4', '#b2f4c7'],
                 opacity: 0.5,
-                type   : 'gradient'
+                type: 'gradient',
             },
             legend: {
                 show: true,
@@ -281,55 +294,57 @@ export class DashboardComponent implements OnInit, OnDestroy
                 fontSize: '12px',
                 itemMargin: {
                     horizontal: 10,
-                    vertical: 4
-                }
+                    vertical: 4,
+                },
             },
-            series : this._deviceDataTemperatureSeries(),
-            stroke : {
+            series: this._deviceDataTemperatureSeries(),
+            stroke: {
                 curve: this.config.line_stroke,
-                width: 2
+                width: 2,
             },
             markers: {
                 size: 0,
                 hover: {
-                    sizeOffset: 4
-                }
+                    sizeOffset: 4,
+                },
             },
             dataLabels: {
-                enabled: false
+                enabled: false,
             },
             tooltip: {
                 theme: 'dark',
                 shared: true,
                 intersect: false,
                 x: {
-                    format: apexShortDateTime(this.config.time_format, true)
+                    format: apexShortDateTime(this.config.time_format, true),
                 },
                 y: {
                     formatter: (value) => {
-                        if (value === null || value === undefined) { return null; }
+                        if (value === null || value === undefined) {
+                            return null;
+                        }
                         return TemperaturePipe.formatTemperature(value, this.config.temperature_unit, true) as string;
-                    }
-                }
+                    },
+                },
             },
             xaxis: {
                 type: 'datetime',
                 tooltip: {
-                    enabled: false
+                    enabled: false,
                 },
                 labels: {
                     datetimeUTC: false,
                     style: {
                         fontSize: '11px',
-                        colors: this.isDarkMode() ? '#9ca3af' : '#6b7280'
+                        colors: this.isDarkMode() ? '#9ca3af' : '#6b7280',
                     },
                     datetimeFormatter: {
                         year: 'yyyy',
                         month: "MMM 'yy",
                         day: 'dd MMM',
-                        hour: this.config.time_format === '12' ? 'hh:mm tt' : 'HH:mm'
-                    }
-                }
+                        hour: this.config.time_format === '12' ? 'hh:mm tt' : 'HH:mm',
+                    },
+                },
             },
             yaxis: {
                 labels: {
@@ -338,35 +353,35 @@ export class DashboardComponent implements OnInit, OnDestroy
                     },
                     style: {
                         fontSize: '11px',
-                        colors: this.isDarkMode() ? '#9ca3af' : '#6b7280'
-                    }
+                        colors: this.isDarkMode() ? '#9ca3af' : '#6b7280',
+                    },
                 },
                 title: {
                     text: `Temperature (${temperatureUnit})`,
                     style: {
                         fontSize: '12px',
-                        color: this.isDarkMode() ? '#9ca3af' : '#6b7280'
-                    }
-                }
+                        color: this.isDarkMode() ? '#9ca3af' : '#6b7280',
+                    },
+                },
             },
             grid: {
                 borderColor: this.isDarkMode() ? '#374151' : '#e0e0e0',
                 strokeDashArray: 4,
                 yaxis: {
                     lines: {
-                        show: true
-                    }
+                        show: true,
+                    },
                 },
                 xaxis: {
                     lines: {
-                        show: false
-                    }
+                        show: false,
+                    },
                 },
                 padding: {
                     left: 10,
-                    right: 10
-                }
-            }
+                    right: 10,
+                },
+            },
         };
     }
 
@@ -375,13 +390,13 @@ export class DashboardComponent implements OnInit, OnDestroy
     // -----------------------------------------------------------------------------------------------------
 
     deviceSummariesForHostGroup(hostGroupWWNs: string[]): DeviceSummaryModel[] {
-        const deviceSummaries: DeviceSummaryModel[] = []
+        const deviceSummaries: DeviceSummaryModel[] = [];
         for (const wwn of hostGroupWWNs) {
             if (this.summaryData[wwn]) {
-                deviceSummaries.push(this.summaryData[wwn])
+                deviceSummaries.push(this.summaryData[wwn]);
             }
         }
-        return deviceSummaries
+        return deviceSummaries;
     }
 
     filesystemHosts(): string[] {
@@ -392,8 +407,7 @@ export class DashboardComponent implements OnInit, OnDestroy
     }
 
     filesystemsForHost(hostId: string): FilesystemCapacityModel[] {
-        return [...(this.filesystemSummaryData?.filesystems?.[hostId] || [])]
-            .sort((left, right) => left.mount_point.localeCompare(right.mount_point));
+        return [...(this.filesystemSummaryData?.filesystems?.[hostId] || [])].sort((left, right) => left.mount_point.localeCompare(right.mount_point));
     }
 
     filesystemStatusForHost(hostId: string): FilesystemHostStatusModel | null {
@@ -442,13 +456,13 @@ export class DashboardComponent implements OnInit, OnDestroy
     }
 
     openDialog(): void {
-        const dialogRef = this.dialog.open(DashboardSettingsComponent, {width: '800px', maxWidth: '95vw'});
+        const dialogRef = this.dialog.open(DashboardSettingsComponent, { width: '800px', maxWidth: '95vw' });
 
         dialogRef.afterClosed().subscribe();
     }
 
     onDeviceDeleted(wwn: string): void {
-        delete this.summaryData[wwn] // remove the device from the summary list.
+        delete this.summaryData[wwn]; // remove the device from the summary list.
     }
 
     onDeviceArchived(wwn: string): void {
@@ -461,12 +475,12 @@ export class DashboardComponent implements OnInit, OnDestroy
 
     get allDrivesVisible(): boolean {
         const wwns = Object.keys(this.visibleDrives);
-        return wwns.length > 0 && wwns.every(wwn => this.visibleDrives[wwn]);
+        return wwns.length > 0 && wwns.every((wwn) => this.visibleDrives[wwn]);
     }
 
     get someDrivesVisible(): boolean {
         const wwns = Object.keys(this.visibleDrives);
-        return wwns.some(wwn => this.visibleDrives[wwn]);
+        return wwns.some((wwn) => this.visibleDrives[wwn]);
     }
 
     toggleAllDrives(): void {
@@ -493,19 +507,17 @@ export class DashboardComponent implements OnInit, OnDestroy
      */
 
     changeSummaryTempDuration(durationKey: string): void {
-        this.tempDurationKey = durationKey
+        this.tempDurationKey = durationKey;
 
-        this._dashboardService.getSummaryTempData(durationKey)
-            .subscribe((tempHistoryData) => {
+        this._dashboardService.getSummaryTempData(durationKey).subscribe((tempHistoryData) => {
+            // given a list of device temp history, override the data in the "summary" object.
+            for (const wwn in this.summaryData) {
+                this.summaryData[wwn].temp_history = tempHistoryData[wwn] || [];
+            }
 
-                // given a list of device temp history, override the data in the "summary" object.
-                for (const wwn in this.summaryData) {
-                    this.summaryData[wwn].temp_history = tempHistoryData[wwn] || []
-                }
-
-                // Prepare the chart series data (filtered by visibility)
-                this.tempChart.updateSeries(this._deviceDataTemperatureSeries());
-            });
+            // Prepare the chart series data (filtered by visibility)
+            this.tempChart.updateSeries(this._deviceDataTemperatureSeries());
+        });
     }
 
     getMdadmArrayStatusColorClass(array: MDADMArrayModel): string {
@@ -528,8 +540,7 @@ export class DashboardComponent implements OnInit, OnDestroy
      * @param index
      * @param item
      */
-    trackByFn(index: number, item: any): any
-    {
+    trackByFn(index: number, item: any): any {
         return item.id || index;
     }
 
@@ -539,24 +550,26 @@ export class DashboardComponent implements OnInit, OnDestroy
         }
 
         this.isTriggering = true;
-        this._dashboardService.runCollectors().subscribe(() => {
-            this.countdown = 15;
-            this._changeDetectorRef.markForCheck();
-
-            const interval = setInterval(() => {
-                this.countdown--;
+        this._dashboardService.runCollectors().subscribe(
+            () => {
+                this.countdown = 15;
                 this._changeDetectorRef.markForCheck();
 
-                if (this.countdown <= 0) {
-                    clearInterval(interval);
-                    window.location.reload();
-                }
-            }, 1000);
-        }, (err) => {
-            this.isTriggering = false;
-            this._changeDetectorRef.markForCheck();
-            console.error('Failed to trigger collectors', err);
-        });
-    }
+                const interval = setInterval(() => {
+                    this.countdown--;
+                    this._changeDetectorRef.markForCheck();
 
+                    if (this.countdown <= 0) {
+                        clearInterval(interval);
+                        window.location.reload();
+                    }
+                }, 1000);
+            },
+            (err) => {
+                this.isTriggering = false;
+                this._changeDetectorRef.markForCheck();
+                console.error('Failed to trigger collectors', err);
+            }
+        );
+    }
 }

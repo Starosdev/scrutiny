@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, of, firstValueFrom } from 'rxjs';
@@ -24,6 +24,9 @@ interface LoginResponse {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+    private readonly _http = inject(HttpClient);
+    private readonly _router = inject(Router);
+
     private _authEnabled = new BehaviorSubject<boolean>(false);
     private _isLoggedIn = new BehaviorSubject<boolean>(false);
     private _loginMethods = new BehaviorSubject<string[]>([]);
@@ -32,11 +35,6 @@ export class AuthService {
     readonly authEnabled$ = this._authEnabled.asObservable();
     readonly isLoggedIn$ = this._isLoggedIn.asObservable();
     readonly loginMethods$ = this._loginMethods.asObservable();
-
-    constructor(
-        private readonly _http: HttpClient,
-        private readonly _router: Router
-    ) {}
 
     get authEnabled(): boolean {
         return this._authEnabled.value;
@@ -48,40 +46,37 @@ export class AuthService {
 
     // Called by provideAppInitializer before routing starts
     init(): Promise<void> {
-        const source$ = this._http.get<AuthStatusResponse>(getBasePath() + '/api/auth/status')
-            .pipe(
-                tap((res) => {
-                    this._authEnabled.next(res.auth_enabled);
-                    this._loginMethods.next(res.login_methods || []);
-                    this._initialized = true;
+        const source$ = this._http.get<AuthStatusResponse>(getBasePath() + '/api/auth/status').pipe(
+            tap((res) => {
+                this._authEnabled.next(res.auth_enabled);
+                this._loginMethods.next(res.login_methods || []);
+                this._initialized = true;
 
-                    if (res.auth_enabled) {
-                        const token = this.getToken();
-                        this._isLoggedIn.next(token !== null && !this.isTokenExpired(token));
-                    } else {
-                        this._isLoggedIn.next(true);
-                    }
-                }),
-                catchError(() => {
-                    // If auth status check fails, assume auth is disabled for backward compat
-                    this._authEnabled.next(false);
+                if (res.auth_enabled) {
+                    const token = this.getToken();
+                    this._isLoggedIn.next(token !== null && !this.isTokenExpired(token));
+                } else {
                     this._isLoggedIn.next(true);
-                    this._initialized = true;
-                    return of(undefined);
-                })
-            );
+                }
+            }),
+            catchError(() => {
+                // If auth status check fails, assume auth is disabled for backward compat
+                this._authEnabled.next(false);
+                this._isLoggedIn.next(true);
+                this._initialized = true;
+                return of(undefined);
+            })
+        );
 
         return firstValueFrom(source$).then(() => {});
     }
 
     loginWithToken(token: string): Observable<LoginResponse> {
-        return this._http.post<LoginResponse>(getBasePath() + '/api/auth/login', { token })
-            .pipe(tap((res) => this.handleLoginResponse(res)));
+        return this._http.post<LoginResponse>(getBasePath() + '/api/auth/login', { token }).pipe(tap((res) => this.handleLoginResponse(res)));
     }
 
     loginWithPassword(username: string, password: string): Observable<LoginResponse> {
-        return this._http.post<LoginResponse>(getBasePath() + '/api/auth/login', { username, password })
-            .pipe(tap((res) => this.handleLoginResponse(res)));
+        return this._http.post<LoginResponse>(getBasePath() + '/api/auth/login', { username, password }).pipe(tap((res) => this.handleLoginResponse(res)));
     }
 
     logout(): void {
@@ -122,7 +117,7 @@ export class AuthService {
                 return false;
             }
             // Expire 30s early to avoid edge-case expiry during request
-            return (payload.exp * 1000) < (Date.now() + 30000);
+            return payload.exp * 1000 < Date.now() + 30000;
         } catch {
             return true;
         }

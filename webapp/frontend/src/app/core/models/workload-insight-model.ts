@@ -30,6 +30,8 @@ export interface EnduranceEstimateModel {
     percentage_used: number;
     estimated_lifespan_days?: number;
     tbw_so_far: number;
+    tbw_rated?: number;
+    tbw_used_percent?: number;
 }
 
 export interface ActivitySpikeModel {

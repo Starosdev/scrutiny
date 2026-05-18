@@ -2,24 +2,22 @@ import { Injectable } from '@angular/core';
 import { TreoMockApiRequestHandler } from '@treo/lib/mock-api/mock-api.request-handler';
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
-export class TreoMockApiService
-{
+export class TreoMockApiService {
     requestHandlers: any;
 
     /**
      * Constructor
      */
-    constructor()
-    {
+    constructor() {
         // Set the defaults
         this.requestHandlers = {
             delete: new Map<string, TreoMockApiRequestHandler>(),
-            get   : new Map<string, TreoMockApiRequestHandler>(),
-            patch : new Map<string, TreoMockApiRequestHandler>(),
-            post  : new Map<string, TreoMockApiRequestHandler>(),
-            put   : new Map<string, TreoMockApiRequestHandler>()
+            get: new Map<string, TreoMockApiRequestHandler>(),
+            patch: new Map<string, TreoMockApiRequestHandler>(),
+            post: new Map<string, TreoMockApiRequestHandler>(),
+            put: new Map<string, TreoMockApiRequestHandler>(),
         };
     }
 
@@ -33,8 +31,7 @@ export class TreoMockApiService
      * @param url
      * @param delay
      */
-    onDelete(url: string, delay: number = 0): TreoMockApiRequestHandler
-    {
+    onDelete(url: string, delay: number = 0): TreoMockApiRequestHandler {
         return this._registerRequestHandler('delete', url, delay);
     }
 
@@ -44,8 +41,7 @@ export class TreoMockApiService
      * @param url
      * @param delay
      */
-    onGet(url: string, delay: number = 0): TreoMockApiRequestHandler
-    {
+    onGet(url: string, delay: number = 0): TreoMockApiRequestHandler {
         return this._registerRequestHandler('get', url, delay);
     }
 
@@ -55,8 +51,7 @@ export class TreoMockApiService
      * @param url
      * @param delay
      */
-    onPatch(url: string, delay: number = 0): TreoMockApiRequestHandler
-    {
+    onPatch(url: string, delay: number = 0): TreoMockApiRequestHandler {
         return this._registerRequestHandler('patch', url, delay);
     }
 
@@ -66,8 +61,7 @@ export class TreoMockApiService
      * @param url
      * @param delay
      */
-    onPost(url: string, delay: number = 0): TreoMockApiRequestHandler
-    {
+    onPost(url: string, delay: number = 0): TreoMockApiRequestHandler {
         return this._registerRequestHandler('post', url, delay);
     }
 
@@ -77,8 +71,7 @@ export class TreoMockApiService
      * @param url
      * @param delay
      */
-    onPut(url: string, delay: number = 0): TreoMockApiRequestHandler
-    {
+    onPut(url: string, delay: number = 0): TreoMockApiRequestHandler {
         return this._registerRequestHandler('put', url, delay);
     }
 
@@ -94,8 +87,7 @@ export class TreoMockApiService
      * @param delay
      * @private
      */
-    private _registerRequestHandler(requestType, url, delay): TreoMockApiRequestHandler
-    {
+    private _registerRequestHandler(requestType, url, delay): TreoMockApiRequestHandler {
         // Create a new instance of TreoMockApiRequestHandler
         const treoMockHttp = new TreoMockApiRequestHandler();
 

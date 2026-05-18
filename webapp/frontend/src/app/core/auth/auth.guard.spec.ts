@@ -1,3 +1,4 @@
+import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
@@ -10,11 +11,16 @@ describe('AuthGuard', () => {
     beforeEach(() => {
         authServiceSpy = jasmine.createSpyObj('AuthService', [], {
             authEnabled: false,
-            isLoggedIn: false
+            isLoggedIn: false,
         });
         routerSpy = jasmine.createSpyObj('Router', ['createUrlTree']);
         routerSpy.createUrlTree.and.returnValue({} as any);
-        guard = new AuthGuard(authServiceSpy, routerSpy);
+
+        TestBed.configureTestingModule({
+            providers: [AuthGuard, { provide: AuthService, useValue: authServiceSpy }, { provide: Router, useValue: routerSpy }],
+        });
+
+        guard = TestBed.inject(AuthGuard);
     });
 
     it('should allow access when auth is disabled', () => {
@@ -36,7 +42,7 @@ describe('AuthGuard', () => {
         const mockState = { url: '/device/abc' } as any;
         guard.canActivate({} as any, mockState);
         expect(routerSpy.createUrlTree).toHaveBeenCalledWith(['/login'], {
-            queryParams: { returnUrl: '/device/abc' }
+            queryParams: { returnUrl: '/device/abc' },
         });
     });
 });

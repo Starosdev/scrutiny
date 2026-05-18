@@ -1,19 +1,37 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { TreoVerticalNavigationComponent } from '@treo/components/navigation/vertical/vertical.component';
 import { TreoNavigationService } from '@treo/components/navigation/navigation.service';
 import { TreoNavigationItem } from '@treo/components/navigation/navigation.types';
+import { NgClass, NgStyle } from '@angular/common';
+import { MatIcon } from '@angular/material/icon';
+import { TreoVerticalNavigationBasicItemComponent } from '../basic/basic.component';
+import { TreoVerticalNavigationCollapsableItemComponent } from '../collapsable/collapsable.component';
+import { TreoVerticalNavigationDividerItemComponent } from '../divider/divider.component';
+import { TreoVerticalNavigationGroupItemComponent } from '../group/group.component';
+import { TreoVerticalNavigationSpacerItemComponent } from '../spacer/spacer.component';
 
 @Component({
     selector: 'treo-vertical-navigation-aside-item',
     templateUrl: './aside.component.html',
     styles: [],
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false
+    imports: [
+        NgClass,
+        MatIcon,
+        NgStyle,
+        TreoVerticalNavigationBasicItemComponent,
+        TreoVerticalNavigationCollapsableItemComponent,
+        TreoVerticalNavigationDividerItemComponent,
+        TreoVerticalNavigationGroupItemComponent,
+        TreoVerticalNavigationSpacerItemComponent,
+    ],
 })
-export class TreoVerticalNavigationAsideItemComponent implements OnInit, OnDestroy
-{
+export class TreoVerticalNavigationAsideItemComponent implements OnInit, OnDestroy {
+    private readonly _treoNavigationService = inject(TreoNavigationService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+
     // Active
     @Input()
     active: boolean;
@@ -44,11 +62,7 @@ export class TreoVerticalNavigationAsideItemComponent implements OnInit, OnDestr
      * @param {TreoNavigationService} _treoNavigationService
      * @param {ChangeDetectorRef} _changeDetectorRef
      */
-    constructor(
-        private readonly _treoNavigationService: TreoNavigationService,
-        private readonly _changeDetectorRef: ChangeDetectorRef
-    )
-    {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 
@@ -63,16 +77,12 @@ export class TreoVerticalNavigationAsideItemComponent implements OnInit, OnDestr
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Get the parent navigation component
         this._treoVerticalNavigationComponent = this._treoNavigationService.getComponent(this.name);
 
         // Subscribe to onRefreshed on the navigation component
-        this._treoVerticalNavigationComponent.onRefreshed.pipe(
-            takeUntil(this._unsubscribeAll)
-        ).subscribe(() => {
-
+        this._treoVerticalNavigationComponent.onRefreshed.pipe(takeUntil(this._unsubscribeAll)).subscribe(() => {
             // Mark for check
             this._changeDetectorRef.markForCheck();
         });
@@ -81,8 +91,7 @@ export class TreoVerticalNavigationAsideItemComponent implements OnInit, OnDestr
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();
@@ -98,8 +107,7 @@ export class TreoVerticalNavigationAsideItemComponent implements OnInit, OnDestr
      * @param index
      * @param item
      */
-    trackByFn(index: number, item: any): any
-    {
+    trackByFn(index: number, item: any): any {
         return item.id || index;
     }
 }

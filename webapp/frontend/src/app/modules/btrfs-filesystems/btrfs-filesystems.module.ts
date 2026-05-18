@@ -14,7 +14,19 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { BtrfsFilesystemCardModule } from 'app/layout/common/btrfs-filesystem-card/btrfs-filesystem-card.module';
 
 @NgModule({
-    declarations: [BtrfsFilesystemsComponent],
-    imports: [RouterModule.forChild(btrfsFilesystemsRoutes), MatButtonModule, MatDividerModule, MatTooltipModule, MatIconModule, MatMenuModule, MatProgressBarModule, MatSortModule, MatTableModule, SharedModule, BtrfsFilesystemCardModule]
+    imports: [
+        RouterModule.forChild(btrfsFilesystemsRoutes),
+        MatButtonModule,
+        MatDividerModule,
+        MatTooltipModule,
+        MatIconModule,
+        MatMenuModule,
+        MatProgressBarModule,
+        MatSortModule,
+        MatTableModule,
+        SharedModule,
+        BtrfsFilesystemCardModule,
+        BtrfsFilesystemsComponent,
+    ],
 })
 export class BtrfsFilesystemsModule {}

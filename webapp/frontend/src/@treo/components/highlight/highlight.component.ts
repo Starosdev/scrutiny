@@ -1,17 +1,38 @@
-import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EmbeddedViewRef, Input, Renderer2, SecurityContext, TemplateRef, ViewChild, ViewContainerRef, ViewEncapsulation } from '@angular/core';
+import {
+    AfterViewInit,
+    ChangeDetectionStrategy,
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    EmbeddedViewRef,
+    Input,
+    Renderer2,
+    SecurityContext,
+    TemplateRef,
+    ViewChild,
+    ViewContainerRef,
+    ViewEncapsulation,
+    inject,
+} from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { TreoHighlightService } from '@treo/components/highlight/highlight.service';
 
 @Component({
-    selector       : 'textarea[treo-highlight]',
-    templateUrl    : './highlight.component.html',
-    styleUrls      : ['./highlight.component.scss'],
-    encapsulation  : ViewEncapsulation.None,
+    selector: 'textarea[treo-highlight]',
+    templateUrl: './highlight.component.html',
+    styleUrls: ['./highlight.component.scss'],
+    encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    exportAs       : 'treoHighlight'
+    exportAs: 'treoHighlight',
 })
-export class TreoHighlightComponent implements AfterViewInit
-{
+export class TreoHighlightComponent implements AfterViewInit {
+    private readonly _treoHighlightService = inject(TreoHighlightService);
+    private readonly _domSanitizer = inject(DomSanitizer);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+    private readonly _elementRef = inject(ElementRef);
+    private readonly _renderer2 = inject(Renderer2);
+    private readonly _viewContainerRef = inject(ViewContainerRef);
+
     highlightedCode: string;
     viewRef: EmbeddedViewRef<any>;
 
@@ -32,15 +53,7 @@ export class TreoHighlightComponent implements AfterViewInit
      * @param {Renderer2} _renderer2
      * @param {ViewContainerRef} _viewContainerRef
      */
-    constructor(
-        private readonly _treoHighlightService: TreoHighlightService,
-        private readonly _domSanitizer: DomSanitizer,
-        private readonly _changeDetectorRef: ChangeDetectorRef,
-        private readonly _elementRef: ElementRef,
-        private readonly _renderer2: Renderer2,
-        private readonly _viewContainerRef: ViewContainerRef
-    )
-    {
+    constructor() {
         // Set the private defaults
         this._code = '';
         this._lang = '';
@@ -54,11 +67,9 @@ export class TreoHighlightComponent implements AfterViewInit
      * Setter and getter for the code
      */
     @Input()
-    set code(value: string)
-    {
+    set code(value: string) {
         // If the value is the same, return...
-        if ( this._code === value )
-        {
+        if (this._code === value) {
             return;
         }
 
@@ -69,14 +80,12 @@ export class TreoHighlightComponent implements AfterViewInit
         // viewContainerRef is available. This will
         // ensure the highlightAndInsert method
         // won't run before the AfterContentInit hook.
-        if ( this._viewContainerRef.length )
-        {
+        if (this._viewContainerRef.length) {
             this._highlightAndInsert();
         }
     }
 
-    get code(): string
-    {
+    get code(): string {
         return this._code;
     }
 
@@ -84,11 +93,9 @@ export class TreoHighlightComponent implements AfterViewInit
      * Setter and getter for the language
      */
     @Input()
-    set lang(value: string)
-    {
+    set lang(value: string) {
         // If the value is the same, return...
-        if ( this._lang === value )
-        {
+        if (this._lang === value) {
             return;
         }
 
@@ -99,14 +106,12 @@ export class TreoHighlightComponent implements AfterViewInit
         // viewContainerRef is available. This will
         // ensure the highlightAndInsert method
         // won't run before the AfterContentInit hook.
-        if ( this._viewContainerRef.length )
-        {
+        if (this._viewContainerRef.length) {
             this._highlightAndInsert();
         }
     }
 
-    get lang(): string
-    {
+    get lang(): string {
         return this._lang;
     }
 
@@ -117,18 +122,15 @@ export class TreoHighlightComponent implements AfterViewInit
     /**
      * After view init
      */
-    ngAfterViewInit(): void
-    {
+    ngAfterViewInit(): void {
         // Return, if there is no language set
-        if ( !this.lang )
-        {
+        if (!this.lang) {
             return;
         }
 
         // If there is no code input, get the code from
         // the textarea
-        if ( !this.code )
-        {
+        if (!this.code) {
             // Get the code
             this.code = this._elementRef.nativeElement.value;
         }
@@ -146,17 +148,14 @@ export class TreoHighlightComponent implements AfterViewInit
      *
      * @private
      */
-    private _highlightAndInsert(): void
-    {
+    private _highlightAndInsert(): void {
         // Return, if the code or language is not defined
-        if ( !this.code || !this.lang )
-        {
+        if (!this.code || !this.lang) {
             return;
         }
 
         // Destroy the component if there is already one
-        if ( this.viewRef )
-        {
+        if (this.viewRef) {
             this.viewRef.destroy();
         }
 
@@ -166,7 +165,7 @@ export class TreoHighlightComponent implements AfterViewInit
         // Render and insert the template
         this.viewRef = this._viewContainerRef.createEmbeddedView(this.templateRef, {
             highlightedCode: this.highlightedCode,
-            lang           : this.lang
+            lang: this.lang,
         });
 
         // Detect the changes

@@ -1,24 +1,32 @@
-import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AuthService } from 'app/core/auth/auth.service';
 import { versionInfo } from 'environments/versions';
+import { ThemeToggleComponent } from '../../common/theme-toggle/theme-toggle.component';
+import { MatIconButton } from '@angular/material/button';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatIcon } from '@angular/material/icon';
+import { MobileTabBarComponent } from '../../common/mobile-tab-bar/mobile-tab-bar.component';
 
 @Component({
     selector: 'mobile-layout',
     templateUrl: './mobile-layout.component.html',
     styleUrls: ['./mobile-layout.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    imports: [RouterLink, ThemeToggleComponent, MatIconButton, MatTooltip, MatIcon, RouterOutlet, MobileTabBarComponent],
 })
 export class MobileLayoutComponent implements OnInit, OnDestroy {
+    private readonly _authService = inject(AuthService);
+    private readonly _router = inject(Router);
+
     appVersion: string;
     authEnabled: boolean = false;
 
     private _unsubscribeAll: Subject<void>;
 
-    constructor(private readonly _authService: AuthService, private readonly _router: Router) {
+    constructor() {
         this._unsubscribeAll = new Subject();
         this.appVersion = versionInfo.version;
     }
@@ -29,11 +37,9 @@ export class MobileLayoutComponent implements OnInit, OnDestroy {
             this._router.navigate(['/mobile-home'], { replaceUrl: true });
         }
 
-        this._authService.authEnabled$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(enabled => {
-                this.authEnabled = enabled;
-            });
+        this._authService.authEnabled$.pipe(takeUntil(this._unsubscribeAll)).subscribe((enabled) => {
+            this.authEnabled = enabled;
+        });
     }
 
     ngOnDestroy(): void {

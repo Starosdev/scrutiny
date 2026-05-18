@@ -1,29 +1,30 @@
-import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { AppConfig, Theme } from 'app/core/config/app.config';
+import { MatIconButton } from '@angular/material/button';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
     selector: 'theme-toggle',
     templateUrl: './theme-toggle.component.html',
     styleUrls: ['./theme-toggle.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    imports: [MatIconButton, MatTooltip, MatIcon],
 })
 export class ThemeToggleComponent implements OnInit, OnDestroy {
+    private readonly _configService = inject(ScrutinyConfigService);
+
     currentTheme: Theme = 'light';
 
     private _unsubscribeAll: Subject<void> = new Subject();
 
-    constructor(private readonly _configService: ScrutinyConfigService) {}
-
     ngOnInit(): void {
-        this._configService.config$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((config: AppConfig) => {
-                this.currentTheme = config.theme || 'light';
-            });
+        this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {
+            this.currentTheme = config.theme || 'light';
+        });
     }
 
     ngOnDestroy(): void {
@@ -33,19 +34,27 @@ export class ThemeToggleComponent implements OnInit, OnDestroy {
 
     get currentIcon(): string {
         switch (this.currentTheme) {
-            case 'light': return 'heroicons_outline:sun';
-            case 'dark': return 'heroicons_outline:moon';
-            case 'system': return 'heroicons_outline:desktop-computer';
-            default: return 'heroicons_outline:sun';
+            case 'light':
+                return 'heroicons_outline:sun';
+            case 'dark':
+                return 'heroicons_outline:moon';
+            case 'system':
+                return 'heroicons_outline:desktop-computer';
+            default:
+                return 'heroicons_outline:sun';
         }
     }
 
     get currentLabel(): string {
         switch (this.currentTheme) {
-            case 'light': return 'Light';
-            case 'dark': return 'Dark';
-            case 'system': return 'System';
-            default: return 'Light';
+            case 'light':
+                return 'Light';
+            case 'dark':
+                return 'Dark';
+            case 'system':
+                return 'System';
+            default:
+                return 'Light';
         }
     }
 

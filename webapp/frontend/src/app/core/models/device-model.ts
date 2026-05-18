@@ -28,6 +28,7 @@ export interface DeviceModel {
     device_type: string;
 
     label: string;
+    max_tbw?: number;
     host_id: string;
     collector_version?: string;
     smart_display_mode?: string; // "scrutiny", "raw", or "normalized"

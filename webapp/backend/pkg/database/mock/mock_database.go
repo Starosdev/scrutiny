@@ -1032,6 +1032,20 @@ func (mr *MockDeviceRepoMockRecorder) UpdateDeviceLabel(ctx, deviceID, label int
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDeviceLabel", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateDeviceLabel), ctx, deviceID, label)
 }
 
+// UpdateDeviceMaxTBW mocks base method.
+func (m *MockDeviceRepo) UpdateDeviceMaxTBW(ctx context.Context, deviceID string, maxTBW float64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateDeviceMaxTBW", ctx, deviceID, maxTBW)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateDeviceMaxTBW indicates an expected call of UpdateDeviceMaxTBW.
+func (mr *MockDeviceRepoMockRecorder) UpdateDeviceMaxTBW(ctx, deviceID, maxTBW interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDeviceMaxTBW", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateDeviceMaxTBW), ctx, deviceID, maxTBW)
+}
+
 // UpdateDeviceMissedPingTimeout mocks base method.
 func (m *MockDeviceRepo) UpdateDeviceMissedPingTimeout(ctx context.Context, deviceID string, timeoutMinutes int) error {
 	m.ctrl.T.Helper()

@@ -5,18 +5,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { TreoMessageComponent } from '@treo/components/message/message.component';
 
 @NgModule({
-    declarations: [
-        TreoMessageComponent
-    ],
-    imports     : [
-        CommonModule,
-        MatButtonModule,
-        MatIconModule
-    ],
-    exports     : [
-        TreoMessageComponent
-    ]
+    declarations: [TreoMessageComponent],
+    imports: [CommonModule, MatButtonModule, MatIconModule],
+    exports: [TreoMessageComponent],
 })
-export class TreoMessageModule
-{
-}
+export class TreoMessageModule {}

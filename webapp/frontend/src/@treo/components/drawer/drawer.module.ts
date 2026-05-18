@@ -3,16 +3,7 @@ import { CommonModule } from '@angular/common';
 import { TreoDrawerComponent } from '@treo/components/drawer/drawer.component';
 
 @NgModule({
-    declarations: [
-        TreoDrawerComponent
-    ],
-    imports     : [
-        CommonModule
-    ],
-    exports     : [
-        TreoDrawerComponent
-    ]
+    imports: [CommonModule, TreoDrawerComponent],
+    exports: [TreoDrawerComponent],
 })
-export class TreoDrawerModule
-{
-}
+export class TreoDrawerModule {}

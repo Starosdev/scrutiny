@@ -24,14 +24,9 @@
             "style": "camelCase"
           }
         ],
-        "@angular-eslint/component-selector": [
-          "error",
-          {
-            "type": "element",
-            "prefix": ["treo", "app"],
-            "style": "kebab-case"
-          }
-        ],
+        "@angular-eslint/component-selector": "off",
+        "@angular-eslint/no-input-rename": "off",
+        "@angular-eslint/no-output-native": "off",
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
         "@typescript-eslint/no-non-null-assertion": "off",

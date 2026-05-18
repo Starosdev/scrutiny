@@ -1,4 +1,20 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, forwardRef, HostBinding, Input, OnDestroy, Output, Renderer2, TemplateRef, ViewChild, ViewContainerRef, ViewEncapsulation } from '@angular/core';
+import {
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    EventEmitter,
+    forwardRef,
+    HostBinding,
+    Input,
+    OnDestroy,
+    Output,
+    Renderer2,
+    TemplateRef,
+    ViewChild,
+    ViewContainerRef,
+    ViewEncapsulation,
+    inject,
+} from '@angular/core';
 import { ControlValueAccessor, FormControl, NG_VALUE_ACCESSOR, Validators } from '@angular/forms';
 import { Overlay } from '@angular/cdk/overlay';
 import { TemplatePortal } from '@angular/cdk/portal';
@@ -10,26 +26,31 @@ import isBetween from 'dayjs/plugin/isBetween';
 dayjs.extend(isBetween);
 
 @Component({
-    selector     : 'treo-date-range',
-    templateUrl  : './date-range.component.html',
-    styleUrls    : ['./date-range.component.scss'],
+    selector: 'treo-date-range',
+    templateUrl: './date-range.component.html',
+    styleUrls: ['./date-range.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    exportAs     : 'treoDateRange',
-    providers    : [
+    exportAs: 'treoDateRange',
+    providers: [
         {
-            provide    : NG_VALUE_ACCESSOR,
+            provide: NG_VALUE_ACCESSOR,
             useExisting: forwardRef(() => TreoDateRangeComponent),
-            multi      : true
-        }
-    ]
+            multi: true,
+        },
+    ],
 })
-export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
-{
+export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy {
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+    private readonly _elementRef = inject(ElementRef);
+    private readonly _overlay = inject(Overlay);
+    private readonly _renderer2 = inject(Renderer2);
+    private readonly _viewContainerRef = inject(ViewContainerRef);
+
     // Range changed
     @Output()
-    readonly rangeChanged: EventEmitter<{ start: string, end: string }>;
+    readonly rangeChanged: EventEmitter<{ start: string; end: string }>;
 
-    activeDates: { month1: Date, month2: Date };
+    activeDates: { month1: Date; month2: Date };
     setWhichDate: 'start' | 'end';
     startTimeFormControl: FormControl;
     endTimeFormControl: FormControl;
@@ -44,7 +65,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
     @ViewChild('matMonthView2')
     private _matMonthView2: MatMonthView<any>;
 
-    @ViewChild('pickerPanelOrigin', {read: ElementRef})
+    @ViewChild('pickerPanelOrigin', { read: ElementRef })
     private _pickerPanelOrigin: ElementRef;
 
     @ViewChild('pickerPanel')
@@ -54,7 +75,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
     private _onChange: (value: any) => void;
     private _onTouched: (value: any) => void;
     private _programmaticChange: boolean;
-    private _range: { start: Dayjs, end: Dayjs };
+    private _range: { start: Dayjs; end: Dayjs };
     private _timeFormat: string;
     private _timeRange: boolean;
     private readonly _timeRegExp: RegExp;
@@ -69,23 +90,14 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
      * @param {Renderer2} _renderer2
      * @param {ViewContainerRef} _viewContainerRef
      */
-    constructor(
-        private readonly _changeDetectorRef: ChangeDetectorRef,
-        private readonly _elementRef: ElementRef,
-        private readonly _overlay: Overlay,
-        private readonly _renderer2: Renderer2,
-        private readonly _viewContainerRef: ViewContainerRef
-    )
-    {
+    constructor() {
         // Set the private defaults
         this._defaultClassNames = true;
-        this._onChange = () => {
-        };
-        this._onTouched = () => {
-        };
+        this._onChange = () => {};
+        this._onTouched = () => {};
         this._range = {
             start: null,
-            end  : null
+            end: null,
         };
         this._timeRegExp = new RegExp('^(0[0-9]|1[0-9]|2[0-4]|[0-9]):([0-5][0-9])(A|(?:AM)|P|(?:PM))?$', 'i');
         this._unsubscribeAll = new Subject();
@@ -93,7 +105,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
         // Set the defaults
         this.activeDates = {
             month1: null,
-            month2: null
+            month2: null,
         };
         this.dateFormat = 'DD/MM/YYYY';
         this.rangeChanged = new EventEmitter();
@@ -114,11 +126,9 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
      * @param value
      */
     @Input()
-    set dateFormat(value: string)
-    {
+    set dateFormat(value: string) {
         // Return, if the values are the same
-        if ( this._dateFormat === value )
-        {
+        if (this._dateFormat === value) {
             return;
         }
 
@@ -126,8 +136,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
         this._dateFormat = value;
     }
 
-    get dateFormat(): string
-    {
+    get dateFormat(): string {
         return this._dateFormat;
     }
 
@@ -137,11 +146,9 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
      * @param value
      */
     @Input()
-    set timeFormat(value: string)
-    {
+    set timeFormat(value: string) {
         // Return, if the values are the same
-        if ( this._timeFormat === value )
-        {
+        if (this._timeFormat === value) {
             return;
         }
 
@@ -149,8 +156,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
         this._timeFormat = value === '12' ? 'hh:mmA' : 'HH:mm';
     }
 
-    get timeFormat(): string
-    {
+    get timeFormat(): string {
         return this._timeFormat;
     }
 
@@ -160,11 +166,9 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
      * @param value
      */
     @Input()
-    set timeRange(value: boolean)
-    {
+    set timeRange(value: boolean) {
         // Return, if the values are the same
-        if ( this._timeRange === value )
-        {
+        if (this._timeRange === value) {
             return;
         }
 
@@ -172,17 +176,15 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
         this._timeRange = value;
 
         // If the time range turned off...
-        if ( !value )
-        {
+        if (!value) {
             this.range = {
                 start: this._range.start.clone().startOf('day'),
-                end  : this._range.end.clone().endOf('day')
+                end: this._range.end.clone().endOf('day'),
             };
         }
     }
 
-    get timeRange(): boolean
-    {
+    get timeRange(): boolean {
         return this._timeRange;
     }
 
@@ -192,16 +194,13 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
      * @param value
      */
     @Input()
-    set range(value)
-    {
-        if ( !value )
-        {
+    set range(value) {
+        if (!value) {
             return;
         }
 
         // Check if the value is an object and has 'start' and 'end' values
-        if ( !value.start || !value.end )
-        {
+        if (!value.start || !value.end) {
             console.error('Range input must have "start" and "end" properties!');
 
             return;
@@ -215,25 +214,20 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
         const end = dayjs(value.end);
 
         // If we are only setting the start date...
-        if ( whichDate === 'start' )
-        {
+        if (whichDate === 'start') {
             // Set the start date
             this._range.start = start.clone();
 
             // If the selected start date is after the end date...
-            if ( this._range.start.isAfter(this._range.end) )
-            {
+            if (this._range.start.isAfter(this._range.end)) {
                 // Set the end date to the start date but keep the end date's time
                 const endDate = start.clone().hour(this._range.end.hour()).minute(this._range.end.minute()).second(this._range.end.second());
 
                 // Test this new end date to see if it's ahead of the start date
-                if ( this._range.start.isBefore(endDate) )
-                {
+                if (this._range.start.isBefore(endDate)) {
                     // If it's, set the new end date
                     this._range.end = endDate;
-                }
-                else
-                {
+                } else {
                     // Otherwise, set the end date same as the start date
                     this._range.end = start.clone();
                 }
@@ -241,25 +235,20 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
         }
 
         // If we are only setting the end date...
-        if ( whichDate === 'end' )
-        {
+        if (whichDate === 'end') {
             // Set the end date
             this._range.end = end.clone();
 
             // If the selected end date is before the start date...
-            if ( this._range.start.isAfter(this._range.end) )
-            {
+            if (this._range.start.isAfter(this._range.end)) {
                 // Set the start date to the end date but keep the start date's time
                 const startDate = end.clone().hour(this._range.start.hour()).minute(this._range.start.minute()).second(this._range.start.second());
 
                 // Test this new end date to see if it's ahead of the start date
-                if ( this._range.end.isAfter(startDate) )
-                {
+                if (this._range.end.isAfter(startDate)) {
                     // If it's, set the new start date
                     this._range.start = startDate;
-                }
-                else
-                {
+                } else {
                     // Otherwise, set the start date same as the end date
                     this._range.start = end.clone();
                 }
@@ -267,8 +256,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
         }
 
         // If we are setting both dates...
-        if ( !whichDate )
-        {
+        if (!whichDate) {
             // Set the start date
             this._range.start = start.clone();
 
@@ -280,7 +268,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
         // Prepare another range object that holds the ISO formatted range dates
         const range = {
             start: this._range.start.clone().toISOString(),
-            end  : this._range.end.clone().toISOString()
+            end: this._range.end.clone().toISOString(),
         };
 
         // Emit the range changed event with the range
@@ -290,8 +278,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
         // Because programmatic changes trigger writeValue which triggers onChange and onTouched
         // internally causing them to trigger twice which breaks the form's pristine and touched
         // statuses.
-        if ( !this._programmaticChange )
-        {
+        if (!this._programmaticChange) {
             this._onTouched(range);
             this._onChange(range);
         }
@@ -299,7 +286,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
         // Set the active dates (convert Dayjs to Date for Angular Material)
         this.activeDates = {
             month1: this._range.start.clone().toDate(),
-            month2: this._range.start.clone().add(1, 'month').toDate()
+            month2: this._range.start.clone().add(1, 'month').toDate(),
         };
 
         // Set the time form controls
@@ -308,8 +295,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
 
         // Run ngAfterContentInit on month views to trigger
         // re-render on month views if they are available
-        if ( this._matMonthView1 && this._matMonthView2 )
-        {
+        if (this._matMonthView1 && this._matMonthView2) {
             this._matMonthView1.ngAfterContentInit();
             this._matMonthView2.ngAfterContentInit();
         }
@@ -318,8 +304,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
         this._programmaticChange = false;
     }
 
-    get range(): any
-    {
+    get range(): any {
         // Clone the range start and end
         const start = this._range.start.clone();
         const end = this._range.end.clone();
@@ -328,8 +313,8 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
         return {
             startDate: start.clone().format(this.dateFormat),
             startTime: this.timeRange ? start.clone().format(this.timeFormat) : null,
-            endDate  : end.clone().format(this.dateFormat),
-            endTime  : this.timeRange ? end.clone().format(this.timeFormat) : null
+            endDate: end.clone().format(this.dateFormat),
+            endTime: this.timeRange ? end.clone().format(this.timeFormat) : null,
         };
     }
 
@@ -342,8 +327,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
      *
      * @param fn
      */
-    registerOnChange(fn: any): void
-    {
+    registerOnChange(fn: any): void {
         this._onChange = fn;
     }
 
@@ -352,8 +336,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
      *
      * @param fn
      */
-    registerOnTouched(fn: any): void
-    {
+    registerOnTouched(fn: any): void {
         this._onTouched = fn;
     }
 
@@ -362,8 +345,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
      *
      * @param range
      */
-    writeValue(range: { start: string, end: string }): void
-    {
+    writeValue(range: { start: string; end: string }): void {
         // Set this change as a programmatic one
         this._programmaticChange = true;
 
@@ -378,15 +360,13 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();
 
         // @ TODO: Workaround until "angular/issues/20007" resolved
-        this.writeValue = () => {
-        };
+        this.writeValue = () => {};
     }
 
     // -----------------------------------------------------------------------------------------------------
@@ -398,8 +378,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
      *
      * @private
      */
-    private _init(): void
-    {
+    private _init(): void {
         // Start and end time form controls
         this.startTimeFormControl = new FormControl('', [Validators.pattern(this._timeRegExp)]);
         this.endTimeFormControl = new FormControl('', [Validators.pattern(this._timeRegExp)]);
@@ -408,7 +387,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
         this._programmaticChange = true;
         this.range = {
             start: dayjs().startOf('day').toISOString(),
-            end  : dayjs().add(1, 'day').endOf('day').toISOString()
+            end: dayjs().add(1, 'day').endOf('day').toISOString(),
         };
 
         // Set the default time range
@@ -422,8 +401,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
      * @param value
      * @private
      */
-    private _parseTime(value: string): Dayjs
-    {
+    private _parseTime(value: string): Dayjs {
         // Parse the time using the time regexp
         const timeArr = value.split(this._timeRegExp).filter((part) => part !== '');
 
@@ -431,8 +409,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
         const meridiem = timeArr[2] || null;
 
         // If meridiem exists...
-        if ( meridiem )
-        {
+        if (meridiem) {
             // Create a dayjs using 12-hours format and return it
             return dayjs(value, 'hh:mmA').second(0);
         }
@@ -448,32 +425,32 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
     /**
      * Open the picker panel
      */
-    openPickerPanel(): void
-    {
+    openPickerPanel(): void {
         // Create the overlay
         const overlayRef = this._overlay.create({
-            panelClass      : 'treo-date-range-panel',
-            backdropClass   : '',
-            hasBackdrop     : true,
-            scrollStrategy  : this._overlay.scrollStrategies.reposition(),
-            positionStrategy: this._overlay.position()
-                                  .flexibleConnectedTo(this._pickerPanelOrigin)
-                                  .withPositions([
-                                      {
-                                          originX : 'start',
-                                          originY : 'bottom',
-                                          overlayX: 'start',
-                                          overlayY: 'top',
-                                          offsetY : 8
-                                      },
-                                      {
-                                          originX : 'start',
-                                          originY : 'top',
-                                          overlayX: 'start',
-                                          overlayY: 'bottom',
-                                          offsetY : -8
-                                      }
-                                  ])
+            panelClass: 'treo-date-range-panel',
+            backdropClass: '',
+            hasBackdrop: true,
+            scrollStrategy: this._overlay.scrollStrategies.reposition(),
+            positionStrategy: this._overlay
+                .position()
+                .flexibleConnectedTo(this._pickerPanelOrigin)
+                .withPositions([
+                    {
+                        originX: 'start',
+                        originY: 'bottom',
+                        overlayX: 'start',
+                        overlayY: 'top',
+                        offsetY: 8,
+                    },
+                    {
+                        originX: 'start',
+                        originY: 'top',
+                        overlayX: 'start',
+                        overlayY: 'bottom',
+                        offsetY: -8,
+                    },
+                ]),
         });
 
         // Create a portal from the template
@@ -481,17 +458,14 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
 
         // On backdrop click
         overlayRef.backdropClick().subscribe(() => {
-
             // If template portal exists and attached...
-            if ( templatePortal && templatePortal.isAttached )
-            {
+            if (templatePortal && templatePortal.isAttached) {
                 // Detach it
                 templatePortal.detach();
             }
 
             // If overlay exists and attached...
-            if ( overlayRef && overlayRef.hasAttached() )
-            {
+            if (overlayRef && overlayRef.hasAttached()) {
                 // Detach it
                 overlayRef.detach();
                 overlayRef.dispose();
@@ -507,10 +481,8 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
      *
      * @param month
      */
-    getMonthLabel(month: number): string
-    {
-        if ( month === 1 )
-        {
+    getMonthLabel(month: number): string {
+        if (month === 1) {
             return dayjs(this.activeDates.month1).format('MMMM Y');
         }
 
@@ -520,32 +492,27 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
     /**
      * Date class function to add/remove class names to calendar days
      */
-    dateClass(): any
-    {
+    dateClass(): any {
         return (date: Date): MatCalendarCellCssClasses => {
             const dayjsDate = dayjs(date);
 
             // If the date is both start and end date...
-            if ( dayjsDate.isSame(this._range.start, 'day') && dayjsDate.isSame(this._range.end, 'day') )
-            {
+            if (dayjsDate.isSame(this._range.start, 'day') && dayjsDate.isSame(this._range.end, 'day')) {
                 return ['treo-date-range', 'treo-date-range-start', 'treo-date-range-end'];
             }
 
             // If the date is the start date...
-            if ( dayjsDate.isSame(this._range.start, 'day') )
-            {
+            if (dayjsDate.isSame(this._range.start, 'day')) {
                 return ['treo-date-range', 'treo-date-range-start'];
             }
 
             // If the date is the end date...
-            if ( dayjsDate.isSame(this._range.end, 'day') )
-            {
+            if (dayjsDate.isSame(this._range.end, 'day')) {
                 return ['treo-date-range', 'treo-date-range-end'];
             }
 
             // If the date is in between start and end dates...
-            if ( dayjsDate.isBetween(this._range.start, this._range.end, 'day') )
-            {
+            if (dayjsDate.isBetween(this._range.start, this._range.end, 'day')) {
                 return ['treo-date-range', 'treo-date-range-mid'];
             }
 
@@ -556,8 +523,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
     /**
      * Date filter to enable/disable calendar days
      */
-    dateFilter(): any
-    {
+    dateFilter(): any {
         return (date: Date): boolean => {
             const dayjsDate = dayjs(date);
 
@@ -571,25 +537,21 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
      *
      * @param date
      */
-    onSelectedDateChange(date: Date): void
-    {
+    onSelectedDateChange(date: Date): void {
         // Create a new range object
         const newRange = {
-            start    : this._range.start.clone().toISOString(),
-            end      : this._range.end.clone().toISOString(),
-            whichDate: null
+            start: this._range.start.clone().toISOString(),
+            end: this._range.end.clone().toISOString(),
+            whichDate: null,
         };
 
         const dayjsDate = dayjs(date);
 
         // Replace either the start or the end date with the new one
         // depending on which date we are setting
-        if ( this.setWhichDate === 'start' )
-        {
+        if (this.setWhichDate === 'start') {
             newRange.start = dayjs(newRange.start).year(dayjsDate.year()).month(dayjsDate.month()).date(dayjsDate.date()).toISOString();
-        }
-        else
-        {
+        } else {
             newRange.end = dayjs(newRange.end).year(dayjsDate.year()).month(dayjsDate.month()).date(dayjsDate.date()).toISOString();
         }
 
@@ -606,8 +568,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
     /**
      * Go to previous month on both views
      */
-    prev(): void
-    {
+    prev(): void {
         this.activeDates.month1 = dayjs(this.activeDates.month1).subtract(1, 'month').toDate();
         this.activeDates.month2 = dayjs(this.activeDates.month2).subtract(1, 'month').toDate();
     }
@@ -615,8 +576,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
     /**
      * Go to next month on both views
      */
-    next(): void
-    {
+    next(): void {
         this.activeDates.month1 = dayjs(this.activeDates.month1).add(1, 'month').toDate();
         this.activeDates.month2 = dayjs(this.activeDates.month2).add(1, 'month').toDate();
     }
@@ -626,14 +586,12 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
      *
      * @param event
      */
-    updateStartTime(event): void
-    {
+    updateStartTime(event): void {
         // Parse the time
         const parsedTime = this._parseTime(event.target.value);
 
         // Go back to the previous value if the form control is not valid
-        if ( this.startTimeFormControl.invalid )
-        {
+        if (this.startTimeFormControl.invalid) {
             // Override the time
             const time = this._range.start.clone().format(this._timeFormat);
 
@@ -649,8 +607,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
 
         // If the new start date is after the current end date,
         // use the end date's time and set the start date again
-        if ( startDate.isAfter(this._range.end) )
-        {
+        if (startDate.isAfter(this._range.end)) {
             const endDateHours = this._range.end.hour();
             const endDateMinutes = this._range.end.minute();
 
@@ -660,9 +617,9 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
 
         // If everything is okay, set the new date
         this.range = {
-            start    : startDate.toISOString(),
-            end      : this._range.end.clone().toISOString(),
-            whichDate: 'start'
+            start: startDate.toISOString(),
+            end: this._range.end.clone().toISOString(),
+            whichDate: 'start',
         };
     }
 
@@ -671,14 +628,12 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
      *
      * @param event
      */
-    updateEndTime(event): void
-    {
+    updateEndTime(event): void {
         // Parse the time
         const parsedTime = this._parseTime(event.target.value);
 
         // Go back to the previous value if the form control is not valid
-        if ( this.endTimeFormControl.invalid )
-        {
+        if (this.endTimeFormControl.invalid) {
             // Override the time
             const time = this._range.end.clone().format(this._timeFormat);
 
@@ -694,8 +649,7 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
 
         // If the new end date is before the current start date,
         // use the start date's time and set the end date again
-        if ( endDate.isBefore(this._range.start) )
-        {
+        if (endDate.isBefore(this._range.start)) {
             const startDateHours = this._range.start.hour();
             const startDateMinutes = this._range.start.minute();
 
@@ -705,9 +659,9 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy
 
         // If everything is okay, set the new date
         this.range = {
-            start    : this._range.start.clone().toISOString(),
-            end      : endDate.toISOString(),
-            whichDate: 'end'
+            start: this._range.start.clone().toISOString(),
+            end: endDate.toISOString(),
+            whichDate: 'end',
         };
     }
 }

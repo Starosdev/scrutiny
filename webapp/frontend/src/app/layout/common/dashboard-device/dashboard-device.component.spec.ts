@@ -1,48 +1,47 @@
-import {ComponentFixture, TestBed} from '@angular/core/testing';
-
-import {DashboardDeviceComponent} from './dashboard-device.component';
-import {MatDialog as MatDialog} from '@angular/material/dialog';
-import {MatButtonModule as MatButtonModule} from '@angular/material/button';
-import {MatIconModule} from '@angular/material/icon';
-import {SharedModule} from 'app/shared/shared.module';
-import {MatMenuModule as MatMenuModule} from '@angular/material/menu';
-import {TREO_APP_CONFIG} from '@treo/services/config/config.constants';
-import {DeviceSummaryModel} from 'app/core/models/device-summary-model';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { DashboardDeviceComponent } from './dashboard-device.component';
+import { MatDialog as MatDialog } from '@angular/material/dialog';
+import { MatButtonModule as MatButtonModule } from '@angular/material/button';
+import { MatIconModule, MatIconRegistry } from '@angular/material/icon';
+import { SharedModule } from 'app/shared/shared.module';
+import { MatMenuModule as MatMenuModule } from '@angular/material/menu';
+import { TREO_APP_CONFIG } from '@treo/services/config/config.constants';
+import { DeviceSummaryModel } from 'app/core/models/device-summary-model';
 import dayjs from 'dayjs';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { HttpClient, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
-import {ScrutinyConfigService} from 'app/core/config/scrutiny-config.service';
-import {of} from 'rxjs';
-import {MetricsStatusThreshold} from 'app/core/config/app.config';
+import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
+import { of } from 'rxjs';
+import { MetricsStatusThreshold } from 'app/core/config/app.config';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { provideRouter } from '@angular/router';
 
 describe('DashboardDeviceComponent', () => {
     let component: DashboardDeviceComponent;
     let fixture: ComponentFixture<DashboardDeviceComponent>;
 
     const matDialogSpy = jasmine.createSpyObj('MatDialog', ['open']);
-    let configService: ScrutinyConfigService;
+    const matIconRegistrySpy = jasmine.createSpyObj('MatIconRegistry', ['getNamedSvgIcon']);
     let httpClientSpy: jasmine.SpyObj<HttpClient>;
 
     beforeEach(() => {
-
         httpClientSpy = jasmine.createSpyObj('HttpClient', ['get']);
-        configService = new ScrutinyConfigService(httpClientSpy, {});
+        matIconRegistrySpy.getNamedSvgIcon.and.callFake(() => of(document.createElementNS('http://www.w3.org/2000/svg', 'svg')));
 
         TestBed.configureTestingModule({
-    declarations: [DashboardDeviceComponent],
-    imports: [MatButtonModule,
-        MatIconModule,
-        MatMenuModule,
-        SharedModule],
-    providers: [
-        { provide: MatDialog, useValue: matDialogSpy },
-        { provide: TREO_APP_CONFIG, useValue: { dashboard_display: 'name', metrics: { status_threshold: 3 } } },
-        { provide: ScrutinyConfigService, useValue: configService },
-        provideHttpClient(withInterceptorsFromDi()),
-        provideHttpClientTesting()
-    ]
-})
-            .compileComponents();
+            imports: [NoopAnimationsModule, MatButtonModule, MatIconModule, MatMenuModule, SharedModule, DashboardDeviceComponent],
+            providers: [
+                { provide: MatDialog, useValue: matDialogSpy },
+                { provide: MatIconRegistry, useValue: matIconRegistrySpy },
+                { provide: TREO_APP_CONFIG, useValue: { dashboard_display: 'name', metrics: { status_threshold: 3 } } },
+                { provide: HttpClient, useValue: httpClientSpy },
+                provideRouter([]),
+                provideHttpClient(withInterceptorsFromDi()),
+                provideHttpClientTesting(),
+            ],
+        }).compileComponents();
+
+        TestBed.inject(ScrutinyConfigService);
     });
 
     beforeEach(() => {
@@ -56,106 +55,124 @@ describe('DashboardDeviceComponent', () => {
     });
 
     describe('#classDeviceLastUpdatedOn()', () => {
-
         it('if non-zero device status, should be red', () => {
-            httpClientSpy.get.and.returnValue(of({
-                settings: {
-                    metrics: {
-                        status_threshold: MetricsStatusThreshold.Both,
-                    }
-                }
-            }));
-            component.ngOnInit()
+            httpClientSpy.get.and.returnValue(
+                of({
+                    settings: {
+                        metrics: {
+                            status_threshold: MetricsStatusThreshold.Both,
+                        },
+                    },
+                })
+            );
+            component.ngOnInit();
             // component.deviceSummary = summary.data.summary['0x5000c500673e6b5f'] as DeviceSummaryModel
-            expect(component.classDeviceLastUpdatedOn({
-                device: {
-                    device_status: 2,
-                },
-                smart: {
-                    collector_date: dayjs().subtract(13, 'day').toISOString()
-                },
-            } as DeviceSummaryModel)).toBe('text-red')
+            expect(
+                component.classDeviceLastUpdatedOn({
+                    device: {
+                        device_status: 2,
+                    },
+                    smart: {
+                        collector_date: dayjs().subtract(13, 'day').toISOString(),
+                    },
+                } as DeviceSummaryModel)
+            ).toBe('text-red');
         });
 
         it('if non-zero device status, should be red', () => {
-            httpClientSpy.get.and.returnValue(of({
-                settings: {
-                    metrics: {
-                        status_threshold: MetricsStatusThreshold.Both,
-                    }
-                }
-            }));
-            component.ngOnInit()
-            expect(component.classDeviceLastUpdatedOn({
-                device: {
-                    device_status: 2
-                },
-                smart: {
-                    collector_date: dayjs().subtract(13, 'day').toISOString()
-                },
-            } as DeviceSummaryModel)).toBe('text-red')
+            httpClientSpy.get.and.returnValue(
+                of({
+                    settings: {
+                        metrics: {
+                            status_threshold: MetricsStatusThreshold.Both,
+                        },
+                    },
+                })
+            );
+            component.ngOnInit();
+            expect(
+                component.classDeviceLastUpdatedOn({
+                    device: {
+                        device_status: 2,
+                    },
+                    smart: {
+                        collector_date: dayjs().subtract(13, 'day').toISOString(),
+                    },
+                } as DeviceSummaryModel)
+            ).toBe('text-red');
         });
 
         it('if healthy device status and updated in the last two weeks, should be green', () => {
-            httpClientSpy.get.and.returnValue(of({
-                settings: {
-                    metrics: {
-                        status_threshold: MetricsStatusThreshold.Both,
-                    }
-                }
-            }));
-            component.ngOnInit()
-            expect(component.classDeviceLastUpdatedOn({
-                device: {
-                    device_status: 0
-                },
-                smart: {
-                    collector_date: dayjs().subtract(13, 'day').toISOString()
-                }
-            } as DeviceSummaryModel)).toBe('text-green')
+            httpClientSpy.get.and.returnValue(
+                of({
+                    settings: {
+                        metrics: {
+                            status_threshold: MetricsStatusThreshold.Both,
+                        },
+                    },
+                })
+            );
+            component.ngOnInit();
+            expect(
+                component.classDeviceLastUpdatedOn({
+                    device: {
+                        device_status: 0,
+                    },
+                    smart: {
+                        collector_date: dayjs().subtract(13, 'day').toISOString(),
+                    },
+                } as DeviceSummaryModel)
+            ).toBe('text-green');
         });
 
         it('if healthy device status and updated more than two weeks ago, but less than 1 month, should be yellow', () => {
-            httpClientSpy.get.and.returnValue(of({
-                settings: {
-                    metrics: {
-                        status_threshold: MetricsStatusThreshold.Both,
-                    }
-                }
-            }));
-            component.ngOnInit()
-            expect(component.classDeviceLastUpdatedOn({
-                device: {
-                    device_status: 0
-                },
-                smart: {
-                    collector_date: dayjs().subtract(3, 'week').toISOString()
-                }
-            } as DeviceSummaryModel)).toBe('text-yellow')
+            httpClientSpy.get.and.returnValue(
+                of({
+                    settings: {
+                        metrics: {
+                            status_threshold: MetricsStatusThreshold.Both,
+                        },
+                    },
+                })
+            );
+            component.ngOnInit();
+            expect(
+                component.classDeviceLastUpdatedOn({
+                    device: {
+                        device_status: 0,
+                    },
+                    smart: {
+                        collector_date: dayjs().subtract(3, 'week').toISOString(),
+                    },
+                } as DeviceSummaryModel)
+            ).toBe('text-yellow');
         });
 
         it('if healthy device status and updated more 1 month ago, should be red', () => {
-            httpClientSpy.get.and.returnValue(of({
-                settings: {
-                    metrics: {
-                        status_threshold: MetricsStatusThreshold.Both,
-                    }
-                }
-            }));
-            component.ngOnInit()
-            expect(component.classDeviceLastUpdatedOn({
-                device: {
-                    device_status: 0
-                },
-                smart: {
-                    collector_date: dayjs().subtract(5, 'week').toISOString()
-                }
-            } as DeviceSummaryModel)).toBe('text-red')
+            httpClientSpy.get.and.returnValue(
+                of({
+                    settings: {
+                        metrics: {
+                            status_threshold: MetricsStatusThreshold.Both,
+                        },
+                    },
+                })
+            );
+            component.ngOnInit();
+            expect(
+                component.classDeviceLastUpdatedOn({
+                    device: {
+                        device_status: 0,
+                    },
+                    smart: {
+                        collector_date: dayjs().subtract(5, 'week').toISOString(),
+                    },
+                } as DeviceSummaryModel)
+            ).toBe('text-red');
         });
     });
 
     describe('#getSSDHealth()', () => {
-
         it('should return null when deviceSummary is undefined', () => {
             component.deviceSummary = undefined;
             expect(component.getSSDHealth()).toBeNull();
@@ -163,7 +180,7 @@ describe('DashboardDeviceComponent', () => {
 
         it('should return null when smart is undefined', () => {
             component.deviceSummary = {
-                device: { device_status: 0 }
+                device: { device_status: 0 },
             } as DeviceSummaryModel;
             expect(component.getSSDHealth()).toBeNull();
         });
@@ -173,8 +190,8 @@ describe('DashboardDeviceComponent', () => {
                 device: { device_status: 0 },
                 smart: {
                     temp: 35,
-                    power_on_hours: 1000
-                }
+                    power_on_hours: 1000,
+                },
             } as DeviceSummaryModel;
             expect(component.getSSDHealth()).toBeNull();
         });
@@ -183,8 +200,8 @@ describe('DashboardDeviceComponent', () => {
             component.deviceSummary = {
                 device: { device_status: 0 },
                 smart: {
-                    percentage_used: 5
-                }
+                    percentage_used: 5,
+                },
             } as DeviceSummaryModel;
             const result = component.getSSDHealth();
             expect(result).toEqual({ value: 5, isRemaining: false });
@@ -194,8 +211,8 @@ describe('DashboardDeviceComponent', () => {
             component.deviceSummary = {
                 device: { device_status: 0 },
                 smart: {
-                    wearout_value: 95
-                }
+                    wearout_value: 95,
+                },
             } as DeviceSummaryModel;
             const result = component.getSSDHealth();
             expect(result).toEqual({ value: 95, isRemaining: true });
@@ -206,8 +223,8 @@ describe('DashboardDeviceComponent', () => {
                 device: { device_status: 0 },
                 smart: {
                     percentage_used: 10,
-                    wearout_value: 90
-                }
+                    wearout_value: 90,
+                },
             } as DeviceSummaryModel;
             const result = component.getSSDHealth();
             expect(result).toEqual({ value: 10, isRemaining: false });
@@ -217,8 +234,8 @@ describe('DashboardDeviceComponent', () => {
             component.deviceSummary = {
                 device: { device_status: 0 },
                 smart: {
-                    percentage_used: 0
-                }
+                    percentage_used: 0,
+                },
             } as DeviceSummaryModel;
             const result = component.getSSDHealth();
             expect(result).toEqual({ value: 0, isRemaining: false });
@@ -228,8 +245,8 @@ describe('DashboardDeviceComponent', () => {
             component.deviceSummary = {
                 device: { device_status: 0 },
                 smart: {
-                    wearout_value: 0
-                }
+                    wearout_value: 0,
+                },
             } as DeviceSummaryModel;
             const result = component.getSSDHealth();
             expect(result).toEqual({ value: 0, isRemaining: true });
@@ -237,11 +254,10 @@ describe('DashboardDeviceComponent', () => {
     });
 
     describe('#getSSDHealthLabel()', () => {
-
         it('should return empty string when no SSD health data', () => {
             component.deviceSummary = {
                 device: { device_status: 0 },
-                smart: {}
+                smart: {},
             } as DeviceSummaryModel;
             expect(component.getSSDHealthLabel()).toBe('');
         });
@@ -250,8 +266,8 @@ describe('DashboardDeviceComponent', () => {
             component.deviceSummary = {
                 device: { device_status: 0 },
                 smart: {
-                    percentage_used: 5
-                }
+                    percentage_used: 5,
+                },
             } as DeviceSummaryModel;
             expect(component.getSSDHealthLabel()).toBe('Used');
         });
@@ -260,19 +276,18 @@ describe('DashboardDeviceComponent', () => {
             component.deviceSummary = {
                 device: { device_status: 0 },
                 smart: {
-                    wearout_value: 95
-                }
+                    wearout_value: 95,
+                },
             } as DeviceSummaryModel;
             expect(component.getSSDHealthLabel()).toBe('Health');
         });
     });
 
     describe('#getSSDHealthDisplay()', () => {
-
         it('should return "--" when no SSD health data', () => {
             component.deviceSummary = {
                 device: { device_status: 0 },
-                smart: {}
+                smart: {},
             } as DeviceSummaryModel;
             expect(component.getSSDHealthDisplay()).toBe('--');
         });
@@ -281,8 +296,8 @@ describe('DashboardDeviceComponent', () => {
             component.deviceSummary = {
                 device: { device_status: 0 },
                 smart: {
-                    percentage_used: 5
-                }
+                    percentage_used: 5,
+                },
             } as DeviceSummaryModel;
             expect(component.getSSDHealthDisplay()).toBe('5%');
         });
@@ -291,8 +306,8 @@ describe('DashboardDeviceComponent', () => {
             component.deviceSummary = {
                 device: { device_status: 0 },
                 smart: {
-                    wearout_value: 95
-                }
+                    wearout_value: 95,
+                },
             } as DeviceSummaryModel;
             expect(component.getSSDHealthDisplay()).toBe('95%');
         });

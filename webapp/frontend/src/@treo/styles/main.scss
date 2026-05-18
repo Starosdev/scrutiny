@@ -4,27 +4,27 @@
 // -----------------------------------------------------------------------------------------------------
 
 // 1. Utilities
-@import 'treo';
+@use 'treo';
 
 // 2. Vendors
-@import 'vendors/normalize';
-@import 'vendors/angular-material';
+@use 'vendors/normalize';
+@use 'vendors/angular-material';
 
 // 3. Base
-@import 'base/preflight';
-@import 'base/typography';
-@import 'base/colors';
-@import 'base/theming';
+@use 'base/preflight';
+@use 'base/typography';
+@use 'base/colors';
+@use 'base/theming';
 
 // 4. Layout
-@import 'layout/content';
+@use 'layout/content';
 
 // 5. Components
-@import 'components/card';
-@import 'components/input';
-@import 'components/table';
+@use 'components/card';
+@use 'components/input';
+@use 'components/table';
 
 // 6. Overrides
-@import 'overrides/angular-material';
-@import 'overrides/highlightjs';
-@import 'overrides/perfect-scrollbar';
+@use 'overrides/angular-material' as angular-material2;
+@use 'overrides/highlightjs';
+@use 'overrides/perfect-scrollbar';

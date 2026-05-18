@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -6,15 +6,15 @@ import { getBasePath } from 'app/app.routing';
 import { ZFSPoolDetailsResponseWrapper } from 'app/core/models/zfs-pool-summary-model';
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
 export class ZFSPoolDetailService {
+    private readonly _httpClient = inject(HttpClient);
+
     // Observables
     private _data: BehaviorSubject<ZFSPoolDetailsResponseWrapper>;
 
-    constructor(
-        private readonly _httpClient: HttpClient
-    ) {
+    constructor() {
         this._data = new BehaviorSubject(null);
     }
 

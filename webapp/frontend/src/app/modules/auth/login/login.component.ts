@@ -1,17 +1,28 @@
-import { Component, OnInit, ViewEncapsulation } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Component, OnInit, ViewEncapsulation, inject } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from 'app/core/auth/auth.service';
 import { take } from 'rxjs/operators';
+import { MatProgressBar } from '@angular/material/progress-bar';
+import { MatIcon } from '@angular/material/icon';
+import { MatTabGroup, MatTab } from '@angular/material/tabs';
+import { MatFormField, MatLabel, MatSuffix } from '@angular/material/form-field';
+import { MatInput } from '@angular/material/input';
+import { MatIconButton, MatButton } from '@angular/material/button';
 
 @Component({
     selector: 'login',
     templateUrl: './login.component.html',
     styleUrls: ['./login.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    imports: [MatProgressBar, MatIcon, MatTabGroup, MatTab, ReactiveFormsModule, MatFormField, MatLabel, MatInput, MatIconButton, MatSuffix, MatButton],
 })
 export class LoginComponent implements OnInit {
+    private readonly _fb = inject(FormBuilder);
+    private readonly _authService = inject(AuthService);
+    private readonly _router = inject(Router);
+    private readonly _route = inject(ActivatedRoute);
+
     tokenForm: FormGroup;
     passwordForm: FormGroup;
     errorMessage: string = '';
@@ -23,19 +34,14 @@ export class LoginComponent implements OnInit {
 
     private returnUrl: string = '/dashboard';
 
-    constructor(
-        private readonly _fb: FormBuilder,
-        private readonly _authService: AuthService,
-        private readonly _router: Router,
-        private readonly _route: ActivatedRoute
-    ) {
+    constructor() {
         this.tokenForm = this._fb.group({
-            token: ['', Validators.required]
+            token: ['', Validators.required],
         });
 
         this.passwordForm = this._fb.group({
             username: ['', Validators.required],
-            password: ['', Validators.required]
+            password: ['', Validators.required],
         });
     }
 
@@ -46,11 +52,9 @@ export class LoginComponent implements OnInit {
             return;
         }
 
-        this.returnUrl = this.sanitizeReturnUrl(
-            this._route.snapshot.queryParams['returnUrl']
-        );
+        this.returnUrl = this.sanitizeReturnUrl(this._route.snapshot.queryParams['returnUrl']);
 
-        this._authService.loginMethods$.pipe(take(1)).subscribe(methods => {
+        this._authService.loginMethods$.pipe(take(1)).subscribe((methods) => {
             this.loginMethods = methods;
             this.showPasswordTab = methods.includes('password');
         });
@@ -76,7 +80,7 @@ export class LoginComponent implements OnInit {
             error: (err) => {
                 this.isLoading = false;
                 this.errorMessage = err.error?.error || 'Login failed. Please try again.';
-            }
+            },
         });
     }
 
@@ -101,7 +105,7 @@ export class LoginComponent implements OnInit {
             error: (err) => {
                 this.isLoading = false;
                 this.errorMessage = err.error?.error || 'Login failed. Please try again.';
-            }
+            },
         });
     }
 

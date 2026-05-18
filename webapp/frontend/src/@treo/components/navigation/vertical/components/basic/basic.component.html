@@ -1,105 +1,97 @@
 <!-- Item wrapper -->
-<div class="treo-vertical-navigation-item-wrapper"
-  [class.treo-vertical-navigation-item-has-subtitle]="!!item.subtitle"
-  [ngClass]="item.classes">
-
-  <!-- Item with an internal link -->
-  @if (item.link && !item.externalLink && !item.function && !item.disabled) {
-    <a class="treo-vertical-navigation-item"
-      [routerLink]="[item.link]"
-      [routerLinkActive]="'treo-vertical-navigation-item-active'"
-      [routerLinkActiveOptions]="{exact: item.exactMatch || false}">
-      <ng-container *ngTemplateOutlet="itemTemplate"></ng-container>
+<div class="treo-vertical-navigation-item-wrapper" [class.treo-vertical-navigation-item-has-subtitle]="!!item.subtitle" [ngClass]="item.classes">
+    <!-- Item with an internal link -->
+    @if (item.link && !item.externalLink && !item.function && !item.disabled) {
+    <a
+        class="treo-vertical-navigation-item"
+        [routerLink]="[item.link]"
+        [routerLinkActive]="'treo-vertical-navigation-item-active'"
+        [routerLinkActiveOptions]="{ exact: item.exactMatch || false }"
+    >
+        <ng-container *ngTemplateOutlet="itemTemplate"></ng-container>
     </a>
-  }
+    }
 
-  <!-- Item with an external link -->
-  @if (item.link && item.externalLink && !item.function && !item.disabled) {
-    <a class="treo-vertical-navigation-item"
-      [href]="item.link">
-      <ng-container *ngTemplateOutlet="itemTemplate"></ng-container>
+    <!-- Item with an external link -->
+    @if (item.link && item.externalLink && !item.function && !item.disabled) {
+    <a class="treo-vertical-navigation-item" [href]="item.link">
+        <ng-container *ngTemplateOutlet="itemTemplate"></ng-container>
     </a>
-  }
+    }
 
-  <!-- Item with a function -->
-  @if (!item.link && item.function && !item.disabled) {
-    <div class="treo-vertical-navigation-item"
-      (click)="item.function(item)">
-      <ng-container *ngTemplateOutlet="itemTemplate"></ng-container>
+    <!-- Item with a function -->
+    @if (!item.link && item.function && !item.disabled) {
+    <div class="treo-vertical-navigation-item" (click)="item.function(item)">
+        <ng-container *ngTemplateOutlet="itemTemplate"></ng-container>
     </div>
-  }
+    }
 
-  <!-- Item with an internal link and function -->
-  @if (item.link && !item.externalLink && item.function && !item.disabled) {
-    <a class="treo-vertical-navigation-item"
-      [routerLink]="[item.link]"
-      [routerLinkActive]="'treo-vertical-navigation-item-active'"
-      [routerLinkActiveOptions]="{exact: item.exactMatch || false}"
-      (click)="item.function(item)">
-      <ng-container *ngTemplateOutlet="itemTemplate"></ng-container>
+    <!-- Item with an internal link and function -->
+    @if (item.link && !item.externalLink && item.function && !item.disabled) {
+    <a
+        class="treo-vertical-navigation-item"
+        [routerLink]="[item.link]"
+        [routerLinkActive]="'treo-vertical-navigation-item-active'"
+        [routerLinkActiveOptions]="{ exact: item.exactMatch || false }"
+        (click)="item.function(item)"
+    >
+        <ng-container *ngTemplateOutlet="itemTemplate"></ng-container>
     </a>
-  }
+    }
 
-  <!-- Item with an external link and function -->
-  @if (item.link && item.externalLink && item.function && !item.disabled) {
-    <a class="treo-vertical-navigation-item"
-      [href]="item.link"
-      (click)="item.function(item)">
-      <ng-container *ngTemplateOutlet="itemTemplate"></ng-container>
+    <!-- Item with an external link and function -->
+    @if (item.link && item.externalLink && item.function && !item.disabled) {
+    <a class="treo-vertical-navigation-item" [href]="item.link" (click)="item.function(item)">
+        <ng-container *ngTemplateOutlet="itemTemplate"></ng-container>
     </a>
-  }
+    }
 
-  <!-- Item with a no link and no function -->
-  @if (!item.link && !item.function && !item.disabled) {
-    <div class="treo-vertical-navigation-item"
-      >
-      <ng-container *ngTemplateOutlet="itemTemplate"></ng-container>
+    <!-- Item with a no link and no function -->
+    @if (!item.link && !item.function && !item.disabled) {
+    <div class="treo-vertical-navigation-item">
+        <ng-container *ngTemplateOutlet="itemTemplate"></ng-container>
     </div>
-  }
+    }
 
-  <!-- Item is disabled -->
-  @if (item.disabled) {
-    <div class="treo-vertical-navigation-item treo-vertical-navigation-item-disabled"
-      >
-      <ng-container *ngTemplateOutlet="itemTemplate"></ng-container>
+    <!-- Item is disabled -->
+    @if (item.disabled) {
+    <div class="treo-vertical-navigation-item treo-vertical-navigation-item-disabled">
+        <ng-container *ngTemplateOutlet="itemTemplate"></ng-container>
     </div>
-  }
-
+    }
 </div>
 
 <!-- Item template -->
 <ng-template #itemTemplate>
-
-  <!-- Icon -->
-  @if (item.icon) {
-    <mat-icon class="treo-vertical-navigation-item-icon"
-      [ngClass]="item.iconClasses"
-    [svgIcon]="item.icon"></mat-icon>
-  }
-
-  <!-- Title & Subtitle -->
-  <div class="treo-vertical-navigation-item-title-wrapper">
-    <div class="treo-vertical-navigation-item-title">{{item.title}}</div>
-    @if (item.subtitle) {
-      <div class="treo-vertical-navigation-item-subtitle"
-        >
-        {{item.subtitle}}
-      </div>
+    <!-- Icon -->
+    @if (item.icon) {
+    <mat-icon class="treo-vertical-navigation-item-icon" [ngClass]="item.iconClasses" [svgIcon]="item.icon"></mat-icon>
     }
-  </div>
 
-  <!-- Badge -->
-  @if (item.badge) {
-    <div class="treo-vertical-navigation-item-badge"
-      >
-      <div class="treo-vertical-navigation-item-badge-content"
-             [ngClass]="[(item.badge.style != undefined ? 'treo-vertical-navigation-item-badge-style-' + item.badge.style : ''),
-                             (item.badge.background != undefined && !item.badge.background.startsWith('#') ? item.badge.background : ''),
-                             (item.badge.color != undefined && !item.badge.color.startsWith('#') ? item.badge.color : '')]"
-        [ngStyle]="{'background-color': item.badge.background, 'color': item.badge.color}">
-        {{item.badge.title}}
-      </div>
+    <!-- Title & Subtitle -->
+    <div class="treo-vertical-navigation-item-title-wrapper">
+        <div class="treo-vertical-navigation-item-title">{{ item.title }}</div>
+        @if (item.subtitle) {
+        <div class="treo-vertical-navigation-item-subtitle">
+            {{ item.subtitle }}
+        </div>
+        }
     </div>
-  }
 
+    <!-- Badge -->
+    @if (item.badge) {
+    <div class="treo-vertical-navigation-item-badge">
+        <div
+            class="treo-vertical-navigation-item-badge-content"
+            [ngClass]="[
+                item.badge.style !== undefined ? 'treo-vertical-navigation-item-badge-style-' + item.badge.style : '',
+                item.badge.background !== undefined && !item.badge.background.startsWith('#') ? item.badge.background : '',
+                item.badge.color !== undefined && !item.badge.color.startsWith('#') ? item.badge.color : ''
+            ]"
+            [ngStyle]="{ 'background-color': item.badge.background, color: item.badge.color }"
+        >
+            {{ item.badge.title }}
+        </div>
+    </div>
+    }
 </ng-template>

@@ -1,5 +1,5 @@
-import {Component, OnInit} from '@angular/core';
-import {HttpClient} from '@angular/common/http';
+import { Component, OnInit, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import {
     AppConfig,
     AttributeOverride,
@@ -16,22 +16,70 @@ import {
     TimeFormat,
     LineStroke,
     Theme,
-    DevicePoweredOnUnit
+    DevicePoweredOnUnit,
 } from 'app/core/config/app.config';
-import {ScrutinyConfigService} from 'app/core/config/scrutiny-config.service';
-import {AttributeOverrideService} from 'app/core/config/attribute-override.service';
-import {NotifyUrlService} from 'app/core/config/notify-url.service';
-import {getBasePath} from 'app/app.routing';
-import {Subject} from 'rxjs';
-import {takeUntil} from 'rxjs/operators';
+import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
+import { AttributeOverrideService } from 'app/core/config/attribute-override.service';
+import { NotifyUrlService } from 'app/core/config/notify-url.service';
+import { getBasePath } from 'app/app.routing';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose } from '@angular/material/dialog';
+import { CdkScrollable } from '@angular/cdk/scrolling';
+import { MatFormField, MatLabel, MatHint } from '@angular/material/form-field';
+import { MatSelect } from '@angular/material/select';
+import { ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { MatOption } from '@angular/material/autocomplete';
+import { MatInput } from '@angular/material/input';
+import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { MatExpansionPanel, MatExpansionPanelHeader, MatExpansionPanelTitle, MatExpansionPanelDescription } from '@angular/material/expansion';
+import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow } from '@angular/material/table';
+import { MatTooltip } from '@angular/material/tooltip';
 
 @Component({
     selector: 'app-dashboard-settings',
     templateUrl: './dashboard-settings.component.html',
     styleUrls: ['./dashboard-settings.component.scss'],
-    standalone: false
+    imports: [
+        MatDialogTitle,
+        CdkScrollable,
+        MatDialogContent,
+        MatFormField,
+        MatLabel,
+        MatSelect,
+        ReactiveFormsModule,
+        FormsModule,
+        MatOption,
+        MatHint,
+        MatInput,
+        MatButton,
+        MatIcon,
+        MatExpansionPanel,
+        MatExpansionPanelHeader,
+        MatExpansionPanelTitle,
+        MatExpansionPanelDescription,
+        MatTable,
+        MatColumnDef,
+        MatHeaderCellDef,
+        MatHeaderCell,
+        MatCellDef,
+        MatCell,
+        MatIconButton,
+        MatTooltip,
+        MatHeaderRowDef,
+        MatHeaderRow,
+        MatRowDef,
+        MatRow,
+        MatDialogActions,
+        MatDialogClose,
+    ],
 })
 export class DashboardSettingsComponent implements OnInit {
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly _overrideService = inject(AttributeOverrideService);
+    private readonly _notifyUrlService = inject(NotifyUrlService);
+    private readonly _httpClient = inject(HttpClient);
 
     dashboardDisplay: string;
     dashboardSort: string;
@@ -91,10 +139,10 @@ export class DashboardSettingsComponent implements OnInit {
     overrides: AttributeOverride[] = [];
     displayedColumns: string[] = ['protocol', 'attribute_id', 'action', 'source', 'actions'];
     protocols: OverrideProtocol[] = ['ATA', 'NVMe', 'SCSI'];
-    actions: {value: OverrideAction, label: string}[] = [
-        {value: 'ignore', label: 'Ignore'},
-        {value: 'force_status', label: 'Force Status'},
-        {value: '', label: 'Custom Threshold'}
+    actions: { value: OverrideAction; label: string }[] = [
+        { value: 'ignore', label: 'Ignore' },
+        { value: 'force_status', label: 'Force Status' },
+        { value: '', label: 'Custom Threshold' },
     ];
     statuses: OverrideStatus[] = ['passed', 'warn', 'failed'];
 
@@ -102,7 +150,7 @@ export class DashboardSettingsComponent implements OnInit {
     newOverride: Partial<AttributeOverride> = {
         protocol: 'ATA',
         attribute_id: '',
-        action: 'ignore'
+        action: 'ignore',
     };
 
     // Notification URL management
@@ -132,78 +180,69 @@ export class DashboardSettingsComponent implements OnInit {
     // Private
     private _unsubscribeAll: Subject<void>;
 
-    constructor(
-        private readonly _configService: ScrutinyConfigService,
-        private readonly _overrideService: AttributeOverrideService,
-        private readonly _notifyUrlService: NotifyUrlService,
-        private readonly _httpClient: HttpClient,
-    ) {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
     }
 
     ngOnInit(): void {
         // Subscribe to config changes
-        this._configService.config$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((config: AppConfig) => {
+        this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {
+            // Store the config
+            this.dashboardDisplay = config.dashboard_display;
+            this.dashboardSort = config.dashboard_sort;
+            this.temperatureUnit = config.temperature_unit;
+            this.fileSizeSIUnits = config.file_size_si_units;
+            this.poweredOnHoursUnit = config.powered_on_hours_unit;
+            this.timeFormat = config.time_format;
+            this.lineStroke = config.line_stroke;
+            this.theme = config.theme;
 
-                // Store the config
-                this.dashboardDisplay = config.dashboard_display;
-                this.dashboardSort = config.dashboard_sort;
-                this.temperatureUnit = config.temperature_unit;
-                this.fileSizeSIUnits = config.file_size_si_units;
-                this.poweredOnHoursUnit = config.powered_on_hours_unit;
-                this.timeFormat = config.time_format;
-                this.lineStroke = config.line_stroke;
-                this.theme = config.theme;
+            this.retrieveSCTTemperatureHistory = config.collector.retrieve_sct_temperature_history;
 
-                this.retrieveSCTTemperatureHistory = config.collector.retrieve_sct_temperature_history;
+            this.notifyLevel = config.metrics.notify_level;
+            this.statusFilterAttributes = config.metrics.status_filter_attributes;
+            this.statusThreshold = config.metrics.status_threshold;
+            this.repeatNotifications = config.metrics.repeat_notifications;
 
-                this.notifyLevel = config.metrics.notify_level;
-                this.statusFilterAttributes = config.metrics.status_filter_attributes;
-                this.statusThreshold = config.metrics.status_threshold;
-                this.repeatNotifications = config.metrics.repeat_notifications;
+            // Collector error settings
+            this.notifyOnCollectorError = config.metrics.notify_on_collector_error ?? true;
 
-                // Collector error settings
-                this.notifyOnCollectorError = config.metrics.notify_on_collector_error ?? true;
+            // Missed ping settings
+            this.notifyOnMissedPing = config.metrics.notify_on_missed_ping ?? false;
+            this.missedPingTimeoutMinutes = config.metrics.missed_ping_timeout_minutes ?? 60;
+            this.missedPingCheckIntervalMins = config.metrics.missed_ping_check_interval_mins ?? 5;
 
-                // Missed ping settings
-                this.notifyOnMissedPing = config.metrics.notify_on_missed_ping ?? false;
-                this.missedPingTimeoutMinutes = config.metrics.missed_ping_timeout_minutes ?? 60;
-                this.missedPingCheckIntervalMins = config.metrics.missed_ping_check_interval_mins ?? 5;
+            // Notification cooldown / rate limiting
+            this.missedPingCooldownMinutes = config.metrics.missed_ping_cooldown_minutes ?? 0;
+            this.notificationRateLimit = config.metrics.notification_rate_limit ?? 0;
 
-                // Notification cooldown / rate limiting
-                this.missedPingCooldownMinutes = config.metrics.missed_ping_cooldown_minutes ?? 0;
-                this.notificationRateLimit = config.metrics.notification_rate_limit ?? 0;
+            // Quiet hours
+            this.notificationQuietStart = config.metrics.notification_quiet_start ?? '';
+            this.notificationQuietEnd = config.metrics.notification_quiet_end ?? '';
 
-                // Quiet hours
-                this.notificationQuietStart = config.metrics.notification_quiet_start ?? '';
-                this.notificationQuietEnd = config.metrics.notification_quiet_end ?? '';
+            // Heartbeat settings
+            this.heartbeatEnabled = config.metrics.heartbeat_enabled ?? false;
+            this.heartbeatIntervalHours = config.metrics.heartbeat_interval_hours ?? 24;
 
-                // Heartbeat settings
-                this.heartbeatEnabled = config.metrics.heartbeat_enabled ?? false;
-                this.heartbeatIntervalHours = config.metrics.heartbeat_interval_hours ?? 24;
+            // Uptime Kuma settings
+            this.uptimeKumaEnabled = config.metrics.uptime_kuma_enabled ?? false;
+            this.uptimeKumaPushURL = config.metrics.uptime_kuma_push_url ?? '';
+            this.uptimeKumaIntervalSeconds = config.metrics.uptime_kuma_interval_seconds ?? 60;
 
-                // Uptime Kuma settings
-                this.uptimeKumaEnabled = config.metrics.uptime_kuma_enabled ?? false;
-                this.uptimeKumaPushURL = config.metrics.uptime_kuma_push_url ?? '';
-                this.uptimeKumaIntervalSeconds = config.metrics.uptime_kuma_interval_seconds ?? 60;
-
-                // Report settings
-                this.reportEnabled = config.metrics.report_enabled ?? false;
-                this.reportDailyEnabled = config.metrics.report_daily_enabled ?? false;
-                this.reportDailyTime = config.metrics.report_daily_time ?? '08:00';
-                this.reportWeeklyEnabled = config.metrics.report_weekly_enabled ?? false;
-                this.reportWeeklyDay = config.metrics.report_weekly_day ?? 1;
-                this.reportWeeklyTime = config.metrics.report_weekly_time ?? '08:00';
-                this.reportMonthlyEnabled = config.metrics.report_monthly_enabled ?? false;
-                this.reportMonthlyDay = config.metrics.report_monthly_day ?? 1;
-                this.reportMonthlyTime = config.metrics.report_monthly_time ?? '08:00';
-                this.reportPDFEnabled = config.metrics.report_pdf_enabled ?? false;
-                this.reportPDFPath = config.metrics.report_pdf_path ?? '/opt/scrutiny/reports';
-
-            });
+            // Report settings
+            this.reportEnabled = config.metrics.report_enabled ?? false;
+            this.reportDailyEnabled = config.metrics.report_daily_enabled ?? false;
+            this.reportDailyTime = config.metrics.report_daily_time ?? '08:00';
+            this.reportWeeklyEnabled = config.metrics.report_weekly_enabled ?? false;
+            this.reportWeeklyDay = config.metrics.report_weekly_day ?? 1;
+            this.reportWeeklyTime = config.metrics.report_weekly_time ?? '08:00';
+            this.reportMonthlyEnabled = config.metrics.report_monthly_enabled ?? false;
+            this.reportMonthlyDay = config.metrics.report_monthly_day ?? 1;
+            this.reportMonthlyTime = config.metrics.report_monthly_time ?? '08:00';
+            this.reportPDFEnabled = config.metrics.report_pdf_enabled ?? false;
+            this.reportPDFPath = config.metrics.report_pdf_path ?? '/opt/scrutiny/reports';
+        });
 
         // Load attribute overrides
         this.loadOverrides();
@@ -213,9 +252,10 @@ export class DashboardSettingsComponent implements OnInit {
     }
 
     loadOverrides(): void {
-        this._overrideService.getOverrides()
+        this._overrideService
+            .getOverrides()
             .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(overrides => {
+            .subscribe((overrides) => {
                 this.overrides = overrides;
             });
     }
@@ -230,7 +270,12 @@ export class DashboardSettingsComponent implements OnInit {
         if (this.newOverride.action === 'force_status' && !this.newOverride.status) {
             return;
         }
-        if (this.newOverride.action === '' && this.newOverride.warn_above != null && this.newOverride.fail_above != null && this.newOverride.warn_above >= this.newOverride.fail_above) {
+        if (
+            this.newOverride.action === '' &&
+            this.newOverride.warn_above != null &&
+            this.newOverride.fail_above != null &&
+            this.newOverride.warn_above >= this.newOverride.fail_above
+        ) {
             return;
         }
 
@@ -241,18 +286,19 @@ export class DashboardSettingsComponent implements OnInit {
             wwn: this.newOverride.wwn || '',
             status: this.newOverride.status as OverrideStatus,
             warn_above: this.newOverride.warn_above,
-            fail_above: this.newOverride.fail_above
+            fail_above: this.newOverride.fail_above,
         };
 
-        this._overrideService.saveOverride(override)
+        this._overrideService
+            .saveOverride(override)
             .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(saved => {
+            .subscribe((saved) => {
                 this.overrides = [...this.overrides, saved];
                 // Reset form
                 this.newOverride = {
                     protocol: 'ATA',
                     attribute_id: '',
-                    action: 'ignore'
+                    action: 'ignore',
                 };
             });
     }
@@ -262,24 +308,26 @@ export class DashboardSettingsComponent implements OnInit {
             return;
         }
 
-        this._overrideService.deleteOverride(override.id)
+        this._overrideService
+            .deleteOverride(override.id)
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe(() => {
-                this.overrides = this.overrides.filter(o => o.id !== override.id);
+                this.overrides = this.overrides.filter((o) => o.id !== override.id);
             });
     }
 
     getActionLabel(action: string): string {
-        const found = this.actions.find(a => a.value === action);
+        const found = this.actions.find((a) => a.value === action);
         return found ? found.label : 'Custom Threshold';
     }
 
     // Notification URL methods
 
     loadNotifyUrls(): void {
-        this._notifyUrlService.getNotifyUrls()
+        this._notifyUrlService
+            .getNotifyUrls()
             .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(urls => {
+            .subscribe((urls) => {
                 this.notifyUrls = urls;
             });
     }
@@ -288,10 +336,11 @@ export class DashboardSettingsComponent implements OnInit {
         if (!entry.id || entry.source !== 'ui') {
             return;
         }
-        this._notifyUrlService.deleteNotifyUrl(entry.id)
+        this._notifyUrlService
+            .deleteNotifyUrl(entry.id)
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe(() => {
-                this.notifyUrls = this.notifyUrls.filter(u => u.id !== entry.id);
+                this.notifyUrls = this.notifyUrls.filter((u) => u.id !== entry.id);
             });
     }
 
@@ -300,11 +349,16 @@ export class DashboardSettingsComponent implements OnInit {
             return;
         }
         this.testingUrlId = entry.id;
-        this._notifyUrlService.testNotifyUrl(entry.id)
+        this._notifyUrlService
+            .testNotifyUrl(entry.id)
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe({
-                next: () => { this.testingUrlId = null; },
-                error: () => { this.testingUrlId = null; }
+                next: () => {
+                    this.testingUrlId = null;
+                },
+                error: () => {
+                    this.testingUrlId = null;
+                },
             });
     }
 
@@ -322,17 +376,15 @@ export class DashboardSettingsComponent implements OnInit {
                 return `smtp://${auth}${this.smtpHost}:${this.smtpPort}/?from=${encodeURIComponent(this.smtpFrom)}&to=${encodeURIComponent(this.smtpTo)}`;
             }
             case 'discord': {
-                const match = this.discordWebhookUrl.match(/webhooks\/(\d+)\/([^\/\?]+)/);
+                const match = this.discordWebhookUrl.match(/webhooks\/(\d+)\/([^/?]+)/);
                 return match ? `discord://${match[2]}@${match[1]}` : '';
             }
             case 'slack': {
-                const match = this.slackWebhookUrl.match(/services\/([^\/]+)\/([^\/]+)\/([^\/\?]+)/);
+                const match = this.slackWebhookUrl.match(/services\/([^/]+)\/([^/]+)\/([^/?]+)/);
                 return match ? `slack://hook:${match[1]}/${match[2]}/${match[3]}` : '';
             }
             case 'telegram':
-                return (this.telegramToken && this.telegramChatId)
-                    ? `telegram://${this.telegramToken}@telegram?chats=${this.telegramChatId}`
-                    : '';
+                return this.telegramToken && this.telegramChatId ? `telegram://${this.telegramToken}@telegram?chats=${this.telegramChatId}` : '';
             default:
                 return '';
         }
@@ -345,9 +397,10 @@ export class DashboardSettingsComponent implements OnInit {
         }
         const label = this.newUrlLabel.trim();
 
-        this._notifyUrlService.addNotifyUrl(url, label)
+        this._notifyUrlService
+            .addNotifyUrl(url, label)
             .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(saved => {
+            .subscribe((saved) => {
                 this.notifyUrls = [...this.notifyUrls, saved];
                 this.showAddUrlForm = false;
                 this.resetAddForm();
@@ -381,7 +434,7 @@ export class DashboardSettingsComponent implements OnInit {
             line_stroke: this.lineStroke as LineStroke,
             theme: this.theme as Theme,
             collector: {
-                retrieve_sct_temperature_history: this.retrieveSCTTemperatureHistory
+                retrieve_sct_temperature_history: this.retrieveSCTTemperatureHistory,
             },
             metrics: {
                 notify_level: this.notifyLevel as MetricsNotifyLevel,
@@ -411,18 +464,18 @@ export class DashboardSettingsComponent implements OnInit {
                 report_monthly_day: this.reportMonthlyDay,
                 report_monthly_time: this.reportMonthlyTime,
                 report_pdf_enabled: this.reportPDFEnabled,
-                report_pdf_path: this.reportPDFPath
-            }
-        }
-        this._configService.config = newSettings
+                report_pdf_path: this.reportPDFPath,
+            },
+        };
+        this._configService.config = newSettings;
     }
 
     testUptimeKuma(): void {
         this.uptimeKumaTestLoading = true;
         this.uptimeKumaTestResult = null;
-        this._httpClient.post<{success: boolean; errors?: string[]}>(
-            getBasePath() + '/api/health/uptime-kuma-test', {}
-        ).pipe(takeUntil(this._unsubscribeAll))
+        this._httpClient
+            .post<{ success: boolean; errors?: string[] }>(getBasePath() + '/api/health/uptime-kuma-test', {})
+            .pipe(takeUntil(this._unsubscribeAll))
             .subscribe({
                 next: (resp) => {
                     this.uptimeKumaTestLoading = false;
@@ -431,7 +484,7 @@ export class DashboardSettingsComponent implements OnInit {
                 error: () => {
                     this.uptimeKumaTestLoading = false;
                     this.uptimeKumaTestResult = 'error';
-                }
+                },
             });
     }
 

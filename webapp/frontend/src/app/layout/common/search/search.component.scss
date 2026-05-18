@@ -1,4 +1,5 @@
-@import 'treo';
+@use "sass:map";
+@use 'treo';
 
 search {
     display: flex;
@@ -30,7 +31,7 @@ search {
                         border: none;
                         border-radius: 0 !important;
 
-                        @include treo-breakpoint('xs') {
+                        @include treo.treo-breakpoint('xs') {
                             padding: 0 56px 0 24px
                         }
                     }
@@ -47,7 +48,7 @@ search {
                 min-height: 40px;
                 height: 40px;
 
-                @include treo-breakpoint('xs') {
+                @include treo.treo-breakpoint('xs') {
                     right: 8px;
                 }
             }
@@ -106,12 +107,12 @@ search {
     &.search-results-appearance-bar {
         border-top-width: 1px;
         border-radius: 0 0 4px 4px;
-        @include treo-elevation('md', true);
+        @include treo.treo-elevation('md', true);
 
         .mat-option {
             padding: 0 40px;
 
-            @include treo-breakpoint('xs') {
+            @include treo.treo-breakpoint('xs') {
                 padding: 0 24px
             }
         }
@@ -121,12 +122,12 @@ search {
     &.search-results-appearance-basic {
         margin-top: 8px;
         border-radius: 4px;
-        @include treo-elevation('2xl', true);
+        @include treo.treo-elevation('2xl', true);
 
         .mat-option {
             padding: 0 32px;
 
-            @include treo-breakpoint('xs') {
+            @include treo.treo-breakpoint('xs') {
                 padding: 0 24px
             }
         }
@@ -165,7 +166,7 @@ search {
 
                         .mat-icon {
                             margin: 0;
-                            @include treo-icon-size(20);
+                            @include treo.treo-icon-size(20);
                         }
                     }
                 }
@@ -216,12 +217,12 @@ search {
 // -----------------------------------------------------------------------------------------------------
 // @ Theming
 // -----------------------------------------------------------------------------------------------------
-@include treo-theme {
+@include treo.treo-theme {
 
-    $background: map-get($theme, background);
-    $foreground: map-get($theme, foreground);
-    $primary: map-get($theme, primary);
-    $is-dark: map-get($theme, is-dark);
+    $background: map.get(treo.$theme, background);
+    $foreground: map.get(treo.$theme, foreground);
+    $primary: map.get(treo.$theme, primary);
+    $is-dark: map.get(treo.$theme, is-dark);
 
     search {
 
@@ -234,7 +235,7 @@ search {
         &.search-appearance-bar {
 
             .search-container {
-                background: map-get($background, card);
+                background: map.get($background, card);
 
                 .search-input {
 
@@ -254,31 +255,31 @@ search {
 
         &:before {
             border-color: transparent;
-            border-bottom-color: map-get($foreground, divider);
+            border-bottom-color: map.get($foreground, divider);
         }
 
         &:after {
             border-color: transparent;
-            border-bottom-color: map-get($background, card);
+            border-bottom-color: map.get($background, card);
         }
 
         .mat-option {
 
-            @include treo-breakpoint('xs') {
+            @include treo.treo-breakpoint('xs') {
                 background: transparent !important;
             }
 
-            @include treo-breakpoint('gt-xs') {
+            @include treo.treo-breakpoint('gt-xs') {
                 &:hover:not(.mat-option-disabled),
                 &:focus:not(.mat-option-disabled) {
-                    box-shadow: inset 4px 0 0 map-get($primary, default);
+                    box-shadow: inset 4px 0 0 map.get($primary, default);
                 }
             }
 
             &.no-results {
 
                 .mat-option-text {
-                    color: map-get($foreground, secondary-text);
+                    color: map.get($foreground, secondary-text);
                 }
             }
 
@@ -289,22 +290,22 @@ search {
                     &.contact-result {
 
                         .badge {
-                            background: treo-color('blue', 500);
-                            color: treo-contrast('blue', 500);
+                            background: treo.treo-color('blue', 500);
+                            color: treo.treo-contrast('blue', 500);
                         }
                     }
 
                     &.page-result {
 
                         .badge {
-                            background: treo-color('purple', 500);
-                            color: treo-contrast('purple', 500);
+                            background: treo.treo-color('purple', 500);
+                            color: treo.treo-contrast('purple', 500);
                         }
 
                         .title {
 
                             .link {
-                                color: map-get($foreground, secondary-text);
+                                color: map.get($foreground, secondary-text);
                             }
                         }
                     }
@@ -313,11 +314,11 @@ search {
                         @if ($is-dark) {
                             background: rgba(0, 0, 0, 0.05);
                         } @else {
-                            background: map-get($primary, 100);
+                            background: map.get($primary, 100);
                         }
 
                         .mat-icon {
-                            color: map-get($primary, default);
+                            color: map.get($primary, default);
                         }
                     }
 
@@ -325,7 +326,7 @@ search {
 
                         mark {
                             background: transparent;
-                            color: map-get($primary, default);
+                            color: map.get($primary, default);
                         }
                     }
                 }

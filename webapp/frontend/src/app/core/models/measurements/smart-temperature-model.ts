@@ -3,4 +3,3 @@ export interface SmartTemperatureModel {
     date: string;
     temp: number;
 }
-

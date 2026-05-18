@@ -7,7 +7,7 @@ export const mobileHomeRoutes: Route[] = [
         path: '',
         component: MobileHomeComponent,
         resolve: {
-            data: MobileHomeResolver
-        }
-    }
+            data: MobileHomeResolver,
+        },
+    },
 ];

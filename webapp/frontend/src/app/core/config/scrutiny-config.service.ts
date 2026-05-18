@@ -1,30 +1,30 @@
-import {Inject, Injectable} from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import {TREO_APP_CONFIG} from '@treo/services/config/config.constants';
-import {BehaviorSubject, Observable} from 'rxjs';
-import {getBasePath} from '../../app.routing';
-import {map, tap} from 'rxjs/operators';
-import {AppConfig} from './app.config';
-import {merge} from 'lodash';
+import { TREO_APP_CONFIG } from '@treo/services/config/config.constants';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { getBasePath } from '../../app.routing';
+import { map, tap } from 'rxjs/operators';
+import { AppConfig } from './app.config';
+import { merge } from 'lodash';
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
 export class ScrutinyConfigService {
+    private readonly _httpClient = inject(HttpClient);
+
     // Private
     private _config: BehaviorSubject<AppConfig>;
     private _defaultConfig: AppConfig;
     private _hasLoadedRemoteConfig = false;
 
-    constructor(
-        private readonly _httpClient: HttpClient,
-        @Inject(TREO_APP_CONFIG) defaultConfig: AppConfig
-    ) {
+    constructor() {
+        const defaultConfig = inject<AppConfig>(TREO_APP_CONFIG);
+
         // Set the private defaults
         this._defaultConfig = merge({}, defaultConfig);
         this._config = new BehaviorSubject(this._defaultConfig);
     }
-
 
     // -----------------------------------------------------------------------------------------------------
     // @ Accessors
@@ -40,16 +40,19 @@ export class ScrutinyConfigService {
         // Optimistic update: apply changes immediately for responsive UI
         this._config.next(mergedSettings);
 
-        this._httpClient.post(getBasePath() + '/api/settings', mergedSettings).pipe(
-            map((response: any) => {
-                const merged = this._mergeWithDefaults(this._defaultConfig, response.settings);
-                return { ...merged, server_version: response.server_version };
-            }),
-            tap((settings: AppConfig) => {
-                this._config.next(settings);
-                return settings
-            })
-        ).subscribe()
+        this._httpClient
+            .post(getBasePath() + '/api/settings', mergedSettings)
+            .pipe(
+                map((response: any) => {
+                    const merged = this._mergeWithDefaults(this._defaultConfig, response.settings);
+                    return { ...merged, server_version: response.server_version };
+                }),
+                tap((settings: AppConfig) => {
+                    this._config.next(settings);
+                    return settings;
+                })
+            )
+            .subscribe();
     }
 
     get config$(): Observable<AppConfig> {
@@ -57,19 +60,22 @@ export class ScrutinyConfigService {
             this._hasLoadedRemoteConfig = true;
 
             // Kick off the initial load as a side effect
-            this._httpClient.get(getBasePath() + '/api/settings').pipe(
-                map((response: any) => {
-                    const merged = this._mergeWithDefaults(this._defaultConfig, response.settings);
-                    return { 
-                        ...merged, 
-                        server_version: response.server_version,
-                        collector_trigger_enabled: response.collector_trigger_enabled
-                    };
-                }),
-                tap((settings: AppConfig) => {
-                    this._config.next(settings);
-                })
-            ).subscribe();
+            this._httpClient
+                .get(getBasePath() + '/api/settings')
+                .pipe(
+                    map((response: any) => {
+                        const merged = this._mergeWithDefaults(this._defaultConfig, response.settings);
+                        return {
+                            ...merged,
+                            server_version: response.server_version,
+                            collector_trigger_enabled: response.collector_trigger_enabled,
+                        };
+                    }),
+                    tap((settings: AppConfig) => {
+                        this._config.next(settings);
+                    })
+                )
+                .subscribe();
         }
 
         // Always return the BehaviorSubject so subscribers stay alive for future updates
@@ -85,7 +91,7 @@ export class ScrutinyConfigService {
      */
     reset(): void {
         // Set the config
-        this.config = this._defaultConfig
+        this.config = this._defaultConfig;
     }
 
     // -----------------------------------------------------------------------------------------------------
@@ -112,8 +118,7 @@ export class ScrutinyConfigService {
             const defVal = result[key];
 
             // Recurse into nested objects (but not arrays)
-            if (defVal && typeof defVal === 'object' && !Array.isArray(defVal)
-                && apiVal && typeof apiVal === 'object' && !Array.isArray(apiVal)) {
+            if (defVal && typeof defVal === 'object' && !Array.isArray(defVal) && apiVal && typeof apiVal === 'object' && !Array.isArray(apiVal)) {
                 result[key] = this._mergeWithDefaults(defVal, apiVal);
             } else if (apiVal === '' || apiVal === null || apiVal === undefined) {
                 // Keep the default — API value is empty/missing

@@ -1,19 +1,24 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { TreoVerticalNavigationComponent } from '@treo/components/navigation/vertical/vertical.component';
 import { TreoNavigationService } from '@treo/components/navigation/navigation.service';
 import { TreoNavigationItem } from '@treo/components/navigation/navigation.types';
+import { NgClass, NgTemplateOutlet, NgStyle } from '@angular/common';
+import { RouterLink, RouterLinkActive } from '@angular/router';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
     selector: 'treo-vertical-navigation-basic-item',
     templateUrl: './basic.component.html',
     styles: [],
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false
+    imports: [NgClass, RouterLink, RouterLinkActive, NgTemplateOutlet, MatIcon, NgStyle],
 })
-export class TreoVerticalNavigationBasicItemComponent implements OnInit, OnDestroy
-{
+export class TreoVerticalNavigationBasicItemComponent implements OnInit, OnDestroy {
+    private readonly _treoNavigationService = inject(TreoNavigationService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+
     // Item
     @Input()
     item: TreoNavigationItem;
@@ -32,11 +37,7 @@ export class TreoVerticalNavigationBasicItemComponent implements OnInit, OnDestr
      * @param {TreoNavigationService} _treoNavigationService
      * @param {ChangeDetectorRef} _changeDetectorRef
      */
-    constructor(
-        private readonly _treoNavigationService: TreoNavigationService,
-        private readonly _changeDetectorRef: ChangeDetectorRef
-    )
-    {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
     }
@@ -48,16 +49,12 @@ export class TreoVerticalNavigationBasicItemComponent implements OnInit, OnDestr
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Get the parent navigation component
         this._treoVerticalNavigationComponent = this._treoNavigationService.getComponent(this.name);
 
         // Subscribe to onRefreshed on the navigation component
-        this._treoVerticalNavigationComponent.onRefreshed.pipe(
-            takeUntil(this._unsubscribeAll)
-        ).subscribe(() => {
-
+        this._treoVerticalNavigationComponent.onRefreshed.pipe(takeUntil(this._unsubscribeAll)).subscribe(() => {
             // Mark for check
             this._changeDetectorRef.markForCheck();
         });
@@ -66,8 +63,7 @@ export class TreoVerticalNavigationBasicItemComponent implements OnInit, OnDestr
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();

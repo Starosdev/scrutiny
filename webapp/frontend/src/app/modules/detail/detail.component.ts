@@ -1,38 +1,66 @@
 import humanizeDuration from 'humanize-duration';
-import {AfterViewInit, Component, Inject, LOCALE_ID, OnDestroy, OnInit, ViewChild} from '@angular/core';
-import {Location, formatDate} from '@angular/common';
-import {ApexOptions} from 'ng-apexcharts';
-import {AppConfig} from 'app/core/config/app.config';
-import {DetailService} from './detail.service';
-import {DetailSettingsComponent} from 'app/layout/common/detail-settings/detail-settings.component';
-import {AttributeHistoryDialogComponent, AttributeHistoryData} from 'app/layout/common/attribute-history-dialog/attribute-history-dialog.component';
-import {MatDialog as MatDialog} from '@angular/material/dialog';
-import {MatSort} from '@angular/material/sort';
-import {MatTableDataSource as MatTableDataSource} from '@angular/material/table';
-import {Subject} from 'rxjs';
-import {ScrutinyConfigService} from 'app/core/config/scrutiny-config.service';
-import {animate, state, style, transition, trigger} from '@angular/animations';
-import {TreoMediaWatcherService} from '@treo/services/media-watcher';
-import {takeUntil} from 'rxjs/operators';
-import {DeviceModel} from 'app/core/models/device-model';
-import {SmartModel} from 'app/core/models/measurements/smart-model';
-import {SmartAttributeModel} from 'app/core/models/measurements/smart-attribute-model';
-import {AttributeMetadataModel} from 'app/core/models/thresholds/attribute-metadata-model';
-import {DeviceStatusPipe} from 'app/shared/device-status.pipe';
-import {PerformanceModel, PerformanceBaselineModel, PerformanceResponseWrapper} from 'app/core/models/measurements/performance-model';
-import {ReplacementRiskModel, RiskCategory} from 'app/core/models/replacement-risk-model';
-import {LatencyPipe} from 'app/shared/latency.pipe';
-import {FileSizePipe} from 'app/shared/file-size.pipe';
-import {AttributeOverrideService} from 'app/core/config/attribute-override.service';
-import {AttributeOverride, OverrideProtocol} from 'app/core/config/app.config';
-import {angularLongDateTime, apexShortDateTime} from 'app/shared/time-format.utils';
+import { AfterViewInit, Component, LOCALE_ID, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
+import { Location, formatDate, NgClass, UpperCasePipe, DecimalPipe, PercentPipe } from '@angular/common';
+import { ApexOptions, ChartComponent } from 'ng-apexcharts';
+import { AppConfig } from 'app/core/config/app.config';
+import { DetailService } from './detail.service';
+import { DetailSettingsComponent } from 'app/layout/common/detail-settings/detail-settings.component';
+import { AttributeHistoryDialogComponent, AttributeHistoryData } from 'app/layout/common/attribute-history-dialog/attribute-history-dialog.component';
+import { MatDialog as MatDialog } from '@angular/material/dialog';
+import { MatSort, MatSortHeader } from '@angular/material/sort';
+import {
+    MatTableDataSource as MatTableDataSource,
+    MatTable,
+    MatColumnDef,
+    MatHeaderCellDef,
+    MatHeaderCell,
+    MatCellDef,
+    MatCell,
+    MatFooterCellDef,
+    MatFooterCell,
+    MatHeaderRowDef,
+    MatHeaderRow,
+    MatRowDef,
+    MatRow,
+    MatFooterRowDef,
+    MatFooterRow,
+} from '@angular/material/table';
+import { Subject } from 'rxjs';
+import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
+import { animate, state, style, transition, trigger } from '@angular/animations';
+import { TreoMediaWatcherService } from '@treo/services/media-watcher';
+import { takeUntil } from 'rxjs/operators';
+import { DeviceModel } from 'app/core/models/device-model';
+import { SmartModel } from 'app/core/models/measurements/smart-model';
+import { SmartAttributeModel } from 'app/core/models/measurements/smart-attribute-model';
+import { AttributeMetadataModel } from 'app/core/models/thresholds/attribute-metadata-model';
+import { DeviceStatusPipe } from 'app/shared/device-status.pipe';
+import { PerformanceModel, PerformanceBaselineModel, PerformanceResponseWrapper } from 'app/core/models/measurements/performance-model';
+import { ReplacementRiskModel, RiskCategory } from 'app/core/models/replacement-risk-model';
+import { LatencyPipe } from 'app/shared/latency.pipe';
+import { FileSizePipe } from 'app/shared/file-size.pipe';
+import { AttributeOverrideService } from 'app/core/config/attribute-override.service';
+import { AttributeOverride, OverrideProtocol } from 'app/core/config/app.config';
+import { angularLongDateTime, apexShortDateTime } from 'app/shared/time-format.utils';
+import { MatIconButton, MatButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatMenuTrigger, MatMenu, MatMenuItem } from '@angular/material/menu';
+import { TreoCardComponent } from '../../../@treo/components/card/card.component';
+import { MatButtonToggleGroup, MatButtonToggle } from '@angular/material/button-toggle';
+import { MatProgressBar } from '@angular/material/progress-bar';
+import { FileSizePipe as FileSizePipe_1 } from '../../shared/file-size.pipe';
+import { DeviceTitlePipe } from '../../shared/device-title.pipe';
+import { DeviceStatusPipe as DeviceStatusPipe_1 } from '../../shared/device-status.pipe';
+import { TemperaturePipe } from '../../shared/temperature.pipe';
+import { DeviceHoursPipe } from '../../shared/device-hours.pipe';
+import { LatencyPipe as LatencyPipe_1 } from '../../shared/latency.pipe';
 
 // from Constants.go - these must match
-const AttributeStatusPassed = 0
-const AttributeStatusFailedSmart = 1
-const AttributeStatusWarningScrutiny = 2
-const AttributeStatusFailedScrutiny = 4
-
+const AttributeStatusPassed = 0;
+const AttributeStatusFailedSmart = 1;
+const AttributeStatusWarningScrutiny = 2;
+const AttributeStatusFailedScrutiny = 4;
 
 @Component({
     selector: 'detail',
@@ -45,10 +73,55 @@ const AttributeStatusFailedScrutiny = 4
             transition('expanded <=> collapsed', animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)')),
         ]),
     ],
-    standalone: false
+    imports: [
+        MatIconButton,
+        MatIcon,
+        MatTooltip,
+        MatButton,
+        MatMenuTrigger,
+        MatMenu,
+        MatMenuItem,
+        TreoCardComponent,
+        NgClass,
+        MatButtonToggleGroup,
+        MatButtonToggle,
+        ChartComponent,
+        MatTable,
+        MatSort,
+        MatColumnDef,
+        MatHeaderCellDef,
+        MatHeaderCell,
+        MatSortHeader,
+        MatCellDef,
+        MatCell,
+        MatFooterCellDef,
+        MatFooterCell,
+        MatHeaderRowDef,
+        MatHeaderRow,
+        MatRowDef,
+        MatRow,
+        MatFooterRowDef,
+        MatFooterRow,
+        MatProgressBar,
+        UpperCasePipe,
+        DecimalPipe,
+        PercentPipe,
+        FileSizePipe_1,
+        DeviceTitlePipe,
+        DeviceStatusPipe_1,
+        TemperaturePipe,
+        DeviceHoursPipe,
+        LatencyPipe_1,
+    ],
 })
-
 export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
+    private readonly _detailService = inject(DetailService);
+    dialog = inject(MatDialog);
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly _overrideService = inject(AttributeOverrideService);
+    private readonly _location = inject(Location);
+    private readonly _mediaWatcherService = inject(TreoMediaWatcherService);
+    locale = inject(LOCALE_ID);
 
     /**
      * Constructor
@@ -60,15 +133,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     isMobile: boolean = false;
 
-    constructor(
-        private readonly _detailService: DetailService,
-        public dialog: MatDialog,
-        private readonly _configService: ScrutinyConfigService,
-        private readonly _overrideService: AttributeOverrideService,
-        private readonly _location: Location,
-        private readonly _mediaWatcherService: TreoMediaWatcherService,
-        @Inject(LOCALE_ID) public locale: string
-    ) {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 
@@ -78,7 +143,6 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         this.smartAttributeTableColumns = ['status', 'id', 'name', 'value', 'worst', 'thresh', 'ideal', 'failure', 'history'];
 
         this.systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-
     }
 
     config: AppConfig;
@@ -101,7 +165,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     smartAttributeDataSource: MatTableDataSource<SmartAttributeModel>;
     smartAttributeTableColumns: string[];
 
-    @ViewChild('smartAttributeTable', {read: MatSort})
+    @ViewChild('smartAttributeTable', { read: MatSort })
     smartAttributeTableMatSort: MatSort;
 
     // Replacement risk
@@ -128,7 +192,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     readonly humanizeDuration = humanizeDuration;
 
-    deviceStatusForModelWithThreshold = DeviceStatusPipe.deviceStatusForModelWithThreshold
+    deviceStatusForModelWithThreshold = DeviceStatusPipe.deviceStatusForModelWithThreshold;
     // -----------------------------------------------------------------------------------------------------
     // @ Lifecycle hooks
     // -----------------------------------------------------------------------------------------------------
@@ -138,54 +202,47 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     ngOnInit(): void {
         // Detect mobile breakpoint
-        this._mediaWatcherService.onMediaChange$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(({matchingAliases}) => {
-                this.isMobile = matchingAliases.includes('lt-md');
-            });
+        this._mediaWatcherService.onMediaChange$.pipe(takeUntil(this._unsubscribeAll)).subscribe(({ matchingAliases }) => {
+            this.isMobile = matchingAliases.includes('lt-md');
+        });
 
         // Subscribe to config changes
-        this._configService.config$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((config: AppConfig) => {
-
-                this.config = config;
-            });
+        this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {
+            this.config = config;
+        });
 
         // Load attribute overrides
-        this._overrideService.getOverrides()
+        this._overrideService
+            .getOverrides()
             .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(overrides => {
+            .subscribe((overrides) => {
                 this.activeOverrides = overrides;
                 this._buildOverrideMap();
             });
 
         // Get the data
-        this._detailService.data$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((respWrapper) => {
+        this._detailService.data$.pipe(takeUntil(this._unsubscribeAll)).subscribe((respWrapper) => {
+            // Store the data
+            // this.data = data;
+            this.device = respWrapper.data.device;
+            this.smart_results = respWrapper.data.smart_results;
+            this.metadata = respWrapper.metadata;
 
-                // Store the data
-                // this.data = data;
-                this.device = respWrapper.data.device;
-                this.smart_results = respWrapper.data.smart_results
-                this.metadata = respWrapper.metadata;
+            // Initialize display mode from device preference (default to 'scrutiny')
+            this.displayMode = (this.device.smart_display_mode as 'scrutiny' | 'raw' | 'normalized') || 'scrutiny';
 
-                // Initialize display mode from device preference (default to 'scrutiny')
-                this.displayMode = (this.device.smart_display_mode as 'scrutiny' | 'raw' | 'normalized') || 'scrutiny';
+            // Store the table data
+            this.smartAttributeDataSource.data = this._generateSmartAttributeTableDataSource(this.smart_results);
 
-                // Store the table data
-                this.smartAttributeDataSource.data = this._generateSmartAttributeTableDataSource(this.smart_results);
+            // Prepare the chart data
+            this._prepareChartData();
 
-                // Prepare the chart data
-                this._prepareChartData();
+            // Load performance data (lazy, non-blocking)
+            this._loadPerformanceData(this.device.device_id, this.perfDurationKey);
 
-                // Load performance data (lazy, non-blocking)
-                this._loadPerformanceData(this.device.device_id, this.perfDurationKey);
-
-                // Load replacement risk (lazy, non-blocking)
-                this._loadReplacementRisk(this.device.device_id);
-            });
+            // Load replacement risk (lazy, non-blocking)
+            this._loadReplacementRisk(this.device.device_id);
+        });
     }
 
     /**
@@ -194,13 +251,20 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     ngAfterViewInit(): void {
         this.smartAttributeDataSource.sortingDataAccessor = (data, sortHeaderId) => {
             switch (sortHeaderId) {
-                case 'id': return data.attribute_id;
-                case 'name': return this.getAttributeName(data);
-                case 'failure': return data.failure_rate ?? 0;
-                case 'worst': return this.getAttributeWorst(data) || 0;
-                case 'thresh': return this.getAttributeThreshold(data) || 0;
-                case 'ideal': return this.getAttributeIdeal(data);
-                default: return data[sortHeaderId];
+                case 'id':
+                    return data.attribute_id;
+                case 'name':
+                    return this.getAttributeName(data);
+                case 'failure':
+                    return data.failure_rate ?? 0;
+                case 'worst':
+                    return this.getAttributeWorst(data) || 0;
+                case 'thresh':
+                    return this.getAttributeThreshold(data) || 0;
+                case 'ideal':
+                    return this.getAttributeIdeal(data);
+                default:
+                    return data[sortHeaderId];
             }
         };
 
@@ -225,25 +289,24 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         // tslint:disable:no-bitwise
 
         if (attributeStatus === AttributeStatusPassed) {
-            return 'passed'
-
+            return 'passed';
         } else if ((attributeStatus & AttributeStatusFailedScrutiny) !== 0 || (attributeStatus & AttributeStatusFailedSmart) !== 0) {
-            return 'failed'
+            return 'failed';
         } else if ((attributeStatus & AttributeStatusWarningScrutiny) !== 0) {
-            return 'warn'
+            return 'warn';
         }
-        return ''
+        return '';
         // tslint:enable:no-bitwise
     }
 
     getAttributeScrutinyStatusName(attributeStatus: number): string {
         // tslint:disable:no-bitwise
         if ((attributeStatus & AttributeStatusFailedScrutiny) !== 0) {
-            return 'failed'
+            return 'failed';
         } else if ((attributeStatus & AttributeStatusWarningScrutiny) !== 0) {
-            return 'warn'
+            return 'warn';
         } else {
-            return 'passed'
+            return 'passed';
         }
         // tslint:enable:no-bitwise
     }
@@ -251,122 +314,121 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     getAttributeSmartStatusName(attributeStatus: number): string {
         // tslint:disable:no-bitwise
         if ((attributeStatus & AttributeStatusFailedSmart) !== 0) {
-            return 'failed'
+            return 'failed';
         } else {
-            return 'passed'
+            return 'passed';
         }
         // tslint:enable:no-bitwise
     }
 
-
     getAttributeName(attributeData: SmartAttributeModel): string {
-        const attributeMetadata = this.metadata[attributeData.attribute_id]
+        const attributeMetadata = this.metadata[attributeData.attribute_id];
         if (!attributeMetadata) {
-            return 'Unknown Attribute Name'
+            return 'Unknown Attribute Name';
         } else {
-            return attributeMetadata.display_name
+            return attributeMetadata.display_name;
         }
     }
 
     getAttributeDescription(attributeData: SmartAttributeModel): string {
-        const attributeMetadata = this.metadata[attributeData.attribute_id]
+        const attributeMetadata = this.metadata[attributeData.attribute_id];
         if (!attributeMetadata) {
-            return 'Unknown'
+            return 'Unknown';
         } else {
-            return attributeMetadata.description
+            return attributeMetadata.description;
         }
     }
 
     getAttributeValue(attributeData: SmartAttributeModel): number {
         // For non-ATA devices, always return value (no raw/normalized distinction)
         if (!this.isAta()) {
-            return attributeData.value
+            return attributeData.value;
         }
 
-        const attributeMetadata = this.metadata[attributeData.attribute_id]
+        const attributeMetadata = this.metadata[attributeData.attribute_id];
 
         // EXCEPTION: Transformed attributes (like temperature) always use transformed value
         // because raw value is packed bytes that aren't human-readable
         if (attributeMetadata?.display_type === 'transformed' && attributeData.transformed_value) {
-            return attributeData.transformed_value
+            return attributeData.transformed_value;
         }
 
         // Apply display mode preference
         switch (this.displayMode) {
             case 'raw':
                 // Device statistics (devstat_*) don't have raw_value, use value instead
-                return attributeData.raw_value ?? attributeData.value
+                return attributeData.raw_value ?? attributeData.value;
             case 'normalized':
-                return attributeData.value
+                return attributeData.value;
             case 'scrutiny':
             default:
                 // Current behavior - use metadata display_type
                 if (attributeMetadata?.display_type === 'raw') {
-                    return attributeData.raw_value ?? attributeData.value
+                    return attributeData.raw_value ?? attributeData.value;
                 }
-                return attributeData.value
+                return attributeData.value;
         }
     }
 
     getAttributeValueType(attributeData: SmartAttributeModel): string {
         if (this.isAta()) {
-            const attributeMetadata = this.metadata[attributeData.attribute_id]
+            const attributeMetadata = this.metadata[attributeData.attribute_id];
             if (!attributeMetadata) {
-                return ''
+                return '';
             } else {
-                return attributeMetadata.display_type
+                return attributeMetadata.display_type;
             }
         } else {
-            return ''
+            return '';
         }
     }
 
     getAttributeIdeal(attributeData: SmartAttributeModel): string {
         if (this.isAta()) {
-            return this.metadata[attributeData.attribute_id]?.display_type === 'raw' ? this.metadata[attributeData.attribute_id]?.ideal : ''
+            return this.metadata[attributeData.attribute_id]?.display_type === 'raw' ? this.metadata[attributeData.attribute_id]?.ideal : '';
         } else {
-            return this.metadata[attributeData.attribute_id]?.ideal
+            return this.metadata[attributeData.attribute_id]?.ideal;
         }
     }
 
     getAttributeWorst(attributeData: SmartAttributeModel): number | string {
-        const attributeMetadata = this.metadata[attributeData.attribute_id]
+        const attributeMetadata = this.metadata[attributeData.attribute_id];
         if (!attributeMetadata) {
-            return attributeData.worst
+            return attributeData.worst;
         } else {
-            return attributeMetadata?.display_type === 'normalized' ? attributeData.worst : ''
+            return attributeMetadata?.display_type === 'normalized' ? attributeData.worst : '';
         }
     }
 
     getAttributeThreshold(attributeData: SmartAttributeModel): number | string {
         if (this.isAta()) {
-            const attributeMetadata = this.metadata[attributeData.attribute_id]
+            const attributeMetadata = this.metadata[attributeData.attribute_id];
             if (!attributeMetadata || attributeMetadata.display_type === 'normalized') {
-                return attributeData.thresh
+                return attributeData.thresh;
             } else {
-                return ''
+                return '';
             }
         } else {
-            return (attributeData.thresh === -1 ? '' : attributeData.thresh)
+            return attributeData.thresh === -1 ? '' : attributeData.thresh;
         }
     }
 
     getAttributeCritical(attributeData: SmartAttributeModel): boolean {
-        return this.metadata[attributeData.attribute_id]?.critical
+        return this.metadata[attributeData.attribute_id]?.critical;
     }
 
     getHiddenAttributes(): number {
         if (!this.smart_results || this.smart_results.length === 0) {
-            return 0
+            return 0;
         }
 
-        let attributesLength = 0
-        const attributes = this.smart_results[0]?.attrs
+        let attributesLength = 0;
+        const attributes = this.smart_results[0]?.attrs;
         if (attributes) {
-            attributesLength = Object.keys(attributes).length
+            attributesLength = Object.keys(attributes).length;
         }
 
-        return attributesLength - this.smartAttributeDataSource.data.length
+        return attributesLength - this.smartAttributeDataSource.data.length;
     }
 
     getSSDWearoutValue(): number | null {
@@ -408,16 +470,36 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         return null;
     }
 
+    updateMaxTBW(): void {
+        const currentValue = this.device?.max_tbw != null ? String(this.device.max_tbw) : '';
+        const input = window.prompt('Enter rated TBW for this drive', currentValue);
+        if (input == null) {
+            return;
+        }
+
+        const parsed = Number(input.trim());
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+            return;
+        }
+
+        this._detailService
+            .setMaxTBW(this.device.device_id, parsed)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(() => {
+                this.device.max_tbw = parsed;
+            });
+    }
+
     isAta(): boolean {
-        return this.device?.device_protocol === 'ATA'
+        return this.device?.device_protocol === 'ATA';
     }
 
     isScsi(): boolean {
-        return this.device?.device_protocol === 'SCSI'
+        return this.device?.device_protocol === 'SCSI';
     }
 
     isNvme(): boolean {
-        return this.device?.device_protocol === 'NVMe'
+        return this.device?.device_protocol === 'NVMe';
     }
 
     /**
@@ -463,19 +545,19 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         const smartAttributeDataSource: SmartAttributeModel[] = [];
 
         if (smartResults.length === 0) {
-            return smartAttributeDataSource
+            return smartAttributeDataSource;
         }
         const latestSmartResult = smartResults[0];
-        let attributes: { [p: string]: SmartAttributeModel } = {}
+        let attributes: { [p: string]: SmartAttributeModel } = {};
         if (this.isScsi()) {
             this.smartAttributeTableColumns = ['status', 'name', 'value', 'thresh', 'history', 'actions'];
-            attributes = latestSmartResult.attrs
+            attributes = latestSmartResult.attrs;
         } else if (this.isNvme()) {
             this.smartAttributeTableColumns = ['status', 'name', 'value', 'thresh', 'ideal', 'history', 'actions'];
-            attributes = latestSmartResult.attrs
+            attributes = latestSmartResult.attrs;
         } else {
             // ATA
-            attributes = latestSmartResult.attrs
+            attributes = latestSmartResult.attrs;
             // Only show 'worst' column in scrutiny or normalized mode (worst is meaningless for raw values)
             if (this.displayMode === 'raw') {
                 this.smartAttributeTableColumns = ['status', 'id', 'name', 'value', 'thresh', 'ideal', 'failure', 'history', 'actions'];
@@ -485,29 +567,27 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         for (const attrId in attributes) {
-            const attr = attributes[attrId]
+            const attr = attributes[attrId];
 
             // chart history data
             if (!attr.chartData) {
-
-
-                const attrHistory = []
+                const attrHistory = [];
                 for (const smartResult of smartResults) {
                     // attrHistory.push(this.getAttributeValue(smart_result.attrs[attrId]))
 
                     const chartDatapoint = {
                         x: formatDate(smartResult.date, angularLongDateTime(this.config.time_format), this.locale),
-                        y: this.getAttributeValue(smartResult.attrs[attrId])
-                    }
-                    const attributeStatusName = this.getAttributeStatusName(smartResult.attrs[attrId].status)
+                        y: this.getAttributeValue(smartResult.attrs[attrId]),
+                    };
+                    const attributeStatusName = this.getAttributeStatusName(smartResult.attrs[attrId].status);
                     if (attributeStatusName === 'failed') {
-                        chartDatapoint['strokeColor'] = '#F05252'
-                        chartDatapoint['fillColor'] = '#F05252'
+                        chartDatapoint['strokeColor'] = '#F05252';
+                        chartDatapoint['fillColor'] = '#F05252';
                     } else if (attributeStatusName === 'warn') {
-                        chartDatapoint['strokeColor'] = '#C27803'
-                        chartDatapoint['fillColor'] = '#C27803'
+                        chartDatapoint['strokeColor'] = '#C27803';
+                        chartDatapoint['fillColor'] = '#C27803';
                     }
-                    attrHistory.push(chartDatapoint)
+                    attrHistory.push(chartDatapoint);
                 }
 
                 attributes[attrId].chartData = [
@@ -515,17 +595,17 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                         name: 'chart-line-sparkline',
                         // attrHistory needs to be reversed, so the newest data is on the right
                         // fixes #339
-                        data: attrHistory.reverse()
-                    }
-                ]
+                        data: attrHistory.reverse(),
+                    },
+                ];
             }
             // determine when to include the attributes in table.
 
-            if (!this.onlyCritical || this.onlyCritical && this.metadata[attr.attribute_id]?.critical || attr.value < attr.thresh) {
-                smartAttributeDataSource.push(attr)
+            if (!this.onlyCritical || (this.onlyCritical && this.metadata[attr.attribute_id]?.critical) || attr.value < attr.thresh) {
+                smartAttributeDataSource.push(attr);
             }
         }
-        return smartAttributeDataSource
+        return smartAttributeDataSource;
     }
 
     /**
@@ -534,7 +614,6 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
      * @private
      */
     private _prepareChartData(): void {
-
         // Account balance
         this.commonSparklineOptions = {
             chart: {
@@ -542,27 +621,27 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                 width: 100,
                 height: 25,
                 sparkline: {
-                    enabled: true
+                    enabled: true,
                 },
                 animations: {
-                    enabled: false
-                }
+                    enabled: false,
+                },
             },
             tooltip: {
-                enabled: false
+                enabled: false,
             },
             stroke: {
                 width: 2,
-                colors: ['#667EEA']
-            }
+                colors: ['#667EEA'],
+            },
         };
     }
 
     private determineTheme(config: AppConfig): string {
         if (config.theme === 'system') {
-            return this.systemPrefersDark ? 'dark' : 'light'
+            return this.systemPrefersDark ? 'dark' : 'light';
         } else {
-            return config.theme
+            return config.theme;
         }
     }
 
@@ -577,7 +656,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         if (isNaN(num)) {
             return '';
         }
-        return '0x' + num.toString(16).padStart(2, '0').toUpperCase()
+        return '0x' + num.toString(16).padStart(2, '0').toUpperCase();
     }
 
     formatAttributeId(attributeId: number | string): string {
@@ -591,7 +670,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     toggleOnlyCritical(): void {
-        this.onlyCritical = !this.onlyCritical
+        this.onlyCritical = !this.onlyCritical;
         this.smartAttributeDataSource.data = this._generateSmartAttributeTableDataSource(this.smart_results);
     }
 
@@ -603,9 +682,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         const protocol = this.device?.device_protocol;
         const attrIdStr = String(attrId);
         // Prefer device-specific override, fall back to global
-        return this._overrideMap.get(`${protocol}:${attrIdStr}:${this.device?.wwn}`)
-            || this._overrideMap.get(`${protocol}:${attrIdStr}:`)
-            || null;
+        return this._overrideMap.get(`${protocol}:${attrIdStr}:${this.device?.wwn}`) || this._overrideMap.get(`${protocol}:${attrIdStr}:`) || null;
     }
 
     private _buildOverrideMap(): void {
@@ -622,13 +699,14 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             protocol: this.device.device_protocol as OverrideProtocol,
             attribute_id: String(attr.attribute_id),
             wwn: this.device.wwn,
-            action: 'ignore'
+            action: 'ignore',
         };
-        this._overrideService.saveOverride(override)
+        this._overrideService
+            .saveOverride(override)
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe({
                 next: () => this._refreshAfterOverrideChange(),
-                error: (err) => console.error('Failed to save override:', err)
+                error: (err) => console.error('Failed to save override:', err),
             });
     }
 
@@ -638,49 +716,49 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             attribute_id: String(attr.attribute_id),
             wwn: this.device.wwn,
             action: 'force_status',
-            status: 'passed'
+            status: 'passed',
         };
-        this._overrideService.saveOverride(override)
+        this._overrideService
+            .saveOverride(override)
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe({
                 next: () => this._refreshAfterOverrideChange(),
-                error: (err) => console.error('Failed to save override:', err)
+                error: (err) => console.error('Failed to save override:', err),
             });
     }
 
     removeOverride(attr: SmartAttributeModel): void {
         const override = this.getOverrideForAttribute(attr.attribute_id);
         if (override?.id) {
-            this._overrideService.deleteOverride(override.id)
+            this._overrideService
+                .deleteOverride(override.id)
                 .pipe(takeUntil(this._unsubscribeAll))
                 .subscribe({
                     next: () => this._refreshAfterOverrideChange(),
-                    error: (err) => console.error('Failed to remove override:', err)
+                    error: (err) => console.error('Failed to remove override:', err),
                 });
         }
     }
 
     private _refreshAfterOverrideChange(): void {
-        this._overrideService.getOverrides()
+        this._overrideService
+            .getOverrides()
             .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(overrides => {
+            .subscribe((overrides) => {
                 this.activeOverrides = overrides;
                 this._buildOverrideMap();
             });
-        this._detailService.getData(this.device.device_id)
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe();
+        this._detailService.getData(this.device.device_id).pipe(takeUntil(this._unsubscribeAll)).subscribe();
     }
 
     resetDeviceStatus(): void {
         if (!this.device) return;
 
-        this._detailService.resetStatus(this.device.device_id)
+        this._detailService
+            .resetStatus(this.device.device_id)
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe(() => {
-                this._detailService.getData(this.device.device_id)
-                    .pipe(takeUntil(this._unsubscribeAll))
-                    .subscribe();
+                this._detailService.getData(this.device.device_id).pipe(takeUntil(this._unsubscribeAll)).subscribe();
             });
     }
 
@@ -696,28 +774,33 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     riskCategoryClass(category: RiskCategory): Record<string, boolean> {
         return {
-            'green-200':  category === 'healthy',
+            'green-200': category === 'healthy',
             'yellow-200': category === 'monitor',
             'orange-200': category === 'plan_replacement',
-            'red-200':    category === 'replace_soon',
+            'red-200': category === 'replace_soon',
         };
     }
 
     riskDotClass(category: RiskCategory): Record<string, boolean> {
         return {
-            'bg-green':  category === 'healthy',
+            'bg-green': category === 'healthy',
             'bg-yellow': category === 'monitor',
             'bg-orange': category === 'plan_replacement',
-            'bg-red':    category === 'replace_soon',
+            'bg-red': category === 'replace_soon',
         };
     }
 
     private _loadReplacementRisk(deviceId: string): void {
-        this._detailService.getReplacementRisk(deviceId)
+        this._detailService
+            .getReplacementRisk(deviceId)
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe({
-                next: (resp) => { this.replacementRisk = resp?.data ?? null; },
-                error: () => { this.replacementRisk = null; },
+                next: (resp) => {
+                    this.replacementRisk = resp?.data ?? null;
+                },
+                error: () => {
+                    this.replacementRisk = null;
+                },
             });
     }
 
@@ -736,11 +819,11 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                 curMuted: this.device.muted,
                 curLabel: this.device.label,
                 curMissedPingTimeoutOverride: this.device.missed_ping_timeout_override || 0,
-                globalMissedPingTimeout: globalMissedPingTimeout
+                globalMissedPingTimeout: globalMissedPingTimeout,
             },
         });
 
-        dialogRef.afterClosed().subscribe((result: undefined | null | { muted: boolean, label: string, missedPingTimeoutOverride: number }) => {
+        dialogRef.afterClosed().subscribe((result: undefined | null | { muted: boolean; label: string; missedPingTimeoutOverride: number }) => {
             if (!result || !this.device) return;
 
             const promises: Promise<any>[] = [];
@@ -770,9 +853,9 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
      * Track by function for ngFor loops
      *
      * @param index
-     * @param item
+     * @param _item
      */
-    trackByFn(index: number, item: any): any {
+    trackByFn(index: number, _item: any): any {
         return index;
         // return item.id || index;
     }
@@ -930,11 +1013,11 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         const dialogData: AttributeHistoryData = {
             attributeName: this.getAttributeName(attribute),
             chartData: attribute.chartData,
-            isDark: this.determineTheme(this.config) === 'dark'
+            isDark: this.determineTheme(this.config) === 'dark',
         };
         this.dialog.open(AttributeHistoryDialogComponent, {
             width: '600px',
-            data: dialogData
+            data: dialogData,
         });
     }
 
@@ -944,7 +1027,8 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     private _loadPerformanceData(wwn: string, duration: string): void {
         this.performanceLoading = true;
-        this._detailService.getPerformanceData(wwn, duration)
+        this._detailService
+            .getPerformanceData(wwn, duration)
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe({
                 next: (resp: PerformanceResponseWrapper) => {
@@ -954,9 +1038,9 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                         this.performanceBaseline = resp.data.baseline;
                         this.hasPerformanceData = true;
                         this.performanceEverLoaded = true;
-                        this.hasThroughputData = resp.data.history.some(p => p.seq_read_bw_bytes > 0 || p.seq_write_bw_bytes > 0);
-                        this.hasIopsData = resp.data.history.some(p => p.rand_read_iops > 0 || p.rand_write_iops > 0);
-                        this.hasLatencyData = resp.data.history.some(p => p.rand_read_lat_ns_avg > 0);
+                        this.hasThroughputData = resp.data.history.some((p) => p.seq_read_bw_bytes > 0 || p.seq_write_bw_bytes > 0);
+                        this.hasIopsData = resp.data.history.some((p) => p.rand_read_iops > 0 || p.rand_write_iops > 0);
+                        this.hasLatencyData = resp.data.history.some((p) => p.rand_read_lat_ns_avg > 0);
                         this.hasEnoughSamplesForCharts = resp.data.history.length >= 2;
                         this._preparePerformanceCharts();
                     } else {
@@ -972,7 +1056,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                 error: () => {
                     this.performanceLoading = false;
                     this.hasPerformanceData = false;
-                }
+                },
             });
     }
 
@@ -985,8 +1069,13 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         return this.performanceHistory?.length > 0 ? this.performanceHistory[this.performanceHistory.length - 1] : null;
     }
 
-    getBaselineDelta(currentValue: number, baselineValue: number, higherIsBetter: boolean): {
-        percent: number; status: 'good' | 'warn' | 'bad' | 'neutral'
+    getBaselineDelta(
+        currentValue: number,
+        baselineValue: number,
+        higherIsBetter: boolean
+    ): {
+        percent: number;
+        status: 'good' | 'warn' | 'bad' | 'neutral';
     } | null {
         if (!baselineValue || baselineValue === 0 || currentValue == null) {
             return null;
@@ -1021,7 +1110,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             height: '100%',
             type: 'area' as const,
             sparkline: { enabled: false },
-            toolbar: { show: false }
+            toolbar: { show: false },
         };
 
         const baseGrid = {
@@ -1029,23 +1118,25 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             strokeDashArray: 4,
             yaxis: { lines: { show: true } },
             xaxis: { lines: { show: false } },
-            padding: { left: 10, right: 10 }
+            padding: { left: 10, right: 10 },
         };
 
         const baseXAxis = {
             type: 'datetime' as const,
             labels: {
                 datetimeUTC: false,
-                style: { fontSize: '11px', colors: labelColor }
-            }
+                style: { fontSize: '11px', colors: labelColor },
+            },
         };
 
         // Throughput chart (sequential read/write)
-        const readBwData = this.performanceHistory.map(p => ({
-            x: new Date(p.date).getTime(), y: p.seq_read_bw_bytes
+        const readBwData = this.performanceHistory.map((p) => ({
+            x: new Date(p.date).getTime(),
+            y: p.seq_read_bw_bytes,
         }));
-        const writeBwData = this.performanceHistory.map(p => ({
-            x: new Date(p.date).getTime(), y: p.seq_write_bw_bytes
+        const writeBwData = this.performanceHistory.map((p) => ({
+            x: new Date(p.date).getTime(),
+            y: p.seq_write_bw_bytes,
         }));
 
         this.throughputChartOptions = {
@@ -1054,45 +1145,50 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             fill: { colors: ['#b2bef4', '#f4b2ba'], opacity: 0.5, type: 'gradient' },
             series: [
                 { name: 'Sequential Read', data: readBwData },
-                { name: 'Sequential Write', data: writeBwData }
+                { name: 'Sequential Write', data: writeBwData },
             ],
             stroke: { curve: 'smooth', width: 2 },
             tooltip: {
-                theme: 'dark', shared: true, intersect: false,
+                theme: 'dark',
+                shared: true,
+                intersect: false,
                 x: { format: apexShortDateTime(this.config.time_format) },
-                y: { formatter: (val) => fileSizePipe.transform(val, siUnits) + '/s' }
+                y: { formatter: (val) => fileSizePipe.transform(val, siUnits) + '/s' },
             },
             xaxis: baseXAxis,
             yaxis: {
                 labels: {
                     formatter: (val) => fileSizePipe.transform(val, siUnits) + '/s',
-                    style: { fontSize: '11px', colors: labelColor }
-                }
+                    style: { fontSize: '11px', colors: labelColor },
+                },
             },
             grid: baseGrid,
-            legend: { show: true, position: 'top', horizontalAlign: 'right' }
+            legend: { show: true, position: 'top', horizontalAlign: 'right' },
         };
 
         // IOPS chart (random read/write + mixed)
-        const readIopsData = this.performanceHistory.map(p => ({
-            x: new Date(p.date).getTime(), y: p.rand_read_iops
+        const readIopsData = this.performanceHistory.map((p) => ({
+            x: new Date(p.date).getTime(),
+            y: p.rand_read_iops,
         }));
-        const writeIopsData = this.performanceHistory.map(p => ({
-            x: new Date(p.date).getTime(), y: p.rand_write_iops
+        const writeIopsData = this.performanceHistory.map((p) => ({
+            x: new Date(p.date).getTime(),
+            y: p.rand_write_iops,
         }));
-        const mixedSeries = this.performanceHistory.some(p => p.mixed_rw_iops > 0);
+        const mixedSeries = this.performanceHistory.some((p) => p.mixed_rw_iops > 0);
         const iopsSeries: any[] = [
             { name: 'Random Read', data: readIopsData },
-            { name: 'Random Write', data: writeIopsData }
+            { name: 'Random Write', data: writeIopsData },
         ];
         const iopsColors = ['#667eea', '#e66a7a'];
         const iopsFillColors = ['#b2bef4', '#f4b2ba'];
         if (mixedSeries) {
             iopsSeries.push({
                 name: 'Mixed R/W',
-                data: this.performanceHistory.map(p => ({
-                    x: new Date(p.date).getTime(), y: p.mixed_rw_iops
-                }))
+                data: this.performanceHistory.map((p) => ({
+                    x: new Date(p.date).getTime(),
+                    y: p.mixed_rw_iops,
+                })),
             });
             iopsColors.push('#66c0ea');
             iopsFillColors.push('#b2dff4');
@@ -1105,30 +1201,35 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             series: iopsSeries,
             stroke: { curve: 'smooth', width: 2 },
             tooltip: {
-                theme: 'dark', shared: true, intersect: false,
+                theme: 'dark',
+                shared: true,
+                intersect: false,
                 x: { format: apexShortDateTime(this.config.time_format) },
-                y: { formatter: (val) => val != null ? val.toLocaleString() + ' IOPS' : '--' }
+                y: { formatter: (val) => (val != null ? val.toLocaleString() + ' IOPS' : '--') },
             },
             xaxis: baseXAxis,
             yaxis: {
                 labels: {
-                    formatter: (val) => val >= 1000 ? (val / 1000).toFixed(1) + 'K' : String(Math.round(val)),
-                    style: { fontSize: '11px', colors: labelColor }
-                }
+                    formatter: (val) => (val >= 1000 ? (val / 1000).toFixed(1) + 'K' : String(Math.round(val))),
+                    style: { fontSize: '11px', colors: labelColor },
+                },
             },
             grid: baseGrid,
-            legend: { show: true, position: 'top', horizontalAlign: 'right' }
+            legend: { show: true, position: 'top', horizontalAlign: 'right' },
         };
 
         // Latency chart (read avg / p95 / p99)
-        const readLatAvgData = this.performanceHistory.map(p => ({
-            x: new Date(p.date).getTime(), y: p.rand_read_lat_ns_avg
+        const readLatAvgData = this.performanceHistory.map((p) => ({
+            x: new Date(p.date).getTime(),
+            y: p.rand_read_lat_ns_avg,
         }));
-        const readLatP95Data = this.performanceHistory.map(p => ({
-            x: new Date(p.date).getTime(), y: p.rand_read_lat_ns_p95
+        const readLatP95Data = this.performanceHistory.map((p) => ({
+            x: new Date(p.date).getTime(),
+            y: p.rand_read_lat_ns_p95,
         }));
-        const readLatP99Data = this.performanceHistory.map(p => ({
-            x: new Date(p.date).getTime(), y: p.rand_read_lat_ns_p99
+        const readLatP99Data = this.performanceHistory.map((p) => ({
+            x: new Date(p.date).getTime(),
+            y: p.rand_read_lat_ns_p99,
         }));
 
         this.latencyChartOptions = {
@@ -1138,23 +1239,25 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             series: [
                 { name: 'Avg Latency', data: readLatAvgData },
                 { name: 'P95 Latency', data: readLatP95Data },
-                { name: 'P99 Latency', data: readLatP99Data }
+                { name: 'P99 Latency', data: readLatP99Data },
             ],
             stroke: { curve: 'smooth', width: 2 },
             tooltip: {
-                theme: 'dark', shared: true, intersect: false,
+                theme: 'dark',
+                shared: true,
+                intersect: false,
                 x: { format: apexShortDateTime(this.config.time_format) },
-                y: { formatter: (val) => LatencyPipe.formatLatency(val) }
+                y: { formatter: (val) => LatencyPipe.formatLatency(val) },
             },
             xaxis: baseXAxis,
             yaxis: {
                 labels: {
                     formatter: (val) => LatencyPipe.formatLatency(val, 0),
-                    style: { fontSize: '11px', colors: labelColor }
-                }
+                    style: { fontSize: '11px', colors: labelColor },
+                },
             },
             grid: baseGrid,
-            legend: { show: true, position: 'top', horizontalAlign: 'right' }
+            legend: { show: true, position: 'top', horizontalAlign: 'right' },
         };
     }
 }

@@ -1,11 +1,16 @@
-import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, Renderer2, ViewChild, ViewEncapsulation } from '@angular/core';
-import { UntypedFormControl } from '@angular/forms';
+import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, Renderer2, ViewChild, ViewEncapsulation, inject } from '@angular/core';
+import { UntypedFormControl, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { MatFormField as MatFormField } from '@angular/material/form-field';
+import { MatFormField as MatFormField, MatPrefix } from '@angular/material/form-field';
 import { Subject } from 'rxjs';
 import { debounceTime, filter, map, takeUntil } from 'rxjs/operators';
 import { TreoAnimations } from '@treo/animations/public-api';
 import { getBasePath } from 'app/app.routing';
+import { MatIconButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { MatInput } from '@angular/material/input';
+import { MatAutocompleteTrigger, MatAutocomplete, MatOption } from '@angular/material/autocomplete';
+import { RouterLink } from '@angular/router';
 
 @Component({
     selector: 'search',
@@ -14,10 +19,13 @@ import { getBasePath } from 'app/app.routing';
     encapsulation: ViewEncapsulation.None,
     exportAs: 'treoSearch',
     animations: TreoAnimations,
-    standalone: false
+    imports: [MatIconButton, MatIcon, MatFormField, MatPrefix, MatInput, ReactiveFormsModule, MatAutocompleteTrigger, MatAutocomplete, MatOption, RouterLink],
 })
-export class SearchComponent implements OnInit, OnDestroy
-{
+export class SearchComponent implements OnInit, OnDestroy {
+    private readonly _elementRef = inject(ElementRef);
+    private readonly _httpClient = inject(HttpClient);
+    private readonly _renderer2 = inject(Renderer2);
+
     results: any[] | null;
     searchControl: UntypedFormControl;
 
@@ -45,12 +53,7 @@ export class SearchComponent implements OnInit, OnDestroy
      * @param {HttpClient} _httpClient
      * @param {Renderer2} _renderer2
      */
-    constructor(
-        private readonly _elementRef: ElementRef,
-        private readonly _httpClient: HttpClient,
-        private readonly _renderer2: Renderer2
-    )
-    {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 
@@ -73,11 +76,9 @@ export class SearchComponent implements OnInit, OnDestroy
      * @param value
      */
     @Input()
-    set appearance(value: 'basic' | 'bar')
-    {
+    set appearance(value: 'basic' | 'bar') {
         // If the value is the same, return...
-        if ( this._appearance === value )
-        {
+        if (this._appearance === value) {
             return;
         }
 
@@ -99,8 +100,7 @@ export class SearchComponent implements OnInit, OnDestroy
         this._renderer2.addClass(this._elementRef.nativeElement, appearanceClassName);
     }
 
-    get appearance(): 'basic' | 'bar'
-    {
+    get appearance(): 'basic' | 'bar' {
         return this._appearance;
     }
 
@@ -109,11 +109,9 @@ export class SearchComponent implements OnInit, OnDestroy
      *
      * @param value
      */
-    set opened(value: boolean)
-    {
+    set opened(value: boolean) {
         // If the value is the same, return...
-        if ( this._opened === value )
-        {
+        if (this._opened === value) {
             return;
         }
 
@@ -121,20 +119,16 @@ export class SearchComponent implements OnInit, OnDestroy
         this._opened = value;
 
         // If opened...
-        if ( value )
-        {
+        if (value) {
             // Add opened class
             this._renderer2.addClass(this._elementRef.nativeElement, 'search-opened');
-        }
-        else
-        {
+        } else {
             // Remove opened class
             this._renderer2.removeClass(this._elementRef.nativeElement, 'search-opened');
         }
     }
 
-    get opened(): boolean
-    {
+    get opened(): boolean {
         return this._opened;
     }
 
@@ -144,22 +138,18 @@ export class SearchComponent implements OnInit, OnDestroy
      * @param value
      */
     @ViewChild('searchInput')
-    set searchInput(value: MatFormField)
-    {
+    set searchInput(value: MatFormField) {
         // Return if the appearance is basic, since we don't want
         // basic search to be focused as soon as the page loads
-        if ( this.appearance === 'basic' )
-        {
+        if (this.appearance === 'basic') {
             return;
         }
 
         // If the value exists, it means that the search input
         // is now in the DOM and we can focus on the input..
-        if ( value )
-        {
+        if (value) {
             // Give Angular time to complete the change detection cycle
             setTimeout(() => {
-
                 // Focus to the input element
                 const inputElement = value._elementRef.nativeElement.querySelector('input');
                 if (inputElement) {
@@ -176,20 +166,17 @@ export class SearchComponent implements OnInit, OnDestroy
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Subscribe to the search field value changes
         this.searchControl.valueChanges
             .pipe(
                 debounceTime(this.debounce),
                 takeUntil(this._unsubscribeAll),
                 map((value) => {
-
                     // Set the search results to null if there is no value or
                     // the length of the value is smaller than the minLength
                     // so the autocomplete panel can be closed
-                    if ( !value || value.length < this.minLength )
-                    {
+                    if (!value || value.length < this.minLength) {
                         this.results = null;
                     }
 
@@ -197,25 +184,22 @@ export class SearchComponent implements OnInit, OnDestroy
                     return value;
                 }),
                 filter((value) => {
-
                     // Filter out undefined/null/false statements and also
                     // filter out the values that are smaller than minLength
                     return value && value.length >= this.minLength;
                 })
             )
             .subscribe((value) => {
-                this._httpClient.post(getBasePath() + '/api/common/search', {query: value})
-                    .subscribe((response: any) => {
-                        this.results = response.results;
-                    });
+                this._httpClient.post(getBasePath() + '/api/common/search', { query: value }).subscribe((response: any) => {
+                    this.results = response.results;
+                });
             });
     }
 
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();
@@ -230,15 +214,12 @@ export class SearchComponent implements OnInit, OnDestroy
      *
      * @param event
      */
-    onKeydown(event): void
-    {
+    onKeydown(event): void {
         // Listen for escape to close the search
         // if the appearance is 'bar'
-        if ( this.appearance === 'bar' )
-        {
+        if (this.appearance === 'bar') {
             // Escape
-            if ( event.keyCode === 27 )
-            {
+            if (event.keyCode === 27) {
                 // Close the search
                 this.close();
             }
@@ -249,11 +230,9 @@ export class SearchComponent implements OnInit, OnDestroy
      * Open the search
      * Used in 'bar'
      */
-    open(): void
-    {
+    open(): void {
         // Return, if it's already opened
-        if ( this.opened )
-        {
+        if (this.opened) {
             return;
         }
 
@@ -265,11 +244,9 @@ export class SearchComponent implements OnInit, OnDestroy
      * Close the search
      * * Used in 'bar'
      */
-    close(): void
-    {
+    close(): void {
         // Return, if it's already closed
-        if ( !this.opened )
-        {
+        if (!this.opened) {
             return;
         }
 

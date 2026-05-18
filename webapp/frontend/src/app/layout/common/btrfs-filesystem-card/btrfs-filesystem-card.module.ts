@@ -10,8 +10,7 @@ import { SharedModule } from 'app/shared/shared.module';
 import { BtrfsFilesystemCardComponent } from './btrfs-filesystem-card.component';
 
 @NgModule({
-    declarations: [BtrfsFilesystemCardComponent],
-    imports: [CommonModule, RouterModule, MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, SharedModule, MatDialogModule],
+    imports: [CommonModule, RouterModule, MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, SharedModule, MatDialogModule, BtrfsFilesystemCardComponent],
     exports: [BtrfsFilesystemCardComponent],
 })
 export class BtrfsFilesystemCardModule {}

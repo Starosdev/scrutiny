@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ZFSPoolsService } from 'app/modules/zfs-pools/zfs-pools.service';
@@ -6,6 +6,11 @@ import { AppConfig } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { Router } from '@angular/router';
 import { ZFSPoolModel } from 'app/core/models/zfs-pool-model';
+import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { MatMenuTrigger, MatMenu, MatMenuItem } from '@angular/material/menu';
+import { ZFSPoolCardComponent } from '../../layout/common/zfs-pool-card/zfs-pool-card.component';
+import { KeyValuePipe } from '@angular/common';
 
 @Component({
     selector: 'zfs-pools',
@@ -13,9 +18,13 @@ import { ZFSPoolModel } from 'app/core/models/zfs-pool-model';
     styleUrls: ['./zfs-pools.component.scss'],
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false,
+    imports: [MatButton, MatIcon, MatIconButton, MatMenuTrigger, MatMenu, MatMenuItem, ZFSPoolCardComponent, KeyValuePipe],
 })
 export class ZFSPoolsComponent implements OnInit, OnDestroy {
+    private readonly _zfsPoolsService = inject(ZFSPoolsService);
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly router = inject(Router);
+
     summaryData: Record<string, ZFSPoolModel>;
     hostGroups: { [hostId: string]: string[] } = {};
     config: AppConfig;
@@ -23,7 +32,7 @@ export class ZFSPoolsComponent implements OnInit, OnDestroy {
 
     private _unsubscribeAll: Subject<void>;
 
-    constructor(private readonly _zfsPoolsService: ZFSPoolsService, private readonly _configService: ScrutinyConfigService, private readonly router: Router) {
+    constructor() {
         this._unsubscribeAll = new Subject();
     }
 

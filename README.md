@@ -427,7 +427,7 @@ Scrutiny computes drive workload statistics from existing S.M.A.R.T attribute hi
 | Daily Writes / Reads | Average bytes written/read per day over the selected duration |
 | R/W Ratio | Ratio of read to write volume (e.g., 2.0:1 means 2x more reads than writes) |
 | Intensity | Workload classification: idle, light, medium, or heavy based on total daily I/O |
-| SSD Endurance | Percentage of rated lifespan used (SSDs only, from wear-leveling attributes) |
+| SSD Endurance | SMART-reported wear percentage, plus optional rated-TBW usage when configured per device |
 | Est. Remaining | Projected remaining lifespan in days/years based on current usage rate |
 | Activity Spike | Alert when recent write activity exceeds 3x the baseline average |
 
@@ -437,7 +437,8 @@ Scrutiny computes drive workload statistics from existing S.M.A.R.T attribute hi
 2. The delta between the first and last data points in the selected time range is used to compute daily rates
 3. Intensity is classified by total daily I/O: idle (<1 GB/day), light (1-20 GB), medium (20-100 GB), heavy (>100 GB)
 4. SSD endurance is estimated from wear-leveling or percentage-used SMART attributes combined with power-on hours
-5. Spike detection compares the most recent daily rate against the long-term baseline
+5. If a rated TBW value is configured for a device, Scrutiny also shows cumulative TB written versus the configured limit
+6. Spike detection compares the most recent daily rate against the long-term baseline
 
 ### Supported Protocols
 
@@ -448,6 +449,16 @@ Scrutiny computes drive workload statistics from existing S.M.A.R.T attribute hi
 ### Viewing Workload Data
 
 Navigate to the **Workload** page from the top navigation bar. Use the duration selector (Day, Week, Month, Year, All) to adjust the analysis window. Click any row to navigate to the device detail page.
+
+### Rated TBW Overrides
+
+Some SSDs report misleading wear percentages through SMART. To supplement those values, you can set a per-device rated TBW value from the device detail page. Scrutiny will then show:
+
+- TB written so far
+- Rated TBW
+- TBW used percentage
+
+This value is user-supplied and does not replace the existing SMART wear indicators.
 
 ## SMART Attribute Overrides
 

@@ -7,7 +7,7 @@ export const btrfsFilesystemDetailRoutes: Route[] = [
         path: '',
         component: BtrfsFilesystemDetailComponent,
         resolve: {
-            filesystem: BtrfsFilesystemDetailResolver
-        }
-    }
+            filesystem: BtrfsFilesystemDetailResolver,
+        },
+    },
 ];

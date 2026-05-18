@@ -1,16 +1,18 @@
-import {Injectable} from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import {BehaviorSubject, Observable} from 'rxjs';
-import {tap} from 'rxjs/operators';
-import {getBasePath} from 'app/app.routing';
-import {DeviceDetailsResponseWrapper} from 'app/core/models/device-details-response-wrapper';
-import {PerformanceResponseWrapper} from 'app/core/models/measurements/performance-model';
-import {ReplacementRiskResponseWrapper} from 'app/core/models/replacement-risk-model';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+import { getBasePath } from 'app/app.routing';
+import { DeviceDetailsResponseWrapper } from 'app/core/models/device-details-response-wrapper';
+import { PerformanceResponseWrapper } from 'app/core/models/measurements/performance-model';
+import { ReplacementRiskResponseWrapper } from 'app/core/models/replacement-risk-model';
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: 'root',
 })
 export class DetailService {
+    private readonly _httpClient = inject(HttpClient);
+
     // Observables
     private _data: BehaviorSubject<DeviceDetailsResponseWrapper>;
 
@@ -19,9 +21,7 @@ export class DetailService {
      *
      * @param {HttpClient} _httpClient
      */
-    constructor(
-        private readonly _httpClient: HttpClient
-    ) {
+    constructor() {
         // Set the private defaults
         this._data = new BehaviorSubject(null);
     }
@@ -74,6 +74,10 @@ export class DetailService {
         return this._httpClient.post(getBasePath() + `/api/device/${deviceId}/label`, { label });
     }
 
+    setMaxTBW(deviceId: string, maxTBW: number): Observable<any> {
+        return this._httpClient.post(getBasePath() + `/api/device/${deviceId}/max-tbw`, { max_tbw: maxTBW });
+    }
+
     setSmartDisplayMode(deviceId: string, mode: string): Observable<any> {
         return this._httpClient.post(getBasePath() + `/api/device/${deviceId}/smart-display-mode`, { smart_display_mode: mode });
     }
@@ -84,17 +88,11 @@ export class DetailService {
 
     getPerformanceData(deviceId: string, duration: string = 'week'): Observable<PerformanceResponseWrapper> {
         const params = { duration };
-        return this._httpClient.get<PerformanceResponseWrapper>(
-            getBasePath() + `/api/device/${deviceId}/performance`,
-            { params }
-        );
+        return this._httpClient.get<PerformanceResponseWrapper>(getBasePath() + `/api/device/${deviceId}/performance`, { params });
     }
 
     getReplacementRisk(deviceId: string, trendWindow: string = '30d'): Observable<ReplacementRiskResponseWrapper> {
         const params = { trend_window: trendWindow };
-        return this._httpClient.get<ReplacementRiskResponseWrapper>(
-            getBasePath() + `/api/device/${deviceId}/replacement-risk`,
-            { params }
-        );
+        return this._httpClient.get<ReplacementRiskResponseWrapper>(getBasePath() + `/api/device/${deviceId}/replacement-risk`, { params });
     }
 }

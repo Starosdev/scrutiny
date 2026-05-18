@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -6,6 +6,7 @@ import { DashboardService } from 'app/modules/dashboard/dashboard.service';
 import { ZFSPoolsService } from 'app/modules/zfs-pools/zfs-pools.service';
 import { DeviceSummaryModel } from 'app/core/models/device-summary-model';
 import { ZFSPoolModel } from 'app/core/models/zfs-pool-model';
+import { MatIcon } from '@angular/material/icon';
 
 interface HealthCounts {
     healthy: number;
@@ -28,9 +29,13 @@ interface AttentionItem {
     templateUrl: './mobile-home.component.html',
     styleUrls: ['./mobile-home.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    imports: [MatIcon],
 })
 export class MobileHomeComponent implements OnInit, OnDestroy {
+    private readonly _dashboardService = inject(DashboardService);
+    private readonly _zfsPoolsService = inject(ZFSPoolsService);
+    private readonly _router = inject(Router);
+
     driveCounts: HealthCounts = { healthy: 0, warning: 0, critical: 0 };
     zfsCounts: HealthCounts = { healthy: 0, warning: 0, critical: 0 };
     attentionItems: AttentionItem[] = [];
@@ -38,31 +43,23 @@ export class MobileHomeComponent implements OnInit, OnDestroy {
 
     private _unsubscribeAll: Subject<void>;
 
-    constructor(
-        private readonly _dashboardService: DashboardService,
-        private readonly _zfsPoolsService: ZFSPoolsService,
-        private readonly _router: Router
-    ) {
+    constructor() {
         this._unsubscribeAll = new Subject();
     }
 
     ngOnInit(): void {
-        this._dashboardService.data$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(data => {
-                if (data) {
-                    this._processDriveData(data);
-                    this.loaded = true;
-                }
-            });
+        this._dashboardService.data$.pipe(takeUntil(this._unsubscribeAll)).subscribe((data) => {
+            if (data) {
+                this._processDriveData(data);
+                this.loaded = true;
+            }
+        });
 
-        this._zfsPoolsService.data$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(data => {
-                if (data) {
-                    this._processZFSData(data);
-                }
-            });
+        this._zfsPoolsService.data$.pipe(takeUntil(this._unsubscribeAll)).subscribe((data) => {
+            if (data) {
+                this._processZFSData(data);
+            }
+        });
     }
 
     ngOnDestroy(): void {
@@ -103,16 +100,16 @@ export class MobileHomeComponent implements OnInit, OnDestroy {
                     host: device.device.host_id || '',
                     status: severity,
                     temperature: device.smart?.temp,
-                    route: `/device/${wwn}`
+                    route: `/device/${wwn}`,
                 });
             }
         }
 
         // Merge drive attention items (critical first)
         this.attentionItems = [
-            ...driveAttention.filter(i => i.status === 'critical'),
-            ...driveAttention.filter(i => i.status === 'warning'),
-            ...this.attentionItems.filter(i => i.type === 'zfs')
+            ...driveAttention.filter((i) => i.status === 'critical'),
+            ...driveAttention.filter((i) => i.status === 'warning'),
+            ...this.attentionItems.filter((i) => i.type === 'zfs'),
         ];
     }
 
@@ -137,7 +134,7 @@ export class MobileHomeComponent implements OnInit, OnDestroy {
                     name: pool.name || guid,
                     host: pool.host_id || '',
                     status: 'warning',
-                    route: `/zfs-pool/${guid}`
+                    route: `/zfs-pool/${guid}`,
                 });
             } else {
                 this.zfsCounts.critical++;
@@ -147,16 +144,16 @@ export class MobileHomeComponent implements OnInit, OnDestroy {
                     name: pool.name || guid,
                     host: pool.host_id || '',
                     status: 'critical',
-                    route: `/zfs-pool/${guid}`
+                    route: `/zfs-pool/${guid}`,
                 });
             }
         }
 
         // Merge ZFS attention items
         this.attentionItems = [
-            ...this.attentionItems.filter(i => i.type === 'drive'),
-            ...zfsAttention.filter(i => i.status === 'critical'),
-            ...zfsAttention.filter(i => i.status === 'warning')
+            ...this.attentionItems.filter((i) => i.type === 'drive'),
+            ...zfsAttention.filter((i) => i.status === 'critical'),
+            ...zfsAttention.filter((i) => i.status === 'warning'),
         ];
     }
 }

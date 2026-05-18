@@ -48,6 +48,8 @@ type EnduranceEstimate struct {
 	PercentageUsed        int64   `json:"percentage_used"`
 	EstimatedLifespanDays int64   `json:"estimated_lifespan_days,omitempty"`
 	TBWrittenSoFar        float64 `json:"tbw_so_far"`
+	TBWRated              float64 `json:"tbw_rated,omitempty"`
+	TBWUsedPercent        float64 `json:"tbw_used_percent,omitempty"`
 }
 
 // ActivitySpike indicates unusual write activity compared to baseline

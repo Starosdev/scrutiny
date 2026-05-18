@@ -1,29 +1,25 @@
 import { NgModule } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { Overlay } from '@angular/cdk/overlay';
-import { MAT_AUTOCOMPLETE_SCROLL_STRATEGY, MatAutocompleteModule as MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatAutocompleteModule as MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule as MatButtonModule } from '@angular/material/button';
 import { MatSelectModule as MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule as MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule as MatInputModule } from '@angular/material/input';
 import { SharedModule } from 'app/shared/shared.module';
-import {DashboardSettingsComponent} from 'app/layout/common/dashboard-settings/dashboard-settings.component'
+import { DashboardSettingsComponent } from 'app/layout/common/dashboard-settings/dashboard-settings.component';
 import { MatDialogModule as MatDialogModule } from '@angular/material/dialog';
-import { MatButtonToggleModule} from '@angular/material/button-toggle';
-import {MatTabsModule as MatTabsModule} from '@angular/material/tabs';
-import {MatSliderModule as MatSliderModule} from '@angular/material/slider';
-import {MatSlideToggleModule as MatSlideToggleModule} from '@angular/material/slide-toggle';
-import {MatTooltipModule as MatTooltipModule} from '@angular/material/tooltip';
-import {MatTableModule} from '@angular/material/table';
-import {MatExpansionModule} from '@angular/material/expansion';
-import {MatChipsModule} from '@angular/material/chips';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatTabsModule as MatTabsModule } from '@angular/material/tabs';
+import { MatSliderModule as MatSliderModule } from '@angular/material/slider';
+import { MatSlideToggleModule as MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTooltipModule as MatTooltipModule } from '@angular/material/tooltip';
+import { MatTableModule } from '@angular/material/table';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatChipsModule } from '@angular/material/chips';
 
 @NgModule({
-    declarations: [
-        DashboardSettingsComponent
-    ],
-    imports     : [
+    imports: [
         RouterModule.forChild([]),
         MatAutocompleteModule,
         MatDialogModule,
@@ -40,13 +36,10 @@ import {MatChipsModule} from '@angular/material/chips';
         MatTableModule,
         MatExpansionModule,
         MatChipsModule,
-        SharedModule
+        SharedModule,
+        DashboardSettingsComponent,
     ],
-    exports     : [
-        DashboardSettingsComponent
-    ],
-    providers   : []
+    exports: [DashboardSettingsComponent],
+    providers: [],
 })
-export class DashboardSettingsModule
-{
-}
+export class DashboardSettingsModule {}

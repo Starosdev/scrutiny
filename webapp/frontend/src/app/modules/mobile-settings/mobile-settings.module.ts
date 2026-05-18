@@ -8,15 +8,6 @@ import { MobileSettingsComponent } from './mobile-settings.component';
 import { mobileSettingsRoutes } from './mobile-settings.routing';
 
 @NgModule({
-    declarations: [
-        MobileSettingsComponent
-    ],
-    imports: [
-        RouterModule.forChild(mobileSettingsRoutes),
-        MatButtonModule,
-        MatIconModule,
-        SharedModule,
-        DashboardSettingsModule
-    ]
+    imports: [RouterModule.forChild(mobileSettingsRoutes), MatButtonModule, MatIconModule, SharedModule, DashboardSettingsModule, MobileSettingsComponent],
 })
 export class MobileSettingsModule {}

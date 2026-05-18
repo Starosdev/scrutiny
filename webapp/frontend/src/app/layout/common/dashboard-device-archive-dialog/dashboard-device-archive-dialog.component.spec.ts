@@ -1,14 +1,13 @@
-import {ComponentFixture, TestBed} from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import {DashboardDeviceArchiveDialogComponent} from './dashboard-device-archive-dialog.component';
+import { DashboardDeviceArchiveDialogComponent } from './dashboard-device-archive-dialog.component';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
-import {MAT_DIALOG_DATA, MatDialogModule as MatDialogModule, MatDialogRef as MatDialogRef} from '@angular/material/dialog';
-import {MatButtonModule as MatButtonModule} from '@angular/material/button';
-import {MatIconModule} from '@angular/material/icon';
-import {SharedModule} from '../../../shared/shared.module';
-import {DashboardDeviceArchiveDialogService} from './dashboard-device-archive-dialog.service';
-import {of} from 'rxjs';
-
+import { MAT_DIALOG_DATA, MatDialogModule as MatDialogModule, MatDialogRef as MatDialogRef } from '@angular/material/dialog';
+import { MatButtonModule as MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { SharedModule } from '../../../shared/shared.module';
+import { DashboardDeviceArchiveDialogService } from './dashboard-device-archive-dialog.service';
+import { of } from 'rxjs';
 
 describe('DashboardDeviceArchiveDialogComponent', () => {
     let component: DashboardDeviceArchiveDialogComponent;
@@ -19,19 +18,14 @@ describe('DashboardDeviceArchiveDialogComponent', () => {
 
     beforeEach(() => {
         TestBed.configureTestingModule({
-    declarations: [DashboardDeviceArchiveDialogComponent],
-    imports: [MatDialogModule,
-        MatButtonModule,
-        MatIconModule,
-        SharedModule],
-    providers: [
-        { provide: MatDialogRef, useValue: matDialogRefSpy },
-        { provide: MAT_DIALOG_DATA, useValue: { deviceId: 'test-device-id', title: 'my-test-device-title' } },
-        { provide: DashboardDeviceArchiveDialogService, useValue: dashboardDeviceArchiveDialogServiceSpy },
-        provideHttpClient(withInterceptorsFromDi())
-    ]
-})
-            .compileComponents()
+            imports: [MatDialogModule, MatButtonModule, MatIconModule, SharedModule, DashboardDeviceArchiveDialogComponent],
+            providers: [
+                { provide: MatDialogRef, useValue: matDialogRefSpy },
+                { provide: MAT_DIALOG_DATA, useValue: { deviceId: 'test-device-id', title: 'my-test-device-title' } },
+                { provide: DashboardDeviceArchiveDialogService, useValue: dashboardDeviceArchiveDialogServiceSpy },
+                provideHttpClient(withInterceptorsFromDi()),
+            ],
+        }).compileComponents();
     });
 
     beforeEach(() => {
@@ -46,17 +40,15 @@ describe('DashboardDeviceArchiveDialogComponent', () => {
 
     it('should close the component if cancel is clicked', () => {
         matDialogRefSpy.closeDialog.calls.reset();
-        matDialogRefSpy.closeDialog()
+        matDialogRefSpy.closeDialog();
         expect(matDialogRefSpy.closeDialog).toHaveBeenCalled();
     });
 
     it('should attempt to archive device if archive is clicked', () => {
-        dashboardDeviceArchiveDialogServiceSpy.archiveDevice.and.returnValue(of({'success': true}));
+        dashboardDeviceArchiveDialogServiceSpy.archiveDevice.and.returnValue(of({ success: true }));
 
-        component.onArchiveClick()
+        component.onArchiveClick();
         expect(dashboardDeviceArchiveDialogServiceSpy.archiveDevice).toHaveBeenCalledWith('test-device-id');
-        expect(dashboardDeviceArchiveDialogServiceSpy.archiveDevice.calls.count())
-            .withContext('one call')
-            .toBe(1);
+        expect(dashboardDeviceArchiveDialogServiceSpy.archiveDevice.calls.count()).withContext('one call').toBe(1);
     });
 });

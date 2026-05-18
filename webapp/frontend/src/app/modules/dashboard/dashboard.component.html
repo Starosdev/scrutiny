@@ -1,405 +1,336 @@
 @if (summaryData) {
-  <div>
+<div>
     <div class="flex flex-col flex-auto w-full p-8 xs:p-2">
-      <div class="flex flex-wrap w-full">
-
-        <!-- Header -->
-        <div class="flex items-center justify-between w-full my-4 px-4 xs:pr-0">
-          <div class="mr-6">
-            <h2 class="m-0">Dashboard</h2>
-            <div class="text-secondary tracking-tight">Drive health at a glance</div>
-          </div>
-
-          <!-- Action buttons (desktop) -->
-          <div class="flex items-center">
-            <button
-              class="xs:hidden"
-              mat-stroked-button
-              [color]="showArchived ? 'primary' : null"
-              (click)="showArchived = !showArchived">
-              <mat-icon
-                class="icon-size-20"
-                [color]="showArchived ? 'primary' : null"
-                [svgIcon]="'archive'">
-              </mat-icon>
-              <span class="ml-2">Archived</span>
-            </button>
-
-            <button
-              matTooltip="not yet implemented"
-              class="ml-2 xs:hidden"
-              mat-stroked-button>
-              <mat-icon class="icon-size-20" [svgIcon]="'save'"></mat-icon>
-              <span class="ml-2">Export</span>
-            </button>
-
-            <button
-              class="ml-2 xs:hidden"
-              mat-stroked-button
-              (click)="openDialog()">
-              <mat-icon
-                class="icon-size-20 rotate-90 mirror"
-                [svgIcon]="'tune'">
-              </mat-icon>
-              <span class="ml-2">Settings</span>
-            </button>
-
-            <!-- Run collectors button (Omnibus only) -->
-            <button
-              *ngIf="config?.collector_trigger_enabled && !isTriggering"
-              class="ml-2"
-              mat-flat-button
-              color="primary"
-              (click)="runCollectors()">
-              <mat-icon
-                class="icon-size-20"
-                [svgIcon]="'play_arrow'">
-              </mat-icon>
-              <span class="ml-2">Run collectors</span>
-            </button>
-
-            <!-- Countdown display -->
-            <div *ngIf="countdown > 0" class="ml-4 flex items-center text-secondary font-medium">
-              <mat-progress-spinner
-                class="mr-2"
-                [diameter]="20"
-                [mode]="'indeterminate'">
-              </mat-progress-spinner>
-              Refreshing in {{ countdown }}s...
-            </div>
-
-            <!-- Actions menu (mobile) -->
-            <div class="hidden xs:flex">
-              <button
-                mat-icon-button
-                [matMenuTriggerFor]="actionsMenu">
-                <mat-icon [svgIcon]="'more_vert'"></mat-icon>
-              </button>
-
-              <mat-menu #actionsMenu="matMenu">
-                <button mat-menu-item (click)="showArchived = !showArchived">
-                  <mat-icon
-                    class="icon-size-20"
-                    [color]="showArchived ? 'primary' : null"
-                    [svgIcon]="'archive'">
-                  </mat-icon>
-                  <span class="ml-2">Archived</span>
-                </button>
-
-                <button mat-menu-item matTooltip="not yet implemented">
-                  <mat-icon class="icon-size-20" [svgIcon]="'save'"></mat-icon>
-                  <span class="ml-2">Export</span>
-                </button>
-
-                <button mat-menu-item (click)="openDialog()">
-                  <mat-icon
-                    class="icon-size-20 rotate-90 mirror"
-                    [svgIcon]="'tune'">
-                  </mat-icon>
-                  <span class="ml-2">Settings</span>
-                </button>
-              </mat-menu>
-            </div>
-          </div>
-        </div>
-
-        <!-- Device Groups -->
-        @for (hostId of hostGroups | keyvalue; track hostId) {
-          <div class="flex flex-wrap w-full mb-6">
-            @if (hostId.key) {
-              <div class="flex items-center ml-4 gap-3">
-                <h3 class="m-0">{{ hostId.key }}</h3>
-                @if (getCollectorVersionForHost(hostId.value); as version) {
-                  <span
-                    class="text-sm px-2 py-0.5 rounded-full text-white"
-                    [class.bg-yellow-600]="isHostCollectorOutdated(hostId.value)"
-                    [class.bg-gray-500]="!isHostCollectorOutdated(hostId.value)">
-                    collector v{{ version }}
-                  </span>
-                }
-                @if (config?.server_version) {
-                  <span class="gt-sm:hidden text-sm px-2 py-0.5 rounded-full text-white bg-gray-500">
-                    server v{{ config.server_version }}
-                  </span>
-                }
-              </div>
-            }
-
-            <div class="flex flex-wrap w-full">
-              @for (
-                deviceSummary of (
-                  deviceSummariesForHostGroup(hostId.value)
-                  | deviceSort:config.dashboard_sort:config.dashboard_display
-                );
-                track deviceSummary
-              ) {
-                @if (showArchived ? $any(deviceSummary).device.archived : !$any(deviceSummary).device.archived) {
-                  <app-dashboard-device
-                    class="flex gt-sm:w-1/2 min-w-80 p-4"
-                    [deviceSummary]="deviceSummary"
-                    (deviceArchived)="onDeviceArchived($event)"
-                    (deviceUnarchived)="onDeviceUnarchived($event)"
-                    (deviceDeleted)="onDeviceDeleted($event)">
-                  </app-dashboard-device>
-                }
-              }
-            </div>
-          </div>
-        }
-
-        <!-- MDADM RAID Arrays -->
-        @if (mdadmArrays.length > 0) {
-          <div class="flex flex-wrap w-full mb-6">
-            <div class="flex items-center ml-4 gap-3">
-              <h3 class="m-0 uppercase tracking-wider text-secondary">MDADM RAID Arrays</h3>
-            </div>
-            <div class="flex flex-wrap w-full">
-              @for (array of mdadmArrays; track array.uuid) {
-                <div class="flex gt-sm:w-1/3 min-w-80 p-4">
-                  <a class="flex flex-col flex-auto bg-card shadow-md rounded p-6 hover:bg-hover transition-colors duration-150 ease-in-out cursor-pointer"
-                     [routerLink]="['/mdadm', array.uuid]">
-                    <div class="flex items-center justify-between">
-                      <div class="flex items-center">
-                        <div class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900">
-                          <mat-icon class="text-blue-600 dark:text-blue-400" [svgIcon]="'heroicons_outline:database'"></mat-icon>
-                        </div>
-                        <div class="ml-4">
-                          <div class="text-lg font-bold leading-none truncate">{{ array.label || array.name }}</div>
-                          <div class="text-md text-secondary mt-1">{{ array.level }}</div>
-                        </div>
-                      </div>
-                      <div class="px-2 py-1 rounded text-xs font-semibold uppercase"
-                           [ngClass]="getMdadmArrayStatusColorClass(array)">
-                        {{ array.state || 'UNKNOWN' }}
-                      </div>
-                    </div>
-
-                    <!-- Sync Progress -->
-                    <div *ngIf="array.sync_progress > 0 && array.sync_progress < 100" class="flex flex-col mt-4">
-                      <div class="flex items-center justify-between text-secondary mb-1">
-                        <div class="text-xs">Sync Progress</div>
-                        <div class="text-xs font-medium text-blue-500">{{ array.sync_progress }}%</div>
-                      </div>
-                      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                        <div class="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
-                             [style.width.%]="array.sync_progress"></div>
-                      </div>
-                    </div>
-
-                    <!-- Array Size / Used -->
-                    <div *ngIf="array.array_size" class="flex items-center justify-between mt-4 text-secondary">
-                      <div class="text-xs">Array Size</div>
-                      <div class="text-xs font-medium">{{ array.array_size | fileSize:config?.file_size_si_units }}</div>
-                    </div>
-                    <div *ngIf="array.used_bytes !== undefined && array.used_bytes !== null" class="flex items-center justify-between mt-1 text-secondary">
-                      <div class="text-xs">Used</div>
-                      <div class="text-xs font-medium">{{ array.used_bytes | fileSize:config?.file_size_si_units }}</div>
-                    </div>
-                  </a>
-                </div>
-              }
-            </div>
-          </div>
-        }
-        @if (hasFilesystemData()) {
-          <div class="flex flex-col w-full mb-6 px-4">
-            <div class="mb-4">
-              <div class="font-bold text-md text-secondary uppercase tracking-wider">Filesystem Capacity</div>
-              <div class="text-sm text-hint font-medium">Logical filesystem free space reported by the collector</div>
-            </div>
-
-            @for (hostId of filesystemHosts(); track hostId) {
-              <div class="flex flex-col bg-card shadow-md rounded p-6 mb-4">
-                <div class="flex items-center justify-between mb-4">
-                  <div>
-                    <div class="font-bold text-md">{{ hostId }}</div>
-                    @if (filesystemStatusForHost(hostId)?.updated_at) {
-                      <div class="text-sm text-hint">
-                        Updated {{ filesystemStatusForHost(hostId)?.updated_at | date:(config?.time_format === '12' ? 'MMMM dd, yyyy - h:mm a' : 'MMMM dd, yyyy - HH:mm') }}
-                      </div>
-                    }
-                  </div>
-                  <div
-                    class="text-sm px-2 py-0.5 rounded-full text-white"
-                    [class.bg-gray-500]="filesystemStatusForHost(hostId)?.status === 'available'"
-                    [class.bg-yellow-600]="filesystemStatusForHost(hostId)?.status === 'unavailable'">
-                    {{ filesystemStatusForHost(hostId)?.status | titlecase }}
-                  </div>
+        <div class="flex flex-wrap w-full">
+            <!-- Header -->
+            <div class="flex items-center justify-between w-full my-4 px-4 xs:pr-0">
+                <div class="mr-6">
+                    <h2 class="m-0">Dashboard</h2>
+                    <div class="text-secondary tracking-tight">Drive health at a glance</div>
                 </div>
 
-                @if (filesystemStatusForHost(hostId)?.status === 'unavailable') {
-                  <div class="text-sm text-hint">
-                    {{ filesystemStatusForHost(hostId)?.reason || 'Collector cannot inspect host mounts for this host.' }}
-                  </div>
-                } @else if (filesystemsForHost(hostId).length === 0) {
-                  <div class="text-sm text-hint">
-                    No eligible filesystems were reported for this host.
-                  </div>
-                } @else {
-                  <div class="flex flex-wrap -mx-3">
-                    @for (filesystem of filesystemsForHost(hostId); track filesystem.mount_point) {
-                      <div class="flex gt-sm:w-1/2 w-full p-3">
-                        <div class="w-full border rounded p-4">
-                          <div class="flex items-start justify-between">
-                            <div>
-                              <div class="font-semibold text-base">{{ filesystem.mount_point }}</div>
-                              <div class="text-sm text-hint">
-                                {{ filesystem.source_device }} · {{ filesystem.filesystem_type }}
-                              </div>
-                            </div>
-                            <div class="text-right">
-                              <div class="font-semibold text-lg">
-                                {{ filesystem.available_bytes | fileSize:config?.file_size_si_units }}
-                              </div>
-                              <div class="text-sm text-hint">free</div>
-                            </div>
-                          </div>
-
-                          <div class="mt-4">
-                            <div class="flex justify-between text-sm mb-1">
-                              <span>{{ filesystem.used_percent | number:'1.0-1' }}% used</span>
-                              <span>{{ filesystem.total_bytes | fileSize:config?.file_size_si_units }} total</span>
-                            </div>
-                            <div class="h-2 w-full bg-gray-200 rounded overflow-hidden">
-                              <div
-                                class="h-full"
-                                [ngClass]="filesystemUsageClass(filesystem)"
-                                [style.width.%]="filesystem.used_percent">
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        }
-
-        <!-- Drive Temperatures -->
-        <div class="flex flex-auto w-full min-w-80 h-90 min-h-0 p-4">
-          <div class="flex flex-col flex-auto min-h-0 bg-card shadow-md rounded overflow-hidden">
-            <div class="flex flex-col flex-none p-6 pr-4 pb-4">
-              <div class="flex items-center justify-between">
-                <div class="flex flex-col">
-                  <div class="font-bold text-md text-secondary uppercase tracking-wider mr-4">
-                    Temperature
-                  </div>
-                  <div class="text-sm text-hint font-medium">
-                    Temperature history for each device
-                  </div>
-                </div>
-
+                <!-- Action buttons (desktop) -->
                 <div class="flex items-center">
-                  <button
-                    class="h-8 min-h-8 px-3"
-                    mat-stroked-button
-                    [matMenuTriggerFor]="tempRangeMenu">
-                    <span class="font-medium text-sm capitalize">
-                      {{ tempDurationKey }}
-                    </span>
-                    <mat-icon class="icon-size-4 ml-1" [svgIcon]="'expand_more'"></mat-icon>
-                  </button>
+                    <button class="xs:hidden" mat-stroked-button [color]="showArchived ? 'primary' : null" (click)="showArchived = !showArchived">
+                        <mat-icon class="icon-size-20" [color]="showArchived ? 'primary' : null" [svgIcon]="'archive'"> </mat-icon>
+                        <span class="ml-2">Archived</span>
+                    </button>
 
-                  <mat-menu #tempRangeMenu="matMenu">
-                    <button mat-menu-item (click)="changeSummaryTempDuration('forever')">
-                      forever
+                    <button matTooltip="not yet implemented" class="ml-2 xs:hidden" mat-stroked-button>
+                        <mat-icon class="icon-size-20" [svgIcon]="'save'"></mat-icon>
+                        <span class="ml-2">Export</span>
                     </button>
-                    <button mat-menu-item (click)="changeSummaryTempDuration('year')">
-                      year
-                    </button>
-                    <button mat-menu-item (click)="changeSummaryTempDuration('month')">
-                      month
-                    </button>
-                    <button mat-menu-item (click)="changeSummaryTempDuration('week')">
-                      week
-                    </button>
-                    <button mat-menu-item (click)="changeSummaryTempDuration('day')">
-                      day
-                    </button>
-                  </mat-menu>
 
-                  <button
-                    class="h-8 min-h-8 px-3 ml-2"
-                    mat-stroked-button
-                    [matMenuTriggerFor]="driveFilterMenu">
-                    <mat-icon class="icon-size-4" [svgIcon]="'filter_list'"></mat-icon>
-                    <span class="font-medium text-sm ml-1">Drives</span>
-                    <mat-icon class="icon-size-4 ml-1" [svgIcon]="'expand_more'"></mat-icon>
-                  </button>
-
-                  <mat-menu #driveFilterMenu="matMenu">
-                    <button mat-menu-item (click)="toggleAllDrives(); $event.stopPropagation()">
-                      <mat-checkbox
-                        [checked]="allDrivesVisible"
-                        [indeterminate]="someDrivesVisible && !allDrivesVisible"
-                        (click)="toggleAllDrives(); $event.stopPropagation()">
-                        All Drives
-                      </mat-checkbox>
+                    <button class="ml-2 xs:hidden" mat-stroked-button (click)="openDialog()">
+                        <mat-icon class="icon-size-20 rotate-90 mirror" [svgIcon]="'tune'"> </mat-icon>
+                        <span class="ml-2">Settings</span>
                     </button>
-                    <mat-divider></mat-divider>
-                    @for (device of summaryData | keyvalue; track device.key) {
-                      <button mat-menu-item (click)="toggleDriveVisibility(device.key); $event.stopPropagation()">
-                        <mat-checkbox
-                          [checked]="visibleDrives[device.key]"
-                          (click)="toggleDriveVisibility(device.key); $event.stopPropagation()">
-                          {{ deviceDashboardTitle(device.value) }}
-                        </mat-checkbox>
-                      </button>
+
+                    <!-- Run collectors button (Omnibus only) -->
+                    @if (config?.collector_trigger_enabled && !isTriggering) {
+                    <button class="ml-2" mat-flat-button color="primary" (click)="runCollectors()">
+                        <mat-icon class="icon-size-20" [svgIcon]="'play_arrow'"> </mat-icon>
+                        <span class="ml-2">Run collectors</span>
+                    </button>
                     }
-                  </mat-menu>
+
+                    <!-- Countdown display -->
+                    @if (countdown > 0) {
+                    <div class="ml-4 flex items-center text-secondary font-medium">
+                        <mat-progress-spinner class="mr-2" [diameter]="20" [mode]="'indeterminate'"> </mat-progress-spinner>
+                        Refreshing in {{ countdown }}s...
+                    </div>
+                    }
+
+                    <!-- Actions menu (mobile) -->
+                    <div class="hidden xs:flex">
+                        <button mat-icon-button [matMenuTriggerFor]="actionsMenu">
+                            <mat-icon [svgIcon]="'more_vert'"></mat-icon>
+                        </button>
+
+                        <mat-menu #actionsMenu="matMenu">
+                            <button mat-menu-item (click)="showArchived = !showArchived">
+                                <mat-icon class="icon-size-20" [color]="showArchived ? 'primary' : null" [svgIcon]="'archive'"> </mat-icon>
+                                <span class="ml-2">Archived</span>
+                            </button>
+
+                            <button mat-menu-item matTooltip="not yet implemented">
+                                <mat-icon class="icon-size-20" [svgIcon]="'save'"></mat-icon>
+                                <span class="ml-2">Export</span>
+                            </button>
+
+                            <button mat-menu-item (click)="openDialog()">
+                                <mat-icon class="icon-size-20 rotate-90 mirror" [svgIcon]="'tune'"> </mat-icon>
+                                <span class="ml-2">Settings</span>
+                            </button>
+                        </mat-menu>
+                    </div>
                 </div>
-              </div>
             </div>
 
-            <div class="flex flex-col flex-auto min-h-0 temp-chart-wrapper">
-              @if (temperatureOptions) {
-                <apx-chart
-                  #tempChart
-                  class="flex-auto w-full min-h-0"
-                  [chart]="temperatureOptions.chart"
-                  [colors]="temperatureOptions.colors"
-                  [dataLabels]="temperatureOptions.dataLabels"
-                  [fill]="temperatureOptions.fill"
-                  [legend]="temperatureOptions.legend"
-                  [markers]="temperatureOptions.markers"
-                  [series]="temperatureOptions.series"
-                  [stroke]="temperatureOptions.stroke"
-                  [tooltip]="temperatureOptions.tooltip"
-                  [xaxis]="temperatureOptions.xaxis"
-                  [yaxis]="temperatureOptions.yaxis"
-                  [grid]="temperatureOptions.grid">
-                </apx-chart>
-              }
+            <!-- Device Groups -->
+            @for (hostId of hostGroups | keyvalue; track hostId) {
+            <div class="flex flex-wrap w-full mb-6">
+                @if (hostId.key) {
+                <div class="flex items-center ml-4 gap-3">
+                    <h3 class="m-0">{{ hostId.key }}</h3>
+                    @if (getCollectorVersionForHost(hostId.value); as version) {
+                    <span
+                        class="text-sm px-2 py-0.5 rounded-full text-white"
+                        [class.bg-yellow-600]="isHostCollectorOutdated(hostId.value)"
+                        [class.bg-gray-500]="!isHostCollectorOutdated(hostId.value)"
+                    >
+                        collector v{{ version }}
+                    </span>
+                    } @if (config?.server_version) {
+                    <span class="gt-sm:hidden text-sm px-2 py-0.5 rounded-full text-white bg-gray-500"> server v{{ config.server_version }} </span>
+                    }
+                </div>
+                }
+
+                <div class="flex flex-wrap w-full">
+                    @for ( deviceSummary of ( deviceSummariesForHostGroup(hostId.value) | deviceSort:config.dashboard_sort:config.dashboard_display ); track deviceSummary ) { @if
+                    (showArchived ? $any(deviceSummary).device.archived : !$any(deviceSummary).device.archived) {
+                    <app-dashboard-device
+                        class="flex gt-sm:w-1/2 min-w-80 p-4"
+                        [deviceSummary]="deviceSummary"
+                        (deviceArchived)="onDeviceArchived($event)"
+                        (deviceUnarchived)="onDeviceUnarchived($event)"
+                        (deviceDeleted)="onDeviceDeleted($event)"
+                    >
+                    </app-dashboard-device>
+                    } }
+                </div>
             </div>
-          </div>
+            }
+
+            <!-- MDADM RAID Arrays -->
+            @if (mdadmArrays.length > 0) {
+            <div class="flex flex-wrap w-full mb-6">
+                <div class="flex items-center ml-4 gap-3">
+                    <h3 class="m-0 uppercase tracking-wider text-secondary">MDADM RAID Arrays</h3>
+                </div>
+                <div class="flex flex-wrap w-full">
+                    @for (array of mdadmArrays; track array.uuid) {
+                    <div class="flex gt-sm:w-1/3 min-w-80 p-4">
+                        <a
+                            class="flex flex-col flex-auto bg-card shadow-md rounded p-6 hover:bg-hover transition-colors duration-150 ease-in-out cursor-pointer"
+                            [routerLink]="['/mdadm', array.uuid]"
+                        >
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900">
+                                        <mat-icon class="text-blue-600 dark:text-blue-400" [svgIcon]="'heroicons_outline:database'"></mat-icon>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-lg font-bold leading-none truncate">{{ array.label || array.name }}</div>
+                                        <div class="text-md text-secondary mt-1">{{ array.level }}</div>
+                                    </div>
+                                </div>
+                                <div class="px-2 py-1 rounded text-xs font-semibold uppercase" [ngClass]="getMdadmArrayStatusColorClass(array)">
+                                    {{ array.state || 'UNKNOWN' }}
+                                </div>
+                            </div>
+
+                            <!-- Sync Progress -->
+                            @if (array.sync_progress > 0 && array.sync_progress < 100) {
+                            <div class="flex flex-col mt-4">
+                                <div class="flex items-center justify-between text-secondary mb-1">
+                                    <div class="text-xs">Sync Progress</div>
+                                    <div class="text-xs font-medium text-blue-500">{{ array.sync_progress }}%</div>
+                                </div>
+                                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                                    <div class="bg-blue-500 h-1.5 rounded-full transition-all duration-300" [style.width.%]="array.sync_progress"></div>
+                                </div>
+                            </div>
+                            }
+
+                            <!-- Array Size / Used -->
+                            @if (array.array_size) {
+                            <div class="flex items-center justify-between mt-4 text-secondary">
+                                <div class="text-xs">Array Size</div>
+                                <div class="text-xs font-medium">{{ array.array_size | fileSize : config?.file_size_si_units }}</div>
+                            </div>
+                            }
+                            @if (array.used_bytes !== undefined && array.used_bytes !== null) {
+                            <div class="flex items-center justify-between mt-1 text-secondary">
+                                <div class="text-xs">Used</div>
+                                <div class="text-xs font-medium">{{ array.used_bytes | fileSize : config?.file_size_si_units }}</div>
+                            </div>
+                            }
+                        </a>
+                    </div>
+                    }
+                </div>
+            </div>
+            } @if (hasFilesystemData()) {
+            <div class="flex flex-col w-full mb-6 px-4">
+                <div class="mb-4">
+                    <div class="font-bold text-md text-secondary uppercase tracking-wider">Filesystem Capacity</div>
+                    <div class="text-sm text-hint font-medium">Logical filesystem free space reported by the collector</div>
+                </div>
+
+                @for (hostId of filesystemHosts(); track hostId) {
+                <div class="flex flex-col bg-card shadow-md rounded p-6 mb-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <div class="font-bold text-md">{{ hostId }}</div>
+                            @if (filesystemStatusForHost(hostId)?.updated_at) {
+                            <div class="text-sm text-hint">
+                                Updated
+                                {{ filesystemStatusForHost(hostId)?.updated_at | date : (config?.time_format === '12' ? 'MMMM dd, yyyy - h:mm a' : 'MMMM dd, yyyy - HH:mm') }}
+                            </div>
+                            }
+                        </div>
+                        <div
+                            class="text-sm px-2 py-0.5 rounded-full text-white"
+                            [class.bg-gray-500]="filesystemStatusForHost(hostId)?.status === 'available'"
+                            [class.bg-yellow-600]="filesystemStatusForHost(hostId)?.status === 'unavailable'"
+                        >
+                            {{ filesystemStatusForHost(hostId)?.status | titlecase }}
+                        </div>
+                    </div>
+
+                    @if (filesystemStatusForHost(hostId)?.status === 'unavailable') {
+                    <div class="text-sm text-hint">
+                        {{ filesystemStatusForHost(hostId)?.reason || 'Collector cannot inspect host mounts for this host.' }}
+                    </div>
+                    } @else if (filesystemsForHost(hostId).length === 0) {
+                    <div class="text-sm text-hint">No eligible filesystems were reported for this host.</div>
+                    } @else {
+                    <div class="flex flex-wrap -mx-3">
+                        @for (filesystem of filesystemsForHost(hostId); track filesystem.mount_point) {
+                        <div class="flex gt-sm:w-1/2 w-full p-3">
+                            <div class="w-full border rounded p-4">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <div class="font-semibold text-base">{{ filesystem.mount_point }}</div>
+                                        <div class="text-sm text-hint">{{ filesystem.source_device }} · {{ filesystem.filesystem_type }}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="font-semibold text-lg">
+                                            {{ filesystem.available_bytes | fileSize : config?.file_size_si_units }}
+                                        </div>
+                                        <div class="text-sm text-hint">free</div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4">
+                                    <div class="flex justify-between text-sm mb-1">
+                                        <span>{{ filesystem.used_percent | number : '1.0-1' }}% used</span>
+                                        <span>{{ filesystem.total_bytes | fileSize : config?.file_size_si_units }} total</span>
+                                    </div>
+                                    <div class="h-2 w-full bg-gray-200 rounded overflow-hidden">
+                                        <div class="h-full" [ngClass]="filesystemUsageClass(filesystem)" [style.width.%]="filesystem.used_percent"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        }
+                    </div>
+                    }
+                </div>
+                }
+            </div>
+            }
+
+            <!-- Drive Temperatures -->
+            <div class="flex flex-auto w-full min-w-80 h-90 min-h-0 p-4">
+                <div class="flex flex-col flex-auto min-h-0 bg-card shadow-md rounded overflow-hidden">
+                    <div class="flex flex-col flex-none p-6 pr-4 pb-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex flex-col">
+                                <div class="font-bold text-md text-secondary uppercase tracking-wider mr-4">Temperature</div>
+                                <div class="text-sm text-hint font-medium">Temperature history for each device</div>
+                            </div>
+
+                            <div class="flex items-center">
+                                <button class="h-8 min-h-8 px-3" mat-stroked-button [matMenuTriggerFor]="tempRangeMenu">
+                                    <span class="font-medium text-sm capitalize">
+                                        {{ tempDurationKey }}
+                                    </span>
+                                    <mat-icon class="icon-size-4 ml-1" [svgIcon]="'expand_more'"></mat-icon>
+                                </button>
+
+                                <mat-menu #tempRangeMenu="matMenu">
+                                    <button mat-menu-item (click)="changeSummaryTempDuration('forever')">forever</button>
+                                    <button mat-menu-item (click)="changeSummaryTempDuration('year')">year</button>
+                                    <button mat-menu-item (click)="changeSummaryTempDuration('month')">month</button>
+                                    <button mat-menu-item (click)="changeSummaryTempDuration('week')">week</button>
+                                    <button mat-menu-item (click)="changeSummaryTempDuration('day')">day</button>
+                                </mat-menu>
+
+                                <button class="h-8 min-h-8 px-3 ml-2" mat-stroked-button [matMenuTriggerFor]="driveFilterMenu">
+                                    <mat-icon class="icon-size-4" [svgIcon]="'filter_list'"></mat-icon>
+                                    <span class="font-medium text-sm ml-1">Drives</span>
+                                    <mat-icon class="icon-size-4 ml-1" [svgIcon]="'expand_more'"></mat-icon>
+                                </button>
+
+                                <mat-menu #driveFilterMenu="matMenu">
+                                    <button mat-menu-item (click)="toggleAllDrives(); $event.stopPropagation()">
+                                        <mat-checkbox
+                                            [checked]="allDrivesVisible"
+                                            [indeterminate]="someDrivesVisible && !allDrivesVisible"
+                                            (click)="toggleAllDrives(); $event.stopPropagation()"
+                                        >
+                                            All Drives
+                                        </mat-checkbox>
+                                    </button>
+                                    <mat-divider></mat-divider>
+                                    @for (device of summaryData | keyvalue; track device.key) {
+                                    <button mat-menu-item (click)="toggleDriveVisibility(device.key); $event.stopPropagation()">
+                                        <mat-checkbox [checked]="visibleDrives[device.key]" (click)="toggleDriveVisibility(device.key); $event.stopPropagation()">
+                                            {{ deviceDashboardTitle(device.value) }}
+                                        </mat-checkbox>
+                                    </button>
+                                    }
+                                </mat-menu>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col flex-auto min-h-0 temp-chart-wrapper">
+                        @if (temperatureOptions) {
+                        <apx-chart
+                            #tempChart
+                            class="flex-auto w-full min-h-0"
+                            [chart]="temperatureOptions.chart"
+                            [colors]="temperatureOptions.colors"
+                            [dataLabels]="temperatureOptions.dataLabels"
+                            [fill]="temperatureOptions.fill"
+                            [legend]="temperatureOptions.legend"
+                            [markers]="temperatureOptions.markers"
+                            [series]="temperatureOptions.series"
+                            [stroke]="temperatureOptions.stroke"
+                            [tooltip]="temperatureOptions.tooltip"
+                            [xaxis]="temperatureOptions.xaxis"
+                            [yaxis]="temperatureOptions.yaxis"
+                            [grid]="temperatureOptions.grid"
+                        >
+                        </apx-chart>
+                        }
+                    </div>
+                </div>
+            </div>
         </div>
-
-      </div>
     </div>
-  </div>
+</div>
 } @else {
-  <div class="dashboard-placeholder content-layout fullwidth-basic-content-scroll">
-    <img
-      class="image"
-      src="assets/images/dashboard-placeholder.png">
+<div class="dashboard-placeholder content-layout fullwidth-basic-content-scroll">
+    <img class="image" src="assets/images/dashboard-placeholder.png" />
 
     <h1>No Devices Detected!</h1>
 
-    <p style="max-width:700px;">
-      Scrutiny includes a Collector agent that you must run on all of your systems.
-      The Collector is responsible for detecting connected storage devices and
-      collecting S.M.A.R.T data on a configurable schedule.
+    <p style="max-width: 700px">
+        Scrutiny includes a Collector agent that you must run on all of your systems. The Collector is responsible for detecting connected storage devices and collecting S.M.A.R.T
+        data on a configurable schedule.
     </p>
 
     <p>
-      <br />
-      You can trigger the Collector manually by running the following command,
-      then refreshing this page:
+        <br />
+        You can trigger the Collector manually by running the following command, then refreshing this page:
     </p>
 
     <code>scrutiny-collector-metrics run</code>
-  </div>
+</div>
 }

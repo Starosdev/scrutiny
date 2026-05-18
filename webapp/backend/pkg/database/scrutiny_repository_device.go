@@ -54,6 +54,9 @@ func (sr *scrutinyRepository) GetDevices(ctx context.Context) ([]models.Device, 
 	if err := sr.gormClient.WithContext(ctx).Find(&devices).Error; err != nil {
 		return nil, fmt.Errorf("Could not get device summary from DB: %v", err)
 	}
+	if err := sr.attachDeviceEnduranceOverrides(ctx, devices); err != nil {
+		return nil, err
+	}
 	return devices, nil
 }
 
@@ -193,6 +196,11 @@ func (sr *scrutinyRepository) GetDeviceDetails(ctx context.Context, deviceID str
 	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).First(&device).Error; err != nil {
 		return models.Device{}, err
 	}
+	devices := []models.Device{device}
+	if err := sr.attachDeviceEnduranceOverrides(ctx, devices); err != nil {
+		return models.Device{}, err
+	}
+	device = devices[0]
 
 	return device, nil
 }
@@ -237,6 +245,21 @@ func (sr *scrutinyRepository) UpdateDeviceLabel(ctx context.Context, deviceID st
 	}
 
 	return sr.gormClient.Model(&device).Update("label", label).Error
+}
+
+func (sr *scrutinyRepository) UpdateDeviceMaxTBW(ctx context.Context, deviceID string, maxTBW float64) error {
+	var device models.Device
+	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).First(&device).Error; err != nil {
+		return fmt.Errorf(errDeviceNotFound, err)
+	}
+	if device.WWN == "" {
+		return fmt.Errorf("could not update max_tbw for device without WWN")
+	}
+	override := models.DeviceEnduranceOverride{
+		WWN:    device.WWN,
+		MaxTBW: maxTBW,
+	}
+	return sr.gormClient.WithContext(ctx).Save(&override).Error
 }
 
 // Update Device Smart Display Mode (user preference for attribute value display)
@@ -307,5 +330,39 @@ func (sr *scrutinyRepository) DeleteDevice(ctx context.Context, deviceID string)
 		}
 	}
 
+	return nil
+}
+
+func (sr *scrutinyRepository) attachDeviceEnduranceOverrides(ctx context.Context, devices []models.Device) error {
+	if len(devices) == 0 {
+		return nil
+	}
+
+	wwns := make([]string, 0, len(devices))
+	for i := range devices {
+		if devices[i].WWN != "" {
+			wwns = append(wwns, devices[i].WWN)
+		}
+	}
+	if len(wwns) == 0 {
+		return nil
+	}
+
+	overrides := []models.DeviceEnduranceOverride{}
+	if err := sr.gormClient.WithContext(ctx).Where("wwn IN ?", wwns).Find(&overrides).Error; err != nil {
+		return fmt.Errorf("could not get device endurance overrides from DB: %v", err)
+	}
+
+	overrideByWWN := make(map[string]float64, len(overrides))
+	for _, override := range overrides {
+		overrideByWWN[override.WWN] = override.MaxTBW
+	}
+
+	for i := range devices {
+		if maxTBW, ok := overrideByWWN[devices[i].WWN]; ok {
+			value := maxTBW
+			devices[i].MaxTBW = &value
+		}
+	}
 	return nil
 }

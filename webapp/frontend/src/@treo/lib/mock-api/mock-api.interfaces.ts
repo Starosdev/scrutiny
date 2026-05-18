@@ -1,4 +1,3 @@
-export interface TreoMockApi
-{
+export interface TreoMockApi {
     register(): void;
 }

@@ -4,8 +4,7 @@ import { Observable, of, throwError } from 'rxjs';
 import { take } from 'rxjs/operators';
 
 @Injectable()
-export class TreoMockApiRequestHandler
-{
+export class TreoMockApiRequestHandler {
     // Private
     private _delay: number;
     private _executionCount: number;
@@ -17,8 +16,7 @@ export class TreoMockApiRequestHandler
     /**
      * Constructor
      */
-    constructor()
-    {
+    constructor() {
         // Set the private defaults
         this._executionCount = 0;
         this._executionLimit = 0;
@@ -33,11 +31,9 @@ export class TreoMockApiRequestHandler
      *
      * @param value
      */
-    set delay(value: number)
-    {
+    set delay(value: number) {
         // Return, if the value is the same
-        if ( this._delay === value )
-        {
+        if (this._delay === value) {
             return;
         }
 
@@ -45,8 +41,7 @@ export class TreoMockApiRequestHandler
         this._delay = value;
     }
 
-    get delay(): number
-    {
+    get delay(): number {
         return this._delay;
     }
 
@@ -55,11 +50,9 @@ export class TreoMockApiRequestHandler
      *
      * @param value
      */
-    set url(value: string)
-    {
+    set url(value: string) {
         // Return, if the value is the same
-        if ( this._url === value )
-        {
+        if (this._url === value) {
             return;
         }
 
@@ -67,8 +60,7 @@ export class TreoMockApiRequestHandler
         this._url = value;
     }
 
-    get url(): string
-    {
+    get url(): string {
         return this._url;
     }
 
@@ -77,11 +69,9 @@ export class TreoMockApiRequestHandler
      *
      * @param value
      */
-    set interceptedRequest(value: HttpRequest<any>)
-    {
+    set interceptedRequest(value: HttpRequest<any>) {
         // Return, if the value is the same
-        if ( this._interceptedRequest === value )
-        {
+        if (this._interceptedRequest === value) {
             return;
         }
 
@@ -89,25 +79,21 @@ export class TreoMockApiRequestHandler
         this._interceptedRequest = value;
     }
 
-    get interceptedRequest(): HttpRequest<any>
-    {
+    get interceptedRequest(): HttpRequest<any> {
         return this._interceptedRequest;
     }
 
     /**
      * Getter for reply callback
      */
-    get replyCallback(): Observable<any>
-    {
+    get replyCallback(): Observable<any> {
         // Throw an error, if the execution limit has been reached
-        if ( this._executionLimit > 0 && this._executionCount === this._executionLimit )
-        {
+        if (this._executionLimit > 0 && this._executionCount === this._executionLimit) {
             return throwError('Execution limit reached');
         }
 
         // Throw an error, if the intercepted request has not been set
-        if ( !this.interceptedRequest )
-        {
+        if (!this.interceptedRequest) {
             return throwError('Intercepted request does not exist!');
         }
 
@@ -118,8 +104,7 @@ export class TreoMockApiRequestHandler
         const replyCallbackResult = this._replyCallback(this.interceptedRequest);
 
         // If the result of the reply function is an observable...
-        if ( replyCallbackResult instanceof Observable )
-        {
+        if (replyCallbackResult instanceof Observable) {
             // Return the result as it is
             return replyCallbackResult.pipe(take(1));
         }
@@ -137,8 +122,7 @@ export class TreoMockApiRequestHandler
      *
      * @param callback
      */
-    reply(callback: (req: HttpRequest<any>) => ([number, any | string] | Observable<any>)): void
-    {
+    reply(callback: (req: HttpRequest<any>) => [number, any | string] | Observable<any>): void {
         // Store the reply callback
         this._replyCallback = callback;
     }
@@ -148,8 +132,7 @@ export class TreoMockApiRequestHandler
      *
      * @param callback
      */
-    replyOnce(callback: (req: HttpRequest<any>) => ([number, any | string] | Observable<any>)): void
-    {
+    replyOnce(callback: (req: HttpRequest<any>) => [number, any | string] | Observable<any>): void {
         // Set the execute limit to 1
         this._executionLimit = 1;
 
@@ -157,4 +140,3 @@ export class TreoMockApiRequestHandler
         this.reply(callback);
     }
 }
-

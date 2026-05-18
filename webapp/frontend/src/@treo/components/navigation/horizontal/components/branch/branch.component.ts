@@ -1,20 +1,36 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { MatMenu as MatMenu } from '@angular/material/menu';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
+import { MatMenu as MatMenu, MatMenuTrigger, MatMenuItem } from '@angular/material/menu';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { TreoHorizontalNavigationComponent } from '@treo/components/navigation/horizontal/horizontal.component';
 import { TreoNavigationService } from '@treo/components/navigation/navigation.service';
 import { TreoNavigationItem } from '@treo/components/navigation/navigation.types';
+import { NgClass, NgTemplateOutlet, NgStyle } from '@angular/common';
+import { TreoHorizontalNavigationBasicItemComponent } from '../basic/basic.component';
+import { TreoHorizontalNavigationDividerItemComponent } from '../divider/divider.component';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
     selector: 'treo-horizontal-navigation-branch-item',
     templateUrl: './branch.component.html',
     styles: [],
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false
+    imports: [
+        NgClass,
+        MatMenuTrigger,
+        NgTemplateOutlet,
+        MatMenu,
+        MatMenuItem,
+        TreoHorizontalNavigationBasicItemComponent,
+        TreoHorizontalNavigationDividerItemComponent,
+        MatIcon,
+        NgStyle,
+    ],
 })
-export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDestroy
-{
+export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDestroy {
+    private readonly _treoNavigationService = inject(TreoNavigationService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+
     // Child
     @Input()
     child: boolean;
@@ -24,7 +40,7 @@ export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDe
     item: TreoNavigationItem;
 
     // Mat menu
-    @ViewChild('matMenu', {static: true})
+    @ViewChild('matMenu', { static: true })
     matMenu: MatMenu;
 
     // Name
@@ -41,11 +57,7 @@ export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDe
      * @param {TreoNavigationService} _treoNavigationService
      * @param {ChangeDetectorRef} _changeDetectorRef
      */
-    constructor(
-        private readonly _treoNavigationService: TreoNavigationService,
-        private readonly _changeDetectorRef: ChangeDetectorRef
-    )
-    {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 
@@ -60,16 +72,12 @@ export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDe
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Get the parent navigation component
         this._treoHorizontalNavigationComponent = this._treoNavigationService.getComponent(this.name);
 
         // Subscribe to onRefreshed on the navigation component
-        this._treoHorizontalNavigationComponent.onRefreshed.pipe(
-            takeUntil(this._unsubscribeAll)
-        ).subscribe(() => {
-
+        this._treoHorizontalNavigationComponent.onRefreshed.pipe(takeUntil(this._unsubscribeAll)).subscribe(() => {
             // Mark for check
             this._changeDetectorRef.markForCheck();
         });
@@ -78,8 +86,7 @@ export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDe
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();
@@ -92,8 +99,7 @@ export class TreoHorizontalNavigationBranchItemComponent implements OnInit, OnDe
     /**
      * Trigger the change detection
      */
-    triggerChangeDetection(): void
-    {
+    triggerChangeDetection(): void {
         // Mark for check
         this._changeDetectorRef.markForCheck();
     }

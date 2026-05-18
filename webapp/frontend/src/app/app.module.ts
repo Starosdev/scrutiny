@@ -1,45 +1,40 @@
-import {enableProdMode, inject, NgModule, provideAppInitializer} from '@angular/core';
-import {BrowserModule} from '@angular/platform-browser';
-import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
-import {ExtraOptions, PreloadAllModules, RouterModule} from '@angular/router';
-import {APP_BASE_HREF} from '@angular/common';
-import {MarkdownModule} from 'ngx-markdown';
-import {TreoModule} from '@treo';
-import {ScrutinyConfigModule} from 'app/core/config/scrutiny-config.module';
-import {TreoMockApiModule} from '@treo/lib/mock-api';
-import {CoreModule} from 'app/core/core.module';
-import {appConfig} from 'app/core/config/app.config';
-import {AuthService} from 'app/core/auth/auth.service';
-import {mockDataServices} from 'app/data/mock';
-import {LayoutModule} from 'app/layout/layout.module';
-import {AppComponent} from 'app/app.component';
-import {appRoutes, getAppBaseHref} from 'app/app.routing';
-import {environment} from '../environments/environment';
+import { enableProdMode, inject, NgModule, provideAppInitializer } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { ExtraOptions, PreloadAllModules, RouterModule } from '@angular/router';
+import { APP_BASE_HREF } from '@angular/common';
+import { MarkdownModule } from 'ngx-markdown';
+import { TreoModule } from '@treo';
+import { ScrutinyConfigModule } from 'app/core/config/scrutiny-config.module';
+import { TreoMockApiModule } from '@treo/lib/mock-api';
+import { CoreModule } from 'app/core/core.module';
+import { appConfig } from 'app/core/config/app.config';
+import { AuthService } from 'app/core/auth/auth.service';
+import { mockDataServices } from 'app/data/mock';
+import { LayoutModule } from 'app/layout/layout.module';
+import { AppComponent } from 'app/app.component';
+import { appRoutes, getAppBaseHref } from 'app/app.routing';
+import { environment } from '../environments/environment';
 
 const routerConfig: ExtraOptions = {
     scrollPositionRestoration: 'enabled',
-    preloadingStrategy: PreloadAllModules
+    preloadingStrategy: PreloadAllModules,
 };
 
-let dev = [
-    TreoMockApiModule.forRoot(mockDataServices),
-];
+let dev = [TreoMockApiModule.forRoot(mockDataServices)];
 
 // if production clear dev imports and set to prod mode
-// @ts-ignore
 if (environment.production) {
     dev = [];
     enableProdMode();
 }
 
 @NgModule({
-    declarations: [
-        AppComponent,
-    ],
-    imports     : [
+    imports: [
         BrowserModule,
         BrowserAnimationsModule,
         RouterModule.forRoot(appRoutes, routerConfig),
+        AppComponent,
 
         // Treo & Treo Mock API
         TreoModule,
@@ -53,19 +48,15 @@ if (environment.production) {
         LayoutModule,
 
         // 3rd party modules
-        MarkdownModule.forRoot({})
+        MarkdownModule.forRoot({}),
     ],
-    bootstrap   : [
-        AppComponent
-    ],
+    bootstrap: [AppComponent],
     providers: [
         {
             provide: APP_BASE_HREF,
-            useValue: getAppBaseHref()
+            useValue: getAppBaseHref(),
         },
-        provideAppInitializer(() => inject(AuthService).init())
+        provideAppInitializer(() => inject(AuthService).init()),
     ],
 })
-export class AppModule
-{
-}
+export class AppModule {}

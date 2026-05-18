@@ -1,82 +1,56 @@
 <!-- Open button, 'bar' only -->
 @if (appearance === 'bar' && !opened) {
-  <button class="search-toggle-open"
-    mat-icon-button
-    (click)="open()">
+<button class="search-toggle-open" mat-icon-button (click)="open()">
     <mat-icon [svgIcon]="'search'"></mat-icon>
-  </button>
+</button>
 }
 
 <!-- Search container -->
 @if (appearance === 'basic' || (appearance === 'bar' && opened)) {
-  <div class="search-container"
-    [@.disabled]="appearance === 'basic'"
-    @slideInTop
-    @slideOutTop>
-    <mat-form-field class="treo-mat-no-subscript search-input"
-      #searchInput>
-      <mat-icon matPrefix
-      [svgIcon]="'search'"></mat-icon>
-      <input matInput
-        [formControl]="searchControl"
-        [placeholder]="'Search for a page or a contact'"
-        [matAutocomplete]="matAutocomplete"
-        (keydown)="onKeydown($event)">
+<div class="search-container" [@.disabled]="appearance === 'basic'" @slideInTop @slideOutTop>
+    <mat-form-field class="treo-mat-no-subscript search-input" #searchInput>
+        <mat-icon matPrefix [svgIcon]="'search'"></mat-icon>
+        <input matInput [formControl]="searchControl" [placeholder]="'Search for a page or a contact'" [matAutocomplete]="matAutocomplete" (keydown)="onKeydown($event)" />
     </mat-form-field>
-    <mat-autocomplete [class]="'search-results search-results-appearance-' + appearance"
-      #matAutocomplete="matAutocomplete"
-      [disableRipple]="true">
-      @if (results && !results.length) {
-        <mat-option class="no-results"
-          >
-          No results found!
-        </mat-option>
-      }
-      @for (result of results; track result) {
-        <mat-option
-          [routerLink]="result.link">
-          <!-- Page result -->
-          @if (result.resultType === 'page') {
-            <div class="result page-result"
-              >
-              <div class="badge">Page</div>
-              <div class="title">
-                <span [innerHTML]="result.title"></span>
-                <span class="link"
-                [routerLink]="result.link">{{result.link}}</span>
-              </div>
+    <mat-autocomplete [class]="'search-results search-results-appearance-' + appearance" #matAutocomplete="matAutocomplete" [disableRipple]="true">
+        @if (results && !results.length) {
+        <mat-option class="no-results"> No results found! </mat-option>
+        } @for (result of results; track result) {
+        <mat-option [routerLink]="result.link">
+            <!-- Page result -->
+            @if (result.resultType === 'page') {
+            <div class="result page-result">
+                <div class="badge">Page</div>
+                <div class="title">
+                    <span [innerHTML]="result.title"></span>
+                    <span class="link" [routerLink]="result.link">{{ result.link }}</span>
+                </div>
             </div>
-          }
-          <!-- Contact result -->
-          @if (result.resultType === 'contact') {
-            <div class="result contact-result"
-              >
-              <div class="badge">Contact</div>
-              <div class="title">
-                <span [innerHTML]="result.title"></span>
-              </div>
-              <div class="image">
-                @if (result.avatar) {
-                  <img
-                    [src]="result.avatar">
-                }
-                @if (!result.avatar) {
-                  <mat-icon
-                  [svgIcon]="'account_circle'"></mat-icon>
-                }
-              </div>
+            }
+            <!-- Contact result -->
+            @if (result.resultType === 'contact') {
+            <div class="result contact-result">
+                <div class="badge">Contact</div>
+                <div class="title">
+                    <span [innerHTML]="result.title"></span>
+                </div>
+                <div class="image">
+                    @if (result.avatar) {
+                    <img [src]="result.avatar" />
+                    } @if (!result.avatar) {
+                    <mat-icon [svgIcon]="'account_circle'"></mat-icon>
+                    }
+                </div>
             </div>
-          }
+            }
         </mat-option>
-      }
+        }
     </mat-autocomplete>
     <!-- Close button, 'bar' only -->
     @if (appearance === 'bar') {
-      <button class="search-toggle-close"
-        mat-icon-button
-        (click)="close()">
+    <button class="search-toggle-close" mat-icon-button (click)="close()">
         <mat-icon [svgIcon]="'close'"></mat-icon>
-      </button>
+    </button>
     }
-  </div>
+</div>
 }

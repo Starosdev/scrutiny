@@ -1,9 +1,7 @@
 <h2 mat-dialog-title>Scrutiny Settings</h2>
 <mat-dialog-content class="mat-typography">
-
     <div class="flex flex-col p-8 pb-0">
         <div class="flex flex-col mt-5 gt-md:flex-row">
-
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Dark Mode</mat-label>
                 <mat-select [(ngModel)]="theme">
@@ -64,8 +62,8 @@
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>File Size</mat-label>
                 <mat-select [(ngModel)]="fileSizeSIUnits">
-                    <mat-option [value]=true>SI Units (GB)</mat-option>
-                    <mat-option [value]=false>Binary Units (GiB)</mat-option>
+                    <mat-option [value]="true">SI Units (GB)</mat-option>
+                    <mat-option [value]="false">Binary Units (GiB)</mat-option>
                 </mat-select>
             </mat-form-field>
         </div>
@@ -92,10 +90,10 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Device Status - Thresholds</mat-label>
-                <mat-select [(ngModel)]=statusThreshold>
-                    <mat-option [value]=1>Smart</mat-option>
-                    <mat-option [value]=2>Scrutiny</mat-option>
-                    <mat-option [value]=3>Both</mat-option>
+                <mat-select [(ngModel)]="statusThreshold">
+                    <mat-option [value]="1">Smart</mat-option>
+                    <mat-option [value]="2">Scrutiny</mat-option>
+                    <mat-option [value]="3">Both</mat-option>
                 </mat-select>
                 <mat-hint>Smart = manufacturer failures, Scrutiny = threshold failures, Both = either</mat-hint>
             </mat-form-field>
@@ -104,9 +102,9 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Notify - Level</mat-label>
-                <mat-select [(ngModel)]=notifyLevel>
-                    <mat-option [value]=1>Warn</mat-option>
-                    <mat-option [value]=2>Fail</mat-option>
+                <mat-select [(ngModel)]="notifyLevel">
+                    <mat-option [value]="1">Warn</mat-option>
+                    <mat-option [value]="2">Fail</mat-option>
                 </mat-select>
                 <mat-hint>Warn = notify on warnings and failures, Fail = notify on failures only</mat-hint>
             </mat-form-field>
@@ -115,9 +113,9 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Notify - Filter Attributes</mat-label>
-                <mat-select [(ngModel)]=statusFilterAttributes>
-                    <mat-option [value]=0>All</mat-option>
-                    <mat-option [value]=1>Critical</mat-option>
+                <mat-select [(ngModel)]="statusFilterAttributes">
+                    <mat-option [value]="0">All</mat-option>
+                    <mat-option [value]="1">Critical</mat-option>
                 </mat-select>
             </mat-form-field>
         </div>
@@ -125,9 +123,9 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Repeat Notifications</mat-label>
-                <mat-select [(ngModel)]=repeatNotifications>
-                    <mat-option [value]=true>Always</mat-option>
-                    <mat-option [value]=false>Only when the value has changed</mat-option>
+                <mat-select [(ngModel)]="repeatNotifications">
+                    <mat-option [value]="true">Always</mat-option>
+                    <mat-option [value]="false">Only when the value has changed</mat-option>
                 </mat-select>
             </mat-form-field>
         </div>
@@ -135,9 +133,9 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Retrieve SCT Temperature History</mat-label>
-                <mat-select [(ngModel)]=retrieveSCTTemperatureHistory>
-                    <mat-option [value]=true>Enabled</mat-option>
-                    <mat-option [value]=false>Disabled</mat-option>
+                <mat-select [(ngModel)]="retrieveSCTTemperatureHistory">
+                    <mat-option [value]="true">Enabled</mat-option>
+                    <mat-option [value]="false">Disabled</mat-option>
                 </mat-select>
             </mat-form-field>
         </div>
@@ -166,33 +164,37 @@
             </mat-form-field>
         </div>
 
-        <div class="flex flex-col mt-5 gt-md:flex-row" *ngIf="notifyOnMissedPing">
+        @if (notifyOnMissedPing) {
+        <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Missed Ping Timeout (minutes)</mat-label>
-                <input matInput type="number" [(ngModel)]="missedPingTimeoutMinutes" min="1">
+                <input matInput type="number" [(ngModel)]="missedPingTimeoutMinutes" min="1" />
                 <mat-hint>Minutes before alerting (default: 60)</mat-hint>
             </mat-form-field>
 
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">
                 <mat-label>Check Interval (minutes)</mat-label>
-                <input matInput type="number" [(ngModel)]="missedPingCheckIntervalMins" min="1">
+                <input matInput type="number" [(ngModel)]="missedPingCheckIntervalMins" min="1" />
                 <mat-hint>How often to check (default: 5)</mat-hint>
             </mat-form-field>
         </div>
+        }
 
-        <div class="flex flex-col mt-5 gt-md:flex-row" *ngIf="notifyOnMissedPing">
+        @if (notifyOnMissedPing) {
+        <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Repeat Notification Cooldown (minutes)</mat-label>
-                <input matInput type="number" [(ngModel)]="missedPingCooldownMinutes" min="0">
+                <input matInput type="number" [(ngModel)]="missedPingCooldownMinutes" min="0" />
                 <mat-hint>Minimum time between repeat notifications per device (0 = use timeout)</mat-hint>
             </mat-form-field>
         </div>
+        }
 
         <!-- Notification Rate Limiting -->
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Notification Rate Limit (per hour)</mat-label>
-                <input matInput type="number" [(ngModel)]="notificationRateLimit" min="0">
+                <input matInput type="number" [(ngModel)]="notificationRateLimit" min="0" />
                 <mat-hint>Maximum notifications per hour across all types (0 = unlimited)</mat-hint>
             </mat-form-field>
         </div>
@@ -201,13 +203,13 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Quiet Hours Start</mat-label>
-                <input matInput type="time" [(ngModel)]="notificationQuietStart">
+                <input matInput type="time" [(ngModel)]="notificationQuietStart" />
                 <mat-hint>Stop sending notifications at this time (leave empty to disable)</mat-hint>
             </mat-form-field>
 
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">
                 <mat-label>Quiet Hours End</mat-label>
-                <input matInput type="time" [(ngModel)]="notificationQuietEnd">
+                <input matInput type="time" [(ngModel)]="notificationQuietEnd" />
                 <mat-hint>Resume and send queued digest at this time</mat-hint>
             </mat-form-field>
         </div>
@@ -223,13 +225,15 @@
             </mat-form-field>
         </div>
 
-        <div class="flex flex-col mt-5 gt-md:flex-row" *ngIf="heartbeatEnabled">
+        @if (heartbeatEnabled) {
+        <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Heartbeat Interval (hours)</mat-label>
-                <input matInput type="number" [(ngModel)]="heartbeatIntervalHours" min="1">
+                <input matInput type="number" [(ngModel)]="heartbeatIntervalHours" min="1" />
                 <mat-hint>Hours between heartbeat notifications (default: 24)</mat-hint>
             </mat-form-field>
         </div>
+        }
 
         <!-- Uptime Kuma Push Monitor -->
         <div class="flex flex-col mt-5 gt-md:flex-row">
@@ -243,12 +247,12 @@
             </mat-form-field>
         </div>
 
-        <div *ngIf="uptimeKumaEnabled">
+        @if (uptimeKumaEnabled) {
+        <div>
             <div class="flex flex-col mt-5 gt-md:flex-row">
                 <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                     <mat-label>Push URL</mat-label>
-                    <input matInput [(ngModel)]="uptimeKumaPushURL"
-                           placeholder="https://kuma.example.com/api/push/YOUR_TOKEN">
+                    <input matInput [(ngModel)]="uptimeKumaPushURL" placeholder="https://kuma.example.com/api/push/YOUR_TOKEN" />
                     <mat-hint>Uptime Kuma Push Monitor URL (can also be set in scrutiny.yaml)</mat-hint>
                 </mat-form-field>
             </div>
@@ -256,35 +260,35 @@
             <div class="flex flex-col mt-5 gt-md:flex-row items-center">
                 <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                     <mat-label>Push Interval (seconds)</mat-label>
-                    <input matInput type="number" [(ngModel)]="uptimeKumaIntervalSeconds" min="10">
+                    <input matInput type="number" [(ngModel)]="uptimeKumaIntervalSeconds" min="10" />
                     <mat-hint>Seconds between health pushes (default: 60)</mat-hint>
                 </mat-form-field>
 
-                <button mat-stroked-button
-                        class="ml-3"
-                        (click)="testUptimeKuma()"
-                        [disabled]="uptimeKumaTestLoading || !uptimeKumaPushURL">
-                    <mat-icon *ngIf="!uptimeKumaTestLoading">send</mat-icon>
-                    <mat-icon *ngIf="uptimeKumaTestLoading">hourglass_empty</mat-icon>
+                <button mat-stroked-button class="ml-3" (click)="testUptimeKuma()" [disabled]="uptimeKumaTestLoading || !uptimeKumaPushURL">
+                    @if (!uptimeKumaTestLoading) {
+                    <mat-icon>send</mat-icon>
+                    }
+                    @if (uptimeKumaTestLoading) {
+                    <mat-icon>hourglass_empty</mat-icon>
+                    }
                     <span class="ml-1">Test Push</span>
                 </button>
             </div>
 
-            <div *ngIf="uptimeKumaTestResult === 'success'" class="mt-2 text-green-600 text-sm">
-                Test push sent successfully.
-            </div>
-            <div *ngIf="uptimeKumaTestResult === 'error'" class="mt-2 text-red-600 text-sm">
-                Test push failed. Check the push URL and try again.
-            </div>
+            @if (uptimeKumaTestResult === 'success') {
+            <div class="mt-2 text-green-600 text-sm">Test push sent successfully.</div>
+            }
+            @if (uptimeKumaTestResult === 'error') {
+            <div class="mt-2 text-red-600 text-sm">Test push failed. Check the push URL and try again.</div>
+            }
         </div>
+        }
 
         <!-- Scheduled Reports Section -->
         <mat-expansion-panel class="mt-5">
             <mat-expansion-panel-header>
                 <mat-panel-title>Scheduled Reports</mat-panel-title>
-                <mat-panel-description>
-                    Configure automated health report delivery
-                </mat-panel-description>
+                <mat-panel-description> Configure automated health report delivery </mat-panel-description>
             </mat-expansion-panel-header>
 
             <div class="flex flex-col p-4">
@@ -299,7 +303,8 @@
                     </mat-form-field>
                 </div>
 
-                <div *ngIf="reportEnabled">
+                @if (reportEnabled) {
+                <div>
                     <div class="flex flex-col mt-5 gt-md:flex-row">
                         <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                             <mat-label>Daily Report</mat-label>
@@ -309,11 +314,13 @@
                             </mat-select>
                         </mat-form-field>
 
-                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3" *ngIf="reportDailyEnabled">
+                        @if (reportDailyEnabled) {
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">
                             <mat-label>Daily Report Time</mat-label>
-                            <input matInput type="time" [(ngModel)]="reportDailyTime">
+                            <input matInput type="time" [(ngModel)]="reportDailyTime" />
                             <mat-hint>Time of day to send (24h format)</mat-hint>
                         </mat-form-field>
+                        }
                     </div>
 
                     <div class="flex flex-col mt-5 gt-md:flex-row">
@@ -325,7 +332,8 @@
                             </mat-select>
                         </mat-form-field>
 
-                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3" *ngIf="reportWeeklyEnabled">
+                        @if (reportWeeklyEnabled) {
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">
                             <mat-label>Day of Week</mat-label>
                             <mat-select [(ngModel)]="reportWeeklyDay">
                                 <mat-option [value]="0">Sunday</mat-option>
@@ -337,11 +345,14 @@
                                 <mat-option [value]="6">Saturday</mat-option>
                             </mat-select>
                         </mat-form-field>
+                        }
 
-                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3" *ngIf="reportWeeklyEnabled">
+                        @if (reportWeeklyEnabled) {
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">
                             <mat-label>Weekly Report Time</mat-label>
-                            <input matInput type="time" [(ngModel)]="reportWeeklyTime">
+                            <input matInput type="time" [(ngModel)]="reportWeeklyTime" />
                         </mat-form-field>
+                        }
                     </div>
 
                     <div class="flex flex-col mt-5 gt-md:flex-row">
@@ -353,16 +364,20 @@
                             </mat-select>
                         </mat-form-field>
 
-                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3" *ngIf="reportMonthlyEnabled">
+                        @if (reportMonthlyEnabled) {
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">
                             <mat-label>Day of Month</mat-label>
-                            <input matInput type="number" [(ngModel)]="reportMonthlyDay" min="1" max="28">
+                            <input matInput type="number" [(ngModel)]="reportMonthlyDay" min="1" max="28" />
                             <mat-hint>1-28</mat-hint>
                         </mat-form-field>
+                        }
 
-                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3" *ngIf="reportMonthlyEnabled">
+                        @if (reportMonthlyEnabled) {
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">
                             <mat-label>Monthly Report Time</mat-label>
-                            <input matInput type="time" [(ngModel)]="reportMonthlyTime">
+                            <input matInput type="time" [(ngModel)]="reportMonthlyTime" />
                         </mat-form-field>
+                        }
                     </div>
 
                     <div class="flex flex-col mt-5 gt-md:flex-row">
@@ -375,13 +390,16 @@
                             <mat-hint>Save PDF reports to disk</mat-hint>
                         </mat-form-field>
 
-                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3" *ngIf="reportPDFEnabled">
+                        @if (reportPDFEnabled) {
+                        <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">
                             <mat-label>PDF Save Directory</mat-label>
-                            <input matInput [(ngModel)]="reportPDFPath">
+                            <input matInput [(ngModel)]="reportPDFPath" />
                             <mat-hint>Directory to save PDF reports</mat-hint>
                         </mat-form-field>
+                        }
                     </div>
                 </div>
+                }
             </div>
         </mat-expansion-panel>
 
@@ -389,36 +407,33 @@
         <mat-expansion-panel class="mt-5">
             <mat-expansion-panel-header>
                 <mat-panel-title>SMART Attribute Overrides</mat-panel-title>
-                <mat-panel-description>
-                    Configure ignored attributes and custom thresholds
-                </mat-panel-description>
+                <mat-panel-description> Configure ignored attributes and custom thresholds </mat-panel-description>
             </mat-expansion-panel-header>
 
             <div class="flex flex-col p-4">
                 <!-- Existing overrides table -->
-                <table mat-table [dataSource]="overrides" class="w-full" *ngIf="overrides.length > 0">
+                @if (overrides.length > 0) {
+                <table mat-table [dataSource]="overrides" class="w-full">
                     <ng-container matColumnDef="protocol">
                         <th mat-header-cell *matHeaderCellDef>Protocol</th>
-                        <td mat-cell *matCellDef="let override">{{override.protocol}}</td>
+                        <td mat-cell *matCellDef="let override">{{ override.protocol }}</td>
                     </ng-container>
 
                     <ng-container matColumnDef="attribute_id">
                         <th mat-header-cell *matHeaderCellDef>Attribute ID</th>
-                        <td mat-cell *matCellDef="let override">{{override.attribute_id}}</td>
+                        <td mat-cell *matCellDef="let override">{{ override.attribute_id }}</td>
                     </ng-container>
 
                     <ng-container matColumnDef="action">
                         <th mat-header-cell *matHeaderCellDef>Action</th>
-                        <td mat-cell *matCellDef="let override">{{getActionLabel(override.action)}}</td>
+                        <td mat-cell *matCellDef="let override">{{ getActionLabel(override.action) }}</td>
                     </ng-container>
 
                     <ng-container matColumnDef="source">
                         <th mat-header-cell *matHeaderCellDef>Source</th>
                         <td mat-cell *matCellDef="let override">
-                            <span class="px-2 py-1 text-xs rounded"
-                                  [class.bg-blue-100]="override.source === 'ui'"
-                                  [class.bg-gray-100]="override.source === 'config'">
-                                {{override.source}}
+                            <span class="px-2 py-1 text-xs rounded" [class.bg-blue-100]="override.source === 'ui'" [class.bg-gray-100]="override.source === 'config'">
+                                {{ override.source }}
                             </span>
                         </td>
                     </ng-container>
@@ -426,22 +441,25 @@
                     <ng-container matColumnDef="actions">
                         <th mat-header-cell *matHeaderCellDef></th>
                         <td mat-cell *matCellDef="let override">
-                            <button mat-icon-button
-                                    (click)="removeOverride(override)"
-                                    [disabled]="override.source === 'config'"
-                                    matTooltip="Config file overrides cannot be deleted from UI">
+                            <button
+                                mat-icon-button
+                                (click)="removeOverride(override)"
+                                [disabled]="override.source === 'config'"
+                                matTooltip="Config file overrides cannot be deleted from UI"
+                            >
                                 <mat-icon>delete</mat-icon>
                             </button>
                         </td>
                     </ng-container>
 
                     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-                    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+                    <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
                 </table>
+                }
 
-                <p *ngIf="overrides.length === 0" class="text-gray-500 italic my-4">
-                    No attribute overrides configured
-                </p>
+                @if (overrides.length === 0) {
+                <p class="text-gray-500 italic my-4">No attribute overrides configured</p>
+                }
 
                 <!-- Add new override form -->
                 <div class="mt-4 p-4 border rounded">
@@ -451,54 +469,71 @@
                         <mat-form-field class="flex-1 min-w-[120px]">
                             <mat-label>Protocol</mat-label>
                             <mat-select [(ngModel)]="newOverride.protocol">
-                                <mat-option *ngFor="let p of protocols" [value]="p">{{p}}</mat-option>
+                                @for (p of protocols; track p) {
+                                <mat-option [value]="p">{{ p }}</mat-option>
+                                }
                             </mat-select>
                         </mat-form-field>
 
                         <mat-form-field class="flex-1 min-w-[150px]">
                             <mat-label>Attribute ID</mat-label>
-                            <input matInput [(ngModel)]="newOverride.attribute_id"
-                                   placeholder="e.g., 5, media_errors">
+                            <input matInput [(ngModel)]="newOverride.attribute_id" placeholder="e.g., 5, media_errors" />
                         </mat-form-field>
 
                         <mat-form-field class="flex-1 min-w-[120px]">
                             <mat-label>Action</mat-label>
                             <mat-select [(ngModel)]="newOverride.action">
-                                <mat-option *ngFor="let a of actions" [value]="a.value">{{a.label}}</mat-option>
+                                @for (a of actions; track a.value) {
+                                <mat-option [value]="a.value">{{ a.label }}</mat-option>
+                                }
                             </mat-select>
                         </mat-form-field>
 
-                        <mat-form-field class="flex-1 min-w-[120px]"
-                                        *ngIf="newOverride.action === 'force_status'">
+                        @if (newOverride.action === 'force_status') {
+                        <mat-form-field class="flex-1 min-w-[120px]">
                             <mat-label>Status</mat-label>
                             <mat-select [(ngModel)]="newOverride.status">
-                                <mat-option *ngFor="let s of statuses" [value]="s">{{s}}</mat-option>
+                                @for (s of statuses; track s) {
+                                <mat-option [value]="s">{{ s }}</mat-option>
+                                }
                             </mat-select>
                         </mat-form-field>
+                        }
 
-                        <mat-form-field class="flex-1 min-w-[100px]"
-                                        *ngIf="newOverride.action === ''">
+                        @if (newOverride.action === '') {
+                        <mat-form-field class="flex-1 min-w-[100px]">
                             <mat-label>Warn Above</mat-label>
-                            <input matInput type="number" [(ngModel)]="newOverride.warn_above">
+                            <input matInput type="number" [(ngModel)]="newOverride.warn_above" />
                         </mat-form-field>
+                        }
 
-                        <mat-form-field class="flex-1 min-w-[100px]"
-                                        *ngIf="newOverride.action === ''">
+                        @if (newOverride.action === '') {
+                        <mat-form-field class="flex-1 min-w-[100px]">
                             <mat-label>Fail Above</mat-label>
-                            <input matInput type="number" [(ngModel)]="newOverride.fail_above">
+                            <input matInput type="number" [(ngModel)]="newOverride.fail_above" />
                         </mat-form-field>
+                        }
 
                         <mat-form-field class="flex-1 min-w-[200px]">
                             <mat-label>Device WWN (optional)</mat-label>
-                            <input matInput [(ngModel)]="newOverride.wwn"
-                                   placeholder="Leave empty for all devices">
+                            <input matInput [(ngModel)]="newOverride.wwn" placeholder="Leave empty for all devices" />
                         </mat-form-field>
                     </div>
 
-                    <button mat-raised-button color="primary"
-                            class="mt-4"
-                            (click)="addOverride()"
-                            [disabled]="!newOverride.protocol || !newOverride.attribute_id || (newOverride.action === '' && newOverride.warn_above == null && newOverride.fail_above == null) || (newOverride.action === 'force_status' && !newOverride.status)">
+                    <button
+                        mat-raised-button
+                        color="primary"
+                        class="mt-4"
+                        (click)="addOverride()"
+                        [disabled]="
+                            !newOverride.protocol ||
+                            !newOverride.attribute_id ||
+                            (newOverride.action === '' &&
+                                (newOverride.warn_above === null || newOverride.warn_above === undefined) &&
+                                (newOverride.fail_above === null || newOverride.fail_above === undefined)) ||
+                            (newOverride.action === 'force_status' && !newOverride.status)
+                        "
+                    >
                         Add Override
                     </button>
                 </div>
@@ -509,16 +544,13 @@
         <mat-expansion-panel class="mt-5">
             <mat-expansion-panel-header>
                 <mat-panel-title>Notification Channels</mat-panel-title>
-                <mat-panel-description>
-                    Configure where notifications are sent
-                </mat-panel-description>
+                <mat-panel-description> Configure where notifications are sent </mat-panel-description>
             </mat-expansion-panel-header>
 
             <div class="flex flex-col p-4">
-
                 <!-- URL list table -->
-                <table mat-table [dataSource]="notifyUrls" class="w-full" *ngIf="notifyUrls.length > 0">
-
+                @if (notifyUrls.length > 0) {
+                <table mat-table [dataSource]="notifyUrls" class="w-full">
                     <ng-container matColumnDef="label">
                         <th mat-header-cell *matHeaderCellDef>Label</th>
                         <td mat-cell *matCellDef="let entry">
@@ -536,9 +568,7 @@
                     <ng-container matColumnDef="source">
                         <th mat-header-cell *matHeaderCellDef>Source</th>
                         <td mat-cell *matCellDef="let entry">
-                            <span class="px-2 py-1 text-xs rounded"
-                                  [class.bg-blue-100]="entry.source === 'ui'"
-                                  [class.bg-gray-100]="entry.source !== 'ui'">
+                            <span class="px-2 py-1 text-xs rounded" [class.bg-blue-100]="entry.source === 'ui'" [class.bg-gray-100]="entry.source !== 'ui'">
                                 {{ entry.source }}
                             </span>
                         </td>
@@ -547,29 +577,40 @@
                     <ng-container matColumnDef="actions">
                         <th mat-header-cell *matHeaderCellDef></th>
                         <td mat-cell *matCellDef="let entry">
-                            <button mat-icon-button
-                                    (click)="testNotifyUrl(entry)"
-                                    [disabled]="entry.source !== 'ui' || testingUrlId === entry.id"
-                                    matTooltip="Send test notification">
-                                <mat-icon *ngIf="testingUrlId !== entry.id">send</mat-icon>
-                                <mat-icon *ngIf="testingUrlId === entry.id">hourglass_empty</mat-icon>
+                            <button
+                                mat-icon-button
+                                (click)="testNotifyUrl(entry)"
+                                [disabled]="entry.source !== 'ui' || testingUrlId === entry.id"
+                                matTooltip="Send test notification"
+                            >
+                                @if (testingUrlId !== entry.id) {
+                                <mat-icon>send</mat-icon>
+                                }
+                                @if (testingUrlId === entry.id) {
+                                <mat-icon>hourglass_empty</mat-icon>
+                                }
                             </button>
-                            <button mat-icon-button
-                                    (click)="deleteNotifyUrl(entry)"
-                                    [disabled]="entry.source !== 'ui'"
-                                    [matTooltip]="entry.source !== 'ui' ? 'Config/env URLs cannot be removed from UI' : 'Remove'">
+                            <button
+                                mat-icon-button
+                                (click)="deleteNotifyUrl(entry)"
+                                [disabled]="entry.source !== 'ui'"
+                                [matTooltip]="entry.source !== 'ui' ? 'Config/env URLs cannot be removed from UI' : 'Remove'"
+                            >
                                 <mat-icon>delete</mat-icon>
                             </button>
                         </td>
                     </ng-container>
 
                     <tr mat-header-row *matHeaderRowDef="notifyUrlColumns"></tr>
-                    <tr mat-row *matRowDef="let row; columns: notifyUrlColumns;"></tr>
+                    <tr mat-row *matRowDef="let row; columns: notifyUrlColumns"></tr>
                 </table>
+                }
 
-                <p *ngIf="notifyUrls.length === 0" class="text-gray-500 italic my-4">
+                @if (notifyUrls.length === 0) {
+                <p class="text-gray-500 italic my-4">
                     No notification channels configured. Add one below, or configure notify.urls in scrutiny.yaml.
                 </p>
+                }
 
                 <!-- Add URL button -->
                 <button mat-stroked-button class="mt-4" (click)="showAddUrlForm = !showAddUrlForm">
@@ -578,12 +619,13 @@
                 </button>
 
                 <!-- Add URL form -->
-                <div *ngIf="showAddUrlForm" class="mt-4 p-4 border rounded">
+                @if (showAddUrlForm) {
+                <div class="mt-4 p-4 border rounded">
                     <h4 class="mb-4 font-medium">Add Notification Channel</h4>
 
                     <mat-form-field class="w-full mb-2">
                         <mat-label>Label (optional)</mat-label>
-                        <input matInput [(ngModel)]="newUrlLabel" placeholder="e.g. My Discord Server">
+                        <input matInput [(ngModel)]="newUrlLabel" placeholder="e.g. My Discord Server" />
                     </mat-form-field>
 
                     <mat-form-field class="w-full mb-2">
@@ -598,92 +640,91 @@
                     </mat-form-field>
 
                     <!-- Custom URL -->
-                    <div *ngIf="selectedService === 'custom'">
+                    @if (selectedService === 'custom') {
+                    <div>
                         <mat-form-field class="w-full">
                             <mat-label>Shoutrrr URL</mat-label>
-                            <input matInput [(ngModel)]="newUrlRaw"
-                                   placeholder="e.g. discord://token@webhookid">
+                            <input matInput [(ngModel)]="newUrlRaw" placeholder="e.g. discord://token@webhookid" />
                             <mat-hint>Full Shoutrrr-format URL. See shoutrrr docs for supported services.</mat-hint>
                         </mat-form-field>
                     </div>
+                    }
 
                     <!-- SMTP -->
-                    <div *ngIf="selectedService === 'smtp'" class="flex flex-wrap gap-4">
+                    @if (selectedService === 'smtp') {
+                    <div class="flex flex-wrap gap-4">
                         <mat-form-field class="flex-1 min-w-[200px]">
                             <mat-label>SMTP Host</mat-label>
-                            <input matInput [(ngModel)]="smtpHost" placeholder="smtp.gmail.com">
+                            <input matInput [(ngModel)]="smtpHost" placeholder="smtp.gmail.com" />
                         </mat-form-field>
                         <mat-form-field class="w-24">
                             <mat-label>Port</mat-label>
-                            <input matInput type="number" [(ngModel)]="smtpPort">
+                            <input matInput type="number" [(ngModel)]="smtpPort" />
                         </mat-form-field>
                         <mat-form-field class="flex-1 min-w-[150px]">
                             <mat-label>Username</mat-label>
-                            <input matInput [(ngModel)]="smtpUsername">
+                            <input matInput [(ngModel)]="smtpUsername" />
                         </mat-form-field>
                         <mat-form-field class="flex-1 min-w-[150px]">
                             <mat-label>Password</mat-label>
-                            <input matInput type="password" [(ngModel)]="smtpPassword">
+                            <input matInput type="password" [(ngModel)]="smtpPassword" />
                         </mat-form-field>
                         <mat-form-field class="flex-1 min-w-[200px]">
                             <mat-label>From Address</mat-label>
-                            <input matInput [(ngModel)]="smtpFrom" placeholder="alerts@example.com">
+                            <input matInput [(ngModel)]="smtpFrom" placeholder="alerts@example.com" />
                         </mat-form-field>
                         <mat-form-field class="flex-1 min-w-[200px]">
                             <mat-label>To Address</mat-label>
-                            <input matInput [(ngModel)]="smtpTo" placeholder="admin@example.com">
+                            <input matInput [(ngModel)]="smtpTo" placeholder="admin@example.com" />
                         </mat-form-field>
                     </div>
+                    }
 
                     <!-- Discord -->
-                    <div *ngIf="selectedService === 'discord'">
+                    @if (selectedService === 'discord') {
+                    <div>
                         <mat-form-field class="w-full">
                             <mat-label>Discord Webhook URL</mat-label>
-                            <input matInput [(ngModel)]="discordWebhookUrl"
-                                   placeholder="https://discord.com/api/webhooks/...">
+                            <input matInput [(ngModel)]="discordWebhookUrl" placeholder="https://discord.com/api/webhooks/..." />
                             <mat-hint>Paste the full Discord webhook URL from channel settings</mat-hint>
                         </mat-form-field>
                     </div>
+                    }
 
                     <!-- Slack -->
-                    <div *ngIf="selectedService === 'slack'">
+                    @if (selectedService === 'slack') {
+                    <div>
                         <mat-form-field class="w-full">
                             <mat-label>Slack Webhook URL</mat-label>
-                            <input matInput [(ngModel)]="slackWebhookUrl"
-                                   placeholder="https://hooks.slack.com/services/...">
+                            <input matInput [(ngModel)]="slackWebhookUrl" placeholder="https://hooks.slack.com/services/..." />
                             <mat-hint>Paste the full Slack incoming webhook URL</mat-hint>
                         </mat-form-field>
                     </div>
+                    }
 
                     <!-- Telegram -->
-                    <div *ngIf="selectedService === 'telegram'" class="flex flex-wrap gap-4">
+                    @if (selectedService === 'telegram') {
+                    <div class="flex flex-wrap gap-4">
                         <mat-form-field class="flex-1 min-w-[200px]">
                             <mat-label>Bot Token</mat-label>
-                            <input matInput [(ngModel)]="telegramToken"
-                                   placeholder="123456789:AABBccddEEff...">
+                            <input matInput [(ngModel)]="telegramToken" placeholder="123456789:AABBccddEEff..." />
                         </mat-form-field>
                         <mat-form-field class="flex-1 min-w-[150px]">
                             <mat-label>Chat ID</mat-label>
-                            <input matInput [(ngModel)]="telegramChatId" placeholder="-1001234567890">
+                            <input matInput [(ngModel)]="telegramChatId" placeholder="-1001234567890" />
                         </mat-form-field>
                     </div>
+                    }
 
                     <div class="flex gap-2 mt-4">
-                        <button mat-raised-button color="primary"
-                                (click)="addNotifyUrl()"
-                                [disabled]="!buildShoutrrrUrl()">
-                            Save
-                        </button>
-                        <button mat-button (click)="showAddUrlForm = false; resetAddForm()">
-                            Cancel
-                        </button>
+                        <button mat-raised-button color="primary" (click)="addNotifyUrl()" [disabled]="!buildShoutrrrUrl()">Save</button>
+                        <button mat-button (click)="showAddUrlForm = false; resetAddForm()">Cancel</button>
                     </div>
                 </div>
-
+                }
             </div>
         </mat-expansion-panel>
     </div>
-
 </mat-dialog-content>
 <mat-dialog-actions align="end">
     <button mat-button mat-dialog-close>Cancel</button>

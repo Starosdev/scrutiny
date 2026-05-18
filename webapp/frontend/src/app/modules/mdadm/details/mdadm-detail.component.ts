@@ -1,30 +1,32 @@
-import {
-    ChangeDetectionStrategy,
-    ChangeDetectorRef,
-    Component,
-    OnDestroy,
-    OnInit,
-    ViewEncapsulation
-} from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { ApexOptions } from 'ng-apexcharts';
+import { ApexOptions, ChartComponent } from 'ng-apexcharts';
 import { MDADMService } from 'app/modules/mdadm/mdadm.service';
 import { MDADMArrayModel, MDADMMetricsHistoryModel } from 'app/core/models/mdadm-array-model';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { AppConfig } from 'app/core/config/app.config';
 import { apexShortDateTime } from 'app/shared/time-format.utils';
 import { getMdadmArrayStatusColorClass } from 'app/modules/mdadm/mdadm-status.util';
+import { MatIcon } from '@angular/material/icon';
+import { NgClass } from '@angular/common';
+import { FileSizePipe } from '../../../shared/file-size.pipe';
 
 @Component({
     selector: 'mdadm-detail',
     templateUrl: './mdadm-detail.component.html',
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false
+    imports: [MatIcon, NgClass, ChartComponent, FileSizePipe],
 })
 export class MDADMDetailComponent implements OnInit, OnDestroy {
+    private readonly _mdadmService = inject(MDADMService);
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly _route = inject(ActivatedRoute);
+    private readonly _router = inject(Router);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+
     array: MDADMArrayModel;
     history: MDADMMetricsHistoryModel[];
     latestMetrics: MDADMMetricsHistoryModel;
@@ -33,27 +35,20 @@ export class MDADMDetailComponent implements OnInit, OnDestroy {
 
     private _unsubscribeAll: Subject<void>;
 
-    constructor(
-        private readonly _mdadmService: MDADMService,
-        private readonly _configService: ScrutinyConfigService,
-        private readonly _route: ActivatedRoute,
-        private readonly _router: Router,
-        private readonly _changeDetectorRef: ChangeDetectorRef
-    ) {
+    constructor() {
         this._unsubscribeAll = new Subject();
     }
 
     ngOnInit(): void {
         const uuid = this._route.snapshot.paramMap.get('uuid');
 
-        this._configService.config$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((config) => {
-                this.config = config;
-                this._changeDetectorRef.markForCheck();
-            });
+        this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config) => {
+            this.config = config;
+            this._changeDetectorRef.markForCheck();
+        });
 
-        this._mdadmService.getDetails(uuid)
+        this._mdadmService
+            .getDetails(uuid)
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe((response) => {
                 this.array = response.data.array;
@@ -74,49 +69,49 @@ export class MDADMDetailComponent implements OnInit, OnDestroy {
             return;
         }
 
-        const activeData = this.history.map(m => ({ x: new Date(m.date), y: m.active_devices }));
-        const failedData = this.history.map(m => ({ x: new Date(m.date), y: m.failed_devices }));
+        const activeData = this.history.map((m) => ({ x: new Date(m.date), y: m.active_devices }));
+        const failedData = this.history.map((m) => ({ x: new Date(m.date), y: m.failed_devices }));
 
         this.chartOptions = {
             chart: {
                 animations: {
                     speed: 400,
-                    animateGradually: { enabled: false }
+                    animateGradually: { enabled: false },
                 },
                 fontFamily: 'inherit',
                 foreColor: 'inherit',
                 width: '100%',
                 height: 350,
                 type: 'line',
-                sparkline: { enabled: false }
+                sparkline: { enabled: false },
             },
             colors: ['#38a169', '#e53e3e'], // Green for active, Red for failed
             series: [
                 { name: 'Active Devices', data: activeData },
-                { name: 'Failed Devices', data: failedData }
+                { name: 'Failed Devices', data: failedData },
             ],
             stroke: {
                 curve: 'smooth',
-                width: 3
+                width: 3,
             },
             tooltip: {
                 theme: 'dark',
                 x: {
-                    format: apexShortDateTime(this.config.time_format, true)
-                }
+                    format: apexShortDateTime(this.config.time_format, true),
+                },
             },
             xaxis: {
                 type: 'datetime',
-                labels: { datetimeUTC: false }
+                labels: { datetimeUTC: false },
             },
             yaxis: {
                 min: 0,
-                forceNiceScale: true
+                forceNiceScale: true,
             },
             legend: {
                 position: 'top',
-                horizontalAlign: 'right'
-            }
+                horizontalAlign: 'right',
+            },
         };
     }
 

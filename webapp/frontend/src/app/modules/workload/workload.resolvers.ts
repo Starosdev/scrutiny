@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 import { Observable } from 'rxjs';
 import { WorkloadService } from 'app/modules/workload/workload.service';
@@ -8,9 +8,9 @@ import { WorkloadInsightModel } from 'app/core/models/workload-insight-model';
     providedIn: 'root',
 })
 export class WorkloadResolver {
-    constructor(private readonly _workloadService: WorkloadService) {}
+    private readonly _workloadService = inject(WorkloadService);
 
-    resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<Record<string, WorkloadInsightModel>> {
+    resolve(_route: ActivatedRouteSnapshot, _state: RouterStateSnapshot): Observable<Record<string, WorkloadInsightModel>> {
         return this._workloadService.getWorkloadData();
     }
 }

@@ -1,12 +1,15 @@
-import {Component, Inject, OnInit} from '@angular/core';
-import {MAT_DIALOG_DATA, MatDialogRef} from '@angular/material/dialog';
-import {ApexOptions} from 'ng-apexcharts';
+import { Component, OnInit, inject } from '@angular/core';
+import { MAT_DIALOG_DATA, MatDialogRef, MatDialogTitle, MatDialogContent, MatDialogActions } from '@angular/material/dialog';
+import { ApexOptions, ChartComponent } from 'ng-apexcharts';
+import { CdkScrollable } from '@angular/cdk/scrolling';
+import { NgClass } from '@angular/common';
+import { MatButton } from '@angular/material/button';
 
 export interface AttributeHistoryData {
     attributeName: string;
     chartData: Array<{
         name: string;
-        data: Array<{x: string; y: number; strokeColor?: string; fillColor?: string}>;
+        data: Array<{ x: string; y: number; strokeColor?: string; fillColor?: string }>;
     }>;
     isDark: boolean;
 }
@@ -15,16 +18,14 @@ export interface AttributeHistoryData {
     selector: 'attribute-history-dialog',
     templateUrl: './attribute-history-dialog.component.html',
     styleUrls: ['./attribute-history-dialog.component.scss'],
-    standalone: false
+    imports: [MatDialogTitle, CdkScrollable, MatDialogContent, ChartComponent, NgClass, MatDialogActions, MatButton],
 })
 export class AttributeHistoryDialogComponent implements OnInit {
-    chartOptions: Partial<ApexOptions>;
-    historyData: Array<{date: string; value: number; status: string}> = [];
+    dialogRef = inject<MatDialogRef<AttributeHistoryDialogComponent>>(MatDialogRef);
+    data = inject<AttributeHistoryData>(MAT_DIALOG_DATA);
 
-    constructor(
-        public dialogRef: MatDialogRef<AttributeHistoryDialogComponent>,
-        @Inject(MAT_DIALOG_DATA) public data: AttributeHistoryData
-    ) {}
+    chartOptions: Partial<ApexOptions>;
+    historyData: Array<{ date: string; value: number; status: string }> = [];
 
     ngOnInit(): void {
         this._prepareChartOptions();
@@ -37,56 +38,56 @@ export class AttributeHistoryDialogComponent implements OnInit {
                 type: 'bar',
                 height: 200,
                 toolbar: {
-                    show: false
+                    show: false,
                 },
                 animations: {
-                    enabled: false
-                }
+                    enabled: false,
+                },
             },
             plotOptions: {
                 bar: {
-                    columnWidth: '80%'
-                }
+                    columnWidth: '80%',
+                },
             },
             series: this.data.chartData,
             xaxis: {
                 type: 'category',
                 labels: {
-                    show: false
-                }
+                    show: false,
+                },
             },
             yaxis: {
                 labels: {
                     style: {
-                        colors: this.data.isDark ? '#9ca3af' : '#6b7280'
-                    }
-                }
+                        colors: this.data.isDark ? '#9ca3af' : '#6b7280',
+                    },
+                },
             },
             tooltip: {
                 enabled: true,
                 theme: this.data.isDark ? 'dark' : 'light',
                 x: {
-                    show: true
+                    show: true,
                 },
                 y: {
                     title: {
-                        formatter: () => ''
-                    }
-                }
+                        formatter: () => '',
+                    },
+                },
             },
             stroke: {
                 width: 2,
-                colors: ['#667EEA']
+                colors: ['#667EEA'],
             },
             grid: {
-                borderColor: this.data.isDark ? '#374151' : '#e5e7eb'
-            }
+                borderColor: this.data.isDark ? '#374151' : '#e5e7eb',
+            },
         };
     }
 
     private _prepareHistoryData(): void {
         if (this.data.chartData && this.data.chartData[0]?.data) {
-            this.historyData = this.data.chartData[0].data.map(point => {
+            this.historyData = this.data.chartData[0].data.map((point) => {
                 let status = 'passed';
                 if (point.fillColor === '#F05252') {
                     status = 'failed';
@@ -96,7 +97,7 @@ export class AttributeHistoryDialogComponent implements OnInit {
                 return {
                     date: point.x,
                     value: point.y,
-                    status
+                    status,
                 };
             });
         }

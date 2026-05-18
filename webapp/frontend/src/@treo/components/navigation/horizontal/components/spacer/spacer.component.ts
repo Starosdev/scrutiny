@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit, inject } from '@angular/core';
 import { takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { TreoHorizontalNavigationComponent } from '@treo/components/navigation/horizontal/horizontal.component';
@@ -10,10 +10,11 @@ import { TreoNavigationItem } from '@treo/components/navigation/navigation.types
     templateUrl: './spacer.component.html',
     styles: [],
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false
 })
-export class TreoHorizontalNavigationSpacerItemComponent implements OnInit, OnDestroy
-{
+export class TreoHorizontalNavigationSpacerItemComponent implements OnInit, OnDestroy {
+    private readonly _treoNavigationService = inject(TreoNavigationService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+
     // Item
     @Input()
     item: TreoNavigationItem;
@@ -32,11 +33,7 @@ export class TreoHorizontalNavigationSpacerItemComponent implements OnInit, OnDe
      * @param {TreoNavigationService} _treoNavigationService
      * @param {ChangeDetectorRef} _changeDetectorRef
      */
-    constructor(
-        private readonly _treoNavigationService: TreoNavigationService,
-        private readonly _changeDetectorRef: ChangeDetectorRef
-    )
-    {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
     }
@@ -48,16 +45,12 @@ export class TreoHorizontalNavigationSpacerItemComponent implements OnInit, OnDe
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Get the parent navigation component
         this._treoHorizontalNavigationComponent = this._treoNavigationService.getComponent(this.name);
 
         // Subscribe to onRefreshed on the navigation component
-        this._treoHorizontalNavigationComponent.onRefreshed.pipe(
-            takeUntil(this._unsubscribeAll)
-        ).subscribe(() => {
-
+        this._treoHorizontalNavigationComponent.onRefreshed.pipe(takeUntil(this._unsubscribeAll)).subscribe(() => {
             // Mark for check
             this._changeDetectorRef.markForCheck();
         });
@@ -66,8 +59,7 @@ export class TreoHorizontalNavigationSpacerItemComponent implements OnInit, OnDe
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();

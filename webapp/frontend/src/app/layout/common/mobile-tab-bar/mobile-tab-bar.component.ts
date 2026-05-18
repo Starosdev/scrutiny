@@ -1,8 +1,9 @@
-import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { filter, takeUntil } from 'rxjs/operators';
 import { DashboardService } from 'app/modules/dashboard/dashboard.service';
+import { MatIcon } from '@angular/material/icon';
 
 interface TabItem {
     icon: string;
@@ -16,9 +17,12 @@ interface TabItem {
     templateUrl: './mobile-tab-bar.component.html',
     styleUrls: ['./mobile-tab-bar.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    imports: [MatIcon],
 })
 export class MobileTabBarComponent implements OnInit, OnDestroy {
+    private readonly _router = inject(Router);
+    private readonly _dashboardService = inject(DashboardService);
+
     tabs: TabItem[] = [
         { icon: 'home', label: 'Home', route: '/mobile-home', exactMatch: true },
         { icon: 'storage', label: 'Drives', route: '/dashboard', exactMatch: true },
@@ -34,7 +38,7 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
 
     private _unsubscribeAll: Subject<void>;
 
-    constructor(private readonly _router: Router, private readonly _dashboardService: DashboardService) {
+    constructor() {
         this._unsubscribeAll = new Subject();
     }
 
@@ -42,27 +46,27 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
         this.activeRoute = this._router.url;
         this.isDetailPage = this._isDetailRoute(this._router.url);
 
-        this._router.events.pipe(
-            filter(event => event instanceof NavigationEnd),
-            takeUntil(this._unsubscribeAll)
-        ).subscribe((event: NavigationEnd) => {
-            this.activeRoute = event.urlAfterRedirects;
-            this.isDetailPage = this._isDetailRoute(event.urlAfterRedirects);
-        });
+        this._router.events
+            .pipe(
+                filter((event) => event instanceof NavigationEnd),
+                takeUntil(this._unsubscribeAll)
+            )
+            .subscribe((event: NavigationEnd) => {
+                this.activeRoute = event.urlAfterRedirects;
+                this.isDetailPage = this._isDetailRoute(event.urlAfterRedirects);
+            });
 
-        this._dashboardService.data$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(data => {
-                if (data) {
-                    this.drivesNeedAttention = 0;
-                    for (const wwn in data) {
-                        const status = data[wwn].device?.device_status;
-                        if (status && status > 0 && !data[wwn].device?.archived) {
-                            this.drivesNeedAttention++;
-                        }
+        this._dashboardService.data$.pipe(takeUntil(this._unsubscribeAll)).subscribe((data) => {
+            if (data) {
+                this.drivesNeedAttention = 0;
+                for (const wwn in data) {
+                    const status = data[wwn].device?.device_status;
+                    if (status && status > 0 && !data[wwn].device?.archived) {
+                        this.drivesNeedAttention++;
                     }
                 }
-            });
+            }
+        });
     }
 
     ngOnDestroy(): void {

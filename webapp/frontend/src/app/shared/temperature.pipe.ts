@@ -1,42 +1,38 @@
 import { Pipe, PipeTransform } from '@angular/core';
-import {formatNumber} from '@angular/common';
+import { formatNumber } from '@angular/common';
 
-@Pipe({
-    name: 'temperature',
-    standalone: false
-})
+@Pipe({ name: 'temperature' })
 export class TemperaturePipe implements PipeTransform {
     static celsiusToFahrenheit(celsiusTemp: number): number {
-        return celsiusTemp * 9/5 + 32;
+        return (celsiusTemp * 9) / 5 + 32;
     }
-    static formatTemperature(temp: number, unit: string, includeUnits: boolean): number|string {
-        let unitSuffix
+    static formatTemperature(temp: number, unit: string, includeUnits: boolean): number | string {
+        let unitSuffix;
         switch (unit) {
             case 'celsius':
-                unitSuffix = '°C'
-                break
+                unitSuffix = '°C';
+                break;
             case 'fahrenheit':
-                unitSuffix = '°F'
-                break
+                unitSuffix = '°F';
+                break;
         }
-        if(includeUnits){
-            return formatNumber(temp, 'en-US') + unitSuffix
+        if (includeUnits) {
+            return formatNumber(temp, 'en-US') + unitSuffix;
         } else {
-            return formatNumber(temp, 'en-US',)
+            return formatNumber(temp, 'en-US');
         }
     }
 
-  transform(celsiusTemp: number, unit = 'celsius', includeUnits = false): number|string {
+    transform(celsiusTemp: number, unit = 'celsius', includeUnits = false): number | string {
         let temperature;
         switch (unit) {
             case 'celsius':
                 temperature = celsiusTemp;
-                break
+                break;
             case 'fahrenheit':
-                temperature = TemperaturePipe.celsiusToFahrenheit(celsiusTemp)
-                break
+                temperature = TemperaturePipe.celsiusToFahrenheit(celsiusTemp);
+                break;
         }
-        return TemperaturePipe.formatTemperature(temperature, unit, includeUnits)
-  }
-
+        return TemperaturePipe.formatTemperature(temperature, unit, includeUnits);
+    }
 }

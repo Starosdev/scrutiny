@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostBinding, Input, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostBinding, Input, OnDestroy, OnInit, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { filter, takeUntil } from 'rxjs/operators';
@@ -6,6 +6,13 @@ import { TreoAnimations } from '@treo/animations';
 import { TreoVerticalNavigationComponent } from '@treo/components/navigation/vertical/vertical.component';
 import { TreoNavigationService } from '@treo/components/navigation/navigation.service';
 import { TreoNavigationItem } from '@treo/components/navigation/navigation.types';
+import { NgClass, NgStyle } from '@angular/common';
+import { MatIcon } from '@angular/material/icon';
+import { TreoVerticalNavigationBasicItemComponent } from '../basic/basic.component';
+import { TreoVerticalNavigationDividerItemComponent } from '../divider/divider.component';
+import { TreoVerticalNavigationGroupItemComponent } from '../group/group.component';
+import { TreoVerticalNavigationSpacerItemComponent } from '../spacer/spacer.component';
+import { TreoHorizontalNavigationBasicItemComponent } from '../../../horizontal/components/basic/basic.component';
 
 @Component({
     selector: 'treo-vertical-navigation-collapsable-item',
@@ -13,10 +20,22 @@ import { TreoNavigationItem } from '@treo/components/navigation/navigation.types
     styles: [],
     animations: TreoAnimations,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false
+    imports: [
+        NgClass,
+        MatIcon,
+        NgStyle,
+        TreoVerticalNavigationBasicItemComponent,
+        TreoVerticalNavigationDividerItemComponent,
+        TreoVerticalNavigationGroupItemComponent,
+        TreoVerticalNavigationSpacerItemComponent,
+        TreoHorizontalNavigationBasicItemComponent,
+    ],
 })
-export class TreoVerticalNavigationCollapsableItemComponent implements OnInit, OnDestroy
-{
+export class TreoVerticalNavigationCollapsableItemComponent implements OnInit, OnDestroy {
+    private readonly _treoNavigationService = inject(TreoNavigationService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+    private readonly _router = inject(Router);
+
     // Auto collapse
     @Input()
     autoCollapse: boolean;
@@ -48,12 +67,7 @@ export class TreoVerticalNavigationCollapsableItemComponent implements OnInit, O
      * @param {ChangeDetectorRef} _changeDetectorRef
      * @param {Router} _router
      */
-    constructor(
-        private readonly _treoNavigationService: TreoNavigationService,
-        private readonly _changeDetectorRef: ChangeDetectorRef,
-        private readonly _router: Router
-    )
-    {
+    constructor() {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
 
@@ -69,109 +83,85 @@ export class TreoVerticalNavigationCollapsableItemComponent implements OnInit, O
     /**
      * On init
      */
-    ngOnInit(): void
-    {
+    ngOnInit(): void {
         // Get the parent navigation component
         this._treoVerticalNavigationComponent = this._treoNavigationService.getComponent(this.name);
 
         // If the item has a children that has a matching url with the current url, expand...
-        if ( this._hasCurrentUrlInChildren(this.item, this._router.url) )
-        {
+        if (this._hasCurrentUrlInChildren(this.item, this._router.url)) {
             this.expand();
         }
         // Otherwise...
-        else
-        {
+        else {
             // If the autoCollapse is on, collapse...
-            if ( this.autoCollapse )
-            {
+            if (this.autoCollapse) {
                 this.collapse();
             }
         }
 
         // Listen for the onCollapsableItemCollapsed from the service
-        this._treoVerticalNavigationComponent.onCollapsableItemCollapsed
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((collapsedItem) => {
+        this._treoVerticalNavigationComponent.onCollapsableItemCollapsed.pipe(takeUntil(this._unsubscribeAll)).subscribe((collapsedItem) => {
+            // Check if the collapsed item is null
+            if (collapsedItem === null) {
+                return;
+            }
 
-                // Check if the collapsed item is null
-                if ( collapsedItem === null )
-                {
+            // Collapse if this is a children of the collapsed item
+            if (this._isChildrenOf(collapsedItem, this.item)) {
+                this.collapse();
+            }
+        });
+
+        // Listen for the onCollapsableItemExpanded from the service if the autoCollapse is on
+        if (this.autoCollapse) {
+            this._treoVerticalNavigationComponent.onCollapsableItemExpanded.pipe(takeUntil(this._unsubscribeAll)).subscribe((expandedItem) => {
+                // Check if the expanded item is null
+                if (expandedItem === null) {
                     return;
                 }
 
-                // Collapse if this is a children of the collapsed item
-                if ( this._isChildrenOf(collapsedItem, this.item) )
-                {
-                    this.collapse();
+                // Check if this is a parent of the expanded item
+                if (this._isChildrenOf(this.item, expandedItem)) {
+                    return;
                 }
+
+                // Check if this has a children with a matching url with the current active url
+                if (this._hasCurrentUrlInChildren(this.item, this._router.url)) {
+                    return;
+                }
+
+                // Check if this is the expanded item
+                if (this.item === expandedItem) {
+                    return;
+                }
+
+                // If none of the above conditions are matched, collapse this item
+                this.collapse();
             });
-
-        // Listen for the onCollapsableItemExpanded from the service if the autoCollapse is on
-        if ( this.autoCollapse )
-        {
-            this._treoVerticalNavigationComponent.onCollapsableItemExpanded
-                .pipe(takeUntil(this._unsubscribeAll))
-                .subscribe((expandedItem) => {
-
-                    // Check if the expanded item is null
-                    if ( expandedItem === null )
-                    {
-                        return;
-                    }
-
-                    // Check if this is a parent of the expanded item
-                    if ( this._isChildrenOf(this.item, expandedItem) )
-                    {
-                        return;
-                    }
-
-                    // Check if this has a children with a matching url with the current active url
-                    if ( this._hasCurrentUrlInChildren(this.item, this._router.url) )
-                    {
-                        return;
-                    }
-
-                    // Check if this is the expanded item
-                    if ( this.item === expandedItem )
-                    {
-                        return;
-                    }
-
-                    // If none of the above conditions are matched, collapse this item
-                    this.collapse();
-                });
         }
 
         // Attach a listener to the NavigationEnd event
         this._router.events
             .pipe(
-                filter(event => event instanceof NavigationEnd),
+                filter((event) => event instanceof NavigationEnd),
                 takeUntil(this._unsubscribeAll)
             )
             .subscribe((event: NavigationEnd) => {
-
                 // If the item has a children that has a matching url with the current url, expand...
-                if ( this._hasCurrentUrlInChildren(this.item, event.urlAfterRedirects) )
-                {
+                if (this._hasCurrentUrlInChildren(this.item, event.urlAfterRedirects)) {
                     this.expand();
                 }
                 // Otherwise...
-                else
-                {
+                else {
                     // If the autoCollapse is on, collapse...
-                    if ( this.autoCollapse )
-                    {
+                    if (this.autoCollapse) {
                         this.collapse();
                     }
                 }
             });
 
         // Subscribe to onRefreshed on the navigation component
-        this._treoVerticalNavigationComponent.onRefreshed.pipe(
-            takeUntil(this._unsubscribeAll)
-        ).subscribe(() => {
-
+        this._treoVerticalNavigationComponent.onRefreshed.pipe(takeUntil(this._unsubscribeAll)).subscribe(() => {
             // Mark for check
             this._changeDetectorRef.markForCheck();
         });
@@ -180,8 +170,7 @@ export class TreoVerticalNavigationCollapsableItemComponent implements OnInit, O
     /**
      * On destroy
      */
-    ngOnDestroy(): void
-    {
+    ngOnDestroy(): void {
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();
@@ -199,29 +188,23 @@ export class TreoVerticalNavigationCollapsableItemComponent implements OnInit, O
      * @param url
      * @private
      */
-    private _hasCurrentUrlInChildren(item, url): boolean
-    {
+    private _hasCurrentUrlInChildren(item, url): boolean {
         const children = item.children;
 
-        if ( !children )
-        {
+        if (!children) {
             return false;
         }
 
-        for ( const child of children )
-        {
-            if ( child.children )
-            {
-                if ( this._hasCurrentUrlInChildren(child, url) )
-                {
+        for (const child of children) {
+            if (child.children) {
+                if (this._hasCurrentUrlInChildren(child, url)) {
                     return true;
                 }
             }
 
             // Check if the item's link is the exact same of the
             // current url
-            if ( child.link === url )
-            {
+            if (child.link === url) {
                 return true;
             }
 
@@ -229,8 +212,7 @@ export class TreoVerticalNavigationCollapsableItemComponent implements OnInit, O
             // if the current url starts with the item's link and
             // continues with a question mark, a pound sign or a
             // slash
-            if ( !child.exactMatch && (child.link === url || url.startsWith(child.link + '?') || url.startsWith(child.link + '#') || url.startsWith(child.link + '/')) )
-            {
+            if (!child.exactMatch && (child.link === url || url.startsWith(child.link + '?') || url.startsWith(child.link + '#') || url.startsWith(child.link + '/'))) {
                 return true;
             }
         }
@@ -247,26 +229,20 @@ export class TreoVerticalNavigationCollapsableItemComponent implements OnInit, O
      * @return {boolean}
      * @private
      */
-    private _isChildrenOf(parent, item): boolean
-    {
+    private _isChildrenOf(parent, item): boolean {
         const children = parent.children;
 
-        if ( !children )
-        {
+        if (!children) {
             return false;
         }
 
-        if ( children.indexOf(item) > -1 )
-        {
+        if (children.indexOf(item) > -1) {
             return true;
         }
 
-        for ( const child of children )
-        {
-            if ( child.children )
-            {
-                if ( this._isChildrenOf(child, item) )
-                {
+        for (const child of children) {
+            if (child.children) {
+                if (this._isChildrenOf(child, item)) {
                     return true;
                 }
             }
@@ -282,17 +258,14 @@ export class TreoVerticalNavigationCollapsableItemComponent implements OnInit, O
     /**
      * Collapse
      */
-    collapse(): void
-    {
+    collapse(): void {
         // Return if the item is disabled
-        if ( this.item.disabled )
-        {
+        if (this.item.disabled) {
             return;
         }
 
         // Return if the item is already collapsed
-        if ( this.isCollapsed )
-        {
+        if (this.isCollapsed) {
             return;
         }
 
@@ -310,17 +283,14 @@ export class TreoVerticalNavigationCollapsableItemComponent implements OnInit, O
     /**
      * Expand
      */
-    expand(): void
-    {
+    expand(): void {
         // Return if the item is disabled
-        if ( this.item.disabled )
-        {
+        if (this.item.disabled) {
             return;
         }
 
         // Return if the item is already expanded
-        if ( !this.isCollapsed )
-        {
+        if (!this.isCollapsed) {
             return;
         }
 
@@ -338,15 +308,11 @@ export class TreoVerticalNavigationCollapsableItemComponent implements OnInit, O
     /**
      * Toggle collapsable
      */
-    toggleCollapsable(): void
-    {
+    toggleCollapsable(): void {
         // Toggle collapse/expand
-        if ( this.isCollapsed )
-        {
+        if (this.isCollapsed) {
             this.expand();
-        }
-        else
-        {
+        } else {
             this.collapse();
         }
     }
@@ -357,8 +323,7 @@ export class TreoVerticalNavigationCollapsableItemComponent implements OnInit, O
      * @param index
      * @param item
      */
-    trackByFn(index: number, item: any): any
-    {
+    trackByFn(index: number, item: any): any {
         return item.id || index;
     }
 }

@@ -1,49 +1,43 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
     <head>
-        <meta charset="utf-8">
+        <meta charset="utf-8" />
         <title>scrutiny</title>
 
         <script>
             document.write(`<base href="${window.location.pathname.split('/web').slice(0, 1)[0]}/web/"/>`);
         </script>
 
-        <meta name="viewport"
-              content="width=device-width, height=device-height, initial-scale=1.0, minimum-scale=1.0">
+        <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, minimum-scale=1.0" />
 
         <!-- Favicon -->
-        <link rel="apple-touch-icon" sizes="57x57" href="apple-icon-57x57.png">
-        <link rel="apple-touch-icon" sizes="60x60" href="apple-icon-60x60.png">
-        <link rel="apple-touch-icon" sizes="72x72" href="apple-icon-72x72.png">
-        <link rel="apple-touch-icon" sizes="76x76" href="apple-icon-76x76.png">
-        <link rel="apple-touch-icon" sizes="114x114" href="apple-icon-114x114.png">
-        <link rel="apple-touch-icon" sizes="120x120" href="apple-icon-120x120.png">
-        <link rel="apple-touch-icon" sizes="144x144" href="apple-icon-144x144.png">
-        <link rel="apple-touch-icon" sizes="152x152" href="apple-icon-152x152.png">
-        <link rel="apple-touch-icon" sizes="180x180" href="apple-icon-180x180.png">
-        <link rel="icon" type="image/png" sizes="192x192"  href="android-icon-192x192.png">
-        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-        <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
-        <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-        <link rel="manifest" href="./manifest.json" crossorigin="use-credentials">
-        <meta name="msapplication-TileColor" content="#ffffff">
-        <meta name="msapplication-TileImage" content="ms-icon-144x144.png">
-        <meta name="theme-color" content="#ffffff">
-
+        <link rel="apple-touch-icon" sizes="57x57" href="apple-icon-57x57.png" />
+        <link rel="apple-touch-icon" sizes="60x60" href="apple-icon-60x60.png" />
+        <link rel="apple-touch-icon" sizes="72x72" href="apple-icon-72x72.png" />
+        <link rel="apple-touch-icon" sizes="76x76" href="apple-icon-76x76.png" />
+        <link rel="apple-touch-icon" sizes="114x114" href="apple-icon-114x114.png" />
+        <link rel="apple-touch-icon" sizes="120x120" href="apple-icon-120x120.png" />
+        <link rel="apple-touch-icon" sizes="144x144" href="apple-icon-144x144.png" />
+        <link rel="apple-touch-icon" sizes="152x152" href="apple-icon-152x152.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="apple-icon-180x180.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="android-icon-192x192.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png" />
+        <link rel="manifest" href="./manifest.json" crossorigin="use-credentials" />
+        <meta name="msapplication-TileColor" content="#ffffff" />
+        <meta name="msapplication-TileImage" content="ms-icon-144x144.png" />
+        <meta name="theme-color" content="#ffffff" />
 
         <!-- Fonts -->
-        <link href="assets/fonts/roboto/roboto.css"
-              rel="stylesheet">
+        <link href="assets/fonts/roboto/roboto.css" rel="stylesheet" />
 
-        <link href="assets/fonts/ibm-plex-mono/ibm-plex-mono.css"
-              rel="stylesheet">
+        <link href="assets/fonts/ibm-plex-mono/ibm-plex-mono.css" rel="stylesheet" />
 
-        <link href="assets/fonts/inter/inter.css"
-              rel="stylesheet">
+        <link href="assets/fonts/inter/inter.css" rel="stylesheet" />
 
         <!-- Icon Fonts -->
-        <link href="assets/fonts/material-icons/material-icons.css"
-              rel="stylesheet">
+        <link href="assets/fonts/material-icons/material-icons.css" rel="stylesheet" />
 
         <!-- Splash screen styles -->
         <style>
@@ -57,8 +51,8 @@
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background-color: #1A202E;
-                color: #FBFDFE;
+                background-color: #1a202e;
+                color: #fbfdfe;
                 z-index: 999999;
                 pointer-events: none;
                 opacity: 1;
@@ -82,7 +76,7 @@
             body treo-splash-screen .spinner > div {
                 width: 12px;
                 height: 12px;
-                background-color: #F50057;
+                background-color: #f50057;
                 border-radius: 100%;
                 display: inline-block;
                 -webkit-animation: treo-bouncedelay 1s infinite ease-in-out both;
@@ -100,22 +94,26 @@
             }
 
             @-webkit-keyframes treo-bouncedelay {
-                0%, 80%, 100% {
-                    -webkit-transform: scale(0)
+                0%,
+                80%,
+                100% {
+                    -webkit-transform: scale(0);
                 }
                 40% {
-                    -webkit-transform: scale(1.0)
+                    -webkit-transform: scale(1);
                 }
             }
 
             @keyframes treo-bouncedelay {
-                0%, 80%, 100% {
+                0%,
+                80%,
+                100% {
                     -webkit-transform: scale(0);
                     transform: scale(0);
                 }
                 40% {
-                    -webkit-transform: scale(1.0);
-                    transform: scale(1.0);
+                    -webkit-transform: scale(1);
+                    transform: scale(1);
                 }
             }
 
@@ -128,15 +126,12 @@
                 opacity: 0;
             }
         </style>
-
     </head>
 
     <body class="treo-theme-light">
-
         <!-- Splash screen -->
         <treo-splash-screen>
-            <img src="assets/images/logo/scrutiny-logo-white.svg"
-                 alt="Scrutiny logo">
+            <img src="assets/images/logo/scrutiny-logo-white.svg" alt="Scrutiny logo" />
             <div class="spinner">
                 <div class="bounce1"></div>
                 <div class="bounce2"></div>
@@ -146,7 +141,5 @@
 
         <!-- App root -->
         <app-root></app-root>
-
     </body>
-
 </html>

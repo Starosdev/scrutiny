@@ -12,15 +12,12 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule as MatTableModule } from '@angular/material/table';
 import { NgApexchartsModule } from 'ng-apexcharts';
-import { MatTooltipModule as MatTooltipModule } from '@angular/material/tooltip'
+import { MatTooltipModule as MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { DashboardSettingsModule } from 'app/layout/common/dashboard-settings/dashboard-settings.module';
 import { DashboardDeviceModule } from 'app/layout/common/dashboard-device/dashboard-device.module';
 
 @NgModule({
-    declarations: [
-        DashboardComponent
-    ],
     imports: [
         RouterModule.forChild(dashboardRoutes),
         MatButtonModule,
@@ -36,9 +33,8 @@ import { DashboardDeviceModule } from 'app/layout/common/dashboard-device/dashbo
         NgApexchartsModule,
         SharedModule,
         DashboardSettingsModule,
-        DashboardDeviceModule
-    ]
+        DashboardDeviceModule,
+        DashboardComponent,
+    ],
 })
-export class DashboardModule
-{
-}
+export class DashboardModule {}

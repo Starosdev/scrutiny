@@ -1,3 +1,10 @@
+@use "sass:map";
+@use "utilities/breakpoints";
+@use "utilities/colors";
+@use "utilities/elevations";
+@use "utilities/icons";
+@use "utilities/theming";
+
 // -----------------------------------------------------------------------------------------------------
 // @ Angular Material styles, overrides and extensions
 // -----------------------------------------------------------------------------------------------------
@@ -11,7 +18,7 @@
         margin-bottom: 24px;
         border-radius: 8px !important;
         transition: box-shadow 225ms cubic-bezier(0.4, 0.0, 0.2, 1);
-        @include treo-elevation('default', true);
+        @include elevations.treo-elevation('default', true);
 
         &:last-child {
             margin-bottom: 0;
@@ -19,7 +26,7 @@
 
         &.mat-expanded,
         &:hover {
-            @include treo-elevation('lg', true);
+            @include elevations.treo-elevation('lg', true);
         }
 
         .mat-expansion-panel-header {
@@ -220,7 +227,7 @@
             border-radius: 6px;
             padding: 0 16px;
             border-width: 1px;
-            @include treo-elevation('sm');
+            @include elevations.treo-elevation('sm');
 
             .mat-form-field-prefix {
 
@@ -289,13 +296,13 @@
 
                     .mat-icon {
                         margin: 0 !important;
-                        @include treo-icon-size(24);
+                        @include icons.treo-icon-size(24);
                     }
                 }
 
                 // Datepicker default icon size
                 .mat-datepicker-toggle-default-icon {
-                    @include treo-icon-size(24);
+                    @include icons.treo-icon-size(24);
                 }
 
                 // Make mat-select usable as
@@ -746,7 +753,7 @@
     .mat-paginator-container {
         padding: 8px 16px;
 
-        @include treo-breakpoint('xs') {
+        @include breakpoints.treo-breakpoint('xs') {
             justify-content: space-between;
         }
 
@@ -759,7 +766,7 @@
             .mat-paginator-page-size-label {
                 margin-right: 12px;
 
-                @include treo-breakpoint('xs') {
+                @include breakpoints.treo-breakpoint('xs') {
                     display: none;
                 }
             }
@@ -864,13 +871,13 @@ textarea.mat-input-element {
 // -----------------------------------------------------------------------------------------------------
 // @ Theming overrides and fixes
 // -----------------------------------------------------------------------------------------------------
-@include treo-theme {
+@include theming.treo-theme {
 
-    $background: map-get($theme, background);
-    $foreground: map-get($theme, foreground);
-    $primary: map-get($theme, primary);
-    $warn: map-get($theme, warn);
-    $is-dark: map-get($theme, is-dark);
+    $background: map.get(theming.$theme, background);
+    $foreground: map.get(theming.$theme, foreground);
+    $primary: map.get(theming.$theme, primary);
+    $warn: map.get(theming.$theme, warn);
+    $is-dark: map.get(theming.$theme, is-dark);
 
     // -----------------------------------------------------------------------------------------------------
     // @ Accordion
@@ -895,7 +902,7 @@ textarea.mat-input-element {
             }
 
             .mat-expansion-panel-body {
-                color: map-get($foreground, secondary-text);
+                color: map.get($foreground, secondary-text);
             }
         }
     }
@@ -913,7 +920,7 @@ textarea.mat-input-element {
         // Apply palette's contrasting color rather than main foreground color
         @each $palette in (primary, accent, warn) {
 
-            $palette-contrast-color: map-get(map-get($theme, $palette), default-contrast);
+            $palette-contrast-color: map.get(map.get(theming.$theme, $palette), default-contrast);
 
             &.mat-#{$palette}:not([disabled]) {
 
@@ -932,7 +939,7 @@ textarea.mat-input-element {
             @if ($is-dark) {
                 background-color: rgba(0, 0, 0, 0.05);
             } @else {
-                background-color: rgba(treo-color('cool-gray', 400), 0.2);
+                background-color: rgba(colors.treo-color('cool-gray', 400), 0.2);
             }
         }
 
@@ -982,7 +989,7 @@ textarea.mat-input-element {
         // Apply palette's color rather than main foreground color
         @each $palette in (primary, accent, warn) {
 
-            $palette-color: map-get(map-get($theme, $palette), default);
+            $palette-color: map.get(map.get(theming.$theme, $palette), default);
 
             &.mat-#{$palette}:not([disabled]) {
 
@@ -997,7 +1004,7 @@ textarea.mat-input-element {
             @if ($is-dark) {
                 background-color: rgba(0, 0, 0, 0.05) !important;
             } @else {
-                background-color: rgba(treo-color('cool-gray', 400), 0.2) !important;
+                background-color: rgba(colors.treo-color('cool-gray', 400), 0.2) !important;
             }
         }
 
@@ -1007,7 +1014,7 @@ textarea.mat-input-element {
             &.mat-#{$palette} {
 
                 .mat-button-focus-overlay {
-                    background-color: rgba(map-get(map-get($theme, $palette), default), 0.1) !important;
+                    background-color: rgba(map.get(map.get(theming.$theme, $palette), default), 0.1) !important;
                 }
             }
         }
@@ -1066,17 +1073,17 @@ textarea.mat-input-element {
         // Border color
         &:not([disabled]) {
             @if ($is-dark) {
-                border-color: treo-color('cool-gray', 500);
+                border-color: colors.treo-color('cool-gray', 500);
             } @else {
-                border-color: treo-color('cool-gray', 300);
+                border-color: colors.treo-color('cool-gray', 300);
             }
         }
 
         &[disabled] {
             @if ($is-dark) {
-                border-color: treo-color('cool-gray', 600);
+                border-color: colors.treo-color('cool-gray', 600);
             } @else {
-                border-color: treo-color('cool-gray', 200);
+                border-color: colors.treo-color('cool-gray', 200);
             }
         }
     }
@@ -1095,11 +1102,11 @@ textarea.mat-input-element {
     .mat-form-field.mat-form-field-appearance-fill {
 
         .mat-form-field-label {
-            color: map-get($foreground, text) !important;
+            color: map.get($foreground, text) !important;
         }
 
         .mat-hint {
-            color: map-get($foreground, hint-text);
+            color: map.get($foreground, hint-text);
         }
 
         // Border color on disabled fields
@@ -1109,9 +1116,9 @@ textarea.mat-input-element {
 
                 .mat-form-field-flex {
                     @if ($is-dark) {
-                        border-color: treo-color('cool-gray', 700);
+                        border-color: colors.treo-color('cool-gray', 700);
                     } @else {
-                        border-color: treo-color('cool-gray', 200);
+                        border-color: colors.treo-color('cool-gray', 200);
                     }
                 }
             }
@@ -1124,7 +1131,7 @@ textarea.mat-input-element {
             .mat-form-field-wrapper {
 
                 .mat-form-field-flex {
-                    border-color: map-get($warn, default);
+                    border-color: map.get($warn, default);
                 }
             }
         }
@@ -1135,7 +1142,7 @@ textarea.mat-input-element {
             .mat-form-field-wrapper {
 
                 .mat-form-field-flex {
-                    background-color: map-get($background, card);
+                    background-color: map.get($background, card);
                 }
             }
         }
@@ -1146,7 +1153,7 @@ textarea.mat-input-element {
             .mat-form-field-wrapper {
 
                 .mat-form-field-flex {
-                    border-color: map-get($primary, default);
+                    border-color: map.get($primary, default);
                 }
             }
         }
@@ -1157,22 +1164,22 @@ textarea.mat-input-element {
             .mat-input-element {
 
                 &::placeholder {
-                    color: map-get($foreground, hint-text) !important;
+                    color: map.get($foreground, hint-text) !important;
                     -webkit-text-fill-color: currentColor !important;
                 }
 
                 &::-moz-placeholder {
-                    color: map-get($foreground, hint-text) !important;
+                    color: map.get($foreground, hint-text) !important;
                     -webkit-text-fill-color: currentColor !important;
                 }
 
                 &::-webkit-input-placeholder {
-                    color: map-get($foreground, hint-text) !important;
+                    color: map.get($foreground, hint-text) !important;
                     -webkit-text-fill-color: currentColor !important;
                 }
 
                 &:-ms-input-placeholder {
-                    color: map-get($foreground, hint-text) !important;
+                    color: map.get($foreground, hint-text) !important;
                     -webkit-text-fill-color: currentColor !important;
                 }
             }
@@ -1202,20 +1209,20 @@ textarea.mat-input-element {
             .mat-form-field-flex {
                 @if ($is-dark) {
                     background-color: rgba(0, 0, 0, 0.05);
-                    border-color: treo-color('cool-gray', 500);
+                    border-color: colors.treo-color('cool-gray', 500);
                 } @else {
                     background-color: white;
-                    border-color: treo-color('cool-gray', 300);
+                    border-color: colors.treo-color('cool-gray', 300);
                 }
 
                 .mat-form-field-prefix,
                 .mat-form-field-suffix {
-                    color: map-get($foreground, hint-text);
+                    color: map.get($foreground, hint-text);
 
                     .mat-icon,
                     .mat-icon-button,
                     .mat-select-value {
-                        color: map-get($foreground, hint-text);
+                        color: map.get($foreground, hint-text);
                     }
                 }
             }
@@ -1230,11 +1237,11 @@ textarea.mat-input-element {
 
                     .mat-form-field-prefix,
                     .mat-form-field-suffix {
-                        background: map-get($background, background);
+                        background: map.get($background, background);
                         @if ($is-dark) {
-                            border-color: treo-color('cool-gray', 500);
+                            border-color: colors.treo-color('cool-gray', 500);
                         } @else {
-                            border-color: treo-color('cool-gray', 300);
+                            border-color: colors.treo-color('cool-gray', 300);
                         }
                     }
                 }
@@ -1249,19 +1256,19 @@ textarea.mat-input-element {
 
         // Placeholder color
         &::placeholder {
-            color: map-get($foreground, hint-text);
+            color: map.get($foreground, hint-text);
         }
 
         &::-moz-placeholder {
-            color: map-get($foreground, hint-text);
+            color: map.get($foreground, hint-text);
         }
 
         &::-webkit-input-placeholder {
-            color: map-get($foreground, hint-text);
+            color: map.get($foreground, hint-text);
         }
 
         &:-ms-input-placeholder {
-            color: map-get($foreground, hint-text);
+            color: map.get($foreground, hint-text);
         }
     }
 
@@ -1272,19 +1279,19 @@ textarea.mat-input-element {
 
             // Placeholder color (error)
             &::placeholder {
-                color: map-get($warn, default);
+                color: map.get($warn, default);
             }
 
             &::-moz-placeholder {
-                color: map-get($warn, default);
+                color: map.get($warn, default);
             }
 
             &::-webkit-input-placeholder {
-                color: map-get($warn, default);
+                color: map.get($warn, default);
             }
 
             &:-ms-input-placeholder {
-                color: map-get($warn, default);
+                color: map.get($warn, default);
             }
         }
     }
@@ -1296,7 +1303,7 @@ textarea.mat-input-element {
 
         // Placeholder color
         .mat-select-placeholder {
-            color: map-get($foreground, hint-text);
+            color: map.get($foreground, hint-text);
         }
     }
 
@@ -1305,7 +1312,7 @@ textarea.mat-input-element {
 
         // Placeholder color (error)
         .mat-select-placeholder {
-            color: map-get($warn, default);
+            color: map.get($warn, default);
         }
     }
 
@@ -1317,7 +1324,7 @@ textarea.mat-input-element {
         // Apply palette's contrasting color rather than main foreground color
         @each $palette in (primary, accent, warn) {
 
-            $palette-contrast-color: map-get(map-get($theme, $palette), default-contrast);
+            $palette-contrast-color: map.get(map.get(theming.$theme, $palette), default-contrast);
 
             &.mat-#{$palette} {
 

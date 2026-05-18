@@ -2,14 +2,74 @@
 // @ Use this file to access to the core Angular Material and Treo utilities
 // -----------------------------------------------------------------------------------------------------
 
+@use "../../styles/themes";
+
 // 1. Utilities
-@import '../tailwind/exported/variables';
-@import 'utilities/theming';
-@import 'utilities/breakpoints';
-@import 'utilities/colors';
-@import 'utilities/elevations';
-@import 'utilities/icons';
-@import 'utilities/keyframes';
+@forward '../tailwind/exported/variables';
+@forward 'utilities/theming';
+@forward 'utilities/breakpoints';
+@forward 'utilities/colors';
+@forward 'utilities/elevations';
+@forward 'utilities/icons';
+@forward 'utilities/keyframes';
+
+@use 'utilities/theming';
+@use 'utilities/breakpoints';
+@use 'utilities/colors';
+@use 'utilities/elevations';
+@use 'utilities/icons';
 
 // 2. Themes definition file that includes $treo-themes map
-@import '../../styles/themes';
+@forward '../../styles/themes';
+
+$theme: null !default;
+
+@mixin treo-theme($encapsulated: false) {
+    @each $class-name, $theme-value in themes.$treo-themes {
+        $theme: $theme-value !global;
+
+        @if ($encapsulated) {
+            :host-context(.#{$class-name}) {
+                @content;
+            }
+        } @else {
+            .#{$class-name} {
+                @content;
+            }
+        }
+    }
+}
+
+@mixin treo-breakpoint($breakpoint) {
+    @include breakpoints.treo-breakpoint($breakpoint) {
+        @content;
+    }
+}
+
+@mixin treo-elevation($elevation: 'default', $important: false, $color: rgb(0, 0, 0)) {
+    @include elevations.treo-elevation($elevation, $important, $color);
+}
+
+@mixin treo-icon-size($size, $important: false) {
+    @include icons.treo-icon-size($size, $important);
+}
+
+@function treo-color($color, $hue: 500, $opacity: 1) {
+    @return colors.treo-color($color, $hue, $opacity);
+}
+
+@function treo-contrast($contrast, $hue: 500, $opacity: 1) {
+    @return colors.treo-contrast($contrast, $hue, $opacity);
+}
+
+@function treo-light-theme($primary-palette, $accent-palette, $warn-palette) {
+    @return colors.treo-light-theme($primary-palette, $accent-palette, $warn-palette);
+}
+
+@function treo-dark-theme($primary-palette, $accent-palette, $warn-palette) {
+    @return colors.treo-dark-theme($primary-palette, $accent-palette, $warn-palette);
+}
+
+@function treo-palette($palette, $default: 500, $lighter: 100, $darker: 700, $text: $default) {
+    @return colors.treo-palette($palette, $default, $lighter, $darker, $text);
+}

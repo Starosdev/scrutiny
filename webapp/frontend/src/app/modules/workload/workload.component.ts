@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { WorkloadService } from 'app/modules/workload/workload.service';
@@ -7,9 +7,27 @@ import { AppConfig } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { Router } from '@angular/router';
 import { TreoMediaWatcherService } from '@treo/services/media-watcher';
-import { MatSort, Sort } from '@angular/material/sort';
-import { MatTableDataSource } from '@angular/material/table';
+import { MatSort, MatSortHeader } from '@angular/material/sort';
+import {
+    MatTableDataSource,
+    MatTable,
+    MatColumnDef,
+    MatHeaderCellDef,
+    MatHeaderCell,
+    MatCellDef,
+    MatCell,
+    MatHeaderRowDef,
+    MatHeaderRow,
+    MatRowDef,
+    MatRow,
+} from '@angular/material/table';
 import { ViewChild, AfterViewInit } from '@angular/core';
+import { MatButtonToggleGroup, MatButtonToggle } from '@angular/material/button-toggle';
+import { MatIcon } from '@angular/material/icon';
+import { NgClass, DecimalPipe } from '@angular/common';
+import { MatProgressBar } from '@angular/material/progress-bar';
+import { MatTooltip } from '@angular/material/tooltip';
+import { FileSizePipe } from '../../shared/file-size.pipe';
 
 @Component({
     selector: 'workload',
@@ -17,9 +35,36 @@ import { ViewChild, AfterViewInit } from '@angular/core';
     styleUrls: ['./workload.component.scss'],
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false,
+    imports: [
+        MatButtonToggleGroup,
+        MatButtonToggle,
+        MatIcon,
+        NgClass,
+        MatProgressBar,
+        MatTable,
+        MatSort,
+        MatColumnDef,
+        MatHeaderCellDef,
+        MatHeaderCell,
+        MatSortHeader,
+        MatCellDef,
+        MatCell,
+        MatTooltip,
+        MatHeaderRowDef,
+        MatHeaderRow,
+        MatRowDef,
+        MatRow,
+        DecimalPipe,
+        FileSizePipe,
+    ],
 })
 export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
+    private readonly _workloadService = inject(WorkloadService);
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+    private readonly _mediaWatcherService = inject(TreoMediaWatcherService);
+    private readonly router = inject(Router);
+
     workloadData: Record<string, WorkloadInsightModel>;
     config: AppConfig;
     durationKey = 'week';
@@ -31,62 +76,56 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
     @ViewChild(MatSort) sort: MatSort;
     private _unsubscribeAll: Subject<void>;
 
-    constructor(
-        private readonly _workloadService: WorkloadService,
-        private readonly _configService: ScrutinyConfigService,
-        private readonly _changeDetectorRef: ChangeDetectorRef,
-        private readonly _mediaWatcherService: TreoMediaWatcherService,
-        private readonly router: Router
-    ) {
+    constructor() {
         this._unsubscribeAll = new Subject();
         this.dataSource = new MatTableDataSource([]);
     }
 
     ngOnInit(): void {
-        this._mediaWatcherService.onMediaChange$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(({matchingAliases}) => {
-                this.isMobile = matchingAliases.includes('lt-md');
+        this._mediaWatcherService.onMediaChange$.pipe(takeUntil(this._unsubscribeAll)).subscribe(({ matchingAliases }) => {
+            this.isMobile = matchingAliases.includes('lt-md');
+            this._changeDetectorRef.markForCheck();
+        });
+
+        this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {
+            const oldConfig = JSON.stringify(this.config);
+            const newConfig = JSON.stringify(config);
+
+            if (oldConfig !== newConfig) {
+                this.config = config;
+                if (oldConfig) {
+                    this.refreshComponent();
+                }
+            }
+        });
+
+        this._workloadService.data$.pipe(takeUntil(this._unsubscribeAll)).subscribe((data) => {
+            this.workloadData = data;
+            if (data) {
+                const insights = Object.values(data);
+                this.dataSource.data = insights;
+                this.spikeDevices = insights.filter((d) => d.spike?.detected);
                 this._changeDetectorRef.markForCheck();
-            });
-
-        this._configService.config$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((config: AppConfig) => {
-                const oldConfig = JSON.stringify(this.config);
-                const newConfig = JSON.stringify(config);
-
-                if (oldConfig !== newConfig) {
-                    this.config = config;
-                    if (oldConfig) {
-                        this.refreshComponent();
-                    }
-                }
-            });
-
-        this._workloadService.data$
-            .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((data) => {
-                this.workloadData = data;
-                if (data) {
-                    const insights = Object.values(data);
-                    this.dataSource.data = insights;
-                    this.spikeDevices = insights.filter(d => d.spike?.detected);
-                    this._changeDetectorRef.markForCheck();
-                }
-            });
+            }
+        });
     }
 
     ngAfterViewInit(): void {
         this.dataSource.sort = this.sort;
         this.dataSource.sortingDataAccessor = (item: WorkloadInsightModel, property: string) => {
             switch (property) {
-                case 'daily_writes': return item.daily_write_bytes;
-                case 'daily_reads': return item.daily_read_bytes;
-                case 'rw_ratio': return item.read_write_ratio;
-                case 'endurance': return item.endurance?.percentage_used ?? -1;
-                case 'est_remaining': return item.endurance?.estimated_lifespan_days ?? -1;
-                default: return item[property];
+                case 'daily_writes':
+                    return item.daily_write_bytes;
+                case 'daily_reads':
+                    return item.daily_read_bytes;
+                case 'rw_ratio':
+                    return item.read_write_ratio;
+                case 'endurance':
+                    return item.endurance?.percentage_used ?? -1;
+                case 'est_remaining':
+                    return item.endurance?.estimated_lifespan_days ?? -1;
+                default:
+                    return item[property];
             }
         };
     }
@@ -107,11 +146,16 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
 
     intensityColor(intensity: string): string {
         switch (intensity) {
-            case 'idle': return 'text-blue-400';
-            case 'light': return 'text-green-500';
-            case 'medium': return 'text-yellow-500';
-            case 'heavy': return 'text-red-500';
-            default: return 'text-gray-400';
+            case 'idle':
+                return 'text-blue-400';
+            case 'light':
+                return 'text-green-500';
+            case 'medium':
+                return 'text-yellow-500';
+            case 'heavy':
+                return 'text-red-500';
+            default:
+                return 'text-gray-400';
         }
     }
 

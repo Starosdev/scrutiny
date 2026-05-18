@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AppConfig } from 'app/core/config/app.config';
@@ -6,6 +6,10 @@ import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { Router } from '@angular/router';
 import { BtrfsFilesystemModel } from 'app/core/models/btrfs-filesystem-model';
 import { BtrfsFilesystemsService } from 'app/modules/btrfs-filesystems/btrfs-filesystems.service';
+import { MatButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { BtrfsFilesystemCardComponent } from '../../layout/common/btrfs-filesystem-card/btrfs-filesystem-card.component';
+import { KeyValuePipe } from '@angular/common';
 
 @Component({
     selector: 'btrfs-filesystems',
@@ -13,17 +17,19 @@ import { BtrfsFilesystemsService } from 'app/modules/btrfs-filesystems/btrfs-fil
     styleUrls: ['./btrfs-filesystems.component.scss'],
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false,
+    imports: [MatButton, MatIcon, BtrfsFilesystemCardComponent, KeyValuePipe],
 })
 export class BtrfsFilesystemsComponent implements OnInit, OnDestroy {
+    private readonly _btrfsFilesystemsService = inject(BtrfsFilesystemsService);
+    private readonly _configService = inject(ScrutinyConfigService);
+    private readonly router = inject(Router);
+
     summaryData: Record<string, BtrfsFilesystemModel>;
     hostGroups: { [hostId: string]: string[] } = {};
     config: AppConfig;
     showArchived: boolean;
 
     private _unsubscribeAll: Subject<void> = new Subject();
-
-    constructor(private readonly _btrfsFilesystemsService: BtrfsFilesystemsService, private readonly _configService: ScrutinyConfigService, private readonly router: Router) {}
 
     ngOnInit(): void {
         this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {

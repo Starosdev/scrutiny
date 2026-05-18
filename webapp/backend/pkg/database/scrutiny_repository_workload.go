@@ -78,7 +78,7 @@ func (sr *scrutinyRepository) GetWorkloadInsights(ctx context.Context, durationK
 			continue
 		}
 
-		sr.computeWorkloadInsight(insight, first, last, deviceProtocols[wwn])
+		sr.computeWorkloadInsight(insight, first, last, deviceProtocols[wwn], maxTBWForDevice(devices, insight.DeviceID))
 
 		// Spike detection
 		if recent, ok := recentPoints[wwn]; ok && len(recent) >= 2 {
@@ -370,7 +370,7 @@ func (sr *scrutinyRepository) buildWorkloadRecentQuery() string {
 	}, "\n")
 }
 
-func (sr *scrutinyRepository) computeWorkloadInsight(insight *models.WorkloadInsight, first, last *workloadSnapshot, protocol string) {
+func (sr *scrutinyRepository) computeWorkloadInsight(insight *models.WorkloadInsight, first, last *workloadSnapshot, protocol string, maxTBW *float64) {
 	timeSpan := last.Time.Sub(first.Time)
 	timeSpanHours := timeSpan.Hours()
 	insight.TimeSpanHours = timeSpanHours
@@ -378,7 +378,7 @@ func (sr *scrutinyRepository) computeWorkloadInsight(insight *models.WorkloadIns
 
 	if timeSpanHours < 1 {
 		insight.Intensity = "unknown"
-		sr.computeEndurance(insight, last, protocol, 0)
+		sr.computeEndurance(insight, last, protocol, 0, maxTBW)
 		return
 	}
 
@@ -394,7 +394,7 @@ func (sr *scrutinyRepository) computeWorkloadInsight(insight *models.WorkloadIns
 	default:
 		// SCSI: no cumulative byte counters
 		insight.Intensity = "unknown"
-		sr.computeEndurance(insight, last, protocol, 0)
+		sr.computeEndurance(insight, last, protocol, 0, maxTBW)
 		return
 	}
 
@@ -420,7 +420,7 @@ func (sr *scrutinyRepository) computeWorkloadInsight(insight *models.WorkloadIns
 
 	// Compute cumulative bytes for endurance TBW calculation
 	cumulativeWriteBytes := sr.getCumulativeWriteBytes(last, protocol)
-	sr.computeEndurance(insight, last, protocol, cumulativeWriteBytes)
+	sr.computeEndurance(insight, last, protocol, cumulativeWriteBytes, maxTBW)
 }
 
 func (sr *scrutinyRepository) computeATAWorkload(first, last *workloadSnapshot) (writtenBytes, readBytes int64) {
@@ -488,7 +488,7 @@ func classifyIntensity(dailyTotalBytes int64) string {
 	}
 }
 
-func (sr *scrutinyRepository) computeEndurance(insight *models.WorkloadInsight, snap *workloadSnapshot, protocol string, cumulativeWriteBytes int64) {
+func (sr *scrutinyRepository) computeEndurance(insight *models.WorkloadInsight, snap *workloadSnapshot, protocol string, cumulativeWriteBytes int64, maxTBW *float64) {
 	var percentageUsed int64
 	var hasPercentage bool
 
@@ -538,6 +538,12 @@ func (sr *scrutinyRepository) computeEndurance(insight *models.WorkloadInsight, 
 		estimate.TBWrittenSoFar = float64(cumulativeWriteBytes) / (1024 * 1024 * 1024 * 1024)
 		estimate.TBWrittenSoFar = math.Round(estimate.TBWrittenSoFar*100) / 100
 	}
+	if maxTBW != nil && *maxTBW > 0 {
+		estimate.TBWRated = math.Round(*maxTBW*100) / 100
+		if estimate.TBWrittenSoFar > 0 {
+			estimate.TBWUsedPercent = math.Round((estimate.TBWrittenSoFar/estimate.TBWRated)*10000) / 100
+		}
+	}
 
 	if percentageUsed > 0 && snap.PowerOnHours > 0 {
 		totalLifespanHours := float64(snap.PowerOnHours) / (float64(percentageUsed) / 100.0)
@@ -548,6 +554,15 @@ func (sr *scrutinyRepository) computeEndurance(insight *models.WorkloadInsight, 
 	}
 
 	insight.Endurance = estimate
+}
+
+func maxTBWForDevice(devices []models.Device, deviceID string) *float64 {
+	for i := range devices {
+		if devices[i].DeviceID == deviceID {
+			return devices[i].MaxTBW
+		}
+	}
+	return nil
 }
 
 func (sr *scrutinyRepository) detectSpike(recentPoints []*workloadSnapshot, baselineDailyWriteBytes int64, protocol string) *models.ActivitySpike {

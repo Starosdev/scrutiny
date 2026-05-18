@@ -1,4 +1,5 @@
-@import 'treo';
+@use "sass:map";
+@use 'treo';
 
 theme-toggle {
     display: flex;
@@ -9,17 +10,17 @@ theme-toggle {
         height: 44px;
 
         mat-icon {
-            @include treo-icon-size(24);
+            @include treo.treo-icon-size(24);
         }
     }
 }
 
-@include treo-theme {
-    $foreground: map-get($theme, foreground);
+@include treo.treo-theme {
+    $foreground: map.get(treo.$theme, foreground);
 
     theme-toggle {
         .theme-toggle-button {
-            color: map-get($foreground, text);
+            color: map.get($foreground, text);
         }
     }
 }
