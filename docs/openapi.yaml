@@ -1,0 +1,3257 @@
+openapi: 3.0.3
+info:
+  title: Scrutiny API
+  version: 1.0.0
+  description: |
+    Canonical API contract for the Starosdev Scrutiny fork.
+
+    This spec tracks the routes currently registered in `webapp/backend/pkg/web/server.go`.
+servers:
+  - url: /
+tags:
+  - name: Auth
+  - name: Health
+  - name: Devices
+  - name: Settings
+  - name: Reports
+  - name: Filesystems
+  - name: ZFS
+  - name: Btrfs
+  - name: MDADM
+  - name: Metrics
+security:
+  - BearerAuth: []
+paths:
+  /api/auth/status:
+    get:
+      tags: [Auth]
+      summary: Get authentication status
+      security: []
+      responses:
+        "200":
+          description: Authentication status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthStatusResponse"
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate and receive a JWT session token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login result
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/LoginResponse"
+                  - $ref: "#/components/schemas/AuthDisabledResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          description: Too many failed login attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Check backend and frontend health
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "500":
+          description: One or more health checks failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+    head:
+      tags: [Health]
+      summary: HEAD health check
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+        "500":
+          description: One or more health checks failed
+  /api/health/notify:
+    post:
+      tags: [Health]
+      summary: Send a test notification through configured notify URLs
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/health/missed-ping-status:
+    get:
+      tags: [Health]
+      summary: Get missed-ping monitor diagnostic status
+      responses:
+        "200":
+          description: Missed-ping monitor status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissedPingStatusResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/health/uptime-kuma-test:
+    post:
+      tags: [Health]
+      summary: Send a test push to the configured Uptime Kuma endpoint
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+        "502":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/health/mqtt-sync:
+    post:
+      tags: [Health]
+      summary: Re-sync MQTT discovery and state with Home Assistant
+      responses:
+        "200":
+          description: MQTT sync summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  devices_published:
+                    type: integer
+                  topics_cleaned:
+                    type: integer
+                required: [success, devices_published, topics_cleaned]
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/devices/register:
+    post:
+      tags: [Devices]
+      summary: Register devices discovered by the collector
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceWrapper"
+      responses:
+        "200":
+          description: Registered devices, including resolved `device_id` values
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceWrapper"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/summary:
+    get:
+      tags: [Devices]
+      summary: Get dashboard device summary
+      responses:
+        "200":
+          description: Device summary payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceSummaryWrapper"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/summary/temp:
+    get:
+      tags: [Devices]
+      summary: Get temperature history for the summary dashboard
+      parameters:
+        - $ref: "#/components/parameters/DurationKey"
+      responses:
+        "200":
+          description: Temperature history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      temp_history:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/SmartTemperature"
+                required: [success, data]
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/summary/workload:
+    get:
+      tags: [Devices]
+      summary: Get workload insights
+      parameters:
+        - $ref: "#/components/parameters/DurationKey"
+      responses:
+        "200":
+          description: Workload insight data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      workload:
+                        type: object
+                        additionalProperties:
+                          $ref: "#/components/schemas/WorkloadInsight"
+                required: [success, data]
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/filesystems/summary:
+    get:
+      tags: [Filesystems]
+      summary: Get filesystem capacity summary
+      responses:
+        "200":
+          description: Filesystem summary grouped by host
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FilesystemSummaryResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      tags: [Filesystems]
+      summary: Upload filesystem capacity data from the filesystem collector
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FilesystemSummaryUpload"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/collectors/run:
+    post:
+      tags: [Devices]
+      summary: Trigger local collectors in omnibus mode
+      description: Runs available local collector binaries sequentially in the background.
+      responses:
+        "202":
+          description: Collector run accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                required: [success, message]
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/metrics:
+    get:
+      tags: [Metrics]
+      summary: Export Prometheus metrics
+      security:
+        - BearerAuth: []
+        - MetricsBearerAuth: []
+      responses:
+        "200":
+          description: Prometheus metrics exposition format
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/device/{id}/smart:
+    post:
+      tags: [Devices]
+      summary: Upload SMART data for a device
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectorSmartInfo"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "422":
+          description: SMART payload rejected because `smartctl` exit status indicates unreliable data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/device/{id}/selftest:
+    post:
+      tags: [Devices]
+      summary: Upload self-test data for a device
+      description: Route is registered but the handler is currently a stub with no implemented behavior.
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Reserved endpoint
+  /api/device/{id}/details:
+    get:
+      tags: [Devices]
+      summary: Get device details and SMART history
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+        - $ref: "#/components/parameters/DurationKey"
+      responses:
+        "200":
+          description: Device details and SMART history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceDetailsResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/device/{id}/archive:
+    post:
+      tags: [Devices]
+      summary: Archive a device
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/device/{id}/unarchive:
+    post:
+      tags: [Devices]
+      summary: Unarchive a device
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/device/{id}/mute:
+    post:
+      tags: [Devices]
+      summary: Mute notifications for a device
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/device/{id}/unmute:
+    post:
+      tags: [Devices]
+      summary: Unmute notifications for a device
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/device/{id}/reset-status:
+    post:
+      tags: [Devices]
+      summary: Reset a device status back to passed
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/device/{id}/label:
+    post:
+      tags: [Devices]
+      summary: Update device label
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label:
+                  type: string
+              required: [label]
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/device/{id}/max-tbw:
+    post:
+      tags: [Devices]
+      summary: Set the per-device rated TBW override
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                max_tbw:
+                  type: number
+                  format: double
+              required: [max_tbw]
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/device/{id}/smart-display-mode:
+    post:
+      tags: [Devices]
+      summary: Set SMART attribute display mode for a device
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                smart_display_mode:
+                  type: string
+              required: [smart_display_mode]
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/device/{id}/missed-ping-timeout:
+    post:
+      tags: [Devices]
+      summary: Set the per-device missed-ping timeout override in minutes
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                missed_ping_timeout_override:
+                  type: integer
+              required: [missed_ping_timeout_override]
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/device/{id}/merge_into:
+    post:
+      tags: [Devices]
+      summary: Merge one device into another device record
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                new_device_id:
+                  type: string
+              required: [new_device_id]
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/device/{id}:
+    delete:
+      tags: [Devices]
+      summary: Delete a device from tracking
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/device/{id}/performance:
+    post:
+      tags: [Devices]
+      summary: Upload performance benchmark results
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PerformanceUploadRequest"
+      responses:
+        "200":
+          description: Benchmark accepted; may include degradation report
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - $ref: "#/components/schemas/PerformanceUploadResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+    get:
+      tags: [Devices]
+      summary: Get performance benchmark history and baseline
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+        - name: duration
+          in: query
+          schema:
+            type: string
+            default: week
+      responses:
+        "200":
+          description: Performance history and baseline
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PerformanceHistoryResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/device/{id}/replacement-risk:
+    get:
+      tags: [Devices]
+      summary: Get computed replacement risk for a device
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+        - name: trend_window
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d]
+            default: 30d
+      responses:
+        "200":
+          description: Replacement risk score and contributions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplacementRiskResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/device/{id}/collector-error:
+    post:
+      tags: [Devices]
+      summary: Upload a device-scoped collector error
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectorErrorRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/collector/scan-error:
+    post:
+      tags: [Devices]
+      summary: Upload a scan-level collector error with no device context
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectorErrorRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/settings:
+    get:
+      tags: [Settings]
+      summary: Get application settings and server metadata
+      responses:
+        "200":
+          description: Current settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      tags: [Settings]
+      summary: Save application settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Settings"
+      responses:
+        "200":
+          description: Saved settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaveSettingsResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/settings/overrides:
+    get:
+      tags: [Settings]
+      summary: Get all SMART attribute overrides
+      responses:
+        "200":
+          description: Attribute overrides
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AttributeOverride"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      tags: [Settings]
+      summary: Create or update a SMART attribute override
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttributeOverride"
+      responses:
+        "200":
+          description: Override saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/AttributeOverride"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/settings/overrides/{id}:
+    delete:
+      tags: [Settings]
+      summary: Delete a SMART attribute override
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/settings/notify-urls:
+    get:
+      tags: [Settings]
+      summary: Get merged notification URLs from config and UI storage
+      responses:
+        "200":
+          description: Notification URL list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/NotifyUrl"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      tags: [Settings]
+      summary: Create a UI-managed notification URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                label:
+                  type: string
+              required: [url]
+      responses:
+        "200":
+          description: Notification URL saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/NotifyUrl"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/settings/notify-urls/{id}:
+    delete:
+      tags: [Settings]
+      summary: Delete a UI-managed notification URL
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/settings/notify-urls/{id}/test:
+    post:
+      tags: [Settings]
+      summary: Send a test notification to one UI-managed notification URL
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/reports/generate:
+    get:
+      tags: [Reports]
+      summary: Generate an on-demand report
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            default: text
+            enum: [text, pdf]
+        - name: period
+          in: query
+          schema:
+            type: string
+            default: daily
+            enum: [daily, weekly, monthly]
+        - name: test
+          in: query
+          schema:
+            type: string
+            enum: ["true"]
+      responses:
+        "200":
+          description: Report content or PDF file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateReportResponse"
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/reports/history:
+    get:
+      tags: [Reports]
+      summary: List generated PDF reports
+      responses:
+        "200":
+          description: Report history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportHistoryResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/zfs/pools/register:
+    post:
+      tags: [ZFS]
+      summary: Register ZFS pools discovered by the collector
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ZFSPoolWrapper"
+      responses:
+        "200":
+          description: Registered ZFS pools
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZFSPoolWrapper"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/zfs/summary:
+    get:
+      tags: [ZFS]
+      summary: Get ZFS pool summary
+      responses:
+        "200":
+          description: ZFS pools
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      pools:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ZFSPool"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/zfs/pool/{guid}/metrics:
+    post:
+      tags: [ZFS]
+      summary: Upload ZFS pool metrics
+      parameters:
+        - $ref: "#/components/parameters/Guid"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ZFSPool"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/zfs/pool/{guid}/details:
+    get:
+      tags: [ZFS]
+      summary: Get ZFS pool details and metrics history
+      parameters:
+        - $ref: "#/components/parameters/Guid"
+        - $ref: "#/components/parameters/DurationKey"
+      responses:
+        "200":
+          description: ZFS pool details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZFSPoolDetailsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/zfs/pool/{guid}/archive:
+    post:
+      tags: [ZFS]
+      summary: Archive a ZFS pool
+      parameters:
+        - $ref: "#/components/parameters/Guid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/zfs/pool/{guid}/unarchive:
+    post:
+      tags: [ZFS]
+      summary: Unarchive a ZFS pool
+      parameters:
+        - $ref: "#/components/parameters/Guid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/zfs/pool/{guid}/mute:
+    post:
+      tags: [ZFS]
+      summary: Mute notifications for a ZFS pool
+      parameters:
+        - $ref: "#/components/parameters/Guid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/zfs/pool/{guid}/unmute:
+    post:
+      tags: [ZFS]
+      summary: Unmute notifications for a ZFS pool
+      parameters:
+        - $ref: "#/components/parameters/Guid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/zfs/pool/{guid}/label:
+    post:
+      tags: [ZFS]
+      summary: Update ZFS pool label
+      parameters:
+        - $ref: "#/components/parameters/Guid"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label:
+                  type: string
+              required: [label]
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/zfs/pool/{guid}:
+    delete:
+      tags: [ZFS]
+      summary: Delete a ZFS pool from tracking
+      parameters:
+        - $ref: "#/components/parameters/Guid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/btrfs/filesystems/register:
+    post:
+      tags: [Btrfs]
+      summary: Register Btrfs filesystems discovered by the collector
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BtrfsFilesystemWrapper"
+      responses:
+        "200":
+          description: Registered Btrfs filesystems
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BtrfsFilesystemWrapper"
+  /api/btrfs/summary:
+    get:
+      tags: [Btrfs]
+      summary: Get Btrfs filesystem summary
+      responses:
+        "200":
+          description: Btrfs filesystems
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      filesystems:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/BtrfsFilesystem"
+  /api/btrfs/filesystem/{uuid}/metrics:
+    post:
+      tags: [Btrfs]
+      summary: Upload Btrfs filesystem metrics
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BtrfsFilesystem"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/btrfs/filesystem/{uuid}/details:
+    get:
+      tags: [Btrfs]
+      summary: Get Btrfs filesystem details and metrics history
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+        - $ref: "#/components/parameters/DurationKey"
+      responses:
+        "200":
+          description: Btrfs filesystem details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BtrfsFilesystemDetailsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/btrfs/filesystem/{uuid}/archive:
+    post:
+      tags: [Btrfs]
+      summary: Archive a Btrfs filesystem
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/btrfs/filesystem/{uuid}/unarchive:
+    post:
+      tags: [Btrfs]
+      summary: Unarchive a Btrfs filesystem
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/btrfs/filesystem/{uuid}/mute:
+    post:
+      tags: [Btrfs]
+      summary: Mute a Btrfs filesystem
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/btrfs/filesystem/{uuid}/unmute:
+    post:
+      tags: [Btrfs]
+      summary: Unmute a Btrfs filesystem
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/btrfs/filesystem/{uuid}/label:
+    post:
+      tags: [Btrfs]
+      summary: Update Btrfs filesystem label
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label:
+                  type: string
+              required: [label]
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/btrfs/filesystem/{uuid}:
+    delete:
+      tags: [Btrfs]
+      summary: Delete a Btrfs filesystem from tracking
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/mdadm/arrays/register:
+    post:
+      tags: [MDADM]
+      summary: Register MDADM arrays discovered by the collector
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      uuid:
+                        type: string
+                      name:
+                        type: string
+                      level:
+                        type: string
+                      devices:
+                        type: array
+                        items:
+                          type: string
+      responses:
+        "200":
+          description: Registered arrays and per-array errors
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MDADMArrayWrapper"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/mdadm/summary:
+    get:
+      tags: [MDADM]
+      summary: Get MDADM summary
+      responses:
+        "200":
+          description: MDADM summary data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/mdadm/array/{uuid}/metrics:
+    post:
+      tags: [MDADM]
+      summary: Upload MDADM array metrics
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/mdadm/array/{uuid}/details:
+    get:
+      tags: [MDADM]
+      summary: Get MDADM array details and history
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+        - name: duration
+          in: query
+          schema:
+            type: string
+            default: week
+      responses:
+        "200":
+          description: MDADM details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MDADMDetailsResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Master API token or JWT session token.
+    MetricsBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Token
+      description: Dedicated metrics bearer token from `web.metrics.token`.
+  parameters:
+    DeviceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Device identifier. The backend resolves a device by `device_id`, WWN, or other accepted lookup key.
+    NumericId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    Guid:
+      name: guid
+      in: path
+      required: true
+      schema:
+        type: string
+    Uuid:
+      name: uuid
+      in: path
+      required: true
+      schema:
+        type: string
+    DurationKey:
+      name: duration_key
+      in: query
+      schema:
+        type: string
+        default: week
+      description: Repository-defined duration key such as `day`, `week`, `month`, `year`, or `forever`, depending on the route.
+  responses:
+    SuccessResponse:
+      description: Generic success response
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SuccessResponse"
+    ErrorResponse:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication required or token invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+        errors:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: object
+                additionalProperties: true
+      required: [success]
+    AuthStatusResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        auth_enabled:
+          type: boolean
+        login_methods:
+          type: array
+          items:
+            type: string
+      required: [success, auth_enabled]
+    AuthDisabledResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        auth_enabled:
+          type: boolean
+        message:
+          type: string
+      required: [success, auth_enabled, message]
+    LoginRequest:
+      type: object
+      properties:
+        token:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+      description: Provide either `token` or `username` plus `password`.
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        token_type:
+          type: string
+      required: [success, token, expires_at, token_type]
+    HealthCheckStatus:
+      type: object
+      properties:
+        status:
+          type: string
+        latency_ms:
+          type: integer
+        error:
+          type: string
+    HealthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        status:
+          type: string
+        checks:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/HealthCheckStatus"
+      required: [success, status, checks]
+    Device:
+      type: object
+      properties:
+        device_id:
+          type: string
+        wwn:
+          type: string
+        device_name:
+          type: string
+        model_name:
+          type: string
+        serial_number:
+          type: string
+        device_protocol:
+          type: string
+        host_id:
+          type: string
+        label:
+          type: string
+        archived:
+          type: boolean
+        muted:
+          type: boolean
+        smart_display_mode:
+          type: string
+        missed_ping_timeout_override:
+          type: integer
+        max_tbw:
+          type: number
+          format: double
+        device_status:
+          type: integer
+        has_forced_failure:
+          type: boolean
+      additionalProperties: true
+    DeviceWrapper:
+      type: object
+      properties:
+        success:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Device"
+      required: [success, data]
+    CollectorSmartInfo:
+      type: object
+      description: Collector SMART submission payload.
+      properties:
+        json_format_version:
+          type: array
+          items:
+            type: integer
+        smartctl:
+          $ref: "#/components/schemas/SmartctlInfo"
+        device:
+          $ref: "#/components/schemas/CollectorDeviceInfo"
+        model_name:
+          type: string
+        serial_number:
+          type: string
+        firmware_version:
+          type: string
+        wwn:
+          type: object
+          properties:
+            naa:
+              type: integer
+              format: int64
+            oui:
+              type: integer
+              format: int64
+            id:
+              type: integer
+              format: int64
+        user_capacity:
+          $ref: "#/components/schemas/UserCapacity"
+        logical_block_size:
+          type: integer
+        physical_block_size:
+          type: integer
+        rotation_rate:
+          type: integer
+        form_factor:
+          type: object
+          properties:
+            ata_value:
+              type: integer
+            name:
+              type: string
+        smart_status:
+          type: object
+          properties:
+            passed:
+              type: boolean
+        smart_support:
+          type: object
+          additionalProperties: true
+        local_time:
+          type: object
+          properties:
+            time_t:
+              type: integer
+              format: int64
+            asctime:
+              type: string
+        power_on_time:
+          type: object
+          properties:
+            hours:
+              type: integer
+              format: int64
+        power_cycle_count:
+          type: integer
+          format: int64
+        temperature:
+          type: object
+          properties:
+            current:
+              type: integer
+              format: int64
+        ata_smart_attributes:
+          type: object
+          properties:
+            revision:
+              type: integer
+            table:
+              type: array
+              items:
+                $ref: "#/components/schemas/AtaSmartAttributeTableItem"
+        ata_device_statistics:
+          $ref: "#/components/schemas/AtaDeviceStatistics"
+        nvme_smart_health_information_log:
+          $ref: "#/components/schemas/NvmeSmartHealthInformationLog"
+        nvme_pci_vendor:
+          type: object
+          properties:
+            id:
+              type: integer
+            subsystem_id:
+              type: integer
+        nvme_ieee_oui_identifier:
+          type: integer
+        nvme_total_capacity:
+          type: integer
+          format: int64
+        nvme_controller_id:
+          type: integer
+        nvme_number_of_namespaces:
+          type: integer
+        nvme_namespaces:
+          type: array
+          items:
+            $ref: "#/components/schemas/NvmeNamespace"
+        vendor:
+          type: string
+        product:
+          type: string
+        scsi_version:
+          type: string
+        scsi_grown_defect_list:
+          type: integer
+          format: int64
+        scsi_error_counter_log:
+          $ref: "#/components/schemas/ScsiErrorCounterLog"
+        scsi_environmental_reports:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ScsiTemperatureData"
+        seagate_farm_log:
+          $ref: "#/components/schemas/SeagateFarmLog"
+      additionalProperties: true
+    DeviceDetailsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            device:
+              $ref: "#/components/schemas/Device"
+            smart_results:
+              type: array
+              items:
+                $ref: "#/components/schemas/SmartMeasurement"
+        metadata:
+          type: object
+          additionalProperties: true
+      required: [success, data]
+    PerformanceUploadRequest:
+      type: object
+      properties:
+        profile:
+          type: string
+        device_protocol:
+          type: string
+        fio_version:
+          type: string
+        date:
+          type: integer
+        seq_read_bw_bytes:
+          type: number
+        seq_write_bw_bytes:
+          type: number
+        rand_read_iops:
+          type: number
+        rand_write_iops:
+          type: number
+        rand_read_lat_ns_avg:
+          type: number
+        rand_read_lat_ns_p50:
+          type: number
+        rand_read_lat_ns_p95:
+          type: number
+        rand_read_lat_ns_p99:
+          type: number
+        rand_write_lat_ns_avg:
+          type: number
+        rand_write_lat_ns_p50:
+          type: number
+        rand_write_lat_ns_p95:
+          type: number
+        rand_write_lat_ns_p99:
+          type: number
+        mixed_rw_iops:
+          type: number
+        test_duration_sec:
+          type: number
+    PerformanceUploadResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        degradation:
+          type: object
+          additionalProperties: true
+    PerformanceHistoryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            history:
+              type: array
+              items:
+                $ref: "#/components/schemas/PerformanceMeasurement"
+            baseline:
+              $ref: "#/components/schemas/PerformanceBaseline"
+    CollectorErrorRequest:
+      type: object
+      properties:
+        error_type:
+          type: string
+          description: One of `scan`, `info`, or `xall`.
+        error_message:
+          type: string
+        device_name:
+          type: string
+      required: [error_type, error_message]
+    Settings:
+      type: object
+      properties:
+        theme:
+          type: string
+        layout:
+          type: string
+        dashboard_display:
+          type: string
+        dashboard_sort:
+          type: string
+        temperature_unit:
+          type: string
+        line_stroke:
+          type: string
+        powered_on_hours_unit:
+          type: string
+        time_format:
+          type: string
+        file_size_si_units:
+          type: boolean
+        collector:
+          type: object
+          properties:
+            retrieve_sct_temperature_history:
+              type: boolean
+        metrics:
+          type: object
+          properties:
+            notify_level:
+              type: integer
+            status_filter_attributes:
+              type: integer
+            status_threshold:
+              type: integer
+            repeat_notifications:
+              type: boolean
+            notify_on_collector_error:
+              type: boolean
+            notify_on_missed_ping:
+              type: boolean
+            notify_on_replacement_risk:
+              type: boolean
+            replacement_risk_notify_category:
+              type: string
+            notification_rate_limit:
+              type: integer
+            notification_quiet_start:
+              type: string
+            notification_quiet_end:
+              type: string
+            missed_ping_timeout_minutes:
+              type: integer
+            missed_ping_check_interval_mins:
+              type: integer
+            missed_ping_cooldown_minutes:
+              type: integer
+            heartbeat_enabled:
+              type: boolean
+            heartbeat_interval_hours:
+              type: integer
+            uptime_kuma_enabled:
+              type: boolean
+            uptime_kuma_push_url:
+              type: string
+            uptime_kuma_interval_seconds:
+              type: integer
+            report_enabled:
+              type: boolean
+            report_daily_enabled:
+              type: boolean
+            report_daily_time:
+              type: string
+            report_weekly_enabled:
+              type: boolean
+            report_weekly_day:
+              type: integer
+            report_weekly_time:
+              type: string
+            report_monthly_enabled:
+              type: boolean
+            report_monthly_day:
+              type: integer
+            report_monthly_time:
+              type: string
+            report_pdf_enabled:
+              type: boolean
+            report_pdf_path:
+              type: string
+    SettingsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        settings:
+          $ref: "#/components/schemas/Settings"
+        server_version:
+          type: string
+        collector_trigger_enabled:
+          type: boolean
+    SaveSettingsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        settings:
+          $ref: "#/components/schemas/Settings"
+    AttributeOverride:
+      type: object
+      properties:
+        id:
+          type: integer
+        protocol:
+          type: string
+          enum: [ATA, NVMe, SCSI]
+        attribute_id:
+          type: string
+        wwn:
+          type: string
+        action:
+          type: string
+          enum: ["", ignore, force_status]
+        status:
+          type: string
+          enum: [passed, warn, failed]
+        warn_above:
+          type: integer
+          format: int64
+        fail_above:
+          type: integer
+          format: int64
+        source:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    NotifyUrl:
+      type: object
+      properties:
+        id:
+          type: integer
+        url:
+          type: string
+        label:
+          type: string
+        source:
+          type: string
+      required: [url, source]
+    GenerateReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        subject:
+          type: string
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/ReportData"
+        notification_sent:
+          type: boolean
+    ReportHistoryEntry:
+      type: object
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        mod_time:
+          type: string
+          format: date-time
+        size:
+          type: integer
+          format: int64
+    ReportHistoryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        reports:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportHistoryEntry"
+    FilesystemCapacity:
+      type: object
+      properties:
+        host_id:
+          type: string
+        mount_point:
+          type: string
+        source_device:
+          type: string
+        filesystem_type:
+          type: string
+        total_bytes:
+          type: integer
+          format: int64
+        used_bytes:
+          type: integer
+          format: int64
+        available_bytes:
+          type: integer
+          format: int64
+        used_percent:
+          type: number
+          format: double
+      required: [host_id, mount_point]
+    FilesystemHostStatus:
+      type: object
+      properties:
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+        host_id:
+          type: string
+        status:
+          type: string
+          enum: [available, unavailable]
+        reason:
+          type: string
+        filesystem_count:
+          type: integer
+    FilesystemSummaryUpload:
+      type: object
+      properties:
+        filesystems:
+          type: array
+          items:
+            $ref: "#/components/schemas/FilesystemCapacity"
+        hosts:
+          type: array
+          items:
+            $ref: "#/components/schemas/FilesystemHostStatus"
+    FilesystemSummaryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            filesystems:
+              type: array
+              items:
+                $ref: "#/components/schemas/FilesystemCapacity"
+            hosts:
+              type: array
+              items:
+                $ref: "#/components/schemas/FilesystemHostStatus"
+    ZFSPool:
+      type: object
+      properties:
+        guid:
+          type: string
+        host_id:
+          type: string
+        name:
+          type: string
+        label:
+          type: string
+        status:
+          type: string
+        health:
+          type: string
+        size:
+          type: integer
+          format: int64
+        allocated:
+          type: integer
+          format: int64
+        free:
+          type: integer
+          format: int64
+        capacity_percent:
+          type: number
+        fragmentation:
+          type: integer
+        total_read_errors:
+          type: integer
+          format: int64
+        total_write_errors:
+          type: integer
+          format: int64
+        total_checksum_errors:
+          type: integer
+          format: int64
+        scrub_state:
+          type: string
+        scrub_percent_complete:
+          type: number
+        archived:
+          type: boolean
+        muted:
+          type: boolean
+      additionalProperties: true
+    ZFSPoolWrapper:
+      type: object
+      properties:
+        success:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ZFSPool"
+    ZFSPoolDetailsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            pool:
+              $ref: "#/components/schemas/ZFSPool"
+            metrics_history:
+              type: array
+              items:
+                $ref: "#/components/schemas/ZFSPoolMetricsMeasurement"
+    BtrfsFilesystem:
+      type: object
+      properties:
+        uuid:
+          type: string
+        host_id:
+          type: string
+        label:
+          type: string
+        mount_point:
+          type: string
+        status:
+          type: string
+        scrub_state:
+          type: string
+        archived:
+          type: boolean
+        muted:
+          type: boolean
+        device_count:
+          type: integer
+        used:
+          type: integer
+          format: int64
+        free_estimated:
+          type: integer
+          format: int64
+      additionalProperties: true
+    BtrfsFilesystemWrapper:
+      type: object
+      properties:
+        success:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/BtrfsFilesystem"
+    BtrfsFilesystemDetailsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            filesystem:
+              $ref: "#/components/schemas/BtrfsFilesystem"
+            metrics_history:
+              type: array
+              items:
+                $ref: "#/components/schemas/BtrfsMetricsMeasurement"
+    MDADMArray:
+      type: object
+      properties:
+        uuid:
+          type: string
+        name:
+          type: string
+        level:
+          type: string
+        devices:
+          type: array
+          items:
+            type: string
+        label:
+          type: string
+        archived:
+          type: boolean
+        muted:
+          type: boolean
+    MDADMArrayWrapper:
+      type: object
+      properties:
+        success:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MDADMArray"
+    MDADMDetailsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            array:
+              $ref: "#/components/schemas/MDADMArray"
+            history:
+              type: array
+              items:
+                $ref: "#/components/schemas/MDADMMetricsMeasurement"
+            latest_metrics:
+              $ref: "#/components/schemas/MDADMMetricsMeasurement"
+    SmartctlInfo:
+      type: object
+      properties:
+        version:
+          type: array
+          items:
+            type: integer
+        svn_revision:
+          type: string
+        platform_info:
+          type: string
+        build_info:
+          type: string
+        argv:
+          type: array
+          items:
+            type: string
+        exit_status:
+          type: integer
+        messages:
+          type: array
+          items:
+            type: object
+            properties:
+              string:
+                type: string
+              severity:
+                type: string
+    CollectorDeviceInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        info_name:
+          type: string
+        type:
+          type: string
+        protocol:
+          type: string
+    UserCapacity:
+      type: object
+      properties:
+        blocks:
+          type: integer
+          format: int64
+        bytes:
+          type: integer
+          format: int64
+    AtaDeviceStatistics:
+      type: object
+      properties:
+        pages:
+          type: array
+          items:
+            $ref: "#/components/schemas/AtaDeviceStatisticsPage"
+    AtaDeviceStatisticsPage:
+      type: object
+      properties:
+        number:
+          type: integer
+        name:
+          type: string
+        revision:
+          type: integer
+        table:
+          type: array
+          items:
+            $ref: "#/components/schemas/AtaDeviceStatisticsEntry"
+    AtaDeviceStatisticsEntry:
+      type: object
+      properties:
+        offset:
+          type: integer
+        name:
+          type: string
+        size:
+          type: integer
+        value:
+          type: integer
+          format: int64
+        flags:
+          type: object
+          properties:
+            value:
+              type: integer
+            valid:
+              type: boolean
+            normalized:
+              type: boolean
+            supports_dsn:
+              type: boolean
+            monitored_condition_met:
+              type: boolean
+    AtaSmartAttributeTableItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        value:
+          type: integer
+        worst:
+          type: integer
+        thresh:
+          type: integer
+        when_failed:
+          type: string
+        flags:
+          type: object
+          additionalProperties: true
+        raw:
+          type: object
+          properties:
+            value:
+              type: integer
+              format: int64
+            string:
+              type: string
+    NvmeNamespace:
+      type: object
+      properties:
+        id:
+          type: integer
+        size:
+          $ref: "#/components/schemas/NvmeNamespaceCapacity"
+        capacity:
+          $ref: "#/components/schemas/NvmeNamespaceCapacity"
+        utilization:
+          $ref: "#/components/schemas/NvmeNamespaceCapacity"
+        formatted_lba_size:
+          type: integer
+    NvmeNamespaceCapacity:
+      type: object
+      properties:
+        blocks:
+          type: integer
+        bytes:
+          type: integer
+          format: int64
+    NvmeSmartHealthInformationLog:
+      type: object
+      properties:
+        critical_warning:
+          type: integer
+          format: int64
+        temperature:
+          type: integer
+          format: int64
+        available_spare:
+          type: integer
+          format: int64
+        available_spare_threshold:
+          type: integer
+          format: int64
+        percentage_used:
+          type: integer
+          format: int64
+        data_units_read:
+          type: integer
+          format: int64
+        data_units_written:
+          type: integer
+          format: int64
+        host_reads:
+          type: integer
+          format: int64
+        host_writes:
+          type: integer
+          format: int64
+        controller_busy_time:
+          type: integer
+          format: int64
+        power_cycles:
+          type: integer
+          format: int64
+        power_on_hours:
+          type: integer
+          format: int64
+        unsafe_shutdowns:
+          type: integer
+          format: int64
+        media_errors:
+          type: integer
+          format: int64
+        num_err_log_entries:
+          type: integer
+          format: int64
+        warning_temp_time:
+          type: integer
+          format: int64
+        critical_comp_time:
+          type: integer
+          format: int64
+    ScsiTemperatureData:
+      type: object
+      properties:
+        parameter_code:
+          type: integer
+        current:
+          type: integer
+          format: int64
+        lifetime_maximum:
+          type: integer
+          format: int64
+        lifetime_minimum:
+          type: integer
+          format: int64
+        maximum_since_power_on:
+          type: integer
+          format: int64
+        minimum_since_power_on:
+          type: integer
+          format: int64
+    ScsiErrorCounterLog:
+      type: object
+      properties:
+        read:
+          $ref: "#/components/schemas/ScsiErrorCounterDirection"
+        write:
+          $ref: "#/components/schemas/ScsiErrorCounterDirection"
+    ScsiErrorCounterDirection:
+      type: object
+      properties:
+        errors_corrected_by_eccfast:
+          type: integer
+          format: int64
+        errors_corrected_by_eccdelayed:
+          type: integer
+          format: int64
+        errors_corrected_by_rereads_rewrites:
+          type: integer
+          format: int64
+        total_errors_corrected:
+          type: integer
+          format: int64
+        correction_algorithm_invocations:
+          type: integer
+          format: int64
+        gigabytes_processed:
+          type: string
+        total_uncorrected_errors:
+          type: integer
+          format: int64
+    SeagateFarmLog:
+      type: object
+      properties:
+        supported:
+          type: boolean
+        page_0_log_header:
+          $ref: "#/components/schemas/FarmLogHeader"
+        page_1_drive_information:
+          $ref: "#/components/schemas/FarmDriveInformation"
+        page_2_workload_statistics:
+          $ref: "#/components/schemas/FarmWorkloadStatistics"
+        page_3_error_statistics:
+          $ref: "#/components/schemas/FarmErrorStatistics"
+        page_4_environment_statistics:
+          $ref: "#/components/schemas/FarmEnvironmentStatistics"
+        page_5_reliability_statistics:
+          $ref: "#/components/schemas/FarmReliabilityStatistics"
+    FarmLogHeader:
+      type: object
+      properties:
+        farm_log_version:
+          type: array
+          items:
+            type: integer
+        pages_supported:
+          type: integer
+        log_size:
+          type: integer
+          format: int64
+        page_size:
+          type: integer
+          format: int64
+        heads_supported:
+          type: integer
+    FarmDriveInformation:
+      type: object
+      properties:
+        serial_number:
+          type: string
+        world_wide_name:
+          type: string
+        device_interface:
+          type: string
+        form_factor:
+          type: string
+        firmware_rev:
+          type: string
+        drive_recording_type:
+          type: string
+        date_of_assembly:
+          type: string
+        device_capacity_in_sectors:
+          type: integer
+          format: int64
+        physical_sector_size:
+          type: integer
+          format: int64
+        logical_sector_size:
+          type: integer
+          format: int64
+        poh:
+          type: integer
+          format: int64
+        spoh:
+          type: integer
+          format: int64
+        head_flight_hours:
+          type: integer
+          format: int64
+        head_load_events:
+          type: integer
+          format: int64
+        power_cycle_count:
+          type: integer
+          format: int64
+        reset_count:
+          type: integer
+          format: int64
+        spin_up_time:
+          type: integer
+          format: int64
+        number_of_heads:
+          type: integer
+        rotation_rate:
+          type: integer
+    FarmWorkloadStatistics:
+      type: object
+      properties:
+        total_read_commands:
+          type: integer
+          format: int64
+        total_write_commands:
+          type: integer
+          format: int64
+        total_random_reads:
+          type: integer
+          format: int64
+        total_random_writes:
+          type: integer
+          format: int64
+        logical_sectors_written:
+          type: integer
+          format: int64
+        logical_sectors_read:
+          type: integer
+          format: int64
+    FarmErrorStatistics:
+      type: object
+      properties:
+        number_of_unrecoverable_read_errors:
+          type: integer
+          format: int64
+        number_of_unrecoverable_write_errors:
+          type: integer
+          format: int64
+        number_of_reallocated_sectors:
+          type: integer
+          format: int64
+        number_of_read_recovery_attempts:
+          type: integer
+          format: int64
+        number_of_mechanical_start_failures:
+          type: integer
+          format: int64
+        number_of_reallocated_candidate_sectors:
+          type: integer
+          format: int64
+        total_crc_errors:
+          type: integer
+          format: int64
+        command_time_out_count_total:
+          type: integer
+          format: int64
+        number_of_ioedc_errors:
+          type: integer
+          format: int64
+        total_flash_led_errors:
+          type: integer
+          format: int64
+    FarmEnvironmentStatistics:
+      type: object
+      properties:
+        curent_temp:
+          type: integer
+          format: int64
+        highest_temp:
+          type: integer
+          format: int64
+        lowest_temp:
+          type: integer
+          format: int64
+        average_temp:
+          type: integer
+          format: int64
+        max_temp:
+          type: integer
+          format: int64
+        min_temp:
+          type: integer
+          format: int64
+        humidity:
+          type: integer
+          format: int64
+    FarmReliabilityStatistics:
+      type: object
+      properties:
+        error_rate_normalized:
+          type: integer
+          format: int64
+        error_rate_worst:
+          type: integer
+          format: int64
+        seek_error_rate_normalized:
+          type: integer
+          format: int64
+        seek_error_rate_worst:
+          type: integer
+          format: int64
+        high_priority_unload_events:
+          type: integer
+          format: int64
+    SmartTemperature:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date-time
+        temp:
+          type: integer
+          format: int64
+    WorkloadInsight:
+      type: object
+      properties:
+        device_id:
+          type: string
+        device_wwn:
+          type: string
+        device_name:
+          type: string
+        device_type:
+          type: string
+        model_name:
+          type: string
+        label:
+          type: string
+        device_label:
+          type: string
+        device_protocol:
+          type: string
+        host_id:
+          type: string
+        device_serial_id:
+          type: string
+        device_uuid:
+          type: string
+        intensity:
+          type: string
+          enum: [unknown, idle, light, medium, heavy]
+        read_write_ratio:
+          type: number
+          format: double
+        time_span_hours:
+          type: number
+          format: double
+        daily_write_bytes:
+          type: integer
+          format: int64
+        daily_read_bytes:
+          type: integer
+          format: int64
+        total_write_bytes:
+          type: integer
+          format: int64
+        total_read_bytes:
+          type: integer
+          format: int64
+        data_points:
+          type: integer
+        endurance:
+          $ref: "#/components/schemas/EnduranceEstimate"
+        spike:
+          $ref: "#/components/schemas/ActivitySpike"
+    DeviceSummaryWrapper:
+      type: object
+      properties:
+        success:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: string
+        data:
+          type: object
+          properties:
+            summary:
+              type: object
+              additionalProperties:
+                $ref: "#/components/schemas/DeviceSummary"
+    DeviceSummary:
+      type: object
+      properties:
+        device:
+          $ref: "#/components/schemas/Device"
+        smart:
+          $ref: "#/components/schemas/SmartSummary"
+        temp_history:
+          type: array
+          items:
+            $ref: "#/components/schemas/SmartTemperature"
+    SmartSummary:
+      type: object
+      properties:
+        collector_date:
+          type: string
+          format: date-time
+        percentage_used:
+          type: integer
+          format: int64
+        wearout_value:
+          type: integer
+          format: int64
+        risk_score:
+          type: integer
+        risk_category:
+          type: string
+        temp:
+          type: integer
+          format: int64
+        power_on_hours:
+          type: integer
+          format: int64
+    SmartMeasurement:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date-time
+        device_wwn:
+          type: string
+        device_id:
+          type: string
+        device_protocol:
+          type: string
+        temp:
+          type: integer
+          format: int64
+        power_on_hours:
+          type: integer
+          format: int64
+        power_cycle_count:
+          type: integer
+          format: int64
+        logical_block_size:
+          type: integer
+          format: int64
+        attrs:
+          type: object
+          additionalProperties:
+            oneOf:
+              - $ref: "#/components/schemas/SmartAtaAttributeMeasurement"
+              - $ref: "#/components/schemas/SmartAtaDeviceStatAttributeMeasurement"
+              - $ref: "#/components/schemas/SmartFarmAttributeMeasurement"
+              - $ref: "#/components/schemas/SmartNvmeAttributeMeasurement"
+              - $ref: "#/components/schemas/SmartScsiAttributeMeasurement"
+    SmartAttributeMeasurementBase:
+      type: object
+      properties:
+        attribute_id:
+          oneOf:
+            - type: integer
+            - type: string
+        name:
+          type: string
+        value:
+          type: integer
+          format: int64
+        worst:
+          type: integer
+          format: int64
+        threshold:
+          type: integer
+          format: int64
+        raw_value:
+          type: integer
+          format: int64
+        raw_string:
+          type: string
+        transformed_value:
+          type: integer
+          format: int64
+        when_failed:
+          type: string
+        status:
+          oneOf:
+            - type: integer
+            - type: string
+        status_reason:
+          type: string
+        failure_rate:
+          type: number
+          format: double
+    SmartAtaAttributeMeasurement:
+      allOf:
+        - $ref: "#/components/schemas/SmartAttributeMeasurementBase"
+        - type: object
+          properties:
+            attribute_id:
+              type: integer
+            name:
+              type: string
+            value:
+              type: integer
+              format: int64
+            worst:
+              type: integer
+              format: int64
+            threshold:
+              type: integer
+              format: int64
+            raw_value:
+              type: integer
+              format: int64
+            raw_string:
+              type: string
+            when_failed:
+              type: string
+            transformed_value:
+              type: integer
+              format: int64
+    SmartAtaDeviceStatAttributeMeasurement:
+      allOf:
+        - $ref: "#/components/schemas/SmartAttributeMeasurementBase"
+        - type: object
+          properties:
+            attribute_id:
+              type: string
+              pattern: "^devstat_"
+            value:
+              type: integer
+              format: int64
+            threshold:
+              type: integer
+              format: int64
+            transformed_value:
+              type: integer
+              format: int64
+    SmartFarmAttributeMeasurement:
+      allOf:
+        - $ref: "#/components/schemas/SmartAttributeMeasurementBase"
+        - type: object
+          properties:
+            attribute_id:
+              type: string
+              pattern: "^farm_"
+            value:
+              type: integer
+              format: int64
+            threshold:
+              type: integer
+              format: int64
+            transformed_value:
+              type: integer
+              format: int64
+    SmartNvmeAttributeMeasurement:
+      allOf:
+        - $ref: "#/components/schemas/SmartAttributeMeasurementBase"
+        - type: object
+          properties:
+            attribute_id:
+              type: string
+            value:
+              type: integer
+              format: int64
+            threshold:
+              type: integer
+              format: int64
+            transformed_value:
+              type: integer
+              format: int64
+    SmartScsiAttributeMeasurement:
+      allOf:
+        - $ref: "#/components/schemas/SmartAttributeMeasurementBase"
+        - type: object
+          properties:
+            attribute_id:
+              type: string
+            value:
+              type: integer
+              format: int64
+            threshold:
+              type: integer
+              format: int64
+            transformed_value:
+              type: integer
+              format: int64
+    PerformanceMeasurement:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date-time
+        device_wwn:
+          type: string
+        device_protocol:
+          type: string
+        profile:
+          type: string
+        fio_version:
+          type: string
+        seq_read_bw_bytes:
+          type: number
+        seq_write_bw_bytes:
+          type: number
+        rand_read_iops:
+          type: number
+        rand_write_iops:
+          type: number
+        rand_read_lat_ns_avg:
+          type: number
+        rand_read_lat_ns_p50:
+          type: number
+        rand_read_lat_ns_p95:
+          type: number
+        rand_read_lat_ns_p99:
+          type: number
+        rand_write_lat_ns_avg:
+          type: number
+        rand_write_lat_ns_p50:
+          type: number
+        rand_write_lat_ns_p95:
+          type: number
+        rand_write_lat_ns_p99:
+          type: number
+        mixed_rw_iops:
+          type: number
+        test_duration_sec:
+          type: number
+    PerformanceBaseline:
+      type: object
+      properties:
+        sample_count:
+          type: integer
+        seq_read_bw_bytes:
+          type: number
+        seq_write_bw_bytes:
+          type: number
+        rand_read_iops:
+          type: number
+        rand_write_iops:
+          type: number
+        rand_read_lat_ns_avg:
+          type: number
+        rand_write_lat_ns_avg:
+          type: number
+      additionalProperties: true
+    EnduranceEstimate:
+      type: object
+      properties:
+        available:
+          type: boolean
+        percentage_used:
+          type: integer
+          format: int64
+        estimated_lifespan_days:
+          type: integer
+          format: int64
+        tbw_so_far:
+          type: number
+          format: double
+        tbw_rated:
+          type: number
+          format: double
+        tbw_used_percent:
+          type: number
+          format: double
+    ActivitySpike:
+      type: object
+      properties:
+        description:
+          type: string
+        spike_factor:
+          type: number
+          format: double
+        recent_daily_write_bytes:
+          type: integer
+          format: int64
+        baseline_daily_write_bytes:
+          type: integer
+          format: int64
+        detected:
+          type: boolean
+    ReportData:
+      type: object
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        period_start:
+          type: string
+          format: date-time
+        period_end:
+          type: string
+          format: date-time
+        period_type:
+          type: string
+          enum: [daily, weekly, monthly]
+        total_devices:
+          type: integer
+        passed_devices:
+          type: integer
+        warning_devices:
+          type: integer
+        failed_devices:
+          type: integer
+        archived_devices:
+          type: integer
+        devices:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceReport"
+        zfs_pools:
+          type: array
+          items:
+            $ref: "#/components/schemas/ZFSPoolReport"
+    DeviceReport:
+      type: object
+      properties:
+        wwn:
+          type: string
+        name:
+          type: string
+        model:
+          type: string
+        serial:
+          type: string
+        protocol:
+          type: string
+        host_id:
+          type: string
+        label:
+          type: string
+        percentage_used:
+          type: integer
+          format: int64
+        wearout_value:
+          type: integer
+          format: int64
+        performance:
+          $ref: "#/components/schemas/PerformanceSummary"
+        new_alerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlertEntry"
+        active_failures:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlertEntry"
+        temp_avg:
+          type: number
+        temp_current:
+          type: integer
+          format: int64
+        temp_min:
+          type: integer
+          format: int64
+        temp_max:
+          type: integer
+          format: int64
+        power_on_hours:
+          type: integer
+          format: int64
+        power_cycle_count:
+          type: integer
+          format: int64
+        status:
+          type: integer
+    AlertEntry:
+      type: object
+      properties:
+        attribute_id:
+          type: string
+        attribute_name:
+          type: string
+        status:
+          type: string
+        status_reason:
+          type: string
+        value:
+          type: integer
+          format: int64
+        threshold:
+          type: integer
+          format: int64
+    PerformanceSummary:
+      type: object
+      properties:
+        baseline_deviation:
+          type: number
+        seq_read_bw:
+          type: number
+        seq_write_bw:
+          type: number
+        rand_read_iops:
+          type: number
+        rand_write_iops:
+          type: number
+    ZFSPoolReport:
+      type: object
+      properties:
+        last_scrub_date:
+          type: string
+          format: date-time
+        name:
+          type: string
+        guid:
+          type: string
+        health:
+          type: string
+        scrub_status:
+          type: string
+        capacity:
+          type: number
+        errors_read:
+          type: integer
+          format: int64
+        errors_write:
+          type: integer
+          format: int64
+        errors_checksum:
+          type: integer
+          format: int64
+    ZFSPoolMetricsMeasurement:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date-time
+        pool_guid:
+          type: string
+        pool_name:
+          type: string
+        size:
+          type: integer
+          format: int64
+        allocated:
+          type: integer
+          format: int64
+        free:
+          type: integer
+          format: int64
+        capacity_percent:
+          type: number
+          format: double
+        fragmentation:
+          type: integer
+        status:
+          type: string
+        read_errors:
+          type: integer
+          format: int64
+        write_errors:
+          type: integer
+          format: int64
+        checksum_errors:
+          type: integer
+          format: int64
+        scrub_state:
+          type: string
+        scrub_percent:
+          type: number
+          format: double
+        scrub_errors:
+          type: integer
+          format: int64
+    MDADMMetricsMeasurement:
+      type: object
+      properties:
+        state:
+          type: string
+        active_devices:
+          type: integer
+        working_devices:
+          type: integer
+        failed_devices:
+          type: integer
+        spare_devices:
+          type: integer
+        sync_progress:
+          type: number
+        raw_mdstat:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+        array_size:
+          type: integer
+          format: int64
+        used_bytes:
+          type: integer
+          format: int64
+    BtrfsMetricsMeasurement:
+      type: object
+      properties:
+        filesystem_uuid:
+          type: string
+        host_id:
+          type: string
+        label:
+          type: string
+        date:
+          type: string
+          format: date-time
+        device_size:
+          type: integer
+          format: int64
+        device_allocated:
+          type: integer
+          format: int64
+        device_unallocated:
+          type: integer
+          format: int64
+        device_missing:
+          type: integer
+          format: int64
+        used:
+          type: integer
+          format: int64
+        free_estimated:
+          type: integer
+          format: int64
+        free_statfs:
+          type: integer
+          format: int64
+        scrub_read_errors:
+          type: integer
+          format: int64
+        scrub_csum_errors:
+          type: integer
+          format: int64
+        scrub_verify_errors:
+          type: integer
+          format: int64
+        scrub_super_errors:
+          type: integer
+          format: int64
+        data_ratio:
+          type: number
+          format: double
+        metadata_ratio:
+          type: number
+          format: double
+        status:
+          type: string
+        scrub_state:
+          type: string
+    ReplacementRiskResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            computed_at:
+              type: string
+              format: date-time
+            device_wwn:
+              type: string
+            device_protocol:
+              type: string
+            score:
+              type: integer
+            category:
+              type: string
+              enum: [healthy, monitor, plan_replacement, replace_soon]
+            trend_window:
+              type: string
+              enum: [7d, 30d, 90d]
+            trend_bonus:
+              type: number
+            contributions:
+              type: array
+              items:
+                type: object
+                properties:
+                  attribute_id:
+                    type: string
+                  display_name:
+                    type: string
+                  weight:
+                    type: number
+                  score:
+                    type: number
+                  value:
+                    type: integer
+                    format: int64
+                  trend_score:
+                    type: number
+    MissedPingStatusResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        status:
+          type: string
+        data:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            monitor_running:
+              type: boolean
+            notify_configured:
+              type: boolean
+            monitored_devices:
+              type: integer
+            total_devices:
+              type: integer
+            notify_endpoint_count:
+              type: integer
+            timeout_minutes:
+              type: integer
+            check_interval_minutes:
+              type: integer
+            next_check_time:
+              type: string
+            last_check_time:
+              type: string
+            last_error:
+              type: string
+            last_error_time:
+              type: string
+            notified_devices:
+              type: array
+              items:
+                type: string
+            notified_devices_details:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+            influxdb_status:
+              type: object
+              additionalProperties: true
