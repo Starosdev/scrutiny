@@ -299,7 +299,7 @@ func actualDocsBasePath(frontendPath string) string {
 func resolveAPIDocsPath(baseDir string) string {
 	candidates := []string{
 		filepath.Join(baseDir, apiDocsDirName),
-		filepath.Join("/opt", "scrutiny", apiDocsDirName),
+		filepath.Join("/opt", "scrutiny", apiDocsDirName), //nolint:gocritic
 		apiDocsDirName,
 	}
 
