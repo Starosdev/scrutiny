@@ -171,10 +171,11 @@ format_entry() {
 }
 
 declare -a FEATURES FIXES REFACTORS DOCS DEPS CICD HIGHLIGHTS OTHER
+HAS_ENTRIES=0
 
 PR_COUNT=$(echo "$MERGED_JSON" | jq 'length')
 
-for i in $(seq 0 $((PR_COUNT - 1))); do
+for ((i = 0; i < PR_COUNT; i++)); do
     pr_num=$(echo "$MERGED_JSON" | jq -r ".[$i].number")
     pr_title=$(echo "$MERGED_JSON" | jq -r ".[$i].title")
     pr_body=$(echo "$MERGED_JSON" | jq -r ".[$i].body // \"\"")
@@ -224,52 +225,45 @@ print_section() {
     } >> "$OUTPUT_FILE"
 }
 
-array_len() {
-    local array_name="$1"
-    eval "echo \${#$array_name[@]}"
-}
-
 {
     echo "## [$NEW_TAG](https://github.com/$REPO/compare/$PREV_TAG...$NEW_TAG) ($RELEASE_DATE)"
     echo ""
 } > "$OUTPUT_FILE"
 
-if [ "$(array_len FEATURES)" -gt 0 ]; then
+if [ ${#FEATURES[@]} -gt 0 ]; then
+    HAS_ENTRIES=1
     print_section "Features" "${FEATURES[@]}"
 fi
-if [ "$(array_len FIXES)" -gt 0 ]; then
+if [ ${#FIXES[@]} -gt 0 ]; then
+    HAS_ENTRIES=1
     print_section "Bug Fixes" "${FIXES[@]}"
 fi
-if [ "$(array_len HIGHLIGHTS)" -gt 0 ]; then
+if [ ${#HIGHLIGHTS[@]} -gt 0 ]; then
+    HAS_ENTRIES=1
     print_section "Release Highlights" "${HIGHLIGHTS[@]}"
 fi
-if [ "$(array_len REFACTORS)" -gt 0 ]; then
+if [ ${#REFACTORS[@]} -gt 0 ]; then
+    HAS_ENTRIES=1
     print_section "Refactoring" "${REFACTORS[@]}"
 fi
-if [ "$(array_len DOCS)" -gt 0 ]; then
+if [ ${#DOCS[@]} -gt 0 ]; then
+    HAS_ENTRIES=1
     print_section "Documentation" "${DOCS[@]}"
 fi
-if [ "$(array_len DEPS)" -gt 0 ]; then
+if [ ${#DEPS[@]} -gt 0 ]; then
+    HAS_ENTRIES=1
     print_section "Dependencies" "${DEPS[@]}"
 fi
-if [ "$(array_len CICD)" -gt 0 ]; then
+if [ ${#CICD[@]} -gt 0 ]; then
+    HAS_ENTRIES=1
     print_section "CI/CD" "${CICD[@]}"
 fi
-if [ "$(array_len OTHER)" -gt 0 ]; then
+if [ ${#OTHER[@]} -gt 0 ]; then
+    HAS_ENTRIES=1
     print_section "Other Changes" "${OTHER[@]}"
 fi
 
-TOTAL=$(( \
-    $(array_len FEATURES) + \
-    $(array_len FIXES) + \
-    $(array_len HIGHLIGHTS) + \
-    $(array_len REFACTORS) + \
-    $(array_len DOCS) + \
-    $(array_len DEPS) + \
-    $(array_len CICD) + \
-    $(array_len OTHER) \
-))
-if [ "$TOTAL" -eq 0 ]; then
+if [ "$HAS_ENTRIES" -eq 0 ]; then
     {
         echo "### Changes"
         echo ""
