@@ -69,3 +69,21 @@
 .treo-theme-light .mat-mdc-menu-panel {
     background-color: #ffffff !important;
 }
+
+// Target overlay container specifically
+.cdk-overlay-container {
+    .settings-dialog-panel.treo-theme-dark {
+        .mat-mdc-dialog-surface, .mdc-dialog__surface {
+            background-color: var(--treo-card-background, #1e293b) !important;
+            color: var(--treo-text-default, #e2e8f0) !important;
+
+            h2, span, mat-label, .mat-mdc-dialog-title, .mat-mdc-select-value-text, .mdc-button__label, input, .mat-mdc-form-field-label {
+                color: var(--treo-text-default, #e2e8f0) !important;
+            }
+
+            .mat-mdc-form-field-hint {
+                color: var(--treo-text-secondary, #94a3b8) !important;
+            }
+        }
+    }
+}

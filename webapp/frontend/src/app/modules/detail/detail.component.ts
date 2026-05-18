@@ -733,7 +733,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
         const dialogRef = this.dialog.open(DetailSettingsComponent, {
             width: '600px',
-            panelClass: theme,
+            panelClass: [theme, 'settings-dialog-panel'],
             data: {
                 curMuted: this.device.muted,
                 curLabel: this.device.label,

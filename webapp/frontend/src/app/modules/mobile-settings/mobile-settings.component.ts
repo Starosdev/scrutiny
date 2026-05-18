@@ -21,7 +21,7 @@ export class MobileSettingsComponent {
             width: '100vw',
             maxWidth: '100vw',
             height: '100vh',
-            panelClass: ['mobile-settings-dialog', theme]
+            panelClass: ['mobile-settings-dialog', theme, 'settings-dialog-panel']
         });
     }
 }
