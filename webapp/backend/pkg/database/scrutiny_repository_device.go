@@ -350,7 +350,7 @@ func (sr *scrutinyRepository) attachDeviceEnduranceOverrides(ctx context.Context
 
 	overrides := []models.DeviceEnduranceOverride{}
 	if err := sr.gormClient.WithContext(ctx).Where("wwn IN ?", wwns).Find(&overrides).Error; err != nil {
-		return fmt.Errorf("Could not get device endurance overrides from DB: %v", err)
+		return fmt.Errorf("could not get device endurance overrides from DB: %v", err)
 	}
 
 	overrideByWWN := make(map[string]float64, len(overrides))
