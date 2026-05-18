@@ -308,6 +308,7 @@ func (suite *ServerTestSuite) TestAPIDocsRoutes() {
 	router.ServeHTTP(swaggerResp, swaggerReq)
 	require.Equal(suite.T(), 200, swaggerResp.Code)
 	require.Contains(suite.T(), swaggerResp.Body.String(), "swagger")
+	require.Contains(suite.T(), swaggerResp.Body.String(), `url: "/api/docs/openapi.yaml"`)
 
 	specResp := httptest.NewRecorder()
 	specReq, _ := http.NewRequest("GET", suite.Basepath+"/api/docs/openapi.yaml", nil)
