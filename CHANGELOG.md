@@ -2,6 +2,63 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.56.0](https://github.com/Starosdev/scrutiny/compare/v1.55.1...v1.56.0) (2026-05-18)
+
+### Features
+
+* add array size and used device size metrics to mdadm collector and frontend UI ([6454b12](https://github.com/Starosdev/scrutiny/commit/6454b127ccc3af1f3a572604c0643d4a2960ab69))
+* add debug and error logging to mdadm repository query methods ([b591988](https://github.com/Starosdev/scrutiny/commit/b591988235ace77682419ebe5f6dfb7276f7f28f))
+* add dynamic mdadm array status styling and sync progress visualization to dashboard ([1525601](https://github.com/Starosdev/scrutiny/commit/152560182ec222fbdba015ce786370ab492c6b82))
+* add dynamic status display, sync progress, and improved empty state handling for MDADM details ([4880422](https://github.com/Starosdev/scrutiny/commit/4880422d469ab6effb3e8d543a5ef26c6ac1a618))
+* add manual collector trigger capability to dashboard and backend API ([95544aa](https://github.com/Starosdev/scrutiny/commit/95544aa5964d7b11e64dedab43dc0b6dafeee4ab))
+* add MDADM array state and sync progress monitoring to UI and backend summary endpoint ([ab719c4](https://github.com/Starosdev/scrutiny/commit/ab719c47f157bf1b8e3aea40922e296fb55b2429))
+* add MDADM recovery progress tracking and dedicated endpoint for latest metrics retrieval ([c799868](https://github.com/Starosdev/scrutiny/commit/c799868a29956fc053217716e2abf94a5570c05c))
+* add support for MDADM RAID array monitoring and reporting ([fdd4ad5](https://github.com/Starosdev/scrutiny/commit/fdd4ad5186105f086e8f289904493da1fc92f389))
+* add support for MDADM RAID array monitoring and visualization ([e618932](https://github.com/Starosdev/scrutiny/commit/e6189321486785682929c2769f3c78fffee8377e))
+* add udev, dev, and mdstat volume mounts to support MDADM monitoring ([08ed2c6](https://github.com/Starosdev/scrutiny/commit/08ed2c604433789bbc48bd148b58f9c8d3818b92))
+* capture and display raw /proc/mdstat output for mdadm arrays ([ee1da6c](https://github.com/Starosdev/scrutiny/commit/ee1da6cd246f5756342e4cc909a807c58d8268e0))
+* **frontend:** add 12-hour / 24-hour time format preference ([#445](https://github.com/Starosdev/scrutiny/issues/445)) ([ea174dc](https://github.com/Starosdev/scrutiny/commit/ea174dc6a4bf936c867f9a17bfc3ff14a3db77f4))
+* implement dynamic mdstat path resolution to support containerized environments ([cf72f27](https://github.com/Starosdev/scrutiny/commit/cf72f274a6c3c9e0ee37f4510ca7af59a517ad70))
+* implement filesystem summary dashboard widgets and backend repository support ([8568995](https://github.com/Starosdev/scrutiny/commit/8568995d4be194eb0cdb03987c398736c569abd8))
+* implement registration filtering for mdadm array metrics upload ([bf0eaf5](https://github.com/Starosdev/scrutiny/commit/bf0eaf548d2cbeca2def79149784bc6cdbd07c83))
+* import MatProgressSpinnerModule into dashboard module ([e419cd7](https://github.com/Starosdev/scrutiny/commit/e419cd7eff02d15e571c806297b28a7fc3997aff))
+* integrate notification gate for MDADM metric uploads and update mock database methods ([7a946c9](https://github.com/Starosdev/scrutiny/commit/7a946c95ea6020bb206d75685f1554aeae2d14cd))
+* parse sync progress from /proc/mdstat when mdadm detail is unavailable ([4ef70e0](https://github.com/Starosdev/scrutiny/commit/4ef70e09fa7f35352b708a80a43443e5c96928c6))
+* support float progress percentages for mdadm, add group to influx query, and include database test utility ([722364c](https://github.com/Starosdev/scrutiny/commit/722364ceaec2605f8c32bf6caf3e0cbeae8931bb))
+* **workload:** add rated TBW tracking and reduce frontend lint debt ([#522](https://github.com/Starosdev/scrutiny/issues/522)) ([05e6cb3](https://github.com/Starosdev/scrutiny/commit/05e6cb3637cb9e2ff28f316f41235b2c84bf6fc5)), closes [#460](https://github.com/Starosdev/scrutiny/issues/460) [#517](https://github.com/Starosdev/scrutiny/issues/517) [#520](https://github.com/Starosdev/scrutiny/issues/520)
+
+### Bug Fixes
+
+* add sudo support for mdadm commands and use raw UUID in API endpoint path ([953fc14](https://github.com/Starosdev/scrutiny/commit/953fc14e152904c84ede198c35a42ccaa2e8b516))
+* **backend:** address potential memory leak sources ([#419](https://github.com/Starosdev/scrutiny/issues/419)) ([#426](https://github.com/Starosdev/scrutiny/issues/426)) ([1fa8906](https://github.com/Starosdev/scrutiny/commit/1fa89061e33f244cd18ff2cb63419f44cd5262b8))
+* **ci:** harden release notes script against edge cases ([8374e99](https://github.com/Starosdev/scrutiny/commit/8374e99952fbb1f58739c021f085fd4761736ff2))
+* **ci:** include develop-to-master integration PRs in release notes ([0c01c77](https://github.com/Starosdev/scrutiny/commit/0c01c77095d3236c2e5889aca52a347e23d7c18a))
+* **ci:** match v1.48.0 release note format (dash list, hyperlinked closes, no separators) ([acc14c3](https://github.com/Starosdev/scrutiny/commit/acc14c39082c9b66afcecb158b60f81cf06d37ad))
+* **ci:** use --slurpfile to avoid ARG_MAX error in release notes script ([38ddb0b](https://github.com/Starosdev/scrutiny/commit/38ddb0bfee94d076f47b3105e3917442574538e5))
+* **database:** handle missing device_wwn column in summary query ([#423](https://github.com/Starosdev/scrutiny/issues/423)) ([8fe85a0](https://github.com/Starosdev/scrutiny/commit/8fe85a09454c5415bd2525571b804959ff9fec91))
+* **database:** handle missing device_wwn column in summary query ([#423](https://github.com/Starosdev/scrutiny/issues/423)) ([4359719](https://github.com/Starosdev/scrutiny/commit/435971948fd3526be5a583b0f7395ee5b2151c22))
+* **frontend:** temperature chart tooltip truncation and spike hover ([#443](https://github.com/Starosdev/scrutiny/issues/443)) ([1742a4d](https://github.com/Starosdev/scrutiny/commit/1742a4dbdb5e5e4180b8471d9569738b08f20973))
+* handle null history and update InfluxDB queries to preserve string fields using schema.fieldsAsCols ([7753c49](https://github.com/Starosdev/scrutiny/commit/7753c49158857d88abe0d9a5325d305e321bb511))
+* handle zero-value used_bytes in UI and improve RAID mount point detection for partitioned devices ([01e3b39](https://github.com/Starosdev/scrutiny/commit/01e3b39620cc18a46cd103d0eb0cb646ee22e906))
+* **mdadm:** close PR 474 merge blockers ([046bbe8](https://github.com/Starosdev/scrutiny/commit/046bbe8ccfa3c2609fbd4c54b1bcd5ad57148325))
+* **notify:** auto-add disabletls=Yes for Gotify URLs on HTTP ports ([#472](https://github.com/Starosdev/scrutiny/issues/472)) ([79c2cc9](https://github.com/Starosdev/scrutiny/commit/79c2cc976c45b290d3dbda7731404aaa8a4dd302))
+* remove scrutiny-collector-performance from manual collector run list ([68bf0c7](https://github.com/Starosdev/scrutiny/commit/68bf0c700ba7b4ff4176da4e706e906e932b302f))
+* **settings:** block override submission for remaining 400 cases ([#476](https://github.com/Starosdev/scrutiny/issues/476)) ([#480](https://github.com/Starosdev/scrutiny/issues/480)) ([40a8a66](https://github.com/Starosdev/scrutiny/commit/40a8a66d4b046911ec51099241458f5da471b1f4))
+* **settings:** prevent 400 error when adding attribute overrides ([3db7ffb](https://github.com/Starosdev/scrutiny/commit/3db7ffb545dc045859f4d6191b829df391d682da)), closes [#476](https://github.com/Starosdev/scrutiny/issues/476)
+* **settings:** widen settings dialog to prevent content cutoff ([#475](https://github.com/Starosdev/scrutiny/issues/475)) ([63acac4](https://github.com/Starosdev/scrutiny/commit/63acac4a3f74cb3e36332e3e0aa0577e33d0b706))
+* **uptime-kuma:** add insecure_skip_verify option for self-signed TLS certs ([#418](https://github.com/Starosdev/scrutiny/issues/418)) ([b76923d](https://github.com/Starosdev/scrutiny/commit/b76923d387d5ffff7a428158409f27b17badae6e))
+* **uptime-kuma:** add nolint directive for gosec G402 on InsecureSkipVerify ([52c53f0](https://github.com/Starosdev/scrutiny/commit/52c53f0add99e81676125840d5c5e85f3c36b836))
+* **uptime-kuma:** always set TLS transport to satisfy gosec G402 lint ([6b4fe54](https://github.com/Starosdev/scrutiny/commit/6b4fe5423f881cfeebda8c916e43bbe0910ffafe))
+* **uptime-kuma:** use variable for InsecureSkipVerify to satisfy gosec G402 ([a1e56ff](https://github.com/Starosdev/scrutiny/commit/a1e56ffe1f31b4cdc5c4208368c54a8e8e020407))
+
+### Refactoring
+
+* move getMountUsage to build-tagged files for cross-platform support ([dd9c410](https://github.com/Starosdev/scrutiny/commit/dd9c410d35853843aa35fac5fb4a94080cb58c89))
+* remove parameterized InfluxDB queries in favor of direct string formatting for MDADM metrics ([3b53070](https://github.com/Starosdev/scrutiny/commit/3b5307008ca0c0eeca40b79506299e613b880a26))
+* replace lsblk usage detection with direct mount point lookup via /proc/self/mountinfo ([f2c90b4](https://github.com/Starosdev/scrutiny/commit/f2c90b4a751ea28b76f341146df57ffd17444bb0))
+* replace mount-based usage detection with lsblk JSON output for improved container compatibility ([4d5647c](https://github.com/Starosdev/scrutiny/commit/4d5647ced0aab78aaec9421d54da4647ee1f2e42))
+* replace UsedDevSize with filesystem-level UsedBytes metric for mdadm arrays ([c88f5c3](https://github.com/Starosdev/scrutiny/commit/c88f5c36e5facb3d38f6b0138605d1a47782185c))
+
 ## [1.55.1](https://github.com/Starosdev/scrutiny/compare/v1.55.0...v1.55.1) (2026-05-16)
 
 ### Features
