@@ -226,7 +226,20 @@ print_section() {
 
 array_len() {
     local array_name="$1"
-    eval "echo \${#$array_name[@]}"
+    case "$array_name" in
+        FEATURES) echo "${#FEATURES[@]}" ;;
+        FIXES) echo "${#FIXES[@]}" ;;
+        HIGHLIGHTS) echo "${#HIGHLIGHTS[@]}" ;;
+        REFACTORS) echo "${#REFACTORS[@]}" ;;
+        DOCS) echo "${#DOCS[@]}" ;;
+        DEPS) echo "${#DEPS[@]}" ;;
+        CICD) echo "${#CICD[@]}" ;;
+        OTHER) echo "${#OTHER[@]}" ;;
+        *)
+            echo "Unknown release-note category: $array_name" >&2
+            exit 1
+            ;;
+    esac
 }
 
 {
