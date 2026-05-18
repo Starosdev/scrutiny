@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	basecollector "github.com/analogj/scrutiny/collector/pkg/collector"
 	"github.com/analogj/scrutiny/collector/pkg/config"
@@ -72,32 +74,45 @@ func (c *Collector) Run() error {
 
 	c.logger.Infof("Found %d MDADM array(s)", len(arrays))
 
+	validArrays, validMetrics := filterValidArrays(c.logger, arrays, metrics)
+	if len(validArrays) == 0 {
+		return fmt.Errorf("detected %d MDADM array(s), but none had a usable UUID for API registration", len(arrays))
+	}
+
 	// Register arrays with API
-	arrayWrapper, err := c.RegisterArrays(arrays)
+	arrayWrapper, err := c.RegisterArrays(validArrays)
 	if err != nil {
 		return err
 	}
 
-	if !arrayWrapper.Success {
-		c.logger.Errorln("An error occurred while registering arrays")
+	if arrayWrapper == nil {
 		return errors.ApiServerCommunicationError("An error occurred while registering arrays")
+	}
+
+	for _, registerErr := range arrayWrapper.Errors {
+		c.logger.Warnf("MDADM array registration warning: %s", registerErr)
+	}
+
+	if len(arrayWrapper.Data) == 0 {
+		c.logger.Errorln("No MDADM arrays were registered successfully")
+		return errors.ApiServerCommunicationError("No MDADM arrays were registered successfully")
 	}
 
 	// Upload metrics for each registered array
 	registeredArrays := make(map[string]bool)
-	if arrayWrapper != nil && arrayWrapper.Data != nil {
+	if arrayWrapper.Data != nil {
 		for _, regArray := range arrayWrapper.Data {
 			registeredArrays[regArray.UUID] = true
 		}
 	}
 
-	for i, array := range arrays {
+	for i, array := range validArrays {
 		if !registeredArrays[array.UUID] {
-			c.logger.Debugf("Skipping metrics upload for unregistered array %s (%s)", array.Name, array.UUID)
+			c.logger.Warnf("Skipping metrics upload for unregistered array %s (%s)", array.Name, array.UUID)
 			continue
 		}
 
-		if err := c.UploadMetrics(array, metrics[i]); err != nil {
+		if err := c.UploadMetrics(array, validMetrics[i]); err != nil {
 			c.logger.Errorf("Failed to upload metrics for array %s (%s): %v", array.Name, array.UUID, err)
 			// Continue with other arrays
 		}
@@ -134,6 +149,14 @@ func (c *Collector) RegisterArrays(arrays []models.MDADMArray) (*models.MDADMArr
 
 	if resp.StatusCode == 401 {
 		c.logger.Errorln("Authentication failed (HTTP 401). Check API token.")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		if len(strings.TrimSpace(string(body))) == 0 {
+			return nil, fmt.Errorf("array registration API returned status %d", resp.StatusCode)
+		}
+		return nil, fmt.Errorf("array registration API returned status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 
 	var responseWrapper models.MDADMArrayWrapper
@@ -176,4 +199,30 @@ func (c *Collector) UploadMetrics(array models.MDADMArray, metrics models.MDADMM
 
 	c.logger.Infof("Successfully uploaded metrics for array %s", array.Name)
 	return nil
+}
+
+func filterValidArrays(logger *logrus.Entry, arrays []models.MDADMArray, metrics []models.MDADMMetrics) ([]models.MDADMArray, []models.MDADMMetrics) {
+	validArrays := make([]models.MDADMArray, 0, len(arrays))
+	validMetrics := make([]models.MDADMMetrics, 0, len(metrics))
+	seenUUIDs := make(map[string]struct{}, len(arrays))
+
+	for i, array := range arrays {
+		uuid := strings.TrimSpace(array.UUID)
+		if uuid == "" {
+			logger.Warnf("Skipping MDADM array %s because mdadm did not return a UUID", array.Name)
+			continue
+		}
+		if _, exists := seenUUIDs[uuid]; exists {
+			logger.Warnf("Skipping duplicate MDADM array UUID %s from array %s", uuid, array.Name)
+			continue
+		}
+		seenUUIDs[uuid] = struct{}{}
+		array.UUID = uuid
+		validArrays = append(validArrays, array)
+		if i < len(metrics) {
+			validMetrics = append(validMetrics, metrics[i])
+		}
+	}
+
+	return validArrays, validMetrics
 }

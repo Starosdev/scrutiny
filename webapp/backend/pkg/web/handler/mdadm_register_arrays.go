@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
@@ -19,15 +21,21 @@ func RegisterMdadmArrays(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&collectorWrapper); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "errors": []error{err}})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "errors": []string{err.Error()}})
 		return
 	}
 
 	var registeredArrays []models.MDADMArray
-	registrationFailed := false
+	var registrationErrors []string
 	for _, collectorArray := range collectorWrapper.Data {
+		trimmedUUID := strings.TrimSpace(collectorArray.UUID)
+		if trimmedUUID == "" {
+			registrationErrors = append(registrationErrors, fmt.Sprintf("array %s rejected: missing UUID", collectorArray.Name))
+			continue
+		}
+
 		array := models.MDADMArray{
-			UUID:    collectorArray.UUID,
+			UUID:    trimmedUUID,
 			Name:    collectorArray.Name,
 			Level:   collectorArray.Level,
 			Devices: collectorArray.Devices,
@@ -35,14 +43,15 @@ func RegisterMdadmArrays(c *gin.Context) {
 
 		if err := dbRepo.RegisterMdadmArray(c.Request.Context(), array); err != nil {
 			logger.Errorf("Failed to register MDADM array %s: %v", array.UUID, err)
-			registrationFailed = true
+			registrationErrors = append(registrationErrors, fmt.Sprintf("array %s (%s) registration failed: %v", array.Name, array.UUID, err))
 			continue
 		}
 		registeredArrays = append(registeredArrays, array)
 	}
 
 	c.JSON(http.StatusOK, models.MDADMArrayWrapper{
-		Success: !registrationFailed,
+		Success: len(registeredArrays) > 0,
+		Errors:  registrationErrors,
 		Data:    registeredArrays,
 	})
 }
