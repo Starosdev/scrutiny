@@ -70,6 +70,8 @@ The `deploy/` compose files in this repo remain available as repo-owned examples
 
 ## Zeus MDADM Testing Notes
 
+For actual deployment and troubleshooting steps, see [MDADM_MONITORING.md](./MDADM_MONITORING.md).
+
 Zeus is a valid host for MDADM deploy-path verification:
 
 - pull and restart the `develop-omnibus` image there

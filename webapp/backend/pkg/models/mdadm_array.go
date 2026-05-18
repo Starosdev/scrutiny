@@ -30,6 +30,6 @@ type MDADMArray struct {
 // MDADMArrayWrapper wraps the response for MDADM array API calls
 type MDADMArrayWrapper struct {
 	Success bool         `json:"success"`
-	Errors  []error      `json:"errors,omitempty"`
+	Errors  []string     `json:"errors,omitempty"`
 	Data    []MDADMArray `json:"data"`
 }

@@ -552,6 +552,8 @@ docker run --rm \
 curl -s http://localhost:8080/api/mdadm/summary | jq .
 ```
 
+See [docs/MDADM_MONITORING.md](docs/MDADM_MONITORING.md) for the full deployment and troubleshooting guide, including the difference between omnibus `localhost:8080` usage and standalone collector endpoint wiring.
+
 ### Performance Benchmarking
 
 ```bash
