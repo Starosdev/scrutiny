@@ -715,7 +715,7 @@ Example:
 docker run -e SCRUTINY_WEB_LISTEN_PORT=9090 \
   -e SCRUTINY_WEB_INFLUXDB_HOST=influxdb.local \
   -e SCRUTINY_LOG_LEVEL=DEBUG \
-  ghcr.io/starosdev/scrutiny:web
+  ghcr.io/starosdev/scrutiny:latest-web
 ```
 
 ## Collector
@@ -761,7 +761,7 @@ Example:
 ```bash
 docker run -e COLLECTOR_COMMANDS_METRICS_SMART_ARGS="--xall --json -T permissive" \
   -e COLLECTOR_API_ENDPOINT=http://scrutiny-web:8080 \
-  ghcr.io/starosdev/scrutiny:collector
+  ghcr.io/starosdev/scrutiny:latest-collector
 ```
 
 ### Docker-Only Environment Variables
@@ -837,8 +837,8 @@ docker run --restart unless-stopped \
 | linux-arm-7 | :white_check_mark: | web/collector only |
 | linux-arm64 | :white_check_mark: | :white_check_mark: |
 | freebsd-amd64 | :white_check_mark: |  |
-| macos-amd64 | :white_check_mark: | :white_check_mark: |
-| macos-arm64 | :white_check_mark: | :white_check_mark: |
+| macos-amd64 | :white_check_mark: |  |
+| macos-arm64 | :white_check_mark: |  |
 | windows-amd64 | :white_check_mark: | WIP |
 | windows-arm64 | :white_check_mark: |  |
 
