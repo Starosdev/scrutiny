@@ -442,7 +442,8 @@ export class DashboardComponent implements OnInit, OnDestroy
     }
 
     openDialog(): void {
-        const dialogRef = this.dialog.open(DashboardSettingsComponent, {width: '800px', maxWidth: '95vw'});
+        const theme = document.body.classList.contains('treo-theme-dark') ? 'treo-theme-dark' : 'treo-theme-light';
+        const dialogRef = this.dialog.open(DashboardSettingsComponent, {width: '800px', maxWidth: '95vw', panelClass: [theme, 'settings-dialog-panel']});
 
         dialogRef.afterClosed().subscribe();
     }

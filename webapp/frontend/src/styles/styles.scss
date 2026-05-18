@@ -31,3 +31,59 @@
         color: #CFD8E3 !important;
     }
 }
+
+// Mat-Select dropdown panel in dark mode (passed to panelClass)
+.treo-theme-dark .theme-select-panel {
+    background-color: #1e293b !important;
+}
+.treo-theme-light .theme-select-panel {
+    background-color: #ffffff !important;
+}
+
+// Ensure proper dialog background and text color for settings dialogs
+.treo-theme-dark.mat-mdc-dialog-container .mdc-dialog__surface,
+.treo-theme-dark .mat-mdc-dialog-surface {
+    background-color: #1e293b !important;
+    color: #e2e8f0 !important;
+}
+
+// Ensure option text color is readable in dark mode
+.treo-theme-dark .theme-select-panel .mat-mdc-option {
+    color: #e2e8f0 !important;
+}
+.treo-theme-dark .theme-select-panel .mat-mdc-select-value-text {
+    color: #e2e8f0 !important;
+}
+
+// Fix transparency on Mat-Menu panels
+.treo-theme-dark .mat-mdc-menu-panel {
+    background-color: #1e293b !important;
+}
+.treo-theme-dark .mat-mdc-menu-item {
+    color: #e2e8f0 !important;
+}
+.treo-theme-dark .mat-mdc-menu-item .mat-icon {
+    color: #e2e8f0 !important;
+}
+
+.treo-theme-light .mat-mdc-menu-panel {
+    background-color: #ffffff !important;
+}
+
+// Target overlay container specifically
+.cdk-overlay-container {
+    .settings-dialog-panel.treo-theme-dark {
+        .mat-mdc-dialog-surface, .mdc-dialog__surface {
+            background-color: var(--treo-card-background, #1e293b) !important;
+            color: var(--treo-text-default, #e2e8f0) !important;
+
+            h2, span, mat-label, .mat-mdc-dialog-title, .mat-mdc-select-value-text, .mdc-button__label, input, .mat-mdc-form-field-label {
+                color: var(--treo-text-default, #e2e8f0) !important;
+            }
+
+            .mat-mdc-form-field-hint {
+                color: var(--treo-text-secondary, #94a3b8) !important;
+            }
+        }
+    }
+}

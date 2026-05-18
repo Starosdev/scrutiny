@@ -729,9 +729,11 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         if (!this.device) return;
 
         const globalMissedPingTimeout = this.config?.metrics?.missed_ping_timeout_minutes || 15;
+        const theme = document.body.classList.contains('treo-theme-dark') ? 'treo-theme-dark' : 'treo-theme-light';
 
         const dialogRef = this.dialog.open(DetailSettingsComponent, {
             width: '600px',
+            panelClass: [theme, 'settings-dialog-panel'],
             data: {
                 curMuted: this.device.muted,
                 curLabel: this.device.label,
