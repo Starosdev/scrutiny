@@ -339,9 +339,9 @@ func (sr *scrutinyRepository) attachDeviceEnduranceOverrides(ctx context.Context
 	}
 
 	wwns := make([]string, 0, len(devices))
-	for _, device := range devices {
-		if device.WWN != "" {
-			wwns = append(wwns, device.WWN)
+	for i := range devices {
+		if devices[i].WWN != "" {
+			wwns = append(wwns, devices[i].WWN)
 		}
 	}
 	if len(wwns) == 0 {
