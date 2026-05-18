@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.57.0](https://github.com/Starosdev/scrutiny/compare/v1.56.1...v1.57.0) (2026-05-18)
+
+### Features
+
+* dark contrast, mdadm registration, legacy SMART support, and TBW tracking ([#535](https://github.com/Starosdev/scrutiny/issues/535)) ([4981d7d](https://github.com/Starosdev/scrutiny/commit/4981d7d9fcf90c46449c4fe8d9b1a92176dd8771))
+
 ## [1.56.1](https://github.com/Starosdev/scrutiny/compare/v1.56.0...v1.56.1) (2026-05-18)
 
 ### Bug Fixes
