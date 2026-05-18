@@ -14,6 +14,13 @@ type SmartSupport struct {
 	Available bool  `json:"available"`
 }
 
+func (s *SmartSupport) UnmarshalJSON(data []byte) error {
+	if s == nil {
+		return fmt.Errorf("cannot unmarshal smart_support into nil receiver")
+	}
+	return s.scanBytes(data)
+}
+
 func (s SmartSupport) Value() (driver.Value, error) {
 	payload, err := json.Marshal(s)
 	if err != nil {
@@ -56,9 +63,10 @@ func (s *SmartSupport) scanBytes(raw []byte) error {
 		return nil
 	}
 
-	var object SmartSupport
+	type smartSupportAlias SmartSupport
+	var object smartSupportAlias
 	if err := json.Unmarshal(raw, &object); err == nil {
-		*s = object
+		*s = SmartSupport(object)
 		return nil
 	}
 

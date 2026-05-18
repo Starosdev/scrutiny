@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,4 +26,19 @@ func TestSmartSupportScanLegacyBool(t *testing.T) {
 	require.NoError(t, decoded.Scan(true))
 	require.True(t, decoded.Available)
 	require.Nil(t, decoded.Enabled)
+}
+
+func TestSmartSupportUnmarshalJSONLegacyBool(t *testing.T) {
+	var decoded SmartSupport
+	require.NoError(t, json.Unmarshal([]byte(`true`), &decoded))
+	require.True(t, decoded.Available)
+	require.Nil(t, decoded.Enabled)
+}
+
+func TestSmartSupportUnmarshalJSONObject(t *testing.T) {
+	var decoded SmartSupport
+	require.NoError(t, json.Unmarshal([]byte(`{"available":true,"enabled":false}`), &decoded))
+	require.True(t, decoded.Available)
+	require.NotNil(t, decoded.Enabled)
+	require.False(t, *decoded.Enabled)
 }
