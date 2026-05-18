@@ -145,6 +145,7 @@ The Scrutiny API is now documented from a canonical OpenAPI spec:
 - Overview: [docs/API.md](./docs/API.md)
 - Served Swagger UI: `/docs/api`
 - Served OpenAPI spec: `/api/docs/openapi.yaml`
+- Runtime auth default: docs/spec are auth-gated unless `web.docs.public=true`
 
 If you change a route in `webapp/backend/pkg/web/server.go`, update `docs/openapi.yaml` in the same change.
 

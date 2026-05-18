@@ -6,6 +6,7 @@ Scrutiny now documents its HTTP API from a canonical OpenAPI specification:
 - Swagger UI: [swagger-ui.html](./swagger-ui.html)
 - Served Swagger UI path: `/docs/api`
 - Served OpenAPI path: `/api/docs/openapi.yaml`
+- Default auth behavior: both served docs routes require auth unless `web.docs.public=true`
 
 ## Scope
 
@@ -29,7 +30,7 @@ That includes:
 Scrutiny uses Bearer authentication when `web.auth.enabled` is on.
 
 - Public routes: `/api/health`, `/api/auth/status`, `/api/auth/login`
-- Public API docs route: `/api/docs/openapi.yaml`
+- Docs routes: `/docs/api` and `/api/docs/openapi.yaml` are protected by default and become public only when `web.docs.public=true`
 - Protected routes: all other `/api/*` routes
 - Metrics route: `/api/metrics` may accept the general auth token or the dedicated metrics token, depending on configuration
 

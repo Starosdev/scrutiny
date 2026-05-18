@@ -257,5 +257,6 @@ Use the canonical API contract instead of maintaining partial tables here:
 - API overview: [docs/API.md](./docs/API.md)
 - Runtime Swagger UI path: `/docs/api`
 - Runtime OpenAPI path: `/api/docs/openapi.yaml`
+- Runtime default: docs/spec require auth unless `web.docs.public=true`
 
 The OpenAPI spec is expected to track the active route surface in `webapp/backend/pkg/web/server.go`.
