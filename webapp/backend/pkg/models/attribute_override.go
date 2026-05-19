@@ -10,6 +10,7 @@ import (
 // stored in the database. This allows users to ignore attributes, force their status,
 // or set custom warning/failure thresholds via the UI.
 type AttributeOverride struct {
+	ID          uint      `json:"id" gorm:"primaryKey"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 	WarnAbove   *int64    `json:"warn_above,omitempty"`
@@ -20,7 +21,6 @@ type AttributeOverride struct {
 	Action      string    `json:"action,omitempty"`
 	Status      string    `json:"status,omitempty"`
 	Source      string    `json:"source" gorm:"default:'ui'"`
-	ID          uint      `json:"id" gorm:"primaryKey"`
 }
 
 // TableName specifies the table name for GORM

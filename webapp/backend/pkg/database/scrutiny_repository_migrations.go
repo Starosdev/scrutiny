@@ -24,7 +24,8 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260226000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260301000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260315000000"
-	_ "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260401000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260401000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260414000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260421000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260508000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260510000000"
@@ -726,40 +727,8 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				}
 
 				// Step 1: Create new table with device_id as PRIMARY KEY
-				createSQL := `CREATE TABLE devices_new (
-					device_id TEXT PRIMARY KEY,
-					wwn TEXT,
-					created_at DATETIME,
-					updated_at DATETIME,
-					deleted_at DATETIME,
-					device_name TEXT,
-					device_uuid TEXT,
-					device_serial_id TEXT,
-					device_label TEXT,
-					manufacturer TEXT,
-					model_name TEXT,
-					interface_type TEXT,
-					interface_speed TEXT,
-					serial_number TEXT,
-					firmware TEXT,
-					rotation_speed INTEGER,
-					capacity INTEGER,
-					form_factor TEXT,
-					smart_support NUMERIC,
-					device_protocol TEXT,
-					device_type TEXT,
-					label TEXT,
-					host_id TEXT,
-					collector_version TEXT,
-					smart_display_mode TEXT DEFAULT 'scrutiny',
-					device_status INTEGER,
-					has_forced_failure NUMERIC DEFAULT 0,
-					archived NUMERIC,
-					muted NUMERIC,
-					missed_ping_timeout_override INTEGER DEFAULT 0
-				)`
-				if err := tx.Exec(createSQL).Error; err != nil {
-					return fmt.Errorf("failed to create devices_new: %w", err)
+				if err := tx.Table("devices_new").AutoMigrate(&m20260401000000.Device{}); err != nil {
+					return fmt.Errorf("failed to create devices_new for device_id migration: %w", err)
 				}
 
 				// Step 2: Copy all data from old table
@@ -903,21 +872,8 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				}
 
 				// Step 2: Recreate table without deleted_at column (SQLite lacks DROP COLUMN on older versions).
-				createSQL := `CREATE TABLE attribute_overrides_new (
-					id INTEGER PRIMARY KEY AUTOINCREMENT,
-					created_at DATETIME,
-					updated_at DATETIME,
-					protocol TEXT NOT NULL,
-					attribute_id TEXT NOT NULL,
-					wwn TEXT DEFAULT '',
-					action TEXT DEFAULT '',
-					status TEXT DEFAULT '',
-					warn_above INTEGER,
-					fail_above INTEGER,
-					source TEXT DEFAULT 'ui'
-				)`
-				if err := tx.Exec(createSQL).Error; err != nil {
-					return fmt.Errorf("failed to create attribute_overrides_new: %w", err)
+				if err := tx.Table("attribute_overrides_new").AutoMigrate(&m20260414000000.AttributeOverride{}); err != nil {
+					return fmt.Errorf("failed to create attribute_overrides_new for soft-delete purge migration: %w", err)
 				}
 
 				// Step 3: Copy live data (deleted_at rows already purged in step 1).
@@ -959,39 +915,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 		{
 			ID: "m20260508000000", // store device smart_support as structured JSON
 			Migrate: func(tx *gorm.DB) error {
-				createSQL := `CREATE TABLE devices_new (
-					device_id TEXT PRIMARY KEY,
-					wwn TEXT,
-					created_at DATETIME,
-					updated_at DATETIME,
-					deleted_at DATETIME,
-					device_name TEXT,
-					device_uuid TEXT,
-					device_serial_id TEXT,
-					device_label TEXT,
-					manufacturer TEXT,
-					model_name TEXT,
-					interface_type TEXT,
-					interface_speed TEXT,
-					serial_number TEXT,
-					firmware TEXT,
-					rotation_speed INTEGER,
-					capacity INTEGER,
-					form_factor TEXT,
-					smart_support TEXT,
-					device_protocol TEXT,
-					device_type TEXT,
-					label TEXT,
-					host_id TEXT,
-					collector_version TEXT,
-					smart_display_mode TEXT DEFAULT 'scrutiny',
-					device_status INTEGER,
-					has_forced_failure NUMERIC DEFAULT 0,
-					archived NUMERIC,
-					muted NUMERIC,
-					missed_ping_timeout_override INTEGER DEFAULT 0
-				)`
-				if err := tx.Exec(createSQL).Error; err != nil {
+				if err := tx.Table("devices_new").AutoMigrate(&m20260508000000.Device{}); err != nil {
 					return fmt.Errorf("failed to create devices_new for smart_support migration: %w", err)
 				}
 
@@ -1040,7 +964,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 					return fmt.Errorf("failed to recreate idx_devices_deleted_at: %w", err)
 				}
 
-				return tx.AutoMigrate(&m20260508000000.Device{})
+				return nil
 			},
 		},
 		{

@@ -6,8 +6,6 @@ import (
 )
 
 // Device represents the schema after swapping the primary key from WWN to DeviceID.
-// This migration struct is used only for reference; the actual migration uses raw SQL
-// because SQLite cannot alter primary keys in-place.
 type Device struct {
 	CreatedAt                 time.Time
 	UpdatedAt                 time.Time
