@@ -92,6 +92,8 @@ COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/
 COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny-collector-filesystem /opt/scrutiny/bin/
 COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny-collector-btrfs /opt/scrutiny/bin/
 COPY --link --from=frontendbuild --chmod=644 /go/src/github.com/analogj/scrutiny/webapp/frontend/dist/treo/browser /opt/scrutiny/web
+COPY --link --from=backendbuild --chmod=644 /go/src/github.com/analogj/scrutiny/docs/openapi.yaml /opt/scrutiny/docs/openapi.yaml
+COPY --link --from=backendbuild --chmod=644 /go/src/github.com/analogj/scrutiny/docs/swagger-ui.html /opt/scrutiny/docs/swagger-ui.html
 RUN chmod 0644 /etc/cron.d/scrutiny && \
     chmod 0644 /etc/cron.d/scrutiny-zfs && \
     chmod 0644 /etc/cron.d/scrutiny-performance && \
@@ -100,6 +102,7 @@ RUN chmod 0644 /etc/cron.d/scrutiny && \
     chmod 0644 /etc/cron.d/scrutiny-btrfs && \
     rm -f /etc/cron.daily/* && \
     mkdir -p /opt/scrutiny/web && \
+    mkdir -p /opt/scrutiny/docs && \
     mkdir -p /opt/scrutiny/config && \
     chmod -R ugo+rwx /opt/scrutiny/config && \
     chmod +x /etc/cont-init.d/* && \

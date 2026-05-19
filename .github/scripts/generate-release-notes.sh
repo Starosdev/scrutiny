@@ -170,7 +170,14 @@ format_entry() {
     fi
 }
 
-declare -a FEATURES FIXES REFACTORS DOCS DEPS CICD HIGHLIGHTS OTHER
+declare -a FEATURES=()
+declare -a FIXES=()
+declare -a REFACTORS=()
+declare -a DOCS=()
+declare -a DEPS=()
+declare -a CICD=()
+declare -a HIGHLIGHTS=()
+declare -a OTHER=()
 HAS_ENTRIES=0
 
 PR_COUNT=$(echo "$MERGED_JSON" | jq 'length')

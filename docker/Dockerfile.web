@@ -30,7 +30,10 @@ RUN apt-get update && apt-get install -y ca-certificates curl tzdata && rm -rf /
 
 COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny /opt/scrutiny/bin/
 COPY --link --from=frontendbuild --chmod=644 /go/src/github.com/analogj/scrutiny/webapp/frontend/dist/treo/browser /opt/scrutiny/web
+COPY --link --from=backendbuild --chmod=644 /go/src/github.com/analogj/scrutiny/docs/openapi.yaml /opt/scrutiny/docs/openapi.yaml
+COPY --link --from=backendbuild --chmod=644 /go/src/github.com/analogj/scrutiny/docs/swagger-ui.html /opt/scrutiny/docs/swagger-ui.html
 RUN mkdir -p /opt/scrutiny/web && \
+    mkdir -p /opt/scrutiny/docs && \
     mkdir -p /opt/scrutiny/config && \
     chmod -R a+rX /opt/scrutiny && \
     chmod -R a+w /opt/scrutiny/config

@@ -97,6 +97,9 @@ func (c *configuration) Init() error {
 	c.SetDefault("web.auth.token", "")
 	c.SetDefault("web.auth.jwt_secret", "")
 	c.SetDefault("web.auth.jwt_expiry_hours", 24)
+	// API docs are private by default. Set to true to expose /docs/api and
+	// /api/docs/openapi.yaml without authentication.
+	c.SetDefault("web.docs.public", false)
 	// Admin credentials for password-based login (optional).
 	// Token login (web.auth.token) is always available when auth is enabled.
 	// Password login is only available when admin_password is set.

@@ -1,0 +1,23 @@
+{
+  "data": [
+    {
+      "device_id": "legacy-device-id-1",
+      "wwn": "legacy-wwn-1",
+      "device_name": "sda",
+      "manufacturer": "LegacyCorp",
+      "model_name": "Legacy Disk",
+      "interface_type": "SATA",
+      "interface_speed": "6.0 Gb/s",
+      "serial_number": "LEGACY123",
+      "firmware": "1.0",
+      "rotational_speed": 7200,
+      "capacity": 1000000,
+      "form_factor": "3.5 inches",
+      "smart_support": true,
+      "device_protocol": "ATA",
+      "device_type": "sat",
+      "host_id": "legacy-host",
+      "collector_version": "1.52.0"
+    }
+  ]
+}

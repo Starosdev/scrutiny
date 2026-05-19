@@ -250,36 +250,13 @@ npx ng test --watch=false --code-coverage             # Run with coverage
 
 # API Endpoints
 
-See CLAUDE.md for the complete API endpoint reference (54 endpoints defined in `webapp/backend/pkg/web/server.go`).
+Use the canonical API contract instead of maintaining partial tables here:
 
-Key endpoints for development:
+- OpenAPI: [docs/openapi.yaml](./docs/openapi.yaml)
+- Swagger UI: [docs/swagger-ui.html](./docs/swagger-ui.html)
+- API overview: [docs/API.md](./docs/API.md)
+- Runtime Swagger UI path: `/docs/api`
+- Runtime OpenAPI path: `/api/docs/openapi.yaml`
+- Runtime default: docs/spec require auth unless `web.docs.public=true`
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/auth/status` | GET | Authentication status check |
-| `/api/auth/login` | POST | Login (when auth enabled) |
-| `/api/health` | GET/HEAD | Health check |
-| `/api/health/notify` | POST | Test notifications |
-| `/api/summary` | GET | Dashboard summary of all devices |
-| `/api/summary/temp` | GET | Temperature history for dashboard |
-| `/api/summary/workload` | GET | Workload insights |
-| `/api/devices/register` | POST | Register new devices (used by collector) |
-| `/api/device/:wwn/details` | GET | Get device with S.M.A.R.T history |
-| `/api/device/:wwn/smart` | POST | Upload S.M.A.R.T metrics (used by collector) |
-| `/api/device/:wwn/selftest` | POST | Upload self-test results |
-| `/api/device/:wwn/archive` | POST | Archive a device |
-| `/api/device/:wwn/unarchive` | POST | Unarchive a device |
-| `/api/device/:wwn/mute` | POST | Mute device notifications |
-| `/api/device/:wwn/unmute` | POST | Unmute device notifications |
-| `/api/device/:wwn/label` | POST | Update device label |
-| `/api/device/:wwn` | DELETE | Delete a device |
-| `/api/device/:wwn/performance` | GET/POST | Performance benchmark history / upload |
-| `/api/settings` | GET/POST | Application settings |
-| `/api/settings/overrides` | GET/POST | SMART attribute overrides |
-| `/api/settings/notify-urls` | GET/POST | Notification URL management |
-| `/api/reports/generate` | GET | Generate report on demand |
-| `/api/reports/history` | GET | List generated reports |
-| `/api/zfs/pools/register` | POST | Register ZFS pools (used by ZFS collector) |
-| `/api/zfs/summary` | GET | ZFS pools dashboard summary |
-| `/api/zfs/pool/:guid/details` | GET | ZFS pool details |
-| `/api/metrics` | GET | Prometheus metrics (when enabled) |
+The OpenAPI spec is expected to track the active route surface in `webapp/backend/pkg/web/server.go`.

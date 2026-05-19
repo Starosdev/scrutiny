@@ -2,6 +2,35 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.58.0](https://github.com/Starosdev/scrutiny/compare/v1.57.0...v1.58.0) (2026-05-18)
+
+### Features
+
+* **workload:** add rated TBW tracking ([2c0601c](https://github.com/Starosdev/scrutiny/commit/2c0601ca10af938d02f84b23575eeff1881650cf))
+
+### Bug Fixes
+
+* accept legacy smart support registration payloads ([d078d7f](https://github.com/Starosdev/scrutiny/commit/d078d7fd09d91cd7cd69fb63fad16c45b0dab790))
+* **ci:** handle large PR diffs in golangci-lint; fix rangeValCopy ([9477fda](https://github.com/Starosdev/scrutiny/commit/9477fda20a948bdc6d345289a02b5ab090d6d92d))
+* correct Swagger spec path ([07e03c8](https://github.com/Starosdev/scrutiny/commit/07e03c8f9be799c4f7be01dbda2542fef9ca5c0b))
+* **frontend:** preserve dark badge contrast ([d6b2e38](https://github.com/Starosdev/scrutiny/commit/d6b2e38499d4f0cfeac2b0b080bacaef25098b84))
+* **frontend:** restore dark settings badge contrast ([d8489bb](https://github.com/Starosdev/scrutiny/commit/d8489bb10514f02d604c59310196cd2777865d11))
+* **frontend:** restore dark table contrast ([e958da6](https://github.com/Starosdev/scrutiny/commit/e958da67dfbbc9c5bc8b964f04e38c4a04a8fc99))
+* gate API docs behind auth by default ([cdb13fe](https://github.com/Starosdev/scrutiny/commit/cdb13feff298bc247ff7ef83fcffd9b7ccc50c27))
+* **lint:** add spaces after // in mdadm routes; split filepath.Join path separator ([055ce42](https://github.com/Starosdev/scrutiny/commit/055ce422cb68039b2f4c98ca276228cec25842b9))
+* **lint:** suppress gocritic filepathJoin on legitimate absolute path ([7cf3ef3](https://github.com/Starosdev/scrutiny/commit/7cf3ef39f9b3b6a8c2288165040e2610fb74072e))
+* **mdadm:** preserve partial registration metrics ([44cdeaa](https://github.com/Starosdev/scrutiny/commit/44cdeaa73be70543043c8c120b0bed986b493e28))
+* **migrations:** add missing quotes on json:muted struct tags ([1bb3162](https://github.com/Starosdev/scrutiny/commit/1bb3162ae8790153b9923d0a99a2eda5c9b7027e))
+* **release:** initialize empty release note sections ([0424a2a](https://github.com/Starosdev/scrutiny/commit/0424a2ab3b2abc48b8935ba992d4a6150aa892bd))
+* **workload:** align TBW override model with sqlite schema ([f7e932e](https://github.com/Starosdev/scrutiny/commit/f7e932e8f632cc1dcaf75a1bed8538c95bc6e19b))
+* **workload:** lowercase error string in attachDeviceEnduranceOverrides ([8772b0e](https://github.com/Starosdev/scrutiny/commit/8772b0e1e5b4d430833aa9c175a353fec9289eb1))
+
+## [1.57.0](https://github.com/Starosdev/scrutiny/compare/v1.56.1...v1.57.0) (2026-05-18)
+
+### Features
+
+* dark contrast, mdadm registration, legacy SMART support, and TBW tracking ([#535](https://github.com/Starosdev/scrutiny/issues/535)) ([4981d7d](https://github.com/Starosdev/scrutiny/commit/4981d7d9fcf90c46449c4fe8d9b1a92176dd8771))
+
 ## [1.56.1](https://github.com/Starosdev/scrutiny/compare/v1.56.0...v1.56.1) (2026-05-18)
 
 ### Bug Fixes
