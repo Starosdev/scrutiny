@@ -29,6 +29,7 @@ Then configure each collector with the same token. See [Collector Authentication
 | `web.auth.jwt_expiry_hours` | `SCRUTINY_WEB_AUTH_JWT_EXPIRY_HOURS` | `24` | JWT token expiry in hours |
 | `web.auth.admin_username` | `SCRUTINY_WEB_AUTH_ADMIN_USERNAME` | `admin` | Admin username for password-based login |
 | `web.auth.admin_password` | `SCRUTINY_WEB_AUTH_ADMIN_PASSWORD` | (empty) | Admin password. When set, enables the username/password login method in addition to token login. |
+| `web.docs.public` | `SCRUTINY_WEB_DOCS_PUBLIC` | `false` | Expose `/docs/api` and `/api/docs/openapi.yaml` without authentication. Leave `false` for production-facing deployments. |
 | `web.metrics.token` | `SCRUTINY_WEB_METRICS_TOKEN` | (empty) | Independent bearer token for the Prometheus `/api/metrics` endpoint. See [Prometheus Metrics Authentication](#prometheus-metrics-authentication). |
 
 ### Collector (`collector.yaml` / `collector-performance.yaml`)
@@ -49,6 +50,28 @@ The following endpoints never require authentication, even when auth is enabled:
 | GET | `/api/health` | Health check for load balancers and monitoring tools |
 | GET | `/api/auth/status` | Returns whether auth is enabled and which login methods are available |
 | POST | `/api/auth/login` | Authenticate with token or username/password to obtain a JWT |
+
+## API Docs Access
+
+The served API docs routes are protected by default:
+
+| Path | Default Behavior |
+|---|---|
+| `/docs/api` | Requires the master API token or a valid JWT when `web.auth.enabled=true` |
+| `/api/docs/openapi.yaml` | Requires the master API token or a valid JWT when `web.auth.enabled=true` |
+
+To expose both routes publicly for local or testing environments, set:
+
+```yaml
+web:
+    docs:
+        public: true
+```
+
+Recommended usage:
+
+- Keep `web.docs.public: false` for internet-facing or shared deployments.
+- Set `web.docs.public: true` only when you intentionally want anonymous access to the OpenAPI contract and Swagger UI.
 
 ## Web UI Login
 

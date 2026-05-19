@@ -136,6 +136,19 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **UI-Configurable Notification URLs** - Manage notification endpoints directly in the web UI (add, edit, test, delete)
 - **Collector-Side Error Notifications** - Receive alerts when smartctl fails to read a drive during collection, not just when SMART attribute thresholds are exceeded
 
+## API Documentation
+
+The Scrutiny API is now documented from a canonical OpenAPI spec:
+
+- OpenAPI: [docs/openapi.yaml](./docs/openapi.yaml)
+- Swagger UI: [docs/swagger-ui.html](./docs/swagger-ui.html)
+- Overview: [docs/API.md](./docs/API.md)
+- Served Swagger UI: `/docs/api`
+- Served OpenAPI spec: `/api/docs/openapi.yaml`
+- Runtime auth default: docs/spec are auth-gated unless `web.docs.public=true`
+
+If you change a route in `webapp/backend/pkg/web/server.go`, update `docs/openapi.yaml` in the same change.
+
 # Migration from AnalogJ/scrutiny
 
 If you're currently using the original AnalogJ/scrutiny, migrating is straightforward:
@@ -677,6 +690,7 @@ Dots and dashes in key names become underscores.
 | `web.auth.jwt_expiry_hours` | `SCRUTINY_WEB_AUTH_JWT_EXPIRY_HOURS` | `24` |
 | `web.auth.admin_username` | `SCRUTINY_WEB_AUTH_ADMIN_USERNAME` | `admin` |
 | `web.auth.admin_password` | `SCRUTINY_WEB_AUTH_ADMIN_PASSWORD` | `` |
+| `web.docs.public` | `SCRUTINY_WEB_DOCS_PUBLIC` | `false` |
 | `web.mqtt.enabled` | `SCRUTINY_WEB_MQTT_ENABLED` | `false` |
 | `web.mqtt.broker` | `SCRUTINY_WEB_MQTT_BROKER` | `tcp://localhost:1883` |
 | `web.mqtt.username` | `SCRUTINY_WEB_MQTT_USERNAME` | `` |
@@ -703,7 +717,7 @@ Example:
 docker run -e SCRUTINY_WEB_LISTEN_PORT=9090 \
   -e SCRUTINY_WEB_INFLUXDB_HOST=influxdb.local \
   -e SCRUTINY_LOG_LEVEL=DEBUG \
-  ghcr.io/starosdev/scrutiny:web
+  ghcr.io/starosdev/scrutiny:latest-web
 ```
 
 ## Collector
@@ -749,7 +763,7 @@ Example:
 ```bash
 docker run -e COLLECTOR_COMMANDS_METRICS_SMART_ARGS="--xall --json -T permissive" \
   -e COLLECTOR_API_ENDPOINT=http://scrutiny-web:8080 \
-  ghcr.io/starosdev/scrutiny:collector
+  ghcr.io/starosdev/scrutiny:latest-collector
 ```
 
 ### Docker-Only Environment Variables
@@ -825,8 +839,8 @@ docker run --restart unless-stopped \
 | linux-arm-7 | :white_check_mark: | web/collector only |
 | linux-arm64 | :white_check_mark: | :white_check_mark: |
 | freebsd-amd64 | :white_check_mark: |  |
-| macos-amd64 | :white_check_mark: | :white_check_mark: |
-| macos-arm64 | :white_check_mark: | :white_check_mark: |
+| macos-amd64 | :white_check_mark: |  |
+| macos-arm64 | :white_check_mark: |  |
 | windows-amd64 | :white_check_mark: | WIP |
 | windows-arm64 | :white_check_mark: |  |
 

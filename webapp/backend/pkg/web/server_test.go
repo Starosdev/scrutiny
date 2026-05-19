@@ -53,6 +53,19 @@ func helperCreateFrontendFiles(t *testing.T, parentPath string) {
 	require.NoError(t, err)
 }
 
+func helperCreateAPIDocsFiles(t *testing.T, docsPath string) {
+	err := os.MkdirAll(docsPath, 0755)
+	require.NoError(t, err)
+
+	swaggerPath := path.Join(docsPath, "swagger-ui.html")
+	openAPIPath := path.Join(docsPath, "openapi.yaml")
+
+	err = ioutil.WriteFile(swaggerPath, []byte(`<html><body>swagger<script>window.ui={url: "/api/docs/openapi.yaml"}</script></body></html>`), 0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(openAPIPath, []byte("openapi: 3.0.3\ninfo:\n  title: test\n  version: 1.0.0\n"), 0644)
+	require.NoError(t, err)
+}
+
 // InfluxDB will throw an error/ignore any submitted data with a timestamp older than the
 // retention period. Lets fix this by opening test files, modifying the timestamp and returning an io.Reader
 func helperReadSmartDataFileFixTimestamp(t *testing.T, smartDataFilepath string) io.Reader {
@@ -126,6 +139,7 @@ func (suite *ServerTestSuite) TestHealthRoute() {
 	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
@@ -193,6 +207,7 @@ func (suite *ServerTestSuite) TestHealthRoute_MissingFrontend() {
 	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
@@ -240,6 +255,71 @@ func (suite *ServerTestSuite) TestHealthRoute_MissingFrontend() {
 	require.Contains(suite.T(), w.Body.String(), "Frontend files not found")
 }
 
+func (suite *ServerTestSuite) TestAPIDocsRoutes() {
+	parentPath, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(parentPath)
+
+	frontendPath := path.Join(parentPath, "web")
+	docsPath := path.Join(parentPath, "docs")
+	err := os.MkdirAll(frontendPath, 0755)
+	require.NoError(suite.T(), err)
+	helperCreateFrontendFiles(suite.T(), frontendPath)
+	helperCreateAPIDocsFiles(suite.T(), docsPath)
+
+	mockCtrl := gomock.NewController(suite.T())
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().SetDefault(gomock.Any(), gomock.Any()).AnyTimes()
+	fakeConfig.EXPECT().UnmarshalKey(gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
+	fakeConfig.EXPECT().GetString("web.database.location").Return(path.Join(parentPath, "scrutiny_test.db")).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.database.journal_mode").Return("WAL").AnyTimes()
+	fakeConfig.EXPECT().GetString("log.level").Return("INFO").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.src.frontend.path").Return(frontendPath).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.listen.basepath").Return(suite.Basepath).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.metrics.token").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.scheme").Return("http").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.port").Return("8086").AnyTimes()
+	fakeConfig.EXPECT().IsSet("web.influxdb.token").Return(true).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.token").Return("my-super-secret-auth-token").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.org").Return("scrutiny").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.bucket").Return("metrics").AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.influxdb.tls.insecure_skip_verify").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.influxdb.retention_policy").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
+		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
+	} else {
+		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
+	}
+
+	ae := web.AppEngine{
+		Config: fakeConfig,
+	}
+	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
+
+	swaggerResp := httptest.NewRecorder()
+	swaggerReq, _ := http.NewRequest("GET", suite.Basepath+"/docs/api", nil)
+	router.ServeHTTP(swaggerResp, swaggerReq)
+	require.Equal(suite.T(), 200, swaggerResp.Code)
+	require.Contains(suite.T(), swaggerResp.Body.String(), "swagger")
+	require.Contains(suite.T(), swaggerResp.Body.String(), `url: "/api/docs/openapi.yaml"`)
+
+	specResp := httptest.NewRecorder()
+	specReq, _ := http.NewRequest("GET", suite.Basepath+"/api/docs/openapi.yaml", nil)
+	router.ServeHTTP(specResp, specReq)
+	require.Equal(suite.T(), 200, specResp.Code)
+	require.Contains(suite.T(), specResp.Body.String(), "openapi: 3.0.3")
+}
+
 func (suite *ServerTestSuite) TestRegisterDevicesRoute() {
 	//setup
 	parentPath, _ := ioutil.TempDir("", "")
@@ -258,6 +338,7 @@ func (suite *ServerTestSuite) TestRegisterDevicesRoute() {
 	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
@@ -305,6 +386,70 @@ func (suite *ServerTestSuite) TestRegisterDevicesRoute() {
 	require.False(suite.T(), response.Data[0].SmartSupport.Available)
 }
 
+func (suite *ServerTestSuite) TestRegisterDevicesRoute_LegacySmartSupportBool() {
+	parentPath, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(parentPath)
+	helperCreateFrontendFiles(suite.T(), parentPath)
+
+	mockCtrl := gomock.NewController(suite.T())
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().SetDefault(gomock.Any(), gomock.Any()).AnyTimes()
+	fakeConfig.EXPECT().UnmarshalKey(gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
+	fakeConfig.EXPECT().GetString("web.database.location").Return(path.Join(parentPath, "scrutiny_test.db")).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.database.journal_mode").Return("WAL").AnyTimes()
+	fakeConfig.EXPECT().GetString("log.level").Return("INFO").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.src.frontend.path").Return(parentPath).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.listen.basepath").Return(suite.Basepath).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.metrics.token").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.scheme").Return("http").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.port").Return("8086").AnyTimes()
+	fakeConfig.EXPECT().IsSet("web.influxdb.token").Return(true).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.token").Return("my-super-secret-auth-token").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.org").Return("scrutiny").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.bucket").Return("metrics").AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.influxdb.tls.insecure_skip_verify").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.influxdb.retention_policy").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
+		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
+	} else {
+		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
+	}
+
+	ae := web.AppEngine{
+		Config: fakeConfig,
+	}
+	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
+	file, err := os.Open("testdata/register-devices-req-legacy-smart-support.json")
+	require.NoError(suite.T(), err)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", suite.Basepath+"/api/devices/register", file)
+	router.ServeHTTP(w, req)
+
+	require.Equal(suite.T(), 200, w.Code)
+	var response struct {
+		Success bool            `json:"success"`
+		Data    []models.Device `json:"data"`
+	}
+	err = json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), response.Success)
+	require.Len(suite.T(), response.Data, 1)
+	require.True(suite.T(), response.Data[0].SmartSupport.Available)
+	require.Nil(suite.T(), response.Data[0].SmartSupport.Enabled)
+}
+
 func (suite *ServerTestSuite) TestUploadDeviceMetricsRoute() {
 	//setup
 	parentPath, _ := ioutil.TempDir("", "")
@@ -323,6 +468,7 @@ func (suite *ServerTestSuite) TestUploadDeviceMetricsRoute() {
 	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
@@ -397,6 +543,7 @@ func (suite *ServerTestSuite) TestPopulateMultiple() {
 	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
@@ -511,6 +658,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_WebhookFailure() {
 	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
@@ -571,6 +719,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_ScriptFailure() {
 	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
@@ -631,6 +780,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_ScriptSuccess() {
 	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
@@ -691,6 +841,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_ShoutrrrFailure() {
 	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
@@ -750,6 +901,7 @@ func (suite *ServerTestSuite) TestGetDevicesSummaryRoute_Nvme() {
 	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
@@ -859,6 +1011,7 @@ func (suite *ServerTestSuite) TestStaticFileMimeTypes() {
 	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
@@ -947,6 +1100,7 @@ func (suite *ServerTestSuite) TestBrowserSubdirectoryDetection() {
 	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
@@ -1020,6 +1174,7 @@ func (suite *ServerTestSuite) TestBrowserSubdirectoryDetection_NoBrowserDir() {
 	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()

@@ -19,6 +19,13 @@ var publicPathSuffixes = []string{
 	"/api/auth/login",
 }
 
+// docsPathSuffixes lists the served documentation routes.
+var docsPathSuffixes = []string{
+	"/docs/api",
+	"/docs/api/",
+	"/api/docs/openapi.yaml",
+}
+
 // metricsPathSuffix is the path suffix for the Prometheus metrics endpoint,
 // which supports an independent authentication token (web.metrics.token).
 const metricsPathSuffix = "/api/metrics"
@@ -32,11 +39,21 @@ type authContext struct {
 	jwtSecret       string
 	metricsToken    string
 	authEnabled     bool
+	docsPublic      bool
 }
 
 // isPublicPath returns true if the request path matches a public route suffix.
 func isPublicPath(requestPath string) bool {
 	for _, suffix := range publicPathSuffixes {
+		if strings.HasSuffix(requestPath, suffix) {
+			return true
+		}
+	}
+	return false
+}
+
+func isDocsPath(requestPath string) bool {
+	for _, suffix := range docsPathSuffixes {
 		if strings.HasSuffix(requestPath, suffix) {
 			return true
 		}
@@ -158,6 +175,7 @@ func AuthMiddleware(appConfig config.Interface, logger *logrus.Entry) gin.Handle
 		configuredToken: appConfig.GetString("web.auth.token"),
 		jwtSecret:       jwtSecret,
 		metricsToken:    appConfig.GetString("web.metrics.token"),
+		docsPublic:      appConfig.GetBool("web.docs.public"),
 	}
 
 	logAuthStatus(logger, ac)
@@ -173,6 +191,20 @@ func AuthMiddleware(appConfig config.Interface, logger *logrus.Entry) gin.Handle
 				return
 			}
 			c.Next()
+			return
+		}
+
+		// Served docs can be public or private independently of the broader auth toggle.
+		if isDocsPath(requestPath) {
+			if ac.docsPublic {
+				c.Next()
+				return
+			}
+			if ac.validateGeneralAuth(c) {
+				c.Next()
+				return
+			}
+			rejectMissingOrInvalid(c)
 			return
 		}
 
