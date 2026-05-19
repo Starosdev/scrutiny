@@ -131,3 +131,21 @@ Consistency Policy : resync
 	assert.Equal(t, int64(2147352576), metrics.ArraySize)
 	// Note: UsedBytes is populated by getMountUsage (statfs) in getArrayDetail, not by parseMdadmOutput.
 }
+
+func TestParseMdadmExportUUID(t *testing.T) {
+	output := `MD_LEVEL=raid1
+MD_DEVICES=2
+MD_METADATA=1.2
+MD_UUID=4b327bd6:8ae558ab:057dcde5:d3adef5e
+MD_NAME=Xpenology:4`
+
+	assert.Equal(t, "4b327bd6:8ae558ab:057dcde5:d3adef5e", parseMdadmExportUUID(output))
+}
+
+func TestParseMdadmExportUUID_Missing(t *testing.T) {
+	output := `MD_LEVEL=raid1
+MD_DEVICES=2
+MD_METADATA=1.2`
+
+	assert.Equal(t, "", parseMdadmExportUUID(output))
+}
