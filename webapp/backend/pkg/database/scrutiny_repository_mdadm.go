@@ -34,12 +34,12 @@ func (sr *scrutinyRepository) RegisterMdadmArray(ctx context.Context, array mode
 		return result.Error
 	} else {
 		// Existing array - update it
-		if err := sr.gormClient.WithContext(ctx).Model(&existing).Updates(map[string]interface{}{
-			"name":       array.Name,
-			"level":      array.Level,
-			"devices":    array.Devices,
-			"updated_at": array.UpdatedAt,
-		}).Error; err != nil {
+		existing.Name = array.Name
+		existing.Level = array.Level
+		existing.Devices = array.Devices
+		existing.UpdatedAt = array.UpdatedAt
+
+		if err := sr.gormClient.WithContext(ctx).Save(&existing).Error; err != nil {
 			return err
 		}
 	}
@@ -50,7 +50,11 @@ func (sr *scrutinyRepository) RegisterMdadmArray(ctx context.Context, array mode
 // GetMdadmArrays returns all non-archived MDADM arrays
 func (sr *scrutinyRepository) GetMdadmArrays(ctx context.Context) ([]models.MDADMArray, error) {
 	arrays := []models.MDADMArray{}
-	if err := sr.gormClient.WithContext(ctx).Where("archived = ?", false).Find(&arrays).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).
+		Where("archived = ?", false).
+		Where("uuid IS NOT NULL").
+		Where("TRIM(uuid) != ''").
+		Find(&arrays).Error; err != nil {
 		return nil, fmt.Errorf("could not get MDADM arrays from DB: %v", err)
 	}
 	return arrays, nil

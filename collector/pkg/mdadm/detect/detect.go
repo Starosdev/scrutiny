@@ -103,12 +103,20 @@ func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMet
 		cmd = exec.Command("sudo", "mdadm", "--detail", devicePath)
 	}
 	
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return models.MDADMArray{}, models.MDADMMetrics{}, fmt.Errorf("failed to run mdadm --detail %s: %w", devicePath, err)
 	}
 
 	array, metrics, err := d.parseMdadmOutput(name, string(output))
+	if err == nil && strings.TrimSpace(array.UUID) == "" {
+		exportUUID, exportErr := d.getArrayUUIDFromExport(devicePath)
+		if exportErr != nil {
+			d.Logger.Debugf("Could not determine UUID for %s via mdadm --detail --export: %v", devicePath, exportErr)
+		} else {
+			array.UUID = exportUUID
+		}
+	}
 	if err == nil {
 		rawMdstat, _ := d.getRawMdstat(name)
 		metrics.RawMdstat = rawMdstat
@@ -132,6 +140,26 @@ func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMet
 	}
 	
 	return array, metrics, err
+}
+
+func (d *Detect) getArrayUUIDFromExport(devicePath string) (string, error) {
+	var cmd *exec.Cmd
+	if os.Getuid() == 0 {
+		cmd = exec.Command("mdadm", "--detail", "--export", devicePath)
+	} else {
+		cmd = exec.Command("sudo", "mdadm", "--detail", "--export", devicePath)
+	}
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to run mdadm --detail --export %s: %w", devicePath, err)
+	}
+
+	uuid := parseMdadmExportUUID(string(output))
+	if uuid == "" {
+		return "", fmt.Errorf("mdadm export output did not include MD_UUID")
+	}
+	return uuid, nil
 }
 
 // getRawMdstat extracts the specific multi-line block for an array from /proc/mdstat
@@ -241,4 +269,15 @@ func (d *Detect) parseMdadmOutput(name string, output string) (models.MDADMArray
 	}
 
 	return array, metrics, nil
+}
+
+func parseMdadmExportUUID(output string) string {
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "MD_UUID=") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "MD_UUID="))
+		}
+	}
+	return ""
 }
