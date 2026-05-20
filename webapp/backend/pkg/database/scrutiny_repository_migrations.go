@@ -904,18 +904,18 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 
 				// Step 2: Recreate table without deleted_at column (SQLite lacks DROP COLUMN on older versions).
 				createSQL := `CREATE TABLE attribute_overrides_new (
-					id INTEGER PRIMARY KEY AUTOINCREMENT,
-					created_at DATETIME,
-					updated_at DATETIME,
-					protocol TEXT NOT NULL,
-					attribute_id TEXT NOT NULL,
-					wwn TEXT DEFAULT '',
-					action TEXT DEFAULT '',
-					status TEXT DEFAULT '',
-					warn_above INTEGER,
-					fail_above INTEGER,
-					source TEXT DEFAULT 'ui'
-				)`
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+created_at DATETIME,
+updated_at DATETIME,
+protocol TEXT NOT NULL,
+attribute_id TEXT NOT NULL,
+wwn TEXT DEFAULT '',
+action TEXT DEFAULT '',
+status TEXT DEFAULT '',
+warn_above INTEGER,
+fail_above INTEGER,
+source TEXT DEFAULT ui
+)`
 				if err := tx.Exec(createSQL).Error; err != nil {
 					return fmt.Errorf("failed to create attribute_overrides_new: %w", err)
 				}
