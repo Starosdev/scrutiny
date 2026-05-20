@@ -829,6 +829,31 @@ docker run --restart unless-stopped \
   ghcr.io/starosdev/scrutiny:latest-collector-performance
 ```
 
+## MDADM Collector
+
+MDADM RAID monitoring is handled by a separate binary, `scrutiny-collector-mdadm`. It is not part of the SMART metrics collector or the fio performance collector.
+
+The MDADM collector prefers its own config file, `collector-mdadm.yaml`, and falls back to `collector.yaml` if that file is not present.
+
+### MDADM Collector Environment Variable Overrides
+
+| Setting | Preferred Environment Variable | Fallback |
+| --- | --- | --- |
+| API endpoint | `COLLECTOR_MDADM_API_ENDPOINT` | `COLLECTOR_API_ENDPOINT` |
+| API token | `COLLECTOR_MDADM_API_TOKEN` | `COLLECTOR_API_TOKEN` |
+| Log file | `COLLECTOR_MDADM_LOG_FILE` | `COLLECTOR_LOG_FILE` |
+| Debug logging | `COLLECTOR_MDADM_DEBUG` | `COLLECTOR_DEBUG` or `DEBUG` |
+
+### MDADM Collector Docker-Only Scheduling Variables
+
+| Environment Variable | Default Value | Description |
+| --- | --- | --- |
+| `COLLECTOR_MDADM_CRON_SCHEDULE` | `*/15 * * * *` | Cron schedule for MDADM collection |
+| `COLLECTOR_MDADM_RUN_STARTUP` | `false` | Run collection immediately on container start |
+| `COLLECTOR_MDADM_RUN_STARTUP_SLEEP` | `1` | Delay in seconds before the startup run |
+
+For mounts, capabilities, compose examples, and troubleshooting, see [docs/MDADM_MONITORING.md](docs/MDADM_MONITORING.md).
+
 # Supported Architectures
 
 | Architecture Name | Binaries | Docker |
