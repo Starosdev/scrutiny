@@ -2,6 +2,20 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.58.2](https://github.com/Starosdev/scrutiny/compare/v1.58.1...v1.58.2) (2026-05-20)
+
+### Bug Fixes
+
+* harden attribute override SQLite migration and restore overlay backgrounds ([#544](https://github.com/Starosdev/scrutiny/issues/544)) ([a4c2430](https://github.com/Starosdev/scrutiny/commit/a4c2430d8d622f2f1a3f9616e9beb2644f60e00b))
+
+## [1.58.1](https://github.com/Starosdev/scrutiny/compare/v1.58.0...v1.58.1) (2026-05-19)
+
+### Bug Fixes
+
+* **mdadm:** fall back to export UUID parsing ([b3c0faa](https://github.com/Starosdev/scrutiny/commit/b3c0faa68986ae92763a66b7d152275bc892e8a5))
+* **mdadm:** ignore legacy blank UUID arrays ([116c866](https://github.com/Starosdev/scrutiny/commit/116c8661687c58f7636614fc7e08ca73fc07e641))
+* **mdadm:** preserve partial registration metrics ([51766a8](https://github.com/Starosdev/scrutiny/commit/51766a88fa680cabcacb8d5b126694cd96f9d705))
+
 ## [1.58.0](https://github.com/Starosdev/scrutiny/compare/v1.57.0...v1.58.0) (2026-05-18)
 
 ### Features

@@ -727,37 +727,37 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 
 				// Step 1: Create new table with device_id as PRIMARY KEY
 				createSQL := `CREATE TABLE devices_new (
-					device_id TEXT PRIMARY KEY,
-					wwn TEXT,
-					created_at DATETIME,
-					updated_at DATETIME,
-					deleted_at DATETIME,
-					device_name TEXT,
-					device_uuid TEXT,
-					device_serial_id TEXT,
-					device_label TEXT,
-					manufacturer TEXT,
-					model_name TEXT,
-					interface_type TEXT,
-					interface_speed TEXT,
-					serial_number TEXT,
-					firmware TEXT,
-					rotation_speed INTEGER,
-					capacity INTEGER,
-					form_factor TEXT,
-					smart_support NUMERIC,
-					device_protocol TEXT,
-					device_type TEXT,
-					label TEXT,
-					host_id TEXT,
-					collector_version TEXT,
-					smart_display_mode TEXT DEFAULT 'scrutiny',
-					device_status INTEGER,
-					has_forced_failure NUMERIC DEFAULT 0,
-					archived NUMERIC,
-					muted NUMERIC,
-					missed_ping_timeout_override INTEGER DEFAULT 0
-				)`
+device_id TEXT PRIMARY KEY,
+wwn TEXT,
+created_at DATETIME,
+updated_at DATETIME,
+deleted_at DATETIME,
+device_name TEXT,
+device_uuid TEXT,
+device_serial_id TEXT,
+device_label TEXT,
+manufacturer TEXT,
+model_name TEXT,
+interface_type TEXT,
+interface_speed TEXT,
+serial_number TEXT,
+firmware TEXT,
+rotation_speed INTEGER,
+capacity INTEGER,
+form_factor TEXT,
+smart_support NUMERIC,
+device_protocol TEXT,
+device_type TEXT,
+label TEXT,
+host_id TEXT,
+collector_version TEXT,
+smart_display_mode TEXT DEFAULT scrutiny,
+device_status INTEGER,
+has_forced_failure NUMERIC DEFAULT 0,
+archived NUMERIC,
+muted NUMERIC,
+missed_ping_timeout_override INTEGER DEFAULT 0
+)`
 				if err := tx.Exec(createSQL).Error; err != nil {
 					return fmt.Errorf("failed to create devices_new: %w", err)
 				}
@@ -904,18 +904,18 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 
 				// Step 2: Recreate table without deleted_at column (SQLite lacks DROP COLUMN on older versions).
 				createSQL := `CREATE TABLE attribute_overrides_new (
-					id INTEGER PRIMARY KEY AUTOINCREMENT,
-					created_at DATETIME,
-					updated_at DATETIME,
-					protocol TEXT NOT NULL,
-					attribute_id TEXT NOT NULL,
-					wwn TEXT DEFAULT '',
-					action TEXT DEFAULT '',
-					status TEXT DEFAULT '',
-					warn_above INTEGER,
-					fail_above INTEGER,
-					source TEXT DEFAULT 'ui'
-				)`
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+created_at DATETIME,
+updated_at DATETIME,
+protocol TEXT NOT NULL,
+attribute_id TEXT NOT NULL,
+wwn TEXT DEFAULT '',
+action TEXT DEFAULT '',
+status TEXT DEFAULT '',
+warn_above INTEGER,
+fail_above INTEGER,
+source TEXT DEFAULT ui
+)`
 				if err := tx.Exec(createSQL).Error; err != nil {
 					return fmt.Errorf("failed to create attribute_overrides_new: %w", err)
 				}
@@ -960,37 +960,37 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 			ID: "m20260508000000", // store device smart_support as structured JSON
 			Migrate: func(tx *gorm.DB) error {
 				createSQL := `CREATE TABLE devices_new (
-					device_id TEXT PRIMARY KEY,
-					wwn TEXT,
-					created_at DATETIME,
-					updated_at DATETIME,
-					deleted_at DATETIME,
-					device_name TEXT,
-					device_uuid TEXT,
-					device_serial_id TEXT,
-					device_label TEXT,
-					manufacturer TEXT,
-					model_name TEXT,
-					interface_type TEXT,
-					interface_speed TEXT,
-					serial_number TEXT,
-					firmware TEXT,
-					rotation_speed INTEGER,
-					capacity INTEGER,
-					form_factor TEXT,
-					smart_support TEXT,
-					device_protocol TEXT,
-					device_type TEXT,
-					label TEXT,
-					host_id TEXT,
-					collector_version TEXT,
-					smart_display_mode TEXT DEFAULT 'scrutiny',
-					device_status INTEGER,
-					has_forced_failure NUMERIC DEFAULT 0,
-					archived NUMERIC,
-					muted NUMERIC,
-					missed_ping_timeout_override INTEGER DEFAULT 0
-				)`
+device_id TEXT PRIMARY KEY,
+wwn TEXT,
+created_at DATETIME,
+updated_at DATETIME,
+deleted_at DATETIME,
+device_name TEXT,
+device_uuid TEXT,
+device_serial_id TEXT,
+device_label TEXT,
+manufacturer TEXT,
+model_name TEXT,
+interface_type TEXT,
+interface_speed TEXT,
+serial_number TEXT,
+firmware TEXT,
+rotation_speed INTEGER,
+capacity INTEGER,
+form_factor TEXT,
+smart_support TEXT,
+device_protocol TEXT,
+device_type TEXT,
+label TEXT,
+host_id TEXT,
+collector_version TEXT,
+smart_display_mode TEXT DEFAULT scrutiny,
+device_status INTEGER,
+has_forced_failure NUMERIC DEFAULT 0,
+archived NUMERIC,
+muted NUMERIC,
+missed_ping_timeout_override INTEGER DEFAULT 0
+)`
 				if err := tx.Exec(createSQL).Error; err != nil {
 					return fmt.Errorf("failed to create devices_new for smart_support migration: %w", err)
 				}
