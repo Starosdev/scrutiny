@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.58.2](https://github.com/Starosdev/scrutiny/compare/v1.58.1...v1.58.2) (2026-05-20)
+
+### Bug Fixes
+
+* harden attribute override SQLite migration and restore overlay backgrounds ([#544](https://github.com/Starosdev/scrutiny/issues/544)) ([a4c2430](https://github.com/Starosdev/scrutiny/commit/a4c2430d8d622f2f1a3f9616e9beb2644f60e00b))
+
 ## [1.58.1](https://github.com/Starosdev/scrutiny/compare/v1.58.0...v1.58.1) (2026-05-19)
 
 ### Bug Fixes
