@@ -6,6 +6,10 @@
 // -----------------------------------------------------------------------------------------------------
 
 .treo-theme-dark {
+    --mat-select-panel-background-color: #1e293b;
+    --mat-menu-container-color: #1e293b;
+    --mat-autocomplete-background-color: #1e293b;
+
     .yellow-50 {
         background-color: #242b38 !important;
         color: #e2e8f0 !important;
@@ -45,4 +49,10 @@
     .mat-mdc-cell .text-secondary {
         color: #CFD8E3 !important;
     }
+}
+
+.treo-theme-light {
+    --mat-select-panel-background-color: #ffffff;
+    --mat-menu-container-color: #ffffff;
+    --mat-autocomplete-background-color: #ffffff;
 }

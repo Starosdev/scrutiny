@@ -8,6 +8,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20220716214900"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260122000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260301000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/glebarez/sqlite"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -247,4 +248,98 @@ CREATE TABLE devices (
 	require.True(t, archived)
 	require.True(t, muted)
 	require.Equal(t, int64(42), missedPingTimeoutOverride)
+}
+
+func TestAttributeOverridesSchemaSurvivesLaterAutoMigrate(t *testing.T) {
+	repo := createMigrationTestRepositoryWithAppliedMigrations(t, []string{
+		"20201107210306",
+		"20220503113100",
+		"20220503120000",
+		"m20220509170100",
+		"m20220709181300",
+		"m20220716214900",
+		"m20250221084400",
+		"m20251108044508",
+		"m20260108000000",
+		"m20260122000000",
+		"m20260129000000",
+		"m20260131000000",
+		"m20260202000000",
+		"m20260225000000",
+		"m20260226000000",
+		"m20260301000000",
+		"m20260315000000",
+		"m20260401000000",
+		"m20260402000000",
+		"m20260410000000",
+		"m20260411000000",
+		"m20260413000000",
+		"m20260421000000",
+		"m20260508000000",
+		"m20260510000000",
+		"m20260514000000",
+		"m20260516000000",
+	})
+	ctx := context.Background()
+
+	require.NoError(t, repo.gormClient.Exec(`DROP TABLE attribute_overrides`).Error)
+	require.NoError(t, repo.gormClient.Exec(`
+CREATE TABLE attribute_overrides (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	created_at DATETIME,
+	updated_at DATETIME,
+	protocol TEXT NOT NULL,
+	attribute_id TEXT NOT NULL,
+	wwn TEXT DEFAULT '',
+	action TEXT DEFAULT '',
+	status TEXT DEFAULT '',
+	warn_above INTEGER,
+	fail_above INTEGER,
+	source TEXT DEFAULT 'ui',
+	deleted_at DATETIME
+)`).Error)
+
+	require.NoError(t, repo.gormClient.Exec(`CREATE UNIQUE INDEX idx_override_lookup ON attribute_overrides (protocol, attribute_id, wwn)`).Error)
+	require.NoError(t, repo.gormClient.Exec(`
+		INSERT INTO attribute_overrides (
+			id, created_at, updated_at, protocol, attribute_id, wwn,
+			action, status, warn_above, fail_above, source, deleted_at
+		) VALUES (
+			1, '2026-05-01 12:00:00', '2026-05-02 12:00:00', 'NVMe', 'media_errors', 'wwn1',
+			'set_threshold', 'warn', 10, 20, 'ui', NULL
+		)
+	`).Error)
+
+	require.NoError(t, repo.Migrate(ctx))
+	require.NoError(t, repo.gormClient.AutoMigrate(&models.AttributeOverride{}))
+
+	rows, err := repo.gormClient.Raw(`
+		SELECT
+			id, protocol, attribute_id, wwn, action, status, warn_above, fail_above, source
+		FROM attribute_overrides
+		WHERE id = 1
+	`).Rows()
+	require.NoError(t, err)
+	defer rows.Close()
+	require.True(t, rows.Next())
+
+	var (
+		id                         int64
+		protocol, attributeID, wwn string
+		action, status, source     string
+		warnAbove, failAbove       int64
+	)
+	require.NoError(t, rows.Scan(
+		&id, &protocol, &attributeID, &wwn, &action, &status, &warnAbove, &failAbove, &source,
+	))
+
+	require.Equal(t, int64(1), id)
+	require.Equal(t, "NVMe", protocol)
+	require.Equal(t, "media_errors", attributeID)
+	require.Equal(t, "wwn1", wwn)
+	require.Equal(t, "set_threshold", action)
+	require.Equal(t, "warn", status)
+	require.Equal(t, int64(10), warnAbove)
+	require.Equal(t, int64(20), failAbove)
+	require.Equal(t, "ui", source)
 }
