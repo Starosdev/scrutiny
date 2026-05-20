@@ -160,6 +160,35 @@ devices:
 #  performance_fio_bin: 'fio'  # Path to fio binary
 
 ########################################################################################################################
+# MDADM RAID Monitoring (collector-mdadm binary)
+#
+# MDADM monitoring is handled by a separate binary (`scrutiny-collector-mdadm`).
+# It is not part of the SMART metrics collector or the fio performance collector.
+#
+# Config file behavior:
+# - preferred config: /opt/scrutiny/config/collector-mdadm.yaml
+# - fallback config:  /opt/scrutiny/config/collector.yaml
+#
+# Common environment variable overrides:
+#   api.endpoint -> COLLECTOR_MDADM_API_ENDPOINT
+#   api.token    -> COLLECTOR_MDADM_API_TOKEN
+#   log.file     -> COLLECTOR_MDADM_LOG_FILE
+#   debug        -> COLLECTOR_MDADM_DEBUG
+#
+# Docker scheduling for the standalone/containerized MDADM collector:
+#   COLLECTOR_MDADM_CRON_SCHEDULE
+#   COLLECTOR_MDADM_RUN_STARTUP
+#   COLLECTOR_MDADM_RUN_STARTUP_SLEEP
+#
+# See docs/MDADM_MONITORING.md for required mounts, capabilities, compose examples,
+# and validation steps.
+########################################################################################################################
+
+#api:
+#  endpoint: 'http://localhost:8080'
+#  token: ''
+
+########################################################################################################################
 # Built-in Cron Scheduling
 #
 # The collector can run on a recurring schedule without an external cron daemon.
