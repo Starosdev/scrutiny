@@ -16,15 +16,25 @@ env:
   SECURITY_ID: "1e285fa8"
   HOTFIX_ID: "6fa8da28"
   BUG_BACKLOG_ID: "a1e615eb"
-  NEXT_SUNDAY_ID: "d3611ce7"
   BETA_SATURDAY_ID: "f0f297f5"
-  NEXT_MONTHLY_ID: "f81174b5"
-  DONE_ID: "ef84d09e"
 
 jobs:
   route-issue:
     name: Route Issue to Project
     runs-on: ubuntu-latest
+    if: >-
+      github.event.action == 'opened' ||
+      (
+        github.event.action == 'labeled' &&
+        (
+          github.event.label.name == 'bug' ||
+          github.event.label.name == 'enhancement' ||
+          github.event.label.name == 'hotfix' ||
+          github.event.label.name == 'security' ||
+          github.event.label.name == 'priority:urgent' ||
+          github.event.label.name == 'priority:high'
+        )
+      )
     steps:
       - name: Determine target column
         id: target
@@ -32,6 +42,8 @@ jobs:
           LABELS: ${{ toJson(github.event.issue.labels.*.name) }}
         run: |
           echo "Labels: $LABELS"
+          COLUMN_ID=""
+          COLUMN_NAME=""
 
           HAS_BUG=$(echo "$LABELS" | jq 'any(. == "bug")')
           HAS_ENHANCEMENT=$(echo "$LABELS" | jq 'any(. == "enhancement")')
@@ -42,55 +54,101 @@ jobs:
 
           # Priority overrides: urgent/high bugs or urgent security go to Hotfix
           if [ "$HAS_HOTFIX" = "true" ]; then
-            echo "column_id=${{ env.HOTFIX_ID }}" >> $GITHUB_OUTPUT
-            echo "column_name=Hotfix" >> $GITHUB_OUTPUT
+            COLUMN_ID="${{ env.HOTFIX_ID }}"
+            COLUMN_NAME="Hotfix"
           elif [ "$HAS_SECURITY" = "true" ] && [ "$HAS_URGENT" = "true" ]; then
-            echo "column_id=${{ env.HOTFIX_ID }}" >> $GITHUB_OUTPUT
-            echo "column_name=Hotfix (urgent security)" >> $GITHUB_OUTPUT
+            COLUMN_ID="${{ env.HOTFIX_ID }}"
+            COLUMN_NAME="Hotfix (urgent security)"
           elif [ "$HAS_BUG" = "true" ] && ([ "$HAS_URGENT" = "true" ] || [ "$HAS_HIGH" = "true" ]); then
-            echo "column_id=${{ env.HOTFIX_ID }}" >> $GITHUB_OUTPUT
-            echo "column_name=Hotfix (urgent/high bug)" >> $GITHUB_OUTPUT
+            COLUMN_ID="${{ env.HOTFIX_ID }}"
+            COLUMN_NAME="Hotfix (urgent/high bug)"
           elif [ "$HAS_SECURITY" = "true" ]; then
-            echo "column_id=${{ env.SECURITY_ID }}" >> $GITHUB_OUTPUT
-            echo "column_name=Security" >> $GITHUB_OUTPUT
+            COLUMN_ID="${{ env.SECURITY_ID }}"
+            COLUMN_NAME="Security"
           elif [ "$HAS_BUG" = "true" ]; then
-            echo "column_id=${{ env.BUG_BACKLOG_ID }}" >> $GITHUB_OUTPUT
-            echo "column_name=Bug Backlog" >> $GITHUB_OUTPUT
+            COLUMN_ID="${{ env.BUG_BACKLOG_ID }}"
+            COLUMN_NAME="Bug Backlog"
           elif [ "$HAS_ENHANCEMENT" = "true" ]; then
-            echo "column_id=${{ env.BETA_SATURDAY_ID }}" >> $GITHUB_OUTPUT
-            echo "column_name=Beta (Saturday)" >> $GITHUB_OUTPUT
+            COLUMN_ID="${{ env.BETA_SATURDAY_ID }}"
+            COLUMN_NAME="Beta (Saturday)"
           else
-            echo "column_id=${{ env.TRIAGE_ID }}" >> $GITHUB_OUTPUT
-            echo "column_name=Triage" >> $GITHUB_OUTPUT
+            COLUMN_ID="${{ env.TRIAGE_ID }}"
+            COLUMN_NAME="Triage"
           fi
 
-      - name: Add issue to project
-        id: add
+          if [ -z "$COLUMN_ID" ] || [ -z "$COLUMN_NAME" ]; then
+            echo "Failed to determine a target column" >&2
+            exit 1
+          fi
+
+          echo "column_id=$COLUMN_ID" >> $GITHUB_OUTPUT
+          echo "column_name=$COLUMN_NAME" >> $GITHUB_OUTPUT
+
+      - name: Resolve or add issue project item
+        id: item
         env:
-          GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          ITEM_ID=$(gh api graphql -f query='
-            mutation($projectId: ID!, $contentId: ID!) {
-              addProjectV2ItemById(input: {
-                projectId: $projectId
-                contentId: $contentId
-              }) {
-                item {
-                  id
+          EXISTING_ITEM_ID=$(gh api graphql -f query='
+            query($contentId: ID!) {
+              node(id: $contentId) {
+                ... on Issue {
+                  projectItems(first: 100) {
+                    nodes {
+                      id
+                      project {
+                        id
+                      }
+                    }
+                  }
                 }
               }
             }' \
-            -f projectId="${{ env.PROJECT_ID }}" \
             -f contentId="${{ github.event.issue.node_id }}" \
-            --jq '.data.addProjectV2ItemById.item.id')
+            --jq '.data.node.projectItems.nodes[]? | select(.project.id == "'"${{ env.PROJECT_ID }}"'") | .id' | head -n 1)
+
+          ITEM_ID="$EXISTING_ITEM_ID"
+          if [ -n "$ITEM_ID" ]; then
+            echo "Issue #${{ github.event.issue.number }} is already in the project (item: $ITEM_ID)"
+          else
+            ITEM_ID=$(gh api graphql -f query='
+              mutation($projectId: ID!, $contentId: ID!) {
+                addProjectV2ItemById(input: {
+                  projectId: $projectId
+                  contentId: $contentId
+                }) {
+                  item {
+                    id
+                  }
+                }
+              }' \
+              -f projectId="${{ env.PROJECT_ID }}" \
+              -f contentId="${{ github.event.issue.node_id }}" \
+              --jq '.data.addProjectV2ItemById.item.id')
+            echo "Added issue #${{ github.event.issue.number }} to project (item: $ITEM_ID)"
+          fi
+
+          if [ -z "$ITEM_ID" ] || [ "$ITEM_ID" = "null" ]; then
+            echo "Failed to resolve a project item id for issue #${{ github.event.issue.number }}" >&2
+            exit 1
+          fi
 
           echo "item_id=$ITEM_ID" >> $GITHUB_OUTPUT
-          echo "Added issue #${{ github.event.issue.number }} to project (item: $ITEM_ID)"
 
       - name: Set status column
         env:
-          GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
+          if [ -z "${{ steps.item.outputs.item_id }}" ]; then
+            echo "Project item id is empty; refusing to update status" >&2
+            exit 1
+          fi
+
+          if [ -z "${{ steps.target.outputs.column_id }}" ]; then
+            echo "Target status option id is empty; refusing to update status" >&2
+            exit 1
+          fi
+
           gh api graphql -f query='
             mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
               updateProjectV2ItemFieldValue(input: {
@@ -105,7 +163,7 @@ jobs:
               }
             }' \
             -f projectId="${{ env.PROJECT_ID }}" \
-            -f itemId="${{ steps.add.outputs.item_id }}" \
+            -f itemId="${{ steps.item.outputs.item_id }}" \
             -f fieldId="${{ env.STATUS_FIELD_ID }}" \
             -f optionId="${{ steps.target.outputs.column_id }}"
 
