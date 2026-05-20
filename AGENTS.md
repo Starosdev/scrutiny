@@ -52,4 +52,12 @@ Choose checks based on the files touched:
 - Frontend lint and type checks: `npm --prefix webapp/frontend run lint` and `npm --prefix webapp/frontend run build`
 - Container or packaging changes: run the narrowest relevant `docker compose` or build command that exercises the edited path
 
+For live Zeus testing verification:
+
+- Use the documented Unraid SSH key path: `$HOME/Library/Mobile Documents/com~apple~CloudDocs/Servers/SSH Keys/zeus_unraid`
+- Connect with `ssh -i "$KEY" -o IdentitiesOnly=yes root@192.168.1.33`
+- Operate the live Scrutiny testing stack from `/mnt/user/appdata/scrutiny-dev`
+- The testing image tag is `ghcr.io/starosdev/scrutiny:develop-omnibus`
+- Use `/web/...` routes for browser validation against the Zeus test instance
+
 If a command cannot be run, state why and identify the remaining risk.
