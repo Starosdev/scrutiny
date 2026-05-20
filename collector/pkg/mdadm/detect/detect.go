@@ -2,6 +2,8 @@ package detect
 
 import (
 	"bufio"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -116,6 +118,10 @@ func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMet
 		} else {
 			array.UUID = exportUUID
 		}
+	}
+	if err == nil && strings.TrimSpace(array.UUID) == "" {
+		array.UUID = d.syntheticArrayID(name)
+		d.Logger.Warnf("Using synthetic MDADM identifier for %s because mdadm did not expose a UUID", devicePath)
 	}
 	if err == nil {
 		rawMdstat, _ := d.getRawMdstat(name)
@@ -280,4 +286,17 @@ func parseMdadmExportUUID(output string) string {
 		}
 	}
 	return ""
+}
+
+func (d *Detect) syntheticArrayID(name string) string {
+	hostID := ""
+	if d.Config != nil {
+		hostID = strings.TrimSpace(d.Config.GetString("host.id"))
+	}
+	if hostID == "" {
+		hostID = "unknown-host"
+	}
+
+	sum := sha1.Sum([]byte(hostID + "\n" + name))
+	return "synthetic:" + hex.EncodeToString(sum[:])
 }

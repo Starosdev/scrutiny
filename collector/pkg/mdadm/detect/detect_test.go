@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/analogj/scrutiny/collector/pkg/config"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -148,4 +149,32 @@ MD_DEVICES=2
 MD_METADATA=1.2`
 
 	assert.Equal(t, "", parseMdadmExportUUID(output))
+}
+
+func TestSyntheticArrayIDUsesHostIDAndName(t *testing.T) {
+	cfg, err := config.Create()
+	require.NoError(t, err)
+	cfg.Set("host.id", "Xpenology")
+
+	d := &Detect{
+		Logger: logrus.NewEntry(logrus.New()),
+		Config: cfg,
+	}
+
+	id1 := d.syntheticArrayID("md4")
+	id2 := d.syntheticArrayID("md4")
+	id3 := d.syntheticArrayID("md5")
+
+	assert.Equal(t, id1, id2)
+	assert.NotEqual(t, id1, id3)
+	assert.Regexp(t, `^synthetic:[a-f0-9]{40}$`, id1)
+}
+
+func TestSyntheticArrayIDFallsBackWhenHostIDMissing(t *testing.T) {
+	d := &Detect{
+		Logger: logrus.NewEntry(logrus.New()),
+	}
+
+	id := d.syntheticArrayID("md4")
+	assert.Regexp(t, `^synthetic:[a-f0-9]{40}$`, id)
 }
