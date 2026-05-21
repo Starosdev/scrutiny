@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.59.0](https://github.com/Starosdev/scrutiny/compare/v1.58.2...v1.59.0) (2026-05-21)
+
+### Features
+
+* **notify:** add Apprise notification support and bug fixes ([#550](https://github.com/Starosdev/scrutiny/issues/550)) ([816d880](https://github.com/Starosdev/scrutiny/commit/816d88018c21bc75e64761620cfb25a44e86ca7d))
+
 ## [1.58.2](https://github.com/Starosdev/scrutiny/compare/v1.58.1...v1.58.2) (2026-05-20)
 
 ### Bug Fixes
