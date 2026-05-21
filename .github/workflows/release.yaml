@@ -177,6 +177,7 @@ jobs:
           path: |
             scrutiny-web-*
             scrutiny-collector-metrics-*
+            scrutiny-collector-mdadm-*
             scrutiny-collector-zfs-*
             scrutiny-collector-btrfs-*
             scrutiny-collector-performance-*
