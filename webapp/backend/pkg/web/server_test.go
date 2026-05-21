@@ -66,6 +66,14 @@ func helperCreateAPIDocsFiles(t *testing.T, docsPath string) {
 	require.NoError(t, err)
 }
 
+func helperCreateExecutable(t *testing.T, dir, name, content string) string {
+	t.Helper()
+	executablePath := path.Join(dir, name)
+	err := os.WriteFile(executablePath, []byte(content), 0755)
+	require.NoError(t, err)
+	return executablePath
+}
+
 // InfluxDB will throw an error/ignore any submitted data with a timestamp older than the
 // retention period. Lets fix this by opening test files, modifying the timestamp and returning an io.Reader
 func helperReadSmartDataFileFixTimestamp(t *testing.T, smartDataFilepath string) io.Reader {
@@ -880,6 +888,130 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_ShoutrrrFailure() {
 	router.ServeHTTP(wr, req)
 
 	//assert
+	require.Equal(suite.T(), 500, wr.Code)
+}
+
+func (suite *ServerTestSuite) TestSendTestNotificationRoute_AppriseSuccess() {
+	parentPath, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(parentPath)
+	helperCreateFrontendFiles(suite.T(), parentPath)
+
+	binDir := path.Join(parentPath, "bin")
+	err := os.MkdirAll(binDir, 0755)
+	require.NoError(suite.T(), err)
+	helperCreateExecutable(suite.T(), binDir, "apprise", "#!/bin/sh\ncat >/dev/null\nexit 0\n")
+	suite.T().Setenv("PATH", binDir+":"+os.Getenv("PATH"))
+
+	mockCtrl := gomock.NewController(suite.T())
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().SetDefault(gomock.Any(), gomock.Any()).AnyTimes()
+	fakeConfig.EXPECT().UnmarshalKey(gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
+	fakeConfig.EXPECT().GetString("web.database.location").AnyTimes().Return(path.Join(parentPath, "scrutiny_test.db"))
+	fakeConfig.EXPECT().GetString("web.database.journal_mode").Return("WAL").AnyTimes()
+	fakeConfig.EXPECT().GetString("log.level").Return("INFO").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.src.frontend.path").AnyTimes().Return(parentPath)
+	fakeConfig.EXPECT().GetString("web.listen.basepath").Return(suite.Basepath).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.metrics.token").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.scheme").Return("http").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.port").Return("8086").AnyTimes()
+	fakeConfig.EXPECT().IsSet("web.influxdb.token").Return(true).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.token").Return("my-super-secret-auth-token").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.org").Return("scrutiny").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.bucket").Return("metrics").AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.influxdb.tls.insecure_skip_verify").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.influxdb.retention_policy").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+	fakeConfig.EXPECT().GetStringSlice("notify.urls").AnyTimes().Return([]string{"apprise+mailto://example.com?to=alerts@example.com"})
+	fakeConfig.EXPECT().GetString("notify.urls").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.notify_level", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsNotifyLevelFail))
+	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_filter_attributes", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusFilterAttributesAll))
+	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_threshold", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusThresholdBoth))
+
+	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
+		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
+	} else {
+		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
+	}
+
+	ae := web.AppEngine{Config: fakeConfig}
+	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
+
+	wr := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", suite.Basepath+"/api/health/notify", strings.NewReader("{}"))
+	router.ServeHTTP(wr, req)
+
+	require.Equal(suite.T(), 200, wr.Code)
+}
+
+func (suite *ServerTestSuite) TestSendTestNotificationRoute_AppriseFailure() {
+	parentPath, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(parentPath)
+	helperCreateFrontendFiles(suite.T(), parentPath)
+
+	binDir := path.Join(parentPath, "bin")
+	err := os.MkdirAll(binDir, 0755)
+	require.NoError(suite.T(), err)
+	helperCreateExecutable(suite.T(), binDir, "apprise", "#!/bin/sh\necho 'simulated apprise failure' >&2\nexit 1\n")
+	suite.T().Setenv("PATH", binDir+":"+os.Getenv("PATH"))
+
+	mockCtrl := gomock.NewController(suite.T())
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().SetDefault(gomock.Any(), gomock.Any()).AnyTimes()
+	fakeConfig.EXPECT().UnmarshalKey(gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
+	fakeConfig.EXPECT().GetString("web.database.location").AnyTimes().Return(path.Join(parentPath, "scrutiny_test.db"))
+	fakeConfig.EXPECT().GetString("web.database.journal_mode").Return("WAL").AnyTimes()
+	fakeConfig.EXPECT().GetString("log.level").Return("INFO").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.src.frontend.path").AnyTimes().Return(parentPath)
+	fakeConfig.EXPECT().GetString("web.listen.basepath").Return(suite.Basepath).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.docs.public").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.metrics.token").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.scheme").Return("http").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.port").Return("8086").AnyTimes()
+	fakeConfig.EXPECT().IsSet("web.influxdb.token").Return(true).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.token").Return("my-super-secret-auth-token").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.org").Return("scrutiny").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.bucket").Return("metrics").AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.influxdb.tls.insecure_skip_verify").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.influxdb.retention_policy").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+	fakeConfig.EXPECT().GetStringSlice("notify.urls").AnyTimes().Return([]string{"apprise+mailto://example.com?to=alerts@example.com"})
+	fakeConfig.EXPECT().GetString("notify.urls").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.notify_level", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsNotifyLevelFail))
+	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_filter_attributes", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusFilterAttributesAll))
+	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_threshold", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusThresholdBoth))
+
+	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
+		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
+	} else {
+		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
+	}
+
+	ae := web.AppEngine{Config: fakeConfig}
+	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
+
+	wr := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", suite.Basepath+"/api/health/notify", strings.NewReader("{}"))
+	router.ServeHTTP(wr, req)
+
 	require.Equal(suite.T(), 500, wr.Code)
 }
 

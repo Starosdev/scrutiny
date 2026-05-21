@@ -307,8 +307,9 @@ failures:
 #      warn_above: 80
 #      fail_above: 95
 
-# Notification "urls" look like the following. For more information about service specific configuration see
-# Shoutrrr's documentation: https://nicholas-fedor.github.io/shoutrrr/
+# Notification "urls" support Shoutrrr, Apprise, custom scripts, and raw webhooks.
+# Shoutrrr documentation: https://nicholas-fedor.github.io/shoutrrr/
+# Apprise documentation: https://appriseit.com/
 #
 # note, usernames and passwords containing special characters will need to be urlencoded.
 # if your username is: "myname@example.com" and your password is "124@34$1"
@@ -335,6 +336,11 @@ failures:
 #    - "join://shoutrrr:api-key@join/?devices=device1[,device2, ...][&icon=icon][&title=title]"
 #    - "script:///file/path/on/disk"
 #    - "https://www.example.com/path"
+#    # Apprise targets must be explicit and prefixed with apprise+
+#    - "apprise+mailto://example.com?user=alerts@example.com&pass=app-password&to=admin@example.com"
+#    - "apprise+https://discord.com/api/webhooks/123/token"
+#    - "apprise+https://hooks.slack.com/services/T000/B000/XXXX"
+#    - "apprise+tgram://123456789:ABCDEF/123456789/"
 
 ######################################################################
 # Collector Monitoring (Missed Ping Detection)

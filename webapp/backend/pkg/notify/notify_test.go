@@ -1,8 +1,13 @@
 package notify
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,6 +20,14 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
+
+func writeExecutable(t *testing.T, dir, name, content string) string {
+	t.Helper()
+	scriptPath := filepath.Join(dir, name)
+	err := os.WriteFile(scriptPath, []byte(content), 0755)
+	require.NoError(t, err)
+	return scriptPath
+}
 
 func TestShouldNotify_MustSkipPassingDevices(t *testing.T) {
 	t.Parallel()
@@ -681,4 +694,176 @@ func TestNormalizeGotifyURL_NonGotifyURL_NoChange(t *testing.T) {
 	t.Parallel()
 	raw := "slack://token-a/token-b/token-c"
 	require.Equal(t, raw, normalizeGotifyURL(raw))
+}
+
+func TestMaskNotifyUrl_AppriseNestedURL(t *testing.T) {
+	raw := "apprise+mailto://user:pass@example.com?to=alerts@example.com"
+	require.Equal(t, "apprise+mailto://***:***@example.com?to=alerts%40example.com", MaskNotifyUrl(raw))
+}
+
+func TestMaskNotifyUrl_AppriseMailtoQueryCredentials(t *testing.T) {
+	raw := "apprise+mailtos://example.com?smtp=smtp.example.com&from=alerts@example.com&to=admin@example.com&user=alerts@example.com&pass=secret"
+	require.Equal(t, "apprise+mailtos://example.com?from=alerts%40example.com&pass=***&smtp=smtp.example.com&to=admin%40example.com&user=***", MaskNotifyUrl(raw))
+}
+
+func TestMaskNotifyUrl_AppriseDiscordWebhook(t *testing.T) {
+	raw := "apprise+https://discord.com/api/webhooks/123456789/token-secret"
+	require.Equal(t, "apprise+https://discord.com/api/webhooks/123456789/***", MaskNotifyUrl(raw))
+}
+
+func TestMaskNotifyUrl_AppriseSlackWebhook(t *testing.T) {
+	raw := "apprise+https://hooks.slack.com/services/T000/B000/SECRET"
+	require.Equal(t, "apprise+https://hooks.slack.com/services/***/***/***", MaskNotifyUrl(raw))
+}
+
+func TestMaskNotifyUrl_AppriseTelegram(t *testing.T) {
+	raw := "apprise+tgram://123456789:ABCDEF/12345/"
+	require.Equal(t, "apprise+tgram://***/12345/", MaskNotifyUrl(raw))
+}
+
+func TestSendAppriseNotification_Text(t *testing.T) {
+	tempDir := t.TempDir()
+	argsPath := filepath.Join(tempDir, "args.txt")
+	bodyPath := filepath.Join(tempDir, "body.txt")
+	scriptPath := writeExecutable(t, tempDir, "mock-apprise.sh", "#!/bin/sh\nprintf '%s\n' \"$@\" > \"$SCRUTINY_ARGS_PATH\"\ncat > \"$SCRUTINY_BODY_PATH\"\n")
+
+	originalExec := execCommandContext
+	execCommandContext = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		cmd := exec.CommandContext(ctx, scriptPath, args...)
+		cmd.Env = append(os.Environ(),
+			"SCRUTINY_ARGS_PATH="+argsPath,
+			"SCRUTINY_BODY_PATH="+bodyPath,
+		)
+		return cmd
+	}
+	t.Cleanup(func() {
+		execCommandContext = originalExec
+	})
+
+	notify := &Notify{
+		Logger: logrus.StandardLogger(),
+		Payload: Payload{
+			Subject: "Scrutiny test",
+			Message: "plain text body",
+		},
+	}
+
+	err := notify.SendAppriseNotification("apprise+mailto://example.com?to=alerts@example.com")
+	require.NoError(t, err)
+
+	argsData, err := os.ReadFile(argsPath)
+	require.NoError(t, err)
+	bodyData, err := os.ReadFile(bodyPath)
+	require.NoError(t, err)
+
+	require.Equal(t, "plain text body", string(bodyData))
+	require.Contains(t, string(argsData), "--title")
+	require.Contains(t, string(argsData), "Scrutiny test")
+	require.Contains(t, string(argsData), "--input-format")
+	require.Contains(t, string(argsData), "text")
+	require.Contains(t, string(argsData), "mailto://example.com?to=alerts@example.com")
+	require.NotContains(t, string(argsData), "apprise+mailto://")
+}
+
+func TestSendAppriseNotification_HTML(t *testing.T) {
+	tempDir := t.TempDir()
+	argsPath := filepath.Join(tempDir, "args.txt")
+	bodyPath := filepath.Join(tempDir, "body.txt")
+	scriptPath := writeExecutable(t, tempDir, "mock-apprise.sh", "#!/bin/sh\nprintf '%s\n' \"$@\" > \"$SCRUTINY_ARGS_PATH\"\ncat > \"$SCRUTINY_BODY_PATH\"\n")
+
+	originalExec := execCommandContext
+	execCommandContext = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		cmd := exec.CommandContext(ctx, scriptPath, args...)
+		cmd.Env = append(os.Environ(),
+			"SCRUTINY_ARGS_PATH="+argsPath,
+			"SCRUTINY_BODY_PATH="+bodyPath,
+		)
+		return cmd
+	}
+	t.Cleanup(func() {
+		execCommandContext = originalExec
+	})
+
+	notify := &Notify{
+		Logger: logrus.StandardLogger(),
+		Payload: Payload{
+			Subject:     "Scrutiny HTML test",
+			Message:     "plain text body",
+			HTMLMessage: "<p>html body</p>",
+		},
+	}
+
+	err := notify.SendAppriseNotification("apprise+discord://123/abc")
+	require.NoError(t, err)
+
+	argsData, err := os.ReadFile(argsPath)
+	require.NoError(t, err)
+	bodyData, err := os.ReadFile(bodyPath)
+	require.NoError(t, err)
+
+	require.Equal(t, "<p>html body</p>", string(bodyData))
+	require.Contains(t, string(argsData), "html")
+	require.Contains(t, string(argsData), "discord://123/abc")
+}
+
+func TestSendAppriseNotification_Failure(t *testing.T) {
+	tempDir := t.TempDir()
+	scriptPath := writeExecutable(t, tempDir, "mock-apprise-fail.sh", "#!/bin/sh\necho 'failed to send' >&2\nexit 1\n")
+
+	originalExec := execCommandContext
+	execCommandContext = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		return exec.CommandContext(ctx, scriptPath, args...)
+	}
+	t.Cleanup(func() {
+		execCommandContext = originalExec
+	})
+
+	notify := &Notify{
+		Logger: logrus.StandardLogger(),
+		Payload: Payload{
+			Subject: "Scrutiny fail test",
+			Message: "plain text body",
+		},
+	}
+
+	err := notify.SendAppriseNotification("apprise+mailto://example.com")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to send Apprise notification")
+	require.Contains(t, err.Error(), "failed to send")
+}
+
+func TestSendToUrls_AppriseAndScript(t *testing.T) {
+	tempDir := t.TempDir()
+	scriptNotifyPath := writeExecutable(t, tempDir, "notify-script.sh", "#!/bin/sh\nexit 0\n")
+	appriseLogPath := filepath.Join(tempDir, "apprise-targets.txt")
+	appriseScriptPath := writeExecutable(t, tempDir, "mock-apprise.sh", "#!/bin/sh\nprintf '%s\n' \"$@\" > \"$SCRUTINY_ARGS_PATH\"\ncat >/dev/null\n")
+
+	originalExec := execCommandContext
+	execCommandContext = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		cmd := exec.CommandContext(ctx, appriseScriptPath, args...)
+		cmd.Env = append(os.Environ(), "SCRUTINY_ARGS_PATH="+appriseLogPath)
+		return cmd
+	}
+	t.Cleanup(func() {
+		execCommandContext = originalExec
+	})
+
+	notify := &Notify{
+		Logger: logrus.StandardLogger(),
+		Payload: Payload{
+			Subject: "Scrutiny mix test",
+			Message: "plain text body",
+		},
+	}
+
+	err := notify.SendToUrls([]string{
+		"apprise+mailto://example.com?to=alerts@example.com",
+		"script://" + scriptNotifyPath,
+	})
+	require.NoError(t, err)
+
+	argsData, err := os.ReadFile(appriseLogPath)
+	require.NoError(t, err)
+	require.Contains(t, string(argsData), "mailto://example.com?to=alerts@example.com")
+	require.False(t, strings.Contains(string(argsData), "script://"))
 }

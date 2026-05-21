@@ -515,6 +515,7 @@ Overrides apply at the next SMART data collection. Device status is recalculated
 
 Scrutiny supports sending SMART device failure notifications via the following services:
 - Custom Script (data provided via environmental variables)
+- Apprise-compatible targets with an explicit `apprise+` prefix
 - Email
 - Webhooks
 - Discord
@@ -530,6 +531,8 @@ Scrutiny supports sending SMART device failure notifications via the following s
 - Teams
 - Telegram
 - Tulip
+
+Shoutrrr targets keep their existing URL syntax. Apprise targets must be explicit and prefixed with `apprise+`, for example `apprise+mailto://...` or `apprise+https://discord.com/api/webhooks/...`.
 
 Check the `notify.urls` section of [example.scrutiny.yml](example.scrutiny.yaml) for examples.
 

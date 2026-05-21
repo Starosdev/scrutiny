@@ -157,8 +157,11 @@ export class DashboardSettingsComponent implements OnInit {
     notifyUrls: NotifyUrlEntry[] = [];
     notifyUrlColumns: string[] = ['label', 'url', 'source', 'actions'];
     showAddUrlForm = false;
-    selectedService: 'custom' | 'smtp' | 'discord' | 'slack' | 'telegram' = 'custom';
+    selectedEngine: 'shoutrrr' | 'apprise' = 'shoutrrr';
+    selectedShoutrrrService: 'custom' | 'smtp' | 'discord' | 'slack' | 'telegram' = 'custom';
+    selectedAppriseService: 'custom' | 'email' | 'discord' | 'slack' | 'telegram' = 'custom';
     newUrlRaw = '';
+    newAppriseUrlRaw = '';
     newUrlLabel = '';
     // SMTP fields
     smtpHost = '';
@@ -363,7 +366,7 @@ export class DashboardSettingsComponent implements OnInit {
     }
 
     buildShoutrrrUrl(): string {
-        switch (this.selectedService) {
+        switch (this.selectedShoutrrrService) {
             case 'custom':
                 return this.newUrlRaw.trim();
             case 'smtp': {
@@ -390,8 +393,52 @@ export class DashboardSettingsComponent implements OnInit {
         }
     }
 
+    buildAppriseUrl(): string {
+        switch (this.selectedAppriseService) {
+            case 'custom': {
+                const rawUrl = this.newAppriseUrlRaw.trim();
+                if (!rawUrl) {
+                    return '';
+                }
+                return rawUrl.startsWith('apprise+') ? rawUrl : `apprise+${rawUrl}`;
+            }
+            case 'email': {
+                if (!this.smtpHost || !this.smtpFrom || !this.smtpTo) {
+                    return '';
+                }
+                const fromDomain = this.smtpFrom.includes('@') ? this.smtpFrom.split('@').pop() : '';
+                const domain = fromDomain || this.smtpHost;
+                const scheme = this.smtpPort === '25' ? 'mailto' : 'mailtos';
+                const params = new URLSearchParams();
+                params.set('smtp', this.smtpHost);
+                params.set('from', this.smtpFrom);
+                params.set('to', this.smtpTo);
+                if (this.smtpUsername) {
+                    params.set('user', this.smtpUsername);
+                }
+                if (this.smtpPassword) {
+                    params.set('pass', this.smtpPassword);
+                }
+                const port = this.smtpPort ? `:${this.smtpPort}` : '';
+                return `apprise+${scheme}://${domain}${port}?${params.toString()}`;
+            }
+            case 'discord':
+                return this.discordWebhookUrl.trim() ? `apprise+${this.discordWebhookUrl.trim()}` : '';
+            case 'slack':
+                return this.slackWebhookUrl.trim() ? `apprise+${this.slackWebhookUrl.trim()}` : '';
+            case 'telegram':
+                return this.telegramToken && this.telegramChatId ? `apprise+tgram://${this.telegramToken}/${this.telegramChatId}/` : '';
+            default:
+                return '';
+        }
+    }
+
+    buildNotifyUrl(): string {
+        return this.selectedEngine === 'apprise' ? this.buildAppriseUrl() : this.buildShoutrrrUrl();
+    }
+
     addNotifyUrl(): void {
-        const url = this.buildShoutrrrUrl();
+        const url = this.buildNotifyUrl();
         if (!url) {
             return;
         }
@@ -408,8 +455,11 @@ export class DashboardSettingsComponent implements OnInit {
     }
 
     resetAddForm(): void {
-        this.selectedService = 'custom';
+        this.selectedEngine = 'shoutrrr';
+        this.selectedShoutrrrService = 'custom';
+        this.selectedAppriseService = 'custom';
         this.newUrlRaw = '';
+        this.newAppriseUrlRaw = '';
         this.newUrlLabel = '';
         this.smtpHost = '';
         this.smtpPort = '587';
