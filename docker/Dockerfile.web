@@ -26,7 +26,11 @@ EXPOSE 8080
 WORKDIR /opt/scrutiny
 ENV PATH="/opt/scrutiny/bin:${PATH}"
 
-RUN apt-get update && apt-get install -y ca-certificates curl tzdata && rm -rf /var/lib/apt/lists/* && update-ca-certificates
+RUN apt-get update && apt-get install -y ca-certificates curl python3 python3-venv tzdata && rm -rf /var/lib/apt/lists/* && update-ca-certificates
+RUN mkdir -p /opt/scrutiny/bin && \
+    python3 -m venv /opt/scrutiny/apprise-venv && \
+    /opt/scrutiny/apprise-venv/bin/pip install --no-cache-dir apprise && \
+    ln -sf /opt/scrutiny/apprise-venv/bin/apprise /opt/scrutiny/bin/apprise
 
 COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny /opt/scrutiny/bin/
 COPY --link --from=frontendbuild --chmod=644 /go/src/github.com/analogj/scrutiny/webapp/frontend/dist/treo/browser /opt/scrutiny/web

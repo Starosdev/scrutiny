@@ -42,6 +42,8 @@ RUN sed -i 's/Components: main/Components: main contrib/' /etc/apt/sources.list.
     ca-certificates \
     cron \
     curl \
+    python3 \
+    python3-venv \
     tzdata \
     procps \
     xz-utils \
@@ -71,6 +73,10 @@ RUN sed -i 's/Components: main/Components: main contrib/' /etc/apt/sources.list.
            "amd64")  S6_ARCH=x86_64  ;; \
            "arm64")  S6_ARCH=aarch64  ;; \
        esac \
+    && mkdir -p /opt/scrutiny/bin \
+    && python3 -m venv /opt/scrutiny/apprise-venv \
+    && /opt/scrutiny/apprise-venv/bin/pip install --no-cache-dir apprise \
+    && ln -sf /opt/scrutiny/apprise-venv/bin/apprise /opt/scrutiny/bin/apprise \
     && download_and_extract_xz \
         "https://github.com/just-containers/s6-overlay/releases/download/v${S6VER}/s6-overlay-noarch.tar.xz" \
         /tmp/s6-overlay-noarch.tar.xz \

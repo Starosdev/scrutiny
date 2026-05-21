@@ -95,6 +95,7 @@ paths:
     post:
       tags: [Health]
       summary: Send a test notification through configured notify URLs
+      description: Routes through the same configured notification targets used by Scrutiny events, including Shoutrrr URLs, explicit apprise+ targets, script:// targets, and raw http(s) webhooks.
       responses:
         "200":
           $ref: "#/components/responses/SuccessResponse"
@@ -749,6 +750,7 @@ paths:
           application/json:
             schema:
               type: object
+              description: URL may be a Shoutrrr target, an explicit Apprise target prefixed with apprise+, a script:// target, or a raw http(s) webhook.
               properties:
                 url:
                   type: string
@@ -788,6 +790,7 @@ paths:
     post:
       tags: [Settings]
       summary: Send a test notification to one UI-managed notification URL
+      description: Uses the same routing logic as normal notifications, including explicit apprise+ targets.
       parameters:
         - $ref: "#/components/parameters/NumericId"
       responses:
@@ -1814,6 +1817,7 @@ components:
           format: date-time
     NotifyUrl:
       type: object
+      description: Notification target stored by Scrutiny. URLs may use existing Shoutrrr syntax, an explicit Apprise target prefixed with apprise+, script://, or raw http(s) webhooks.
       properties:
         id:
           type: integer

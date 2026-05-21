@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -21,9 +22,9 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
+	"github.com/gin-gonic/gin"
 	"github.com/nicholas-fedor/shoutrrr"
 	shoutrrrTypes "github.com/nicholas-fedor/shoutrrr/pkg/types"
-	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -45,6 +46,12 @@ const NotifyFailureTypePerformanceDegradation = "PerformanceDegradation"
 const NotifyFailureTypeReport = "Report"
 const NotifyFailureTypeCollectorError = "CollectorError"
 const NotifyFailureTypeReplacementRisk = "ReplacementRisk"
+const AppriseURLPrefix = "apprise+"
+
+const appriseCommandName = "apprise"
+const appriseCommandTimeout = 30 * time.Second
+
+var execCommandContext = exec.CommandContext
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
 func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *measurements.Smart, notifyLevel pkg.MetricsNotifyLevel, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, wwn string, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
@@ -176,12 +183,12 @@ func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *
 }
 
 type Payload struct {
-	HostId       string `json:"host_id,omitempty"`    //host id (optional)
-	DeviceType   string `json:"device_type"`          //ATA/SCSI/NVMe
-	DeviceName   string `json:"device_name"`          //dev/sda
-	DeviceSerial string `json:"device_serial"`        //WDDJ324KSO
+	HostId       string `json:"host_id,omitempty"`      // host id (optional)
+	DeviceType   string `json:"device_type"`            // ATA/SCSI/NVMe
+	DeviceName   string `json:"device_name"`            // dev/sda
+	DeviceSerial string `json:"device_serial"`          // WDDJ324KSO
 	DeviceLabel  string `json:"device_label,omitempty"` //user-provided label (optional)
-	Test         bool   `json:"test"`                 // false
+	Test         bool   `json:"test"`                   // false
 
 	//private, populated during init (marked as Public for JSON serialization)
 	Date        string `json:"date"`         //populated by Send function.
@@ -380,15 +387,26 @@ func normalizeGotifyURL(rawURL string) string {
 	return parsed.String()
 }
 
+func IsAppriseURL(rawURL string) bool {
+	return strings.HasPrefix(rawURL, AppriseURLPrefix)
+}
+
+func StripApprisePrefix(rawURL string) string {
+	return strings.TrimPrefix(rawURL, AppriseURLPrefix)
+}
+
 // sendToUrls routes URLs to the appropriate sender (webhook, script, or shoutrrr)
 // and dispatches them in parallel.
 func (n *Notify) sendToUrls(urls []string) error {
+	notifyApprise := []string{}
 	notifyWebhooks := []string{}
 	notifyScripts := []string{}
 	notifyShoutrrr := []string{}
 
 	for _, u := range urls {
 		switch {
+		case IsAppriseURL(u):
+			notifyApprise = append(notifyApprise, u)
 		case strings.HasPrefix(u, "https://"), strings.HasPrefix(u, "http://"):
 			notifyWebhooks = append(notifyWebhooks, u)
 		case strings.HasPrefix(u, "script://"):
@@ -399,12 +417,17 @@ func (n *Notify) sendToUrls(urls []string) error {
 		}
 	}
 
+	n.Logger.Debugf("Configured Apprise URLs: %v", notifyApprise)
 	n.Logger.Debugf("Configured scripts: %v", notifyScripts)
 	n.Logger.Debugf("Configured webhooks: %v", notifyWebhooks)
 	n.Logger.Debugf("Configured shoutrrr: %v", notifyShoutrrr)
 
 	var eg errgroup.Group
 
+	for _, u := range notifyApprise {
+		targetUrl := u
+		eg.Go(func() error { return n.SendAppriseNotification(targetUrl) })
+	}
 	for _, u := range notifyWebhooks {
 		targetUrl := u
 		eg.Go(func() error { return n.SendWebhookNotification(targetUrl) })
@@ -427,6 +450,50 @@ func (n *Notify) sendToUrls(urls []string) error {
 		n.Logger.Error("One or more notifications failed to send successfully. See logs for more information.")
 		return err
 	}
+}
+
+func (n *Notify) SendAppriseNotification(rawURL string) error {
+	targetURL := StripApprisePrefix(rawURL)
+	body := n.Payload.Message
+	bodyFormat := "text"
+	if n.Payload.HTMLMessage != "" {
+		body = n.Payload.HTMLMessage
+		bodyFormat = "html"
+	}
+
+	n.Logger.Infof("Sending Apprise notification to %s", targetURL)
+
+	ctx, cancel := context.WithTimeout(context.Background(), appriseCommandTimeout)
+	defer cancel()
+
+	args := []string{
+		"--title", n.Payload.Subject,
+		"--input-format", bodyFormat,
+		targetURL,
+	}
+	cmd := execCommandContext(ctx, appriseCommandName, args...)
+	cmd.Stdin = strings.NewReader(body)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return fmt.Errorf("apprise notification timed out after %s for %s", appriseCommandTimeout, targetURL)
+		}
+		output := strings.TrimSpace(strings.Join([]string{
+			strings.TrimSpace(stderr.String()),
+			strings.TrimSpace(stdout.String()),
+		}, "\n"))
+		if output == "" {
+			return fmt.Errorf("failed to send Apprise notification to %s: %w", targetURL, err)
+		}
+		return fmt.Errorf("failed to send Apprise notification to %s: %w: %s", targetURL, err, output)
+	}
+
+	return nil
 }
 
 func (n *Notify) SendWebhookNotification(webhookUrl string) error {

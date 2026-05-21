@@ -629,18 +629,36 @@
                     </mat-form-field>
 
                     <mat-form-field class="w-full mb-2">
+                        <mat-label>Engine</mat-label>
+                        <mat-select [(ngModel)]="selectedEngine">
+                            <mat-option value="shoutrrr">Shoutrrr</mat-option>
+                            <mat-option value="apprise">Apprise</mat-option>
+                        </mat-select>
+                    </mat-form-field>
+
+                    <mat-form-field class="w-full mb-2">
                         <mat-label>Service</mat-label>
-                        <mat-select [(ngModel)]="selectedService">
+                        @if (selectedEngine === 'shoutrrr') {
+                        <mat-select [(ngModel)]="selectedShoutrrrService">
                             <mat-option value="custom">Custom Shoutrrr URL</mat-option>
                             <mat-option value="smtp">SMTP Email</mat-option>
                             <mat-option value="discord">Discord</mat-option>
                             <mat-option value="slack">Slack</mat-option>
                             <mat-option value="telegram">Telegram</mat-option>
                         </mat-select>
+                        }
+                        @if (selectedEngine === 'apprise') {
+                        <mat-select [(ngModel)]="selectedAppriseService">
+                            <mat-option value="custom">Custom Apprise URL</mat-option>
+                            <mat-option value="email">Email</mat-option>
+                            <mat-option value="discord">Discord</mat-option>
+                            <mat-option value="slack">Slack</mat-option>
+                            <mat-option value="telegram">Telegram</mat-option>
+                        </mat-select>
+                        }
                     </mat-form-field>
 
-                    <!-- Custom URL -->
-                    @if (selectedService === 'custom') {
+                    @if (selectedEngine === 'shoutrrr' && selectedShoutrrrService === 'custom') {
                     <div>
                         <mat-form-field class="w-full">
                             <mat-label>Shoutrrr URL</mat-label>
@@ -650,8 +668,20 @@
                     </div>
                     }
 
-                    <!-- SMTP -->
-                    @if (selectedService === 'smtp') {
+                    @if (selectedEngine === 'apprise' && selectedAppriseService === 'custom') {
+                    <div>
+                        <mat-form-field class="w-full">
+                            <mat-label>Apprise URL</mat-label>
+                            <input matInput [(ngModel)]="newAppriseUrlRaw" placeholder="e.g. mailto://example.com?to=alerts@example.com" />
+                            <mat-hint>Enter a raw Apprise target URL. Scrutiny stores it with an explicit apprise+ prefix.</mat-hint>
+                        </mat-form-field>
+                    </div>
+                    }
+
+                    @if (
+                        (selectedEngine === 'shoutrrr' && selectedShoutrrrService === 'smtp') ||
+                        (selectedEngine === 'apprise' && selectedAppriseService === 'email')
+                    ) {
                     <div class="flex flex-wrap gap-4">
                         <mat-form-field class="flex-1 min-w-[200px]">
                             <mat-label>SMTP Host</mat-label>
@@ -676,34 +706,53 @@
                         <mat-form-field class="flex-1 min-w-[200px]">
                             <mat-label>To Address</mat-label>
                             <input matInput [(ngModel)]="smtpTo" placeholder="admin@example.com" />
+                            @if (selectedEngine === 'apprise') {
+                            <mat-hint>Scrutiny generates an explicit apprise+mailtos:// URL using these values.</mat-hint>
+                            }
                         </mat-form-field>
                     </div>
                     }
 
-                    <!-- Discord -->
-                    @if (selectedService === 'discord') {
+                    @if (
+                        (selectedEngine === 'shoutrrr' && selectedShoutrrrService === 'discord') ||
+                        (selectedEngine === 'apprise' && selectedAppriseService === 'discord')
+                    ) {
                     <div>
                         <mat-form-field class="w-full">
                             <mat-label>Discord Webhook URL</mat-label>
                             <input matInput [(ngModel)]="discordWebhookUrl" placeholder="https://discord.com/api/webhooks/..." />
+                            @if (selectedEngine === 'shoutrrr') {
                             <mat-hint>Paste the full Discord webhook URL from channel settings</mat-hint>
+                            }
+                            @if (selectedEngine === 'apprise') {
+                            <mat-hint>Apprise accepts the Discord webhook URL directly. Scrutiny stores it as apprise+https://...</mat-hint>
+                            }
                         </mat-form-field>
                     </div>
                     }
 
-                    <!-- Slack -->
-                    @if (selectedService === 'slack') {
+                    @if (
+                        (selectedEngine === 'shoutrrr' && selectedShoutrrrService === 'slack') ||
+                        (selectedEngine === 'apprise' && selectedAppriseService === 'slack')
+                    ) {
                     <div>
                         <mat-form-field class="w-full">
                             <mat-label>Slack Webhook URL</mat-label>
                             <input matInput [(ngModel)]="slackWebhookUrl" placeholder="https://hooks.slack.com/services/..." />
+                            @if (selectedEngine === 'shoutrrr') {
                             <mat-hint>Paste the full Slack incoming webhook URL</mat-hint>
+                            }
+                            @if (selectedEngine === 'apprise') {
+                            <mat-hint>Apprise accepts the Slack webhook URL directly. Scrutiny stores it as apprise+https://...</mat-hint>
+                            }
                         </mat-form-field>
                     </div>
                     }
 
-                    <!-- Telegram -->
-                    @if (selectedService === 'telegram') {
+                    @if (
+                        (selectedEngine === 'shoutrrr' && selectedShoutrrrService === 'telegram') ||
+                        (selectedEngine === 'apprise' && selectedAppriseService === 'telegram')
+                    ) {
                     <div class="flex flex-wrap gap-4">
                         <mat-form-field class="flex-1 min-w-[200px]">
                             <mat-label>Bot Token</mat-label>
@@ -712,12 +761,15 @@
                         <mat-form-field class="flex-1 min-w-[150px]">
                             <mat-label>Chat ID</mat-label>
                             <input matInput [(ngModel)]="telegramChatId" placeholder="-1001234567890" />
+                            @if (selectedEngine === 'apprise') {
+                            <mat-hint>Scrutiny generates an explicit apprise+tgram:// URL for Telegram.</mat-hint>
+                            }
                         </mat-form-field>
                     </div>
                     }
 
                     <div class="flex gap-2 mt-4">
-                        <button mat-raised-button color="primary" (click)="addNotifyUrl()" [disabled]="!buildShoutrrrUrl()">Save</button>
+                        <button mat-raised-button color="primary" (click)="addNotifyUrl()" [disabled]="!buildNotifyUrl()">Save</button>
                         <button mat-button (click)="showAddUrlForm = false; resetAddForm()">Cancel</button>
                     </div>
                 </div>
