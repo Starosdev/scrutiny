@@ -10,6 +10,10 @@ Scrutiny supports multiple notification engines:
 - `script://` for local notification scripts
 - raw `http://` or `https://` webhook posts
 
+Scrutiny preserves the existing Shoutrrr URL contract. Apprise is additive, not a replacement, so only URLs prefixed with `apprise+` are routed through the Apprise CLI.
+
+The official Scrutiny web and omnibus container images include the Apprise runtime required for `apprise+...` targets.
+
 If you are troubleshooting a Shoutrrr target, use their documentation: https://nicholas-fedor.github.io/shoutrrr/
 If you are troubleshooting an Apprise target, use the Apprise documentation: https://appriseit.com/
 
@@ -50,6 +54,7 @@ Apprise targets must be explicit and prefixed with `apprise+` so Scrutiny can ro
 Examples:
 
 - `apprise+mailto://example.com?user=alerts@example.com&pass=app-password&to=admin@example.com`
+- `apprise+gotify://gotify-host/token`
 - `apprise+https://discord.com/api/webhooks/123/token`
 - `apprise+https://hooks.slack.com/services/T000/B000/XXXX`
 - `apprise+tgram://123456789:ABCDEF/123456789/`
@@ -94,6 +99,8 @@ check API.
 ```
 curl -X POST http://localhost:8080/api/health/notify
 ```
+
+This test route exercises the same notification pipeline used by Scrutiny events, including Shoutrrr targets, explicit `apprise+...` targets, scripts, and raw webhooks.
 
 # MQTT / Home Assistant
 

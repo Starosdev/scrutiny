@@ -40,4 +40,5 @@ See [AUTH.md](./AUTH.md) for configuration and deployment details.
 
 - The OpenAPI document is the source of truth. Do not add new standalone API tables elsewhere in the repo.
 - Some collector payloads are intentionally documented as structured objects with representative fields because the backend accepts large collector-origin JSON models.
+- Notification URL endpoints cover existing Shoutrrr syntax, explicit `apprise+...` targets, `script://` targets, and raw `http(s)` webhooks.
 - If a route is added or changed in `server.go`, update `openapi.yaml` in the same change.

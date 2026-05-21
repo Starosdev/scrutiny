@@ -92,7 +92,10 @@ services:
       - SCRUTINY_WEB_INFLUXDB_ORG=homelab
       - SCRUTINY_WEB_INFLUXDB_BUCKET=scrutiny
       # Optional but highly recommended to notify you in case of a problem
+      # Existing Shoutrrr targets keep their current syntax. Apprise targets
+      # must be explicit and prefixed with apprise+.
       - SCRUTINY_NOTIFY_URLS=["http://gotify:80/message?token=a-gotify-token"]
+      # - SCRUTINY_NOTIFY_URLS=["apprise+gotify://gotify/token"]
     depends_on:
       - influxdb
     networks:

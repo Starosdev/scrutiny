@@ -317,6 +317,7 @@ failures:
 
 #notify:
 #  urls:
+#    # Existing Shoutrrr targets keep their current URL syntax
 #    - "discord://token@webhookid"
 #    - "telegram://token@telegram?channels=channel-1[,channel-2,...]"
 #    # For topic-based groups, append thread ID with colon: channels=chat_id:thread_id
@@ -337,7 +338,10 @@ failures:
 #    - "script:///file/path/on/disk"
 #    - "https://www.example.com/path"
 #    # Apprise targets must be explicit and prefixed with apprise+
+#    # This keeps existing Shoutrrr targets backward compatible while allowing
+#    # Scrutiny to route specific URLs through the Apprise CLI.
 #    - "apprise+mailto://example.com?user=alerts@example.com&pass=app-password&to=admin@example.com"
+#    - "apprise+gotify://gotify-host/token"
 #    - "apprise+https://discord.com/api/webhooks/123/token"
 #    - "apprise+https://hooks.slack.com/services/T000/B000/XXXX"
 #    - "apprise+tgram://123456789:ABCDEF/123456789/"
@@ -366,8 +370,8 @@ failures:
 #
 # Scrutiny can generate and email periodic health reports summarizing
 # device status, temperature, alerts, and ZFS pool health. Reports are
-# sent via your configured notify.urls (HTML for SMTP, plain text for
-# other services like Discord, Slack, etc.).
+# sent via your configured notify.urls (HTML for SMTP and supported
+# Apprise destinations, plain text for text-only services).
 #
 # NOTE: This feature is a work in progress. It is functional and tested
 # but the UI and report content may change. Feedback is welcome!
@@ -400,6 +404,8 @@ failures:
 #
 # Scrutiny can send periodic "all clear" heartbeat notifications to
 # confirm the monitoring system is running and all drives are healthy.
+# These are sent through the same notify.urls targets, including
+# Shoutrrr, explicit apprise+ targets, scripts, and raw webhooks.
 # Useful for integration with uptime monitoring tools like Uptime Kuma.
 #
 # Heartbeat notifications are only sent when ALL monitored drives are

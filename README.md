@@ -513,28 +513,26 @@ Overrides apply at the next SMART data collection. Device status is recalculated
 
 ## Notifications
 
-Scrutiny supports sending SMART device failure notifications via the following services:
-- Custom Script (data provided via environmental variables)
-- Apprise-compatible targets with an explicit `apprise+` prefix
-- Email
-- Webhooks
-- Discord
-- Gotify
-- Hangouts
-- IFTTT
-- Join
-- Mattermost
-- ntfy
-- Pushbullet
-- Pushover
-- Slack
-- Teams
-- Telegram
-- Tulip
+Scrutiny supports multiple notification target types:
 
-Shoutrrr targets keep their existing URL syntax. Apprise targets must be explicit and prefixed with `apprise+`, for example `apprise+mailto://...` or `apprise+https://discord.com/api/webhooks/...`.
+- Shoutrrr targets using the existing `discord://`, `smtp://`, `telegram://`, `gotify://`, and similar URL formats
+- Apprise targets using an explicit `apprise+` prefix, for example `apprise+mailto://...`, `apprise+gotify://...`, or `apprise+https://discord.com/api/webhooks/...`
+- Custom `script://` targets that execute a local script with notification metadata in environment variables
+- Raw `http://` and `https://` webhook targets
 
-Check the `notify.urls` section of [example.scrutiny.yml](example.scrutiny.yaml) for examples.
+This keeps existing Shoutrrr configuration backward compatible while adding Apprise as a second notification engine. If you want Scrutiny to route a target through Apprise, the `apprise+` prefix is required.
+
+Common examples:
+
+- `discord://token@webhookid`
+- `gotify://gotify-host/token`
+- `script:///file/path/on/disk`
+- `https://www.example.com/path`
+- `apprise+mailto://example.com?user=alerts@example.com&pass=app-password&to=admin@example.com`
+- `apprise+gotify://gotify-host/token`
+- `apprise+tgram://123456789:ABCDEF/123456789/`
+
+Check the `notify.urls` section of [example.scrutiny.yaml](example.scrutiny.yaml) for more examples.
 
 For more information and troubleshooting, see the [TROUBLESHOOTING_NOTIFICATIONS.md](./docs/TROUBLESHOOTING_NOTIFICATIONS.md) file
 
@@ -552,7 +550,7 @@ You can mute notifications for specific devices through the web UI. This is usef
 
 ### Scheduled Reports [WIP]
 
-Scrutiny can generate and email periodic health reports summarizing device status, temperature, alerts, and ZFS pool health. Reports are sent via your configured notification URLs (HTML formatting for SMTP, plain text for other services).
+Scrutiny can generate and email periodic health reports summarizing device status, temperature, alerts, and ZFS pool health. Reports are sent via your configured notification URLs. SMTP and Apprise targets receive HTML formatting when supported by the destination, while plain-text-only targets receive the text body.
 
 > **Note:** This feature is a work in progress. It is functional and tested, but the UI and report content may change based on feedback. We'd appreciate hearing about your experience -- please open an issue with suggestions or bug reports.
 
@@ -610,6 +608,8 @@ You can test that your notifications are configured correctly by posting an empt
 ```bash
 curl -X POST http://localhost:8080/api/health/notify
 ```
+
+The test route sends through the same configured targets as normal notifications, including Shoutrrr, explicit `apprise+...` targets, scripts, and raw webhooks.
 
 # Debug mode & Log Files
 Scrutiny provides various methods to change the log level and generate log files.
