@@ -183,10 +183,10 @@ func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *
 }
 
 type Payload struct {
-	HostId       string `json:"host_id,omitempty"`      //host id (optional)
-	DeviceType   string `json:"device_type"`            //ATA/SCSI/NVMe
-	DeviceName   string `json:"device_name"`            //dev/sda
-	DeviceSerial string `json:"device_serial"`          //WDDJ324KSO
+	HostId       string `json:"host_id,omitempty"`      // host id (optional)
+	DeviceType   string `json:"device_type"`            // ATA/SCSI/NVMe
+	DeviceName   string `json:"device_name"`            // dev/sda
+	DeviceSerial string `json:"device_serial"`          // WDDJ324KSO
 	DeviceLabel  string `json:"device_label,omitempty"` //user-provided label (optional)
 	Test         bool   `json:"test"`                   // false
 

@@ -2,7 +2,7 @@ package detect
 
 import (
 	"bufio"
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec
 	"encoding/hex"
 	"fmt"
 	"os"
@@ -297,6 +297,6 @@ func (d *Detect) syntheticArrayID(name string) string {
 		hostID = "unknown-host"
 	}
 
-	sum := sha1.Sum([]byte(hostID + "\n" + name))
+	sum := sha1.Sum([]byte(hostID + "\n" + name)) //nolint:gosec // SHA1 used for deterministic ID generation, not cryptographic security
 	return "synthetic:" + hex.EncodeToString(sum[:])
 }
