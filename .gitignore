@@ -94,6 +94,9 @@ scrutiny-dev
 # Local plans (not committed)
 docs/plans/
 
+# Local builder instructions
+AGENTS.md
+
 # Session progress tracking
 OVERRIDE_FIX_PROGRESS.md
 
