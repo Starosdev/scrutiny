@@ -73,6 +73,7 @@ RUN sed -i 's/Components: main/Components: main contrib/' /etc/apt/sources.list.
            "amd64")  S6_ARCH=x86_64  ;; \
            "arm64")  S6_ARCH=aarch64  ;; \
        esac \
+    && mkdir -p /opt/scrutiny/bin \
     && python3 -m venv /opt/scrutiny/apprise-venv \
     && /opt/scrutiny/apprise-venv/bin/pip install --no-cache-dir apprise \
     && ln -sf /opt/scrutiny/apprise-venv/bin/apprise /opt/scrutiny/bin/apprise \
