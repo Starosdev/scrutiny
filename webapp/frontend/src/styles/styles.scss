@@ -49,10 +49,31 @@
     .mat-mdc-cell .text-secondary {
         color: #CFD8E3 !important;
     }
+
+    .mat-mdc-dialog-container .mat-mdc-dialog-actions .mat-mdc-button-base {
+        color: #e2e8f0;
+    }
 }
 
 .treo-theme-light {
     --mat-select-panel-background-color: #ffffff;
     --mat-menu-container-color: #ffffff;
     --mat-autocomplete-background-color: #ffffff;
+
+    .mat-mdc-dialog-container .mat-mdc-dialog-actions .mat-mdc-button-base {
+        color: #0f172a;
+    }
+}
+
+.mat-mdc-dialog-container .mat-mdc-dialog-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    padding: 12px 24px 20px;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+    background: inherit;
+}
+
+.mat-mdc-dialog-container .mat-mdc-dialog-actions .mat-mdc-button-base {
+    min-width: 72px;
 }
