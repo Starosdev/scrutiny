@@ -227,6 +227,71 @@ Error summary:    no errors found
 	require.True(t, filesystems[0].Devices[1].Missing)
 }
 
+func TestDetectReconcilesMountedSingleDeviceReportedMissing(t *testing.T) {
+	mounts := []byte(`/dev/vg1/volume_1 /volume1 btrfs rw 0 0
+`)
+
+	commandOutputs := map[string][]byte{
+		"btrfs filesystem show --raw /volume1": []byte(`Label: '2024.11.02-12:11:27 v72806'  uuid: 9e14872a-781a-44e8-8983-6d1699dac7bd
+	Total devices 1 FS bytes used 63887634432
+	devid    1 size 0 used 0 path missing
+`),
+		"btrfs filesystem usage --raw /volume1": []byte(`Overall:
+    Device size:                   468200000000
+    Device allocated:              92274688000
+    Device unallocated:            375925312000
+    Device missing:                468200000000
+    Used:                          59500000000
+    Free (estimated):              408700000000      (min: 408700000000)
+    Free (statfs, df):             408700000000
+    Data ratio:                    1.00
+    Metadata ratio:                2.00
+    Multiple profiles:             no
+Data, single: total=68719476736, used=59500000000
+Metadata, DUP: total=17179869184, used=4294967296
+System, DUP: total=33554432, used=16384
+`),
+		"btrfs device stats /volume1": []byte(`[/dev/vg1/volume_1].write_io_errs   0
+[/dev/vg1/volume_1].read_io_errs    0
+[/dev/vg1/volume_1].flush_io_errs   0
+[/dev/vg1/volume_1].corruption_errs 0
+[/dev/vg1/volume_1].generation_errs 0
+`),
+		"btrfs scrub status --raw /volume1": []byte(`UUID:             9e14872a-781a-44e8-8983-6d1699dac7bd
+Status:           not running
+Error summary:    no errors found
+`),
+	}
+
+	detector := Detect{
+		Logger: logrus.NewEntry(logrus.New()),
+		ReadMountsFile: func(string) ([]byte, error) {
+			return mounts, nil
+		},
+		LookPath: func(string) (string, error) {
+			return "/usr/bin/btrfs", nil
+		},
+		RunCommand: func(name string, args ...string) ([]byte, error) {
+			key := name + " " + joinArgs(args)
+			output, ok := commandOutputs[key]
+			if !ok {
+				return nil, errors.New("unexpected command: " + key)
+			}
+			return output, nil
+		},
+	}
+
+	filesystems, err := detector.Start()
+	require.NoError(t, err)
+	require.Len(t, filesystems, 1)
+	require.Equal(t, FilesystemStatusOnline, filesystems[0].Status)
+	require.Equal(t, int64(0), filesystems[0].DeviceMissing)
+	require.Len(t, filesystems[0].Devices, 1)
+	require.False(t, filesystems[0].Devices[0].Missing)
+	require.Equal(t, "/dev/vg1/volume_1", filesystems[0].Devices[0].Path)
+	require.Equal(t, int64(468200000000), filesystems[0].Devices[0].Size)
+}
+
 func TestParseBtrfsTime(t *testing.T) {
 	ts, err := parseBtrfsTime("Wed Apr 10 12:34:56 2024")
 	require.NoError(t, err)
