@@ -28,6 +28,12 @@ example {
 .temp-chart-wrapper .apexcharts-tooltip {
     white-space: nowrap;
     max-width: none !important;
+    z-index: 20 !important;
+}
+
+.temperature-card {
+    position: relative;
+    z-index: 1;
 }
 
 .temp-chart-wrapper {
