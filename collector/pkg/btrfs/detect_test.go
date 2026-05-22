@@ -54,6 +54,51 @@ System, DUP: total=33554432, used=16384
 	require.False(t, fs.MultipleProfiles)
 }
 
+func TestParseFilesystemUsageSynologyDSM7(t *testing.T) {
+	output := `Overall:
+    Device size:                      468151435264
+    Device allocated:                 240543334400
+    Device unallocated:               227608100864
+    Device missing:                              0
+    Used:                              60292476928
+    Free (estimated):                 392650477568      (min: 278846427136)
+    Data ratio:                               1.00
+    Metadata ratio:                           2.00
+    Global reserve:                      268435456      (used: 0)
+
+Data,single: Size:223346688000, Used:58304311296
+   /dev/vg1/volume_1    223346688000
+
+Metadata,DUP: Size:8589934592, Used:994033664
+   /dev/vg1/volume_1    17179869184
+
+System,DUP: Size:8388608, Used:49152
+   /dev/vg1/volume_1      16777216
+
+Unallocated:
+   /dev/vg1/volume_1    227608100864
+`
+
+	var fs Filesystem
+	err := parseFilesystemUsage(&fs, output)
+	require.NoError(t, err)
+	require.Equal(t, int64(468151435264), fs.DeviceSize)
+	require.Equal(t, int64(240543334400), fs.DeviceAllocated)
+	require.Equal(t, int64(227608100864), fs.DeviceUnallocated)
+	require.Equal(t, int64(60292476928), fs.Used)
+	require.Equal(t, int64(392650477568), fs.FreeEstimated)
+	require.Equal(t, int64(278846427136), fs.FreeMin)
+	require.Equal(t, "single", fs.DataProfile)
+	require.Equal(t, int64(223346688000), fs.DataTotal)
+	require.Equal(t, int64(58304311296), fs.DataUsed)
+	require.Equal(t, "DUP", fs.MetadataProfile)
+	require.Equal(t, int64(8589934592), fs.MetadataTotal)
+	require.Equal(t, int64(994033664), fs.MetadataUsed)
+	require.Equal(t, "DUP", fs.SystemProfile)
+	require.Equal(t, int64(8388608), fs.SystemTotal)
+	require.Equal(t, int64(49152), fs.SystemUsed)
+}
+
 func TestParseDeviceStats(t *testing.T) {
 	fs := Filesystem{
 		Devices: []Device{
@@ -91,6 +136,67 @@ Error summary:    csum=2 read=1
 	require.Equal(t, int64(1), fs.ScrubReadErrors)
 	require.NotNil(t, fs.ScrubStartedAt)
 	require.NotNil(t, fs.ScrubFinishedAt)
+}
+
+func TestParseScrubStatusSynologyDSM7Finished(t *testing.T) {
+	fs := Filesystem{}
+	output := `scrub status for 9e14872a-781a-44e8-8983-6d1699dac7bd
+        scrub started at Thu May  7 02:00:01 2026 and finished after 00:02:17
+        data_extents_scrubbed: 1401095
+        tree_extents_scrubbed: 119344
+        data_bytes_scrubbed: 57018515456
+        tree_bytes_scrubbed: 1955332096
+        read_errors: 0
+        csum_errors: 0
+        verify_errors: 0
+        no_csum: 9385705
+        csum_discards: 0
+        super_errors: 0
+        malloc_errors: 0
+        uncorrectable_errors: 0
+        unverified_errors: 0
+        corrected_errors: 0
+        last_physical: 240555917312
+`
+
+	parseScrubStatus(&fs, output)
+	require.Equal(t, "9e14872a-781a-44e8-8983-6d1699dac7bd", fs.UUID)
+	require.Equal(t, ScrubStateFinished, fs.ScrubState)
+	require.Equal(t, "00:02:17", fs.ScrubDuration)
+	require.Equal(t, int64(58973847552), fs.ScrubScrubbedBytes)
+	require.Equal(t, int64(58973847552), fs.ScrubTotalBytes)
+	require.Equal(t, "no errors found", fs.ScrubErrorSummary)
+	require.NotNil(t, fs.ScrubStartedAt)
+	require.NotNil(t, fs.ScrubFinishedAt)
+}
+
+func TestParseScrubStatusSynologyDSM7NoStats(t *testing.T) {
+	fs := Filesystem{}
+	output := `scrub status for 8625a86f-fe31-4d6c-aa99-4e1c9b550fae
+        no stats available
+        data_extents_scrubbed: 0
+        tree_extents_scrubbed: 0
+        data_bytes_scrubbed: 0
+        tree_bytes_scrubbed: 0
+        read_errors: 0
+        csum_errors: 0
+        verify_errors: 0
+        no_csum: 0
+        csum_discards: 0
+        super_errors: 0
+        malloc_errors: 0
+        uncorrectable_errors: 0
+        unverified_errors: 0
+        corrected_errors: 0
+        last_physical: 0
+`
+
+	parseScrubStatus(&fs, output)
+	require.Equal(t, "8625a86f-fe31-4d6c-aa99-4e1c9b550fae", fs.UUID)
+	require.Equal(t, ScrubStateIdle, fs.ScrubState)
+	require.Equal(t, int64(0), fs.ScrubScrubbedBytes)
+	require.Equal(t, int64(0), fs.ScrubTotalBytes)
+	require.Equal(t, "no errors found", fs.ScrubErrorSummary)
 }
 
 func TestDetectStartEnumeratesMountedFilesystems(t *testing.T) {

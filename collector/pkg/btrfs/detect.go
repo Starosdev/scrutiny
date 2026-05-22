@@ -290,8 +290,8 @@ func assignAllocationUsage(fs *Filesystem, line string) {
 
 	section := strings.TrimSpace(labelParts[0])
 	profile := strings.TrimSpace(labelParts[1])
-	totalMatch := regexp.MustCompile(`total=(\d+)`).FindStringSubmatch(body)
-	usedMatch := regexp.MustCompile(`used=(\d+)`).FindStringSubmatch(body)
+	totalMatch := regexp.MustCompile(`(?:total=|Size:\s*)(\d+)`).FindStringSubmatch(body)
+	usedMatch := regexp.MustCompile(`(?:used=|Used:\s*)(\d+)`).FindStringSubmatch(body)
 	total := int64(0)
 	used := int64(0)
 	if len(totalMatch) == 2 {
@@ -357,6 +357,20 @@ func parseScrubStatus(fs *Filesystem, output string) {
 			continue
 		}
 
+		if strings.HasPrefix(line, "scrub status for ") {
+			fs.UUID = strings.TrimSpace(strings.TrimPrefix(line, "scrub status for "))
+			continue
+		}
+		if strings.HasPrefix(line, "scrub started at ") || strings.HasPrefix(line, "scrub resumed at ") {
+			parseSynologyScrubTiming(fs, line)
+			continue
+		}
+		if strings.EqualFold(line, "no stats available") {
+			fs.ScrubState = ScrubStateIdle
+			fs.ScrubErrorSummary = "no errors found"
+			continue
+		}
+
 		key, value := splitUsageKV(line)
 		switch key {
 		case "UUID":
@@ -378,7 +392,23 @@ func parseScrubStatus(fs *Filesystem, output string) {
 		case "Error summary":
 			fs.ScrubErrorSummary = value
 			parseScrubErrorSummary(fs, value)
+		case "data_bytes_scrubbed", "tree_bytes_scrubbed":
+			fs.ScrubScrubbedBytes += parseLeadingInt(value)
+		case "read_errors":
+			fs.ScrubReadErrors = parseLeadingInt(value)
+		case "csum_errors":
+			fs.ScrubCsumErrors = parseLeadingInt(value)
+		case "verify_errors":
+			fs.ScrubVerifyErrors = parseLeadingInt(value)
+		case "super_errors":
+			fs.ScrubSuperErrors = parseLeadingInt(value)
 		}
+	}
+	if fs.ScrubErrorSummary == "" && fs.ScrubReadErrors == 0 && fs.ScrubCsumErrors == 0 && fs.ScrubVerifyErrors == 0 && fs.ScrubSuperErrors == 0 {
+		fs.ScrubErrorSummary = "no errors found"
+	}
+	if fs.ScrubTotalBytes == 0 {
+		fs.ScrubTotalBytes = fs.ScrubScrubbedBytes
 	}
 	if fs.ScrubState == ScrubStateFinished && fs.ScrubStartedAt != nil && fs.ScrubDuration != "" {
 		if duration, err := parseClockDuration(fs.ScrubDuration); err == nil {
@@ -386,6 +416,20 @@ func parseScrubStatus(fs *Filesystem, output string) {
 			fs.ScrubFinishedAt = &finished
 		}
 	}
+}
+
+func parseSynologyScrubTiming(fs *Filesystem, line string) {
+	pattern := regexp.MustCompile(`^scrub (?:started|resumed) at (.+) and finished after (\d{2}:\d{2}:\d{2})$`)
+	matches := pattern.FindStringSubmatch(line)
+	if matches == nil {
+		return
+	}
+
+	if ts, err := parseBtrfsTime(strings.TrimSpace(matches[1])); err == nil {
+		fs.ScrubStartedAt = &ts
+	}
+	fs.ScrubDuration = matches[2]
+	fs.ScrubState = ScrubStateFinished
 }
 
 func parseScrubErrorSummary(fs *Filesystem, value string) {
