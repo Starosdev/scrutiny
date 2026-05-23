@@ -22,6 +22,46 @@ func TestLookupConsumerDriveProfileByModelFallback(t *testing.T) {
 	}
 }
 
+func TestLookupConsumerDriveProfileByUnderscoredModelFallback(t *testing.T) {
+	profile, ok := LookupConsumerDriveProfile("ATA", "", "WDC_WD140EDFZ-11A0VA0")
+	if !ok || profile == nil {
+		t.Fatalf("expected underscored model fallback profile match")
+	}
+	if profile.ModelFamily != "WDC Red Plus" {
+		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
+	}
+}
+
+func TestLookupConsumerDriveProfileBySeagateModelFallback(t *testing.T) {
+	profile, ok := LookupConsumerDriveProfile("ATA", "", "ST6000DX000-1H217Z")
+	if !ok || profile == nil {
+		t.Fatalf("expected seagate model fallback profile match")
+	}
+	if profile.ModelFamily != "Seagate Desktop SSHD" {
+		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
+	}
+}
+
+func TestLookupConsumerDriveProfileByWdcBlueModelFallback(t *testing.T) {
+	profile, ok := LookupConsumerDriveProfile("ATA", "", "WD10EZEX-08WN4A0")
+	if !ok || profile == nil {
+		t.Fatalf("expected WDC blue model fallback profile match")
+	}
+	if profile.ModelFamily != "WDC Caviar Blue" {
+		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
+	}
+}
+
+func TestLookupConsumerDriveProfileBySamsung850ProFallback(t *testing.T) {
+	profile, ok := LookupConsumerDriveProfile("ATA", "", "X SSD 850 PRO 128GB")
+	if !ok || profile == nil {
+		t.Fatalf("expected Samsung 850 PRO model fallback profile match")
+	}
+	if profile.ModelFamily != "Samsung SSD 850 PRO" {
+		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
+	}
+}
+
 func TestLookupConsumerDriveProfileRequiresConfidence(t *testing.T) {
 	lowConfidence := ConsumerDriveProfile{SampleCount: 3}
 	if lowConfidence.MeetsConfidenceThreshold() {
