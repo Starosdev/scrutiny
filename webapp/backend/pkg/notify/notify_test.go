@@ -1,13 +1,16 @@
 package notify
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -866,4 +869,146 @@ func TestSendToUrls_AppriseAndScript(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(argsData), "mailto://example.com?to=alerts@example.com")
 	require.False(t, strings.Contains(string(argsData), "script://"))
+}
+
+func TestSendSMTPNotification_MultipartAlternative(t *testing.T) {
+	server := newMockSMTPServer(t)
+	defer server.Close()
+
+	notify := &Notify{
+		Logger: logrus.StandardLogger(),
+		Payload: Payload{
+			Subject:     "Scrutiny HTML test",
+			Message:     "plain text body",
+			HTMLMessage: "<p>html body</p>",
+		},
+	}
+
+	err := notify.SendSMTPNotification(server.URL())
+	require.NoError(t, err)
+
+	data := server.LastData()
+	require.Contains(t, data, "Content-Type: multipart/alternative;")
+	require.Contains(t, data, "Content-Type: text/plain; charset=UTF-8")
+	require.Contains(t, data, "Content-Type: text/html; charset=UTF-8")
+	require.Contains(t, data, "plain text body")
+	require.Contains(t, data, "<p>html body</p>")
+}
+
+func TestSendToUrls_SMTPUsesNativeSender(t *testing.T) {
+	server := newMockSMTPServer(t)
+	defer server.Close()
+
+	notify := &Notify{
+		Logger: logrus.StandardLogger(),
+		Payload: Payload{
+			Subject:     "Scrutiny SMTP route test",
+			Message:     "plain text body",
+			HTMLMessage: "<p>html body</p>",
+		},
+	}
+
+	err := notify.SendToUrls([]string{server.URL()})
+	require.NoError(t, err)
+
+	data := server.LastData()
+	require.Contains(t, data, "Content-Type: multipart/alternative;")
+	require.Contains(t, data, "plain text body")
+	require.Contains(t, data, "<p>html body</p>")
+}
+
+type mockSMTPServer struct {
+	listener net.Listener
+	mu       sync.Mutex
+	lastData string
+}
+
+func newMockSMTPServer(t *testing.T) *mockSMTPServer {
+	t.Helper()
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	server := &mockSMTPServer{listener: listener}
+	go server.serve(t)
+	return server
+}
+
+func (s *mockSMTPServer) URL() string {
+	return "smtp://" + s.listener.Addr().String() + "/?fromaddress=sender@example.com&toaddresses=recipient@example.com&usestarttls=No&auth=None"
+}
+
+func (s *mockSMTPServer) Close() {
+	_ = s.listener.Close()
+}
+
+func (s *mockSMTPServer) LastData() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.lastData
+}
+
+func (s *mockSMTPServer) serve(t *testing.T) {
+	t.Helper()
+
+	conn, err := s.listener.Accept()
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	reader := bufio.NewReader(conn)
+	writer := bufio.NewWriter(conn)
+
+	writeSMTPLine(t, writer, "220 mock-smtp ESMTP")
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return
+		}
+		line = strings.TrimRight(line, "\r\n")
+
+		switch {
+		case strings.HasPrefix(line, "EHLO"), strings.HasPrefix(line, "HELO"):
+			writeSMTPLine(t, writer, "250-mock-smtp")
+			writeSMTPLine(t, writer, "250 OK")
+		case strings.HasPrefix(line, "MAIL FROM:"):
+			writeSMTPLine(t, writer, "250 OK")
+		case strings.HasPrefix(line, "RCPT TO:"):
+			writeSMTPLine(t, writer, "250 OK")
+		case strings.HasPrefix(line, "DATA"):
+			writeSMTPLine(t, writer, "354 End data with <CR><LF>.<CR><LF>")
+
+			var data strings.Builder
+			for {
+				part, readErr := reader.ReadString('\n')
+				if readErr != nil {
+					return
+				}
+				if part == ".\r\n" {
+					break
+				}
+				data.WriteString(part)
+			}
+
+			s.mu.Lock()
+			s.lastData = data.String()
+			s.mu.Unlock()
+
+			writeSMTPLine(t, writer, "250 OK")
+		case strings.HasPrefix(line, "QUIT"):
+			writeSMTPLine(t, writer, "221 Bye")
+			return
+		default:
+			writeSMTPLine(t, writer, "250 OK")
+		}
+	}
+}
+
+func writeSMTPLine(t *testing.T, writer *bufio.Writer, line string) {
+	t.Helper()
+	_, err := writer.WriteString(line + "\r\n")
+	require.NoError(t, err)
+	require.NoError(t, writer.Flush())
 }
