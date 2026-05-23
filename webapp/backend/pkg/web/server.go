@@ -326,6 +326,14 @@ func (ae *AppEngine) Start() error {
 			filepath.Dir(ae.Config.GetString("web.database.location"))))
 	}
 
+	migrationRepo, err := database.NewScrutinyRepository(ae.Config, ae.Logger)
+	if err != nil {
+		return err
+	}
+	if err := migrationRepo.Close(); err != nil {
+		ae.Logger.Warnf("Failed to close migration repository: %v", err)
+	}
+
 	// Create notification gate and monitors BEFORE Setup() so middleware can register them in gin context
 	ae.NotificationGate = notify.NewNotificationGate(ae.Logger)
 
@@ -333,7 +341,7 @@ func (ae *AppEngine) Start() error {
 	ae.MissedPingMonitor = missedPingMonitor
 
 	reportScheduler := reports.NewScheduler(ae.Config, ae.Logger, func() (database.DeviceRepo, error) {
-		return database.NewScrutinyRepository(ae.Config, ae.Logger)
+		return database.NewScrutinyRepositoryWithoutMigration(ae.Config, ae.Logger)
 	})
 	ae.ReportScheduler = reportScheduler
 
@@ -412,7 +420,7 @@ func (ae *AppEngine) loadInitialMetrics() {
 		return
 	}
 	go func() {
-		deviceRepo, err := database.NewScrutinyRepository(ae.Config, ae.Logger)
+		deviceRepo, err := database.NewScrutinyRepositoryWithoutMigration(ae.Config, ae.Logger)
 		if err != nil {
 			ae.Logger.Errorln("Failed to create repository for loading metrics:", err)
 			return
@@ -430,7 +438,7 @@ func (ae *AppEngine) loadInitialMqttData() {
 		return
 	}
 	go func() {
-		deviceRepo, err := database.NewScrutinyRepository(ae.Config, ae.Logger)
+		deviceRepo, err := database.NewScrutinyRepositoryWithoutMigration(ae.Config, ae.Logger)
 		if err != nil {
 			ae.Logger.Errorln("Failed to create repository for loading MQTT data:", err)
 			return

@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
@@ -27,8 +28,8 @@ import (
 const (
 	// Default retention periods (in seconds) - can be overridden via config
 	// These constants are kept for backwards compatibility and migration code
-	DEFAULT_RETENTION_PERIOD_15_DAYS_IN_SECONDS = 1_296_000   // 60*60*24*15
-	DEFAULT_RETENTION_PERIOD_9_WEEKS_IN_SECONDS = 5_443_200   // 60*60*24*7*9
+	DEFAULT_RETENTION_PERIOD_15_DAYS_IN_SECONDS   = 1_296_000  // 60*60*24*15
+	DEFAULT_RETENTION_PERIOD_9_WEEKS_IN_SECONDS   = 5_443_200  // 60*60*24*7*9
 	DEFAULT_RETENTION_PERIOD_25_MONTHS_IN_SECONDS = 65_318_400 // 60*60*24*7*(52+52+4)
 
 	DURATION_KEY_DAY     = "day"
@@ -51,7 +52,23 @@ const (
 	RESOLUTION_1_DAY      = "1d"
 )
 
+var migrationOnce sync.Once
+var migrationOnceErr error
+
 func NewScrutinyRepository(appConfig config.Interface, globalLogger logrus.FieldLogger) (DeviceRepo, error) {
+	return newScrutinyRepository(appConfig, globalLogger, true)
+}
+
+func NewScrutinyRepositoryWithoutMigration(appConfig config.Interface, globalLogger logrus.FieldLogger) (DeviceRepo, error) {
+	return newScrutinyRepository(appConfig, globalLogger, false)
+}
+
+func ResetMigrationGuardForTests() {
+	migrationOnce = sync.Once{}
+	migrationOnceErr = nil
+}
+
+func newScrutinyRepository(appConfig config.Interface, globalLogger logrus.FieldLogger, runMigrations bool) (DeviceRepo, error) {
 	backgroundContext := context.Background()
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -99,10 +116,10 @@ func NewScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 	gormLoggerConfig := gormLogger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 		gormLogger.Config{
-			SlowThreshold:             time.Second,   // Slow SQL threshold
-			LogLevel:                  dbLogLevel,    // Log level
-			IgnoreRecordNotFoundError: true,          // Ignore ErrRecordNotFound error
-			Colorful:                  true,          // Enable color output
+			SlowThreshold:             time.Second, // Slow SQL threshold
+			LogLevel:                  dbLogLevel,  // Log level
+			IgnoreRecordNotFoundError: true,        // Ignore ErrRecordNotFound error
+			Colorful:                  true,        // Enable color output
 		},
 	)
 
@@ -215,10 +232,13 @@ func NewScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// InfluxDB & SQLite migrations
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//database.AutoMigrate(&models.Device{})
-	err = deviceRepo.Migrate(backgroundContext)
-	if err != nil {
-		return nil, err
+	if runMigrations {
+		migrationOnce.Do(func() {
+			migrationOnceErr = deviceRepo.Migrate(backgroundContext)
+		})
+		if migrationOnceErr != nil {
+			return nil, migrationOnceErr
+		}
 	}
 
 	return &deviceRepo, nil
