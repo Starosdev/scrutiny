@@ -40,6 +40,14 @@ The Scrutiny repository is a [monorepo](https://en.wikipedia.org/wiki/Monorepo) 
 
 Depending on the functionality you are adding, you may need to setup a development environment for 1 or more projects.
 
+## Docker Testing Standard
+
+For this repo, "local Docker testing" means the Zeus Unraid host, not this Mac.
+Use Zeus over LAN `192.168.1.33` or NetBird `100.66.106.240` for Docker image
+builds, compose bring-up, and container validation. Keep native source workflows
+such as `go run`, `go test`, `npm start`, and `npm test` on your workstation
+unless the task specifically requires host-level device access from Zeus.
+
 # Modifying the Scrutiny Backend Server (API)
 
 1. install the [Go runtime](https://go.dev/doc/install) (v1.25+)
@@ -68,7 +76,7 @@ Depending on the functionality you are adding, you may need to setup a developme
       level: DEBUG
 
     ```
-4. start a InfluxDB docker container.
+4. if you need a Dockerized InfluxDB dependency, start it on Zeus rather than on this Mac.
     ```bash
     docker run -p 8086:8086 --rm influxdb:2.2
     ```
@@ -204,6 +212,8 @@ docker cp scrutiny:/tmp/web.log web.log
 
 # Docker Development
 
+Run these commands on Zeus, not on this Mac.
+
 ```
 docker build -f docker/Dockerfile . -t ghcr.io/starosdev/scrutiny:local
 docker run -it --rm -p 8080:8080 \
@@ -237,6 +247,8 @@ go test -v ./webapp/backend/pkg/web/...          # Run tests in specific package
 go test -v -run TestFunctionName ./path/to/pkg/  # Run specific test by name
 go test -coverprofile=coverage.txt ./...         # Run with coverage
 ```
+
+If you use the Dockerized InfluxDB path above, run that container on Zeus.
 
 ## Frontend Tests
 

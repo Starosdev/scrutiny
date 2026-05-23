@@ -79,7 +79,7 @@ services:
 Endpoint rules:
 
 - use `http://web:8080` when the collector and web containers share a compose network
-- use `http://host.docker.internal:8080` when you are running the collector locally against a web server on the host
+- use `http://127.0.0.1:8080` together with `--network host` when you are running the collector on Zeus against a web server bound on the Zeus host
 - do not use `http://localhost:8080` for a separate collector container unless the API is actually inside that same container
 
 ## Validation
