@@ -42,3 +42,24 @@ func TestSmartSupportUnmarshalJSONObject(t *testing.T) {
 	require.NotNil(t, decoded.Enabled)
 	require.False(t, *decoded.Enabled)
 }
+
+func TestSmartSupportUnmarshalJSONLegacyStringBool(t *testing.T) {
+	var decoded SmartSupport
+	require.NoError(t, json.Unmarshal([]byte(`"true"`), &decoded))
+	require.True(t, decoded.Available)
+	require.Nil(t, decoded.Enabled)
+}
+
+func TestSmartSupportUnmarshalJSONLegacyStringNumber(t *testing.T) {
+	var decoded SmartSupport
+	require.NoError(t, json.Unmarshal([]byte(`"1"`), &decoded))
+	require.True(t, decoded.Available)
+	require.Nil(t, decoded.Enabled)
+}
+
+func TestSmartSupportUnmarshalJSONLegacyNumber(t *testing.T) {
+	var decoded SmartSupport
+	require.NoError(t, json.Unmarshal([]byte(`1`), &decoded))
+	require.True(t, decoded.Available)
+	require.Nil(t, decoded.Enabled)
+}

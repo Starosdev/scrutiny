@@ -458,6 +458,68 @@ func (suite *ServerTestSuite) TestRegisterDevicesRoute_LegacySmartSupportBool() 
 	require.Nil(suite.T(), response.Data[0].SmartSupport.Enabled)
 }
 
+func (suite *ServerTestSuite) TestRegisterDevicesRoute_LegacySmartSupportString() {
+	parentPath, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(parentPath)
+	helperCreateFrontendFiles(suite.T(), parentPath)
+
+	mockCtrl := gomock.NewController(suite.T())
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().SetDefault(gomock.Any(), gomock.Any()).AnyTimes()
+	fakeConfig.EXPECT().UnmarshalKey(gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
+	fakeConfig.EXPECT().GetString("web.database.location").Return(path.Join(parentPath, "scrutiny_test.db")).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.database.journal_mode").Return("WAL").AnyTimes()
+	fakeConfig.EXPECT().GetString("log.level").Return("INFO").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.src.frontend.path").Return(parentPath).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.listen.basepath").Return(suite.Basepath).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.metrics.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.auth.enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.auth.token").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.auth.jwt_secret").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetInt("web.auth.jwt_expiry_hours").Return(24).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.metrics.token").Return("").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.scheme").Return("http").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.port").Return("8086").AnyTimes()
+	fakeConfig.EXPECT().IsSet("web.influxdb.token").Return(true).AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.token").Return("my-super-secret-auth-token").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.org").Return("scrutiny").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.bucket").Return("metrics").AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.influxdb.tls.insecure_skip_verify").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetBool("web.influxdb.retention_policy").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
+		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
+	} else {
+		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
+	}
+
+	ae := web.AppEngine{
+		Config: fakeConfig,
+	}
+	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
+
+	body := `{"data":[{"device_id":"legacy-device-id-2","wwn":"legacy-wwn-2","device_name":"sdb","manufacturer":"LegacyCorp","model_name":"Legacy Disk","interface_type":"SATA","interface_speed":"6.0 Gb/s","serial_number":"LEGACY456","firmware":"1.0","rotational_speed":7200,"capacity":1000000,"form_factor":"3.5 inches","smart_support":"true","device_protocol":"ATA","device_type":"sat","host_id":"legacy-host","collector_version":"1.52.0"}]}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", suite.Basepath+"/api/devices/register", strings.NewReader(body))
+	router.ServeHTTP(w, req)
+
+	require.Equal(suite.T(), 200, w.Code)
+	var response struct {
+		Success bool            `json:"success"`
+		Data    []models.Device `json:"data"`
+	}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), response.Success)
+	require.Len(suite.T(), response.Data, 1)
+	require.True(suite.T(), response.Data[0].SmartSupport.Available)
+	require.Nil(suite.T(), response.Data[0].SmartSupport.Enabled)
+}
+
 func (suite *ServerTestSuite) TestUploadDeviceMetricsRoute() {
 	//setup
 	parentPath, _ := ioutil.TempDir("", "")

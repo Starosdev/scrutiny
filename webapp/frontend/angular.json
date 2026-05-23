@@ -27,8 +27,21 @@
                         "tsConfig": "tsconfig.app.json",
                         "aot": true,
                         "assets": [
-                            "src/favicon-16x16.png",
-                            "src/favicon-32x32.png",
+                            {
+                                "glob": "manifest.json",
+                                "input": "src",
+                                "output": "/"
+                            },
+                            {
+                                "glob": "*.png",
+                                "input": "src",
+                                "output": "/"
+                            },
+                            {
+                                "glob": "*.ico",
+                                "input": "src",
+                                "output": "/"
+                            },
                             "src/assets"
                         ],
                         "stylePreprocessorOptions": {
@@ -99,8 +112,21 @@
                         "tsConfig": "tsconfig.spec.json",
                         "karmaConfig": "karma.conf.js",
                         "assets": [
-                            "src/favicon-16x16.png",
-                            "src/favicon-32x32.png",
+                            {
+                                "glob": "manifest.json",
+                                "input": "src",
+                                "output": "/"
+                            },
+                            {
+                                "glob": "*.png",
+                                "input": "src",
+                                "output": "/"
+                            },
+                            {
+                                "glob": "*.ico",
+                                "input": "src",
+                                "output": "/"
+                            },
                             "src/assets"
                         ],
                         "stylePreprocessorOptions": {

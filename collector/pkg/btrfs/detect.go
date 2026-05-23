@@ -24,6 +24,11 @@ type Detect struct {
 	RunCommand     func(name string, args ...string) ([]byte, error)
 }
 
+type mountedFilesystem struct {
+	source     string
+	mountPoint string
+}
+
 func (d *Detect) Start() ([]Filesystem, error) {
 	if d.Logger == nil {
 		d.Logger = logrus.NewEntry(logrus.New())
@@ -57,14 +62,14 @@ func (d *Detect) Start() ([]Filesystem, error) {
 
 	filesystems := make([]Filesystem, 0, len(mountPoints))
 	seen := make(map[string]struct{})
-	for _, mountPoint := range mountPoints {
-		fs, err := d.inspectFilesystem(mountPoint)
+	for _, mount := range mountPoints {
+		fs, err := d.inspectFilesystem(mount)
 		if err != nil {
-			d.Logger.Warnf("Failed to inspect Btrfs filesystem at %s: %v", mountPoint, err)
+			d.Logger.Warnf("Failed to inspect Btrfs filesystem at %s: %v", mount.mountPoint, err)
 			continue
 		}
 		if fs.UUID == "" {
-			d.Logger.Warnf("Skipping Btrfs filesystem at %s with empty UUID", mountPoint)
+			d.Logger.Warnf("Skipping Btrfs filesystem at %s with empty UUID", mount.mountPoint)
 			continue
 		}
 		if _, ok := seen[fs.UUID]; ok {
@@ -81,7 +86,7 @@ func (d *Detect) Start() ([]Filesystem, error) {
 	return filesystems, nil
 }
 
-func (d *Detect) listBtrfsMountPoints() ([]string, error) {
+func (d *Detect) listBtrfsMountPoints() ([]mountedFilesystem, error) {
 	data, err := d.ReadMountsFile("/proc/mounts")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read /proc/mounts: %w", err)
@@ -89,7 +94,7 @@ func (d *Detect) listBtrfsMountPoints() ([]string, error) {
 
 	seenMounts := make(map[string]struct{})
 	seenSources := make(map[string]struct{})
-	mountPoints := make([]string, 0)
+	mountPoints := make([]mountedFilesystem, 0)
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	for scanner.Scan() {
 		fields := strings.Fields(scanner.Text())
@@ -107,19 +112,24 @@ func (d *Detect) listBtrfsMountPoints() ([]string, error) {
 		}
 		seenMounts[mountPoint] = struct{}{}
 		seenSources[source] = struct{}{}
-		mountPoints = append(mountPoints, mountPoint)
+		mountPoints = append(mountPoints, mountedFilesystem{
+			source:     source,
+			mountPoint: mountPoint,
+		})
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("failed to scan /proc/mounts: %w", err)
 	}
 
-	sort.Strings(mountPoints)
+	sort.Slice(mountPoints, func(i, j int) bool {
+		return mountPoints[i].mountPoint < mountPoints[j].mountPoint
+	})
 	return mountPoints, nil
 }
 
-func (d *Detect) inspectFilesystem(mountPoint string) (Filesystem, error) {
+func (d *Detect) inspectFilesystem(mount mountedFilesystem) (Filesystem, error) {
 	fs := Filesystem{
-		MountPoint: mountPoint,
+		MountPoint: mount.mountPoint,
 		Status:     FilesystemStatusOnline,
 		ScrubState: ScrubStateUnknown,
 	}
@@ -127,7 +137,7 @@ func (d *Detect) inspectFilesystem(mountPoint string) (Filesystem, error) {
 		fs.HostID = d.Config.GetString("host.id")
 	}
 
-	showOutput, err := d.RunCommand("btrfs", "filesystem", "show", "--raw", mountPoint)
+	showOutput, err := d.RunCommand("btrfs", "filesystem", "show", "--raw", mount.mountPoint)
 	if err != nil {
 		return fs, fmt.Errorf("btrfs filesystem show failed: %w", err)
 	}
@@ -135,7 +145,7 @@ func (d *Detect) inspectFilesystem(mountPoint string) (Filesystem, error) {
 		return fs, parseErr
 	}
 
-	usageOutput, err := d.RunCommand("btrfs", "filesystem", "usage", "--raw", mountPoint)
+	usageOutput, err := d.RunCommand("btrfs", "filesystem", "usage", "--raw", mount.mountPoint)
 	if err != nil {
 		return fs, fmt.Errorf("btrfs filesystem usage failed: %w", err)
 	}
@@ -143,16 +153,18 @@ func (d *Detect) inspectFilesystem(mountPoint string) (Filesystem, error) {
 		return fs, parseErr
 	}
 
-	deviceStatsOutput, err := d.RunCommand("btrfs", "device", "stats", mountPoint)
+	reconcileMountedSingleDevice(&fs, mount.source)
+
+	deviceStatsOutput, err := d.RunCommand("btrfs", "device", "stats", mount.mountPoint)
 	if err != nil {
-		d.Logger.Warnf("btrfs device stats failed for %s: %v", mountPoint, err)
+		d.Logger.Warnf("btrfs device stats failed for %s: %v", mount.mountPoint, err)
 	} else {
 		parseDeviceStats(&fs, string(deviceStatsOutput))
 	}
 
-	scrubOutput, err := d.RunCommand("btrfs", "scrub", "status", "--raw", mountPoint)
+	scrubOutput, err := d.RunCommand("btrfs", "scrub", "status", "--raw", mount.mountPoint)
 	if err != nil {
-		d.Logger.Warnf("btrfs scrub status failed for %s: %v", mountPoint, err)
+		d.Logger.Warnf("btrfs scrub status failed for %s: %v", mount.mountPoint, err)
 	} else {
 		parseScrubStatus(&fs, string(scrubOutput))
 	}
@@ -278,8 +290,8 @@ func assignAllocationUsage(fs *Filesystem, line string) {
 
 	section := strings.TrimSpace(labelParts[0])
 	profile := strings.TrimSpace(labelParts[1])
-	totalMatch := regexp.MustCompile(`total=(\d+)`).FindStringSubmatch(body)
-	usedMatch := regexp.MustCompile(`used=(\d+)`).FindStringSubmatch(body)
+	totalMatch := regexp.MustCompile(`(?:total=|Size:\s*)(\d+)`).FindStringSubmatch(body)
+	usedMatch := regexp.MustCompile(`(?:used=|Used:\s*)(\d+)`).FindStringSubmatch(body)
 	total := int64(0)
 	used := int64(0)
 	if len(totalMatch) == 2 {
@@ -345,6 +357,20 @@ func parseScrubStatus(fs *Filesystem, output string) {
 			continue
 		}
 
+		if strings.HasPrefix(line, "scrub status for ") {
+			fs.UUID = strings.TrimSpace(strings.TrimPrefix(line, "scrub status for "))
+			continue
+		}
+		if strings.HasPrefix(line, "scrub started at ") || strings.HasPrefix(line, "scrub resumed at ") {
+			parseSynologyScrubTiming(fs, line)
+			continue
+		}
+		if strings.EqualFold(line, "no stats available") {
+			fs.ScrubState = ScrubStateIdle
+			fs.ScrubErrorSummary = "no errors found"
+			continue
+		}
+
 		key, value := splitUsageKV(line)
 		switch key {
 		case "UUID":
@@ -366,7 +392,23 @@ func parseScrubStatus(fs *Filesystem, output string) {
 		case "Error summary":
 			fs.ScrubErrorSummary = value
 			parseScrubErrorSummary(fs, value)
+		case "data_bytes_scrubbed", "tree_bytes_scrubbed":
+			fs.ScrubScrubbedBytes += parseLeadingInt(value)
+		case "read_errors":
+			fs.ScrubReadErrors = parseLeadingInt(value)
+		case "csum_errors":
+			fs.ScrubCsumErrors = parseLeadingInt(value)
+		case "verify_errors":
+			fs.ScrubVerifyErrors = parseLeadingInt(value)
+		case "super_errors":
+			fs.ScrubSuperErrors = parseLeadingInt(value)
 		}
+	}
+	if fs.ScrubErrorSummary == "" && fs.ScrubReadErrors == 0 && fs.ScrubCsumErrors == 0 && fs.ScrubVerifyErrors == 0 && fs.ScrubSuperErrors == 0 {
+		fs.ScrubErrorSummary = "no errors found"
+	}
+	if fs.ScrubTotalBytes == 0 {
+		fs.ScrubTotalBytes = fs.ScrubScrubbedBytes
 	}
 	if fs.ScrubState == ScrubStateFinished && fs.ScrubStartedAt != nil && fs.ScrubDuration != "" {
 		if duration, err := parseClockDuration(fs.ScrubDuration); err == nil {
@@ -374,6 +416,20 @@ func parseScrubStatus(fs *Filesystem, output string) {
 			fs.ScrubFinishedAt = &finished
 		}
 	}
+}
+
+func parseSynologyScrubTiming(fs *Filesystem, line string) {
+	pattern := regexp.MustCompile(`^scrub (?:started|resumed) at (.+) and finished after (\d{2}:\d{2}:\d{2})$`)
+	matches := pattern.FindStringSubmatch(line)
+	if matches == nil {
+		return
+	}
+
+	if ts, err := parseBtrfsTime(strings.TrimSpace(matches[1])); err == nil {
+		fs.ScrubStartedAt = &ts
+	}
+	fs.ScrubDuration = matches[2]
+	fs.ScrubState = ScrubStateFinished
 }
 
 func parseScrubErrorSummary(fs *Filesystem, value string) {
@@ -437,6 +493,24 @@ func hasMissingDevice(devices []Device) bool {
 		}
 	}
 	return false
+}
+
+func reconcileMountedSingleDevice(fs *Filesystem, mountSource string) {
+	if mountSource == "" || mountSource == "none" || mountSource == "missing" {
+		return
+	}
+	if len(fs.Devices) != 1 || !fs.Devices[0].Missing {
+		return
+	}
+
+	fs.Devices[0].Path = mountSource
+	fs.Devices[0].Missing = false
+	if fs.Devices[0].Size == 0 && fs.DeviceSize > 0 {
+		fs.Devices[0].Size = fs.DeviceSize
+	}
+	if fs.DeviceMissing == fs.DeviceSize {
+		fs.DeviceMissing = 0
+	}
 }
 
 func parseLeadingInt(value string) int64 {
