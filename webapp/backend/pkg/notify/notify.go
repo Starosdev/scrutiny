@@ -399,6 +399,7 @@ func StripApprisePrefix(rawURL string) string {
 // and dispatches them in parallel.
 func (n *Notify) sendToUrls(urls []string) error {
 	notifyApprise := []string{}
+	notifySMTP := []string{}
 	notifyWebhooks := []string{}
 	notifyScripts := []string{}
 	notifyShoutrrr := []string{}
@@ -407,6 +408,8 @@ func (n *Notify) sendToUrls(urls []string) error {
 		switch {
 		case IsAppriseURL(u):
 			notifyApprise = append(notifyApprise, u)
+		case strings.HasPrefix(u, "smtp://"):
+			notifySMTP = append(notifySMTP, u)
 		case strings.HasPrefix(u, "https://"), strings.HasPrefix(u, "http://"):
 			notifyWebhooks = append(notifyWebhooks, u)
 		case strings.HasPrefix(u, "script://"):
@@ -418,6 +421,7 @@ func (n *Notify) sendToUrls(urls []string) error {
 	}
 
 	n.Logger.Debugf("Configured Apprise URLs: %v", notifyApprise)
+	n.Logger.Debugf("Configured SMTP URLs: %v", notifySMTP)
 	n.Logger.Debugf("Configured scripts: %v", notifyScripts)
 	n.Logger.Debugf("Configured webhooks: %v", notifyWebhooks)
 	n.Logger.Debugf("Configured shoutrrr: %v", notifyShoutrrr)
@@ -427,6 +431,10 @@ func (n *Notify) sendToUrls(urls []string) error {
 	for _, u := range notifyApprise {
 		targetUrl := u
 		eg.Go(func() error { return n.SendAppriseNotification(targetUrl) })
+	}
+	for _, u := range notifySMTP {
+		targetURL := u
+		eg.Go(func() error { return n.SendSMTPNotification(targetURL) })
 	}
 	for _, u := range notifyWebhooks {
 		targetUrl := u

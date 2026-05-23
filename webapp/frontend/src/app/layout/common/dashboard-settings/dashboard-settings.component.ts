@@ -376,7 +376,7 @@ export class DashboardSettingsComponent implements OnInit {
                 const user = encodeURIComponent(this.smtpUsername);
                 const pass = encodeURIComponent(this.smtpPassword);
                 const auth = this.smtpUsername ? `${user}:${pass}@` : '';
-                return `smtp://${auth}${this.smtpHost}:${this.smtpPort}/?from=${encodeURIComponent(this.smtpFrom)}&to=${encodeURIComponent(this.smtpTo)}`;
+                return `smtp://${auth}${this.smtpHost}:${this.smtpPort}/?fromaddress=${encodeURIComponent(this.smtpFrom)}&toaddresses=${encodeURIComponent(this.smtpTo)}`;
             }
             case 'discord': {
                 const match = this.discordWebhookUrl.match(/webhooks\/(\d+)\/([^/?]+)/);
