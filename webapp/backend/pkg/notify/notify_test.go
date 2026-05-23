@@ -382,6 +382,12 @@ Device Serial: FAKEWDDJ324KSO
 Device Type: ATA
 
 Date: %s`, currentTime.Format(time.RFC3339)), payload.Message)
+	require.Contains(t, payload.HTMLMessage, "<!DOCTYPE html>")
+	require.Contains(t, payload.HTMLMessage, "TEST NOTIFICATION")
+	require.Contains(t, payload.HTMLMessage, "Scrutiny SMART error (EmailTest) detected on device: /dev/sda")
+	require.Contains(t, payload.HTMLMessage, "Failure Type")
+	require.Contains(t, payload.HTMLMessage, "EmailTest")
+	require.Contains(t, payload.HTMLMessage, currentTime.Format(time.RFC3339))
 }
 
 func TestNewPayload_WithHostId(t *testing.T) {
