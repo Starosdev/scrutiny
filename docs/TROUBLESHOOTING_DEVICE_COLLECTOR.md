@@ -56,6 +56,14 @@ smartctl --scan
 Once you've verified that `smartctl` correctly detects your drives, make sure scrutiny is correctly detecting them as well.
 > NOTE: make sure you specify all the devices you'd like scrutiny to process using `--device=` flags.
 
+> NOTE: the set of `--device` mappings must be complete and must match the
+> devices visible on the host. If a drive appears in `smartctl --scan` on the
+> host but its corresponding `/dev/...` node is not mounted into the container,
+> the collector can end up with inconsistent path identity for that drive. In
+> practice this can look like reused `/dev/sd*` names, stale device records,
+> missing SMART uploads, or false missed-ping alerts for a drive that is still
+> present on the host.
+
 ```bash
 docker run -it --rm \
   -v /run/udev:/run/udev:ro \
@@ -66,6 +74,11 @@ docker run -it --rm \
 ```
 
 If the output is the same, your devices will be processed by Scrutiny.
+
+If the host and container results differ, do not continue debugging Scrutiny
+first. Fix the container device mappings until `smartctl --scan` and direct
+`smartctl --info --json /dev/...` checks succeed for every expected disk inside
+the container.
 
 ### Collector Config File
 In some cases `--scan` does not correctly detect the device type, returning [incomplete SMART data](https://github.com/AnalogJ/scrutiny/issues/45).
