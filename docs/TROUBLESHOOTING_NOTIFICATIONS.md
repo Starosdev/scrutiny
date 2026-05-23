@@ -157,3 +157,28 @@ Common causes:
 - Unsupported drive type or interface
 
 No additional configuration is required. If notification URLs are configured, collector errors are sent through the same channels as SMART failures.
+
+# HTML Email Delivery
+
+For SMTP notification URLs, Scrutiny sends multipart email with separate
+plain-text and HTML bodies when an HTML payload is available.
+
+Current HTML-capable email paths include:
+
+- scheduled reports
+- test notifications
+- collector-side error notifications
+- missed ping digests
+- heartbeat notifications
+- performance degradation notifications
+- replacement risk notifications
+- MDADM degradation notifications
+
+If an email arrives as plain text when you expected HTML:
+
+- confirm the destination is an SMTP URL or an HTML-capable Apprise target
+- inspect the raw message and verify `Content-Type: multipart/alternative`
+- verify the specific notification type actually populates an HTML body
+- if running in Docker, confirm the collector and web containers can access the
+  required devices and metadata consistently; missing device mappings can lead
+  to incorrect or stale alert state even when email delivery itself is working

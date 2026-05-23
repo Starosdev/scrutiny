@@ -593,6 +593,12 @@ curl -X POST http://localhost:8080/api/settings/notify-urls/1/test
 curl -s http://localhost:8080/api/health/missed-ping-status | jq .
 ```
 
+For SMTP validation, verify both presentation and transport:
+
+1. Confirm the target mail client renders the HTML body for the notification under test.
+2. Inspect the raw message headers and confirm `Content-Type: multipart/alternative`.
+3. Verify at least one real non-test path in addition to `EmailTest` when changing notification formatting. High-value paths are collector error, missed ping digest, and MDADM degradation.
+
 ### Authentication
 
 ```bash
