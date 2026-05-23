@@ -1721,6 +1721,9 @@ components:
               type: boolean
             replacement_risk_notify_category:
               type: string
+            consumer_drive_profiles_enabled:
+              type: boolean
+              description: Enable vetted ATA consumer drive model or family overrides for SMART status evaluation and replacement-risk scoring.
             notification_rate_limit:
               type: integer
             notification_quiet_start:
@@ -3195,6 +3198,12 @@ components:
               enum: [7d, 30d, 90d]
             trend_bonus:
               type: number
+            consumer_drive_profiles_enabled:
+              type: boolean
+            consumer_drive_profile_applied:
+              type: boolean
+            consumer_drive_profile_family:
+              type: string
             contributions:
               type: array
               items:

@@ -43,12 +43,11 @@ func TestApplyDefaults_AllZeroValues(t *testing.T) {
 	require.False(t, s.Metrics.HeartbeatEnabled)
 	require.False(t, s.Metrics.ReportEnabled)
 	require.False(t, s.Metrics.ReportDailyEnabled)
+	require.False(t, s.Metrics.ConsumerDriveProfilesEnabled)
 	require.False(t, s.Metrics.ReportWeeklyEnabled)
 	require.False(t, s.Metrics.ReportMonthlyEnabled)
 	require.False(t, s.Metrics.ReportPDFEnabled)
 	require.False(t, s.Metrics.NotifyOnReplacementRisk)
-
-	// String defaults for replacement risk
 	require.Equal(t, "replace_soon", s.Metrics.ReplacementRiskNotifyCategory)
 }
 
@@ -108,8 +107,8 @@ func TestApplyDefaults_PartiallyPopulated(t *testing.T) {
 	s.ApplyDefaults()
 
 	require.Equal(t, "dark", s.Theme)              // preserved
-	require.Equal(t, "material", s.Layout)          // defaulted
-	require.Equal(t, "name", s.DashboardDisplay)    // defaulted
-	require.Equal(t, 1, s.Metrics.NotifyLevel)      // preserved
-	require.Equal(t, 3, s.Metrics.StatusThreshold)  // defaulted
+	require.Equal(t, "material", s.Layout)         // defaulted
+	require.Equal(t, "name", s.DashboardDisplay)   // defaulted
+	require.Equal(t, 1, s.Metrics.NotifyLevel)     // preserved
+	require.Equal(t, 3, s.Metrics.StatusThreshold) // defaulted
 }

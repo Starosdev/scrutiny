@@ -3,8 +3,11 @@ package handler
 import (
 	"testing"
 
+	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
+	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,4 +68,27 @@ func TestComputeRiskContributions_FallbackWithoutProfile(t *testing.T) {
 	require.Equal(t, 0.0, contributions[0].TrendScore)
 	require.Equal(t, 6.25, totalScore)
 	require.Equal(t, 0.0, totalTrendBonus)
+}
+
+func TestConsumerDriveProfilesEnabledDefaultsTrueWhenUnset(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	cfg := mock_config.NewMockInterface(mockCtrl)
+	key := config.DB_USER_SETTINGS_SUBKEY + ".metrics.consumer_drive_profiles_enabled"
+	cfg.EXPECT().IsSet(key).Return(false)
+
+	require.True(t, consumerDriveProfilesEnabled(cfg))
+}
+
+func TestConsumerDriveProfilesEnabledUsesStoredValue(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	cfg := mock_config.NewMockInterface(mockCtrl)
+	key := config.DB_USER_SETTINGS_SUBKEY + ".metrics.consumer_drive_profiles_enabled"
+	cfg.EXPECT().IsSet(key).Return(true)
+	cfg.EXPECT().GetBool(key).Return(false)
+
+	require.False(t, consumerDriveProfilesEnabled(cfg))
 }

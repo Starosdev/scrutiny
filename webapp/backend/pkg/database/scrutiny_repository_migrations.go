@@ -1081,6 +1081,26 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 				return tx.AutoMigrate(&m20260523000000.Device{})
 			},
 		},
+		{
+			ID: "m20260524000000", // add consumer ATA profile override setting
+			Migrate: func(tx *gorm.DB) error {
+				var count int64
+				if err := tx.Model(&m20220716214900.Setting{}).Where("setting_key_name = ?", "metrics.consumer_drive_profiles_enabled").Count(&count).Error; err != nil {
+					return err
+				}
+				if count > 0 {
+					return nil
+				}
+
+				defaultSetting := m20220716214900.Setting{
+					SettingKeyName:        "metrics.consumer_drive_profiles_enabled",
+					SettingKeyDescription: "Enable consumer ATA model-family SMART profile overrides for status and replacement-risk scoring (true | false)",
+					SettingDataType:       "bool",
+					SettingValueBool:      true,
+				}
+				return tx.Create(&defaultSetting).Error
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {

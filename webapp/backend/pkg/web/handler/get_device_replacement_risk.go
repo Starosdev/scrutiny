@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
@@ -26,6 +27,7 @@ import (
 func GetDeviceReplacementRisk(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
+	appConfig := c.MustGet("CONFIG").(config.Interface)
 
 	device, err := ResolveDevice(c, logger, deviceRepo)
 	if err != nil {
@@ -72,7 +74,11 @@ func GetDeviceReplacementRisk(c *gin.Context) {
 	}
 
 	weights := thresholds.ReplacementRiskWeightsForProtocol(device.DeviceProtocol)
-	profile, _ := thresholds.LookupConsumerDriveProfile(device.DeviceProtocol, device.ModelFamily, device.ModelName)
+	profilesEnabled := consumerDriveProfilesEnabled(appConfig)
+	var profile *thresholds.ConsumerDriveProfile
+	if profilesEnabled {
+		profile, _ = thresholds.LookupConsumerDriveProfile(device.DeviceProtocol, device.ModelFamily, device.ModelName)
+	}
 	contributions, totalScore, totalTrendBonus := computeRiskContributions(weights, latestAttrs, oldestAttrs, profile)
 
 	score := int(math.Round(totalScore))
@@ -81,20 +87,36 @@ func GetDeviceReplacementRisk(c *gin.Context) {
 	}
 
 	riskScore := models.ReplacementRiskScore{
-		DeviceWWN:      device.WWN,
-		DeviceProtocol: device.DeviceProtocol,
-		Score:          score,
-		Category:       models.ScoreToRiskCategory(score),
-		Contributions:  contributions,
-		TrendWindow:    trendWindow,
-		TrendBonus:     math.Round(totalTrendBonus*100) / 100,
-		ComputedAt:     time.Now().UTC(),
+		DeviceWWN:                    device.WWN,
+		DeviceProtocol:               device.DeviceProtocol,
+		Score:                        score,
+		Category:                     models.ScoreToRiskCategory(score),
+		Contributions:                contributions,
+		TrendWindow:                  trendWindow,
+		TrendBonus:                   math.Round(totalTrendBonus*100) / 100,
+		ComputedAt:                   time.Now().UTC(),
+		ConsumerDriveProfilesEnabled: profilesEnabled,
+		ConsumerDriveProfileApplied:  profile != nil,
+	}
+	if profile != nil {
+		riskScore.ConsumerDriveProfileFamily = profile.ModelFamily
 	}
 
 	c.JSON(http.StatusOK, models.ReplacementRiskResponse{
 		Success: true,
 		Data:    riskScore,
 	})
+}
+
+func consumerDriveProfilesEnabled(cfg config.Interface) bool {
+	if cfg == nil {
+		return true
+	}
+	key := config.DB_USER_SETTINGS_SUBKEY + ".metrics.consumer_drive_profiles_enabled"
+	if !cfg.IsSet(key) {
+		return true
+	}
+	return cfg.GetBool(key)
 }
 
 // computeRiskContributions builds the per-attribute contribution list and returns

@@ -18,6 +18,9 @@ export interface ReplacementRiskModel {
     trend_window: string;
     trend_bonus: number;
     computed_at: string;
+    consumer_drive_profiles_enabled: boolean;
+    consumer_drive_profile_applied: boolean;
+    consumer_drive_profile_family?: string;
 }
 
 export interface ReplacementRiskResponseWrapper {

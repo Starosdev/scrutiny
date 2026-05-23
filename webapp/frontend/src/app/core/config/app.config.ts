@@ -139,6 +139,7 @@ export interface AppConfig {
         // Scheduled reports
         report_enabled?: boolean;
         report_daily_enabled?: boolean;
+        consumer_drive_profiles_enabled?: boolean;
         report_daily_time?: string;
         report_weekly_enabled?: boolean;
         report_weekly_day?: number;
@@ -201,6 +202,7 @@ export const appConfig: AppConfig = {
         uptime_kuma_interval_seconds: 60,
         report_enabled: false,
         report_daily_enabled: false,
+        consumer_drive_profiles_enabled: true,
         report_daily_time: '08:00',
         report_weekly_enabled: false,
         report_weekly_day: 1,

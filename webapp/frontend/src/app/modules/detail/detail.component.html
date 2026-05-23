@@ -243,6 +243,18 @@
                     }
                 </div>
 
+                @if (replacementRisk.device_protocol === 'ATA') {
+                <div class="text-sm text-secondary mb-4">
+                    @if (!replacementRisk.consumer_drive_profiles_enabled) {
+                    Using generic ATA rules. Consumer drive profile overrides are disabled in Settings.
+                    } @else if (replacementRisk.consumer_drive_profile_applied) {
+                    Using consumer drive profile: {{ replacementRisk.consumer_drive_profile_family }}.
+                    } @else {
+                    Using generic ATA rules. No vetted consumer drive profile matched this drive.
+                    }
+                </div>
+                }
+
                 <!-- Attribute contributions -->
                 @if (replacementRisk.contributions?.length) { @if (!isMobile) {
                 <div class="overflow-x-auto">

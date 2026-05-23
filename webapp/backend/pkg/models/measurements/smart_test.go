@@ -16,19 +16,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func expectConsumerDriveProfilesEnabledDefault(fakeConfig *mock_config.MockInterface) {
+	fakeConfig.EXPECT().IsSet("user.metrics.consumer_drive_profiles_enabled").Return(false).AnyTimes()
+}
+
 func TestSmart_Flatten(t *testing.T) {
 	//setup
 	timeNow := time.Now()
 	smart := measurements.Smart{
-		Date:            timeNow,
-		DeviceWWN:       "test-wwn",
-		DeviceProtocol:  pkg.DeviceProtocolAta,
-		Temp:            50,
-		PowerOnHours:    10,
-		PowerCycleCount: 10,
+		Date:             timeNow,
+		DeviceWWN:        "test-wwn",
+		DeviceProtocol:   pkg.DeviceProtocolAta,
+		Temp:             50,
+		PowerOnHours:     10,
+		PowerCycleCount:  10,
 		LogicalBlockSize: 512,
-		Attributes:      nil,
-		Status:          0,
+		Attributes:       nil,
+		Status:           0,
 	}
 
 	//test
@@ -43,14 +47,14 @@ func TestSmart_Flatten_ATA(t *testing.T) {
 	//setup
 	timeNow := time.Now()
 	smart := measurements.Smart{
-		Date:            timeNow,
-		DeviceWWN:       "test-wwn",
-		DeviceProtocol:  pkg.DeviceProtocolAta,
-		Temp:            50,
-		PowerOnHours:    10,
-		PowerCycleCount: 10,
+		Date:             timeNow,
+		DeviceWWN:        "test-wwn",
+		DeviceProtocol:   pkg.DeviceProtocolAta,
+		Temp:             50,
+		PowerOnHours:     10,
+		PowerCycleCount:  10,
 		LogicalBlockSize: 512,
-		Status:          0,
+		Status:           0,
 		Attributes: map[string]measurements.SmartAttribute{
 			"1": &measurements.SmartAtaAttribute{
 				AttributeId: 1,
@@ -106,9 +110,9 @@ func TestSmart_Flatten_ATA(t *testing.T) {
 		"attr.2.worst":             int64(135),
 
 		"logical_block_size": int64(512),
-		"power_cycle_count": int64(10),
-		"power_on_hours":    int64(10),
-		"temp":              int64(50),
+		"power_cycle_count":  int64(10),
+		"power_on_hours":     int64(10),
+		"temp":               int64(50),
 	}, fields)
 }
 
@@ -116,14 +120,14 @@ func TestSmart_Flatten_SCSI(t *testing.T) {
 	//setup
 	timeNow := time.Now()
 	smart := measurements.Smart{
-		Date:            timeNow,
-		DeviceWWN:       "test-wwn",
-		DeviceProtocol:  pkg.DeviceProtocolScsi,
-		Temp:            50,
-		PowerOnHours:    10,
-		PowerCycleCount: 10,
+		Date:             timeNow,
+		DeviceWWN:        "test-wwn",
+		DeviceProtocol:   pkg.DeviceProtocolScsi,
+		Temp:             50,
+		PowerOnHours:     10,
+		PowerCycleCount:  10,
 		LogicalBlockSize: 512,
-		Status:          0,
+		Status:           0,
 		Attributes: map[string]measurements.SmartAttribute{
 			"read_errors_corrected_by_eccfast": &measurements.SmartScsiAttribute{
 				AttributeId: "read_errors_corrected_by_eccfast",
@@ -145,10 +149,10 @@ func TestSmart_Flatten_SCSI(t *testing.T) {
 		"attr.read_errors_corrected_by_eccfast.thresh":            int64(0),
 		"attr.read_errors_corrected_by_eccfast.transformed_value": int64(0),
 		"attr.read_errors_corrected_by_eccfast.value":             int64(300357663),
-		"logical_block_size": int64(512),
-		"power_cycle_count": int64(10),
-		"power_on_hours":    int64(10),
-		"temp":              int64(50)},
+		"logical_block_size":                                      int64(512),
+		"power_cycle_count":                                       int64(10),
+		"power_on_hours":                                          int64(10),
+		"temp":                                                    int64(50)},
 		fields)
 }
 
@@ -156,14 +160,14 @@ func TestSmart_Flatten_NVMe(t *testing.T) {
 	//setup
 	timeNow := time.Now()
 	smart := measurements.Smart{
-		Date:            timeNow,
-		DeviceWWN:       "test-wwn",
-		DeviceProtocol:  pkg.DeviceProtocolNvme,
-		Temp:            50,
-		PowerOnHours:    10,
-		PowerCycleCount: 10,
+		Date:             timeNow,
+		DeviceWWN:        "test-wwn",
+		DeviceProtocol:   pkg.DeviceProtocolNvme,
+		Temp:             50,
+		PowerOnHours:     10,
+		PowerCycleCount:  10,
 		LogicalBlockSize: 512,
-		Status:          0,
+		Status:           0,
 		Attributes: map[string]measurements.SmartAttribute{
 			"available_spare": &measurements.SmartNvmeAttribute{
 				AttributeId: "available_spare",
@@ -322,6 +326,7 @@ func TestFromCollectorSmartInfo(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -363,6 +368,7 @@ func TestFromCollectorSmartInfo_Fail_Smart(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -393,6 +399,7 @@ func TestFromCollectorSmartInfo_Fail_ScrutinySmart(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -423,6 +430,7 @@ func TestFromCollectorSmartInfo_Fail_ScrutinyNonCriticalFailed(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -462,6 +470,7 @@ func TestFromCollectorSmartInfo_NVMe_Fail_Scrutiny(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -499,6 +508,7 @@ func TestFromCollectorSmartInfo_Nvme(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -532,6 +542,7 @@ func TestFromCollectorSmartInfo_Scsi(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -565,6 +576,7 @@ func TestFromCollectorSmartInfo_Scsi_Fail_Scrutiny(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -587,7 +599,7 @@ func TestFromCollectorSmartInfo_Scsi_Fail_Scrutiny(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "WWN-test", smartMdl.DeviceWWN)
 	require.Equal(t, pkg.DeviceStatusFailedScrutiny, smartMdl.Status)
-	
+
 	// scsi_grown_defect_list should fail: Ideal="low", Value=5 > Threshold=0
 	require.Equal(t, pkg.AttributeStatusFailedScrutiny, smartMdl.Attributes["scsi_grown_defect_list"].GetStatus(),
 		"scrutiny should detect that %s failed (status: %d, %s)",
@@ -595,7 +607,7 @@ func TestFromCollectorSmartInfo_Scsi_Fail_Scrutiny(t *testing.T) {
 		smartMdl.Attributes["scsi_grown_defect_list"].GetStatus(),
 		smartMdl.Attributes["scsi_grown_defect_list"].(*measurements.SmartScsiAttribute).StatusReason,
 	)
-	
+
 	// read_total_uncorrected_errors should fail: Ideal="low", Value=3 > Threshold=0
 	require.Equal(t, pkg.AttributeStatusFailedScrutiny, smartMdl.Attributes["read_total_uncorrected_errors"].GetStatus(),
 		"scrutiny should detect that %s failed (status: %d, %s)",
@@ -615,6 +627,7 @@ func TestFromCollectorSmartInfo_Scsi_SAS_EnvironmentalReports(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -650,6 +663,7 @@ func TestFromCollectorSmartInfo_Scsi_TemperatureAttributeType(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -681,6 +695,7 @@ func TestFromCollectorSmartInfo_Scsi_TemperatureAttributeType_EnvReports(t *test
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -715,6 +730,7 @@ func TestFromCollectorSmartInfo_ATA_DeviceStatistics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -828,6 +844,7 @@ func TestFromCollectorSmartInfo_ATA_DeviceStatistics_StatusPropagation(t *testin
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
@@ -925,6 +942,7 @@ func TestFromCollectorSmartInfo_ATA_DeviceStatistics_IgnoreList(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
 	// Add devstat_7_8 to the ignore list
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{"devstat_7_8"}).AnyTimes()
@@ -1021,6 +1039,7 @@ func TestFromCollectorSmartInfo_ATA_DeviceStatistics_InvalidValue(t *testing.T) 
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
@@ -1119,6 +1138,7 @@ func TestFromCollectorSmartInfo_ATA_TemperatureFallback(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -1179,6 +1199,7 @@ func TestFromCollectorSmartInfo_ATA_TemperatureFallback_BitMask(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -1238,6 +1259,7 @@ func TestFromCollectorSmartInfo_ATA_TemperatureFallback_NegativeTemp(t *testing.
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -1432,6 +1454,7 @@ func TestFromCollectorSmartInfo_ATA_Farm(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 
@@ -1470,7 +1493,7 @@ func TestFromCollectorSmartInfo_ATA_Farm(t *testing.T) {
 				NumberOfReallocatedSectors:          0,
 				NumberOfReallocatedCandidateSectors: 0,
 				TotalCrcErrors:                      0,
-				CommandTimeOutCountTotal:             1,
+				CommandTimeOutCountTotal:            1,
 			},
 			Environ: &collector.FarmEnvironmentStatistics{
 				CurentTemp:  35,
@@ -1528,6 +1551,7 @@ func TestFromCollectorSmartInfo_ATA_Farm_NilSkipped(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
 

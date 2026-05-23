@@ -196,7 +196,10 @@ func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn s
 
 // generate SmartAtaAttribute entries from Scrutiny Collector Smart data.
 func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, modelFamily string, modelName string, tableItems []collector.AtaSmartAttributesTableItem) {
-	profile, _ := thresholds.LookupConsumerDriveProfile(pkg.DeviceProtocolAta, modelFamily, modelName)
+	var profile *thresholds.ConsumerDriveProfile
+	if consumerDriveProfilesEnabled(cfg) {
+		profile, _ = thresholds.LookupConsumerDriveProfile(pkg.DeviceProtocolAta, modelFamily, modelName)
+	}
 	for _, collectorAttr := range tableItems {
 		attrModel := SmartAtaAttribute{
 			AttributeId: collectorAttr.ID,
@@ -454,7 +457,10 @@ func (sm *Smart) ProcessScsiSmartInfo(cfg config.Interface, defectGrownList int6
 
 // processAtaSmartInfoWithOverrides generates SmartAtaAttribute entries using pre-merged overrides.
 func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, modelFamily string, modelName string, tableItems []collector.AtaSmartAttributesTableItem, mergedOverrides []overrides.AttributeOverride) {
-	profile, _ := thresholds.LookupConsumerDriveProfile(pkg.DeviceProtocolAta, modelFamily, modelName)
+	var profile *thresholds.ConsumerDriveProfile
+	if consumerDriveProfilesEnabled(cfg) {
+		profile, _ = thresholds.LookupConsumerDriveProfile(pkg.DeviceProtocolAta, modelFamily, modelName)
+	}
 	for _, collectorAttr := range tableItems {
 		attrModel := SmartAtaAttribute{
 			AttributeId: collectorAttr.ID,
@@ -522,6 +528,17 @@ func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, modelFam
 			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 		}
 	}
+}
+
+func consumerDriveProfilesEnabled(cfg config.Interface) bool {
+	if cfg == nil {
+		return true
+	}
+	key := config.DB_USER_SETTINGS_SUBKEY + ".metrics.consumer_drive_profiles_enabled"
+	if !cfg.IsSet(key) {
+		return true
+	}
+	return cfg.GetBool(key)
 }
 
 // processAtaDeviceStatisticsWithOverrides extracts device statistics using pre-merged overrides.
