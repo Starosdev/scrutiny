@@ -669,6 +669,71 @@ func TestMissedPingPayload_MessageContainsLastSeen(t *testing.T) {
 	require.Contains(t, payload.Message, "Please check that the collector is running")
 }
 
+func TestNewMissedPing_HTMLMessage(t *testing.T) {
+	t.Parallel()
+
+	device := models.Device{
+		WWN:          "0x5000cca264eb01d7",
+		SerialNumber: "FAKEWDDJ324KSO",
+		DeviceName:   "/dev/sda",
+		Label:        "Parity Drive 1",
+	}
+
+	notify := NewMissedPing(logrus.StandardLogger(), nil, device, time.Now().Add(-2*time.Hour), 60)
+
+	require.Contains(t, notify.Payload.HTMLMessage, "<!DOCTYPE html>")
+	require.Contains(t, notify.Payload.HTMLMessage, "collector missed ping")
+	require.Contains(t, notify.Payload.HTMLMessage, "Parity Drive 1 (/dev/sda)")
+}
+
+func TestNewHeartbeatPayload_HTMLMessage(t *testing.T) {
+	t.Parallel()
+
+	payload := NewHeartbeatPayload(12, 14)
+
+	require.Contains(t, payload.HTMLMessage, "<!DOCTYPE html>")
+	require.Contains(t, payload.HTMLMessage, "ALL CLEAR")
+	require.Contains(t, payload.HTMLMessage, "Monitored Devices")
+	require.Contains(t, payload.HTMLMessage, "12")
+}
+
+func TestNewCollectorError_HTMLMessage(t *testing.T) {
+	t.Parallel()
+
+	device := &models.Device{
+		DeviceName:   "/dev/sda",
+		DeviceType:   pkg.DeviceProtocolAta,
+		SerialNumber: "FAKEWDDJ324KSO",
+		HostId:       "nas-01",
+		Label:        "Parity Drive 1",
+	}
+
+	notify := NewCollectorError(logrus.StandardLogger(), nil, device, "scan", "smartctl failed")
+
+	require.Contains(t, notify.Payload.HTMLMessage, "<!DOCTYPE html>")
+	require.Contains(t, notify.Payload.HTMLMessage, "COLLECTOR ERROR")
+	require.Contains(t, notify.Payload.HTMLMessage, "smartctl failed")
+	require.Contains(t, notify.Payload.HTMLMessage, "nas-01")
+}
+
+func TestNewReplacementRisk_HTMLMessage(t *testing.T) {
+	t.Parallel()
+
+	device := &models.Device{
+		DeviceName:   "/dev/sda",
+		DeviceType:   pkg.DeviceProtocolAta,
+		SerialNumber: "FAKEWDDJ324KSO",
+		Label:        "Parity Drive 1",
+	}
+
+	notify := NewReplacementRisk(logrus.StandardLogger(), nil, device, 88, models.RiskCategoryReplaceSoon)
+
+	require.Contains(t, notify.Payload.HTMLMessage, "<!DOCTYPE html>")
+	require.Contains(t, notify.Payload.HTMLMessage, "REPLACEMENT RISK")
+	require.Contains(t, notify.Payload.HTMLMessage, "88/100")
+	require.Contains(t, notify.Payload.HTMLMessage, "replace_soon")
+}
+
 func TestNormalizeGotifyURL_Port8080_AddsDisableTLS(t *testing.T) {
 	t.Parallel()
 	result := normalizeGotifyURL("gotify://192.168.2.135:8080/A-iI4ewTwguZo_V")
