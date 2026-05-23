@@ -65,6 +65,86 @@ func TestLookupConsumerDriveProfileBySamsung850ProFallback(t *testing.T) {
 	}
 }
 
+func TestLookupConsumerDriveProfileBySamsung850EvoAlias(t *testing.T) {
+	profile, ok := LookupConsumerDriveProfile("ATA", "", "Samsung SSD 850 EVO 500GB")
+	if !ok || profile == nil {
+		t.Fatalf("expected Samsung 850 EVO alias match")
+	}
+	if profile.ModelFamily != "Samsung SSD 850 EVO" {
+		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
+	}
+}
+
+func TestLookupConsumerDriveProfileBySamsung860EvoAlias(t *testing.T) {
+	profile, ok := LookupConsumerDriveProfile("ATA", "", "Samsung SSD 860 EVO 500GB")
+	if !ok || profile == nil {
+		t.Fatalf("expected Samsung 860 EVO alias match")
+	}
+	if profile.ModelFamily != "Samsung SSD 860 EVO" {
+		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
+	}
+}
+
+func TestLookupConsumerDriveProfileBySamsung860EvoRegex(t *testing.T) {
+	profile, ok := LookupConsumerDriveProfile("ATA", "", "Samsung SSD 860 EVO M.2 1TB")
+	if !ok || profile == nil {
+		t.Fatalf("expected Samsung 860 EVO M.2 regex match")
+	}
+	if profile.ModelFamily != "Samsung SSD 860 EVO M.2" {
+		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
+	}
+}
+
+func TestLookupConsumerDriveProfileByCrucialMx500Alias(t *testing.T) {
+	profile, ok := LookupConsumerDriveProfile("ATA", "", "CT1000MX500SSD1")
+	if !ok || profile == nil {
+		t.Fatalf("expected Crucial MX500 alias match")
+	}
+	if profile.ModelFamily != "Crucial MX500" {
+		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
+	}
+}
+
+func TestLookupConsumerDriveProfileByCrucialMx300Alias(t *testing.T) {
+	profile, ok := LookupConsumerDriveProfile("ATA", "", "CT525MX300SSD1")
+	if !ok || profile == nil {
+		t.Fatalf("expected Crucial MX300 alias match")
+	}
+	if profile.ModelFamily != "Crucial MX300" {
+		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
+	}
+}
+
+func TestLookupConsumerDriveProfileBySamsung870QvoRegex(t *testing.T) {
+	profile, ok := LookupConsumerDriveProfile("ATA", "", "Samsung SSD 870 QVO 2TB")
+	if !ok || profile == nil {
+		t.Fatalf("expected Samsung 870 QVO regex match")
+	}
+	if profile.ModelFamily != "Samsung SSD 870 QVO" {
+		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
+	}
+}
+
+func TestLookupConsumerDriveProfileByIntel545sAlias(t *testing.T) {
+	profile, ok := LookupConsumerDriveProfile("ATA", "", "INTEL SSDSC2KW512G8")
+	if !ok || profile == nil {
+		t.Fatalf("expected Intel 545s alias match")
+	}
+	if profile.ModelFamily != "Intel SSD 545s Series" {
+		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
+	}
+}
+
+func TestLookupConsumerDriveProfileBySanDisk3dRegex(t *testing.T) {
+	profile, ok := LookupConsumerDriveProfile("ATA", "", "SanDisk SDSSDA-1T00-G26")
+	if !ok || profile == nil {
+		t.Fatalf("expected SanDisk 3D SSD regex match")
+	}
+	if profile.ModelFamily != "SanDisk 3D SSD" {
+		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
+	}
+}
+
 func TestLookupConsumerDriveProfileByRegexFallback(t *testing.T) {
 	profile, ok := LookupConsumerDriveProfile("ATA", "", "ST3000DM001-1ER166")
 	if !ok || profile == nil {

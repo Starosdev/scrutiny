@@ -237,9 +237,135 @@
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "Samsung",
+      "model_family": "Samsung SSD 850 EVO",
+      "sample_count": 1184,
+      "model_pattern": "^Samsung SSD 850 EVO.*$",
+      "ata_counter_severity_overrides": {
+        "5": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
+        "196": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
+        "197": { "low": 0, "moderate": 2, "high": 6, "critical": 16 },
+        "198": { "low": 0, "moderate": 2, "high": 6, "critical": 16 }
+      }
+    },
+    {
+      "protocol": "ATA",
+      "source": "linuxhw/SMART curated consumer SSD profile",
+      "vendor": "Samsung",
       "model_family": "Samsung SSD 870 EVO",
       "sample_count": 897,
       "model_pattern": "^Samsung SSD 870 EVO.*$",
+      "ata_counter_severity_overrides": {
+        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
+        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
+      }
+    },
+    {
+      "protocol": "ATA",
+      "source": "linuxhw/SMART curated consumer SSD profile",
+      "vendor": "Samsung",
+      "model_family": "Samsung SSD 860 PRO",
+      "sample_count": 246,
+      "model_pattern": "^Samsung SSD 860 PRO.*$",
+      "ata_counter_severity_overrides": {
+        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
+        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
+      }
+    },
+    {
+      "protocol": "ATA",
+      "source": "linuxhw/SMART curated consumer SSD profile",
+      "vendor": "Samsung",
+      "model_family": "Samsung SSD 870 QVO",
+      "sample_count": 254,
+      "model_pattern": "^Samsung SSD 870 QVO.*$",
+      "ata_counter_severity_overrides": {
+        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
+        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
+      }
+    },
+    {
+      "protocol": "ATA",
+      "source": "linuxhw/SMART curated consumer SSD profile",
+      "vendor": "Crucial",
+      "model_family": "Crucial MX500",
+      "sample_count": 2214,
+      "model_pattern": "^CT(250|500|1000|2000)MX500SSD1.*$",
+      "ata_counter_severity_overrides": {
+        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
+        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
+      }
+    },
+    {
+      "protocol": "ATA",
+      "source": "linuxhw/SMART curated consumer SSD profile",
+      "vendor": "Crucial",
+      "model_family": "Crucial MX300",
+      "sample_count": 426,
+      "model_pattern": "^CT(275|525|750|1050)MX300SSD1.*$",
+      "ata_counter_severity_overrides": {
+        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
+        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
+      }
+    },
+    {
+      "protocol": "ATA",
+      "source": "linuxhw/SMART curated consumer SSD profile",
+      "vendor": "Crucial",
+      "model_family": "Crucial BX500",
+      "sample_count": 481,
+      "model_pattern": "^CT(120|240|480|500|1000|2000)BX500SSD1.*$",
+      "ata_counter_severity_overrides": {
+        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
+        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
+      }
+    },
+    {
+      "protocol": "ATA",
+      "source": "linuxhw/SMART curated consumer SSD profile",
+      "vendor": "SanDisk",
+      "model_family": "SanDisk Ultra II",
+      "sample_count": 214,
+      "model_pattern": "^SanDisk SDSSDHII-.*$",
+      "ata_counter_severity_overrides": {
+        "5": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
+        "196": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
+        "197": { "low": 0, "moderate": 2, "high": 6, "critical": 16 },
+        "198": { "low": 0, "moderate": 2, "high": 6, "critical": 16 }
+      }
+    },
+    {
+      "protocol": "ATA",
+      "source": "linuxhw/SMART curated consumer SSD profile",
+      "vendor": "SanDisk",
+      "model_family": "SanDisk 3D SSD",
+      "sample_count": 163,
+      "model_pattern": "^SanDisk SDSSDA-.*$",
+      "ata_counter_severity_overrides": {
+        "5": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
+        "196": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
+        "197": { "low": 0, "moderate": 2, "high": 6, "critical": 16 },
+        "198": { "low": 0, "moderate": 2, "high": 6, "critical": 16 }
+      }
+    },
+    {
+      "protocol": "ATA",
+      "source": "linuxhw/SMART curated consumer SSD profile",
+      "vendor": "Intel",
+      "model_family": "Intel SSD 545s Series",
+      "sample_count": 171,
+      "model_pattern": "^INTEL SSDSC2KW(128|256|512)G8.*$",
       "ata_counter_severity_overrides": {
         "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
         "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
@@ -318,6 +444,34 @@
     },
     {
       "protocol": "ATA",
+      "source": "linuxhw/SMART curated consumer SSD profile",
+      "vendor": "Samsung",
+      "model_family": "Samsung SSD 860 EVO",
+      "sample_count": 1717,
+      "model_pattern": "^Samsung SSD 860 EVO( [0-9].*|$)",
+      "ata_counter_severity_overrides": {
+        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
+        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
+      }
+    },
+    {
+      "protocol": "ATA",
+      "source": "linuxhw/SMART curated consumer SSD profile",
+      "vendor": "Samsung",
+      "model_family": "Samsung SSD 860 EVO M.2",
+      "sample_count": 173,
+      "model_pattern": "^Samsung SSD 860 EVO M\\.2.*$",
+      "ata_counter_severity_overrides": {
+        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
+        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
+        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
+      }
+    },
+    {
+      "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "WDC",
       "model_family": "WDC Scorpio Black",
@@ -374,7 +528,13 @@
     }
   ],
   "aliases": {
-    "Samsung SSD 860 EVO 500GB": "Samsung based SSDs",
+    "Samsung SSD 860 EVO 500GB": "Samsung SSD 860 EVO",
+    "Samsung SSD 860 EVO 250GB": "Samsung SSD 860 EVO",
+    "Samsung SSD 860 EVO 1TB": "Samsung SSD 860 EVO",
+    "Samsung SSD 860 EVO 2TB": "Samsung SSD 860 EVO",
+    "Samsung SSD 860 EVO M.2 500GB": "Samsung SSD 860 EVO M.2",
+    "Samsung SSD 860 EVO M.2 1TB": "Samsung SSD 860 EVO M.2",
+    "Samsung SSD 860 EVO M.2 2TB": "Samsung SSD 860 EVO M.2",
     "Samsung SSD 840 Series": "Samsung based SSDs",
     "Hitachi HDS721050DLE630": "Hitachi Deskstar 7K1000.D",
     "WDC WD80EFAX-68LHPN0": "WDC Red",
@@ -395,8 +555,27 @@
     "ST3000DM001-1ER166": "Seagate Desktop HDD.15",
     "ST3000DM001-1CH166": "Seagate Desktop HDD.15",
     "X SSD 850 PRO 128GB": "Samsung SSD 850 PRO",
+    "Samsung SSD 850 EVO 250GB": "Samsung SSD 850 EVO",
+    "Samsung SSD 850 EVO 500GB": "Samsung SSD 850 EVO",
+    "Samsung SSD 850 EVO 1TB": "Samsung SSD 850 EVO",
     "Samsung SSD 870 EVO 1TB": "Samsung SSD 870 EVO",
     "Samsung SSD 870 EVO 500GB": "Samsung SSD 870 EVO",
+    "Samsung SSD 860 PRO 512GB": "Samsung SSD 860 PRO",
+    "Samsung SSD 860 PRO 1TB": "Samsung SSD 860 PRO",
+    "Samsung SSD 870 QVO 1TB": "Samsung SSD 870 QVO",
+    "Samsung SSD 870 QVO 2TB": "Samsung SSD 870 QVO",
+    "CT500MX500SSD1": "Crucial MX500",
+    "CT1000MX500SSD1": "Crucial MX500",
+    "CT525MX300SSD1": "Crucial MX300",
+    "CT1050MX300SSD1": "Crucial MX300",
+    "CT500BX500SSD1": "Crucial BX500",
+    "CT1000BX500SSD1": "Crucial BX500",
+    "SanDisk SDSSDHII-480G": "SanDisk Ultra II",
+    "SanDisk SDSSDHII-240G": "SanDisk Ultra II",
+    "SanDisk SDSSDA-500G": "SanDisk 3D SSD",
+    "SanDisk SDSSDA-1T00-G26": "SanDisk 3D SSD",
+    "INTEL SSDSC2KW256G8": "Intel SSD 545s Series",
+    "INTEL SSDSC2KW512G8": "Intel SSD 545s Series",
     "Samsung SSD 840 EVO 500GB": "Samsung SSD 840 EVO",
     "Samsung SSD 840 EVO 250GB": "Samsung SSD 840 EVO",
     "Samsung SSD 840 EVO 1TB": "Samsung SSD 840 EVO",
