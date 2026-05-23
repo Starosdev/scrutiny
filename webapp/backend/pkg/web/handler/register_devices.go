@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
+	"strings"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
@@ -17,10 +20,18 @@ func RegisterDevices(c *gin.Context) {
 	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 
-	var collectorDeviceWrapper models.DeviceWrapper
-	err := c.BindJSON(&collectorDeviceWrapper)
+	requestBody, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		logger.Errorln("Cannot parse detected devices", err)
+		logger.WithError(err).Error("Cannot read detected devices request body")
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
+		return
+	}
+
+	var collectorDeviceWrapper models.DeviceWrapper
+	err = json.Unmarshal(requestBody, &collectorDeviceWrapper)
+	if err != nil {
+		logger.WithError(err).WithField("body_sample", truncateForLog(string(requestBody), 1024)).
+			Error("Cannot parse detected devices")
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
 	}
@@ -42,6 +53,15 @@ func RegisterDevices(c *gin.Context) {
 		//insert devices into DB (and update specified columns if device is already registered)
 		// update device fields that may change: (DeviceType, HostID)
 		if err := deviceRepo.RegisterDevice(c, detectedStorageDevices[i]); err != nil {
+			logger.WithError(err).WithFields(logrus.Fields{
+				"device_index":      i,
+				"device_id":         detectedStorageDevices[i].DeviceID,
+				"device_name":       detectedStorageDevices[i].DeviceName,
+				"wwn":               detectedStorageDevices[i].WWN,
+				"serial_number":     detectedStorageDevices[i].SerialNumber,
+				"collector_version": detectedStorageDevices[i].CollectorVersion,
+				"smart_support":     detectedStorageDevices[i].SmartSupport,
+			}).Error("Failed to register detected device")
 			errs = append(errs, err)
 		}
 	}
@@ -61,6 +81,14 @@ func RegisterDevices(c *gin.Context) {
 		Success: true,
 		Data:    detectedStorageDevices,
 	})
+}
+
+func truncateForLog(value string, maxLen int) string {
+	value = strings.TrimSpace(value)
+	if len(value) <= maxLen {
+		return value
+	}
+	return value[:maxLen] + "...(truncated)"
 }
 
 func publishMqttDiscovery(c *gin.Context, deviceRepo database.DeviceRepo, devices []models.Device) {

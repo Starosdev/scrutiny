@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
@@ -80,6 +81,18 @@ func (s *SmartSupport) scanBytes(raw []byte) error {
 	if err := json.Unmarshal(raw, &legacyNumber); err == nil {
 		*s = SmartSupport{Available: legacyNumber != 0}
 		return nil
+	}
+
+	var legacyString string
+	if err := json.Unmarshal(raw, &legacyString); err == nil {
+		switch strings.ToLower(strings.TrimSpace(legacyString)) {
+		case "", "false", "0", "no", "off":
+			*s = SmartSupport{Available: false}
+			return nil
+		case "true", "1", "yes", "on":
+			*s = SmartSupport{Available: true}
+			return nil
+		}
 	}
 
 	return fmt.Errorf("unsupported smart_support payload: %s", string(raw))
