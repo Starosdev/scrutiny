@@ -48,7 +48,7 @@ Full credit for the original vision and architecture goes to [AnalogJ](https://g
 - **Scheduled Reports** [WIP] - Automated daily/weekly/monthly health reports via email with HTML formatting
 - **API Authentication** - Opt-in token-based auth for API, web UI, and Prometheus metrics
 - **Missed Ping Digest** - Consolidated notification when multiple collectors miss pings (instead of one email per device)
-- **HTML Email Notifications** - Rich HTML emails for reports and missed ping alerts via SMTP
+- **HTML Email Notifications** - Rich HTML emails with plain-text fallback for reports, test notifications, collector errors, missed ping digests, and other alert emails over SMTP
 - **Enhanced Seagate Drive Support** - Better timeout handling and FARM log collection for Seagate drives
 - **Workload Insights** - Visualize daily read/write rates, I/O intensity, SSD endurance, and activity spike detection
 - **Home Assistant MQTT Discovery** - Native MQTT integration for automatic device discovery in Home Assistant
@@ -127,7 +127,7 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Performance Benchmarking** - fio-based benchmarks for throughput, IOPS, and latency with historical tracking
 - **Scheduled Reports** [WIP] - Automated health reports on daily/weekly/monthly schedules with HTML emails and PDF export
 - **Missed Ping Digest** - Batch notification when multiple collectors go unreachable
-- **HTML Email Notifications** - Rich HTML formatting for SMTP notifications (reports and missed pings)
+- **HTML Email Notifications** - Rich HTML formatting with plain-text fallback for SMTP notifications, including reports, test notifications, collector errors, missed ping digests, heartbeat, performance degradation, replacement risk, and MDADM degradation alerts
 - **Workload Insights** - Daily read/write rates, R/W ratio, I/O intensity classification, SSD endurance tracking, and activity spike detection
 - **Home Assistant MQTT Discovery** - Native push-based integration with automatic entity creation (temperature, health status, power-on hours, power cycles, drive problem)
 - **Heartbeat Notifications** - Periodic "all clear" alerts for uptime monitoring integration
@@ -543,7 +543,7 @@ For more information and troubleshooting, see the [TROUBLESHOOTING_NOTIFICATIONS
 
 ### Heartbeat Notifications
 
-Scrutiny can send periodic "all clear" heartbeat notifications to confirm the monitoring system is running and all drives are healthy. This is useful for integration with uptime monitoring tools like Uptime Kuma.
+Scrutiny can send periodic "all clear" heartbeat notifications to confirm the monitoring system is running and all drives are healthy. This is useful for integration with uptime monitoring tools like Uptime Kuma. When delivered through SMTP or HTML-capable Apprise targets, heartbeat messages use the same HTML-plus-plain-text pattern as the other email notifications.
 
 - **Disabled by default** -- enable via Settings in the web UI or the `/api/settings` API
 - **Configurable interval** -- defaults to every 24 hours
@@ -555,7 +555,7 @@ You can mute notifications for specific devices through the web UI. This is usef
 
 ### Scheduled Reports [WIP]
 
-Scrutiny can generate and email periodic health reports summarizing device status, temperature, alerts, and ZFS pool health. Reports are sent via your configured notification URLs. SMTP and Apprise targets receive HTML formatting when supported by the destination, while plain-text-only targets receive the text body.
+Scrutiny can generate and email periodic health reports summarizing device status, temperature, alerts, and ZFS pool health. Reports are sent via your configured notification URLs. SMTP deliveries use multipart email with separate HTML and plain-text bodies. HTML-capable Apprise targets receive the HTML body when supported by the destination, while plain-text-only targets receive the text body.
 
 > **Note:** This feature is a work in progress. It is functional and tested, but the UI and report content may change based on feedback. We'd appreciate hearing about your experience -- please open an issue with suggestions or bug reports.
 
