@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.60.0](https://github.com/Starosdev/scrutiny/compare/v1.59.0...v1.60.0) (2026-05-23)
+
+### Features
+
+* **notify:** Apprise support, HTML email alerts, Synology Btrfs detection, and stability fixes ([#551](https://github.com/Starosdev/scrutiny/issues/551)) ([893bc13](https://github.com/Starosdev/scrutiny/commit/893bc1322dc7bd03887d4fca9497a35c79bff8c9))
+
 ## [1.59.0](https://github.com/Starosdev/scrutiny/compare/v1.58.2...v1.59.0) (2026-05-21)
 
 ### Features
