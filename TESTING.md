@@ -230,6 +230,10 @@ installed locally to build Docker images.
 
 This is the primary way to validate changes as they will run in production.
 
+For this repo, "local Docker testing" means the Zeus Unraid host, not this Mac.
+Run the Docker commands in this section on Zeus over LAN `192.168.1.33` or
+NetBird `100.66.106.240`.
+
 ### Omnibus Image (Simplest)
 
 Build and run the omnibus image which bundles everything:
@@ -273,24 +277,26 @@ docker run -d --name influxdb \
 # 2. Build and start the web server
 docker build -f docker/Dockerfile.web -t scrutiny-web:local .
 docker run -d --name scrutiny-web \
-  -p 8080:8080 \
-  -e SCRUTINY_WEB_INFLUXDB_HOST=host.docker.internal \
+  --network host \
+  -e SCRUTINY_WEB_INFLUXDB_HOST=127.0.0.1 \
   scrutiny-web:local
 
 # 3. Build and start the collector
 docker build -f docker/Dockerfile.collector -t scrutiny-collector:local .
 docker run --rm \
+  --network host \
   -v /run/udev:/run/udev:ro \
   --cap-add SYS_RAWIO \
   --cap-add SYS_ADMIN \
   --device=/dev/sda \
-  -e COLLECTOR_API_ENDPOINT=http://host.docker.internal:8080 \
+  -e COLLECTOR_API_ENDPOINT=http://127.0.0.1:8080 \
   -e COLLECTOR_RUN_STARTUP=true \
   scrutiny-collector:local
 ```
 
-> **Note**: Use `host.docker.internal` on Docker Desktop. On Linux, use `--network host`
-> or create a Docker network and use container names.
+Use `--network host` on Zeus when a container needs to reach a service bound on
+the Zeus host itself. When multiple containers share a compose network, prefer
+container names such as `http://web:8080`.
 
 ### Using Docker Compose
 
@@ -528,7 +534,8 @@ go run webapp/backend/cmd/scrutiny/scrutiny.go start --config ./scrutiny.yaml
 # Build and run ZFS collector image
 docker build -f docker/Dockerfile.collector-zfs -t scrutiny-collector-zfs:local . && \
 docker run --rm \
-  -e COLLECTOR_ZFS_API_ENDPOINT=http://host.docker.internal:8080 \
+  --network host \
+  -e COLLECTOR_ZFS_API_ENDPOINT=http://127.0.0.1:8080 \
   -e COLLECTOR_ZFS_RUN_STARTUP=true \
   scrutiny-collector-zfs:local
 
@@ -542,9 +549,10 @@ curl -s http://localhost:8080/api/zfs/summary | jq .
 # Build and run MDADM collector image (requires /dev mapping and SYS_ADMIN)
 docker build -f docker/Dockerfile.collector-mdadm -t scrutiny-collector-mdadm:local . && \
 docker run --rm \
+  --network host \
   --cap-add SYS_ADMIN \
   -v /dev:/dev \
-  -e COLLECTOR_MDADM_API_ENDPOINT=http://host.docker.internal:8080 \
+  -e COLLECTOR_MDADM_API_ENDPOINT=http://127.0.0.1:8080 \
   -e COLLECTOR_MDADM_RUN_STARTUP=true \
   scrutiny-collector-mdadm:local
 
@@ -560,9 +568,10 @@ See [docs/MDADM_MONITORING.md](docs/MDADM_MONITORING.md) for the full deployment
 # Build and run performance collector image for a quick benchmark
 docker build -f docker/Dockerfile.collector-performance -t scrutiny-collector-performance:local . && \
 docker run --rm \
+  --network host \
   --cap-add SYS_RAWIO --cap-add SYS_ADMIN \
   --device=/dev/sda \
-  -e COLLECTOR_PERF_API_ENDPOINT=http://host.docker.internal:8080 \
+  -e COLLECTOR_PERF_API_ENDPOINT=http://127.0.0.1:8080 \
   -e COLLECTOR_PERF_RUN_STARTUP=true \
   -e COLLECTOR_PERF_PROFILE=quick \
   scrutiny-collector-performance:local
@@ -605,8 +614,9 @@ docker run -d --name mosquitto -p 1883:1883 eclipse-mosquitto:2 \
 
 # Run Scrutiny with MQTT enabled
 docker run ... \
+  --network host \
   -e SCRUTINY_WEB_MQTT_ENABLED=true \
-  -e SCRUTINY_WEB_MQTT_BROKER=tcp://host.docker.internal:1883 \
+  -e SCRUTINY_WEB_MQTT_BROKER=tcp://127.0.0.1:1883 \
   scrutiny:local
 
 # Subscribe to MQTT topics to verify discovery messages
@@ -857,7 +867,7 @@ If you need to change the internal ports the applications bind to, override via 
 
 ## 11. Appendix: Combined Docker Build & Run Commands
 
-For quick copy-pasting, here are all the combinations to freshly build a Docker image from your local code and immediately run it.
+For quick copy-pasting, here are all the combinations to freshly build a Docker image from your local code and immediately run it on Zeus.
 
 ### Omnibus (All-in-one)
 
@@ -878,8 +888,8 @@ docker run -it --rm \
 ```bash
 docker build -f docker/Dockerfile.web -t scrutiny-web:local . && \
 docker run -d --rm --name scrutiny-web \
-  -p 8080:8080 \
-  -e SCRUTINY_WEB_INFLUXDB_HOST=host.docker.internal \
+  --network host \
+  -e SCRUTINY_WEB_INFLUXDB_HOST=127.0.0.1 \
   scrutiny-web:local
 ```
 
@@ -888,11 +898,12 @@ docker run -d --rm --name scrutiny-web \
 ```bash
 docker build -f docker/Dockerfile.collector -t scrutiny-collector:local . && \
 docker run --rm \
+  --network host \
   -v /run/udev:/run/udev:ro \
   --cap-add SYS_RAWIO \
   --cap-add SYS_ADMIN \
   --device=/dev/sda \
-  -e COLLECTOR_API_ENDPOINT=http://host.docker.internal:8080 \
+  -e COLLECTOR_API_ENDPOINT=http://127.0.0.1:8080 \
   -e COLLECTOR_RUN_STARTUP=true \
   scrutiny-collector:local
 ```
@@ -902,7 +913,8 @@ docker run --rm \
 ```bash
 docker build -f docker/Dockerfile.collector-zfs -t scrutiny-collector-zfs:local . && \
 docker run --rm \
-  -e COLLECTOR_ZFS_API_ENDPOINT=http://host.docker.internal:8080 \
+  --network host \
+  -e COLLECTOR_ZFS_API_ENDPOINT=http://127.0.0.1:8080 \
   -e COLLECTOR_ZFS_RUN_STARTUP=true \
   scrutiny-collector-zfs:local
 ```
@@ -912,9 +924,10 @@ docker run --rm \
 ```bash
 docker build -f docker/Dockerfile.collector-mdadm -t scrutiny-collector-mdadm:local . && \
 docker run --rm \
+  --network host \
   --cap-add SYS_ADMIN \
   -v /dev:/dev \
-  -e COLLECTOR_MDADM_API_ENDPOINT=http://host.docker.internal:8080 \
+  -e COLLECTOR_MDADM_API_ENDPOINT=http://127.0.0.1:8080 \
   -e COLLECTOR_MDADM_RUN_STARTUP=true \
   scrutiny-collector-mdadm:local
 ```
@@ -924,9 +937,10 @@ docker run --rm \
 ```bash
 docker build -f docker/Dockerfile.collector-performance -t scrutiny-collector-performance:local . && \
 docker run --rm \
+  --network host \
   --cap-add SYS_RAWIO --cap-add SYS_ADMIN \
   --device=/dev/sda \
-  -e COLLECTOR_PERF_API_ENDPOINT=http://host.docker.internal:8080 \
+  -e COLLECTOR_PERF_API_ENDPOINT=http://127.0.0.1:8080 \
   -e COLLECTOR_PERF_RUN_STARTUP=true \
   -e COLLECTOR_PERF_PROFILE=quick \
   scrutiny-collector-performance:local

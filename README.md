@@ -179,6 +179,11 @@ See [docs/TROUBLESHOOTING_DEVICE_COLLECTOR.md](./docs/TROUBLESHOOTING_DEVICE_COL
 
 If you're using Docker, getting started is as simple as running the following command:
 
+In this fork, "local Docker testing" means the Zeus Unraid host, not this Mac.
+Run containerized Scrutiny tests on Zeus over LAN `192.168.1.33` or NetBird
+`100.66.106.240`, and treat the repo `deploy/*` files as examples unless a doc
+explicitly points you at the live Zeus appdata compose files.
+
 For a component-level overview of how Omnibus and Hub/Spoke fit together, see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 > See [docker/example.omnibus.docker-compose.yml](docker/example.omnibus.docker-compose.yml) for a docker-compose file.
