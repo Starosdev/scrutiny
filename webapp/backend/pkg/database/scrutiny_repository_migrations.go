@@ -30,6 +30,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260510000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260514000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260516000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260523000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -1067,6 +1068,19 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 				return tx.AutoMigrate(&m20260516000000.DeviceEnduranceOverride{})
 			},
 		},
+		{
+			ID: "m20260523000000", // add model_family to devices
+			Migrate: func(tx *gorm.DB) error {
+				if tx.Migrator().HasColumn(&m20260523000000.Device{}, "model_family") {
+					return tx.AutoMigrate(&m20260523000000.Device{})
+				}
+				if err := tx.Exec("ALTER TABLE devices ADD COLUMN model_family TEXT").Error; err != nil {
+					return fmt.Errorf("failed to add model_family column: %w", err)
+				}
+
+				return tx.AutoMigrate(&m20260523000000.Device{})
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {
@@ -1209,7 +1223,7 @@ func m20201107210306_FromPreInfluxDBSmartResultsCreatePostInfluxDBSmartResults(d
 			})
 		}
 
-		postDeviceSmartData.ProcessAtaSmartInfo(nil, preAtaSmartAttributesTable)
+		postDeviceSmartData.ProcessAtaSmartInfo(nil, "", preDevice.ModelName, preAtaSmartAttributesTable)
 
 	} else if preDevice.IsNvme() {
 		//info collector.SmartInfo

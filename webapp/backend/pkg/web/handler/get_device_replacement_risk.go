@@ -72,7 +72,8 @@ func GetDeviceReplacementRisk(c *gin.Context) {
 	}
 
 	weights := thresholds.ReplacementRiskWeightsForProtocol(device.DeviceProtocol)
-	contributions, totalScore, totalTrendBonus := computeRiskContributions(weights, latestAttrs, oldestAttrs)
+	profile, _ := thresholds.LookupConsumerDriveProfile(device.DeviceProtocol, device.ModelFamily, device.ModelName)
+	contributions, totalScore, totalTrendBonus := computeRiskContributions(weights, latestAttrs, oldestAttrs, profile)
 
 	score := int(math.Round(totalScore))
 	if score > 100 {
@@ -102,6 +103,7 @@ func computeRiskContributions(
 	weights []thresholds.ReplacementRiskWeight,
 	latestAttrs map[string]measurements.SmartAttribute,
 	oldestAttrs map[string]measurements.SmartAttribute,
+	profile *thresholds.ConsumerDriveProfile,
 ) ([]models.AttributeContribution, float64, float64) {
 	if weights == nil {
 		return []models.AttributeContribution{}, 0, 0
@@ -112,7 +114,7 @@ func computeRiskContributions(
 	totalTrendBonus := 0.0
 
 	for _, w := range weights {
-		contrib := computeSingleContribution(w, latestAttrs, oldestAttrs)
+		contrib := computeSingleContribution(w, latestAttrs, oldestAttrs, profile)
 		totalScore += contrib.Score + contrib.TrendScore
 		totalTrendBonus += contrib.TrendScore
 		contributions = append(contributions, contrib)
@@ -127,6 +129,7 @@ func computeSingleContribution(
 	w thresholds.ReplacementRiskWeight,
 	latestAttrs map[string]measurements.SmartAttribute,
 	oldestAttrs map[string]measurements.SmartAttribute,
+	profile *thresholds.ConsumerDriveProfile,
 ) models.AttributeContribution {
 	contrib := models.AttributeContribution{
 		AttributeID: w.AttributeID,
@@ -136,14 +139,14 @@ func computeSingleContribution(
 
 	latest, hasLatest := latestAttrs[w.AttributeID]
 	if hasLatest {
-		severity := replacementRiskSeverity(latest, w.AttributeID)
+		severity := replacementRiskSeverity(latest, w.AttributeID, profile)
 		contrib.Score = math.Round(severity*w.Weight*100) / 100
 		contrib.Value = latest.GetTransformedValue()
 	}
 
 	if hasLatest && oldestAttrs != nil {
 		if oldest, ok := oldestAttrs[w.AttributeID]; ok {
-			trendSev := trendSeverity(oldest, latest, w.AttributeID)
+			trendSev := trendSeverity(oldest, latest, w.AttributeID, profile)
 			rawTrend := math.Round(trendSev*w.Weight*w.TrendMultiplier*100) / 100
 			maxTrend := math.Max(0, w.Weight*2-contrib.Score)
 			contrib.TrendScore = math.Min(rawTrend, maxTrend)
@@ -169,14 +172,14 @@ func trendWindowToDurationKey(tw models.TrendWindow) string {
 // trendSeverity computes a severity in [0.0, 1.0] representing how much an
 // attribute has worsened between two SMART snapshots. Returns 0 if the
 // attribute has not changed or has improved.
-func trendSeverity(old, new measurements.SmartAttribute, attributeID string) float64 {
+func trendSeverity(old, new measurements.SmartAttribute, attributeID string, profile *thresholds.ConsumerDriveProfile) float64 {
 	switch o := old.(type) {
 	case *measurements.SmartAtaAttribute:
 		n, ok := new.(*measurements.SmartAtaAttribute)
 		if !ok {
 			return 0.0
 		}
-		return ataTrendSeverity(o, n, attributeID)
+		return ataTrendSeverity(o, n, attributeID, profile)
 	case *measurements.SmartNvmeAttribute:
 		n, ok := new.(*measurements.SmartNvmeAttribute)
 		if !ok {
@@ -193,12 +196,12 @@ func trendSeverity(old, new measurements.SmartAttribute, attributeID string) flo
 	return 0.0
 }
 
-func ataTrendSeverity(old, new *measurements.SmartAtaAttribute, id string) float64 {
+func ataTrendSeverity(old, new *measurements.SmartAtaAttribute, id string, profile *thresholds.ConsumerDriveProfile) float64 {
 	switch id {
 	case "5", "196", "197", "198", "10":
 		// Counter attributes: score the delta between oldest and newest raw value.
 		delta := new.RawValue - old.RawValue
-		return counterSeverity(delta)
+		return counterSeverityWithProfile(delta, profile, id)
 	default:
 		// For status-based attributes, detect a status regression.
 		return statusRegressionSeverity(old.GetStatus(), new.GetStatus())
@@ -256,10 +259,10 @@ func statusRegressionSeverity(old, new pkg.AttributeStatus) float64 {
 // replacementRiskSeverity returns a severity in [0.0, 1.0] for a single SMART
 // attribute. The caller multiplies this by the attribute's weight to get the
 // point contribution to the total score.
-func replacementRiskSeverity(attr measurements.SmartAttribute, attributeID string) float64 {
+func replacementRiskSeverity(attr measurements.SmartAttribute, attributeID string, profile *thresholds.ConsumerDriveProfile) float64 {
 	switch a := attr.(type) {
 	case *measurements.SmartAtaAttribute:
-		return ataAttributeSeverity(a, attributeID)
+		return ataAttributeSeverity(a, attributeID, profile)
 	case *measurements.SmartNvmeAttribute:
 		return nvmeAttributeSeverity(a, attributeID)
 	case *measurements.SmartScsiAttribute:
@@ -272,17 +275,37 @@ func replacementRiskSeverity(attr measurements.SmartAttribute, attributeID strin
 // Counter attributes (reallocated sectors, pending sectors, etc.) are scored
 // by raw value because any non-zero count is a surface degradation signal,
 // regardless of whether the drive's internal threshold has been crossed.
-func ataAttributeSeverity(a *measurements.SmartAtaAttribute, id string) float64 {
+func ataAttributeSeverity(a *measurements.SmartAtaAttribute, id string, profile *thresholds.ConsumerDriveProfile) float64 {
 	switch id {
-	case "5",  // Reallocated Sector Count
+	case "5", // Reallocated Sector Count
 		"196", // Reallocated Event Count
 		"197", // Current Pending Sector Count
 		"198", // Offline Uncorrectable
 		"10":  // Spin Retry Count
-		return counterSeverity(a.RawValue)
+		return counterSeverityWithProfile(a.RawValue, profile, id)
 	default:
 		return attributeStatusSeverity(a.GetStatus())
 	}
+}
+
+func counterSeverityWithProfile(value int64, profile *thresholds.ConsumerDriveProfile, attributeID string) float64 {
+	if profile != nil {
+		if override, ok := profile.AtaCounterSeverityOverrides[attributeID]; ok {
+			switch {
+			case value <= override.Low:
+				return 0.0
+			case value <= override.Moderate:
+				return 0.25
+			case value <= override.High:
+				return 0.50
+			case value <= override.Critical:
+				return 0.75
+			default:
+				return 1.0
+			}
+		}
+	}
+	return counterSeverity(value)
 }
 
 // nvmeAttributeSeverity computes severity for an NVMe SMART attribute.

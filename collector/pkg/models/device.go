@@ -12,6 +12,7 @@ type Device struct {
 	DeviceLabel    string `json:"device_label"`
 
 	Manufacturer   string              `json:"manufacturer"`
+	ModelFamily    string              `json:"model_family"`
 	ModelName      string              `json:"model_name"`
 	InterfaceType  string              `json:"interface_type"`
 	InterfaceSpeed string              `json:"interface_speed"`

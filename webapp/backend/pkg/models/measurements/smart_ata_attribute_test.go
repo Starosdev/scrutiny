@@ -238,7 +238,7 @@ func TestValidateThreshold_Attr177_AboveNormal_NormalizedValue110_Passes(t *test
 
 func TestValidateThreshold_Attr177_NoBucketWarning_Eliminated(t *testing.T) {
 	sa := SmartAtaAttribute{AttributeId: 177, Value: 92, RawValue: 200}
-	sa.PopulateAttributeStatus()
+	sa.PopulateAttributeStatus(nil)
 
 	require.False(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusWarningScrutiny))
 	require.False(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))

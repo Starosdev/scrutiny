@@ -95,9 +95,9 @@ func (sa *SmartAtaAttribute) Inflate(key string, val interface{}) {
 	}
 }
 
-//populate attribute status, using SMART Thresholds & Observed Metadata
+// populate attribute status, using SMART Thresholds & Observed Metadata
 // Chainable
-func (sa *SmartAtaAttribute) PopulateAttributeStatus() *SmartAtaAttribute {
+func (sa *SmartAtaAttribute) PopulateAttributeStatus(profile *thresholds.ConsumerDriveProfile) *SmartAtaAttribute {
 	if strings.ToUpper(sa.WhenFailed) == pkg.AttributeWhenFailedFailingNow {
 		//this attribute has previously failed
 		sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusFailedSmart)
@@ -111,6 +111,11 @@ func (sa *SmartAtaAttribute) PopulateAttributeStatus() *SmartAtaAttribute {
 	}
 
 	if smartMetadata, ok := thresholds.AtaMetadata[sa.AttributeId]; ok {
+		if profile != nil {
+			if profileThresholds, ok := profile.AtaObservedThresholds[sa.AttributeId]; ok && len(profileThresholds) > 0 {
+				smartMetadata.ObservedThresholds = profileThresholds
+			}
+		}
 		sa.ValidateThreshold(smartMetadata)
 	}
 
