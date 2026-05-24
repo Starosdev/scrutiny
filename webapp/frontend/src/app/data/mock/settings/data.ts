@@ -14,6 +14,7 @@ export const settings = {
             status_filter_attributes: 0,
             status_threshold: 3,
             repeat_notifications: true,
+            consumer_drive_profiles_enabled: true,
         },
     },
 };

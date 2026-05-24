@@ -18,6 +18,7 @@ That includes:
 - health and diagnostics
 - device registration, uploads, details, actions, and performance
 - settings, SMART overrides, and notification URLs
+- replacement-risk metadata, including consumer ATA profile usage
 - report generation and report history
 - filesystem capacity
 - ZFS pools
@@ -41,4 +42,6 @@ See [AUTH.md](./AUTH.md) for configuration and deployment details.
 - The OpenAPI document is the source of truth. Do not add new standalone API tables elsewhere in the repo.
 - Some collector payloads are intentionally documented as structured objects with representative fields because the backend accepts large collector-origin JSON models.
 - Notification URL endpoints cover existing Shoutrrr syntax, explicit `apprise+...` targets, `script://` targets, and raw `http(s)` webhooks.
+- The replacement-risk endpoint includes ATA-specific metadata describing whether a bundled consumer-drive profile was enabled and applied for that score.
+- For operator-facing behavior and the global opt-out setting, see [CONSUMER_DRIVE_PROFILES.md](./CONSUMER_DRIVE_PROFILES.md).
 - If a route is added or changed in `server.go`, update `openapi.yaml` in the same change.

@@ -26,6 +26,7 @@ type Device struct {
 	DeviceSerialID            string              `json:"device_serial_id"`
 	DeviceLabel               string              `json:"device_label"`
 	Manufacturer              string              `json:"manufacturer"`
+	ModelFamily               string              `json:"model_family"`
 	ModelName                 string              `json:"model_name"`
 	InterfaceType             string              `json:"interface_type"`
 	SmartDisplayMode          string              `json:"smart_display_mode" gorm:"default:'scrutiny'"`
@@ -163,6 +164,7 @@ func (dv *Device) IsNvme() bool {
 // This function is called every time the collector sends SMART data to the API.
 // It can be used to update device data that can change over time.
 func (dv *Device) UpdateFromCollectorSmartInfo(info collector.SmartInfo) error {
+	dv.ModelFamily = info.ModelFamily
 	dv.ModelName = info.ModelName
 	dv.Firmware = info.FirmwareVersion
 	dv.DeviceProtocol = info.Device.Protocol

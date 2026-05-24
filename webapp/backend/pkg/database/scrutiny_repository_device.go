@@ -28,7 +28,8 @@ func (sr *scrutinyRepository) RegisterDevice(ctx context.Context, dev models.Dev
 	updateColumns := []string{
 		"host_id", "device_name", "device_type", "device_uuid",
 		"device_serial_id", "device_label", "collector_version",
-		"model_name", "manufacturer", "wwn", "smart_support",
+		"model_family", "model_name", "manufacturer", "wwn", "smart_support",
+		"device_protocol",
 	}
 
 	// Only update the custom label if the collector explicitly provides one.

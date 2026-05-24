@@ -238,8 +238,34 @@ func TestValidateThreshold_Attr177_AboveNormal_NormalizedValue110_Passes(t *test
 
 func TestValidateThreshold_Attr177_NoBucketWarning_Eliminated(t *testing.T) {
 	sa := SmartAtaAttribute{AttributeId: 177, Value: 92, RawValue: 200}
-	sa.PopulateAttributeStatus()
+	sa.PopulateAttributeStatus(nil)
 
 	require.False(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusWarningScrutiny))
 	require.False(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
+}
+
+func TestPopulateAttributeStatus_UsesConsumerDriveProfileThresholds(t *testing.T) {
+	sa := SmartAtaAttribute{AttributeId: 5, RawValue: 40}
+	profile := &thresholds.ConsumerDriveProfile{
+		AtaObservedThresholds: map[int][]thresholds.ObservedThreshold{
+			5: {
+				{Low: 0, High: 10, AnnualFailureRate: 0.02, ErrorInterval: []float64{0.01, 0.03}},
+				{Low: 10, High: 64, AnnualFailureRate: 0.30, ErrorInterval: []float64{0.20, 0.40}},
+			},
+		},
+	}
+
+	sa.PopulateAttributeStatus(profile)
+
+	require.InDelta(t, 0.30, sa.FailureRate, 0.001)
+	require.True(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
+}
+
+func TestPopulateAttributeStatus_FallsBackWithoutProfile(t *testing.T) {
+	sa := SmartAtaAttribute{AttributeId: 5, RawValue: 40}
+
+	sa.PopulateAttributeStatus(nil)
+
+	require.InDelta(t, 0.23589260654405794, sa.FailureRate, 0.001)
+	require.True(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
 }

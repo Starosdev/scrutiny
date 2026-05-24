@@ -22,6 +22,7 @@ type SmartInfo struct {
 		Type     string `json:"type"`
 		Protocol string `json:"protocol"`
 	} `json:"device"`
+	ModelFamily  string `json:"model_family"`
 	ModelName    string `json:"model_name"`
 	SerialNumber string `json:"serial_number"`
 	Wwn          struct {

@@ -140,6 +140,19 @@
             </mat-form-field>
         </div>
 
+        <div class="flex flex-col mt-5 gt-md:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Consumer Drive Profiles</mat-label>
+                <mat-select [(ngModel)]="consumerDriveProfilesEnabled">
+                    <mat-option [value]="true">Enabled</mat-option>
+                    <mat-option [value]="false">Disabled</mat-option>
+                </mat-select>
+                <mat-hint>
+                    Apply vetted ATA consumer drive model or family overrides to SMART status evaluation and replacement-risk scoring. Disable to use generic ATA rules only.
+                </mat-hint>
+            </mat-form-field>
+        </div>
+
         <!-- Collector Error Notifications -->
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">

@@ -46,7 +46,11 @@ func maybeNotifyReplacementRisk(
 	}
 
 	weights := thresholds.ReplacementRiskWeightsForProtocol(device.DeviceProtocol)
-	_, totalScore, _ := computeRiskContributions(weights, latestAttrs, oldestAttrs)
+	var profile *thresholds.ConsumerDriveProfile
+	if consumerDriveProfilesEnabled(appConfig) {
+		profile, _ = thresholds.LookupConsumerDriveProfile(device.DeviceProtocol, device.ModelFamily, device.ModelName)
+	}
+	_, totalScore, _ := computeRiskContributions(weights, latestAttrs, oldestAttrs, profile)
 
 	score := int(math.Round(totalScore))
 	if score > 100 {

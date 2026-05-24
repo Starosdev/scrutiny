@@ -9,3 +9,11 @@
 
 // Perfect scrollbar
 @import 'perfect-scrollbar/css/perfect-scrollbar.css';
+
+// Local font-face definitions need to flow through the Angular stylesheet pipeline.
+// Referencing them from index.html causes the optimizer to probe them as standalone
+// stylesheets before copied assets exist, which emits false-positive warnings.
+@import '../assets/fonts/roboto/roboto.css';
+@import '../assets/fonts/ibm-plex-mono/ibm-plex-mono.css';
+@import '../assets/fonts/inter/inter.css';
+@import '../assets/fonts/material-icons/material-icons.css';

@@ -62,6 +62,7 @@ func createMigrationTestRepository(t *testing.T) *scrutinyRepository {
 		"m20260226000000",
 		"m20260301000000",
 		"m20260514000000",
+		"m20260516000000",
 	})
 }
 
@@ -190,7 +191,7 @@ CREATE TABLE devices (
 	rows, err := repo.gormClient.Raw(`
 		SELECT
 			device_id, wwn, device_name, device_uuid, device_serial_id, device_label,
-			manufacturer, model_name, interface_type, interface_speed, serial_number,
+			manufacturer, COALESCE(model_family, ''), model_name, interface_type, interface_speed, serial_number,
 			firmware, rotation_speed, capacity, form_factor, smart_support,
 			device_protocol, device_type, label, host_id, collector_version,
 			smart_display_mode, device_status, has_forced_failure, archived, muted,
@@ -203,18 +204,18 @@ CREATE TABLE devices (
 	require.True(t, rows.Next())
 
 	var (
-		deviceID, wwn, deviceName, deviceUUID, deviceSerialID, deviceLabel string
-		manufacturer, modelName, interfaceType, interfaceSpeed             string
-		serialNumber, firmware, formFactor, smartSupport                   string
-		deviceProtocol, deviceType, label, hostID, collectorVersion        string
-		smartDisplayMode                                                   string
-		rotationSpeed, capacity, deviceStatus                              int64
-		hasForcedFailure, archived, muted                                  bool
-		missedPingTimeoutOverride                                          int64
+		deviceID, wwn, deviceName, deviceUUID, deviceSerialID, deviceLabel  string
+		manufacturer, modelFamily, modelName, interfaceType, interfaceSpeed string
+		serialNumber, firmware, formFactor, smartSupport                    string
+		deviceProtocol, deviceType, label, hostID, collectorVersion         string
+		smartDisplayMode                                                    string
+		rotationSpeed, capacity, deviceStatus                               int64
+		hasForcedFailure, archived, muted                                   bool
+		missedPingTimeoutOverride                                           int64
 	)
 	require.NoError(t, rows.Scan(
 		&deviceID, &wwn, &deviceName, &deviceUUID, &deviceSerialID, &deviceLabel,
-		&manufacturer, &modelName, &interfaceType, &interfaceSpeed, &serialNumber,
+		&manufacturer, &modelFamily, &modelName, &interfaceType, &interfaceSpeed, &serialNumber,
 		&firmware, &rotationSpeed, &capacity, &formFactor, &smartSupport,
 		&deviceProtocol, &deviceType, &label, &hostID, &collectorVersion,
 		&smartDisplayMode, &deviceStatus, &hasForcedFailure, &archived, &muted,
@@ -228,6 +229,7 @@ CREATE TABLE devices (
 	require.Equal(t, "serialid1", deviceSerialID)
 	require.Equal(t, "label1", deviceLabel)
 	require.Equal(t, "Seagate", manufacturer)
+	require.Equal(t, "", modelFamily)
 	require.Equal(t, "IronWolf", modelName)
 	require.Equal(t, "SATA", interfaceType)
 	require.Equal(t, "6 Gbps", interfaceSpeed)

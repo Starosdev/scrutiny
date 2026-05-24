@@ -21,13 +21,15 @@ const statusReasonThresholdExceeded = "Custom threshold exceeded"
 type Smart struct {
 	Date           time.Time `json:"date"`
 	DeviceWWN      string    `json:"device_wwn"` //(tag)
-	DeviceID       string    `json:"device_id"` // (tag) deterministic UUIDv5
+	DeviceID       string    `json:"device_id"`  // (tag) deterministic UUIDv5
 	DeviceProtocol string    `json:"device_protocol"`
+	ModelFamily    string    `json:"model_family,omitempty"`
+	ModelName      string    `json:"model_name,omitempty"`
 
 	//Metrics (fields)
-	Temp            int64 `json:"temp"`
-	PowerOnHours    int64 `json:"power_on_hours"`
-	PowerCycleCount int64 `json:"power_cycle_count"`
+	Temp             int64 `json:"temp"`
+	PowerOnHours     int64 `json:"power_on_hours"`
+	PowerCycleCount  int64 `json:"power_cycle_count"`
 	LogicalBlockSize int64 `json:"logical_block_size"` //logical block size in bytes (typically 512 or 4096)
 
 	//Attributes (fields)
@@ -152,6 +154,8 @@ func (sm *Smart) FromCollectorSmartInfo(cfg config.Interface, wwn string, info c
 func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn string, info collector.SmartInfo, mergedOverrides []overrides.AttributeOverride) error {
 	sm.DeviceWWN = wwn
 	sm.Date = time.Unix(info.LocalTime.TimeT, 0)
+	sm.ModelFamily = info.ModelFamily
+	sm.ModelName = info.ModelName
 
 	//smart metrics
 	sm.Temp = CorrectedTemperature(&info)
@@ -172,7 +176,7 @@ func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn s
 	// process ATA/NVME/SCSI protocol data
 	sm.Attributes = map[string]SmartAttribute{}
 	if sm.DeviceProtocol == pkg.DeviceProtocolAta {
-		sm.processAtaSmartInfoWithOverrides(cfg, info.AtaSmartAttributes.Table, mergedOverrides)
+		sm.processAtaSmartInfoWithOverrides(cfg, info.ModelFamily, info.ModelName, info.AtaSmartAttributes.Table, mergedOverrides)
 		// Also process ATA Device Statistics (GP Log 0x04) for enterprise SSD metrics
 		if len(info.AtaDeviceStatistics.Pages) > 0 {
 			sm.processAtaDeviceStatisticsWithOverrides(cfg, info, mergedOverrides)
@@ -191,7 +195,11 @@ func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn s
 }
 
 // generate SmartAtaAttribute entries from Scrutiny Collector Smart data.
-func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, tableItems []collector.AtaSmartAttributesTableItem) {
+func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, modelFamily string, modelName string, tableItems []collector.AtaSmartAttributesTableItem) {
+	var profile *thresholds.ConsumerDriveProfile
+	if consumerDriveProfilesEnabled(cfg) {
+		profile, _ = thresholds.LookupConsumerDriveProfile(pkg.DeviceProtocolAta, modelFamily, modelName)
+	}
 	for _, collectorAttr := range tableItems {
 		attrModel := SmartAtaAttribute{
 			AttributeId: collectorAttr.ID,
@@ -210,7 +218,7 @@ func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, tableItems []collecto
 				attrModel.TransformedValue = smartMetadata.Transform(attrModel.Value, attrModel.RawValue, attrModel.RawString)
 			}
 		}
-		attrModel.PopulateAttributeStatus()
+		attrModel.PopulateAttributeStatus(profile)
 
 		attrIdStr := strconv.Itoa(collectorAttr.ID)
 		var ignored bool
@@ -448,7 +456,11 @@ func (sm *Smart) ProcessScsiSmartInfo(cfg config.Interface, defectGrownList int6
 }
 
 // processAtaSmartInfoWithOverrides generates SmartAtaAttribute entries using pre-merged overrides.
-func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, tableItems []collector.AtaSmartAttributesTableItem, mergedOverrides []overrides.AttributeOverride) {
+func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, modelFamily string, modelName string, tableItems []collector.AtaSmartAttributesTableItem, mergedOverrides []overrides.AttributeOverride) {
+	var profile *thresholds.ConsumerDriveProfile
+	if consumerDriveProfilesEnabled(cfg) {
+		profile, _ = thresholds.LookupConsumerDriveProfile(pkg.DeviceProtocolAta, modelFamily, modelName)
+	}
 	for _, collectorAttr := range tableItems {
 		attrModel := SmartAtaAttribute{
 			AttributeId: collectorAttr.ID,
@@ -467,7 +479,7 @@ func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, tableIte
 				attrModel.TransformedValue = smartMetadata.Transform(attrModel.Value, attrModel.RawValue, attrModel.RawString)
 			}
 		}
-		attrModel.PopulateAttributeStatus()
+		attrModel.PopulateAttributeStatus(profile)
 
 		attrIdStr := strconv.Itoa(collectorAttr.ID)
 		var ignored bool
@@ -516,6 +528,17 @@ func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, tableIte
 			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 		}
 	}
+}
+
+func consumerDriveProfilesEnabled(cfg config.Interface) bool {
+	if cfg == nil {
+		return true
+	}
+	key := config.DB_USER_SETTINGS_SUBKEY + ".metrics.consumer_drive_profiles_enabled"
+	if !cfg.IsSet(key) {
+		return true
+	}
+	return cfg.GetBool(key)
 }
 
 // processAtaDeviceStatisticsWithOverrides extracts device statistics using pre-merged overrides.

@@ -19,6 +19,8 @@ import (
 )
 
 func TestMergeDevices_Integration(t *testing.T) {
+	ResetMigrationGuardForTests()
+
 	influxHost := "localhost"
 	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
 		influxHost = "influxdb"

@@ -83,29 +83,38 @@ const (
 // It is computed on-the-fly from the latest SMART data and historical trends;
 // it is NOT persisted to the database in this definition phase.
 type ReplacementRiskScore struct {
-    // ComputedAt is the timestamp when this score was calculated.
-    ComputedAt time.Time `json:"computed_at"`
+	// ComputedAt is the timestamp when this score was calculated.
+	ComputedAt time.Time `json:"computed_at"`
 
-    // DeviceWWN identifies the drive this score belongs to.
-    DeviceWWN string `json:"device_wwn"`
+	// DeviceWWN identifies the drive this score belongs to.
+	DeviceWWN string `json:"device_wwn"`
 
-    // DeviceProtocol is the protocol type used for scoring (ATA, NVMe, SCSI).
-    DeviceProtocol string `json:"device_protocol"`
+	// DeviceProtocol is the protocol type used for scoring (ATA, NVMe, SCSI).
+	DeviceProtocol string `json:"device_protocol"`
 
-    // Category is the human-readable risk bucket derived from Score.
-    Category RiskCategory `json:"category"`
+	// Category is the human-readable risk bucket derived from Score.
+	Category RiskCategory `json:"category"`
 
-    // TrendWindow is the time window over which rate-of-change was evaluated.
-    TrendWindow TrendWindow `json:"trend_window"`
+	// TrendWindow is the time window over which rate-of-change was evaluated.
+	TrendWindow TrendWindow `json:"trend_window"`
 
-    // Contributions lists per-attribute score breakdowns.
-    Contributions []AttributeContribution `json:"contributions"`
+	// Contributions lists per-attribute score breakdowns.
+	Contributions []AttributeContribution `json:"contributions"`
 
-    // TrendBonus is the total additional score added by trend analysis across all attributes.
-    TrendBonus float64 `json:"trend_bonus"`
+	// TrendBonus is the total additional score added by trend analysis across all attributes.
+	TrendBonus float64 `json:"trend_bonus"`
 
-    // Score is the overall replacement risk score, 0 (best) to 100 (worst).
-    Score int `json:"score"`
+	// Score is the overall replacement risk score, 0 (best) to 100 (worst).
+	Score int `json:"score"`
+
+	// ConsumerDriveProfilesEnabled reports whether model-specific consumer ATA profile overrides are enabled globally.
+	ConsumerDriveProfilesEnabled bool `json:"consumer_drive_profiles_enabled"`
+
+	// ConsumerDriveProfileApplied reports whether this score used a matched consumer ATA profile instead of generic ATA rules.
+	ConsumerDriveProfileApplied bool `json:"consumer_drive_profile_applied"`
+
+	// ConsumerDriveProfileFamily is the matched profile family when ConsumerDriveProfileApplied is true.
+	ConsumerDriveProfileFamily string `json:"consumer_drive_profile_family,omitempty"`
 }
 
 // ReplacementRiskResponse is the API response envelope for the

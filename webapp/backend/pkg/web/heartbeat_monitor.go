@@ -124,7 +124,7 @@ func (m *HeartbeatMonitor) getOrCreateRepo() (database.DeviceRepo, error) {
 		return m.deviceRepo, nil
 	}
 
-	repo, err := database.NewScrutinyRepository(m.appEngine.Config, m.logger)
+	repo, err := database.NewScrutinyRepositoryWithoutMigration(m.appEngine.Config, m.logger)
 	if err != nil {
 		return nil, err
 	}

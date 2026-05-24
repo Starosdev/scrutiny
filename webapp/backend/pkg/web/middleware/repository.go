@@ -19,7 +19,7 @@ func RepositoryMiddleware(appConfig config.Interface, globalLogger logrus.FieldL
 	var err error
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
-		deviceRepo, err = database.NewScrutinyRepository(appConfig, globalLogger)
+		deviceRepo, err = database.NewScrutinyRepositoryWithoutMigration(appConfig, globalLogger)
 		if err == nil {
 			break
 		}

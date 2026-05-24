@@ -30,6 +30,7 @@ type Settings struct {
 		UptimeKumaIntervalSeconds     int    `json:"uptime_kuma_interval_seconds" mapstructure:"uptime_kuma_interval_seconds"`
 		ReportEnabled                 bool   `json:"report_enabled" mapstructure:"report_enabled"`
 		ReportDailyEnabled            bool   `json:"report_daily_enabled" mapstructure:"report_daily_enabled"`
+		ConsumerDriveProfilesEnabled  bool   `json:"consumer_drive_profiles_enabled" mapstructure:"consumer_drive_profiles_enabled"`
 		NotifyOnMissedPing            bool   `json:"notify_on_missed_ping" mapstructure:"notify_on_missed_ping"`
 		ReportWeeklyEnabled           bool   `json:"report_weekly_enabled" mapstructure:"report_weekly_enabled"`
 		UptimeKumaEnabled             bool   `json:"uptime_kuma_enabled" mapstructure:"uptime_kuma_enabled"`
