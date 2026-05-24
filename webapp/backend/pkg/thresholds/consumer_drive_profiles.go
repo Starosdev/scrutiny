@@ -23,10 +23,10 @@ type ConsumerDriveProfile struct {
 	Vendor                      string                            `json:"vendor,omitempty"`
 	ModelFamily                 string                            `json:"model_family,omitempty"`
 	ModelName                   string                            `json:"model_name,omitempty"`
-	ModelPattern                string                            `json:"model_pattern,omitempty"`
 	AtaObservedThresholds       map[int][]ObservedThreshold       `json:"ata_observed_thresholds,omitempty"`
 	AtaCounterSeverityOverrides map[string]CounterSeverityProfile `json:"ata_counter_severity_overrides,omitempty"`
 	compiledPattern             *regexp.Regexp                    `json:"-"`
+	ModelPattern                string                            `json:"model_pattern,omitempty"`
 	SampleCount                 int                               `json:"sample_count"`
 	MinSamples                  int                               `json:"min_samples,omitempty"`
 }
