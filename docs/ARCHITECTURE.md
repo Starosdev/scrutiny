@@ -27,6 +27,7 @@ flowchart LR
 - The collector discovers devices and submits SMART data to the local web/API service.
 - InfluxDB stores time-series drive metrics and historical readings.
 - SQLite stores application metadata such as device records, settings, and UI-managed configuration.
+- Device metadata persisted in SQLite includes fields used for model-aware ATA scoring, such as `model_family`.
 - The frontend is delivered by the same web/API service, so all browser traffic terminates at the omnibus container.
 - Frontend settings are loaded in two stages: the Angular app starts from bundled defaults, then merges persisted settings from `/api/settings`. Browser code should assume a complete default-backed config exists immediately and treat the API fetch as hydration, not first-time initialization.
 
@@ -58,6 +59,7 @@ flowchart LR
 - The hub's web/API service aggregates data from all spokes and serves the frontend.
 - InfluxDB remains the time-series store for SMART history.
 - SQLite remains the metadata store for device records, settings, and other app state managed by the web/API layer.
+- That metadata includes drive identity fields used by ATA consumer-drive profile matching and the global opt-out setting for those overrides.
 - The same frontend config rule applies here: client code should render against bundled defaults first, then merge hub-provided settings when the API response arrives.
 
 ## Component Roles
@@ -65,5 +67,7 @@ flowchart LR
 - `Collector`: discovers devices, runs `smartctl`, and submits results to the API.
 - `Web/API server`: accepts collector uploads, serves the frontend, and provides the API consumed by the UI.
 - `InfluxDB`: stores historical SMART and other time-series measurements.
-- `SQLite`: stores application metadata and configuration state.
+- `SQLite`: stores application metadata and configuration state, including persisted drive identity fields and user-managed settings such as `metrics.consumer_drive_profiles_enabled`.
 - `Frontend / Browser`: renders the dashboard and calls the API exposed by the web/API server.
+
+See [CONSUMER_DRIVE_PROFILES.md](./CONSUMER_DRIVE_PROFILES.md) for the ATA consumer-drive profile feature and fallback behavior.

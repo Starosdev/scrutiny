@@ -583,6 +583,10 @@ paths:
     get:
       tags: [Devices]
       summary: Get computed replacement risk for a device
+      description: |
+        Returns the current replacement-risk score, its per-attribute contributions,
+        and ATA-specific metadata indicating whether a bundled consumer-drive profile
+        override was enabled and applied for this score.
       parameters:
         - $ref: "#/components/parameters/DeviceId"
         - name: trend_window
@@ -1723,7 +1727,7 @@ components:
               type: string
             consumer_drive_profiles_enabled:
               type: boolean
-              description: Enable vetted ATA consumer drive model or family overrides for SMART status evaluation and replacement-risk scoring.
+              description: Enable vetted ATA consumer drive model or family overrides for SMART status evaluation and replacement-risk scoring. When false, all ATA devices use generic ATA rules.
             notification_rate_limit:
               type: integer
             notification_quiet_start:
@@ -3200,10 +3204,13 @@ components:
               type: number
             consumer_drive_profiles_enabled:
               type: boolean
+              description: Reports whether ATA consumer-drive profile overrides were enabled when this score was computed.
             consumer_drive_profile_applied:
               type: boolean
+              description: True when the device matched a vetted ATA consumer-drive profile and that profile was used instead of generic ATA rules.
             consumer_drive_profile_family:
               type: string
+              description: Matched ATA consumer-drive profile family when `consumer_drive_profile_applied` is true.
             contributions:
               type: array
               items:
