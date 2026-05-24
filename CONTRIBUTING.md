@@ -23,7 +23,8 @@ We use a Gitflow-style workflow:
 1. Fork the repository and create your branch from `develop`
 2. Follow the commit convention: `type(scope): description`
 3. Ensure all tests pass
-4. Submit a PR to `develop` (or `master` for hotfixes)
+4. Update `README.md` when your change affects the top-level product surface, feature set, supported deployment paths, or published image matrix
+5. Submit a PR to `develop` (or `master` for hotfixes)
 
 ## Code Style
 
