@@ -1,7 +1,7 @@
 # Release Schedule Design
 
 **Date:** 2026-03-14
-**Status:** Implemented
+**Status:** Implemented and superseded by the current `develop -> beta -> master` promotion flow
 **Issue:** [#366](https://github.com/Starosdev/scrutiny/issues/366) - Limit releases to once a week or when stable
 
 ## Problem
@@ -24,7 +24,8 @@ A predictable release cadence with a GitHub Project board for tracking what ship
 ### CI/CD Changes
 
 - **`release.yaml`** -- Removed push triggers to `master`/`beta`. Releases are manual only via `workflow_dispatch`.
-- **`docker-build.yaml`** -- No changes. Docker images still auto-build on push to `master` and `develop`.
+- **`docker-build.yaml`** -- Extended to auto-build on push to `develop`, `beta`, and `master`, with branch-matched channel tags.
+- **`deploy-beta.yml`** -- Added to publish the omnibus beta channel from the `beta` branch.
 - **Release notes path** -- Raw release notes are generated deterministically from merged PR summaries and linked issues. OpenAI is allowed only to polish wording; if that rewrite drops structure or bullets, the workflow falls back to the raw notes.
 
 ### GitHub Project Board
@@ -80,7 +81,6 @@ Triggers on `issues: [opened, labeled]` so re-labeling re-routes.
 ### Documentation Updated
 
 - README.md -- Release schedule section added near the top
-- CLAUDE.md -- Release schedule, release process, and project board routing rules
 - `create-pull-request` command -- Updated to reflect manual-only releases
 - `pre-deploy-check` command -- Added manual release reminder
 

@@ -713,11 +713,11 @@ Before submitting a pull request, ensure all of the following pass:
 
 ### Contribution Standards (from CONTRIBUTING.md)
 
-- [ ] Branch created from `develop` (not `master`)
+- [ ] Branch created from `develop` (feature work may optionally be promoted to `beta` before `master` when pre-release validation is needed)
 - [ ] Branch naming: `feature/SCR-{id}-description` or `fix/SCR-{id}-description`
 - [ ] Commit messages follow `type(scope): description` convention
 - [ ] No emojis in code, commits, comments, or documentation
-- [ ] PR targets `develop` branch (or `master` for hotfixes only)
+- [ ] PR targets `develop` branch (or `master` for production hotfixes only)
 - [ ] Tests added for new functionality
 - [ ] Existing tests updated if behavior changed
 

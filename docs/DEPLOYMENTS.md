@@ -9,6 +9,7 @@ For release-version verification details, see [RELEASE_VERSION_VERIFICATION.md](
 | Environment | Branch | Workflow | Published Image | Notes |
 | --- | --- | --- | --- | --- |
 | Testing | `develop` | `.github/workflows/deploy-testing.yml` | `ghcr.io/starosdev/scrutiny:develop` and `develop-omnibus` | External hosts pull these tags when they want the latest testing build |
+| Beta | `beta` | `.github/workflows/deploy-beta.yml` | `ghcr.io/starosdev/scrutiny:beta` and `beta-omnibus` | External hosts pull these tags when they want a pre-release candidate ahead of stable |
 | Production | `master` | `.github/workflows/release-and-deploy.yml` | `ghcr.io/starosdev/scrutiny:latest` and `latest-omnibus` | External hosts pull these tags when they want the latest production build |
 
 ## What The Workflows Do
@@ -16,7 +17,8 @@ For release-version verification details, see [RELEASE_VERSION_VERIFICATION.md](
 - Check out the repo
 - Normalize the GHCR image name to lowercase
 - Build the omnibus image for `linux/amd64` and `linux/arm64`
-- Build the default `web`, `collector-performance`, `collector-zfs`, and `collector-btrfs` images for `linux/amd64` and `linux/arm64`
+- Build the default `web`, `collector-zfs`, `collector-mdadm`, `collector-btrfs`, and `collector-performance` images for `linux/amd64` and `linux/arm64`
+- Build the base `collector` image for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`
 - Exclude `webapp/backend/pkg/version/version.go` from the Docker workflow path trigger so release-version sync commits do not rebuild images on their own
 - Push the published tags to GHCR
 
@@ -44,8 +46,10 @@ Environment rollout is outside GitHub Actions.
 If Zeus should move to a new image, do that from the host by pulling the published tags and restarting the compose project there. The current Zeus mapping is still:
 
 - develop image path: `ghcr.io/starosdev/scrutiny:develop-omnibus`
+- beta image path: `ghcr.io/starosdev/scrutiny:beta-omnibus`
 - production image path: `ghcr.io/starosdev/scrutiny:latest`
 - develop port: `8680`
+- beta port: choose a separate host port for side-by-side validation if you run it alongside testing or production
 - production port: `8580`
 - production appdata root: `/mnt/user/appdata/scrutiny`
 - Zeus testing appdata root: `/mnt/user/appdata/scrutiny-dev`
@@ -58,6 +62,12 @@ Zeus does not currently run testing and production from the same appdata tree.
 
 - Production uses `/mnt/user/appdata/scrutiny`
 - Testing uses `/mnt/user/appdata/scrutiny-dev`
+
+This repo now treats `beta` as an optional pre-release channel for changes that need validation before `master`.
+
+- `develop` is the integration branch and testing image source
+- `beta` is the optional pre-release branch and beta image source
+- `master` is the stable branch and latest image source
 
 That distinction matters for both manual host rollouts and the helper scripts in `ops/`:
 
