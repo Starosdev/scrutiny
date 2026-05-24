@@ -2,6 +2,16 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.61.0](https://github.com/Starosdev/scrutiny/compare/v1.60.0...v1.61.0) (2026-05-24)
+
+### Features
+
+* **smart:** add consumer drive profiles and scoring transparency ([#468](https://github.com/Starosdev/scrutiny/issues/468)) ([#560](https://github.com/Starosdev/scrutiny/issues/560)) ([8f0e4fa](https://github.com/Starosdev/scrutiny/commit/8f0e4fac15a65dbe1141048450d561855f5f9b97)), closes [#518](https://github.com/Starosdev/scrutiny/issues/518)
+
+### Bug Fixes
+
+* **actions:** restore project router PAT usage ([1889734](https://github.com/Starosdev/scrutiny/commit/1889734e8a38a4139a60d96f7979c6a5684268a8))
+
 ## [1.60.0](https://github.com/Starosdev/scrutiny/compare/v1.59.0...v1.60.0) (2026-05-23)
 
 ### Features
