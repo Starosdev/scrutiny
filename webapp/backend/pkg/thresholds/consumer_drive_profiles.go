@@ -24,19 +24,19 @@ type ConsumerDriveProfile struct {
 	ModelFamily                 string                            `json:"model_family,omitempty"`
 	ModelName                   string                            `json:"model_name,omitempty"`
 	ModelPattern                string                            `json:"model_pattern,omitempty"`
-	SampleCount                 int                               `json:"sample_count"`
-	MinSamples                  int                               `json:"min_samples,omitempty"`
 	AtaObservedThresholds       map[int][]ObservedThreshold       `json:"ata_observed_thresholds,omitempty"`
 	AtaCounterSeverityOverrides map[string]CounterSeverityProfile `json:"ata_counter_severity_overrides,omitempty"`
 	compiledPattern             *regexp.Regexp                    `json:"-"`
+	SampleCount                 int                               `json:"sample_count"`
+	MinSamples                  int                               `json:"min_samples,omitempty"`
 }
 
 type consumerDriveProfileCatalog struct {
-	Profiles []ConsumerDriveProfile `json:"profiles"`
 	Aliases  map[string]string      `json:"aliases"`
+	Profiles []ConsumerDriveProfile `json:"profiles"`
 }
 
-func (p ConsumerDriveProfile) MeetsConfidenceThreshold() bool {
+func (p *ConsumerDriveProfile) MeetsConfidenceThreshold() bool {
 	minSamples := p.MinSamples
 	if minSamples <= 0 {
 		minSamples = MinConsumerDriveProfileSamples
@@ -85,7 +85,8 @@ func parseConsumerDriveProfiles(data []byte) (map[string]ConsumerDriveProfile, m
 	byModel := make(map[string]ConsumerDriveProfile, len(catalog.Aliases))
 	regexProfiles := make([]ConsumerDriveProfile, 0)
 
-	for _, profile := range catalog.Profiles {
+	for i := range catalog.Profiles {
+		profile := &catalog.Profiles[i]
 		if profile.ModelFamily == "" {
 			return nil, nil, nil, fmt.Errorf("profile missing model_family")
 		}
@@ -102,9 +103,9 @@ func parseConsumerDriveProfiles(data []byte) (map[string]ConsumerDriveProfile, m
 				return nil, nil, nil, fmt.Errorf("compile model_pattern for %q: %w", profile.ModelFamily, err)
 			}
 			profile.compiledPattern = compiled
-			regexProfiles = append(regexProfiles, profile)
+			regexProfiles = append(regexProfiles, *profile)
 		}
-		byFamily[familyKey] = profile
+		byFamily[familyKey] = *profile
 	}
 
 	for modelAlias, family := range catalog.Aliases {
@@ -138,9 +139,10 @@ func LookupConsumerDriveProfile(protocol, modelFamily, modelName string) (*Consu
 	if profile, ok := consumerDriveProfilesByModel[normalizeConsumerDriveKey(modelName)]; ok && profile.MeetsConfidenceThreshold() {
 		return &profile, true
 	}
-	for _, profile := range consumerDriveProfilesByRegex {
+	for i := range consumerDriveProfilesByRegex {
+		profile := &consumerDriveProfilesByRegex[i]
 		if profile.compiledPattern != nil && profile.compiledPattern.MatchString(modelName) && profile.MeetsConfidenceThreshold() {
-			return &profile, true
+			return profile, true
 		}
 	}
 	return nil, false
