@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - beta
       - develop
     paths:
       - 'webapp/**'
@@ -72,6 +73,7 @@ jobs:
             type=raw,value=${{ inputs.tag_suffix }}-collector,enable=${{ github.event_name == 'workflow_dispatch' }}
             # Branch builds
             type=raw,value=latest-collector,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=beta-collector,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-collector,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             # Version tags
             type=semver,pattern={{version}}-collector
@@ -131,6 +133,7 @@ jobs:
             type=raw,value=${{ inputs.tag_suffix }}-collector-zfs,enable=${{ github.event_name == 'workflow_dispatch' }}
             # Branch builds
             type=raw,value=latest-collector-zfs,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=beta-collector-zfs,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-collector-zfs,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             # Version tags
             type=semver,pattern={{version}}-collector-zfs
@@ -190,6 +193,7 @@ jobs:
             type=raw,value=${{ inputs.tag_suffix }}-collector-mdadm,enable=${{ github.event_name == 'workflow_dispatch' }}
             # Branch builds
             type=raw,value=latest-collector-mdadm,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=beta-collector-mdadm,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-collector-mdadm,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             # Version tags
             type=semver,pattern={{version}}-collector-mdadm
@@ -249,6 +253,7 @@ jobs:
             type=raw,value=${{ inputs.tag_suffix }}-collector-btrfs,enable=${{ github.event_name == 'workflow_dispatch' }}
             # Branch builds
             type=raw,value=latest-collector-btrfs,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=beta-collector-btrfs,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-collector-btrfs,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             # Version tags
             type=semver,pattern={{version}}-collector-btrfs
@@ -308,6 +313,7 @@ jobs:
             type=raw,value=${{ inputs.tag_suffix }}-collector-performance,enable=${{ github.event_name == 'workflow_dispatch' }}
             # Branch builds
             type=raw,value=latest-collector-performance,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=beta-collector-performance,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-collector-performance,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             # Version tags
             type=semver,pattern={{version}}-collector-performance
@@ -368,6 +374,7 @@ jobs:
             type=raw,value=${{ inputs.tag_suffix }}-web,enable=${{ github.event_name == 'workflow_dispatch' }}
             # Branch builds
             type=raw,value=latest-web,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=beta-web,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-web,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             # Version tags
             type=semver,pattern={{version}}-web
@@ -429,6 +436,8 @@ jobs:
             type=raw,value=${{ inputs.tag_suffix }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.tag_suffix == 'latest' }}
             # Branch builds
             type=raw,value=latest-omnibus,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=beta-omnibus,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=beta,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-omnibus,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             # Version tags
