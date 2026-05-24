@@ -131,6 +131,7 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Missed Ping Digest** - Batch notification when multiple collectors go unreachable
 - **HTML Email Notifications** - Rich HTML formatting with plain-text fallback for SMTP notifications, including reports, test notifications, collector errors, missed ping digests, heartbeat, performance degradation, replacement risk, and MDADM degradation alerts
 - **Workload Insights** - Daily read/write rates, R/W ratio, I/O intensity classification, SSD endurance tracking, and activity spike detection
+- **Consumer Drive Profiles** - Apply vetted ATA HDD and SSD profiles based on Backblaze-informed thresholds, with opt-out controls and replacement-risk transparency
 - **Filesystem Capacity Monitoring** - Track logical filesystem free space independently from SMART device health
 - **MDADM Monitoring** - Monitor Linux software RAID arrays with a dedicated collector
 - **Btrfs Filesystem Monitoring** - Track Btrfs health, scrub status, topology, and usage details
@@ -539,6 +540,18 @@ Add overrides to `scrutiny.yaml` under `smart.attribute_overrides`. See [example
 | Custom Threshold | Replaces default thresholds with user-defined warn_above/fail_above values |
 
 Overrides apply at the next SMART data collection. Device status is recalculated immediately when overrides are added or removed via the UI.
+
+## Consumer Drive Profiles
+
+Scrutiny can apply vetted ATA consumer drive model or family overrides when evaluating SMART status and computing replacement risk. These profiles are intended to improve interpretation for common SATA HDD and SSD lines using validated thresholds informed by Backblaze failure data.
+
+The feature is enabled by default and can be disabled globally in Dashboard Settings if you prefer generic ATA rules only. On ATA drive detail pages, Scrutiny also shows which evaluation path was used so the replacement-risk output is transparent:
+
+- matched consumer drive profile family
+- generic ATA rules because profiles were disabled
+- generic ATA rules because no vetted profile matched the drive
+
+For matching behavior, confidence thresholds, and API fields such as `consumer_drive_profiles_enabled` and `consumer_drive_profile_family`, see [docs/CONSUMER_DRIVE_PROFILES.md](./docs/CONSUMER_DRIVE_PROFILES.md).
 
 ## Notifications
 
