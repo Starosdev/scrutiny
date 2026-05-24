@@ -1,4 +1,4 @@
-name: Sync develop after master merge
+name: Sync beta and develop after master merge
 
 on:
   push:
@@ -6,8 +6,29 @@ on:
       - master
 
 jobs:
-  sync:
+  sync-beta:
+    name: Merge master into beta
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge master into beta
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout beta
+          git merge origin/master --no-edit
+          git push origin beta
+
+  sync-develop:
     name: Merge master into develop
+    needs: sync-beta
     runs-on: ubuntu-latest
     permissions:
       contents: write

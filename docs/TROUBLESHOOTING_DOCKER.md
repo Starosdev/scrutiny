@@ -1,22 +1,22 @@
-# Docker Images `master-omnibus` vs `latest`
+# Docker Image Channels
 
-> TL;DR; The `master-omnibus` and `latest` tags are almost semantically identical, as I follow a `golden master` 
-development process. However if you want to ensure you're only using the latest release, you can change to `latest`
+> TL;DR: use `develop` for testing, `beta` for pre-release validation, and `latest` for stable production.
 
-The CI script used to orchestrate the docker image builds can be found here: https://github.com/Starosdev/scrutiny/blob/master/.github/workflows/docker-build.yaml#L166-L184
+The CI script used to orchestrate the Docker image builds lives in `.github/workflows/docker-build.yaml`.
 
-In general Scrutiny follows a `golden master` development process, which means that the `master` branch is not directly updated (unless its for documentation changes), 
-instead development is done in a feature branch, or committed to the `beta` branch. 
+Scrutiny now uses three branch-backed image channels:
 
-As development progresses, and we're satisfied that a feature is complete, and the quality is acceptable, 
-I merge the changes to `master` and trigger the creation of a new release -- ie, when master is updated, a new release
-is almost immediately created (and tagged with `latest`)
+- `develop` branch -> `develop` and `develop-omnibus`
+- `beta` branch -> `beta` and `beta-omnibus`
+- `master` branch -> `latest` and `latest-omnibus`
 
-So changing from `master-omnibus -> latest` will be the same thing for all intents and purposes. 
+Typical flow is `develop -> master`, with optional `develop -> beta -> master` promotion when a feature needs pre-release validation.
 
-> NOTE: Previously, there was a `automated cron build` that ran on the `master` and `beta` branches. 
-They used to trigger a `nightly` build, even if nothing has changed on the branch. This has a couple of benefits, but one is to 
-ensure that there's no broken external dependencies in our (unchanged) code. This `nightly` build no longer updates the `master-omnibus` tag. 
+Use cases:
+
+- `develop-*` for integration and maintainer testing
+- `beta-*` for release-candidate validation
+- `latest-*` for stable production deployments
 
 # Running Docker `rootless`
 

@@ -62,8 +62,8 @@ We follow a predictable release cadence to balance new features with stability:
 
 | When | What | Channel |
 | --- | --- | --- |
-| **Sunday** | Bug fixes and stability improvements | Stable (`:latest`) |
-| **Saturday** | New features and experiments | Beta (`:beta`) |
+| **Sunday** | Integration testing and maintainer validation | Testing (`:develop`) |
+| **Saturday** | New features and release candidates | Beta (`:beta`) |
 | **Monthly** | Promote mature beta features to stable | Stable (`:latest`) |
 | **As needed** | Critical hotfixes and urgent security patches | Stable (`:latest`) |
 
@@ -74,7 +74,9 @@ Releases are created manually, not on every commit. Track upcoming work on the [
 This repository also owns the testing and production deployment definitions for Scrutiny.
 
 - Testing images publish from the `develop` branch through [`Deploy Testing Stack`](./.github/workflows/deploy-testing.yml)
+- Beta images publish from the `beta` branch through [`Publish Beta Image`](./.github/workflows/deploy-beta.yml)
 - Production deploys from the `master` branch through [`Automated Release and Deploy`](./.github/workflows/release-and-deploy.yml)
+- `beta` is an optional pre-release channel for features that need validation before going to `master`
 - Zeus production and testing are separate host appdata trees:
   - production: `/mnt/user/appdata/scrutiny`
   - testing: `/mnt/user/appdata/scrutiny-dev`
@@ -129,6 +131,10 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Missed Ping Digest** - Batch notification when multiple collectors go unreachable
 - **HTML Email Notifications** - Rich HTML formatting with plain-text fallback for SMTP notifications, including reports, test notifications, collector errors, missed ping digests, heartbeat, performance degradation, replacement risk, and MDADM degradation alerts
 - **Workload Insights** - Daily read/write rates, R/W ratio, I/O intensity classification, SSD endurance tracking, and activity spike detection
+- **Consumer Drive Profiles** - Apply vetted ATA HDD and SSD profiles based on Backblaze-informed thresholds, with opt-out controls and replacement-risk transparency
+- **Filesystem Capacity Monitoring** - Track logical filesystem free space independently from SMART device health
+- **MDADM Monitoring** - Monitor Linux software RAID arrays with a dedicated collector
+- **Btrfs Filesystem Monitoring** - Track Btrfs health, scrub status, topology, and usage details
 - **Home Assistant MQTT Discovery** - Native push-based integration with automatic entity creation (temperature, health status, power-on hours, power cycles, drive problem)
 - **Heartbeat Notifications** - Periodic "all clear" alerts for uptime monitoring integration
 - **Uptime Kuma Push Monitor** - Dedicated push-based health status updates to Uptime Kuma endpoints
@@ -215,13 +221,26 @@ the following Docker images:
   scheduler. You can run one collector on each server.
 - `ghcr.io/starosdev/scrutiny:latest-collector-zfs` - ZFS pool collector for monitoring ZFS health.
   Run alongside or instead of the standard collector if you use ZFS. See [docs/ZFS_POOL_MONITORING.md](./docs/ZFS_POOL_MONITORING.md) for setup instructions.
+- `ghcr.io/starosdev/scrutiny:latest-collector-mdadm` - MDADM collector for Linux software RAID monitoring.
+  See [docs/MDADM_MONITORING.md](./docs/MDADM_MONITORING.md) for setup instructions.
+- `ghcr.io/starosdev/scrutiny:latest-collector-btrfs` - Btrfs filesystem health collector.
+  See [docs/BTRFS_FILESYSTEM_MONITORING.md](./docs/BTRFS_FILESYSTEM_MONITORING.md) for setup instructions.
 - `ghcr.io/starosdev/scrutiny:latest-collector-performance` - Performance benchmark collector using fio.
   Runs periodic benchmarks and tracks throughput, IOPS, and latency over time. See [Performance Benchmarking](#performance-benchmarking) for details.
 - `ghcr.io/starosdev/scrutiny:latest-web` - Contains the Web UI and API. Only one container necessary
 - `influxdb:2.2` - InfluxDB image, used by the Web container to persist SMART data. Only one container necessary.
   See [docs/TROUBLESHOOTING_INFLUXDB.md](./docs/TROUBLESHOOTING_INFLUXDB.md)
 
-Default CI image publishing currently builds `latest-web` and `latest-collector-performance` for `linux/amd64` and `linux/arm64`. The `arm/v7` variants are no longer part of the default GitHub Actions Docker matrix.
+Branch channel tags follow the same pattern across images:
+
+- `develop-*` from the `develop` branch
+- `beta-*` from the `beta` branch
+- `latest-*` and semver tags from `master` and release tags
+
+Default CI image publishing currently builds:
+
+- `collector` for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`
+- `web`, `collector-zfs`, `collector-mdadm`, `collector-btrfs`, and `collector-performance` for `linux/amd64` and `linux/arm64`
 
 > See [docker/example.hubspoke.docker-compose.yml](docker/example.hubspoke.docker-compose.yml) for a docker-compose file.
 
@@ -271,12 +290,18 @@ docker exec scrutiny /opt/scrutiny/bin/scrutiny-collector-metrics run
 # Configuration
 By default Scrutiny looks for its YAML configuration files in `/opt/scrutiny/config`
 
-There are four configuration files available:
+There are four primary configuration files available:
 
 - Webapp/API config via `scrutiny.yaml` - [example.scrutiny.yaml](example.scrutiny.yaml).
 - Collector config via `collector.yaml` - [example.collector.yaml](example.collector.yaml).
 - ZFS Collector config via `collector-zfs.yaml` - [example.collector-zfs.yaml](example.collector-zfs.yaml). See [docs/ZFS_POOL_MONITORING.md](./docs/ZFS_POOL_MONITORING.md) for setup instructions.
 - Performance Collector config via `collector-performance.yaml` - [example.collector-performance.yaml](example.collector-performance.yaml). Falls back to `collector.yaml` if not found.
+
+Additional dedicated collectors also have their own config surfaces:
+
+- MDADM collector via `collector-mdadm.yaml` - see [docs/MDADM_MONITORING.md](./docs/MDADM_MONITORING.md)
+- Btrfs collector via `collector-btrfs.yaml` - see [docs/BTRFS_FILESYSTEM_MONITORING.md](./docs/BTRFS_FILESYSTEM_MONITORING.md)
+- Filesystem capacity collector uses its own binary and scheduling env vars - see [docs/FILESYSTEM_CAPACITY.md](./docs/FILESYSTEM_CAPACITY.md)
 
 None of these files are required, however if provided, they allow you to configure how Scrutiny functions.
 
@@ -515,6 +540,18 @@ Add overrides to `scrutiny.yaml` under `smart.attribute_overrides`. See [example
 | Custom Threshold | Replaces default thresholds with user-defined warn_above/fail_above values |
 
 Overrides apply at the next SMART data collection. Device status is recalculated immediately when overrides are added or removed via the UI.
+
+## Consumer Drive Profiles
+
+Scrutiny can apply vetted ATA consumer drive model or family overrides when evaluating SMART status and computing replacement risk. These profiles are intended to improve interpretation for common SATA HDD and SSD lines using validated thresholds informed by Backblaze failure data.
+
+The feature is enabled by default and can be disabled globally in Dashboard Settings if you prefer generic ATA rules only. On ATA drive detail pages, Scrutiny also shows which evaluation path was used so the replacement-risk output is transparent:
+
+- matched consumer drive profile family
+- generic ATA rules because profiles were disabled
+- generic ATA rules because no vetted profile matched the drive
+
+For matching behavior, confidence thresholds, and API fields such as `consumer_drive_profiles_enabled` and `consumer_drive_profile_family`, see [docs/CONSUMER_DRIVE_PROFILES.md](./docs/CONSUMER_DRIVE_PROFILES.md).
 
 ## Notifications
 
