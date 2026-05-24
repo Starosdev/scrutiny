@@ -87,7 +87,7 @@ jobs:
       - name: Resolve or add issue project item
         id: item
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
         run: |
           EXISTING_ITEM_ID=$(gh api graphql -f query='
             query($contentId: ID!) {
@@ -137,7 +137,7 @@ jobs:
 
       - name: Set status column
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
         run: |
           if [ -z "${{ steps.item.outputs.item_id }}" ]; then
             echo "Project item id is empty; refusing to update status" >&2
