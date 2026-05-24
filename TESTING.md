@@ -720,6 +720,7 @@ Before submitting a pull request, ensure all of the following pass:
 - [ ] PR targets `develop` branch (or `master` for production hotfixes only)
 - [ ] Tests added for new functionality
 - [ ] Existing tests updated if behavior changed
+- [ ] `README.md` updated if the change affects the top-level feature list, deployment model, or published image/channel surface
 
 ### If You Added a Database Migration
 
