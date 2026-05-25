@@ -29,7 +29,8 @@ func (sr *scrutinyRepository) RegisterDevice(ctx context.Context, dev models.Dev
 		"host_id", "device_name", "device_type", "device_uuid",
 		"device_serial_id", "device_label", "collector_version",
 		"model_family", "model_name", "manufacturer", "wwn", "smart_support",
-		"device_protocol",
+		"device_protocol", "interface_type", "interface_speed", "serial_number",
+		"firmware", "rotation_speed", "capacity", "form_factor",
 	}
 
 	// Only update the custom label if the collector explicitly provides one.
