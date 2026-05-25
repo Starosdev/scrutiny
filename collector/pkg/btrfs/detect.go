@@ -29,6 +29,11 @@ type mountedFilesystem struct {
 	mountPoint string
 }
 
+// mountPaths lists the proc mounts files to check in priority order.
+// /host/proc/mounts is used when running in Docker with the host file bind-mounted in.
+// /proc/mounts is the native path on bare metal.
+var mountPaths = []string{"/host/proc/mounts", "/proc/mounts"}
+
 func (d *Detect) Start() ([]Filesystem, error) {
 	if d.Logger == nil {
 		d.Logger = logrus.NewEntry(logrus.New())
@@ -87,9 +92,18 @@ func (d *Detect) Start() ([]Filesystem, error) {
 }
 
 func (d *Detect) listBtrfsMountPoints() ([]mountedFilesystem, error) {
-	data, err := d.ReadMountsFile("/proc/mounts")
-	if err != nil {
-		return nil, fmt.Errorf("failed to read /proc/mounts: %w", err)
+	var data []byte
+	var err error
+	var mountPath string
+	for _, candidate := range mountPaths {
+		data, err = d.ReadMountsFile(candidate)
+		if err == nil {
+			mountPath = candidate
+			break
+		}
+	}
+	if mountPath == "" {
+		return nil, fmt.Errorf("failed to read proc mounts from any of %v: %w", mountPaths, err)
 	}
 
 	seenMounts := make(map[string]struct{})
@@ -118,7 +132,7 @@ func (d *Detect) listBtrfsMountPoints() ([]mountedFilesystem, error) {
 		})
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("failed to scan /proc/mounts: %w", err)
+		return nil, fmt.Errorf("failed to scan %s: %w", mountPath, err)
 	}
 
 	sort.Slice(mountPoints, func(i, j int) bool {

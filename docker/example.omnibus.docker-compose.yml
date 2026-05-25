@@ -32,6 +32,9 @@ services:
       # Platforms such as Unraid expose non-standard mdstat content and may
       # still produce an empty MDADM summary even with this mount present.
       - /proc/mdstat:/host/proc/mdstat:ro
+      # Btrfs/filesystem collectors: prefer the host mounts table when running
+      # in Docker so container bind mounts do not replace host mount points.
+      - /proc/mounts:/host/proc/mounts:ro
       - ./config:/opt/scrutiny/config
       - ./influxdb:/opt/scrutiny/influxdb
       # environment:

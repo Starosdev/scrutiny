@@ -36,6 +36,7 @@ services:
       COLLECTOR_BTRFS_CRON_SCHEDULE: "*/15 * * * *"
       COLLECTOR_BTRFS_RUN_STARTUP: "true"
     volumes:
+      - /proc/mounts:/host/proc/mounts:ro
       - /mnt:/mnt:ro
       - /var/lib/btrfs:/var/lib/btrfs:ro
     cap_add:
@@ -58,6 +59,7 @@ services:
     cap_add:
       - SYS_ADMIN
     volumes:
+      - '/proc/mounts:/host/proc/mounts:ro'
       - '/mnt:/mnt:ro'
       - '/var/lib/btrfs:/var/lib/btrfs:ro'
     environment:
@@ -71,6 +73,7 @@ services:
 
 Notes:
 
+- `/proc/mounts:/host/proc/mounts:ro` is required in Docker if you want the collector to discover host Btrfs mount points instead of the container mount namespace.
 - `/mnt` is an example. Mount every host path that contains the Btrfs filesystems you want Scrutiny to inspect.
 - `/var/lib/btrfs` is required if you want scrub status history inside the container.
 - `SYS_ADMIN` is recommended because some `btrfs` commands require elevated privileges.
@@ -178,7 +181,13 @@ curl http://localhost:8080/api/btrfs/filesystem/UUID/details
 docker exec scrutiny btrfs filesystem show
 ```
 
-4. Enable debug logging with `COLLECTOR_BTRFS_DEBUG=true`.
+4. Confirm the host mounts table is visible inside the container:
+
+```bash
+docker exec scrutiny sh -lc "cat /host/proc/mounts | grep btrfs"
+```
+
+5. Enable debug logging with `COLLECTOR_BTRFS_DEBUG=true`.
 
 ### Scrub Status Missing
 
