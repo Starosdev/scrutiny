@@ -2,8 +2,11 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
+	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/common"
 	"github.com/glebarez/sqlite"
@@ -15,7 +18,7 @@ import (
 func createDeviceRegisterTestRepository(t *testing.T) *scrutinyRepository {
 	t.Helper()
 
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())), &gorm.Config{})
 	require.NoError(t, err)
 	require.NoError(t, db.AutoMigrate(&models.Device{}))
 
@@ -73,4 +76,98 @@ func TestRegisterDeviceRefreshesMetadataOnConflict(t *testing.T) {
 	require.Equal(t, "6.0 Gb/s", stored.InterfaceSpeed)
 	require.Equal(t, "2.5 inches", stored.FormFactor)
 	require.Equal(t, "Samsung", stored.Manufacturer)
+}
+
+func TestRegisterDeviceRekeysLegacyRowWhenSerialAppearsForStableWWN(t *testing.T) {
+	repo := createDeviceRegisterTestRepository(t)
+	ctx := context.Background()
+
+	legacyID := deviceid.Generate("WDC WD80EFZZ-68BTXN0", "", "0x50014ee2c06ce3c3")
+	refreshedID := deviceid.Generate("WDC WD80EFZZ-68BTXN0", "WD-CA2XZ08L", "0x50014ee2c06ce3c3")
+
+	require.NoError(t, repo.RegisterDevice(ctx, models.Device{
+		DeviceID:     legacyID,
+		WWN:          "0x50014ee2c06ce3c3",
+		HostId:       "host-1",
+		DeviceName:   "sdb",
+		ModelName:    "WDC WD80EFZZ-68BTXN0",
+		SerialNumber: "",
+		Capacity:     0,
+	}))
+
+	require.NoError(t, repo.RegisterDevice(ctx, models.Device{
+		DeviceID:        refreshedID,
+		WWN:             "0x50014ee2c06ce3c3",
+		HostId:          "host-1",
+		DeviceName:      "sdb",
+		ModelName:       "WDC WD80EFZZ-68BTXN0",
+		Manufacturer:    "Western Digital",
+		SerialNumber:    "WD-CA2XZ08L",
+		Capacity:        8001563222016,
+		DeviceProtocol:  "ATA",
+		CollectorVersion: "1.61.0",
+	}))
+
+	var devices []models.Device
+	require.NoError(t, repo.gormClient.WithContext(ctx).Order("created_at asc").Find(&devices).Error)
+	require.Len(t, devices, 1)
+	require.Equal(t, refreshedID, devices[0].DeviceID)
+	require.Equal(t, "WD-CA2XZ08L", devices[0].SerialNumber)
+	require.Equal(t, int64(8001563222016), devices[0].Capacity)
+	require.Equal(t, "Western Digital", devices[0].Manufacturer)
+}
+
+func TestRegisterDeviceDeletesLegacyDuplicateOnceCanonicalRowExists(t *testing.T) {
+	repo := createDeviceRegisterTestRepository(t)
+	ctx := context.Background()
+
+	legacyID := deviceid.Generate("WDC WD80EFZZ-68BTXN0", "", "0x50014ee2c06ce3c3")
+	canonicalID := deviceid.Generate("WDC WD80EFZZ-68BTXN0", "WD-CA2XZ08L", "0x50014ee2c06ce3c3")
+
+	legacyCreatedAt := time.Now().Add(-48 * time.Hour).UTC().Truncate(time.Second)
+	require.NoError(t, repo.RegisterDevice(ctx, models.Device{
+		DeviceID:     legacyID,
+		WWN:          "0x50014ee2c06ce3c3",
+		HostId:       "host-1",
+		DeviceName:   "sdb",
+		ModelName:    "WDC WD80EFZZ-68BTXN0",
+		SerialNumber: "",
+		Capacity:     0,
+	}))
+	require.NoError(t, repo.gormClient.WithContext(ctx).
+		Model(&models.Device{}).
+		Where(queryDeviceID, legacyID).
+		Update("created_at", legacyCreatedAt).Error)
+
+	require.NoError(t, repo.RegisterDevice(ctx, models.Device{
+		DeviceID:        canonicalID,
+		WWN:             "0x50014ee2c06ce3c3",
+		HostId:          "host-1",
+		DeviceName:      "sdb",
+		ModelName:       "WDC WD80EFZZ-68BTXN0",
+		Manufacturer:    "Western Digital",
+		SerialNumber:    "WD-CA2XZ08L",
+		Capacity:        8001563222016,
+		DeviceProtocol:  "ATA",
+		CollectorVersion: "1.61.0",
+	}))
+
+	require.NoError(t, repo.RegisterDevice(ctx, models.Device{
+		DeviceID:        canonicalID,
+		WWN:             "0x50014ee2c06ce3c3",
+		HostId:          "host-1",
+		DeviceName:      "sdb",
+		ModelName:       "WDC WD80EFZZ-68BTXN0",
+		Manufacturer:    "Western Digital",
+		SerialNumber:    "WD-CA2XZ08L",
+		Capacity:        8001563222016,
+		DeviceProtocol:  "ATA",
+		CollectorVersion: "1.61.0",
+	}))
+
+	var devices []models.Device
+	require.NoError(t, repo.gormClient.WithContext(ctx).Order("created_at asc").Find(&devices).Error)
+	require.Len(t, devices, 1)
+	require.Equal(t, canonicalID, devices[0].DeviceID)
+	require.Equal(t, legacyCreatedAt, devices[0].CreatedAt.UTC().Truncate(time.Second))
 }
