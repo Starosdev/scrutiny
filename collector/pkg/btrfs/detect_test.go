@@ -400,7 +400,10 @@ Error summary:    no errors found
 }
 
 func TestDetectPrefersHostProcMountsWhenAvailable(t *testing.T) {
-	hostMounts := []byte(`/dev/vg1/volume_1 /volume1 btrfs rw 0 0
+	hostMounts := []byte(`/dev/vg1/volume_1 / btrfs rw 0 0
+/dev/vg1/volume_1 /etc/hosts btrfs rw 0 0
+/dev/vg1/volume_1 /opt/scrutiny/config btrfs rw 0 0
+/dev/vg1/volume_1 /volume1 btrfs rw 0 0
 /dev/vg2/volume_2 /volume2 btrfs rw 0 0
 `)
 	containerMounts := []byte(`/dev/mapper/vg1-volume_1 / btrfs rw 0 0
@@ -483,6 +486,63 @@ System,DUP: Size:8388608, Used:16384
 	require.Equal(t, "9e14872a-781a-44e8-8983-6d1699dac7bd", filesystems[0].UUID)
 	require.Equal(t, "/volume2", filesystems[1].MountPoint)
 	require.Equal(t, "8625a86f-fe31-4d6c-aa99-4e1c9b550fae", filesystems[1].UUID)
+}
+
+func TestDetectClearsFalseDeviceMissingForMountedSingleDevice(t *testing.T) {
+	mounts := []byte(`/dev/vg2/volume_2 /volume2 btrfs rw 0 0
+`)
+
+	commandOutputs := map[string][]byte{
+		"btrfs filesystem show --raw /volume2": []byte(`Label: 'vol2'  uuid: 8625a86f-fe31-4d6c-aa99-4e1c9b550fae
+	Total devices 1 FS bytes used 39512166400
+	devid    1 size 314606354432 used 114915540992 path /dev/mapper/vg2-volume_2
+`),
+		"btrfs filesystem usage --raw /volume2": []byte(`Overall:
+    Device size:                      314606354432
+    Device allocated:                 114915540992
+    Device unallocated:               199690813440
+    Device missing:                   314606354432
+    Used:                              39556878336
+    Free (estimated):                 272974639104      (min: 173129232384)
+    Data ratio:                               1.00
+    Metadata ratio:                           2.00
+Data,single: Size:112751280128, Used:39467454464
+Metadata,DUP: Size:1073741824, Used:44695552
+System,DUP: Size:8388608, Used:16384
+`),
+		"btrfs device stats /volume2": []byte(`[/dev/mapper/vg2-volume_2].write_io_errs   0`),
+		"btrfs scrub status --raw /volume2": []byte(`scrub status for 8625a86f-fe31-4d6c-aa99-4e1c9b550fae
+        no stats available
+`),
+	}
+
+	detector := Detect{
+		Logger: logrus.NewEntry(logrus.New()),
+		ReadMountsFile: func(string) ([]byte, error) {
+			return mounts, nil
+		},
+		LookPath: func(string) (string, error) {
+			return "/usr/bin/btrfs", nil
+		},
+		RunCommand: func(name string, args ...string) ([]byte, error) {
+			key := name + " " + joinArgs(args)
+			output, ok := commandOutputs[key]
+			if !ok {
+				return nil, errors.New("unexpected command: " + key)
+			}
+			return output, nil
+		},
+	}
+
+	filesystems, err := detector.Start()
+	require.NoError(t, err)
+	require.Len(t, filesystems, 1)
+	require.Equal(t, FilesystemStatusOnline, filesystems[0].Status)
+	require.Equal(t, "/volume2", filesystems[0].MountPoint)
+	require.Equal(t, int64(0), filesystems[0].DeviceMissing)
+	require.Len(t, filesystems[0].Devices, 1)
+	require.False(t, filesystems[0].Devices[0].Missing)
+	require.Equal(t, "/dev/vg2/volume_2", filesystems[0].Devices[0].Path)
 }
 
 func TestParseBtrfsTime(t *testing.T) {
