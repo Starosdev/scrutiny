@@ -56,6 +56,20 @@ else
     sed -i 's|^{COLLECTOR_FILESYSTEM_CRON_SCHEDULE}|# Filesystem collector disabled (set COLLECTOR_FILESYSTEM_CRON_SCHEDULE to enable)|g' /etc/cron.d/scrutiny-filesystem
 fi
 
+# MDADM Collector cron schedule (disabled by default - requires host mdadm visibility)
+COLLECTOR_MDADM_CRON_SCHEDULE=${COLLECTOR_MDADM_CRON_SCHEDULE:-""}
+
+if [ -n "${COLLECTOR_MDADM_CRON_SCHEDULE}" ]; then
+    # strip quotes if present
+    [[ "${COLLECTOR_MDADM_CRON_SCHEDULE}" == \"*\" || "${COLLECTOR_MDADM_CRON_SCHEDULE}" == \'*\' ]] && COLLECTOR_MDADM_CRON_SCHEDULE="${COLLECTOR_MDADM_CRON_SCHEDULE:1:-1}"
+
+    # replace placeholder with correct value
+    sed -i 's|{COLLECTOR_MDADM_CRON_SCHEDULE}|'"${COLLECTOR_MDADM_CRON_SCHEDULE}"'|g' /etc/cron.d/scrutiny-mdadm
+else
+    # Disable mdadm cron if no schedule set (comment out the cron line)
+    sed -i 's|^{COLLECTOR_MDADM_CRON_SCHEDULE}|# MDADM collector disabled (set COLLECTOR_MDADM_CRON_SCHEDULE to enable)|g' /etc/cron.d/scrutiny-mdadm
+fi
+
 # Btrfs Collector cron schedule (disabled by default - requires host mount and Btrfs visibility)
 COLLECTOR_BTRFS_CRON_SCHEDULE=${COLLECTOR_BTRFS_CRON_SCHEDULE:-""}
 
