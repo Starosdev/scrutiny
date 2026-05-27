@@ -346,7 +346,7 @@ CREATE TABLE attribute_overrides (
 	require.Equal(t, "ui", source)
 }
 
-func TestMigrateSelfHealsMissingModelFamilyColumnWhenMigrationWasRecorded(t *testing.T) {
+func TestMigrateSelfHealsDriftedDeviceSchemaWhenMigrationWasRecorded(t *testing.T) {
 	repo := createMigrationTestRepositoryWithAppliedMigrations(t, []string{
 		"20201107210306",
 		"20220503113100",
@@ -406,15 +406,15 @@ CREATE TABLE devices (
 	device_type TEXT,
 	label TEXT,
 	host_id TEXT,
-	collector_version TEXT,
-	smart_display_mode TEXT DEFAULT 'scrutiny',
-	device_status INTEGER,
-	has_forced_failure NUMERIC DEFAULT 0,
-	archived NUMERIC,
-	muted NUMERIC,
-	missed_ping_timeout_override INTEGER DEFAULT 0
+	collector_version TEXT
 )`).Error)
 
 	require.NoError(t, repo.Migrate(ctx))
 	require.True(t, repo.gormClient.Migrator().HasColumn(&models.Device{}, "model_family"))
+	require.True(t, repo.gormClient.Migrator().HasColumn(&models.Device{}, "smart_display_mode"))
+	require.True(t, repo.gormClient.Migrator().HasColumn(&models.Device{}, "device_status"))
+	require.True(t, repo.gormClient.Migrator().HasColumn(&models.Device{}, "has_forced_failure"))
+	require.True(t, repo.gormClient.Migrator().HasColumn(&models.Device{}, "archived"))
+	require.True(t, repo.gormClient.Migrator().HasColumn(&models.Device{}, "muted"))
+	require.True(t, repo.gormClient.Migrator().HasColumn(&models.Device{}, "missed_ping_timeout_override"))
 }
