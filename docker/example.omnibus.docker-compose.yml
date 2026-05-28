@@ -37,7 +37,11 @@ services:
       - /proc/mounts:/host/proc/mounts:ro
       - ./config:/opt/scrutiny/config
       - ./influxdb:/opt/scrutiny/influxdb
-      # environment:
+      # Btrfs: if your Btrfs volumes are not visible inside the container,
+      # bind-mount each host volume path (Synology DSM, similar NAS platforms):
+      # - /volume1:/volume1:ro
+      # - /volume2:/volume2:ro
+    environment:
       # Enable ZFS pool monitoring (uncomment to enable)
       # See docs/ZFS_POOL_MONITORING.md for details
       # COLLECTOR_ZFS_CRON_SCHEDULE: "*/15 * * * *"
@@ -45,6 +49,10 @@ services:
       # Enable MDADM RAID monitoring (uncomment to enable)
       # COLLECTOR_MDADM_CRON_SCHEDULE: "*/15 * * * *"
       # COLLECTOR_MDADM_RUN_STARTUP: "true"
+      # Enable Btrfs filesystem monitoring (uncomment to enable)
+      # See docs/BTRFS_FILESYSTEM_MONITORING.md for details
+      # COLLECTOR_BTRFS_CRON_SCHEDULE: "*/15 * * * *"
+      # COLLECTOR_BTRFS_RUN_STARTUP: "true"
       # Enable filesystem capacity monitoring (requires host mount visibility)
       # COLLECTOR_FILESYSTEM_CRON_SCHEDULE: "*/15 * * * *"
       # COLLECTOR_FILESYSTEM_RUN_STARTUP: "true"
