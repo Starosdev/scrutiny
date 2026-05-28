@@ -1101,6 +1101,22 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 				return tx.Create(&defaultSetting).Error
 			},
 		},
+		{
+			ID: "m20260528000000", // remove orphan blank device rows (#567)
+			// Devices with no identifying information (all of device_name, model_name,
+			// serial_number, and wwn empty or NULL) are invalid and cannot be tracked
+			// or removed via the UI. This migration removes any such rows that may have
+			// been inserted by legacy collector runs or backfill migrations.
+			Migrate: func(tx *gorm.DB) error {
+				return tx.Exec(`
+					DELETE FROM devices
+					WHERE (device_name IS NULL OR TRIM(device_name) = '')
+					  AND (model_name  IS NULL OR TRIM(model_name)  = '')
+					  AND (serial_number IS NULL OR TRIM(serial_number) = '')
+					  AND (wwn IS NULL OR TRIM(wwn) = '')
+				`).Error
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {
