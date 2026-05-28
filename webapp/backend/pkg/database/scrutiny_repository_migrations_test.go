@@ -418,3 +418,95 @@ CREATE TABLE devices (
 	require.True(t, repo.gormClient.Migrator().HasColumn(&models.Device{}, "muted"))
 	require.True(t, repo.gormClient.Migrator().HasColumn(&models.Device{}, "missed_ping_timeout_override"))
 }
+
+func TestMigrateRemovesOrphanBlankDeviceRows(t *testing.T) {
+	repo := createMigrationTestRepositoryWithAppliedMigrations(t, []string{
+		"20201107210306",
+		"20220503113100",
+		"20220503120000",
+		"m20220509170100",
+		"m20220709181300",
+		"m20220716214900",
+		"m20250221084400",
+		"m20251108044508",
+		"m20260108000000",
+		"m20260122000000",
+		"m20260129000000",
+		"m20260131000000",
+		"m20260202000000",
+		"m20260225000000",
+		"m20260226000000",
+		"m20260301000000",
+		"m20260315000000",
+		"m20260401000000",
+		"m20260402000000",
+		"m20260410000000",
+		"m20260411000000",
+		"m20260413000000",
+		"m20260414000000",
+		"m20260421000000",
+		"m20260508000000",
+		"m20260510000000",
+		"m20260514000000",
+		"m20260516000000",
+		"m20260523000000",
+		"m20260524000000",
+	})
+	ctx := context.Background()
+
+	// Recreate the devices table with the post-m20260401000000 schema (device_id as primary key)
+	// to simulate the state of the database before the m20260528000000 migration runs.
+	require.NoError(t, repo.gormClient.Exec(`DROP TABLE devices`).Error)
+	require.NoError(t, repo.gormClient.Exec(`
+CREATE TABLE devices (
+	device_id TEXT PRIMARY KEY,
+	wwn TEXT,
+	created_at DATETIME,
+	updated_at DATETIME,
+	deleted_at DATETIME,
+	device_name TEXT,
+	device_uuid TEXT,
+	device_serial_id TEXT,
+	device_label TEXT,
+	manufacturer TEXT,
+	model_family TEXT,
+	model_name TEXT,
+	interface_type TEXT,
+	interface_speed TEXT,
+	serial_number TEXT,
+	firmware TEXT,
+	rotation_speed INTEGER,
+	capacity INTEGER,
+	form_factor TEXT,
+	smart_support TEXT,
+	device_protocol TEXT,
+	device_type TEXT,
+	label TEXT,
+	host_id TEXT,
+	collector_version TEXT,
+	smart_display_mode TEXT DEFAULT 'scrutiny',
+	device_status INTEGER,
+	has_forced_failure NUMERIC DEFAULT 0,
+	archived NUMERIC,
+	muted NUMERIC,
+	missed_ping_timeout_override INTEGER DEFAULT 0
+)`).Error)
+
+	// Insert one blank orphan row (all identifying fields empty) and one valid row.
+	require.NoError(t, repo.gormClient.Exec(`
+		INSERT INTO devices (device_id, wwn, device_name, model_name, serial_number, smart_display_mode)
+		VALUES
+			('blank-uuid', '', '', '', '', 'scrutiny'),
+			('valid-uuid', 'wwn-1', 'sda', 'Samsung SSD 870', 'SN123', 'scrutiny')
+	`).Error)
+
+	require.NoError(t, repo.Migrate(ctx))
+
+	var deviceCount int64
+	require.NoError(t, repo.gormClient.Raw(`SELECT COUNT(*) FROM devices`).Scan(&deviceCount).Error)
+	require.Equal(t, int64(1), deviceCount, "blank orphan row should have been removed")
+
+	var remainingID string
+	require.NoError(t, repo.gormClient.Raw(`SELECT device_id FROM devices LIMIT 1`).Scan(&remainingID).Error)
+	require.Equal(t, "valid-uuid", remainingID, "valid device should be preserved")
+}

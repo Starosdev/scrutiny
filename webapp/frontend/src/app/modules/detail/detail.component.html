@@ -755,7 +755,7 @@
                 @if (getLatestPerformance(); as latest) {
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                     @if (latest.seq_read_bw_bytes > 0) {
-                    <treo-card class="p-4">
+                    <treo-card class="flex-col p-4">
                         <div class="font-semibold text-xs text-hint uppercase tracking-wider">Seq Read</div>
                         <div class="font-bold text-2xl my-2">{{ latest.seq_read_bw_bytes | fileSize : config?.file_size_si_units }}/s</div>
                         @if (performanceBaseline?.sample_count > 1) { @if (getBaselineDelta(latest.seq_read_bw_bytes, performanceBaseline?.seq_read_bw_bytes, true); as delta) {
@@ -768,7 +768,7 @@
                         } }
                     </treo-card>
                     } @if (latest.seq_write_bw_bytes > 0) {
-                    <treo-card class="p-4">
+                    <treo-card class="flex-col p-4">
                         <div class="font-semibold text-xs text-hint uppercase tracking-wider">Seq Write</div>
                         <div class="font-bold text-2xl my-2">{{ latest.seq_write_bw_bytes | fileSize : config?.file_size_si_units }}/s</div>
                         @if (performanceBaseline?.sample_count > 1) { @if (getBaselineDelta(latest.seq_write_bw_bytes, performanceBaseline?.seq_write_bw_bytes, true); as delta) {
@@ -781,7 +781,7 @@
                         } }
                     </treo-card>
                     } @if (latest.rand_read_iops > 0) {
-                    <treo-card class="p-4">
+                    <treo-card class="flex-col p-4">
                         <div class="font-semibold text-xs text-hint uppercase tracking-wider">Rand Read IOPS</div>
                         <div class="font-bold text-2xl my-2">{{ latest.rand_read_iops | number : '1.0-0' }}</div>
                         @if (performanceBaseline?.sample_count > 1) { @if (getBaselineDelta(latest.rand_read_iops, performanceBaseline?.rand_read_iops, true); as delta) {
@@ -794,7 +794,7 @@
                         } }
                     </treo-card>
                     } @if (latest.rand_write_iops > 0) {
-                    <treo-card class="p-4">
+                    <treo-card class="flex-col p-4">
                         <div class="font-semibold text-xs text-hint uppercase tracking-wider">Rand Write IOPS</div>
                         <div class="font-bold text-2xl my-2">{{ latest.rand_write_iops | number : '1.0-0' }}</div>
                         @if (performanceBaseline?.sample_count > 1) { @if (getBaselineDelta(latest.rand_write_iops, performanceBaseline?.rand_write_iops, true); as delta) {
@@ -807,7 +807,7 @@
                         } }
                     </treo-card>
                     } @if (latest.rand_read_lat_ns_avg > 0) {
-                    <treo-card class="p-4">
+                    <treo-card class="flex-col p-4">
                         <div class="font-semibold text-xs text-hint uppercase tracking-wider">Read Latency</div>
                         <div class="font-bold text-2xl my-2">{{ latest.rand_read_lat_ns_avg | latency }}</div>
                         @if (performanceBaseline?.sample_count > 1) { @if (getBaselineDelta(latest.rand_read_lat_ns_avg, performanceBaseline?.rand_read_lat_ns_avg, false); as
@@ -821,7 +821,7 @@
                         } }
                     </treo-card>
                     } @if (latest.rand_write_lat_ns_avg > 0) {
-                    <treo-card class="p-4">
+                    <treo-card class="flex-col p-4">
                         <div class="font-semibold text-xs text-hint uppercase tracking-wider">Write Latency</div>
                         <div class="font-bold text-2xl my-2">{{ latest.rand_write_lat_ns_avg | latency }}</div>
                         @if (performanceBaseline?.sample_count > 1) { @if (getBaselineDelta(latest.rand_write_lat_ns_avg, performanceBaseline?.rand_write_lat_ns_avg, false); as

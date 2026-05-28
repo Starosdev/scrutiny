@@ -171,3 +171,44 @@ func TestRegisterDeviceDeletesLegacyDuplicateOnceCanonicalRowExists(t *testing.T
 	require.Equal(t, canonicalID, devices[0].DeviceID)
 	require.Equal(t, legacyCreatedAt, devices[0].CreatedAt.UTC().Truncate(time.Second))
 }
+
+func TestRegisterDeviceRejectsBlankDevice(t *testing.T) {
+	repo := createDeviceRegisterTestRepository(t)
+	ctx := context.Background()
+
+	err := repo.RegisterDevice(ctx, models.Device{})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "no identifying information")
+
+	var count int64
+	require.NoError(t, repo.gormClient.WithContext(ctx).Model(&models.Device{}).Count(&count).Error)
+	require.Equal(t, int64(0), count)
+}
+
+func TestRegisterDeviceAcceptsDeviceWithOnlyDeviceName(t *testing.T) {
+	repo := createDeviceRegisterTestRepository(t)
+	ctx := context.Background()
+
+	err := repo.RegisterDevice(ctx, models.Device{
+		DeviceName: "sda",
+	})
+	require.NoError(t, err)
+
+	var count int64
+	require.NoError(t, repo.gormClient.WithContext(ctx).Model(&models.Device{}).Count(&count).Error)
+	require.Equal(t, int64(1), count)
+}
+
+func TestRegisterDeviceAcceptsDeviceWithOnlySerialNumber(t *testing.T) {
+	repo := createDeviceRegisterTestRepository(t)
+	ctx := context.Background()
+
+	err := repo.RegisterDevice(ctx, models.Device{
+		SerialNumber: "SN123456",
+	})
+	require.NoError(t, err)
+
+	var count int64
+	require.NoError(t, repo.gormClient.WithContext(ctx).Model(&models.Device{}).Count(&count).Error)
+	require.Equal(t, int64(1), count)
+}

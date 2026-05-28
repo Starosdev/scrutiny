@@ -19,23 +19,23 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <treo-card class="p-6">
+        <treo-card class="flex-col p-6">
             <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Status</div>
             <div class="font-bold text-3xl" [ngClass]="filesystem.status === 'ONLINE' ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'">
                 {{ filesystem.status }}
             </div>
         </treo-card>
-        <treo-card class="p-6">
+        <treo-card class="flex-col p-6">
             <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Usage</div>
             <div class="font-bold text-3xl">{{ filesystem.used | fileSize : config?.file_size_si_units }}</div>
             <div class="text-sm text-hint mt-2">{{ filesystem.device_size | fileSize : config?.file_size_si_units }} total</div>
         </treo-card>
-        <treo-card class="p-6">
+        <treo-card class="flex-col p-6">
             <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Profiles</div>
             <div class="font-bold text-xl">{{ filesystem.data_profile || 'n/a' }}</div>
             <div class="text-sm text-hint mt-2">Metadata {{ filesystem.metadata_profile || 'n/a' }}</div>
         </treo-card>
-        <treo-card class="p-6">
+        <treo-card class="flex-col p-6">
             <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Scrub</div>
             <div class="font-bold text-3xl">{{ filesystem.scrub_state }}</div>
             @if (filesystem.scrub_finished_at) {
