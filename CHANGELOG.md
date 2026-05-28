@@ -2,6 +2,29 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.62.0](https://github.com/Starosdev/scrutiny/compare/v1.61.0...v1.62.0) (2026-05-28)
+
+### Features
+
+* **notify:** add Apprise notification support ([b2c94d5](https://github.com/Starosdev/scrutiny/commit/b2c94d5433a247ff6a728c6ef5f4e57dbadbdc3c))
+
+### Bug Fixes
+
+* **db:** reconcile legacy device identity drift ([05802ca](https://github.com/Starosdev/scrutiny/commit/05802ca2473fed4e3ba93480185c0eeba1703af8))
+* **db:** refresh device metadata on registration ([2edde86](https://github.com/Starosdev/scrutiny/commit/2edde869bfe5888db43723e964668ea956595923))
+* **db:** self-heal missing model_family migration drift ([240464a](https://github.com/Starosdev/scrutiny/commit/240464a846dd70b45e1349e5e3626d54b19c035c))
+* **docker:** create Apprise bin directory ([7a41294](https://github.com/Starosdev/scrutiny/commit/7a41294817a41d5bdce122740be89215e2277227))
+* **docker:** install Apprise in omnibus image ([9315505](https://github.com/Starosdev/scrutiny/commit/9315505f1c8a7a294747c478b41b54dc4d692fe2))
+* **frontend:** restore settings dialog actions ([3f2ea96](https://github.com/Starosdev/scrutiny/commit/3f2ea965eb0745110e93d118cdad73a608c29a6f))
+* **frontend:** restore solid material overlay backgrounds ([07bcd07](https://github.com/Starosdev/scrutiny/commit/07bcd07f6c338b7df7482b5dcb6fffbae7b6d15a))
+* **lint:** add comment spacing and gosec nolint for SHA1 id generation ([5666b0d](https://github.com/Starosdev/scrutiny/commit/5666b0d4759985c8d83fd1ca8d604ba1ecfba894))
+* **lint:** fix fieldalignment, hugeParam, and rangeValCopy in consumer drive profiles ([a2c2373](https://github.com/Starosdev/scrutiny/commit/a2c2373a03e9c61db9f9129f310703b694b42031))
+* **lint:** further optimize ConsumerDriveProfile field alignment to 112 pointer bytes ([3a48c25](https://github.com/Starosdev/scrutiny/commit/3a48c2566413dccdbe7eff89ab7db98543fa3c57))
+* **lint:** pass Device by pointer to silence hugeParam in reconcile funcs ([76860f2](https://github.com/Starosdev/scrutiny/commit/76860f264e89a9e6cd74f02ae9ad8700489271a4))
+* **mdadm:** synthesize array id without UUID ([79055ab](https://github.com/Starosdev/scrutiny/commit/79055ab38ef5bf5d466490746a4bf7f3b7a22e29))
+* **release:** publish mdadm collector artifacts ([abfc57d](https://github.com/Starosdev/scrutiny/commit/abfc57d251afe2165f916a8143070ecfdbfabeb1))
+* **web:** copy pwa manifest and root icons into build output ([4a812e2](https://github.com/Starosdev/scrutiny/commit/4a812e2162d147ef5a44cb1aa007c4b01dd350e6))
+
 ## [1.61.0](https://github.com/Starosdev/scrutiny/compare/v1.60.0...v1.61.0) (2026-05-24)
 
 ### Features
