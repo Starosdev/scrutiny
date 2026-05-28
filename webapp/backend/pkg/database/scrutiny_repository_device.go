@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
@@ -11,6 +12,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 	"gorm.io/gorm/clause"
+	"gorm.io/gorm"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -29,7 +31,8 @@ func (sr *scrutinyRepository) RegisterDevice(ctx context.Context, dev models.Dev
 		"host_id", "device_name", "device_type", "device_uuid",
 		"device_serial_id", "device_label", "collector_version",
 		"model_family", "model_name", "manufacturer", "wwn", "smart_support",
-		"device_protocol",
+		"device_protocol", "interface_type", "interface_speed", "serial_number",
+		"firmware", "rotation_speed", "capacity", "form_factor",
 	}
 
 	// Only update the custom label if the collector explicitly provides one.
@@ -39,13 +42,86 @@ func (sr *scrutinyRepository) RegisterDevice(ctx context.Context, dev models.Dev
 		updateColumns = append(updateColumns, "label")
 	}
 
-	if err := sr.gormClient.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "device_id"}},
-		DoUpdates: clause.AssignmentColumns(updateColumns),
-	}).Create(&dev).Error; err != nil {
-		return err
+	return sr.gormClient.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := sr.reconcileLegacyDeviceIdentity(tx, &dev); err != nil {
+			return err
+		}
+
+		return tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "device_id"}},
+			DoUpdates: clause.AssignmentColumns(updateColumns),
+		}).Create(&dev).Error
+	})
+}
+
+func (sr *scrutinyRepository) reconcileLegacyDeviceIdentity(tx *gorm.DB, incoming *models.Device) error {
+	if strings.TrimSpace(incoming.WWN) == "" {
+		return nil
 	}
-	return nil
+
+	var sameWWN []models.Device
+	if err := tx.Where("wwn = ?", incoming.WWN).Find(&sameWWN).Error; err != nil {
+		return fmt.Errorf("could not query existing devices by wwn: %w", err)
+	}
+	if len(sameWWN) == 0 {
+		return nil
+	}
+
+	var canonical *models.Device
+	legacyCandidates := make([]models.Device, 0, len(sameWWN))
+	for i := range sameWWN {
+		existing := sameWWN[i]
+		if existing.DeviceID == incoming.DeviceID {
+			canonical = &sameWWN[i]
+			continue
+		}
+		if isLegacyIdentityCandidate(&sameWWN[i], incoming) {
+			legacyCandidates = append(legacyCandidates, existing)
+		}
+	}
+
+	if len(legacyCandidates) != 1 {
+		return nil
+	}
+
+	legacy := legacyCandidates[0]
+
+	if canonical != nil {
+		if legacy.CreatedAt.Before(canonical.CreatedAt) {
+			if err := tx.Model(&models.Device{}).
+				Where(queryDeviceID, canonical.DeviceID).
+				Update("created_at", legacy.CreatedAt).Error; err != nil {
+				return fmt.Errorf("could not preserve created_at while deleting legacy device row: %w", err)
+			}
+		}
+		if err := tx.Where(queryDeviceID, legacy.DeviceID).Delete(&models.Device{}).Error; err != nil {
+			return fmt.Errorf("could not delete legacy device row: %w", err)
+		}
+		return nil
+	}
+
+	return tx.Model(&models.Device{}).
+		Where(queryDeviceID, legacy.DeviceID).
+		Update("device_id", incoming.DeviceID).Error
+}
+
+func isLegacyIdentityCandidate(existing *models.Device, incoming *models.Device) bool {
+	if !strings.EqualFold(strings.TrimSpace(existing.WWN), strings.TrimSpace(incoming.WWN)) {
+		return false
+	}
+	if !strings.EqualFold(strings.TrimSpace(existing.ModelName), strings.TrimSpace(incoming.ModelName)) {
+		return false
+	}
+	if existing.HostId != "" && incoming.HostId != "" && existing.HostId != incoming.HostId {
+		return false
+	}
+
+	existingSerial := strings.TrimSpace(existing.SerialNumber)
+	incomingSerial := strings.TrimSpace(incoming.SerialNumber)
+	if existingSerial != "" {
+		return strings.EqualFold(existingSerial, incomingSerial)
+	}
+	return incomingSerial != ""
 }
 
 // get a list of all devices (only device metadata, no SMART data)

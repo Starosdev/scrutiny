@@ -29,6 +29,11 @@ type mountedFilesystem struct {
 	mountPoint string
 }
 
+// mountPaths lists the proc mounts files to check in priority order.
+// /host/proc/mounts is used when running in Docker with the host file bind-mounted in.
+// /proc/mounts is the native path on bare metal.
+var mountPaths = []string{"/host/proc/mounts", "/proc/mounts"}
+
 func (d *Detect) Start() ([]Filesystem, error) {
 	if d.Logger == nil {
 		d.Logger = logrus.NewEntry(logrus.New())
@@ -87,13 +92,22 @@ func (d *Detect) Start() ([]Filesystem, error) {
 }
 
 func (d *Detect) listBtrfsMountPoints() ([]mountedFilesystem, error) {
-	data, err := d.ReadMountsFile("/proc/mounts")
-	if err != nil {
-		return nil, fmt.Errorf("failed to read /proc/mounts: %w", err)
+	var data []byte
+	var err error
+	var mountPath string
+	for _, candidate := range mountPaths {
+		data, err = d.ReadMountsFile(candidate)
+		if err == nil {
+			mountPath = candidate
+			break
+		}
+	}
+	if mountPath == "" {
+		return nil, fmt.Errorf("failed to read proc mounts from any of %v: %w", mountPaths, err)
 	}
 
 	seenMounts := make(map[string]struct{})
-	seenSources := make(map[string]struct{})
+	sourceMounts := make(map[string][]string)
 	mountPoints := make([]mountedFilesystem, 0)
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	for scanner.Scan() {
@@ -106,19 +120,18 @@ func (d *Detect) listBtrfsMountPoints() ([]mountedFilesystem, error) {
 		if _, ok := seenMounts[mountPoint]; ok {
 			continue
 		}
-		// Multiple mounted subvolumes commonly share the same source entry.
-		if _, ok := seenSources[source]; ok {
-			continue
-		}
 		seenMounts[mountPoint] = struct{}{}
-		seenSources[source] = struct{}{}
-		mountPoints = append(mountPoints, mountedFilesystem{
-			source:     source,
-			mountPoint: mountPoint,
-		})
+		sourceMounts[source] = append(sourceMounts[source], mountPoint)
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("failed to scan /proc/mounts: %w", err)
+		return nil, fmt.Errorf("failed to scan %s: %w", mountPath, err)
+	}
+
+	for source, mounts := range sourceMounts {
+		mountPoints = append(mountPoints, mountedFilesystem{
+			source:     source,
+			mountPoint: preferredMountPoint(mounts),
+		})
 	}
 
 	sort.Slice(mountPoints, func(i, j int) bool {
@@ -499,17 +512,50 @@ func reconcileMountedSingleDevice(fs *Filesystem, mountSource string) {
 	if mountSource == "" || mountSource == "none" || mountSource == "missing" {
 		return
 	}
-	if len(fs.Devices) != 1 || !fs.Devices[0].Missing {
+	if len(fs.Devices) != 1 {
 		return
 	}
 
-	fs.Devices[0].Path = mountSource
-	fs.Devices[0].Missing = false
+	device := &fs.Devices[0]
+	if device.Path == "" || device.Missing || fs.DeviceMissing == fs.DeviceSize {
+		device.Path = mountSource
+		device.Missing = false
+	}
 	if fs.Devices[0].Size == 0 && fs.DeviceSize > 0 {
 		fs.Devices[0].Size = fs.DeviceSize
 	}
-	if fs.DeviceMissing == fs.DeviceSize {
+	if fs.DeviceMissing == fs.DeviceSize || (fs.DeviceMissing > 0 && fs.Devices[0].Size > 0 && fs.DeviceMissing == fs.Devices[0].Size) {
 		fs.DeviceMissing = 0
+	}
+}
+
+func preferredMountPoint(mountPoints []string) string {
+	best := ""
+	bestScore := -1
+	for _, mountPoint := range mountPoints {
+		score := mountPointPreferenceScore(mountPoint)
+		if score > bestScore || (score == bestScore && (best == "" || mountPoint < best)) {
+			best = mountPoint
+			bestScore = score
+		}
+	}
+	return best
+}
+
+func mountPointPreferenceScore(mountPoint string) int {
+	switch {
+	case regexp.MustCompile(`^/volume\d+$`).MatchString(mountPoint):
+		return 40
+	case strings.HasPrefix(mountPoint, "/mnt/"):
+		return 30
+	case mountPoint == "/":
+		return 20
+	case strings.HasPrefix(mountPoint, "/etc/"):
+		return 5
+	case strings.HasPrefix(mountPoint, "/opt/"):
+		return 4
+	default:
+		return 10
 	}
 }
 

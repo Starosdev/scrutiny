@@ -1118,6 +1118,11 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 		}
 		return err
 	}
+
+	if err := sr.ensureDeviceModelFamilyColumn(); err != nil {
+		sr.logger.Errorf("Database schema verification failed.\nPlease open a github issue at https://github.com/Starosdev/scrutiny and attach a copy of your scrutiny.db file.\n%v", err)
+		return err
+	}
 	sr.logger.Infoln("Database migration completed successfully")
 
 	//these migrations cannot be done within a transaction, so they are done as a separate group, with `UseTransaction = false`
@@ -1155,6 +1160,18 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 	sr.logger.Infoln("SQLite global configuration migrations completed successfully")
 
 	return nil
+}
+
+func (sr *scrutinyRepository) ensureDeviceModelFamilyColumn() error {
+	if sr.gormClient.Migrator().HasColumn(&models.Device{}, "model_family") {
+		return nil
+	}
+
+	if err := sr.gormClient.Exec("ALTER TABLE devices ADD COLUMN model_family TEXT").Error; err != nil {
+		return fmt.Errorf("failed to self-heal missing devices.model_family column: %w", err)
+	}
+
+	return sr.gormClient.AutoMigrate(&models.Device{})
 }
 
 // helpers
