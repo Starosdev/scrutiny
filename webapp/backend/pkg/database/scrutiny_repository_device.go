@@ -43,7 +43,7 @@ func (sr *scrutinyRepository) RegisterDevice(ctx context.Context, dev models.Dev
 	}
 
 	return sr.gormClient.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := sr.reconcileLegacyDeviceIdentity(tx, dev); err != nil {
+		if err := sr.reconcileLegacyDeviceIdentity(tx, &dev); err != nil {
 			return err
 		}
 
@@ -54,7 +54,7 @@ func (sr *scrutinyRepository) RegisterDevice(ctx context.Context, dev models.Dev
 	})
 }
 
-func (sr *scrutinyRepository) reconcileLegacyDeviceIdentity(tx *gorm.DB, incoming models.Device) error {
+func (sr *scrutinyRepository) reconcileLegacyDeviceIdentity(tx *gorm.DB, incoming *models.Device) error {
 	if strings.TrimSpace(incoming.WWN) == "" {
 		return nil
 	}
@@ -75,7 +75,7 @@ func (sr *scrutinyRepository) reconcileLegacyDeviceIdentity(tx *gorm.DB, incomin
 			canonical = &sameWWN[i]
 			continue
 		}
-		if isLegacyIdentityCandidate(existing, incoming) {
+		if isLegacyIdentityCandidate(&sameWWN[i], incoming) {
 			legacyCandidates = append(legacyCandidates, existing)
 		}
 	}
@@ -105,7 +105,7 @@ func (sr *scrutinyRepository) reconcileLegacyDeviceIdentity(tx *gorm.DB, incomin
 		Update("device_id", incoming.DeviceID).Error
 }
 
-func isLegacyIdentityCandidate(existing models.Device, incoming models.Device) bool {
+func isLegacyIdentityCandidate(existing *models.Device, incoming *models.Device) bool {
 	if !strings.EqualFold(strings.TrimSpace(existing.WWN), strings.TrimSpace(incoming.WWN)) {
 		return false
 	}
