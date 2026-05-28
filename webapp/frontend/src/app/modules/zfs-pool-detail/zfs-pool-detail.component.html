@@ -23,7 +23,7 @@
     <!-- Pool Overview -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <!-- Status Card -->
-        <treo-card class="p-6">
+        <treo-card class="flex-col p-6">
             <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Status</div>
             <div [ngClass]="getStatusColorClass(pool.status)" class="font-bold text-3xl">
                 {{ pool.status }}
@@ -31,7 +31,7 @@
         </treo-card>
 
         <!-- Capacity Card -->
-        <treo-card class="p-6">
+        <treo-card class="flex-col p-6">
             <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Capacity</div>
             <div class="font-bold text-3xl">{{ pool.capacity_percent }}%</div>
             <div class="mt-2 h-2 bg-gray-200 rounded overflow-hidden">
@@ -49,13 +49,13 @@
         </treo-card>
 
         <!-- Fragmentation Card -->
-        <treo-card class="p-6">
+        <treo-card class="flex-col p-6">
             <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Fragmentation</div>
             <div class="font-bold text-3xl">{{ pool.fragmentation }}%</div>
         </treo-card>
 
         <!-- Scrub Status Card -->
-        <treo-card class="p-6">
+        <treo-card class="flex-col p-6">
             <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Last Scrub</div>
             @switch (pool.scrub_state) { @case ('none') {
             <div class="font-bold text-3xl text-hint">Never</div>
