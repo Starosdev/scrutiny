@@ -25,6 +25,7 @@ import (
 const flagApiToken = "api-token"
 const flagLogFile = "log-file"
 const flagApiEndpoint = "api-endpoint"
+const flagHostId = "host-id"
 const configKeyLogFile = "log.file"
 
 var goos string
@@ -133,6 +134,10 @@ func main() {
 						config.Set("api.token", c.String(flagApiToken))
 					}
 
+					if c.IsSet(flagHostId) {
+						config.Set("host.id", c.String(flagHostId))
+					}
+
 					collectorLogger, logFile, err := CreateLogger(config)
 					if logFile != nil {
 						defer logFile.Close()
@@ -190,6 +195,12 @@ func main() {
 						Name:    flagApiToken,
 						Usage:   "API token for authenticating with the Scrutiny server",
 						EnvVars: []string{"COLLECTOR_MDADM_API_TOKEN", "COLLECTOR_API_TOKEN"},
+					},
+					&cli.StringFlag{
+						Name:    flagHostId,
+						Usage:   "Host identifier/label, used for grouping arrays",
+						Value:   "",
+						EnvVars: []string{"COLLECTOR_MDADM_HOST_ID", "COLLECTOR_HOST_ID"},
 					},
 				},
 			},
