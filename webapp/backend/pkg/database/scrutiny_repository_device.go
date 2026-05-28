@@ -22,6 +22,17 @@ import (
 // insert device into DB (and update specified columns if device is already registered)
 // update device fields that may change: (DeviceType, HostID)
 func (sr *scrutinyRepository) RegisterDevice(ctx context.Context, dev models.Device) error {
+	// Reject devices with no identifying information. A device must have at least
+	// one of: device_name, model_name, serial_number, or wwn. Without any of these,
+	// the generated device_id would be a deterministic UUID for the all-empty input,
+	// which would create an orphan blank row in the devices table.
+	if strings.TrimSpace(dev.DeviceName) == "" &&
+		strings.TrimSpace(dev.ModelName) == "" &&
+		strings.TrimSpace(dev.SerialNumber) == "" &&
+		strings.TrimSpace(dev.WWN) == "" {
+		return fmt.Errorf("cannot register device with no identifying information (device_name, model_name, serial_number, and wwn are all empty)")
+	}
+
 	// Compute deterministic device ID from model, serial, and WWN
 	if dev.DeviceID == "" {
 		dev.DeviceID = deviceid.Generate(dev.ModelName, dev.SerialNumber, dev.WWN)
