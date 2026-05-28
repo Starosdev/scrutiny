@@ -598,6 +598,32 @@ func TestDetect_TransformDetectedDevices_UppercaseByIDPathScanned(t *testing.T) 
 	require.Equal(t, "disk/by-id/ata-HGST_HUH721212ALE600_ABC123", transformedDevices[0].DeviceName)
 }
 
+func TestDetect_TransformDetectedDevices_EmptyDeviceName(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetString("host.id").AnyTimes().Return("")
+	fakeConfig.EXPECT().GetDeviceOverrides().AnyTimes().Return([]models.ScanOverride{})
+	fakeConfig.EXPECT().IsAllowlistedDevice(gomock.Any()).AnyTimes().Return(true)
+
+	detectedDevices := models.Scan{
+		Devices: []models.ScanDevice{
+			{Name: "/dev/sda", InfoName: "/dev/sda", Protocol: "scsi", Type: "scsi"},
+			{Name: "", InfoName: "", Protocol: "ata", Type: "ata"},
+		},
+	}
+
+	d := detect.Detect{
+		Logger: logrus.WithFields(logrus.Fields{}),
+		Config: fakeConfig,
+	}
+
+	transformedDevices := d.TransformDetectedDevices(detectedDevices)
+
+	require.Equal(t, 1, len(transformedDevices))
+	require.Equal(t, "sda", transformedDevices[0].DeviceName)
+}
+
 func TestDetect_TransformDetectedDevices_RaidWithLabel(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()

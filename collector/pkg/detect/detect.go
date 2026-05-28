@@ -101,6 +101,9 @@ func (d *Detect) SmartctlScan() ([]models.Device, error) {
 // - WWN is provided as component data, rather than a "string". We'll have to generate the WWN value ourselves
 // - WWN from smartctl only provided for ATA protocol drives, NVMe and SCSI drives do not include WWN.
 func (d *Detect) SmartCtlInfo(device *models.Device) error {
+	if strings.TrimSpace(device.DeviceName) == "" {
+		return fmt.Errorf("device name is empty; skipping smartctl info call")
+	}
 	fullDeviceName := DeviceFullPath(device.DeviceName)
 	args := strings.Split(d.Config.GetCommandMetricsInfoArgs(fullDeviceName), " ")
 	//only include the device type if its a non-standard one. In some cases ata drives are detected as scsi in docker, and metadata is lost.
@@ -184,6 +187,10 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 	groupedDevices := map[string][]models.Device{}
 
 	for _, scannedDevice := range detectedDeviceConns.Devices {
+		if strings.TrimSpace(scannedDevice.Name) == "" {
+			d.Logger.Warnf("smartctl --scan returned a device entry with an empty name; skipping to avoid invoking smartctl with path %q", DevicePrefix())
+			continue
+		}
 
 		// Preserve case for all device paths — filesystem paths are case-sensitive.
 		// /dev/disk/by-id/ paths may contain uppercase characters from manufacturer
