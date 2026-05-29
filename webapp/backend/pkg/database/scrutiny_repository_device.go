@@ -36,7 +36,7 @@ func (sr *scrutinyRepository) RegisterDevice(ctx context.Context, dev models.Dev
 
 	// Compute deterministic device ID from model, serial, and WWN
 	if dev.DeviceID == "" {
-		dev.DeviceID = deviceid.Generate(dev.ModelName, dev.SerialNumber, dev.WWN)
+		dev.DeviceID = deviceid.GenerateWithFallback(dev.ModelName, dev.SerialNumber, dev.WWN, dev.DeviceName, dev.HostId)
 	}
 
 	updateColumns := []string{

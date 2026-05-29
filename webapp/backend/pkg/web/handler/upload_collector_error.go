@@ -26,7 +26,7 @@ type CollectorErrorRequest struct {
 
 // sendNotificationViaGate dispatches n through the NOTIFICATION_GATE middleware if present,
 // falling back to a direct send. Errors are logged but do not affect the HTTP response.
-func sendNotificationViaGate(c *gin.Context, logger *logrus.Entry, n *notify.Notify, deviceRepo database.DeviceRepo) {
+func sendNotificationViaGate(c *gin.Context, logger *logrus.Entry, n *notify.Notify, deviceRepo database.DeviceRepo, identity string, errorType string, errorMessage string) {
 	if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
 		if gate, ok := gateVal.(*notify.NotificationGate); ok {
 			settings, settingsErr := deviceRepo.LoadSettings(c)
@@ -34,7 +34,7 @@ func sendNotificationViaGate(c *gin.Context, logger *logrus.Entry, n *notify.Not
 				logger.Warnf("Failed to load settings for notification gate: %v", settingsErr)
 			}
 			if settings != nil {
-				gate.TrySend(n, settings, false)
+				gate.TrySendCollectorError(identity, errorType, errorMessage, n, settings)
 				return
 			}
 		}
@@ -80,7 +80,7 @@ func UploadCollectorError(c *gin.Context) {
 
 	errorNotify := notify.NewCollectorError(logger, appConfig, &device, req.ErrorType, req.ErrorMessage)
 	errorNotify.LoadDatabaseUrls(c, deviceRepo)
-	sendNotificationViaGate(c, logger, &errorNotify, deviceRepo)
+	sendNotificationViaGate(c, logger, &errorNotify, deviceRepo, "device:"+device.DeviceID, req.ErrorType, req.ErrorMessage)
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
@@ -114,7 +114,7 @@ func UploadCollectorScanError(c *gin.Context) {
 	device := models.Device{DeviceName: req.DeviceName}
 	errorNotify := notify.NewCollectorError(logger, appConfig, &device, req.ErrorType, req.ErrorMessage)
 	errorNotify.LoadDatabaseUrls(c, deviceRepo)
-	sendNotificationViaGate(c, logger, &errorNotify, deviceRepo)
+	sendNotificationViaGate(c, logger, &errorNotify, deviceRepo, "scan:"+req.DeviceName, req.ErrorType, req.ErrorMessage)
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }

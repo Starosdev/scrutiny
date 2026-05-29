@@ -6,6 +6,8 @@ type Device struct {
 	WWN      string `json:"wwn"`
 	DeviceID string `json:"device_id"`
 
+	ResolvedDeviceName string `json:"-"`
+
 	DeviceName     string `json:"device_name"`
 	DeviceUUID     string `json:"device_uuid"`
 	DeviceSerialID string `json:"device_serial_id"`

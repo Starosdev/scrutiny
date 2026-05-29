@@ -30,7 +30,7 @@ func (d *Detect) Start() ([]models.Device, error) {
 		d.SmartCtlInfo(&detectedDevices[ndx]) //ignore errors.
 	}
 
-	return detectedDevices, nil
+	return FilterRedundantDevices(detectedDevices), nil
 }
 
 func (d *Detect) findMissingDevices(detectedDevices []models.Device) ([]models.Device, error) {
@@ -89,7 +89,7 @@ func (d *Detect) findMissingDevices(detectedDevices []models.Device) ([]models.D
 	return missingDevices, nil
 }
 
-//WWN values NVMe and SCSI
+// WWN values NVMe and SCSI
 func (d *Detect) wwnFallback(detectedDevice *models.Device) {
 	block, err := ghw.Block()
 	if err == nil {

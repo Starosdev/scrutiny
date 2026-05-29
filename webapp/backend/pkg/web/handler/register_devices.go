@@ -44,10 +44,12 @@ func RegisterDevices(c *gin.Context) {
 		// ensures the response payload carries the device_id the collector should
 		// use for subsequent API calls (e.g. SMART submission).
 		if detectedStorageDevices[i].DeviceID == "" {
-			detectedStorageDevices[i].DeviceID = deviceid.Generate(
+			detectedStorageDevices[i].DeviceID = deviceid.GenerateWithFallback(
 				detectedStorageDevices[i].ModelName,
 				detectedStorageDevices[i].SerialNumber,
 				detectedStorageDevices[i].WWN,
+				detectedStorageDevices[i].DeviceName,
+				detectedStorageDevices[i].HostId,
 			)
 		}
 		//insert devices into DB (and update specified columns if device is already registered)
@@ -104,7 +106,13 @@ func publishMqttDiscovery(c *gin.Context, deviceRepo database.DeviceRepo, device
 		// Compute DeviceID if not already set (collector may not populate it)
 		devID := devices[i].DeviceID
 		if devID == "" {
-			devID = deviceid.Generate(devices[i].ModelName, devices[i].SerialNumber, devices[i].WWN)
+			devID = deviceid.GenerateWithFallback(
+				devices[i].ModelName,
+				devices[i].SerialNumber,
+				devices[i].WWN,
+				devices[i].DeviceName,
+				devices[i].HostId,
+			)
 		}
 		// Fetch device from DB to get the actual archived status
 		// (collector-sent devices don't have this field set correctly)

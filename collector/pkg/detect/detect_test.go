@@ -257,6 +257,38 @@ func TestDetect_TransformDetectedDevices_Simple(t *testing.T) {
 	require.Equal(t, "sat+megaraid", transformedDevices[0].DeviceType)
 }
 
+func TestDetect_FilterRedundantDevices_PrefersControllerBackedEntry(t *testing.T) {
+	devices := []models.Device{
+		{
+			DeviceName: "sda",
+			DeviceType: "scsi",
+		},
+		{
+			DeviceName:         "bus/0",
+			DeviceType:         "megaraid,0",
+			ResolvedDeviceName: "sda",
+		},
+		{
+			DeviceName: "sdb",
+			DeviceType: "scsi",
+		},
+	}
+
+	filtered := detect.FilterRedundantDevices(devices)
+
+	require.Equal(t, []models.Device{
+		{
+			DeviceName:         "bus/0",
+			DeviceType:         "megaraid,0",
+			ResolvedDeviceName: "sda",
+		},
+		{
+			DeviceName: "sdb",
+			DeviceType: "scsi",
+		},
+	}, filtered)
+}
+
 // test https://github.com/AnalogJ/scrutiny/issues/255#issuecomment-1164024126
 func TestDetect_TransformDetectedDevices_WithoutDeviceTypeOverride(t *testing.T) {
 	// setup

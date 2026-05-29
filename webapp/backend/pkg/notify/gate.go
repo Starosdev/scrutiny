@@ -17,6 +17,7 @@ type NotificationGate struct {
 	logger         logrus.FieldLogger
 	sentTimestamps []time.Time          // sliding window for rate limiting
 	quietQueue     []QueuedNotification // queued during quiet hours
+	collectorError map[string]time.Time // dedupe map for collector-side errors
 	mu             sync.Mutex
 }
 
@@ -31,7 +32,8 @@ type QueuedNotification struct {
 // in AppEngine and shared across all notification paths.
 func NewNotificationGate(logger logrus.FieldLogger) *NotificationGate {
 	return &NotificationGate{
-		logger: logger,
+		logger:         logger,
+		collectorError: map[string]time.Time{},
 	}
 }
 
@@ -68,6 +70,45 @@ func (g *NotificationGate) TrySend(n *Notify, settings *models.Settings, bypassQ
 
 	g.recordSent()
 	return true
+}
+
+func (g *NotificationGate) TrySendCollectorError(identity, errorType, errorMessage string, n *Notify, settings *models.Settings) bool {
+	if settings.Metrics.RepeatNotifications {
+		return g.TrySend(n, settings, false)
+	}
+
+	key := collectorErrorKey(identity, errorType, errorMessage)
+	g.mu.Lock()
+	if _, exists := g.collectorError[key]; exists {
+		g.mu.Unlock()
+		g.logger.Infof("Skipping duplicate collector error notification: %s", n.Payload.Subject)
+		return false
+	}
+	g.collectorError[key] = time.Now()
+	g.mu.Unlock()
+
+	sent := g.TrySend(n, settings, false)
+	if !sent {
+		g.mu.Lock()
+		delete(g.collectorError, key)
+		g.mu.Unlock()
+	}
+	return sent
+}
+
+func (g *NotificationGate) ClearCollectorErrorState(identity string) {
+	prefix := strings.ToLower(strings.TrimSpace(identity)) + "|"
+	if prefix == "|" {
+		return
+	}
+
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for key := range g.collectorError {
+		if strings.HasPrefix(key, prefix) {
+			delete(g.collectorError, key)
+		}
+	}
 }
 
 // FlushQuietQueue checks if quiet hours have ended and sends a digest of all
@@ -215,4 +256,10 @@ func (g *NotificationGate) QueueLength() int {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	return len(g.quietQueue)
+}
+
+func collectorErrorKey(identity, errorType, errorMessage string) string {
+	return strings.ToLower(strings.TrimSpace(identity)) + "|" +
+		strings.ToLower(strings.TrimSpace(errorType)) + "|" +
+		strings.ToLower(strings.TrimSpace(errorMessage))
 }

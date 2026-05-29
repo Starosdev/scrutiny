@@ -24,14 +24,14 @@ func (d *Detect) Start() ([]models.Device, error) {
 
 	//inflate device info for detected devices.
 	for ndx, _ := range detectedDevices {
-		d.SmartCtlInfo(&detectedDevices[ndx]) //ignore errors.
+		d.SmartCtlInfo(&detectedDevices[ndx])   //ignore errors.
 		populateUdevInfo(&detectedDevices[ndx]) //ignore errors.
 	}
 
-	return detectedDevices, nil
+	return FilterRedundantDevices(detectedDevices), nil
 }
 
-//WWN values NVMe and SCSI
+// WWN values NVMe and SCSI
 func (d *Detect) wwnFallback(detectedDevice *models.Device) {
 	block, err := ghw.Block()
 	if err == nil {
@@ -97,7 +97,5 @@ func populateUdevInfo(detectedDevice *models.Device) error {
 		detectedDevice.DeviceSerialID = fmt.Sprintf("%s-%s", udevInfo["ID_BUS"], deviceSerialID)
 	}
 
-
 	return nil
 }
-

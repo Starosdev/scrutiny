@@ -64,6 +64,19 @@ func DeviceFullPath(deviceName string) string {
 	return fmt.Sprintf("%s%s", DevicePrefix(), deviceName)
 }
 
+func isStandardDeviceType(deviceType string) bool {
+	switch strings.ToLower(strings.TrimSpace(deviceType)) {
+	case "", "ata", "scsi", "nvme":
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizeDeviceName(deviceName string) string {
+	return strings.TrimSpace(stripDevicePrefix(deviceName))
+}
+
 //private/common functions
 
 // This function calls smartctl --scan which can be used to detect storage devices.
@@ -151,6 +164,7 @@ func (d *Detect) SmartCtlInfo(device *models.Device) error {
 	device.FormFactor = availableDeviceInfo.FormFactor.Name
 	device.DeviceProtocol = availableDeviceInfo.Device.Protocol
 	device.SmartSupport = availableDeviceInfo.SmartSupport
+	device.ResolvedDeviceName = normalizeDeviceName(availableDeviceInfo.Device.Name)
 	// Only set DeviceType if not already populated (e.g., from user override or scan)
 	if len(device.DeviceType) == 0 {
 		device.DeviceType = availableDeviceInfo.Device.Type
@@ -293,6 +307,38 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 	}
 
 	return detectedDevices
+}
+
+func FilterRedundantDevices(devices []models.Device) []models.Device {
+	controllerResolvedNames := map[string]struct{}{}
+	for i := range devices {
+		device := devices[i]
+		if isStandardDeviceType(device.DeviceType) {
+			continue
+		}
+		if normalizeDeviceName(device.DeviceName) == normalizeDeviceName(device.ResolvedDeviceName) {
+			continue
+		}
+		if resolved := normalizeDeviceName(device.ResolvedDeviceName); resolved != "" {
+			controllerResolvedNames[resolved] = struct{}{}
+		}
+	}
+
+	if len(controllerResolvedNames) == 0 {
+		return devices
+	}
+
+	filtered := make([]models.Device, 0, len(devices))
+	for i := range devices {
+		device := devices[i]
+		if isStandardDeviceType(device.DeviceType) {
+			if _, redundant := controllerResolvedNames[normalizeDeviceName(device.DeviceName)]; redundant {
+				continue
+			}
+		}
+		filtered = append(filtered, device)
+	}
+	return filtered
 }
 
 // groupedDeviceKey returns the key in groupedDevices whose lowercased form matches the

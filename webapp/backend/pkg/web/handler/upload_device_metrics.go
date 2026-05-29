@@ -70,6 +70,8 @@ func UploadDeviceMetrics(c *gin.Context) {
 		return
 	}
 
+	clearCollectorErrorState(c, updatedDevice.DeviceID)
+
 	// check for error
 	if notify.ShouldNotify(
 		logger,
@@ -94,6 +96,14 @@ func UploadDeviceMetrics(c *gin.Context) {
 	publishMQTTDeviceState(c, device.DeviceID, &updatedDevice, &smartData)
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func clearCollectorErrorState(c *gin.Context, deviceID string) {
+	if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
+		if gate, ok := gateVal.(*notify.NotificationGate); ok && gate != nil {
+			gate.ClearCollectorErrorState("device:" + deviceID)
+		}
+	}
 }
 
 func bindAndValidateSmartInfo(c *gin.Context, logger *logrus.Entry, deviceWWN string) (collector.SmartInfo, bool) {

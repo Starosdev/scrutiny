@@ -20,3 +20,18 @@ func Generate(modelName, serialNumber, wwn string) string {
 		strings.ToLower(strings.TrimSpace(wwn))
 	return uuid.NewSHA1(ScrutinyDeviceNamespace, []byte(input)).String()
 }
+
+// GenerateWithFallback mirrors Generate for normal devices, but when model,
+// serial, and WWN are all unavailable it falls back to device name + host id
+// so distinct raw device paths do not collapse onto the same empty-metadata ID.
+func GenerateWithFallback(modelName, serialNumber, wwn, deviceName, hostID string) string {
+	if strings.TrimSpace(modelName) == "" &&
+		strings.TrimSpace(serialNumber) == "" &&
+		strings.TrimSpace(wwn) == "" &&
+		strings.TrimSpace(deviceName) != "" {
+		input := "device_name:" + strings.ToLower(strings.TrimSpace(deviceName)) +
+			":host_id:" + strings.ToLower(strings.TrimSpace(hostID))
+		return uuid.NewSHA1(ScrutinyDeviceNamespace, []byte(input)).String()
+	}
+	return Generate(modelName, serialNumber, wwn)
+}
