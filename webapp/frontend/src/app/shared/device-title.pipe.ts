@@ -22,7 +22,6 @@ export class DeviceTitlePipe implements PipeTransform {
         switch (titleType) {
             case 'name':
                 return DeviceTitlePipe.buildNameTitle(device);
-                break;
             case 'serial_id':
                 if (!device.device_serial_id) return '';
                 titleParts.push(`/by-id/${device.device_serial_id}`);

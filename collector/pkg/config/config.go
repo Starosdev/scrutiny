@@ -26,7 +26,7 @@ const configKeyMetricsSmartArgs = "commands.metrics_smart_args"
 type configuration struct {
 	*viper.Viper
 
-	deviceOverrides    []models.ScanOverride
+	deviceOverrides []models.ScanOverride
 }
 
 //Viper uses the following precedence order. Each item takes precedence over the item below it:
@@ -65,7 +65,7 @@ func (c *configuration) Init() error {
 	c.SetEnvPrefix("COLLECTOR")
 	c.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
 	c.AutomaticEnv()
-	
+
 	//c.SetDefault("collect.short.command", "-a -o on -S on")
 
 	c.SetDefault("commands.performance_fio_bin", "fio")
@@ -140,35 +140,40 @@ func (c *configuration) ValidateConfig() error {
 
 	errorStrings := []string{}
 	for configKey, commandArgString := range commandArgStrings {
-		args := strings.Split(commandArgString, " ")
-		//ensure that the args string contains `--json` or `-j` flag
-		containsJsonFlag := false
-		containsDeviceFlag := false
-		for _, flag := range args {
-			if strings.HasPrefix(flag, "--json") || strings.HasPrefix(flag, "-j") {
-				containsJsonFlag = true
-			}
-			if strings.HasPrefix(flag, "--device") || strings.HasPrefix(flag, "-d") {
-				containsDeviceFlag = true
-			}
-		}
-
-		if !containsJsonFlag {
-			errorStrings = append(errorStrings, fmt.Sprintf("configuration key '%s' is missing '--json' flag", configKey))
-		}
-
-		if containsDeviceFlag {
-			errorStrings = append(errorStrings, fmt.Sprintf("configuration key '%s' must not contain '--device' or '-d' flag", configKey))
-		}
+		errorStrings = append(errorStrings, validateCollectorCommandArgs(configKey, commandArgString)...)
 	}
 	//sort(errorStrings)
 	sort.Strings(errorStrings)
 
 	if len(errorStrings) == 0 {
 		return nil
-	} else {
-		return errors.ConfigValidationError(strings.Join(errorStrings, ", "))
 	}
+	return errors.ConfigValidationError(strings.Join(errorStrings, ", "))
+}
+
+func validateCollectorCommandArgs(configKey string, commandArgString string) []string {
+	args := strings.Split(commandArgString, " ")
+	containsJSONFlag, containsDeviceFlag := collectorCommandFlags(args)
+	validationErrors := []string{}
+	if !containsJSONFlag {
+		validationErrors = append(validationErrors, fmt.Sprintf("configuration key '%s' is missing '--json' flag", configKey))
+	}
+	if containsDeviceFlag {
+		validationErrors = append(validationErrors, fmt.Sprintf("configuration key '%s' must not contain '--device' or '-d' flag", configKey))
+	}
+	return validationErrors
+}
+
+func collectorCommandFlags(args []string) (containsJSONFlag bool, containsDeviceFlag bool) {
+	for _, flag := range args {
+		if strings.HasPrefix(flag, "--json") || strings.HasPrefix(flag, "-j") {
+			containsJSONFlag = true
+		}
+		if strings.HasPrefix(flag, "--device") || strings.HasPrefix(flag, "-d") {
+			containsDeviceFlag = true
+		}
+	}
+	return containsJSONFlag, containsDeviceFlag
 }
 
 func (c *configuration) GetDeviceOverrides() []models.ScanOverride {

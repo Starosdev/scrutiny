@@ -32,38 +32,17 @@ var goos string
 var goarch string
 
 func main() {
-	config, err := config.Create()
+	cfg, err := config.Create()
 	if err != nil {
 		fmt.Printf("FATAL: %+v\n", err)
 		os.Exit(1)
-	}
-
-	// Use separate config file for MDADM collector
-	configFilePath := "/opt/scrutiny/config/collector-mdadm.yaml"
-	configFilePathAlternative := "/opt/scrutiny/config/collector-mdadm.yml"
-	// Fall back to main collector config if MDADM-specific config doesn't exist
-	configFilePathFallback := "/opt/scrutiny/config/collector.yaml"
-	configFilePathFallbackAlt := "/opt/scrutiny/config/collector.yml"
-
-	if !utils.FileExists(configFilePath) && utils.FileExists(configFilePathAlternative) {
-		configFilePath = configFilePathAlternative
-	} else if !utils.FileExists(configFilePath) && !utils.FileExists(configFilePathAlternative) {
-		if utils.FileExists(configFilePathFallback) {
-			configFilePath = configFilePathFallback
-		} else if utils.FileExists(configFilePathFallbackAlt) {
-			configFilePath = configFilePathFallbackAlt
-		}
 	}
 
 	// Create a bootstrap logger for config loading
 	bootstrapLogger := logrus.WithFields(logrus.Fields{"type": "mdadm"})
 	bootstrapLogger.Logger.SetLevel(logrus.InfoLevel)
 
-	// Load the config file
-	err = config.ReadConfig(configFilePath, bootstrapLogger)
-	if _, ok := err.(errors.ConfigFileMissingError); ok {
-		// Ignore "could not find config file"
-	} else if err != nil {
+	if err := readOptionalCollectorConfig(cfg, resolveCollectorConfigPath("mdadm"), bootstrapLogger); err != nil {
 		os.Exit(1)
 	}
 
@@ -79,28 +58,7 @@ func main() {
 			},
 		},
 		Before: func(c *cli.Context) error {
-			collectorMdadm := "Starosdev/scrutiny/mdadm"
-
-			var versionInfo string
-			if len(goos) > 0 && len(goarch) > 0 {
-				versionInfo = fmt.Sprintf("%s.%s-%s", goos, goarch, version.VERSION)
-			} else {
-				versionInfo = fmt.Sprintf("dev-%s", version.VERSION)
-			}
-
-			subtitle := collectorMdadm + utils.LeftPad2Len(versionInfo, " ", 65-len(collectorMdadm))
-
-			banner := fmt.Sprintf(utils.StripIndent(
-				`
-			 ___   ___  ____  __  __  ____  ____  _  _  _  _
-			/ __) / __)(  _ \(  )(  )(_  _)(_  _)( \( )( \/ )
-			\__ \( (__  )   / )(__)(   )(   _)(_  )  (  \  /
-			(___/ \___)(_)\_)(______) (__) (____)(_)\_) (__)
-			%s
- 
-			`), subtitle)
-			color.New(color.FgGreen).Fprintf(c.App.Writer, "%s", banner)
-
+			color.New(color.FgGreen).Fprintf(c.App.Writer, "%s", collectorBanner("Starosdev/scrutiny/mdadm"))
 			return nil
 		},
 
@@ -110,35 +68,16 @@ func main() {
 				Usage: "Run the scrutiny MDADM RAID array collector",
 				Action: func(c *cli.Context) error {
 					if c.IsSet("config") {
-						err = config.ReadConfig(c.String("config"), bootstrapLogger)
+						err = cfg.ReadConfig(c.String("config"), bootstrapLogger)
 						if err != nil {
 							fmt.Printf("Could not find config file at specified path: %s", c.String("config"))
 							return err
 						}
 					}
 
-					if c.Bool("debug") {
-						config.Set("log.level", "DEBUG")
-					}
+					applyCollectorOverrides(c, cfg)
 
-					if c.IsSet(flagLogFile) {
-						config.Set(configKeyLogFile, c.String(flagLogFile))
-					}
-
-					if c.IsSet(flagApiEndpoint) {
-						apiEndpoint := strings.TrimSuffix(c.String(flagApiEndpoint), "/") + "/"
-						config.Set("api.endpoint", apiEndpoint)
-					}
-
-					if c.IsSet(flagApiToken) {
-						config.Set("api.token", c.String(flagApiToken))
-					}
-
-					if c.IsSet(flagHostId) {
-						config.Set("host.id", c.String(flagHostId))
-					}
-
-					collectorLogger, logFile, err := CreateLogger(config)
+					collectorLogger, logFile, err := CreateLogger(cfg)
 					if logFile != nil {
 						defer logFile.Close()
 					}
@@ -146,13 +85,7 @@ func main() {
 						return err
 					}
 
-					settingsMap := config.AllSettings()
-					if apiMap, ok := settingsMap["api"].(map[string]interface{}); ok {
-						if _, hasToken := apiMap["token"]; hasToken && apiMap["token"] != "" {
-							apiMap["token"] = "[REDACTED]"
-						}
-					}
-					settingsData, settingsErr := json.MarshalIndent(settingsMap, "", "\t")
+					settingsData, settingsErr := redactCollectorSettings(cfg)
 					if settingsErr != nil {
 						collectorLogger.Warnf("Failed to marshal settings for debug logging: %v", settingsErr)
 					} else {
@@ -160,9 +93,9 @@ func main() {
 					}
 
 					mdadmCollector, err := mdadm.CreateCollector(
-						config,
+						cfg,
 						collectorLogger,
-						config.GetString("api.endpoint"),
+						cfg.GetString("api.endpoint"),
 					)
 					if err != nil {
 						return err
@@ -211,6 +144,79 @@ func main() {
 	if err != nil {
 		log.Fatal(color.HiRedString("ERROR: %v", err))
 	}
+}
+
+func resolveCollectorConfigPath(collectorName string) string {
+	configFilePath := fmt.Sprintf("/opt/scrutiny/config/collector-%s.yaml", collectorName)
+	configFilePathAlternative := fmt.Sprintf("/opt/scrutiny/config/collector-%s.yml", collectorName)
+	configFilePathFallback := "/opt/scrutiny/config/collector.yaml"
+	configFilePathFallbackAlt := "/opt/scrutiny/config/collector.yml"
+	if !utils.FileExists(configFilePath) && utils.FileExists(configFilePathAlternative) {
+		return configFilePathAlternative
+	}
+	if !utils.FileExists(configFilePath) && !utils.FileExists(configFilePathAlternative) {
+		if utils.FileExists(configFilePathFallback) {
+			return configFilePathFallback
+		}
+		if utils.FileExists(configFilePathFallbackAlt) {
+			return configFilePathFallbackAlt
+		}
+	}
+	return configFilePath
+}
+
+func readOptionalCollectorConfig(cfg config.Interface, configFilePath string, bootstrapLogger *logrus.Entry) error {
+	err := cfg.ReadConfig(configFilePath, bootstrapLogger)
+	if _, ok := err.(errors.ConfigFileMissingError); ok {
+		return nil
+	}
+	return err
+}
+
+func applyCollectorOverrides(c *cli.Context, cfg config.Interface) {
+	if c.Bool("debug") {
+		cfg.Set("log.level", "DEBUG")
+	}
+	if c.IsSet(flagLogFile) {
+		cfg.Set(configKeyLogFile, c.String(flagLogFile))
+	}
+	if c.IsSet(flagApiEndpoint) {
+		apiEndpoint := strings.TrimSuffix(c.String(flagApiEndpoint), "/") + "/"
+		cfg.Set("api.endpoint", apiEndpoint)
+	}
+	if c.IsSet(flagApiToken) {
+		cfg.Set("api.token", c.String(flagApiToken))
+	}
+	if c.IsSet(flagHostId) {
+		cfg.Set("host.id", c.String(flagHostId))
+	}
+}
+
+func redactCollectorSettings(cfg config.Interface) ([]byte, error) {
+	settingsMap := cfg.AllSettings()
+	if apiMap, ok := settingsMap["api"].(map[string]interface{}); ok {
+		if _, hasToken := apiMap["token"]; hasToken && apiMap["token"] != "" {
+			apiMap["token"] = "[REDACTED]"
+		}
+	}
+	return json.MarshalIndent(settingsMap, "", "\t")
+}
+
+func collectorBanner(name string) string {
+	versionInfo := fmt.Sprintf("dev-%s", version.VERSION)
+	if len(goos) > 0 && len(goarch) > 0 {
+		versionInfo = fmt.Sprintf("%s.%s-%s", goos, goarch, version.VERSION)
+	}
+	subtitle := name + utils.LeftPad2Len(versionInfo, " ", 65-len(name))
+	return fmt.Sprintf(utils.StripIndent(
+		`
+		 ___   ___  ____  __  __  ____  ____  _  _  _  _
+		/ __) / __)(  _ \(  )(  )(_  _)(_  _)( \( )( \/ )
+		\__ \( (__  )   / )(__)(   )(   _)(_  )  (  \  /
+		(___/ \___)(_)\_)(______) (__) (____)(_)\_) (__)
+		%s
+ 
+		`), subtitle)
 }
 
 // CreateLogger creates a logger for the MDADM collector

@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const telegramNotifyPrefix = "tgram://"
+
 // MaskNotifyUrl replaces the username and password in a URL's userinfo
 // with "***" so credentials are not exposed to the frontend.
 //
@@ -43,17 +45,17 @@ func maskAppriseURL(rawUrl string) string {
 		}
 		parsed.RawQuery = query.Encode()
 		return normalizeMaskedURL(parsed.String())
-	case strings.HasPrefix(rawUrl, "tgram://"):
-		remainder := strings.TrimPrefix(rawUrl, "tgram://")
+	case strings.HasPrefix(rawUrl, telegramNotifyPrefix):
+		remainder := strings.TrimPrefix(rawUrl, telegramNotifyPrefix)
 		parts := strings.SplitN(remainder, "/", 2)
 		if len(parts) == 0 || parts[0] == "" {
 			return rawUrl
 		}
 		masked := "***"
 		if len(parts) == 1 {
-			return "tgram://" + masked
+			return telegramNotifyPrefix + masked
 		}
-		return "tgram://" + masked + "/" + parts[1]
+		return telegramNotifyPrefix + masked + "/" + parts[1]
 	case strings.HasPrefix(rawUrl, "https://discord.com/api/webhooks/"), strings.HasPrefix(rawUrl, "https://discordapp.com/api/webhooks/"):
 		parsed, err := url.Parse(rawUrl)
 		if err != nil {

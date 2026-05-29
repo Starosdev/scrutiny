@@ -342,58 +342,71 @@ func (sm *Smart) ProcessAtaDeviceStatistics(cfg config.Interface, deviceStatisti
 
 // generate SmartNvmeAttribute entries from Scrutiny Collector Smart data.
 func (sm *Smart) ProcessNvmeSmartInfo(cfg config.Interface, nvmeSmartHealthInformationLog collector.NvmeSmartHealthInformationLog) {
-
-	sm.Attributes = map[string]SmartAttribute{
-		"critical_warning":     (&SmartNvmeAttribute{AttributeId: "critical_warning", Value: nvmeSmartHealthInformationLog.CriticalWarning, Threshold: 0}).PopulateAttributeStatus(),
-		"temperature":          (&SmartNvmeAttribute{AttributeId: "temperature", Value: nvmeSmartHealthInformationLog.Temperature, Threshold: -1}).PopulateAttributeStatus(),
-		"available_spare":      (&SmartNvmeAttribute{AttributeId: "available_spare", Value: nvmeSmartHealthInformationLog.AvailableSpare, Threshold: nvmeSmartHealthInformationLog.AvailableSpareThreshold}).PopulateAttributeStatus(),
-		"percentage_used":      (&SmartNvmeAttribute{AttributeId: "percentage_used", Value: nvmeSmartHealthInformationLog.PercentageUsed, Threshold: 100}).PopulateAttributeStatus(),
-		"data_units_read":      (&SmartNvmeAttribute{AttributeId: "data_units_read", Value: nvmeSmartHealthInformationLog.DataUnitsRead, Threshold: -1}).PopulateAttributeStatus(),
-		"data_units_written":   (&SmartNvmeAttribute{AttributeId: "data_units_written", Value: nvmeSmartHealthInformationLog.DataUnitsWritten, Threshold: -1}).PopulateAttributeStatus(),
-		"host_reads":           (&SmartNvmeAttribute{AttributeId: "host_reads", Value: nvmeSmartHealthInformationLog.HostReads, Threshold: -1}).PopulateAttributeStatus(),
-		"host_writes":          (&SmartNvmeAttribute{AttributeId: "host_writes", Value: nvmeSmartHealthInformationLog.HostWrites, Threshold: -1}).PopulateAttributeStatus(),
-		"controller_busy_time": (&SmartNvmeAttribute{AttributeId: "controller_busy_time", Value: nvmeSmartHealthInformationLog.ControllerBusyTime, Threshold: -1}).PopulateAttributeStatus(),
-		"power_cycles":         (&SmartNvmeAttribute{AttributeId: "power_cycles", Value: nvmeSmartHealthInformationLog.PowerCycles, Threshold: -1}).PopulateAttributeStatus(),
-		"power_on_hours":       (&SmartNvmeAttribute{AttributeId: "power_on_hours", Value: nvmeSmartHealthInformationLog.PowerOnHours, Threshold: -1}).PopulateAttributeStatus(),
-		"unsafe_shutdowns":     (&SmartNvmeAttribute{AttributeId: "unsafe_shutdowns", Value: nvmeSmartHealthInformationLog.UnsafeShutdowns, Threshold: -1}).PopulateAttributeStatus(),
-		"media_errors":         (&SmartNvmeAttribute{AttributeId: "media_errors", Value: nvmeSmartHealthInformationLog.MediaErrors, Threshold: 0}).PopulateAttributeStatus(),
-		"num_err_log_entries":  (&SmartNvmeAttribute{AttributeId: "num_err_log_entries", Value: nvmeSmartHealthInformationLog.NumErrLogEntries, Threshold: -1}).PopulateAttributeStatus(),
-		"warning_temp_time":    (&SmartNvmeAttribute{AttributeId: "warning_temp_time", Value: nvmeSmartHealthInformationLog.WarningTempTime, Threshold: -1}).PopulateAttributeStatus(),
-		"critical_comp_time":   (&SmartNvmeAttribute{AttributeId: "critical_comp_time", Value: nvmeSmartHealthInformationLog.CriticalCompTime, Threshold: -1}).PopulateAttributeStatus(),
-	}
+	sm.Attributes = buildNvmeAttributes(nvmeSmartHealthInformationLog)
 
 	// Apply overrides and find analyzed attribute status
 	for attrId, val := range sm.Attributes {
 		nvmeAttr := val.(*SmartNvmeAttribute)
-		var ignored bool
-
-		// Apply user-configured overrides
-		if cfg != nil {
-			if result := overrides.Apply(cfg, pkg.DeviceProtocolNvme, attrId, sm.DeviceWWN); result != nil {
-				if result.ShouldIgnore {
-					nvmeAttr.Status = pkg.AttributeStatusPassed
-					nvmeAttr.StatusReason = result.StatusReason
-					ignored = true
-				} else if result.Status != nil {
-					nvmeAttr.Status = *result.Status
-					nvmeAttr.StatusReason = result.StatusReason
-				} else if result.WarnAbove != nil || result.FailAbove != nil {
-					if thresholdStatus := overrides.ApplyThresholds(result, nvmeAttr.Value); thresholdStatus != nil {
-						nvmeAttr.Status = *thresholdStatus // Replace status entirely with custom threshold result
-						if *thresholdStatus == pkg.AttributeStatusPassed {
-							nvmeAttr.StatusReason = statusReasonWithinThreshold
-						} else {
-							nvmeAttr.StatusReason = statusReasonThresholdExceeded
-						}
-					}
-				}
-			}
-		}
-
+		ignored := applyNvmeOverrides(cfg, sm.DeviceWWN, attrId, nvmeAttr)
 		if pkg.AttributeStatusHas(nvmeAttr.GetStatus(), pkg.AttributeStatusFailedScrutiny) && !ignored {
 			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 		}
 	}
+}
+
+func buildNvmeAttributes(log collector.NvmeSmartHealthInformationLog) map[string]SmartAttribute {
+	return map[string]SmartAttribute{
+		"critical_warning":     (&SmartNvmeAttribute{AttributeId: "critical_warning", Value: log.CriticalWarning, Threshold: 0}).PopulateAttributeStatus(),
+		"temperature":          (&SmartNvmeAttribute{AttributeId: "temperature", Value: log.Temperature, Threshold: -1}).PopulateAttributeStatus(),
+		"available_spare":      (&SmartNvmeAttribute{AttributeId: "available_spare", Value: log.AvailableSpare, Threshold: log.AvailableSpareThreshold}).PopulateAttributeStatus(),
+		"percentage_used":      (&SmartNvmeAttribute{AttributeId: "percentage_used", Value: log.PercentageUsed, Threshold: 100}).PopulateAttributeStatus(),
+		"data_units_read":      (&SmartNvmeAttribute{AttributeId: "data_units_read", Value: log.DataUnitsRead, Threshold: -1}).PopulateAttributeStatus(),
+		"data_units_written":   (&SmartNvmeAttribute{AttributeId: "data_units_written", Value: log.DataUnitsWritten, Threshold: -1}).PopulateAttributeStatus(),
+		"host_reads":           (&SmartNvmeAttribute{AttributeId: "host_reads", Value: log.HostReads, Threshold: -1}).PopulateAttributeStatus(),
+		"host_writes":          (&SmartNvmeAttribute{AttributeId: "host_writes", Value: log.HostWrites, Threshold: -1}).PopulateAttributeStatus(),
+		"controller_busy_time": (&SmartNvmeAttribute{AttributeId: "controller_busy_time", Value: log.ControllerBusyTime, Threshold: -1}).PopulateAttributeStatus(),
+		"power_cycles":         (&SmartNvmeAttribute{AttributeId: "power_cycles", Value: log.PowerCycles, Threshold: -1}).PopulateAttributeStatus(),
+		"power_on_hours":       (&SmartNvmeAttribute{AttributeId: "power_on_hours", Value: log.PowerOnHours, Threshold: -1}).PopulateAttributeStatus(),
+		"unsafe_shutdowns":     (&SmartNvmeAttribute{AttributeId: "unsafe_shutdowns", Value: log.UnsafeShutdowns, Threshold: -1}).PopulateAttributeStatus(),
+		"media_errors":         (&SmartNvmeAttribute{AttributeId: "media_errors", Value: log.MediaErrors, Threshold: 0}).PopulateAttributeStatus(),
+		"num_err_log_entries":  (&SmartNvmeAttribute{AttributeId: "num_err_log_entries", Value: log.NumErrLogEntries, Threshold: -1}).PopulateAttributeStatus(),
+		"warning_temp_time":    (&SmartNvmeAttribute{AttributeId: "warning_temp_time", Value: log.WarningTempTime, Threshold: -1}).PopulateAttributeStatus(),
+		"critical_comp_time":   (&SmartNvmeAttribute{AttributeId: "critical_comp_time", Value: log.CriticalCompTime, Threshold: -1}).PopulateAttributeStatus(),
+	}
+}
+
+func applyNvmeOverrides(cfg config.Interface, deviceWWN string, attrId string, nvmeAttr *SmartNvmeAttribute) bool {
+	if cfg == nil {
+		return false
+	}
+	result := overrides.Apply(cfg, pkg.DeviceProtocolNvme, attrId, deviceWWN)
+	if result == nil {
+		return false
+	}
+	if result.ShouldIgnore {
+		nvmeAttr.Status = pkg.AttributeStatusPassed
+		nvmeAttr.StatusReason = result.StatusReason
+		return true
+	}
+	if result.Status != nil {
+		nvmeAttr.Status = *result.Status
+		nvmeAttr.StatusReason = result.StatusReason
+		return false
+	}
+	if result.WarnAbove == nil && result.FailAbove == nil {
+		return false
+	}
+	thresholdStatus := overrides.ApplyThresholds(result, nvmeAttr.Value)
+	if thresholdStatus == nil {
+		return false
+	}
+	nvmeAttr.Status = *thresholdStatus
+	if *thresholdStatus == pkg.AttributeStatusPassed {
+		nvmeAttr.StatusReason = statusReasonWithinThreshold
+	} else {
+		nvmeAttr.StatusReason = statusReasonThresholdExceeded
+	}
+	return false
 }
 
 // generate SmartScsiAttribute entries from Scrutiny Collector Smart data.

@@ -23,27 +23,15 @@ var goos string
 var goarch string
 
 func main() {
-
 	// Create a bootstrap logger early so all startup errors use structured logging
-	bootstrapLogger := logrus.WithFields(logrus.Fields{"type": "web"})
-	bootstrapLogger.Logger.SetLevel(logrus.InfoLevel)
+	bootstrapLogger := newBootstrapLogger()
 
-	config, err := config.Create()
+	cfg, err := config.Create()
 	if err != nil {
 		bootstrapLogger.Fatalf("FATAL: %+v", err)
 	}
 
-	configFilePath := "/opt/scrutiny/config/scrutiny.yaml"
-	configFilePathAlternative := "/opt/scrutiny/config/scrutiny.yml"
-	if !utils.FileExists(configFilePath) && utils.FileExists(configFilePathAlternative) {
-		configFilePath = configFilePathAlternative
-	}
-
-	//we're going to load the config file manually, since we need to validate it.
-	err = config.ReadConfig(configFilePath, bootstrapLogger) // Find and read the config file
-	if _, ok := err.(errors.ConfigFileMissingError); ok {    // Handle errors reading the config file
-		//ignore "could not find config file"
-	} else if err != nil {
+	if err := readOptionalConfig(cfg, resolveWebConfigPath(), bootstrapLogger); err != nil {
 		bootstrapLogger.Error(color.HiRedString("CONFIG ERROR: %v", err))
 		os.Exit(1)
 	}
@@ -61,7 +49,40 @@ OPTIONS:
    {{end}}{{end}}
 `
 
-	app := &cli.App{
+	app := newCLIApp(cfg, bootstrapLogger)
+
+	err = app.Run(os.Args)
+	if err != nil {
+		bootstrapLogger.Fatal(color.HiRedString("ERROR: %v", err))
+	}
+
+}
+
+func newBootstrapLogger() *logrus.Entry {
+	bootstrapLogger := logrus.WithFields(logrus.Fields{"type": "web"})
+	bootstrapLogger.Logger.SetLevel(logrus.InfoLevel)
+	return bootstrapLogger
+}
+
+func resolveWebConfigPath() string {
+	configFilePath := "/opt/scrutiny/config/scrutiny.yaml"
+	configFilePathAlternative := "/opt/scrutiny/config/scrutiny.yml"
+	if !utils.FileExists(configFilePath) && utils.FileExists(configFilePathAlternative) {
+		return configFilePathAlternative
+	}
+	return configFilePath
+}
+
+func readOptionalConfig(cfg config.Interface, configFilePath string, bootstrapLogger *logrus.Entry) error {
+	err := cfg.ReadConfig(configFilePath, bootstrapLogger)
+	if _, ok := err.(errors.ConfigFileMissingError); ok {
+		return nil
+	}
+	return err
+}
+
+func newCLIApp(cfg config.Interface, bootstrapLogger *logrus.Entry) *cli.App {
+	return &cli.App{
 		Name:     "scrutiny",
 		Usage:    "WebUI for smartd S.M.A.R.T monitoring",
 		Version:  version.VERSION,
@@ -73,29 +94,7 @@ OPTIONS:
 			},
 		},
 		Before: func(c *cli.Context) error {
-
-			scrutiny := "github.com/AnalogJ/scrutiny"
-
-			var versionInfo string
-			if len(goos) > 0 && len(goarch) > 0 {
-				versionInfo = fmt.Sprintf("%s.%s-%s", goos, goarch, version.VERSION)
-			} else {
-				versionInfo = fmt.Sprintf("dev-%s", version.VERSION)
-			}
-
-			subtitle := scrutiny + utils.LeftPad2Len(versionInfo, " ", 65-len(scrutiny))
-
-			banner := fmt.Sprintf(utils.StripIndent(
-				`
-			 ___   ___  ____  __  __  ____  ____  _  _  _  _
-			/ __) / __)(  _ \(  )(  )(_  _)(_  _)( \( )( \/ )
-			\__ \( (__  )   / )(__)(   )(   _)(_  )  (  \  /
-			(___/ \___)(_)\_)(______) (__) (____)(_)\_) (__)
-			%s
-
-			`), subtitle)
-			color.New(color.FgGreen).Fprintf(c.App.Writer, "%s", banner)
-
+			color.New(color.FgGreen).Fprintf(c.App.Writer, "%s", scrutinyBanner("github.com/AnalogJ/scrutiny"))
 			return nil
 		},
 
@@ -106,8 +105,7 @@ OPTIONS:
 				Action: func(c *cli.Context) error {
 					fmt.Fprintln(c.App.Writer, c.Command.Usage)
 					if c.IsSet("config") {
-						err = config.ReadConfig(c.String("config"), bootstrapLogger) // Find and read the config file
-						if err != nil {                                              // Handle errors reading the config file
+						if err := cfg.ReadConfig(c.String("config"), bootstrapLogger); err != nil { // Find and read the config file
 							//ignore "could not find config file"
 							bootstrapLogger.Printf("Could not find config file at specified path: %s", c.String("config"))
 							return err
@@ -115,14 +113,14 @@ OPTIONS:
 					}
 
 					if c.Bool("debug") {
-						config.Set("log.level", "DEBUG")
+						cfg.Set("log.level", "DEBUG")
 					}
 
 					if c.IsSet("log-file") {
-						config.Set("log.file", c.String("log-file"))
+						cfg.Set("log.file", c.String("log-file"))
 					}
 
-					webLogger, logFile, err := CreateLogger(config)
+					webLogger, logFile, err := CreateLogger(cfg)
 					if logFile != nil {
 						defer logFile.Close()
 					}
@@ -130,10 +128,10 @@ OPTIONS:
 						return err
 					}
 
-					settingsData, err := json.Marshal(config.AllSettings())
+					settingsData, err := json.Marshal(cfg.AllSettings())
 					webLogger.Debug(string(settingsData), err)
 
-					webServer := web.AppEngine{Config: config, Logger: webLogger}
+					webServer := web.AppEngine{Config: cfg, Logger: webLogger}
 
 					return webServer.Start()
 				},
@@ -159,12 +157,23 @@ OPTIONS:
 			},
 		},
 	}
+}
 
-	err = app.Run(os.Args)
-	if err != nil {
-		bootstrapLogger.Fatal(color.HiRedString("ERROR: %v", err))
+func scrutinyBanner(projectName string) string {
+	versionInfo := "dev-" + version.VERSION
+	if len(goos) > 0 && len(goarch) > 0 {
+		versionInfo = fmt.Sprintf("%s.%s-%s", goos, goarch, version.VERSION)
 	}
+	subtitle := projectName + utils.LeftPad2Len(versionInfo, " ", 65-len(projectName))
+	return fmt.Sprintf(utils.StripIndent(
+		`
+		 ___   ___  ____  __  __  ____  ____  _  _  _  _
+		/ __) / __)(  _ \(  )(  )(_  _)(_  _)( \( )( \/ )
+		\__ \( (__  )   / )(__)(   )(   _)(_  )  (  \  /
+		(___/ \___)(_)\_)(______) (__) (____)(_)\_) (__)
+		%s
 
+		`), subtitle)
 }
 
 func CreateLogger(appConfig config.Interface) (*logrus.Entry, *os.File, error) {

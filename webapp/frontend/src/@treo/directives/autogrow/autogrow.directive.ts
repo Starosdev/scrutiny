@@ -27,7 +27,7 @@ export class TreoAutogrowDirective implements OnInit, OnDestroy {
         this._unsubscribeAll = new Subject();
 
         // Set the defaults
-        this.padding = 8;
+        this.treoAutogrowVerticalPadding = 8;
         this.rows = 1;
     }
 
@@ -40,13 +40,13 @@ export class TreoAutogrowDirective implements OnInit, OnDestroy {
      *
      * @param value
      */
-    @Input('treoAutogrowVerticalPadding')
-    set padding(value) {
+    @Input()
+    set treoAutogrowVerticalPadding(value) {
         // Store the value
         this._padding = value;
     }
 
-    get padding(): number {
+    get treoAutogrowVerticalPadding(): number {
         return this._padding;
     }
 

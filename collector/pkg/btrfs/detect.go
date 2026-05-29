@@ -34,6 +34,8 @@ type mountedFilesystem struct {
 // /proc/mounts is the native path on bare metal.
 var mountPaths = []string{"/host/proc/mounts", "/proc/mounts"}
 
+const scrubNoErrorsFound = "no errors found"
+
 func (d *Detect) Start() ([]Filesystem, error) {
 	if d.Logger == nil {
 		d.Logger = logrus.NewEntry(logrus.New())
@@ -380,7 +382,7 @@ func parseScrubStatus(fs *Filesystem, output string) {
 		}
 		if strings.EqualFold(line, "no stats available") {
 			fs.ScrubState = ScrubStateIdle
-			fs.ScrubErrorSummary = "no errors found"
+			fs.ScrubErrorSummary = scrubNoErrorsFound
 			continue
 		}
 
@@ -418,7 +420,7 @@ func parseScrubStatus(fs *Filesystem, output string) {
 		}
 	}
 	if fs.ScrubErrorSummary == "" && fs.ScrubReadErrors == 0 && fs.ScrubCsumErrors == 0 && fs.ScrubVerifyErrors == 0 && fs.ScrubSuperErrors == 0 {
-		fs.ScrubErrorSummary = "no errors found"
+		fs.ScrubErrorSummary = scrubNoErrorsFound
 	}
 	if fs.ScrubTotalBytes == 0 {
 		fs.ScrubTotalBytes = fs.ScrubScrubbedBytes
@@ -446,7 +448,7 @@ func parseSynologyScrubTiming(fs *Filesystem, line string) {
 }
 
 func parseScrubErrorSummary(fs *Filesystem, value string) {
-	if strings.EqualFold(value, "no errors found") {
+	if strings.EqualFold(value, scrubNoErrorsFound) {
 		return
 	}
 	parts := strings.FieldsFunc(value, func(r rune) bool {
