@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.62.1](https://github.com/Starosdev/scrutiny/compare/v1.62.0...v1.62.1) (2026-05-29)
+
+### Bug Fixes
+
+* collector fixes, MDADM host-id, Btrfs/ZFS layout, orphan device rows ([#578](https://github.com/Starosdev/scrutiny/issues/578)) ([883131c](https://github.com/Starosdev/scrutiny/commit/883131c1f4241abe12ff759bad17344b0c710519)), closes [#573](https://github.com/Starosdev/scrutiny/issues/573) [#569](https://github.com/Starosdev/scrutiny/issues/569) [#567](https://github.com/Starosdev/scrutiny/issues/567) [#572](https://github.com/Starosdev/scrutiny/issues/572) [#567](https://github.com/Starosdev/scrutiny/issues/567) [#569](https://github.com/Starosdev/scrutiny/issues/569) [#572](https://github.com/Starosdev/scrutiny/issues/572) [#573](https://github.com/Starosdev/scrutiny/issues/573)
+
 ## [1.62.0](https://github.com/Starosdev/scrutiny/compare/v1.61.0...v1.62.0) (2026-05-28)
 
 ### Features
