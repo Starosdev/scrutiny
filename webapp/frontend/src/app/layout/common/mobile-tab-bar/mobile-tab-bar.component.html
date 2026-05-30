@@ -4,7 +4,7 @@
     <button class="tab-item" [class.active]="isActive(tab)" (click)="navigate(tab)">
         <div class="tab-icon-wrapper">
             <mat-icon>{{ tab.icon }}</mat-icon>
-            @if (tab.route === '/dashboard' && drivesNeedAttention > 0) {
+            @if (tab.route === '/mobile-drives' && drivesNeedAttention > 0) {
             <span class="tab-badge">{{ drivesNeedAttention }}</span>
             }
         </div>
