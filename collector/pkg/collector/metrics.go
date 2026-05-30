@@ -14,12 +14,14 @@ import (
 	"github.com/analogj/scrutiny/collector/pkg/common/shell"
 	"github.com/analogj/scrutiny/collector/pkg/config"
 	"github.com/analogj/scrutiny/collector/pkg/detect"
-	"github.com/analogj/scrutiny/collector/pkg/errors"
+	collectorerrors "github.com/analogj/scrutiny/collector/pkg/errors"
 	"github.com/analogj/scrutiny/collector/pkg/models"
 	"github.com/sirupsen/logrus"
 )
 
 const configKeySmartctlBin = "commands.metrics_smartctl_bin"
+const configKeyMetricsAPIRetryCount = "commands.metrics_api_retry_count"
+const configKeyMetricsAPIRetryDelay = "commands.metrics_api_retry_delay"
 
 type MetricsCollector struct {
 	config config.Interface
@@ -82,7 +84,7 @@ func (mc *MetricsCollector) Run() error {
 	if !deviceRespWrapper.Success {
 		mc.logger.Errorln("An error occurred while retrieving filtered devices")
 		mc.logger.Debugln(deviceRespWrapper)
-		return errors.ApiServerCommunicationError("An error occurred while retrieving filtered devices")
+		return collectorerrors.ApiServerCommunicationError("An error occurred while retrieving filtered devices")
 	} else {
 		mc.logger.Debugln(deviceRespWrapper)
 		//var wg sync.WaitGroup
@@ -116,7 +118,7 @@ func (mc *MetricsCollector) Validate() error {
 	_, lookErr := exec.LookPath(mc.config.GetString(configKeySmartctlBin))
 
 	if lookErr != nil {
-		return errors.DependencyMissingError(fmt.Sprintf("%s binary is missing", mc.config.GetString(configKeySmartctlBin)))
+		return collectorerrors.DependencyMissingError(fmt.Sprintf("%s binary is missing", mc.config.GetString(configKeySmartctlBin)))
 	}
 
 	mc.checkAppArmor()
@@ -310,18 +312,64 @@ func (mc *MetricsCollector) Publish(deviceID string, payload []byte) error {
 	apiEndpoint, _ := url.Parse(mc.apiEndpoint.String())
 	apiEndpoint, _ = apiEndpoint.Parse(fmt.Sprintf("api/device/%s/smart", strings.ToLower(deviceID)))
 
-	resp, err := mc.httpClient.Post(apiEndpoint.String(), "application/json", bytes.NewBuffer(payload))
+	maxAttempts := mc.config.GetInt(configKeyMetricsAPIRetryCount) + 1
+	retryDelay := time.Duration(mc.config.GetInt(configKeyMetricsAPIRetryDelay)) * time.Second
+
+	var lastErr error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		lastErr = mc.publishOnce(apiEndpoint.String(), payload)
+		if lastErr == nil {
+			return nil
+		}
+
+		if !isRetriablePublishError(lastErr) || attempt == maxAttempts {
+			mc.logger.Errorf("An error occurred while publishing SMART data for device (%s): %v", deviceID, lastErr)
+			return lastErr
+		}
+
+		delay := publishRetryBackoff(retryDelay, attempt)
+		mc.logger.Warnf("Retrying SMART publish for device (%s) after attempt %d/%d failed: %v", deviceID, attempt, maxAttempts, lastErr)
+		if delay > 0 {
+			time.Sleep(delay)
+		}
+	}
+
+	return lastErr
+}
+
+func (mc *MetricsCollector) publishOnce(endpoint string, payload []byte) error {
+	resp, err := mc.httpClient.Post(endpoint, "application/json", bytes.NewBuffer(payload))
 	if err != nil {
-		mc.logger.Errorf("An error occurred while publishing SMART data for device (%s): %v", deviceID, err)
 		return err
 	}
-	defer resp.Body.Close()
+	defer drainAndClose(resp.Body)
 
-	if resp.StatusCode == 401 {
-		mc.logger.Errorln("Authentication failed (HTTP 401). Check that api.token in collector.yaml matches web.auth.token in scrutiny.yaml.")
+	if err := validateAPIResponse(mc.logger, resp); err != nil {
+		return err
 	}
 
 	return nil
+}
+
+func isRetriablePublishError(err error) bool {
+	statusErr, ok := err.(*httpStatusError)
+	if !ok {
+		return true
+	}
+
+	switch statusErr.StatusCode {
+	case 408, 425, 429, 500, 502, 503, 504:
+		return true
+	default:
+		return false
+	}
+}
+
+func publishRetryBackoff(baseDelay time.Duration, attempt int) time.Duration {
+	if baseDelay <= 0 || attempt <= 0 {
+		return 0
+	}
+	return baseDelay * time.Duration(1<<(attempt-1))
 }
 
 // collectorErrorPayload is the JSON body sent to the backend collector-error endpoints.

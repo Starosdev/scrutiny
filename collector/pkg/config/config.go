@@ -56,6 +56,8 @@ func (c *configuration) Init() error {
 	c.SetDefault(configKeyMetricsInfoArgs, "--info --json")
 	c.SetDefault(configKeyMetricsSmartArgs, "--xall --json")
 	c.SetDefault("commands.metrics_smartctl_wait", 0)
+	c.SetDefault("commands.metrics_api_retry_count", 2)
+	c.SetDefault("commands.metrics_api_retry_delay", 2)
 	c.SetDefault("commands.metrics_farm_enabled", false)
 	c.SetDefault("commands.metrics_farm_args", "-l farm --json")
 	c.SetDefault("commands.metrics_smartctl_timeout", 120)
