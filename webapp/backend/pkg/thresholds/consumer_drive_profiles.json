@@ -295,7 +295,7 @@
       "vendor": "Crucial",
       "model_family": "Crucial MX500",
       "sample_count": 2214,
-      "model_pattern": "^CT(250|500|1000|2000)MX500SSD1.*$",
+      "model_pattern": "^CT(250|500|1000|2000|4000)MX500SSD1.*$",
       "ata_counter_severity_overrides": {
         "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
         "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
