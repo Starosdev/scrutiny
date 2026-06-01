@@ -83,6 +83,8 @@ PLANNING.md
 # Claude Code
 .claude/
 .codex/
+# Local builder skill files
+.codex/skills/
 # Local repo instructions
 AGENTS.md
 
