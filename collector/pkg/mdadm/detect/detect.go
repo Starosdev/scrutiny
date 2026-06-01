@@ -97,14 +97,14 @@ func (d *Detect) parseMdstat() ([]string, error) {
 // getArrayDetail runs mdadm --detail and parses its output
 func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMetrics, error) {
 	devicePath := fmt.Sprintf("/dev/%s", name)
-	
+
 	var cmd *exec.Cmd
 	if os.Getuid() == 0 {
 		cmd = exec.Command("mdadm", "--detail", devicePath)
 	} else {
 		cmd = exec.Command("sudo", "mdadm", "--detail", devicePath)
 	}
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return models.MDADMArray{}, models.MDADMMetrics{}, fmt.Errorf("failed to run mdadm --detail %s: %w", devicePath, err)
@@ -144,7 +144,7 @@ func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMet
 			metrics.UsedBytes = usedBytes
 		}
 	}
-	
+
 	return array, metrics, err
 }
 
@@ -182,7 +182,7 @@ func (d *Detect) getRawMdstat(name string) (string, error) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		
+
 		if strings.HasPrefix(line, name+" :") {
 			inBlock = true
 		} else if inBlock && (!strings.HasPrefix(line, " ") && len(strings.TrimSpace(line)) > 0) {
@@ -207,21 +207,7 @@ func (d *Detect) parseMdadmOutput(name string, output string) (models.MDADMArray
 	metrics := models.MDADMMetrics{}
 
 	scanner := bufio.NewScanner(strings.NewReader(output))
-	
-	// Regex patterns for detail fields
-	raidLevelPattern := regexp.MustCompile(`Raid Level\s*:\s*(.+)`)
-	uuidPattern := regexp.MustCompile(`UUID\s*:\s*(.+)`)
-	statePattern := regexp.MustCompile(`State\s*:\s*(.+)`)
-	activePattern := regexp.MustCompile(`Active Devices\s*:\s*(\d+)`)
-	workingPattern := regexp.MustCompile(`Working Devices\s*:\s*(\d+)`)
-	failedPattern := regexp.MustCompile(`Failed Devices\s*:\s*(\d+)`)
-	sparePattern := regexp.MustCompile(`Spare Devices\s*:\s*(\d+)`)
-	rebuildPattern := regexp.MustCompile(`Rebuild Status\s*:\s*(\d+(?:\.\d+)?)%`)
-	resyncPattern := regexp.MustCompile(`Resync Status\s*:\s*(\d+(?:\.\d+)?)%`)
-	recoveryPattern := regexp.MustCompile(`Recovery Status\s*:\s*(\d+(?:\.\d+)?)%`)
-	checkPattern := regexp.MustCompile(`check\s*=\s*(\d+(?:\.\d+)?)%`)
-	// "Array Size : 209584128 (...)" — value is in KiB
-	arraySizePattern := regexp.MustCompile(`Array Size\s*:\s*(\d+)`)
+	patterns := newMDADMOutputPatterns()
 
 	// Device list starts after the header
 	inDeviceList := false
@@ -229,38 +215,7 @@ func (d *Detect) parseMdadmOutput(name string, output string) (models.MDADMArray
 
 	for scanner.Scan() {
 		line := scanner.Text()
-
-		if m := raidLevelPattern.FindStringSubmatch(line); m != nil {
-			array.Level = strings.TrimSpace(m[1])
-		} else if m := uuidPattern.FindStringSubmatch(line); m != nil {
-			array.UUID = strings.TrimSpace(m[1])
-		} else if m := statePattern.FindStringSubmatch(line); m != nil {
-			metrics.State = strings.TrimSpace(m[1])
-		} else if m := activePattern.FindStringSubmatch(line); m != nil {
-			metrics.ActiveDevices, _ = strconv.Atoi(m[1])
-		} else if m := workingPattern.FindStringSubmatch(line); m != nil {
-			metrics.WorkingDevices, _ = strconv.Atoi(m[1])
-		} else if m := failedPattern.FindStringSubmatch(line); m != nil {
-			metrics.FailedDevices, _ = strconv.Atoi(m[1])
-		} else if m := sparePattern.FindStringSubmatch(line); m != nil {
-			metrics.SpareDevices, _ = strconv.Atoi(m[1])
-		} else if m := rebuildPattern.FindStringSubmatch(line); m != nil {
-			progress, _ := strconv.ParseFloat(m[1], 64)
-			metrics.SyncProgress = progress
-		} else if m := resyncPattern.FindStringSubmatch(line); m != nil {
-			progress, _ := strconv.ParseFloat(m[1], 64)
-			metrics.SyncProgress = progress
-		} else if m := recoveryPattern.FindStringSubmatch(line); m != nil {
-			progress, _ := strconv.ParseFloat(m[1], 64)
-			metrics.SyncProgress = progress
-		} else if m := checkPattern.FindStringSubmatch(line); m != nil {
-			progress, _ := strconv.ParseFloat(m[1], 64)
-			metrics.SyncProgress = progress
-		} else if m := arraySizePattern.FindStringSubmatch(line); m != nil {
-			// mdadm reports size in KiB; convert to bytes
-			kb, _ := strconv.ParseInt(m[1], 10, 64)
-			metrics.ArraySize = kb * 1024
-		}
+		updateMDADMDetailLine(line, &patterns, &array, &metrics)
 
 		if strings.Contains(line, "Number   Major   Minor   RaidDevice State") {
 			inDeviceList = true
@@ -275,6 +230,86 @@ func (d *Detect) parseMdadmOutput(name string, output string) (models.MDADMArray
 	}
 
 	return array, metrics, nil
+}
+
+type mdadmOutputPatterns struct {
+	raidLevel *regexp.Regexp
+	uuid      *regexp.Regexp
+	state     *regexp.Regexp
+	active    *regexp.Regexp
+	working   *regexp.Regexp
+	failed    *regexp.Regexp
+	spare     *regexp.Regexp
+	arraySize *regexp.Regexp
+	progress  []*regexp.Regexp
+}
+
+func newMDADMOutputPatterns() mdadmOutputPatterns {
+	return mdadmOutputPatterns{
+		raidLevel: regexp.MustCompile(`Raid Level\s*:\s*(.+)`),
+		uuid:      regexp.MustCompile(`UUID\s*:\s*(.+)`),
+		state:     regexp.MustCompile(`State\s*:\s*(.+)`),
+		active:    regexp.MustCompile(`Active Devices\s*:\s*(\d+)`),
+		working:   regexp.MustCompile(`Working Devices\s*:\s*(\d+)`),
+		failed:    regexp.MustCompile(`Failed Devices\s*:\s*(\d+)`),
+		spare:     regexp.MustCompile(`Spare Devices\s*:\s*(\d+)`),
+		progress: []*regexp.Regexp{
+			regexp.MustCompile(`Rebuild Status\s*:\s*(\d+(?:\.\d+)?)%`),
+			regexp.MustCompile(`Resync Status\s*:\s*(\d+(?:\.\d+)?)%`),
+			regexp.MustCompile(`Recovery Status\s*:\s*(\d+(?:\.\d+)?)%`),
+			regexp.MustCompile(`check\s*=\s*(\d+(?:\.\d+)?)%`),
+		},
+		arraySize: regexp.MustCompile(`Array Size\s*:\s*(\d+)`),
+	}
+}
+
+func updateMDADMDetailLine(line string, patterns *mdadmOutputPatterns, array *models.MDADMArray, metrics *models.MDADMMetrics) {
+	switch {
+	case matchStringField(line, patterns.raidLevel, &array.Level):
+	case matchStringField(line, patterns.uuid, &array.UUID):
+	case matchStringField(line, patterns.state, &metrics.State):
+	case matchIntField(line, patterns.active, &metrics.ActiveDevices):
+	case matchIntField(line, patterns.working, &metrics.WorkingDevices):
+	case matchIntField(line, patterns.failed, &metrics.FailedDevices):
+	case matchIntField(line, patterns.spare, &metrics.SpareDevices):
+	case matchProgress(line, patterns.progress, &metrics.SyncProgress):
+	case matchArraySize(line, patterns.arraySize, &metrics.ArraySize):
+	}
+}
+
+func matchStringField(line string, pattern *regexp.Regexp, target *string) bool {
+	if m := pattern.FindStringSubmatch(line); m != nil {
+		*target = strings.TrimSpace(m[1])
+		return true
+	}
+	return false
+}
+
+func matchIntField(line string, pattern *regexp.Regexp, target *int) bool {
+	if m := pattern.FindStringSubmatch(line); m != nil {
+		*target, _ = strconv.Atoi(m[1])
+		return true
+	}
+	return false
+}
+
+func matchProgress(line string, patterns []*regexp.Regexp, target *float64) bool {
+	for _, pattern := range patterns {
+		if m := pattern.FindStringSubmatch(line); m != nil {
+			*target, _ = strconv.ParseFloat(m[1], 64)
+			return true
+		}
+	}
+	return false
+}
+
+func matchArraySize(line string, pattern *regexp.Regexp, target *int64) bool {
+	if m := pattern.FindStringSubmatch(line); m != nil {
+		kb, _ := strconv.ParseInt(m[1], 10, 64)
+		*target = kb * 1024
+		return true
+	}
+	return false
 }
 
 func parseMdadmExportUUID(output string) string {

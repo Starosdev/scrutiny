@@ -25,7 +25,7 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
 
     tabs: TabItem[] = [
         { icon: 'home', label: 'Home', route: '/mobile-home', exactMatch: true },
-        { icon: 'storage', label: 'Drives', route: '/dashboard', exactMatch: true },
+        { icon: 'storage', label: 'Drives', route: '/mobile-drives', exactMatch: true },
         { icon: 'dns', label: 'ZFS', route: '/zfs-pools', exactMatch: true },
         { icon: 'folder', label: 'Btrfs', route: '/btrfs-filesystems', exactMatch: true },
         { icon: 'speed', label: 'Workload', route: '/workload', exactMatch: true },

@@ -140,19 +140,16 @@ func (d *Detect) parseVdevTree(output string, poolName string) []models.ZFSVdev 
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// Look for config section
 		if strings.Contains(line, "config:") {
 			inConfig = true
 			continue
 		}
 
-		// Skip header lines
-		if strings.Contains(line, "NAME") && strings.Contains(line, "STATE") {
+		if isVdevHeaderLine(line) {
 			continue
 		}
 
-		// End of config section
-		if inConfig && (strings.Contains(line, "errors:") || strings.Contains(line, "scan:")) {
+		if inConfig && isVdevSectionTerminator(line) {
 			break
 		}
 
@@ -167,46 +164,65 @@ func (d *Detect) parseVdevTree(output string, poolName string) []models.ZFSVdev 
 
 		indent := len(matches[1])
 		name := matches[2]
-		status := matches[3]
-		readErr, _ := strconv.ParseInt(matches[4], 10, 64)
-		writeErr, _ := strconv.ParseInt(matches[5], 10, 64)
-		ckErr, _ := strconv.ParseInt(matches[6], 10, 64)
 
-		// Skip the pool name line itself
 		if name == poolName {
 			baseIndent = indent
 			continue
 		}
 
-		vdev := models.ZFSVdev{
-			Name:           name,
-			Status:         models.ZFSPoolStatus(status),
-			ReadErrors:     readErr,
-			WriteErrors:    writeErr,
-			ChecksumErrors: ckErr,
-			Type:           d.detectVdevType(name),
-		}
-
-		// Detect if this is a device path
-		if strings.HasPrefix(name, "/dev/") || strings.Contains(name, "sd") ||
-			strings.Contains(name, "nvme") || strings.Contains(name, "ada") ||
-			strings.Contains(name, "da") || strings.Contains(name, "disk") {
-			vdev.Type = models.ZFSVdevTypeDisk
-			vdev.Path = d.resolveDevicePath(name)
-		}
-
-		// Determine hierarchy based on indentation
-		if indent == baseIndent+2 {
-			// Top-level vdev (mirror, raidz, disk directly under pool)
-			vdevs = append(vdevs, vdev)
-			currentParent = &vdevs[len(vdevs)-1]
-		} else if indent > baseIndent+2 && currentParent != nil {
-			// Child of current parent
-			currentParent.Children = append(currentParent.Children, vdev)
-		}
+		vdev := d.buildZFSVdev(matches)
+		vdevs, currentParent = attachVdev(vdevs, currentParent, &vdev, indent, baseIndent)
 	}
 
 	return vdevs
+}
+
+func isVdevHeaderLine(line string) bool {
+	return strings.Contains(line, "NAME") && strings.Contains(line, "STATE")
+}
+
+func isVdevSectionTerminator(line string) bool {
+	return strings.Contains(line, "errors:") || strings.Contains(line, "scan:")
+}
+
+func (d *Detect) buildZFSVdev(matches []string) models.ZFSVdev {
+	name := matches[2]
+	readErr, _ := strconv.ParseInt(matches[4], 10, 64)
+	writeErr, _ := strconv.ParseInt(matches[5], 10, 64)
+	ckErr, _ := strconv.ParseInt(matches[6], 10, 64)
+	vdev := models.ZFSVdev{
+		Name:           name,
+		Status:         models.ZFSPoolStatus(matches[3]),
+		ReadErrors:     readErr,
+		WriteErrors:    writeErr,
+		ChecksumErrors: ckErr,
+		Type:           d.detectVdevType(name),
+	}
+	if isZFSDevicePath(name) {
+		vdev.Type = models.ZFSVdevTypeDisk
+		vdev.Path = d.resolveDevicePath(name)
+	}
+	return vdev
+}
+
+func isZFSDevicePath(name string) bool {
+	return strings.HasPrefix(name, "/dev/") ||
+		strings.Contains(name, "sd") ||
+		strings.Contains(name, "nvme") ||
+		strings.Contains(name, "ada") ||
+		strings.Contains(name, "da") ||
+		strings.Contains(name, "disk")
+}
+
+func attachVdev(vdevs []models.ZFSVdev, currentParent *models.ZFSVdev, vdev *models.ZFSVdev, indent int, baseIndent int) ([]models.ZFSVdev, *models.ZFSVdev) {
+	if indent == baseIndent+2 {
+		vdevs = append(vdevs, *vdev)
+		return vdevs, &vdevs[len(vdevs)-1]
+	}
+	if indent > baseIndent+2 && currentParent != nil {
+		currentParent.Children = append(currentParent.Children, *vdev)
+	}
+	return vdevs, currentParent
 }
 
 // detectVdevType determines the vdev type from its name

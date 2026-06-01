@@ -3,7 +3,10 @@ package collector
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -12,6 +15,19 @@ import (
 type BaseCollector struct {
 	logger     *logrus.Entry
 	httpClient *http.Client
+}
+
+type httpStatusError struct {
+	Status     string
+	Body       string
+	StatusCode int
+}
+
+func (e *httpStatusError) Error() string {
+	if e.Body == "" {
+		return fmt.Sprintf("unexpected API status: %s", e.Status)
+	}
+	return fmt.Sprintf("unexpected API status: %s: %s", e.Status, e.Body)
 }
 
 // authTransport is an http.RoundTripper that injects a Bearer token into every request.
@@ -46,7 +62,11 @@ func (c *BaseCollector) getJson(url string, target interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer r.Body.Close()
+	defer drainAndClose(r.Body)
+
+	if err := validateAPIResponse(c.logger, r); err != nil {
+		return err
+	}
 
 	return json.NewDecoder(r.Body).Decode(target)
 }
@@ -61,13 +81,44 @@ func (c *BaseCollector) postJson(url string, body interface{}, target interface{
 	if err != nil {
 		return err
 	}
-	defer r.Body.Close()
+	defer drainAndClose(r.Body)
 
-	if r.StatusCode == 401 {
-		c.logger.Errorln("Authentication failed (HTTP 401). Check that api.token in collector.yaml matches web.auth.token in scrutiny.yaml.")
+	if err := validateAPIResponse(c.logger, r); err != nil {
+		return err
 	}
 
 	return json.NewDecoder(r.Body).Decode(target)
+}
+
+func validateAPIResponse(logger *logrus.Entry, resp *http.Response) error {
+	if resp.StatusCode == http.StatusUnauthorized && logger != nil {
+		logger.Errorln("Authentication failed (HTTP 401). Check that api.token in collector.yaml matches web.auth.token in scrutiny.yaml.")
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return nil
+	}
+	return newHTTPStatusError(resp)
+}
+
+func newHTTPStatusError(resp *http.Response) error {
+	body, _ := io.ReadAll(resp.Body)
+	bodyText := strings.TrimSpace(string(body))
+	if len(bodyText) > 256 {
+		bodyText = bodyText[:256] + "...(truncated)"
+	}
+	return &httpStatusError{
+		StatusCode: resp.StatusCode,
+		Status:     resp.Status,
+		Body:       bodyText,
+	}
+}
+
+func drainAndClose(body io.ReadCloser) {
+	if body == nil {
+		return
+	}
+	_, _ = io.Copy(io.Discard, body)
+	_ = body.Close()
 }
 
 // LogSmartctlExitCode logs each set bit in the smartctl exit code bitmask.

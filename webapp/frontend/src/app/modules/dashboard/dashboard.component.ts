@@ -403,7 +403,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         if (!this.filesystemSummaryData?.hosts) {
             return [];
         }
-        return Object.keys(this.filesystemSummaryData.hosts).sort();
+        return Object.keys(this.filesystemSummaryData.hosts).sort((left, right) => left.localeCompare(right));
     }
 
     filesystemsForHost(hostId: string): FilesystemCapacityModel[] {

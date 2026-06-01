@@ -12,6 +12,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const queryBtrfsFilesystemUUID = "filesystem_uuid = ?"
+
 func (sr *scrutinyRepository) RegisterBtrfsFilesystem(ctx context.Context, filesystem *models.BtrfsFilesystem) error {
 	filesystem.UpdatedAt = time.Now()
 
@@ -69,7 +71,7 @@ func (sr *scrutinyRepository) RegisterBtrfsFilesystem(ctx context.Context, files
 		}
 	}
 
-	if err := sr.gormClient.WithContext(ctx).Where("filesystem_uuid = ?", filesystem.UUID).Delete(&models.BtrfsDevice{}).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where(queryBtrfsFilesystemUUID, filesystem.UUID).Delete(&models.BtrfsDevice{}).Error; err != nil {
 		return err
 	}
 	if len(filesystem.Devices) > 0 {
@@ -99,7 +101,7 @@ func (sr *scrutinyRepository) GetBtrfsFilesystemDetails(ctx context.Context, uui
 		return models.BtrfsFilesystem{}, err
 	}
 	var devices []models.BtrfsDevice
-	if err := sr.gormClient.WithContext(ctx).Where("filesystem_uuid = ?", uuid).Order("device_id ASC").Find(&devices).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where(queryBtrfsFilesystemUUID, uuid).Order("device_id ASC").Find(&devices).Error; err != nil {
 		return filesystem, err
 	}
 	filesystem.Devices = devices
@@ -134,7 +136,7 @@ func (sr *scrutinyRepository) DeleteBtrfsFilesystem(ctx context.Context, uuid st
 	if err := validation.ValidateUUID(uuid); err != nil {
 		return fmt.Errorf("invalid UUID: %w", err)
 	}
-	if err := sr.gormClient.WithContext(ctx).Where("filesystem_uuid = ?", uuid).Delete(&models.BtrfsDevice{}).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where(queryBtrfsFilesystemUUID, uuid).Delete(&models.BtrfsDevice{}).Error; err != nil {
 		return err
 	}
 	if err := sr.gormClient.WithContext(ctx).Where(queryUUID, uuid).Delete(&models.BtrfsFilesystem{}).Error; err != nil {

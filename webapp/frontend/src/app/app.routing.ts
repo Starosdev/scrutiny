@@ -57,6 +57,7 @@ export const appRoutes: Route[] = [
 
             // Mobile-only routes
             { path: 'mobile-home', loadChildren: () => import('app/modules/mobile-home/mobile-home.module').then((m) => m.MobileHomeModule) },
+            { path: 'mobile-drives', loadChildren: () => import('app/modules/dashboard/dashboard.module').then((m) => m.DashboardModule) },
             { path: 'mobile-settings', loadChildren: () => import('app/modules/mobile-settings/mobile-settings.module').then((m) => m.MobileSettingsModule) },
 
             // 404 & Catch all

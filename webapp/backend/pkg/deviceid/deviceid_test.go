@@ -67,3 +67,18 @@ func TestGenerate_ValidUUIDFormat(t *testing.T) {
 	// UUID format: 8-4-4-4-12 hex digits
 	require.Regexp(t, `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`, id)
 }
+
+func TestGenerateWithFallback_UsesDeviceNameAndHostForEmptyMetadata(t *testing.T) {
+	id1 := GenerateWithFallback("", "", "", "sda", "host-a")
+	id2 := GenerateWithFallback("", "", "", "sdb", "host-a")
+	id3 := GenerateWithFallback("", "", "", "sda", "host-b")
+
+	require.NotEqual(t, id1, id2)
+	require.NotEqual(t, id1, id3)
+}
+
+func TestGenerateWithFallback_PreservesNormalIdentity(t *testing.T) {
+	expected := Generate("Samsung SSD 870", "S1SERIAL01", "0x5000cca264eb01d7")
+	actual := GenerateWithFallback("Samsung SSD 870", "S1SERIAL01", "0x5000cca264eb01d7", "sda", "host-a")
+	require.Equal(t, expected, actual)
+}

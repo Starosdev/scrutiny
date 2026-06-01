@@ -17,69 +17,85 @@ func UploadMdadmMetrics(c *gin.Context) {
 	dbRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 	uuid := c.Param("uuid")
-		if uuid == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "errors": []string{"UUID is required"}})
-			return
-		}
+	if uuid == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "errors": []string{"UUID is required"}})
+		return
+	}
 
-		var metrics collector.MDADMMetrics
-		if err := c.ShouldBindJSON(&metrics); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "errors": []error{err}})
-			return
-		}
+	metrics, ok := bindMDADMMetrics(c)
+	if !ok {
+		return
+	}
 
-		if err := dbRepo.SaveMdadmMetrics(c.Request.Context(), uuid, metrics); err != nil {
-			logger.Errorf("Failed to save MDADM metrics for array %s: %v", uuid, err)
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "errors": []string{err.Error()}})
-			return
-		}
+	if err := dbRepo.SaveMdadmMetrics(c.Request.Context(), uuid, metrics); err != nil {
+		logger.Errorf("Failed to save MDADM metrics for array %s: %v", uuid, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "errors": []string{err.Error()}})
+		return
+	}
 
-		// Trigger notifications if the array is degraded or has failed devices
-		if metrics.FailedDevices > 0 || strings.Contains(strings.ToLower(metrics.State), "degraded") {
-			// Get array details to construct the notification
-			array, err := dbRepo.GetMdadmArrayDetails(c.Request.Context(), uuid)
-			if err == nil {
-				// Check if we should notify (avoid repeating alerts if it was already degraded)
-				shouldNotify := true
-				history, err := dbRepo.GetMdadmMetricsHistory(c.Request.Context(), uuid, "day")
-				if err == nil && len(history) > 1 {
-					lastMetric := history[len(history)-2] // -1 is the current metric we just saved
-					wasDegraded := lastMetric.FailedDevices > 0 || strings.Contains(strings.ToLower(lastMetric.State), "degraded")
-					if wasDegraded {
-						shouldNotify = false
-					}
-				}
+	if shouldNotifyForMDADMFailure(&metrics) {
+		handleMDADMNotification(c, dbRepo, logger, uuid, &metrics)
+	}
 
-				if shouldNotify {
-					appConfig := c.MustGet("CONFIG").(config.Interface)
-					notification := notify.NewMDADMNotify(logger, appConfig, array, metrics)
-					notification.LoadDatabaseUrls(c.Request.Context(), dbRepo)
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
 
-					// Route through notification gate for rate limiting and quiet hours
-					if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
-						if gate, ok := gateVal.(*notify.NotificationGate); ok {
-							settings, settingsErr := dbRepo.LoadSettings(c.Request.Context())
-							if settingsErr != nil {
-								logger.Warnf("Failed to load settings for notification gate: %v", settingsErr)
-							}
-							if settings != nil {
-								gate.TrySend(&notification, settings, false)
-							} else {
-								if sendErr := notification.Send(); sendErr != nil {
-									logger.Warnf("Failed to send MDADM notification for array %s: %v", uuid, sendErr)
-								}
-							}
-						}
-					} else {
-						if sendErr := notification.Send(); sendErr != nil {
-							logger.Warnf("Failed to send MDADM notification for array %s: %v", uuid, sendErr)
-						}
-					}
-				}
-			} else {
-				logger.Errorf("Failed to retrieve details for MDADM array %s during notification process: %v", uuid, err)
+func bindMDADMMetrics(c *gin.Context) (collector.MDADMMetrics, bool) {
+	var metrics collector.MDADMMetrics
+	if err := c.ShouldBindJSON(&metrics); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "errors": []error{err}})
+		return collector.MDADMMetrics{}, false
+	}
+	return metrics, true
+}
+
+func shouldNotifyForMDADMFailure(metrics *collector.MDADMMetrics) bool {
+	return metrics.FailedDevices > 0 || strings.Contains(strings.ToLower(metrics.State), "degraded")
+}
+
+func handleMDADMNotification(c *gin.Context, dbRepo database.DeviceRepo, logger *logrus.Entry, uuid string, metrics *collector.MDADMMetrics) {
+	array, err := dbRepo.GetMdadmArrayDetails(c.Request.Context(), uuid)
+	if err != nil {
+		logger.Errorf("Failed to retrieve details for MDADM array %s during notification process: %v", uuid, err)
+		return
+	}
+	if !shouldSendMDADMNotification(c, dbRepo, uuid, metrics) {
+		return
+	}
+
+	appConfig := c.MustGet("CONFIG").(config.Interface)
+	notification := notify.NewMDADMNotify(logger, appConfig, array, *metrics)
+	notification.LoadDatabaseUrls(c.Request.Context(), dbRepo)
+	sendNotificationWithGate(c, dbRepo, logger, uuid, &notification)
+}
+
+func shouldSendMDADMNotification(c *gin.Context, dbRepo database.DeviceRepo, uuid string, metrics *collector.MDADMMetrics) bool {
+	history, err := dbRepo.GetMdadmMetricsHistory(c.Request.Context(), uuid, "day")
+	if err != nil || len(history) <= 1 {
+		return true
+	}
+	lastMetric := history[len(history)-2]
+	return !shouldNotifyForMDADMState(lastMetric.State, lastMetric.FailedDevices)
+}
+
+func sendNotificationWithGate(c *gin.Context, dbRepo database.DeviceRepo, logger *logrus.Entry, uuid string, notification *notify.Notify) {
+	if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
+		if gate, ok := gateVal.(*notify.NotificationGate); ok {
+			settings, settingsErr := dbRepo.LoadSettings(c.Request.Context())
+			if settingsErr != nil {
+				logger.Warnf("Failed to load settings for notification gate: %v", settingsErr)
+			}
+			if settings != nil {
+				gate.TrySend(notification, settings, false)
+				return
 			}
 		}
-
-		c.JSON(http.StatusOK, gin.H{"success": true})
 	}
+	if sendErr := notification.Send(); sendErr != nil {
+		logger.Warnf("Failed to send MDADM notification for array %s: %v", uuid, sendErr)
+	}
+}
+
+func shouldNotifyForMDADMState(state string, failedDevices int) bool {
+	return failedDevices > 0 || strings.Contains(strings.ToLower(state), "degraded")
+}

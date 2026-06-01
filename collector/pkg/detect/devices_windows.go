@@ -23,10 +23,10 @@ func (d *Detect) Start() ([]models.Device, error) {
 		d.SmartCtlInfo(&detectedDevices[ndx]) //ignore errors.
 	}
 
-	return detectedDevices, nil
+	return FilterRedundantDevices(detectedDevices), nil
 }
 
-//WWN values NVMe and SCSI
+// WWN values NVMe and SCSI
 func (d *Detect) wwnFallback(detectedDevice *models.Device) {
 
 	//fallback to serial number

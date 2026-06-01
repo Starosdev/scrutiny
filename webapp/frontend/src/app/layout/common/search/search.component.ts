@@ -1,4 +1,4 @@
-import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, Renderer2, ViewChild, ViewEncapsulation, inject } from '@angular/core';
+import { Component, ElementRef, Input, OnDestroy, OnInit, Renderer2, ViewChild, ViewEncapsulation, inject } from '@angular/core';
 import { UntypedFormControl, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { MatFormField as MatFormField, MatPrefix } from '@angular/material/form-field';
@@ -36,10 +36,6 @@ export class SearchComponent implements OnInit, OnDestroy {
     // Min. length
     @Input()
     minLength: number;
-
-    // Search
-    @Output()
-    search: EventEmitter<any>;
 
     // Private
     private _appearance: 'basic' | 'bar';

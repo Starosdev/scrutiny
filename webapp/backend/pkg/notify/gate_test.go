@@ -198,7 +198,7 @@ func TestGate_PruneOldTimestamps(t *testing.T) {
 
 	gate.mu.Lock()
 	gate.sentTimestamps = []time.Time{
-		time.Now().Add(-2 * time.Hour),   // should be pruned
+		time.Now().Add(-2 * time.Hour),    // should be pruned
 		time.Now().Add(-90 * time.Minute), // should be pruned
 		time.Now().Add(-30 * time.Minute), // should be kept
 		time.Now().Add(-5 * time.Minute),  // should be kept
@@ -206,6 +206,39 @@ func TestGate_PruneOldTimestamps(t *testing.T) {
 	gate.pruneOldTimestamps()
 	require.Equal(t, 2, len(gate.sentTimestamps))
 	gate.mu.Unlock()
+}
+
+func TestGate_TrySendCollectorError_DeduplicatesWhenRepeatDisabled(t *testing.T) {
+	t.Parallel()
+
+	gate := NewNotificationGate(logrus.NewEntry(logrus.StandardLogger()))
+	settings := &models.Settings{}
+	settings.Metrics.RepeatNotifications = false
+	settings.Metrics.NotificationQuietStart = minutesToHHMM((time.Now().Hour()*60 + time.Now().Minute() + 1439) % 1440)
+	settings.Metrics.NotificationQuietEnd = minutesToHHMM((time.Now().Hour()*60 + time.Now().Minute() + 1) % 1440)
+
+	notification := &Notify{Payload: Payload{Subject: "collector error", Message: "failed"}}
+
+	require.True(t, gate.TrySendCollectorError("device:test-id", "xall", "open failed", notification, settings))
+	require.False(t, gate.TrySendCollectorError("device:test-id", "xall", "open failed", notification, settings))
+	require.Equal(t, 1, gate.QueueLength())
+}
+
+func TestGate_ClearCollectorErrorState_AllowsFutureNotification(t *testing.T) {
+	t.Parallel()
+
+	gate := NewNotificationGate(logrus.NewEntry(logrus.StandardLogger()))
+	settings := &models.Settings{}
+	settings.Metrics.RepeatNotifications = false
+	settings.Metrics.NotificationQuietStart = minutesToHHMM((time.Now().Hour()*60 + time.Now().Minute() + 1439) % 1440)
+	settings.Metrics.NotificationQuietEnd = minutesToHHMM((time.Now().Hour()*60 + time.Now().Minute() + 1) % 1440)
+
+	notification := &Notify{Payload: Payload{Subject: "collector error", Message: "failed"}}
+
+	require.True(t, gate.TrySendCollectorError("device:test-id", "xall", "open failed", notification, settings))
+	gate.ClearCollectorErrorState("device:test-id")
+	require.True(t, gate.TrySendCollectorError("device:test-id", "xall", "open failed", notification, settings))
+	require.Equal(t, 2, gate.QueueLength())
 }
 
 // minutesToHHMM converts minutes since midnight to "HH:MM" format.

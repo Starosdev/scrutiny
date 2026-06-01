@@ -8,7 +8,9 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/metrics"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/mqtt"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/notify"
 	"github.com/gin-gonic/gin"
@@ -29,41 +31,9 @@ func UploadDeviceMetrics(c *gin.Context) {
 		return
 	}
 
-	var collectorSmartData collector.SmartInfo
-	err := c.BindJSON(&collectorSmartData)
-	if err != nil {
-		logger.Errorln("Cannot parse SMART data", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
+	collectorSmartData, ok := bindAndValidateSmartInfo(c, logger, device.WWN)
+	if !ok {
 		return
-	}
-
-	// Validate smartctl exit_status bitmask before persisting data.
-	// Bits 0x01 and 0x02 indicate conditions where the JSON data should not be trusted:
-	//   0x01 = command line parse error
-	//   0x02 = device open failed (includes standby)
-	// Bit 0x04 (checksum error in response) is intentionally excluded because
-	// the JSON data is usually still valid and many drives behind RAID/HBA
-	// controllers intermittently return this code.
-	exitStatus := collectorSmartData.Smartctl.ExitStatus
-	if exitStatus&0x03 != 0 {
-		logger.Warnf("Rejecting SMART data for device %s: smartctl exit_status %d has fatal bits set (mask 0x03)", device.WWN, exitStatus)
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"success": false,
-			"error":   fmt.Sprintf("smartctl exit_status %d indicates unreliable data (bits 0-1 set)", exitStatus),
-		})
-		return
-	}
-
-	// Log informational exit status bits without rejecting data.
-	// These indicate disk health issues which are exactly what we want to track:
-	//   0x04 = checksum error in response (non-fatal, data usually valid)
-	//   0x08 = SMART failure detected
-	//   0x10 = prefail threshold exceeded
-	//   0x20 = disk approaching failure
-	//   0x40 = error log contains errors
-	//   0x80 = self-test log contains errors
-	if exitStatus != 0 {
-		logger.Warnf("Device %s: smartctl exit_status %d has informational bits set; persisting data", device.WWN, exitStatus)
 	}
 
 	// update the device information if necessary (SQLite - uses deviceID)
@@ -87,23 +57,9 @@ func UploadDeviceMetrics(c *gin.Context) {
 		logger.Warnf("Failed to update has_forced_failure for device %s: %v", device.DeviceID, ffErr)
 	}
 
-	if smartData.Status != pkg.DeviceStatusPassed {
-		//there is a failure detected by Scrutiny, update the device status on the homepage.
-		updatedDevice, err = deviceRepo.UpdateDeviceStatus(c, device.DeviceID, smartData.Status)
-		if err != nil {
-			logger.Errorln("An error occurred while updating device status", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false})
-			return
-		}
-	} else if updatedDevice.DeviceStatus != pkg.DeviceStatusPassed {
-		// Clear failure status when current SMART data shows all attributes passing
-		updatedDevice, err = deviceRepo.ResetDeviceStatus(c, device.DeviceID)
-		if err != nil {
-			logger.Errorln("An error occurred while resetting device status", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false})
-			return
-		}
-		logger.Infof("Device %s status reset to passed - all SMART attributes now within thresholds", device.DeviceID)
+	updatedDevice, ok = reconcileDeviceStatus(c, logger, deviceRepo, device.DeviceID, &updatedDevice, smartData.Status)
+	if !ok {
+		return
 	}
 
 	// save smart temperature data (InfluxDB - uses WWN)
@@ -113,6 +69,8 @@ func UploadDeviceMetrics(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
 	}
+
+	clearCollectorErrorState(c, updatedDevice.DeviceID)
 
 	// check for error
 	if notify.ShouldNotify(
@@ -128,63 +86,126 @@ func UploadDeviceMetrics(c *gin.Context) {
 		deviceRepo,
 		appConfig,
 	) {
-		//send notifications
+		sendDeviceNotification(c, logger, appConfig, deviceRepo, device.DeviceID, &updatedDevice)
+	}
 
-		liveNotify := notify.New(
-			logger,
-			appConfig,
-			updatedDevice,
-			false,
-		)
-		liveNotify.LoadDatabaseUrls(c, deviceRepo)
+	maybeNotifyReplacementRiskFromSettings(c, logger, appConfig, deviceRepo, &updatedDevice, smartData.Attributes)
 
-		// Route through notification gate for rate limiting and quiet hours
-		if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
-			if gate, ok := gateVal.(*notify.NotificationGate); ok {
-				settings, settingsErr := deviceRepo.LoadSettings(c)
-				if settingsErr != nil {
-					logger.Warnf("Failed to load settings for notification gate: %v", settingsErr)
-				}
-				if settings != nil {
-					gate.TrySend(&liveNotify, settings, false)
-				} else {
-					if sendErr := liveNotify.Send(); sendErr != nil {
-						logger.Warnf("Failed to send notification for device %s: %v", device.DeviceID, sendErr)
-					}
-				}
+	refreshPrometheusMetrics(c, logger, deviceRepo, device.DeviceID, &updatedDevice, &smartData)
+
+	publishMQTTDeviceState(c, device.DeviceID, &updatedDevice, &smartData)
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func clearCollectorErrorState(c *gin.Context, deviceID string) {
+	if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
+		if gate, ok := gateVal.(*notify.NotificationGate); ok && gate != nil {
+			gate.ClearCollectorErrorState("device:" + deviceID)
+		}
+	}
+}
+
+func bindAndValidateSmartInfo(c *gin.Context, logger *logrus.Entry, deviceWWN string) (collector.SmartInfo, bool) {
+	var collectorSmartData collector.SmartInfo
+	if err := c.BindJSON(&collectorSmartData); err != nil {
+		logger.Errorln("Cannot parse SMART data", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
+		return collector.SmartInfo{}, false
+	}
+	if !validateSmartExitStatus(c, logger, deviceWWN, collectorSmartData.Smartctl.ExitStatus) {
+		return collector.SmartInfo{}, false
+	}
+	return collectorSmartData, true
+}
+
+func validateSmartExitStatus(c *gin.Context, logger *logrus.Entry, deviceWWN string, exitStatus int) bool {
+	if exitStatus&0x03 != 0 {
+		logger.Warnf("Rejecting SMART data for device %s: smartctl exit_status %d has fatal bits set (mask 0x03)", deviceWWN, exitStatus)
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"success": false,
+			"error":   fmt.Sprintf("smartctl exit_status %d indicates unreliable data (bits 0-1 set)", exitStatus),
+		})
+		return false
+	}
+	if exitStatus != 0 {
+		logger.Warnf("Device %s: smartctl exit_status %d has informational bits set; persisting data", deviceWWN, exitStatus)
+	}
+	return true
+}
+
+func reconcileDeviceStatus(c *gin.Context, logger *logrus.Entry, deviceRepo database.DeviceRepo, deviceID string, updatedDevice *models.Device, smartStatus pkg.DeviceStatus) (models.Device, bool) {
+	var (
+		device models.Device
+		err    error
+	)
+	if smartStatus != pkg.DeviceStatusPassed {
+		device, err = deviceRepo.UpdateDeviceStatus(c, deviceID, smartStatus)
+		if err != nil {
+			logger.Errorln("An error occurred while updating device status", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false})
+			return models.Device{}, false
+		}
+		return device, true
+	}
+	if updatedDevice.DeviceStatus == pkg.DeviceStatusPassed {
+		return *updatedDevice, true
+	}
+	device, err = deviceRepo.ResetDeviceStatus(c, deviceID)
+	if err != nil {
+		logger.Errorln("An error occurred while resetting device status", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
+		return models.Device{}, false
+	}
+	logger.Infof("Device %s status reset to passed - all SMART attributes now within thresholds", deviceID)
+	return device, true
+}
+
+func sendDeviceNotification(c *gin.Context, logger *logrus.Entry, appConfig config.Interface, deviceRepo database.DeviceRepo, deviceID string, updatedDevice *models.Device) {
+	liveNotify := notify.New(logger, appConfig, *updatedDevice, false)
+	liveNotify.LoadDatabaseUrls(c, deviceRepo)
+	if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
+		if gate, ok := gateVal.(*notify.NotificationGate); ok {
+			settings, settingsErr := deviceRepo.LoadSettings(c)
+			if settingsErr != nil {
+				logger.Warnf("Failed to load settings for notification gate: %v", settingsErr)
 			}
-		} else {
-			if sendErr := liveNotify.Send(); sendErr != nil {
-				logger.Warnf("Failed to send notification for device %s: %v", device.DeviceID, sendErr)
+			if settings != nil {
+				gate.TrySend(&liveNotify, settings, false)
+				return
 			}
 		}
 	}
+	if sendErr := liveNotify.Send(); sendErr != nil {
+		logger.Warnf("Failed to send notification for device %s: %v", deviceID, sendErr)
+	}
+}
 
-	// Check replacement risk and notify if configured threshold is met.
+func maybeNotifyReplacementRiskFromSettings(c *gin.Context, logger *logrus.Entry, appConfig config.Interface, deviceRepo database.DeviceRepo, updatedDevice *models.Device, attributes map[string]measurements.SmartAttribute) {
 	riskSettings, riskSettingsErr := deviceRepo.LoadSettings(c)
 	if riskSettingsErr != nil {
 		logger.Warnf("Could not load settings for replacement risk notification: %v", riskSettingsErr)
 	}
 	if riskSettings != nil && riskSettings.Metrics.NotifyOnReplacementRisk {
-		maybeNotifyReplacementRisk(c, logger, appConfig, deviceRepo, &updatedDevice, smartData.Attributes, riskSettings)
+		maybeNotifyReplacementRisk(c, logger, appConfig, deviceRepo, updatedDevice, attributes, riskSettings)
 	}
+}
 
-	// Update Prometheus metrics (if enabled)
+func refreshPrometheusMetrics(c *gin.Context, logger *logrus.Entry, deviceRepo database.DeviceRepo, deviceID string, updatedDevice *models.Device, smartData *measurements.Smart) {
 	if collectorVal, exists := c.Get("METRICS_COLLECTOR"); exists {
 		if collector, ok := collectorVal.(*metrics.Collector); ok && collector != nil {
-			collector.UpdateDeviceMetrics(&updatedDevice, &smartData)
+			collector.UpdateDeviceMetrics(updatedDevice, smartData)
 			if err := collector.RefreshWorkloadMetrics(deviceRepo, c); err != nil {
-				logger.Warnf("Failed to refresh Prometheus workload metrics for device %s: %v", device.DeviceID, err)
+				logger.Warnf("Failed to refresh Prometheus workload metrics for device %s: %v", deviceID, err)
 			}
 		}
 	}
+}
 
-	// Publish to MQTT / Home Assistant (if enabled)
+func publishMQTTDeviceState(c *gin.Context, deviceID string, updatedDevice *models.Device, smartData *measurements.Smart) {
 	if pubVal, exists := c.Get("MQTT_PUBLISHER"); exists {
 		if pub, ok := pubVal.(*mqtt.Publisher); ok && pub != nil {
-			pub.PublishDeviceState(device.DeviceID, &updatedDevice, &smartData)
+			pub.PublishDeviceState(deviceID, updatedDevice, smartData)
 		}
 	}
-
-	c.JSON(http.StatusOK, gin.H{"success": true})
 }

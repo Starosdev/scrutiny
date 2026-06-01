@@ -64,45 +64,41 @@ func NewZFSPoolMetricsFromInfluxDB(attrs map[string]interface{}) (*ZFSPoolMetric
 		PoolName: attrs["pool_name"].(string),
 	}
 
-	// Parse optional fields
-	if val, ok := attrs["size"]; ok && val != nil {
-		m.Size = val.(int64)
-	}
-	if val, ok := attrs["allocated"]; ok && val != nil {
-		m.Allocated = val.(int64)
-	}
-	if val, ok := attrs["free"]; ok && val != nil {
-		m.Free = val.(int64)
-	}
-	if val, ok := attrs["capacity_percent"]; ok && val != nil {
-		m.CapacityPercent = val.(float64)
-	}
-	if val, ok := attrs["fragmentation"]; ok && val != nil {
-		m.Fragmentation = int(val.(int64))
-	}
-	if val, ok := attrs["status"]; ok && val != nil {
-		m.Status = val.(string)
-	}
-	if val, ok := attrs["read_errors"]; ok && val != nil {
-		m.ReadErrors = val.(int64)
-	}
-	if val, ok := attrs["write_errors"]; ok && val != nil {
-		m.WriteErrors = val.(int64)
-	}
-	if val, ok := attrs["checksum_errors"]; ok && val != nil {
-		m.ChecksumErrors = val.(int64)
-	}
-	if val, ok := attrs["scrub_state"]; ok && val != nil {
-		m.ScrubState = val.(string)
-	}
-	if val, ok := attrs["scrub_percent"]; ok && val != nil {
-		m.ScrubPercent = val.(float64)
-	}
-	if val, ok := attrs["scrub_errors"]; ok && val != nil {
-		m.ScrubErrors = val.(int64)
-	}
+	m.Size = influxInt64(attrs, "size")
+	m.Allocated = influxInt64(attrs, "allocated")
+	m.Free = influxInt64(attrs, "free")
+	m.CapacityPercent = influxFloat64(attrs, "capacity_percent")
+	m.Fragmentation = int(influxInt64(attrs, "fragmentation"))
+	m.Status = influxString(attrs, "status")
+	m.ReadErrors = influxInt64(attrs, "read_errors")
+	m.WriteErrors = influxInt64(attrs, "write_errors")
+	m.ChecksumErrors = influxInt64(attrs, "checksum_errors")
+	m.ScrubState = influxString(attrs, "scrub_state")
+	m.ScrubPercent = influxFloat64(attrs, "scrub_percent")
+	m.ScrubErrors = influxInt64(attrs, "scrub_errors")
 
 	return &m, nil
+}
+
+func influxInt64(attrs map[string]interface{}, key string) int64 {
+	if val, ok := attrs[key]; ok && val != nil {
+		return val.(int64)
+	}
+	return 0
+}
+
+func influxFloat64(attrs map[string]interface{}, key string) float64 {
+	if val, ok := attrs[key]; ok && val != nil {
+		return val.(float64)
+	}
+	return 0
+}
+
+func influxString(attrs map[string]interface{}, key string) string {
+	if val, ok := attrs[key]; ok && val != nil {
+		return val.(string)
+	}
+	return ""
 }
 
 // ZFSPoolCapacityHistory represents a simplified capacity data point for charts
