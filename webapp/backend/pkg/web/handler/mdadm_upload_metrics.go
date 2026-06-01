@@ -33,8 +33,8 @@ func UploadMdadmMetrics(c *gin.Context) {
 		return
 	}
 
-	if shouldNotifyForMDADMFailure(metrics) {
-		handleMDADMNotification(c, dbRepo, logger, uuid, metrics)
+	if shouldNotifyForMDADMFailure(&metrics) {
+		handleMDADMNotification(c, dbRepo, logger, uuid, &metrics)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
@@ -49,11 +49,11 @@ func bindMDADMMetrics(c *gin.Context) (collector.MDADMMetrics, bool) {
 	return metrics, true
 }
 
-func shouldNotifyForMDADMFailure(metrics collector.MDADMMetrics) bool {
+func shouldNotifyForMDADMFailure(metrics *collector.MDADMMetrics) bool {
 	return metrics.FailedDevices > 0 || strings.Contains(strings.ToLower(metrics.State), "degraded")
 }
 
-func handleMDADMNotification(c *gin.Context, dbRepo database.DeviceRepo, logger *logrus.Entry, uuid string, metrics collector.MDADMMetrics) {
+func handleMDADMNotification(c *gin.Context, dbRepo database.DeviceRepo, logger *logrus.Entry, uuid string, metrics *collector.MDADMMetrics) {
 	array, err := dbRepo.GetMdadmArrayDetails(c.Request.Context(), uuid)
 	if err != nil {
 		logger.Errorf("Failed to retrieve details for MDADM array %s during notification process: %v", uuid, err)
@@ -64,12 +64,12 @@ func handleMDADMNotification(c *gin.Context, dbRepo database.DeviceRepo, logger 
 	}
 
 	appConfig := c.MustGet("CONFIG").(config.Interface)
-	notification := notify.NewMDADMNotify(logger, appConfig, array, metrics)
+	notification := notify.NewMDADMNotify(logger, appConfig, array, *metrics)
 	notification.LoadDatabaseUrls(c.Request.Context(), dbRepo)
 	sendNotificationWithGate(c, dbRepo, logger, uuid, &notification)
 }
 
-func shouldSendMDADMNotification(c *gin.Context, dbRepo database.DeviceRepo, uuid string, metrics collector.MDADMMetrics) bool {
+func shouldSendMDADMNotification(c *gin.Context, dbRepo database.DeviceRepo, uuid string, metrics *collector.MDADMMetrics) bool {
 	history, err := dbRepo.GetMdadmMetricsHistory(c.Request.Context(), uuid, "day")
 	if err != nil || len(history) <= 1 {
 		return true

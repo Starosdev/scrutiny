@@ -32,9 +32,9 @@ var goos string
 var goarch string
 
 func main() {
-	cfg, err := config.Create()
-	if err != nil {
-		fmt.Printf("FATAL: %+v\n", err)
+	cfg, createErr := config.Create()
+	if createErr != nil {
+		fmt.Printf("FATAL: %+v\n", createErr)
 		os.Exit(1)
 	}
 
@@ -68,8 +68,7 @@ func main() {
 				Usage: "Run the scrutiny MDADM RAID array collector",
 				Action: func(c *cli.Context) error {
 					if c.IsSet("config") {
-						err = cfg.ReadConfig(c.String("config"), bootstrapLogger)
-						if err != nil {
+						if err := cfg.ReadConfig(c.String("config"), bootstrapLogger); err != nil {
 							fmt.Printf("Could not find config file at specified path: %s", c.String("config"))
 							return err
 						}
@@ -140,8 +139,7 @@ func main() {
 		},
 	}
 
-	err = app.Run(os.Args)
-	if err != nil {
+	if err := app.Run(os.Args); err != nil {
 		log.Fatal(color.HiRedString("ERROR: %v", err))
 	}
 }

@@ -171,7 +171,7 @@ func (d *Detect) parseVdevTree(output string, poolName string) []models.ZFSVdev 
 		}
 
 		vdev := d.buildZFSVdev(matches)
-		vdevs, currentParent = attachVdev(vdevs, currentParent, vdev, indent, baseIndent)
+		vdevs, currentParent = attachVdev(vdevs, currentParent, &vdev, indent, baseIndent)
 	}
 
 	return vdevs
@@ -214,13 +214,13 @@ func isZFSDevicePath(name string) bool {
 		strings.Contains(name, "disk")
 }
 
-func attachVdev(vdevs []models.ZFSVdev, currentParent *models.ZFSVdev, vdev models.ZFSVdev, indent int, baseIndent int) ([]models.ZFSVdev, *models.ZFSVdev) {
+func attachVdev(vdevs []models.ZFSVdev, currentParent *models.ZFSVdev, vdev *models.ZFSVdev, indent int, baseIndent int) ([]models.ZFSVdev, *models.ZFSVdev) {
 	if indent == baseIndent+2 {
-		vdevs = append(vdevs, vdev)
+		vdevs = append(vdevs, *vdev)
 		return vdevs, &vdevs[len(vdevs)-1]
 	}
 	if indent > baseIndent+2 && currentParent != nil {
-		currentParent.Children = append(currentParent.Children, vdev)
+		currentParent.Children = append(currentParent.Children, *vdev)
 	}
 	return vdevs, currentParent
 }

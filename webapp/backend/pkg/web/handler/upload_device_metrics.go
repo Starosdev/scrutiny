@@ -57,7 +57,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 		logger.Warnf("Failed to update has_forced_failure for device %s: %v", device.DeviceID, ffErr)
 	}
 
-	updatedDevice, ok = reconcileDeviceStatus(c, logger, deviceRepo, device.DeviceID, updatedDevice, smartData.Status)
+	updatedDevice, ok = reconcileDeviceStatus(c, logger, deviceRepo, device.DeviceID, &updatedDevice, smartData.Status)
 	if !ok {
 		return
 	}
@@ -86,7 +86,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 		deviceRepo,
 		appConfig,
 	) {
-		sendDeviceNotification(c, logger, appConfig, deviceRepo, device.DeviceID, updatedDevice)
+		sendDeviceNotification(c, logger, appConfig, deviceRepo, device.DeviceID, &updatedDevice)
 	}
 
 	maybeNotifyReplacementRiskFromSettings(c, logger, appConfig, deviceRepo, &updatedDevice, smartData.Attributes)
@@ -134,7 +134,7 @@ func validateSmartExitStatus(c *gin.Context, logger *logrus.Entry, deviceWWN str
 	return true
 }
 
-func reconcileDeviceStatus(c *gin.Context, logger *logrus.Entry, deviceRepo database.DeviceRepo, deviceID string, updatedDevice models.Device, smartStatus pkg.DeviceStatus) (models.Device, bool) {
+func reconcileDeviceStatus(c *gin.Context, logger *logrus.Entry, deviceRepo database.DeviceRepo, deviceID string, updatedDevice *models.Device, smartStatus pkg.DeviceStatus) (models.Device, bool) {
 	var (
 		device models.Device
 		err    error
@@ -149,7 +149,7 @@ func reconcileDeviceStatus(c *gin.Context, logger *logrus.Entry, deviceRepo data
 		return device, true
 	}
 	if updatedDevice.DeviceStatus == pkg.DeviceStatusPassed {
-		return updatedDevice, true
+		return *updatedDevice, true
 	}
 	device, err = deviceRepo.ResetDeviceStatus(c, deviceID)
 	if err != nil {
@@ -161,8 +161,8 @@ func reconcileDeviceStatus(c *gin.Context, logger *logrus.Entry, deviceRepo data
 	return device, true
 }
 
-func sendDeviceNotification(c *gin.Context, logger *logrus.Entry, appConfig config.Interface, deviceRepo database.DeviceRepo, deviceID string, updatedDevice models.Device) {
-	liveNotify := notify.New(logger, appConfig, updatedDevice, false)
+func sendDeviceNotification(c *gin.Context, logger *logrus.Entry, appConfig config.Interface, deviceRepo database.DeviceRepo, deviceID string, updatedDevice *models.Device) {
+	liveNotify := notify.New(logger, appConfig, *updatedDevice, false)
 	liveNotify.LoadDatabaseUrls(c, deviceRepo)
 	if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
 		if gate, ok := gateVal.(*notify.NotificationGate); ok {

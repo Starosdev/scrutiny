@@ -218,7 +218,7 @@ func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Con
 	// 3. Get merged overrides (config + database)
 	mergedOverrides := sr.GetMergedOverrides(ctx)
 
-	newStatus, hasForcedFailure := recalculateStatusFromSmart(device, latestSmart, mergedOverrides)
+	newStatus, hasForcedFailure := recalculateStatusFromSmart(&device, &latestSmart, mergedOverrides)
 
 	// Note: Delta evaluation for cumulative counter attributes (e.g., attribute 199) is already
 	// reflected in the stored InfluxDB data. When SaveSmartAttributes writes to InfluxDB, the
@@ -226,7 +226,7 @@ func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Con
 	// Re-applying it would overwrite the override-computed newStatus above.
 
 	// 5. Update device status if changed
-	if err := sr.persistRecalculatedDeviceStatus(ctx, deviceID, device, newStatus); err != nil {
+	if err := sr.persistRecalculatedDeviceStatus(ctx, deviceID, &device, newStatus); err != nil {
 		return err
 	}
 
@@ -241,7 +241,7 @@ func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Con
 	return nil
 }
 
-func recalculateStatusFromSmart(device models.Device, latestSmart measurements.Smart, mergedOverrides []overrides.AttributeOverride) (pkg.DeviceStatus, bool) {
+func recalculateStatusFromSmart(device *models.Device, latestSmart *measurements.Smart, mergedOverrides []overrides.AttributeOverride) (pkg.DeviceStatus, bool) {
 	newStatus := pkg.DeviceStatusPassed
 	hasForcedFailure := false
 	for attrID, attr := range latestSmart.Attributes {
@@ -259,7 +259,7 @@ func recalculateStatusFromSmart(device models.Device, latestSmart measurements.S
 	return newStatus, hasForcedFailure
 }
 
-func recalculatedAttributeStatus(device models.Device, attrID string, attr measurements.SmartAttribute, mergedOverrides []overrides.AttributeOverride) (pkg.AttributeStatus, bool, bool) {
+func recalculatedAttributeStatus(device *models.Device, attrID string, attr measurements.SmartAttribute, mergedOverrides []overrides.AttributeOverride) (pkg.AttributeStatus, bool, bool) {
 	attrStatus := attr.GetStatus()
 	result := overrides.ApplyWithOverrides(mergedOverrides, device.DeviceProtocol, attrID, device.WWN)
 	if result == nil {
@@ -275,7 +275,7 @@ func recalculatedAttributeStatus(device models.Device, attrID string, attr measu
 	return attrStatus, false, pkg.AttributeStatusHas(*result.Status, pkg.AttributeStatusFailedScrutiny)
 }
 
-func (sr *scrutinyRepository) persistRecalculatedDeviceStatus(ctx context.Context, deviceID string, device models.Device, newStatus pkg.DeviceStatus) error {
+func (sr *scrutinyRepository) persistRecalculatedDeviceStatus(ctx context.Context, deviceID string, device *models.Device, newStatus pkg.DeviceStatus) error {
 	if newStatus == pkg.DeviceStatusPassed && device.DeviceStatus != pkg.DeviceStatusPassed {
 		if _, err := sr.ResetDeviceStatus(ctx, deviceID); err != nil {
 			return fmt.Errorf("could not reset device status: %w", err)

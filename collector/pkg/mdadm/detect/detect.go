@@ -215,7 +215,7 @@ func (d *Detect) parseMdadmOutput(name string, output string) (models.MDADMArray
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		updateMDADMDetailLine(line, patterns, &array, &metrics)
+		updateMDADMDetailLine(line, &patterns, &array, &metrics)
 
 		if strings.Contains(line, "Number   Major   Minor   RaidDevice State") {
 			inDeviceList = true
@@ -240,8 +240,8 @@ type mdadmOutputPatterns struct {
 	working   *regexp.Regexp
 	failed    *regexp.Regexp
 	spare     *regexp.Regexp
-	progress  []*regexp.Regexp
 	arraySize *regexp.Regexp
+	progress  []*regexp.Regexp
 }
 
 func newMDADMOutputPatterns() mdadmOutputPatterns {
@@ -263,7 +263,7 @@ func newMDADMOutputPatterns() mdadmOutputPatterns {
 	}
 }
 
-func updateMDADMDetailLine(line string, patterns mdadmOutputPatterns, array *models.MDADMArray, metrics *models.MDADMMetrics) {
+func updateMDADMDetailLine(line string, patterns *mdadmOutputPatterns, array *models.MDADMArray, metrics *models.MDADMMetrics) {
 	switch {
 	case matchStringField(line, patterns.raidLevel, &array.Level):
 	case matchStringField(line, patterns.uuid, &array.UUID):

@@ -18,9 +18,9 @@ type BaseCollector struct {
 }
 
 type httpStatusError struct {
-	StatusCode int
 	Status     string
 	Body       string
+	StatusCode int
 }
 
 func (e *httpStatusError) Error() string {

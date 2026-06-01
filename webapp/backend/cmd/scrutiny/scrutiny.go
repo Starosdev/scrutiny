@@ -26,9 +26,9 @@ func main() {
 	// Create a bootstrap logger early so all startup errors use structured logging
 	bootstrapLogger := newBootstrapLogger()
 
-	cfg, err := config.Create()
-	if err != nil {
-		bootstrapLogger.Fatalf("FATAL: %+v", err)
+	cfg, createErr := config.Create()
+	if createErr != nil {
+		bootstrapLogger.Fatalf("FATAL: %+v", createErr)
 	}
 
 	if err := readOptionalConfig(cfg, resolveWebConfigPath(), bootstrapLogger); err != nil {
@@ -51,8 +51,7 @@ OPTIONS:
 
 	app := newCLIApp(cfg, bootstrapLogger)
 
-	err = app.Run(os.Args)
-	if err != nil {
+	if err := app.Run(os.Args); err != nil {
 		bootstrapLogger.Fatal(color.HiRedString("ERROR: %v", err))
 	}
 

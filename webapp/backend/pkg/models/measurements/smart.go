@@ -342,7 +342,7 @@ func (sm *Smart) ProcessAtaDeviceStatistics(cfg config.Interface, deviceStatisti
 
 // generate SmartNvmeAttribute entries from Scrutiny Collector Smart data.
 func (sm *Smart) ProcessNvmeSmartInfo(cfg config.Interface, nvmeSmartHealthInformationLog collector.NvmeSmartHealthInformationLog) {
-	sm.Attributes = buildNvmeAttributes(nvmeSmartHealthInformationLog)
+	sm.Attributes = buildNvmeAttributes(&nvmeSmartHealthInformationLog)
 
 	// Apply overrides and find analyzed attribute status
 	for attrId, val := range sm.Attributes {
@@ -354,7 +354,7 @@ func (sm *Smart) ProcessNvmeSmartInfo(cfg config.Interface, nvmeSmartHealthInfor
 	}
 }
 
-func buildNvmeAttributes(log collector.NvmeSmartHealthInformationLog) map[string]SmartAttribute {
+func buildNvmeAttributes(log *collector.NvmeSmartHealthInformationLog) map[string]SmartAttribute {
 	return map[string]SmartAttribute{
 		"critical_warning":     (&SmartNvmeAttribute{AttributeId: "critical_warning", Value: log.CriticalWarning, Threshold: 0}).PopulateAttributeStatus(),
 		"temperature":          (&SmartNvmeAttribute{AttributeId: "temperature", Value: log.Temperature, Threshold: -1}).PopulateAttributeStatus(),
