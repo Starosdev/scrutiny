@@ -24,8 +24,8 @@ func (d *Detect) Start() ([]models.Device, error) {
 
 	//inflate device info for detected devices.
 	for ndx, _ := range detectedDevices {
-		d.SmartCtlInfo(&detectedDevices[ndx])   //ignore errors.
-		populateUdevInfo(&detectedDevices[ndx]) //ignore errors.
+		_ = d.SmartCtlInfo(&detectedDevices[ndx])   // ignore errors.
+		_ = populateUdevInfo(&detectedDevices[ndx]) // ignore errors.
 	}
 
 	return FilterRedundantDevices(detectedDevices), nil
