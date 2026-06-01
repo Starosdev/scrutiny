@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.62.2](https://github.com/Starosdev/scrutiny/compare/v1.62.1...v1.62.2) (2026-06-01)
+
+### Bug Fixes
+
+* **collector:** harden metrics publishing, megaraid dedup, mobile drives tab, MX500 profile ([#586](https://github.com/Starosdev/scrutiny/issues/586)) ([6469511](https://github.com/Starosdev/scrutiny/commit/6469511626fcc8d0c92f3d105574be3917b11d44)), closes [#582](https://github.com/Starosdev/scrutiny/issues/582) [#580](https://github.com/Starosdev/scrutiny/issues/580) [#583](https://github.com/Starosdev/scrutiny/issues/583)
+
 ## [1.62.1](https://github.com/Starosdev/scrutiny/compare/v1.62.0...v1.62.1) (2026-05-29)
 
 ### Bug Fixes
