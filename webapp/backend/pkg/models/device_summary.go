@@ -24,6 +24,6 @@ type SmartSummary struct {
 	WearoutValue   *int64    `json:"wearout_value,omitempty"`
 	RiskScore      *int      `json:"risk_score,omitempty"`
 	RiskCategory   string    `json:"risk_category,omitempty"`
-	Temp           int64     `json:"temp,omitempty"`
+	Temp           int64     `json:"temp"`
 	PowerOnHours   int64     `json:"power_on_hours,omitempty"`
 }
