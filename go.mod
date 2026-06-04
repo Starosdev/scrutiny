@@ -8,7 +8,7 @@ require (
 	github.com/fatih/color v1.19.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/glebarez/sqlite v1.11.0
-	github.com/go-gormigrate/gormigrate/v2 v2.1.5
+	github.com/go-gormigrate/gormigrate/v2 v2.1.6
 	github.com/go-pdf/fpdf v0.9.0
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
