@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.62.3](https://github.com/Starosdev/scrutiny/compare/v1.62.2...v1.62.3) (2026-06-05)
+
+### Bug Fixes
+
+* **web:** preserve zero temperature readings ([5809ebf](https://github.com/Starosdev/scrutiny/commit/5809ebf3a932ac2bb273d224a977dbfc08d2dcd7))
+
 ## [1.62.2](https://github.com/Starosdev/scrutiny/compare/v1.62.1...v1.62.2) (2026-06-01)
 
 ### Bug Fixes
