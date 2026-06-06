@@ -323,7 +323,7 @@
       "vendor": "Crucial",
       "model_family": "Crucial BX500",
       "sample_count": 481,
-      "model_pattern": "^CT(120|240|480|500|1000|2000)BX500SSD1.*$",
+      "model_pattern": "^CT(120|240|480|500|1000|2000|4000)BX500SSD1.*$",
       "ata_counter_severity_overrides": {
         "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
         "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
