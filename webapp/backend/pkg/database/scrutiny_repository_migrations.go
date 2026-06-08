@@ -31,6 +31,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260514000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260516000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260523000000"
+	m20260608000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260608000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -1115,6 +1116,12 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 					  AND (serial_number IS NULL OR TRIM(serial_number) = '')
 					  AND (wwn IS NULL OR TRIM(wwn) = '')
 				`).Error
+			},
+		},
+		{
+			ID: "m20260608000000", // add heartbeat_enabled to notify_urls table
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&m20260608000000.NotifyUrl{})
 			},
 		},
 	})
