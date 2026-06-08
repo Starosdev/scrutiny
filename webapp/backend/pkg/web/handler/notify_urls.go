@@ -13,11 +13,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const errInvalidIDFormat = "Invalid ID format"
+
 type notifyUrlResponse struct {
-	URL    string `json:"url"`
-	Label  string `json:"label,omitempty"`
-	Source string `json:"source"`
-	ID     uint   `json:"id,omitempty"`
+	URL              string `json:"url"`
+	Label            string `json:"label,omitempty"`
+	Source           string `json:"source"`
+	HeartbeatEnabled bool   `json:"heartbeat_enabled"`
+	ID               uint   `json:"id,omitempty"`
 }
 
 // GetNotifyUrls returns a merged list of notification URLs from all sources.
@@ -48,10 +51,11 @@ func GetNotifyUrls(c *gin.Context) {
 	}
 	for _, u := range dbUrls {
 		result = append(result, notifyUrlResponse{
-			ID:     u.ID,
-			URL:    notify.MaskNotifyUrl(u.URL),
-			Label:  u.Label,
-			Source: u.Source,
+			ID:               u.ID,
+			URL:              notify.MaskNotifyUrl(u.URL),
+			Label:            u.Label,
+			Source:           u.Source,
+			HeartbeatEnabled: u.HeartbeatEnabled,
 		})
 	}
 
@@ -68,8 +72,9 @@ func SaveNotifyUrl(c *gin.Context) {
 	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 
 	var input struct {
-		URL   string `json:"url"`
-		Label string `json:"label"`
+		URL              string `json:"url"`
+		Label            string `json:"label"`
+		HeartbeatEnabled bool   `json:"heartbeat_enabled"`
 	}
 	if err := c.BindJSON(&input); err != nil {
 		logger.Errorln("Cannot parse notification URL:", err)
@@ -83,8 +88,9 @@ func SaveNotifyUrl(c *gin.Context) {
 	}
 
 	entry := &models.NotifyUrl{
-		URL:   input.URL,
-		Label: input.Label,
+		URL:              input.URL,
+		Label:            input.Label,
+		HeartbeatEnabled: input.HeartbeatEnabled,
 	}
 
 	if err := deviceRepo.SaveNotifyUrl(c, entry); err != nil {
@@ -96,10 +102,11 @@ func SaveNotifyUrl(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": notifyUrlResponse{
-			ID:     entry.ID,
-			URL:    notify.MaskNotifyUrl(entry.URL),
-			Label:  entry.Label,
-			Source: entry.Source,
+			ID:               entry.ID,
+			URL:              notify.MaskNotifyUrl(entry.URL),
+			Label:            entry.Label,
+			Source:           entry.Source,
+			HeartbeatEnabled: entry.HeartbeatEnabled,
 		},
 	})
 }
@@ -112,13 +119,42 @@ func DeleteNotifyUrl(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid ID format"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": errInvalidIDFormat})
 		return
 	}
 
 	if err := deviceRepo.DeleteNotifyUrl(c, uint(id)); err != nil {
 		logger.Errorln("Error deleting notification URL:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to delete notification URL"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// UpdateNotifyUrlHeartbeat toggles heartbeat_enabled for a notification URL by ID
+func UpdateNotifyUrlHeartbeat(c *gin.Context) {
+	logger := c.MustGet("LOGGER").(*logrus.Entry)
+	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
+
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": errInvalidIDFormat})
+		return
+	}
+
+	var input struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := c.BindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid request body"})
+		return
+	}
+
+	if err := deviceRepo.UpdateNotifyUrlHeartbeat(c, uint(id), input.Enabled); err != nil {
+		logger.Errorln("Error updating notification URL heartbeat:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to update notification URL"})
 		return
 	}
 
@@ -135,7 +171,7 @@ func TestNotifyUrl(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid ID format"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": errInvalidIDFormat})
 		return
 	}
 

@@ -152,4 +152,5 @@ type DeviceRepo interface {
 	GetNotifyUrls(ctx context.Context) ([]models.NotifyUrl, error)
 	SaveNotifyUrl(ctx context.Context, notifyUrl *models.NotifyUrl) error
 	DeleteNotifyUrl(ctx context.Context, id uint) error
+	UpdateNotifyUrlHeartbeat(ctx context.Context, id uint, enabled bool) error
 }
