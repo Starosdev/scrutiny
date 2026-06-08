@@ -587,6 +587,18 @@
                         </td>
                     </ng-container>
 
+                    <ng-container matColumnDef="heartbeat">
+                        <th mat-header-cell *matHeaderCellDef>Heartbeat</th>
+                        <td mat-cell *matCellDef="let entry">
+                            <mat-slide-toggle
+                                [checked]="entry.heartbeatEnabled"
+                                [disabled]="entry.source !== 'ui'"
+                                (change)="toggleHeartbeat(entry)"
+                                color="primary">
+                            </mat-slide-toggle>
+                        </td>
+                    </ng-container>
+
                     <ng-container matColumnDef="actions">
                         <th mat-header-cell *matHeaderCellDef></th>
                         <td mat-cell *matCellDef="let entry">
@@ -780,6 +792,15 @@
                         </mat-form-field>
                     </div>
                     }
+
+                    <div class="mt-4">
+                        <mat-slide-toggle
+                            [(ngModel)]="newUrlHeartbeatEnabled"
+                            color="primary"
+                            name="newUrlHeartbeatEnabled">
+                            Send heartbeat pings to this URL
+                        </mat-slide-toggle>
+                    </div>
 
                     <div class="flex gap-2 mt-4">
                         <button mat-raised-button color="primary" (click)="addNotifyUrl()" [disabled]="!buildNotifyUrl()">Save</button>

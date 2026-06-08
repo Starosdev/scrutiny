@@ -36,6 +36,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatExpansionPanel, MatExpansionPanelHeader, MatExpansionPanelTitle, MatExpansionPanelDescription } from '@angular/material/expansion';
 import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow } from '@angular/material/table';
 import { MatTooltip } from '@angular/material/tooltip';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
 
 @Component({
     selector: 'app-dashboard-settings',
@@ -73,6 +74,7 @@ import { MatTooltip } from '@angular/material/tooltip';
         MatRow,
         MatDialogActions,
         MatDialogClose,
+        MatSlideToggle,
     ],
 })
 export class DashboardSettingsComponent implements OnInit {
@@ -156,7 +158,7 @@ export class DashboardSettingsComponent implements OnInit {
 
     // Notification URL management
     notifyUrls: NotifyUrlEntry[] = [];
-    notifyUrlColumns: string[] = ['label', 'url', 'source', 'actions'];
+    notifyUrlColumns: string[] = ['label', 'url', 'source', 'heartbeat', 'actions'];
     showAddUrlForm = false;
     selectedEngine: 'shoutrrr' | 'apprise' = 'shoutrrr';
     selectedShoutrrrService: 'custom' | 'smtp' | 'discord' | 'slack' | 'telegram' = 'custom';
@@ -164,6 +166,7 @@ export class DashboardSettingsComponent implements OnInit {
     newUrlRaw = '';
     newAppriseUrlRaw = '';
     newUrlLabel = '';
+    newUrlHeartbeatEnabled = false;
     // SMTP fields
     smtpHost = '';
     smtpPort = '587';
@@ -367,6 +370,24 @@ export class DashboardSettingsComponent implements OnInit {
             });
     }
 
+    toggleHeartbeat(entry: NotifyUrlEntry): void {
+        if (!entry.id) {
+            return;
+        }
+        const newValue = !entry.heartbeatEnabled;
+        this._notifyUrlService
+            .setHeartbeatEnabled(entry.id, newValue)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe({
+                next: () => {
+                    entry.heartbeatEnabled = newValue;
+                },
+                error: () => {
+                    this.loadNotifyUrls();
+                },
+            });
+    }
+
     buildShoutrrrUrl(): string {
         switch (this.selectedShoutrrrService) {
             case 'custom':
@@ -447,7 +468,7 @@ export class DashboardSettingsComponent implements OnInit {
         const label = this.newUrlLabel.trim();
 
         this._notifyUrlService
-            .addNotifyUrl(url, label)
+            .addNotifyUrl(url, label, this.newUrlHeartbeatEnabled)
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe((saved) => {
                 this.notifyUrls = [...this.notifyUrls, saved];
@@ -463,6 +484,7 @@ export class DashboardSettingsComponent implements OnInit {
         this.newUrlRaw = '';
         this.newAppriseUrlRaw = '';
         this.newUrlLabel = '';
+        this.newUrlHeartbeatEnabled = false;
         this.smtpHost = '';
         this.smtpPort = '587';
         this.smtpUsername = '';

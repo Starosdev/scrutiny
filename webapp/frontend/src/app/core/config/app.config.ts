@@ -82,6 +82,7 @@ export interface NotifyUrlEntry {
     url: string;
     label?: string;
     source: NotifyUrlSource;
+    heartbeatEnabled?: boolean;
 }
 
 /**
