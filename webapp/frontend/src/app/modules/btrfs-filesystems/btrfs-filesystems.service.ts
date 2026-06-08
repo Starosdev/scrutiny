@@ -12,7 +12,7 @@ import { BtrfsFilesystemModel } from 'app/core/models/btrfs-filesystem-model';
 export class BtrfsFilesystemsService {
     private readonly _httpClient = inject(HttpClient);
 
-    private _data: BehaviorSubject<Record<string, BtrfsFilesystemModel>>;
+    private readonly _data: BehaviorSubject<Record<string, BtrfsFilesystemModel>>;
 
     constructor() {
         this._data = new BehaviorSubject(null);

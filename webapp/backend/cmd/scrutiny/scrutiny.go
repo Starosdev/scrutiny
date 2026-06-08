@@ -22,6 +22,11 @@ import (
 var goos string
 var goarch string
 
+const (
+	flagLogFile   = "log-file"
+	cfgKeyLogFile = "log.file"
+)
+
 func main() {
 	// Create a bootstrap logger early so all startup errors use structured logging
 	bootstrapLogger := newBootstrapLogger()
@@ -115,8 +120,8 @@ func newCLIApp(cfg config.Interface, bootstrapLogger *logrus.Entry) *cli.App {
 						cfg.Set("log.level", "DEBUG")
 					}
 
-					if c.IsSet("log-file") {
-						cfg.Set("log.file", c.String("log-file"))
+					if c.IsSet(flagLogFile) {
+						cfg.Set(cfgKeyLogFile, c.String(flagLogFile))
 					}
 
 					webLogger, logFile, err := CreateLogger(cfg)
@@ -141,7 +146,7 @@ func newCLIApp(cfg config.Interface, bootstrapLogger *logrus.Entry) *cli.App {
 						Usage: "Specify the path to the config file",
 					},
 					&cli.StringFlag{
-						Name:    "log-file",
+						Name:    flagLogFile,
 						Usage:   "Path to file for logging. Leave empty to use STDOUT",
 						Value:   "",
 						EnvVars: []string{"SCRUTINY_LOG_FILE"},
@@ -188,10 +193,10 @@ func CreateLogger(appConfig config.Interface) (*logrus.Entry, *os.File, error) {
 
 	var logFile *os.File
 	var err error
-	if appConfig.IsSet("log.file") && len(appConfig.GetString("log.file")) > 0 {
-		logFile, err = os.OpenFile(appConfig.GetString("log.file"), os.O_CREATE|os.O_WRONLY, 0644)
+	if appConfig.IsSet(cfgKeyLogFile) && len(appConfig.GetString(cfgKeyLogFile)) > 0 {
+		logFile, err = os.OpenFile(appConfig.GetString(cfgKeyLogFile), os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			logger.Logger.Errorf("Failed to open log file %s for output: %s", appConfig.GetString("log.file"), err)
+			logger.Logger.Errorf("Failed to open log file %s for output: %s", appConfig.GetString(cfgKeyLogFile), err)
 			return nil, logFile, err
 		}
 		logger.Logger.SetOutput(io.MultiWriter(os.Stderr, logFile))

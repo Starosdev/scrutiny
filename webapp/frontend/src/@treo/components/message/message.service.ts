@@ -6,8 +6,8 @@ import { BehaviorSubject, Observable } from 'rxjs';
 })
 export class TreoMessageService {
     // Private
-    private _onDismiss: BehaviorSubject<any>;
-    private _onShow: BehaviorSubject<any>;
+    private readonly _onDismiss: BehaviorSubject<any>;
+    private readonly _onShow: BehaviorSubject<any>;
 
     /**
      * Constructor

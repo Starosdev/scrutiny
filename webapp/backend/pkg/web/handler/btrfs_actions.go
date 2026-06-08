@@ -9,6 +9,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const msgInvalidBtrfsUUID = "Invalid Btrfs UUID format: %s"
+
 func ArchiveBtrfsFilesystem(c *gin.Context) {
 	updateBtrfsArchived(c, true)
 }
@@ -31,7 +33,7 @@ func UpdateBtrfsFilesystemLabel(c *gin.Context) {
 
 	uuid := c.Param("uuid")
 	if err := validation.ValidateUUID(uuid); err != nil {
-		logger.Warnf("Invalid Btrfs UUID format: %s", uuid)
+		logger.Warnf(msgInvalidBtrfsUUID, uuid)
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
@@ -60,7 +62,7 @@ func DeleteBtrfsFilesystem(c *gin.Context) {
 
 	uuid := c.Param("uuid")
 	if err := validation.ValidateUUID(uuid); err != nil {
-		logger.Warnf("Invalid Btrfs UUID format: %s", uuid)
+		logger.Warnf(msgInvalidBtrfsUUID, uuid)
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
@@ -79,7 +81,7 @@ func updateBtrfsArchived(c *gin.Context, archived bool) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 	uuid := c.Param("uuid")
 	if err := validation.ValidateUUID(uuid); err != nil {
-		logger.Warnf("Invalid Btrfs UUID format: %s", uuid)
+		logger.Warnf(msgInvalidBtrfsUUID, uuid)
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
@@ -96,7 +98,7 @@ func updateBtrfsMuted(c *gin.Context, muted bool) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 	uuid := c.Param("uuid")
 	if err := validation.ValidateUUID(uuid); err != nil {
-		logger.Warnf("Invalid Btrfs UUID format: %s", uuid)
+		logger.Warnf(msgInvalidBtrfsUUID, uuid)
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}

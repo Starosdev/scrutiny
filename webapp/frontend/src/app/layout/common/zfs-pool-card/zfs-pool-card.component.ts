@@ -35,7 +35,7 @@ export class ZFSPoolCardComponent {
     @Output() poolUnarchived = new EventEmitter<string>();
     @Output() poolDeleted = new EventEmitter<string>();
 
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     // -----------------------------------------------------------------------------------------------------
     // @ Public methods

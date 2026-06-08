@@ -29,7 +29,7 @@ export class BtrfsFilesystemsComponent implements OnInit, OnDestroy {
     config: AppConfig;
     showArchived: boolean;
 
-    private _unsubscribeAll: Subject<void> = new Subject();
+    private readonly _unsubscribeAll: Subject<void> = new Subject();
 
     ngOnInit(): void {
         this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {

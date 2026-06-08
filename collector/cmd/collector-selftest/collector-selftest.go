@@ -20,6 +20,8 @@ import (
 var goos string
 var goarch string
 
+const flagLogFile = "log-file"
+
 func main() {
 
 	cli.CommandHelpTemplate = `NAME:
@@ -89,10 +91,10 @@ OPTIONS:
 						logrus.SetLevel(logrus.InfoLevel)
 					}
 
-					if c.IsSet("log-file") {
-						logFile, err := os.OpenFile(c.String("log-file"), os.O_CREATE|os.O_WRONLY, 0644)
+					if c.IsSet(flagLogFile) {
+						logFile, err := os.OpenFile(c.String(flagLogFile), os.O_CREATE|os.O_WRONLY, 0644)
 						if err != nil {
-							logrus.Errorf("Failed to open log file %s for output: %s", c.String("log-file"), err)
+							logrus.Errorf("Failed to open log file %s for output: %s", c.String(flagLogFile), err)
 							return err
 						}
 						defer logFile.Close()
@@ -122,7 +124,7 @@ OPTIONS:
 					},
 
 					&cli.StringFlag{
-						Name:    "log-file",
+						Name:    flagLogFile,
 						Usage:   "Path to file for logging. Leave empty to use STDOUT",
 						Value:   "",
 						EnvVars: []string{"COLLECTOR_LOG_FILE"},

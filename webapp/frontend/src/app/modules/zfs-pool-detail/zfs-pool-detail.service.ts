@@ -12,7 +12,7 @@ export class ZFSPoolDetailService {
     private readonly _httpClient = inject(HttpClient);
 
     // Observables
-    private _data: BehaviorSubject<ZFSPoolDetailsResponseWrapper>;
+    private readonly _data: BehaviorSubject<ZFSPoolDetailsResponseWrapper>;
 
     constructor() {
         this._data = new BehaviorSubject(null);

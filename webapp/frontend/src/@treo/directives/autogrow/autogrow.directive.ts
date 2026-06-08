@@ -14,7 +14,7 @@ export class TreoAutogrowDirective implements OnInit, OnDestroy {
 
     // Private
     private _padding: number;
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     /**
      * Constructor

@@ -74,7 +74,7 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
     isMobile: boolean = false;
 
     @ViewChild(MatSort) sort: MatSort;
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     constructor() {
         this._unsubscribeAll = new Subject();

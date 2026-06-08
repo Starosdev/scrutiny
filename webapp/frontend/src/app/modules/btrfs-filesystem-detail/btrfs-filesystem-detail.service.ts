@@ -11,7 +11,7 @@ import { BtrfsFilesystemDetailsResponseWrapper } from 'app/core/models/btrfs-fil
 export class BtrfsFilesystemDetailService {
     private readonly _httpClient = inject(HttpClient);
 
-    private _data: BehaviorSubject<BtrfsFilesystemDetailsResponseWrapper>;
+    private readonly _data: BehaviorSubject<BtrfsFilesystemDetailsResponseWrapper>;
 
     constructor() {
         this._data = new BehaviorSubject(null);

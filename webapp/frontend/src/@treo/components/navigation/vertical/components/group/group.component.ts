@@ -44,7 +44,7 @@ export class TreoVerticalNavigationGroupItemComponent implements OnInit, OnDestr
 
     // Private
     private _treoVerticalNavigationComponent: TreoVerticalNavigationComponent;
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     /**
      * Constructor

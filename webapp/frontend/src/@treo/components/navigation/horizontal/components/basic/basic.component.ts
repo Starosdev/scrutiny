@@ -30,7 +30,7 @@ export class TreoHorizontalNavigationBasicItemComponent implements OnInit, OnDes
 
     // Private
     private _treoHorizontalNavigationComponent: TreoHorizontalNavigationComponent;
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     /**
      * Constructor

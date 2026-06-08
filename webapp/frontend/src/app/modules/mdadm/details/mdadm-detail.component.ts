@@ -33,7 +33,7 @@ export class MDADMDetailComponent implements OnInit, OnDestroy {
     chartOptions: ApexOptions;
     config: AppConfig;
 
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     constructor() {
         this._unsubscribeAll = new Subject();

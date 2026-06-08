@@ -5,8 +5,8 @@ import { filter, take } from 'rxjs/operators';
 
 @Injectable()
 export class TreoSplashScreenService {
-    private _document = inject(DOCUMENT);
-    private _router = inject(Router);
+    private readonly _document = inject(DOCUMENT);
+    private readonly _router = inject(Router);
 
     /**
      * Constructor

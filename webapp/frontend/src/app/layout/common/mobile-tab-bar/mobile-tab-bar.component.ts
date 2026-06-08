@@ -36,7 +36,7 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
     isDetailPage: boolean = false;
     drivesNeedAttention: number = 0;
 
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     constructor() {
         this._unsubscribeAll = new Subject();

@@ -98,8 +98,8 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
     private _asideOverlay: HTMLElement | null;
     private _treoScrollbarDirectives: QueryList<TreoScrollbarDirective>;
     private _treoScrollbarDirectivesSubscription: Subscription;
-    private _handleAsideOverlayClick: any;
-    private _handleOverlayClick: any;
+    private readonly _handleAsideOverlayClick: any;
+    private readonly _handleOverlayClick: any;
     private _inner: boolean;
     private _mode: TreoVerticalNavigationMode;
     private _navigation: TreoNavigationItem[];
@@ -107,15 +107,15 @@ export class TreoVerticalNavigationComponent implements OnInit, AfterViewInit, O
     private _overlay: HTMLElement | null;
     private _player: AnimationPlayer;
     private _position: TreoVerticalNavigationPosition;
-    private _scrollStrategy: ScrollStrategy;
+    private readonly _scrollStrategy: ScrollStrategy;
     private _transparentOverlay: boolean | '';
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     @HostBinding('class.treo-vertical-navigation-animations-enabled')
     protected _animationsEnabled: boolean;
 
     @ViewChild('navigationContent')
-    private _navigationContentEl: ElementRef;
+    private readonly _navigationContentEl: ElementRef;
 
     /**
      * Constructor

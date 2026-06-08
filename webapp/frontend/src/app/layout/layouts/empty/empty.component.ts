@@ -11,7 +11,7 @@ import { RouterOutlet } from '@angular/router';
 })
 export class EmptyLayoutComponent implements OnDestroy {
     // Private
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     /**
      * Constructor

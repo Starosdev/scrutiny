@@ -41,7 +41,7 @@ export class MobileHomeComponent implements OnInit, OnDestroy {
     attentionItems: AttentionItem[] = [];
     loaded: boolean = false;
 
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     constructor() {
         this._unsubscribeAll = new Subject();

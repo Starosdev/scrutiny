@@ -13,7 +13,7 @@ export class ZFSPoolsService {
     private readonly _httpClient = inject(HttpClient);
 
     // Observables
-    private _data: BehaviorSubject<Record<string, ZFSPoolModel>>;
+    private readonly _data: BehaviorSubject<Record<string, ZFSPoolModel>>;
 
     constructor() {
         this._data = new BehaviorSubject(null);

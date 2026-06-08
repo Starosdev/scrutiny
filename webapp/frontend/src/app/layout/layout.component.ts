@@ -24,9 +24,9 @@ export class LayoutComponent implements OnInit, OnDestroy {
     private readonly _activatedRoute = inject(ActivatedRoute);
     private readonly _scrutinyConfigService = inject(ScrutinyConfigService);
     private readonly _treoDrawerService = inject(TreoDrawerService);
-    private _document = inject(DOCUMENT);
-    private _router = inject(Router);
-    private _treoMediaWatcherService = inject(TreoMediaWatcherService);
+    private readonly _document = inject(DOCUMENT);
+    private readonly _router = inject(Router);
+    private readonly _treoMediaWatcherService = inject(TreoMediaWatcherService);
 
     config: AppConfig;
     layout: Layout;
@@ -34,8 +34,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
     // Private
     private _isMobile: boolean = false;
-    private _unsubscribeAll: Subject<void>;
-    private systemPrefersDark: boolean;
+    private readonly _unsubscribeAll: Subject<void>;
+    private readonly systemPrefersDark: boolean;
 
     /**
      * Constructor

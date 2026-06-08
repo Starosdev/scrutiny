@@ -17,7 +17,7 @@ export class DashboardDeviceDeleteDialogComponent {
         deviceId: string;
         title: string;
     }>(MAT_DIALOG_DATA);
-    private _deleteService = inject(DashboardDeviceDeleteDialogService);
+    private readonly _deleteService = inject(DashboardDeviceDeleteDialogService);
 
     onDeleteClick(): void {
         this._deleteService.deleteDevice(this.data.deviceId).subscribe((data) => {

@@ -6,8 +6,8 @@ import { TreoNavigationItem } from '@treo/components/navigation/navigation.types
 })
 export class TreoNavigationService {
     // Private
-    private _componentRegistry: Map<string, any>;
-    private _navigationStore: Map<string, TreoNavigationItem[]>;
+    private readonly _componentRegistry: Map<string, any>;
+    private readonly _navigationStore: Map<string, TreoNavigationItem[]>;
 
     /**
      * Constructor

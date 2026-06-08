@@ -27,9 +27,9 @@ export class AuthService {
     private readonly _http = inject(HttpClient);
     private readonly _router = inject(Router);
 
-    private _authEnabled = new BehaviorSubject<boolean>(false);
-    private _isLoggedIn = new BehaviorSubject<boolean>(false);
-    private _loginMethods = new BehaviorSubject<string[]>([]);
+    private readonly _authEnabled = new BehaviorSubject<boolean>(false);
+    private readonly _isLoggedIn = new BehaviorSubject<boolean>(false);
+    private readonly _loginMethods = new BehaviorSubject<string[]>([]);
     private _initialized = false;
 
     readonly authEnabled$ = this._authEnabled.asObservable();

@@ -30,7 +30,7 @@ export class ZFSPoolsComponent implements OnInit, OnDestroy {
     config: AppConfig;
     showArchived: boolean;
 
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     constructor() {
         this._unsubscribeAll = new Subject();
