@@ -7,7 +7,7 @@ import { treoBreakpoints } from '@treo/tailwind/exported/variables';
 export class TreoMediaWatcherService {
     private readonly _breakpointObserver = inject(BreakpointObserver);
 
-    private _onMediaChange: BehaviorSubject<{ matchingAliases: string[]; matchingRules: any }>;
+    private readonly _onMediaChange: BehaviorSubject<{ matchingAliases: string[]; matchingRules: any }>;
 
     /**
      * Constructor

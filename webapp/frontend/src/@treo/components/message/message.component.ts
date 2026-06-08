@@ -48,7 +48,7 @@ export class TreoMessageComponent implements OnInit, OnDestroy {
     private _dismissed: null | boolean;
     private _showIcon: boolean;
     private _type: TreoMessageType;
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     /**
      * Constructor

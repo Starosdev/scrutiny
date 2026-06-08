@@ -12,7 +12,7 @@ export class MDADMService {
     private readonly _httpClient = inject(HttpClient);
 
     // Observables
-    private _data: BehaviorSubject<MDADMArrayModel[]>;
+    private readonly _data: BehaviorSubject<MDADMArrayModel[]>;
 
     constructor() {
         this._data = new BehaviorSubject(null);

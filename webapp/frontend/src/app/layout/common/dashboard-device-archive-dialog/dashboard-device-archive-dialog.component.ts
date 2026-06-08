@@ -17,7 +17,7 @@ export class DashboardDeviceArchiveDialogComponent {
         deviceId: string;
         title: string;
     }>(MAT_DIALOG_DATA);
-    private _archiveService = inject(DashboardDeviceArchiveDialogService);
+    private readonly _archiveService = inject(DashboardDeviceArchiveDialogService);
 
     onArchiveClick(): void {
         this._archiveService.archiveDevice(this.data.deviceId).subscribe((data) => {

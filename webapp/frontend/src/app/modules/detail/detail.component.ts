@@ -148,7 +148,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     config: AppConfig;
 
     activeOverrides: AttributeOverride[] = [];
-    private _overrideMap: Map<string, AttributeOverride> = new Map();
+    private readonly _overrideMap: Map<string, AttributeOverride> = new Map();
     onlyCritical = true;
     // data: any;
     expandedAttribute: SmartAttributeModel | null;
@@ -187,8 +187,8 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     latencyChartOptions: Partial<ApexOptions>;
 
     // Private
-    private _unsubscribeAll: Subject<void>;
-    private systemPrefersDark: boolean;
+    private readonly _unsubscribeAll: Subject<void>;
+    private readonly systemPrefersDark: boolean;
 
     readonly humanizeDuration = humanizeDuration;
 

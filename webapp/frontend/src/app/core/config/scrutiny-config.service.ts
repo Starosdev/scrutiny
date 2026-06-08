@@ -14,8 +14,8 @@ export class ScrutinyConfigService {
     private readonly _httpClient = inject(HttpClient);
 
     // Private
-    private _config: BehaviorSubject<AppConfig>;
-    private _defaultConfig: AppConfig;
+    private readonly _config: BehaviorSubject<AppConfig>;
+    private readonly _defaultConfig: AppConfig;
     private _hasLoadedRemoteConfig = false;
 
     constructor() {

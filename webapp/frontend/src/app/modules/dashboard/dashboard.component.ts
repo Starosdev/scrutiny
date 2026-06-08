@@ -77,7 +77,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     countdown: number = 0;
 
     // Private
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
     private readonly systemPrefersDark: boolean;
     @ViewChild('tempChart', { static: false }) tempChart: ChartComponent;
 

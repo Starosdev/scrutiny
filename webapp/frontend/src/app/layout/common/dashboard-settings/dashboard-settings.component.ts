@@ -182,7 +182,7 @@ export class DashboardSettingsComponent implements OnInit {
     testingUrlId: number | null = null;
 
     // Private
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     constructor() {
         // Set the private defaults

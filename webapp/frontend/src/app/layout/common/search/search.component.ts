@@ -40,7 +40,7 @@ export class SearchComponent implements OnInit, OnDestroy {
     // Private
     private _appearance: 'basic' | 'bar';
     private _opened: boolean;
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     /**
      * Constructor

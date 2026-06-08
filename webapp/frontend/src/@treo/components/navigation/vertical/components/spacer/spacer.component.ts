@@ -25,7 +25,7 @@ export class TreoVerticalNavigationSpacerItemComponent implements OnInit, OnDest
 
     // Private
     private _treoVerticalNavigationComponent: TreoVerticalNavigationComponent;
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     /**
      * Constructor

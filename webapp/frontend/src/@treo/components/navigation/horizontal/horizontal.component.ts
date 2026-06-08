@@ -29,7 +29,7 @@ export class TreoHorizontalNavigationComponent implements OnInit, OnDestroy {
 
     // Private
     private _navigation: TreoNavigationItem[];
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     /**
      * Constructor

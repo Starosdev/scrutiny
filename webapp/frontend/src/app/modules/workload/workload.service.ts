@@ -11,7 +11,7 @@ import { WorkloadInsightModel, WorkloadResponseWrapper } from 'app/core/models/w
 export class WorkloadService {
     private readonly _httpClient = inject(HttpClient);
 
-    private _data: BehaviorSubject<Record<string, WorkloadInsightModel>>;
+    private readonly _data: BehaviorSubject<Record<string, WorkloadInsightModel>>;
 
     constructor() {
         this._data = new BehaviorSubject(null);

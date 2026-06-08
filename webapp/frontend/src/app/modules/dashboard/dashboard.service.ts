@@ -16,7 +16,7 @@ export class DashboardService {
     private readonly _httpClient = inject(HttpClient);
 
     // Observables
-    private _data: BehaviorSubject<{ [p: string]: DeviceSummaryModel }>;
+    private readonly _data: BehaviorSubject<{ [p: string]: DeviceSummaryModel }>;
 
     /**
      * Constructor

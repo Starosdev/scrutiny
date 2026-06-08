@@ -43,7 +43,7 @@ export class DashboardDeviceComponent implements OnInit {
 
     config: AppConfig;
 
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     deviceStatusForModelWithThreshold = DeviceStatusPipe.deviceStatusForModelWithThreshold;
 

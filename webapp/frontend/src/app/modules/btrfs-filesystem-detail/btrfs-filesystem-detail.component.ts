@@ -33,7 +33,7 @@ export class BtrfsFilesystemDetailComponent implements OnInit, OnDestroy {
     metricsHistory: BtrfsMetricsHistoryModel[];
     usageOptions: ApexOptions;
     config: AppConfig;
-    private _unsubscribeAll: Subject<void> = new Subject();
+    private readonly _unsubscribeAll: Subject<void> = new Subject();
 
     ngOnInit(): void {
         this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {

@@ -14,7 +14,7 @@ export class DetailService {
     private readonly _httpClient = inject(HttpClient);
 
     // Observables
-    private _data: BehaviorSubject<DeviceDetailsResponseWrapper>;
+    private readonly _data: BehaviorSubject<DeviceDetailsResponseWrapper>;
 
     /**
      * Constructor

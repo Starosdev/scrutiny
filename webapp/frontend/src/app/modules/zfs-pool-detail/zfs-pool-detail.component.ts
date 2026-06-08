@@ -36,7 +36,7 @@ export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
     capacityOptions: ApexOptions;
     config: AppConfig;
 
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     constructor() {
         this._unsubscribeAll = new Subject();

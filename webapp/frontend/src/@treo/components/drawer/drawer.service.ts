@@ -6,7 +6,7 @@ import { TreoDrawerComponent } from '@treo/components/drawer/drawer.component';
 })
 export class TreoDrawerService {
     // Private
-    private _componentRegistry: Map<string, TreoDrawerComponent>;
+    private readonly _componentRegistry: Map<string, TreoDrawerComponent>;
 
     /**
      * Constructor

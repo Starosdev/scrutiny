@@ -57,29 +57,29 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy {
 
     // Private
     @HostBinding('class.treo-date-range')
-    private _defaultClassNames;
+    private readonly _defaultClassNames;
 
     @ViewChild('matMonthView1')
-    private _matMonthView1: MatMonthView<any>;
+    private readonly _matMonthView1: MatMonthView<any>;
 
     @ViewChild('matMonthView2')
-    private _matMonthView2: MatMonthView<any>;
+    private readonly _matMonthView2: MatMonthView<any>;
 
     @ViewChild('pickerPanelOrigin', { read: ElementRef })
-    private _pickerPanelOrigin: ElementRef;
+    private readonly _pickerPanelOrigin: ElementRef;
 
     @ViewChild('pickerPanel')
-    private _pickerPanel: TemplateRef<any>;
+    private readonly _pickerPanel: TemplateRef<any>;
 
     private _dateFormat: string;
     private _onChange: (value: any) => void;
     private _onTouched: (value: any) => void;
     private _programmaticChange: boolean;
-    private _range: { start: Dayjs; end: Dayjs };
+    private readonly _range: { start: Dayjs; end: Dayjs };
     private _timeFormat: string;
     private _timeRange: boolean;
     private readonly _timeRegExp: RegExp;
-    private _unsubscribeAll: Subject<void>;
+    private readonly _unsubscribeAll: Subject<void>;
 
     /**
      * Constructor
