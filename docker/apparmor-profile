@@ -26,11 +26,37 @@ profile scrutiny-collector flags=(attach_disconnected,mediate_deleted) {
   / r,
   /** rwlk,
 
+  # Binaries needed by entrypoint (su for privilege drop, smartctl, collector)
+  /usr/bin/su ix,
+  /usr/bin/sed ix,
+  /usr/bin/sleep ix,
+  /usr/sbin/smartctl ix,
+  /opt/scrutiny/bin/scrutiny-collector-metrics ix,
+  /bin/sh ix,
+  /bin/bash ix,
+  /usr/bin/sh ix,
+  /usr/bin/bash ix,
+  /usr/sbin/cron ix,
+  /usr/sbin/crond ix,
+
+  # Auth/user resolution required for su privilege drop
+  /etc/passwd r,
+  /etc/group r,
+  /etc/nsswitch.conf r,
+  /etc/pam.d/** r,
+  /etc/login.defs r,
+  /lib/**/*.so* mr,
+  /usr/lib/**/*.so* mr,
+  /var/log/btmp rw,
+  /var/log/wtmp rw,
+  /var/log/lastlog rw,
+  /usr/sbin/unix_chkpwd ix,
+
   # Block device nodes passed via --device (read-only)
-  /dev/sd*   r,
-  /dev/hd*   r,
+  /dev/sd*  r,
+  /dev/hd*  r,
   /dev/nvme* r,
-  /dev/sg*   r,
+  /dev/sg*  r,
   /dev/bsg/** r,
   /dev/disk/** r,
 
@@ -53,6 +79,9 @@ profile scrutiny-collector flags=(attach_disconnected,mediate_deleted) {
   # Required for NVMe ioctl access
   capability sys_admin,
 
+  # Required for traversing paths not owned by the container user
+  capability dac_read_search,
+
   # Standard capabilities expected by container processes
   capability dac_override,
   capability fowner,
@@ -68,14 +97,13 @@ profile scrutiny-collector flags=(attach_disconnected,mediate_deleted) {
   capability audit_write,
   capability setfcap,
 
-  # ---------- network ----------
+  # ---------- network & signals ----------
 
   network,
 
-  # ---------- signals ----------
-
   signal (receive) peer=unconfined,
   signal (send,receive) peer=scrutiny-collector,
+  signal (receive) peer=runc,
 
   # ---------- deny rules ----------
 
