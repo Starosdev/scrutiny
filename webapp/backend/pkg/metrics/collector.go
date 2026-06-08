@@ -203,6 +203,7 @@ func (mc *Collector) GetRegistry() *prometheus.Registry {
 }
 
 // Describe implements prometheus.Collector interface.
+// Intentionally empty: this collector declares metrics dynamically in Collect and uses an unchecked registry.
 func (mc *Collector) Describe(ch chan<- *prometheus.Desc) {}
 
 // Collect implements prometheus.Collector interface.

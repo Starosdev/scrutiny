@@ -12,6 +12,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const mdadmUUIDFilter = "uuid = ?"
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // MDADM Array
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -23,7 +25,7 @@ func (sr *scrutinyRepository) RegisterMdadmArray(ctx context.Context, array mode
 
 	// Check if array already exists
 	var existing models.MDADMArray
-	result := sr.gormClient.WithContext(ctx).Where("uuid = ?", array.UUID).First(&existing)
+	result := sr.gormClient.WithContext(ctx).Where(mdadmUUIDFilter, array.UUID).First(&existing)
 
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		// New array - create it
@@ -63,7 +65,7 @@ func (sr *scrutinyRepository) GetMdadmArrays(ctx context.Context) ([]models.MDAD
 // GetMdadmArrayDetails returns a single MDADM array
 func (sr *scrutinyRepository) GetMdadmArrayDetails(ctx context.Context, uuid string) (models.MDADMArray, error) {
 	var array models.MDADMArray
-	if err := sr.gormClient.WithContext(ctx).Where("uuid = ?", uuid).First(&array).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where(mdadmUUIDFilter, uuid).First(&array).Error; err != nil {
 		return models.MDADMArray{}, err
 	}
 	return array, nil
@@ -71,23 +73,23 @@ func (sr *scrutinyRepository) GetMdadmArrayDetails(ctx context.Context, uuid str
 
 // UpdateMdadmArrayArchived updates the archived state of an MDADM array
 func (sr *scrutinyRepository) UpdateMdadmArrayArchived(ctx context.Context, uuid string, archived bool) error {
-	return sr.gormClient.WithContext(ctx).Model(&models.MDADMArray{}).Where("uuid = ?", uuid).Update("archived", archived).Error
+	return sr.gormClient.WithContext(ctx).Model(&models.MDADMArray{}).Where(mdadmUUIDFilter, uuid).Update("archived", archived).Error
 }
 
 // UpdateMdadmArrayMuted updates the muted state of an MDADM array
 func (sr *scrutinyRepository) UpdateMdadmArrayMuted(ctx context.Context, uuid string, muted bool) error {
-	return sr.gormClient.WithContext(ctx).Model(&models.MDADMArray{}).Where("uuid = ?", uuid).Update("muted", muted).Error
+	return sr.gormClient.WithContext(ctx).Model(&models.MDADMArray{}).Where(mdadmUUIDFilter, uuid).Update("muted", muted).Error
 }
 
 // UpdateMdadmArrayLabel updates the label of an MDADM array
 func (sr *scrutinyRepository) UpdateMdadmArrayLabel(ctx context.Context, uuid string, label string) error {
-	return sr.gormClient.WithContext(ctx).Model(&models.MDADMArray{}).Where("uuid = ?", uuid).Update("label", label).Error
+	return sr.gormClient.WithContext(ctx).Model(&models.MDADMArray{}).Where(mdadmUUIDFilter, uuid).Update("label", label).Error
 }
 
 // DeleteMdadmArray deletes an MDADM array and its associated data
 func (sr *scrutinyRepository) DeleteMdadmArray(ctx context.Context, uuid string) error {
 	// Delete relational metadata
-	if err := sr.gormClient.WithContext(ctx).Where("uuid = ?", uuid).Delete(&models.MDADMArray{}).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where(mdadmUUIDFilter, uuid).Delete(&models.MDADMArray{}).Error; err != nil {
 		return err
 	}
 
@@ -138,7 +140,7 @@ func (sr *scrutinyRepository) GetMdadmArraysSummary(ctx context.Context) (map[st
 func (sr *scrutinyRepository) SaveMdadmMetrics(ctx context.Context, uuid string, metrics collector.MDADMMetrics) error {
 	// Get array name for tagging
 	var array models.MDADMArray
-	if err := sr.gormClient.WithContext(ctx).Where("uuid = ?", uuid).First(&array).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Where(mdadmUUIDFilter, uuid).First(&array).Error; err != nil {
 		return err
 	}
 

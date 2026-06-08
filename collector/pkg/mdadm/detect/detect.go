@@ -16,6 +16,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const mdadmDetailFlag = "--detail"
+
 // Detect handles MDADM RAID array detection
 type Detect struct {
 	Logger *logrus.Entry
@@ -100,9 +102,9 @@ func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMet
 
 	var cmd *exec.Cmd
 	if os.Getuid() == 0 {
-		cmd = exec.Command("mdadm", "--detail", devicePath)
+		cmd = exec.Command("mdadm", mdadmDetailFlag, devicePath)
 	} else {
-		cmd = exec.Command("sudo", "mdadm", "--detail", devicePath)
+		cmd = exec.Command("sudo", "mdadm", mdadmDetailFlag, devicePath)
 	}
 
 	output, err := cmd.CombinedOutput()
@@ -151,9 +153,9 @@ func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMet
 func (d *Detect) getArrayUUIDFromExport(devicePath string) (string, error) {
 	var cmd *exec.Cmd
 	if os.Getuid() == 0 {
-		cmd = exec.Command("mdadm", "--detail", "--export", devicePath)
+		cmd = exec.Command("mdadm", mdadmDetailFlag, "--export", devicePath)
 	} else {
-		cmd = exec.Command("sudo", "mdadm", "--detail", "--export", devicePath)
+		cmd = exec.Command("sudo", "mdadm", mdadmDetailFlag, "--export", devicePath)
 	}
 
 	output, err := cmd.CombinedOutput()
