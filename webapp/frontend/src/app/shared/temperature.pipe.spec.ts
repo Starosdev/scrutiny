@@ -57,6 +57,12 @@ describe('TemperaturePipe', () => {
     describe('#formatTemperature', () => {
         const testCases = [
             {
+                c: 0,
+                unit: 'celsius',
+                includeUnits: true,
+                result: '0°C',
+            },
+            {
                 c: 26.67,
                 unit: 'celsius',
                 includeUnits: true,
@@ -99,6 +105,29 @@ describe('TemperaturePipe', () => {
                 const formatted = TemperaturePipe.formatTemperature(test.c, test.unit, test.includeUnits);
                 expect(formatted).toEqual(test.result);
             });
+        });
+
+        it('should display a placeholder for missing temperature values', () => {
+            expect(TemperaturePipe.formatTemperature(undefined, 'celsius', true)).toEqual('--');
+            expect(TemperaturePipe.formatTemperature(null, 'celsius', true)).toEqual('--');
+            expect(TemperaturePipe.formatTemperature(Number.NaN, 'celsius', true)).toEqual('--');
+        });
+    });
+
+    describe('#transform', () => {
+        it('should preserve zero celsius readings', () => {
+            const pipe = new TemperaturePipe();
+
+            expect(pipe.transform(0, 'celsius', true)).toEqual('0°C');
+            expect(pipe.transform(0, 'fahrenheit', true)).toEqual('32°F');
+        });
+
+        it('should display a placeholder for missing temperature values', () => {
+            const pipe = new TemperaturePipe();
+
+            expect(pipe.transform(undefined, 'celsius', true)).toEqual('--');
+            expect(pipe.transform(null, 'celsius', true)).toEqual('--');
+            expect(pipe.transform(Number.POSITIVE_INFINITY, 'celsius', true)).toEqual('--');
         });
     });
 });

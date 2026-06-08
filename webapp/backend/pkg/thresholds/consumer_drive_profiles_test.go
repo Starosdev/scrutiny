@@ -125,6 +125,16 @@ func TestLookupConsumerDriveProfileByCrucialMx300Alias(t *testing.T) {
 	}
 }
 
+func TestLookupConsumerDriveProfileByCrucialBx500Regex4TB(t *testing.T) {
+	profile, ok := LookupConsumerDriveProfile("ATA", "", "CT4000BX500SSD1")
+	if !ok || profile == nil {
+		t.Fatalf("expected Crucial BX500 4TB regex match")
+	}
+	if profile.ModelFamily != "Crucial BX500" {
+		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
+	}
+}
+
 func TestLookupConsumerDriveProfileBySamsung870QvoRegex(t *testing.T) {
 	profile, ok := LookupConsumerDriveProfile("ATA", "", "Samsung SSD 870 QVO 2TB")
 	if !ok || profile == nil {
