@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/notify"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 const errInvalidIDFormat = "Invalid ID format"
@@ -153,6 +155,10 @@ func UpdateNotifyUrlHeartbeat(c *gin.Context) {
 	}
 
 	if err := deviceRepo.UpdateNotifyUrlHeartbeat(c, uint(id), input.Enabled); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Notification URL not found"})
+			return
+		}
 		logger.Errorln("Error updating notification URL heartbeat:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to update notification URL"})
 		return
