@@ -415,6 +415,22 @@ func (n *Notify) LoadDatabaseUrls(ctx context.Context, repo database.DeviceRepo)
 	}
 }
 
+// LoadHeartbeatDatabaseUrls populates n.DatabaseUrls with only the URLs that
+// have HeartbeatEnabled set to true. Used by the heartbeat monitor so users
+// can choose which endpoints receive periodic health pings.
+func (n *Notify) LoadHeartbeatDatabaseUrls(ctx context.Context, repo database.DeviceRepo) {
+	dbUrls, err := repo.GetNotifyUrls(ctx)
+	if err != nil {
+		n.Logger.Warnf("Could not load database notification URLs for heartbeat: %v", err)
+		return
+	}
+	for _, u := range dbUrls {
+		if u.HeartbeatEnabled {
+			n.DatabaseUrls = append(n.DatabaseUrls, u.URL)
+		}
+	}
+}
+
 // Send dispatches notifications to all configured URLs (config/env + database).
 func (n *Notify) Send() error {
 	// Retrieve list of notification endpoints from config file / env var

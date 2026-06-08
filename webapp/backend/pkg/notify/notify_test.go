@@ -1083,3 +1083,41 @@ func writeSMTPLine(t *testing.T, writer *bufio.Writer, line string) {
 	require.NoError(t, err)
 	require.NoError(t, writer.Flush())
 }
+
+func TestLoadHeartbeatDatabaseUrls_FiltersDisabled(t *testing.T) {
+	t.Parallel()
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
+
+	fakeDatabase.EXPECT().
+		GetNotifyUrls(gomock.Any()).
+		Return([]models.NotifyUrl{
+			{ID: 1, URL: "slack://token", HeartbeatEnabled: true},
+			{ID: 2, URL: "discord://token", HeartbeatEnabled: false},
+			{ID: 3, URL: "generic://healthchecks.io", HeartbeatEnabled: true},
+		}, nil).
+		Times(1)
+
+	n := Notify{Logger: logrus.StandardLogger()}
+	n.LoadHeartbeatDatabaseUrls(context.Background(), fakeDatabase)
+
+	require.Equal(t, []string{"slack://token", "generic://healthchecks.io"}, n.DatabaseUrls)
+}
+
+func TestLoadHeartbeatDatabaseUrls_RepoError_Degrades(t *testing.T) {
+	t.Parallel()
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
+
+	fakeDatabase.EXPECT().
+		GetNotifyUrls(gomock.Any()).
+		Return(nil, errors.New("db error")).
+		Times(1)
+
+	n := Notify{Logger: logrus.StandardLogger()}
+	n.LoadHeartbeatDatabaseUrls(context.Background(), fakeDatabase)
+
+	require.Empty(t, n.DatabaseUrls)
+}
