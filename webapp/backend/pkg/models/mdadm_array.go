@@ -25,6 +25,9 @@ type MDADMArray struct {
 	// Management flags
 	Archived bool `json:"archived"`
 	Muted    bool `json:"muted"`
+
+	// Host identifier (from collector config host.id)
+	HostID string `json:"host_id,omitempty"`
 }
 
 // MDADMArrayWrapper wraps the response for MDADM array API calls

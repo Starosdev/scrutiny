@@ -32,6 +32,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260516000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260523000000"
 	m20260608000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260608000000"
+	m20260610000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260610000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -1154,6 +1155,12 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 					},
 				}
 				return tx.Create(&defaultSettings).Error
+			},
+		},
+		{
+			ID: "m20260610000000", // add host_id column to mdadm_arrays table (#579)
+			Migrate: func(tx *gorm.DB) error {
+				return m20260610000000.Migrate(tx)
 			},
 		},
 	})

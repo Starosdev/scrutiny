@@ -39,6 +39,7 @@ func RegisterMdadmArrays(c *gin.Context) {
 			Name:    collectorArray.Name,
 			Level:   collectorArray.Level,
 			Devices: collectorArray.Devices,
+			HostID:  collectorArray.HostID,
 		}
 
 		if err := dbRepo.RegisterMdadmArray(c.Request.Context(), array); err != nil {

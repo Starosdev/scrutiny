@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, QueryList, ViewChildren, ViewEncapsulation, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { WorkloadService } from 'app/modules/workload/workload.service';
@@ -21,10 +21,9 @@ import {
     MatRowDef,
     MatRow,
 } from '@angular/material/table';
-import { ViewChild, AfterViewInit } from '@angular/core';
 import { MatButtonToggleGroup, MatButtonToggle } from '@angular/material/button-toggle';
 import { MatIcon } from '@angular/material/icon';
-import { NgClass, DecimalPipe } from '@angular/common';
+import { NgClass, DecimalPipe, KeyValuePipe } from '@angular/common';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { MatTooltip } from '@angular/material/tooltip';
 import { FileSizePipe } from '../../shared/file-size.pipe';
@@ -56,6 +55,7 @@ import { FileSizePipe } from '../../shared/file-size.pipe';
         MatRow,
         DecimalPipe,
         FileSizePipe,
+        KeyValuePipe,
     ],
 })
 export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -68,17 +68,17 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
     workloadData: Record<string, WorkloadInsightModel>;
     config: AppConfig;
     durationKey = 'week';
-    dataSource: MatTableDataSource<WorkloadInsightModel>;
+    hostGroups: { [hostId: string]: WorkloadInsightModel[] } = {};
+    hostDataSources: { [hostId: string]: MatTableDataSource<WorkloadInsightModel> } = {};
     displayedColumns: string[] = ['device_wwn', 'device_protocol', 'daily_writes', 'daily_reads', 'rw_ratio', 'intensity', 'endurance', 'est_remaining'];
     spikeDevices: WorkloadInsightModel[] = [];
     isMobile: boolean = false;
 
-    @ViewChild(MatSort) sort: MatSort;
+    @ViewChildren(MatSort) sorts: QueryList<MatSort>;
     private readonly _unsubscribeAll: Subject<void>;
 
     constructor() {
         this._unsubscribeAll = new Subject();
-        this.dataSource = new MatTableDataSource([]);
     }
 
     ngOnInit(): void {
@@ -103,31 +103,54 @@ export class WorkloadComponent implements OnInit, AfterViewInit, OnDestroy {
             this.workloadData = data;
             if (data) {
                 const insights = Object.values(data);
-                this.dataSource.data = insights;
                 this.spikeDevices = insights.filter((d) => d.spike?.detected);
+
+                this.hostGroups = {};
+                for (const insight of insights) {
+                    const hostId = insight.host_id || '';
+                    const group = this.hostGroups[hostId] || [];
+                    group.push(insight);
+                    this.hostGroups[hostId] = group;
+                }
+
+                this.hostDataSources = {};
+                for (const hostId of Object.keys(this.hostGroups)) {
+                    this.hostDataSources[hostId] = new MatTableDataSource(this.hostGroups[hostId]);
+                }
+
                 this._changeDetectorRef.markForCheck();
             }
         });
     }
 
     ngAfterViewInit(): void {
-        this.dataSource.sort = this.sort;
-        this.dataSource.sortingDataAccessor = (item: WorkloadInsightModel, property: string) => {
-            switch (property) {
-                case 'daily_writes':
-                    return item.daily_write_bytes;
-                case 'daily_reads':
-                    return item.daily_read_bytes;
-                case 'rw_ratio':
-                    return item.read_write_ratio;
-                case 'endurance':
-                    return item.endurance?.percentage_used ?? -1;
-                case 'est_remaining':
-                    return item.endurance?.estimated_lifespan_days ?? -1;
-                default:
-                    return item[property];
-            }
-        };
+        this.sorts.changes.pipe(takeUntil(this._unsubscribeAll)).subscribe(() => this.wireSorts());
+        this.wireSorts();
+    }
+
+    private wireSorts(): void {
+        const hostIds = Object.keys(this.hostDataSources);
+        this.sorts.toArray().forEach((sort, i) => {
+            const ds = this.hostDataSources[hostIds[i]];
+            if (!ds) return;
+            ds.sort = sort;
+            ds.sortingDataAccessor = (item: WorkloadInsightModel, property: string) => {
+                switch (property) {
+                    case 'daily_writes':
+                        return item.daily_write_bytes;
+                    case 'daily_reads':
+                        return item.daily_read_bytes;
+                    case 'rw_ratio':
+                        return item.read_write_ratio;
+                    case 'endurance':
+                        return item.endurance?.percentage_used ?? -1;
+                    case 'est_remaining':
+                        return item.endurance?.estimated_lifespan_days ?? -1;
+                    default:
+                        return item[property];
+                }
+            };
+        });
     }
 
     ngOnDestroy(): void {

@@ -8,7 +8,7 @@ import { AppConfig } from 'app/core/config/app.config';
 import { getMdadmArrayStatusColorClass } from 'app/modules/mdadm/mdadm-status.util';
 import { MatIcon } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
-import { NgClass } from '@angular/common';
+import { NgClass, KeyValuePipe } from '@angular/common';
 import { FileSizePipe } from '../../shared/file-size.pipe';
 
 @Component({
@@ -17,7 +17,7 @@ import { FileSizePipe } from '../../shared/file-size.pipe';
     styleUrls: ['./mdadm.component.scss'],
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [MatIcon, RouterLink, NgClass, FileSizePipe],
+    imports: [MatIcon, RouterLink, NgClass, FileSizePipe, KeyValuePipe],
 })
 export class MDADMComponent implements OnInit, OnDestroy {
     private readonly _mdadmService = inject(MDADMService);
@@ -25,6 +25,7 @@ export class MDADMComponent implements OnInit, OnDestroy {
     private readonly _changeDetectorRef = inject(ChangeDetectorRef);
 
     arrays: MDADMArrayModel[] = [];
+    hostGroups: { [hostId: string]: string[] } = {};
     config: AppConfig;
     private readonly _unsubscribeAll: Subject<void>;
 
@@ -43,6 +44,13 @@ export class MDADMComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe((arrays) => {
                 this.arrays = arrays;
+                this.hostGroups = {};
+                for (const array of arrays) {
+                    const hostId = array.host_id || '';
+                    const group = this.hostGroups[hostId] || [];
+                    group.push(array.uuid);
+                    this.hostGroups[hostId] = group;
+                }
                 this._changeDetectorRef.markForCheck();
             });
     }
@@ -50,6 +58,10 @@ export class MDADMComponent implements OnInit, OnDestroy {
     ngOnDestroy(): void {
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();
+    }
+
+    arraysForHostGroup(uuids: string[]): MDADMArrayModel[] {
+        return uuids.map((uuid) => this.arrays.find((a) => a.uuid === uuid)).filter(Boolean) as MDADMArrayModel[];
     }
 
     getArrayStatusColorClass(array: MDADMArrayModel): string {

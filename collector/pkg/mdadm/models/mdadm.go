@@ -10,6 +10,7 @@ type MDADMArray struct {
 	Name    string   `json:"name"`
 	Level   string   `json:"level"`
 	Devices []string `json:"devices,omitempty"`
+	HostID  string   `json:"host_id,omitempty"`
 }
 
 // MDADMMetrics represents the time-series status of an MDADM array
