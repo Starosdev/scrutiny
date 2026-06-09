@@ -149,6 +149,7 @@
                 </mat-select>
                 <mat-hint>
                     Apply vetted ATA consumer drive model or family overrides to SMART status evaluation and replacement-risk scoring. Disable to use generic ATA rules only.
+                    <a href="https://github.com/Starosdev/scrutiny/blob/master/docs/CONSUMER_DRIVE_PROFILES.md" target="_blank" rel="noopener noreferrer">Learn more</a>
                 </mat-hint>
             </mat-form-field>
         </div>
@@ -556,7 +557,10 @@
         <!-- Notification Channels -->
         <mat-expansion-panel class="mt-5">
             <mat-expansion-panel-header>
-                <mat-panel-title>Notification Channels</mat-panel-title>
+                <mat-panel-title class="flex items-center gap-1">
+                    Notification Channels
+                    <app-help-link-icon href="https://github.com/Starosdev/scrutiny/blob/master/docs/TROUBLESHOOTING_NOTIFICATIONS.md" tooltip="Notification channel documentation"></app-help-link-icon>
+                </mat-panel-title>
                 <mat-panel-description> Configure where notifications are sent </mat-panel-description>
             </mat-expansion-panel-header>
 

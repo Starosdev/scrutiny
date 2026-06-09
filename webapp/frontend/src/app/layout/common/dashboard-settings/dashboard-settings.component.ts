@@ -37,6 +37,7 @@ import { MatExpansionPanel, MatExpansionPanelHeader, MatExpansionPanelTitle, Mat
 import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow } from '@angular/material/table';
 import { MatTooltip } from '@angular/material/tooltip';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
+import { HelpLinkIconComponent } from 'app/layout/common/help-link-icon/help-link-icon.component';
 
 @Component({
     selector: 'app-dashboard-settings',
@@ -75,6 +76,7 @@ import { MatSlideToggle } from '@angular/material/slide-toggle';
         MatDialogActions,
         MatDialogClose,
         MatSlideToggle,
+        HelpLinkIconComponent,
     ],
 })
 export class DashboardSettingsComponent implements OnInit {
