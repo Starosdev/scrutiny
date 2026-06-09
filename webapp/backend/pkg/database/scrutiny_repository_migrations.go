@@ -1124,6 +1124,38 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 				return tx.AutoMigrate(&m20260608000000.NotifyUrl{})
 			},
 		},
+		{
+			ID: "m20260609000000", // add navigation visibility settings (#588)
+			Migrate: func(tx *gorm.DB) error {
+				var defaultSettings = []m20220716214900.Setting{
+					{
+						SettingKeyName:        "navigation.show_zfs_pools",
+						SettingKeyDescription: "Whether to show the ZFS Pools navigation link (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      true,
+					},
+					{
+						SettingKeyName:        "navigation.show_mdadm",
+						SettingKeyDescription: "Whether to show the MDADM RAID navigation link (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      true,
+					},
+					{
+						SettingKeyName:        "navigation.show_btrfs",
+						SettingKeyDescription: "Whether to show the Btrfs navigation link (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      true,
+					},
+					{
+						SettingKeyName:        "navigation.show_workload",
+						SettingKeyDescription: "Whether to show the Workload navigation link (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      true,
+					},
+				}
+				return tx.Create(&defaultSettings).Error
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {

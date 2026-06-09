@@ -126,6 +126,12 @@ export class DashboardSettingsComponent implements OnInit {
     uptimeKumaTestLoading = false;
     uptimeKumaTestResult: string | null = null;
 
+    // Navigation visibility settings
+    showZFSPools: boolean;
+    showMDADM: boolean;
+    showBtrfs: boolean;
+    showWorkload: boolean;
+
     // Report settings
     reportEnabled: boolean;
     reportDailyEnabled: boolean;
@@ -238,6 +244,12 @@ export class DashboardSettingsComponent implements OnInit {
             this.uptimeKumaEnabled = config.metrics.uptime_kuma_enabled ?? false;
             this.uptimeKumaPushURL = config.metrics.uptime_kuma_push_url ?? '';
             this.uptimeKumaIntervalSeconds = config.metrics.uptime_kuma_interval_seconds ?? 60;
+
+            // Navigation visibility settings
+            this.showZFSPools = config.navigation?.show_zfs_pools ?? true;
+            this.showMDADM = config.navigation?.show_mdadm ?? true;
+            this.showBtrfs = config.navigation?.show_btrfs ?? true;
+            this.showWorkload = config.navigation?.show_workload ?? true;
 
             // Report settings
             this.reportEnabled = config.metrics.report_enabled ?? false;
@@ -501,6 +513,12 @@ export class DashboardSettingsComponent implements OnInit {
 
     saveSettings(): void {
         const newSettings: AppConfig = {
+            navigation: {
+                show_zfs_pools: this.showZFSPools,
+                show_mdadm: this.showMDADM,
+                show_btrfs: this.showBtrfs,
+                show_workload: this.showWorkload,
+            },
             dashboard_display: this.dashboardDisplay as DashboardDisplay,
             dashboard_sort: this.dashboardSort as DashboardSort,
             temperature_unit: this.temperatureUnit as TemperatureUnit,

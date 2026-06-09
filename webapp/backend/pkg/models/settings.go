@@ -53,6 +53,12 @@ type Settings struct {
 	Collector          struct {
 		RetrieveSCTHistory bool `json:"retrieve_sct_temperature_history" mapstructure:"retrieve_sct_temperature_history"`
 	} `json:"collector" mapstructure:"collector"` // Missed collector ping notification settings
+	Navigation struct {
+		ShowZFSPools bool `json:"show_zfs_pools" mapstructure:"show_zfs_pools"`
+		ShowMDADM    bool `json:"show_mdadm" mapstructure:"show_mdadm"`
+		ShowBtrfs    bool `json:"show_btrfs" mapstructure:"show_btrfs"`
+		ShowWorkload bool `json:"show_workload" mapstructure:"show_workload"`
+	} `json:"navigation" mapstructure:"navigation"`
 	// Scheduled report settings
 }
 

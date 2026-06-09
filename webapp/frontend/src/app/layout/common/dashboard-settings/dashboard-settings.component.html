@@ -814,6 +814,43 @@
                 }
             </div>
         </mat-expansion-panel>
+
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+                <mat-panel-title>Navigation</mat-panel-title>
+                <mat-panel-description>Show or hide navigation links</mat-panel-description>
+            </mat-expansion-panel-header>
+            <div class="flex flex-col mt-5 gt-md:flex-row">
+                <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                    <mat-label>ZFS Pools</mat-label>
+                    <mat-select [(ngModel)]="showZFSPools">
+                        <mat-option [value]="true">Show</mat-option>
+                        <mat-option [value]="false">Hide</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                    <mat-label>MDADM RAID</mat-label>
+                    <mat-select [(ngModel)]="showMDADM">
+                        <mat-option [value]="true">Show</mat-option>
+                        <mat-option [value]="false">Hide</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                    <mat-label>Btrfs</mat-label>
+                    <mat-select [(ngModel)]="showBtrfs">
+                        <mat-option [value]="true">Show</mat-option>
+                        <mat-option [value]="false">Hide</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                    <mat-label>Workload</mat-label>
+                    <mat-select [(ngModel)]="showWorkload">
+                        <mat-option [value]="true">Show</mat-option>
+                        <mat-option [value]="false">Hide</mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+        </mat-expansion-panel>
     </div>
 </mat-dialog-content>
 <mat-dialog-actions align="end">
