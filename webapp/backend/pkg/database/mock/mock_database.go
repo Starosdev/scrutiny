@@ -125,6 +125,20 @@ func (mr *MockDeviceRepoMockRecorder) DeleteNotifyUrl(ctx, id interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNotifyUrl", reflect.TypeOf((*MockDeviceRepo)(nil).DeleteNotifyUrl), ctx, id)
 }
 
+// UpdateNotifyUrlHeartbeat mocks base method.
+func (m *MockDeviceRepo) UpdateNotifyUrlHeartbeat(ctx context.Context, id uint, enabled bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateNotifyUrlHeartbeat", ctx, id, enabled)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateNotifyUrlHeartbeat indicates an expected call of UpdateNotifyUrlHeartbeat.
+func (mr *MockDeviceRepoMockRecorder) UpdateNotifyUrlHeartbeat(ctx, id, enabled interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateNotifyUrlHeartbeat", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateNotifyUrlHeartbeat), ctx, id, enabled)
+}
+
 // DeleteZFSPool mocks base method.
 func (m *MockDeviceRepo) DeleteZFSPool(ctx context.Context, guid string) error {
 	m.ctrl.T.Helper()
