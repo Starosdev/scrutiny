@@ -2,6 +2,24 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.62.4](https://github.com/Starosdev/scrutiny/compare/v1.62.3...v1.62.4) (2026-06-09)
+
+### Bug Fixes
+
+* address SonarQube findings (THR-000) ([85d8d3e](https://github.com/Starosdev/scrutiny/commit/85d8d3e6f7a1e6cea503440684ef0771d1cc934a))
+* **apparmor:** update collector profile for Ubuntu 26.04 compatibility ([c0401c4](https://github.com/Starosdev/scrutiny/commit/c0401c4ab32e318e3bd151f579ec6db42589d022))
+* **collector:** add --host-id flag to MDADM collector ([#573](https://github.com/Starosdev/scrutiny/issues/573)) ([87655af](https://github.com/Starosdev/scrutiny/commit/87655af02ea919b634121db038222b9555f4bcc9))
+* **collector:** handle megaraid duplicate scan paths ([6aa65e1](https://github.com/Starosdev/scrutiny/commit/6aa65e10dcf11b211413b4e1da85e615edc7c045))
+* **collector:** skip empty device names from smartctl --scan output ([c79b6ed](https://github.com/Starosdev/scrutiny/commit/c79b6edcf9601e2b9fd3473aa53ce4ca2b042dc9))
+* **database:** prevent orphan blank device rows after registration ([#567](https://github.com/Starosdev/scrutiny/issues/567)) ([a32885e](https://github.com/Starosdev/scrutiny/commit/a32885e347664f7494d7f5c7619188f768d01e42))
+* **docs:** fix environment block indentation and add Btrfs env vars to omnibus compose ([115ddb1](https://github.com/Starosdev/scrutiny/commit/115ddb18c33002f656548f5d20b4b786e903ab66))
+* **frontend:** add flex-col to stat cards in detail views ([f2ff59f](https://github.com/Starosdev/scrutiny/commit/f2ff59fbf523b3b2cf6bbe9d602f92a832964213))
+* **lint:** check error returns in linux device detection ([a102d8c](https://github.com/Starosdev/scrutiny/commit/a102d8c62148f2999c1c3e8b3528a9d3b98c8fba))
+* **lint:** deduplicate string literals and document empty functions ([643e607](https://github.com/Starosdev/scrutiny/commit/643e607a4b417ccb4f68eda600b5d0a33e8b5614))
+* **lint:** mark never-reassigned private members as readonly ([16b5b24](https://github.com/Starosdev/scrutiny/commit/16b5b24364fd83f96d1c6c533dee7ac93d18127b))
+* **lint:** resolve govet and gocritic findings for master baseline ([104c964](https://github.com/Starosdev/scrutiny/commit/104c9648afeefdadc4b6ff09c9913f57eb76f435))
+* **security:** replace Math.random() with crypto.randomUUID() in mock GUID util ([f744667](https://github.com/Starosdev/scrutiny/commit/f74466774ee9f31e027390fc2cf5326403e1b9b7))
+
 ## [1.62.3](https://github.com/Starosdev/scrutiny/compare/v1.62.2...v1.62.3) (2026-06-05)
 
 ### Bug Fixes
