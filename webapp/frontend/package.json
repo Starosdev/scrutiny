@@ -39,7 +39,7 @@
     "humanize-duration": "^3.27.3",
     "lodash": "^4.18.1",
     "marked": "^17.0.1",
-    "ng-apexcharts": "^2.3.0",
+    "ng-apexcharts": "^2.4.0",
     "perfect-scrollbar": "^1.5.5",
     "rrule": "^2.7.1",
     "rxjs": "^7.5.7",
