@@ -4,6 +4,8 @@ import { Subject } from 'rxjs';
 import { filter, takeUntil } from 'rxjs/operators';
 import { DashboardService } from 'app/modules/dashboard/dashboard.service';
 import { MatIcon } from '@angular/material/icon';
+import { AppConfig } from 'app/core/config/app.config';
+import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 
 interface TabItem {
     icon: string;
@@ -21,7 +23,10 @@ interface TabItem {
 })
 export class MobileTabBarComponent implements OnInit, OnDestroy {
     private readonly _router = inject(Router);
+    private readonly _configService = inject(ScrutinyConfigService);
     private readonly _dashboardService = inject(DashboardService);
+
+    private _config: AppConfig = {};
 
     tabs: TabItem[] = [
         { icon: 'home', label: 'Home', route: '/mobile-home', exactMatch: true },
@@ -42,7 +47,26 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
         this._unsubscribeAll = new Subject();
     }
 
+    get visibleTabs(): TabItem[] {
+        return this.tabs.filter((tab) => {
+            if (tab.route === '/zfs-pools') {
+                return this._config.navigation?.show_zfs_pools !== false;
+            }
+            if (tab.route === '/btrfs-filesystems') {
+                return this._config.navigation?.show_btrfs !== false;
+            }
+            if (tab.route === '/workload') {
+                return this._config.navigation?.show_workload !== false;
+            }
+            return true;
+        });
+    }
+
     ngOnInit(): void {
+        this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {
+            this._config = config;
+        });
+
         this.activeRoute = this._router.url;
         this.isDetailPage = this._isDetailRoute(this._router.url);
 

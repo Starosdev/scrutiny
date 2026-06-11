@@ -6,6 +6,8 @@ import { TreoMediaWatcherService } from '@treo/services/media-watcher';
 import { TreoNavigationService } from '@treo/components/navigation';
 import { AuthService } from 'app/core/auth/auth.service';
 import { versionInfo } from 'environments/versions';
+import { AppConfig } from 'app/core/config/app.config';
+import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { TreoVerticalNavigationComponent } from '../../../../../@treo/components/navigation/vertical/vertical.component';
 import { ThemeToggleComponent } from '../../../common/theme-toggle/theme-toggle.component';
 import { MatIconButton } from '@angular/material/button';
@@ -23,12 +25,14 @@ import { MaterialLayoutModule } from './material.module';
 export class MaterialLayoutComponent implements OnInit, OnDestroy {
     private readonly _activatedRoute = inject(ActivatedRoute);
     private readonly _authService = inject(AuthService);
+    private readonly _configService = inject(ScrutinyConfigService);
     private readonly _treoMediaWatcherService = inject(TreoMediaWatcherService);
     private readonly _treoNavigationService = inject(TreoNavigationService);
     private readonly _router = inject(Router);
 
     appVersion: string;
     authEnabled: boolean = false;
+    config: AppConfig = {};
     data: any;
     isScreenSmall: boolean;
 
@@ -87,6 +91,11 @@ export class MaterialLayoutComponent implements OnInit, OnDestroy {
         // Subscribe to auth state
         this._authService.authEnabled$.pipe(takeUntil(this._unsubscribeAll)).subscribe((enabled) => {
             this.authEnabled = enabled;
+        });
+
+        // Subscribe to config changes
+        this._configService.config$.pipe(takeUntil(this._unsubscribeAll)).subscribe((config: AppConfig) => {
+            this.config = config;
         });
 
         // Subscribe to media changes

@@ -82,6 +82,7 @@ export interface NotifyUrlEntry {
     url: string;
     label?: string;
     source: NotifyUrlSource;
+    heartbeatEnabled?: boolean;
 }
 
 /**
@@ -151,6 +152,13 @@ export interface AppConfig {
         report_pdf_path?: string;
     };
 
+    navigation?: {
+        show_zfs_pools?: boolean;
+        show_mdadm?: boolean;
+        show_btrfs?: boolean;
+        show_workload?: boolean;
+    };
+
     // Server capabilities (populated from API response, not stored in settings)
     server_version?: string;
     collector_trigger_enabled?: boolean;
@@ -180,6 +188,13 @@ export const appConfig: AppConfig = {
 
     collector: {
         retrieve_sct_temperature_history: true,
+    },
+
+    navigation: {
+        show_zfs_pools: true,
+        show_mdadm: true,
+        show_btrfs: true,
+        show_workload: true,
     },
 
     metrics: {

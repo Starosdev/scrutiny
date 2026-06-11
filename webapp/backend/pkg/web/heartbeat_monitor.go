@@ -260,7 +260,7 @@ func (m *HeartbeatMonitor) checkAndSendHeartbeat() {
 	m.logger.Infof("All %d monitored drives healthy, sending heartbeat notification", monitoredCount)
 
 	notification := notify.NewHeartbeat(m.logger, m.appEngine.Config, monitoredCount, totalCount)
-	notification.LoadDatabaseUrls(m.ctx, m.deviceRepo)
+	notification.LoadHeartbeatDatabaseUrls(m.ctx, m.deviceRepo)
 
 	// Route through notification gate (bypass quiet hours -- heartbeats are informational)
 	if gate := m.appEngine.NotificationGate; gate != nil {

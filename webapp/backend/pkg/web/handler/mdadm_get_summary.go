@@ -28,6 +28,7 @@ func GetMdadmSummary(c *gin.Context) {
 		Label    string   `json:"label,omitempty"`
 		Archived bool     `json:"archived"`
 		Muted    bool     `json:"muted"`
+		HostID   string   `json:"host_id,omitempty"`
 
 		// Latest metrics (populated from InfluxDB)
 		State        string  `json:"state,omitempty"`
@@ -46,6 +47,7 @@ func GetMdadmSummary(c *gin.Context) {
 			Label:    array.Label,
 			Archived: array.Archived,
 			Muted:    array.Muted,
+			HostID:   array.HostID,
 		}
 
 		// Fetch latest metrics for this array

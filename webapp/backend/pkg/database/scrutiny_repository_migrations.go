@@ -31,6 +31,8 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260514000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260516000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260523000000"
+	m20260608000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260608000000"
+	m20260610000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260610000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -1116,6 +1118,48 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 					  AND (wwn IS NULL OR TRIM(wwn) = '')
 				`).Error
 			},
+		},
+		{
+			ID: "m20260608000000", // add heartbeat_enabled to notify_urls table
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&m20260608000000.NotifyUrl{})
+			},
+		},
+		{
+			ID: "m20260609000000", // add navigation visibility settings (#588)
+			Migrate: func(tx *gorm.DB) error {
+				var defaultSettings = []m20220716214900.Setting{
+					{
+						SettingKeyName:        "navigation.show_zfs_pools",
+						SettingKeyDescription: "Whether to show the ZFS Pools navigation link (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      true,
+					},
+					{
+						SettingKeyName:        "navigation.show_mdadm",
+						SettingKeyDescription: "Whether to show the MDADM RAID navigation link (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      true,
+					},
+					{
+						SettingKeyName:        "navigation.show_btrfs",
+						SettingKeyDescription: "Whether to show the Btrfs navigation link (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      true,
+					},
+					{
+						SettingKeyName:        "navigation.show_workload",
+						SettingKeyDescription: "Whether to show the Workload navigation link (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      true,
+					},
+				}
+				return tx.Create(&defaultSettings).Error
+			},
+		},
+		{
+			ID: "m20260610000000", // add host_id column to mdadm_arrays table (#579)
+			Migrate: m20260610000000.Migrate,
 		},
 	})
 

@@ -168,6 +168,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.POST("/settings/notify-urls", handler.SaveNotifyUrl)
 			api.DELETE("/settings/notify-urls/:id", handler.DeleteNotifyUrl)
 			api.POST("/settings/notify-urls/:id/test", handler.TestNotifyUrl)
+			api.PATCH("/settings/notify-urls/:id", handler.UpdateNotifyUrlHeartbeat)
 
 			// Scheduled report endpoints
 			api.GET("/reports/generate", handler.GenerateReport)

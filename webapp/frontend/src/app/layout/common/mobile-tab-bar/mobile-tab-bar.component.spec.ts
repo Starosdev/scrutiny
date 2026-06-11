@@ -2,6 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NavigationEnd, Router } from '@angular/router';
 import { of, Subject } from 'rxjs';
 import { DashboardService } from 'app/modules/dashboard/dashboard.service';
+import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
+import { appConfig } from 'app/core/config/app.config';
 import { MobileTabBarComponent } from './mobile-tab-bar.component';
 
 describe('MobileTabBarComponent', () => {
@@ -22,6 +24,7 @@ describe('MobileTabBarComponent', () => {
             providers: [
                 { provide: Router, useValue: routerSpy },
                 { provide: DashboardService, useValue: { data$: of(null) } },
+                { provide: ScrutinyConfigService, useValue: { config$: of(appConfig) } },
             ],
         }).compileComponents();
     });

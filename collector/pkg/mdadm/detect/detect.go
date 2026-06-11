@@ -55,6 +55,8 @@ func (d *Detect) Start() ([]models.MDADMArray, []models.MDADMMetrics, error) {
 	var arrays []models.MDADMArray
 	var metrics []models.MDADMMetrics
 
+	hostID := d.Config.GetString("host.id")
+
 	// 2. Get details for each array
 	for _, name := range arrayNames {
 		array, metric, err := d.getArrayDetail(name)
@@ -62,6 +64,7 @@ func (d *Detect) Start() ([]models.MDADMArray, []models.MDADMMetrics, error) {
 			d.Logger.Warnf("Failed to get details for array %s: %v", name, err)
 			continue
 		}
+		array.HostID = hostID
 		arrays = append(arrays, array)
 		metrics = append(metrics, metric)
 	}

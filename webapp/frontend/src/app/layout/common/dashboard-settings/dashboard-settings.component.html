@@ -149,6 +149,7 @@
                 </mat-select>
                 <mat-hint>
                     Apply vetted ATA consumer drive model or family overrides to SMART status evaluation and replacement-risk scoring. Disable to use generic ATA rules only.
+                    <a href="https://github.com/Starosdev/scrutiny/blob/master/docs/CONSUMER_DRIVE_PROFILES.md" target="_blank" rel="noopener noreferrer" class="text-blue-500 underline hover:text-blue-700">Learn more</a>
                 </mat-hint>
             </mat-form-field>
         </div>
@@ -556,7 +557,10 @@
         <!-- Notification Channels -->
         <mat-expansion-panel class="mt-5">
             <mat-expansion-panel-header>
-                <mat-panel-title>Notification Channels</mat-panel-title>
+                <mat-panel-title class="flex items-center gap-1">
+                    Notification Channels
+                    <app-help-link-icon href="https://github.com/Starosdev/scrutiny/blob/master/docs/TROUBLESHOOTING_NOTIFICATIONS.md" tooltip="Notification channel documentation"></app-help-link-icon>
+                </mat-panel-title>
                 <mat-panel-description> Configure where notifications are sent </mat-panel-description>
             </mat-expansion-panel-header>
 
@@ -584,6 +588,18 @@
                             <span class="px-2 py-1 text-xs rounded" [class.bg-blue-100]="entry.source === 'ui'" [class.bg-gray-100]="entry.source !== 'ui'">
                                 {{ entry.source }}
                             </span>
+                        </td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="heartbeat">
+                        <th mat-header-cell *matHeaderCellDef>Heartbeat</th>
+                        <td mat-cell *matCellDef="let entry">
+                            <mat-slide-toggle
+                                [checked]="entry.heartbeatEnabled"
+                                [disabled]="entry.source !== 'ui'"
+                                (change)="toggleHeartbeat(entry)"
+                                color="primary">
+                            </mat-slide-toggle>
                         </td>
                     </ng-container>
 
@@ -781,12 +797,58 @@
                     </div>
                     }
 
+                    <div class="mt-4">
+                        <mat-slide-toggle
+                            [(ngModel)]="newUrlHeartbeatEnabled"
+                            color="primary"
+                            name="newUrlHeartbeatEnabled">
+                            Send heartbeat pings to this URL
+                        </mat-slide-toggle>
+                    </div>
+
                     <div class="flex gap-2 mt-4">
                         <button mat-raised-button color="primary" (click)="addNotifyUrl()" [disabled]="!buildNotifyUrl()">Save</button>
                         <button mat-button (click)="showAddUrlForm = false; resetAddForm()">Cancel</button>
                     </div>
                 </div>
                 }
+            </div>
+        </mat-expansion-panel>
+
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+                <mat-panel-title>Navigation</mat-panel-title>
+                <mat-panel-description>Show or hide navigation links</mat-panel-description>
+            </mat-expansion-panel-header>
+            <div class="flex flex-col mt-5 gt-md:flex-row">
+                <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                    <mat-label>ZFS Pools</mat-label>
+                    <mat-select [(ngModel)]="showZFSPools">
+                        <mat-option [value]="true">Show</mat-option>
+                        <mat-option [value]="false">Hide</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                    <mat-label>MDADM RAID</mat-label>
+                    <mat-select [(ngModel)]="showMDADM">
+                        <mat-option [value]="true">Show</mat-option>
+                        <mat-option [value]="false">Hide</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                    <mat-label>Btrfs</mat-label>
+                    <mat-select [(ngModel)]="showBtrfs">
+                        <mat-option [value]="true">Show</mat-option>
+                        <mat-option [value]="false">Hide</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                    <mat-label>Workload</mat-label>
+                    <mat-select [(ngModel)]="showWorkload">
+                        <mat-option [value]="true">Show</mat-option>
+                        <mat-option [value]="false">Hide</mat-option>
+                    </mat-select>
+                </mat-form-field>
             </div>
         </mat-expansion-panel>
     </div>

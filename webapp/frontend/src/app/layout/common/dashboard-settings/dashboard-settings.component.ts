@@ -36,6 +36,8 @@ import { MatIcon } from '@angular/material/icon';
 import { MatExpansionPanel, MatExpansionPanelHeader, MatExpansionPanelTitle, MatExpansionPanelDescription } from '@angular/material/expansion';
 import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, MatCell, MatHeaderRowDef, MatHeaderRow, MatRowDef, MatRow } from '@angular/material/table';
 import { MatTooltip } from '@angular/material/tooltip';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
+import { HelpLinkIconComponent } from 'app/layout/common/help-link-icon/help-link-icon.component';
 
 @Component({
     selector: 'app-dashboard-settings',
@@ -73,6 +75,8 @@ import { MatTooltip } from '@angular/material/tooltip';
         MatRow,
         MatDialogActions,
         MatDialogClose,
+        MatSlideToggle,
+        HelpLinkIconComponent,
     ],
 })
 export class DashboardSettingsComponent implements OnInit {
@@ -122,6 +126,12 @@ export class DashboardSettingsComponent implements OnInit {
     uptimeKumaTestLoading = false;
     uptimeKumaTestResult: string | null = null;
 
+    // Navigation visibility settings
+    showZFSPools: boolean;
+    showMDADM: boolean;
+    showBtrfs: boolean;
+    showWorkload: boolean;
+
     // Report settings
     reportEnabled: boolean;
     reportDailyEnabled: boolean;
@@ -156,7 +166,7 @@ export class DashboardSettingsComponent implements OnInit {
 
     // Notification URL management
     notifyUrls: NotifyUrlEntry[] = [];
-    notifyUrlColumns: string[] = ['label', 'url', 'source', 'actions'];
+    notifyUrlColumns: string[] = ['label', 'url', 'source', 'heartbeat', 'actions'];
     showAddUrlForm = false;
     selectedEngine: 'shoutrrr' | 'apprise' = 'shoutrrr';
     selectedShoutrrrService: 'custom' | 'smtp' | 'discord' | 'slack' | 'telegram' = 'custom';
@@ -164,6 +174,7 @@ export class DashboardSettingsComponent implements OnInit {
     newUrlRaw = '';
     newAppriseUrlRaw = '';
     newUrlLabel = '';
+    newUrlHeartbeatEnabled = false;
     // SMTP fields
     smtpHost = '';
     smtpPort = '587';
@@ -233,6 +244,12 @@ export class DashboardSettingsComponent implements OnInit {
             this.uptimeKumaEnabled = config.metrics.uptime_kuma_enabled ?? false;
             this.uptimeKumaPushURL = config.metrics.uptime_kuma_push_url ?? '';
             this.uptimeKumaIntervalSeconds = config.metrics.uptime_kuma_interval_seconds ?? 60;
+
+            // Navigation visibility settings
+            this.showZFSPools = config.navigation?.show_zfs_pools ?? true;
+            this.showMDADM = config.navigation?.show_mdadm ?? true;
+            this.showBtrfs = config.navigation?.show_btrfs ?? true;
+            this.showWorkload = config.navigation?.show_workload ?? true;
 
             // Report settings
             this.reportEnabled = config.metrics.report_enabled ?? false;
@@ -367,6 +384,24 @@ export class DashboardSettingsComponent implements OnInit {
             });
     }
 
+    toggleHeartbeat(entry: NotifyUrlEntry): void {
+        if (!entry.id) {
+            return;
+        }
+        const newValue = !entry.heartbeatEnabled;
+        this._notifyUrlService
+            .setHeartbeatEnabled(entry.id, newValue)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe({
+                next: () => {
+                    entry.heartbeatEnabled = newValue;
+                },
+                error: () => {
+                    this.loadNotifyUrls();
+                },
+            });
+    }
+
     buildShoutrrrUrl(): string {
         switch (this.selectedShoutrrrService) {
             case 'custom':
@@ -447,7 +482,7 @@ export class DashboardSettingsComponent implements OnInit {
         const label = this.newUrlLabel.trim();
 
         this._notifyUrlService
-            .addNotifyUrl(url, label)
+            .addNotifyUrl(url, label, this.newUrlHeartbeatEnabled)
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe((saved) => {
                 this.notifyUrls = [...this.notifyUrls, saved];
@@ -463,6 +498,7 @@ export class DashboardSettingsComponent implements OnInit {
         this.newUrlRaw = '';
         this.newAppriseUrlRaw = '';
         this.newUrlLabel = '';
+        this.newUrlHeartbeatEnabled = false;
         this.smtpHost = '';
         this.smtpPort = '587';
         this.smtpUsername = '';
@@ -477,6 +513,12 @@ export class DashboardSettingsComponent implements OnInit {
 
     saveSettings(): void {
         const newSettings: AppConfig = {
+            navigation: {
+                show_zfs_pools: this.showZFSPools,
+                show_mdadm: this.showMDADM,
+                show_btrfs: this.showBtrfs,
+                show_workload: this.showWorkload,
+            },
             dashboard_display: this.dashboardDisplay as DashboardDisplay,
             dashboard_sort: this.dashboardSort as DashboardSort,
             temperature_unit: this.temperatureUnit as TemperatureUnit,

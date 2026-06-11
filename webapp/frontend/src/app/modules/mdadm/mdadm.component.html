@@ -14,81 +14,88 @@
 
     <!-- Main -->
     <div class="flex-auto p-6 sm:p-10">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            @for (array of arrays; track trackByFn($index, array)) {
-                <a
-                    class="flex flex-col h-96 shadow rounded-2xl overflow-hidden bg-card hover:bg-hover transition-colors duration-150 ease-in-out cursor-pointer"
-                    [routerLink]="['./', array.uuid]"
-                >
-                    <div class="flex flex-col p-6 space-y-6">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900">
-                                    <mat-icon class="text-blue-600 dark:text-blue-400" [svgIcon]="'heroicons_outline:database'"></mat-icon>
+        @for (hostId of hostGroups | keyvalue; track hostId) {
+        <div class="flex flex-wrap w-full mb-6">
+            @if (hostId.key) {
+            <h3 class="w-full ml-1 mb-4">{{ hostId.key }}</h3>
+            }
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
+                @for (array of arraysForHostGroup(hostId.value); track trackByFn($index, array)) {
+                    <a
+                        class="flex flex-col h-96 shadow rounded-2xl overflow-hidden bg-card hover:bg-hover transition-colors duration-150 ease-in-out cursor-pointer"
+                        [routerLink]="['./', array.uuid]"
+                    >
+                        <div class="flex flex-col p-6 space-y-6">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900">
+                                        <mat-icon class="text-blue-600 dark:text-blue-400" [svgIcon]="'heroicons_outline:database'"></mat-icon>
+                                    </div>
+                                    <div class="ml-4 truncate">
+                                        <div class="text-lg font-bold leading-none truncate">{{ array.label || array.name }}</div>
+                                        <div class="text-md text-secondary mt-1">{{ array.level }}</div>
+                                    </div>
                                 </div>
-                                <div class="ml-4 truncate">
-                                    <div class="text-lg font-bold leading-none truncate">{{ array.label || array.name }}</div>
-                                    <div class="text-md text-secondary mt-1">{{ array.level }}</div>
+                                <div class="flex items-center">
+                                    <div class="px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide" [ngClass]="getArrayStatusColorClass(array)">
+                                        {{ array.state || 'UNKNOWN' }}
+                                    </div>
                                 </div>
                             </div>
-                            <div class="flex items-center">
-                                <div class="px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide" [ngClass]="getArrayStatusColorClass(array)">
-                                    {{ array.state || 'UNKNOWN' }}
-                                </div>
-                            </div>
-                        </div>
 
-                        <div class="flex flex-col">
-                            <div class="flex items-center justify-between text-secondary">
-                                <div>Devices</div>
-                                <div>{{ array.devices.length }}</div>
+                            <div class="flex flex-col">
+                                <div class="flex items-center justify-between text-secondary">
+                                    <div>Devices</div>
+                                    <div>{{ array.devices.length }}</div>
+                                </div>
+                                <div class="mt-4 flex flex-wrap gap-2">
+                                    @for (dev of array.devices.slice(0, 4); track dev) {
+                                    <div class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono text-secondary">
+                                        {{ dev }}
+                                    </div>
+                                    }
+                                    @if (array.devices.length > 4) {
+                                    <div class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs text-secondary">
+                                        +{{ array.devices.length - 4 }} more
+                                    </div>
+                                    }
+                                </div>
                             </div>
-                            <div class="mt-4 flex flex-wrap gap-2">
-                                @for (dev of array.devices.slice(0, 4); track dev) {
-                                <div class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono text-secondary">
-                                    {{ dev }}
+
+                            <!-- Storage Size -->
+                            @if (array.array_size) {
+                            <div class="flex flex-col space-y-1">
+                                <div class="flex items-center justify-between text-secondary">
+                                    <div class="font-semibold text-xs uppercase tracking-wider">Size</div>
+                                    <div class="font-medium text-lg leading-none">{{ array.array_size | fileSize : config?.file_size_si_units }}</div>
+                                </div>
+                                @if (array.used_bytes !== undefined && array.used_bytes !== null) {
+                                <div class="flex items-center justify-between text-secondary">
+                                    <div class="text-xs">Used</div>
+                                    <div class="text-xs font-medium">{{ array.used_bytes | fileSize : config?.file_size_si_units }}</div>
                                 </div>
                                 }
-                                @if (array.devices.length > 4) {
-                                <div class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-xs text-secondary">
-                                    +{{ array.devices.length - 4 }} more
-                                </div>
-                                }
                             </div>
-                        </div>
+                            }
 
-                        <!-- Storage Size -->
-                        @if (array.array_size) {
-                        <div class="flex flex-col space-y-1">
-                            <div class="flex items-center justify-between text-secondary">
-                                <div class="font-semibold text-xs uppercase tracking-wider">Size</div>
-                                <div class="font-medium text-lg leading-none">{{ array.array_size | fileSize : config?.file_size_si_units }}</div>
-                            </div>
-                            @if (array.used_bytes !== undefined && array.used_bytes !== null) {
-                            <div class="flex items-center justify-between text-secondary">
-                                <div class="text-xs">Used</div>
-                                <div class="text-xs font-medium">{{ array.used_bytes | fileSize : config?.file_size_si_units }}</div>
+                            <!-- Sync Progress -->
+                            @if (array.sync_progress > 0 && array.sync_progress < 100) {
+                            <div class="flex flex-col">
+                                <div class="flex items-center justify-between text-secondary mb-1">
+                                    <div>Sync Progress</div>
+                                    <div class="font-medium text-blue-500">{{ array.sync_progress }}%</div>
+                                </div>
+                                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                    <div class="bg-blue-500 h-2 rounded-full transition-all duration-300" [style.width.%]="array.sync_progress"></div>
+                                </div>
                             </div>
                             }
                         </div>
-                        }
-
-                        <!-- Sync Progress -->
-                        @if (array.sync_progress > 0 && array.sync_progress < 100) {
-                        <div class="flex flex-col">
-                            <div class="flex items-center justify-between text-secondary mb-1">
-                                <div>Sync Progress</div>
-                                <div class="font-medium text-blue-500">{{ array.sync_progress }}%</div>
-                            </div>
-                            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                <div class="bg-blue-500 h-2 rounded-full transition-all duration-300" [style.width.%]="array.sync_progress"></div>
-                            </div>
-                        </div>
-                        }
-                    </div>
-                </a>
-            }
+                    </a>
+                }
+            </div>
         </div>
+        }
 
         <!-- No data template -->
         @if (arrays.length === 0) {
