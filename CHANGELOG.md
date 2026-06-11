@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.63.0](https://github.com/Starosdev/scrutiny/compare/v1.62.4...v1.63.0) (2026-06-11)
+
+### Features
+
+* **ui:** navigation visibility, host grouping, contextual help, heartbeat URL filter ([#602](https://github.com/Starosdev/scrutiny/issues/602)) ([f99c3ff](https://github.com/Starosdev/scrutiny/commit/f99c3ff1bbeb86616c403e924704c414a75ad5ad)), closes [#588](https://github.com/Starosdev/scrutiny/issues/588) [#579](https://github.com/Starosdev/scrutiny/issues/579) [#492](https://github.com/Starosdev/scrutiny/issues/492) [#492](https://github.com/Starosdev/scrutiny/issues/492) [#601](https://github.com/Starosdev/scrutiny/issues/601) [#588](https://github.com/Starosdev/scrutiny/issues/588) [#579](https://github.com/Starosdev/scrutiny/issues/579) [#492](https://github.com/Starosdev/scrutiny/issues/492)
+
 ## [1.62.4](https://github.com/Starosdev/scrutiny/compare/v1.62.3...v1.62.4) (2026-06-09)
 
 ### Bug Fixes
