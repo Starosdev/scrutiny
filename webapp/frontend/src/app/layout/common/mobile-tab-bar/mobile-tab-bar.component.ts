@@ -49,9 +49,15 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
 
     get visibleTabs(): TabItem[] {
         return this.tabs.filter((tab) => {
-            if (tab.route === '/zfs-pools') { return this._config.navigation?.show_zfs_pools !== false; }
-            if (tab.route === '/btrfs-filesystems') { return this._config.navigation?.show_btrfs !== false; }
-            if (tab.route === '/workload') { return this._config.navigation?.show_workload !== false; }
+            if (tab.route === '/zfs-pools') {
+                return this._config.navigation?.show_zfs_pools !== false;
+            }
+            if (tab.route === '/btrfs-filesystems') {
+                return this._config.navigation?.show_btrfs !== false;
+            }
+            if (tab.route === '/workload') {
+                return this._config.navigation?.show_workload !== false;
+            }
             return true;
         });
     }
