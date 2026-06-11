@@ -1159,9 +1159,7 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 		},
 		{
 			ID: "m20260610000000", // add host_id column to mdadm_arrays table (#579)
-			Migrate: func(tx *gorm.DB) error {
-				return m20260610000000.Migrate(tx)
-			},
+			Migrate: m20260610000000.Migrate,
 		},
 	})
 
