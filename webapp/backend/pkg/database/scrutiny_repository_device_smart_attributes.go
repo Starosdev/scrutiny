@@ -27,8 +27,9 @@ func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, wwn strin
 		return measurements.Smart{}, err
 	}
 
-	// Look up DeviceID for dual-tagging in InfluxDB
-	device, devErr := sr.GetDeviceDetails(ctx, wwn)
+	// Look up the device via WWN so the current upload can carry a stable device_id tag
+	// and self-test history can be attached to the correct SQLite row set.
+	device, devErr := sr.GetDeviceByWWN(ctx, wwn)
 	if devErr == nil {
 		deviceSmartData.DeviceID = device.DeviceID
 	}
@@ -47,6 +48,12 @@ func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, wwn strin
 	}
 
 	tags, fields := deviceSmartData.Flatten()
+
+	if devErr == nil {
+		if err := sr.syncDeviceSelfTests(ctx, device, collectorSmartData); err != nil {
+			return measurements.Smart{}, err
+		}
+	}
 
 	// write point immediately
 	return deviceSmartData, sr.saveDatapoint(sr.influxWriteApi, "smart", tags, fields, deviceSmartData.Date, ctx)

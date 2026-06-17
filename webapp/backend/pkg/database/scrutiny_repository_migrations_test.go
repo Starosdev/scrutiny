@@ -510,3 +510,10 @@ CREATE TABLE devices (
 	require.NoError(t, repo.gormClient.Raw(`SELECT device_id FROM devices LIMIT 1`).Scan(&remainingID).Error)
 	require.Equal(t, "valid-uuid", remainingID, "valid device should be preserved")
 }
+
+func TestMigrateCreatesDeviceSelfTestsTable(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+
+	require.NoError(t, repo.Migrate(context.Background()))
+	require.True(t, repo.gormClient.Migrator().HasTable(&models.DeviceSelfTest{}))
+}

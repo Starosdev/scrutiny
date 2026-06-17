@@ -122,3 +122,53 @@ func TestSmartInfo_LargeLBAValues(t *testing.T) {
 		assert.Equal(t, uint64(18446744073709551615), smartInfo.AtaSmartErrorLog.Summary.Table[0].PreviousCommands[0].Registers.Lba)
 	})
 }
+
+func TestSmartInfo_AtaSmartSelfTestLogEntries(t *testing.T) {
+	t.Run("should prefer standard self-test entries when present", func(t *testing.T) {
+		jsonData := `{
+			"ata_smart_self_test_log": {
+				"standard": {
+					"revision": 1,
+					"table": [
+						{
+							"type": { "value": 1, "string": "Short offline" },
+							"status": { "value": 0, "string": "Completed without error", "passed": true },
+							"lifetime_hours": 100
+						}
+					]
+				}
+			}
+		}`
+
+		var smartInfo SmartInfo
+		err := json.Unmarshal([]byte(jsonData), &smartInfo)
+		require.NoError(t, err)
+		require.Len(t, smartInfo.AtaSmartSelfTestLog.Entries(), 1)
+		assert.Equal(t, 100, smartInfo.AtaSmartSelfTestLog.Entries()[0].LifetimeHours)
+	})
+
+	t.Run("should fall back to extended self-test entries", func(t *testing.T) {
+		jsonData := `{
+			"ata_smart_self_test_log": {
+				"extended": {
+					"revision": 1,
+					"sectors": 1,
+					"table": [
+						{
+							"type": { "value": 2, "string": "Extended offline" },
+							"status": { "value": 0, "string": "Completed without error", "passed": true },
+							"lifetime_hours": 200
+						}
+					]
+				}
+			}
+		}`
+
+		var smartInfo SmartInfo
+		err := json.Unmarshal([]byte(jsonData), &smartInfo)
+		require.NoError(t, err)
+		require.Len(t, smartInfo.AtaSmartSelfTestLog.Entries(), 1)
+		assert.Equal(t, 2, smartInfo.AtaSmartSelfTestLog.Entries()[0].Type.Value)
+		assert.Equal(t, 200, smartInfo.AtaSmartSelfTestLog.Entries()[0].LifetimeHours)
+	})
+}

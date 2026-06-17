@@ -2,6 +2,40 @@ package collector
 
 import "github.com/analogj/scrutiny/webapp/backend/pkg/models/common"
 
+type AtaSmartSelfTestLogEntry struct {
+	Type struct {
+		Value  int    `json:"value"`
+		String string `json:"string"`
+	} `json:"type"`
+	Status struct {
+		Value  int    `json:"value"`
+		String string `json:"string"`
+		Passed bool   `json:"passed"`
+	} `json:"status"`
+	LifetimeHours int `json:"lifetime_hours"`
+}
+
+type AtaSmartSelfTestLogTable struct {
+	Revision           int                        `json:"revision"`
+	Sectors            int                        `json:"sectors,omitempty"`
+	Table              []AtaSmartSelfTestLogEntry `json:"table"`
+	Count              int                        `json:"count"`
+	ErrorCountTotal    int                        `json:"error_count_total"`
+	ErrorCountOutdated int                        `json:"error_count_outdated"`
+}
+
+type AtaSmartSelfTestLog struct {
+	Standard AtaSmartSelfTestLogTable `json:"standard"`
+	Extended AtaSmartSelfTestLogTable `json:"extended"`
+}
+
+func (l AtaSmartSelfTestLog) Entries() []AtaSmartSelfTestLogEntry {
+	if len(l.Standard.Table) > 0 {
+		return l.Standard.Table
+	}
+	return l.Extended.Table
+}
+
 type SmartInfo struct {
 	JSONFormatVersion []int `json:"json_format_version"`
 	Smartctl          struct {
@@ -169,26 +203,7 @@ type SmartInfo struct {
 			} `json:"table"`
 		} `json:"summary"`
 	} `json:"ata_smart_error_log"`
-	AtaSmartSelfTestLog struct {
-		Standard struct {
-			Revision int `json:"revision"`
-			Table    []struct {
-				Type struct {
-					Value  int    `json:"value"`
-					String string `json:"string"`
-				} `json:"type"`
-				Status struct {
-					Value  int    `json:"value"`
-					String string `json:"string"`
-					Passed bool   `json:"passed"`
-				} `json:"status"`
-				LifetimeHours int `json:"lifetime_hours"`
-			} `json:"table"`
-			Count              int `json:"count"`
-			ErrorCountTotal    int `json:"error_count_total"`
-			ErrorCountOutdated int `json:"error_count_outdated"`
-		} `json:"standard"`
-	} `json:"ata_smart_self_test_log"`
+	AtaSmartSelfTestLog          AtaSmartSelfTestLog `json:"ata_smart_self_test_log"`
 	AtaSmartSelectiveSelfTestLog struct {
 		Revision int `json:"revision"`
 		Table    []struct {
