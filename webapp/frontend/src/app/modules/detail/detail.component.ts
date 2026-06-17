@@ -3,6 +3,7 @@ import { AfterViewInit, Component, LOCALE_ID, OnDestroy, OnInit, ViewChild, inje
 import { Location, formatDate, NgClass, UpperCasePipe, DecimalPipe, PercentPipe } from '@angular/common';
 import { ApexOptions, ChartComponent } from 'ng-apexcharts';
 import { AppConfig } from 'app/core/config/app.config';
+import { DeviceSelfTestModel } from 'app/core/models/device-selftest-model';
 import { DetailService } from './detail.service';
 import { DetailSettingsComponent } from 'app/layout/common/detail-settings/detail-settings.component';
 import { AttributeHistoryDialogComponent, AttributeHistoryData } from 'app/layout/common/attribute-history-dialog/attribute-history-dialog.component';
@@ -170,6 +171,9 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Replacement risk
     replacementRisk: ReplacementRiskModel | null = null;
+    selfTests: DeviceSelfTestModel[] = [];
+    selfTestsLoading = false;
+    selfTestsLoaded = false;
 
     // Performance benchmarks
     performanceHistory: PerformanceModel[] = [];
@@ -242,6 +246,14 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
             // Load replacement risk (lazy, non-blocking)
             this._loadReplacementRisk(this.device.device_id);
+
+            if (this.isAta()) {
+                this._loadSelfTests(this.device.device_id);
+            } else {
+                this.selfTests = [];
+                this.selfTestsLoaded = true;
+                this.selfTestsLoading = false;
+            }
         });
     }
 
@@ -790,6 +802,24 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         };
     }
 
+    selfTestStatusLabel(selfTest: DeviceSelfTestModel): string {
+        return selfTest.status_passed ? 'Passed' : 'Attention';
+    }
+
+    selfTestStatusClass(selfTest: DeviceSelfTestModel): Record<string, boolean> {
+        return {
+            'green-200': selfTest.status_passed,
+            'yellow-200': !selfTest.status_passed,
+        };
+    }
+
+    selfTestDotClass(selfTest: DeviceSelfTestModel): Record<string, boolean> {
+        return {
+            'bg-green': selfTest.status_passed,
+            'bg-yellow': !selfTest.status_passed,
+        };
+    }
+
     private _loadReplacementRisk(deviceId: string): void {
         this._detailService
             .getReplacementRisk(deviceId)
@@ -800,6 +830,27 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
                 },
                 error: () => {
                     this.replacementRisk = null;
+                },
+            });
+    }
+
+    private _loadSelfTests(deviceId: string): void {
+        this.selfTestsLoading = true;
+        this.selfTestsLoaded = false;
+
+        this._detailService
+            .getSelfTestData(deviceId)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe({
+                next: (resp) => {
+                    this.selfTests = resp?.data?.self_tests ?? [];
+                    this.selfTestsLoading = false;
+                    this.selfTestsLoaded = true;
+                },
+                error: () => {
+                    this.selfTests = [];
+                    this.selfTestsLoading = false;
+                    this.selfTestsLoaded = true;
                 },
             });
     }

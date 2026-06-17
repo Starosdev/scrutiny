@@ -1096,6 +1096,12 @@ All notable changes to Scrutiny will be documented in this file.
 ### Refactoring
 
 * **database:** extract hardcoded time ranges to constants ([deb2df0](https://github.com/Starosdev/scrutiny/commit/deb2df0bc718461c5a9826d6b6c1c1307b7122e8)), closes [#49](https://github.com/Starosdev/scrutiny/issues/49)
+## Unreleased
+
+### Features
+
+* **smart/ui:** add SMART self-test history endpoint and device detail view
+
 
 ## [1.1.1](https://github.com/Starosdev/scrutiny/compare/v1.1.0...v1.1.1) (2025-12-09)
 

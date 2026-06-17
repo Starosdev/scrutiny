@@ -21,6 +21,7 @@ import { SmartModel } from 'app/core/models/measurements/smart-model';
 import { SmartAttributeModel } from 'app/core/models/measurements/smart-attribute-model';
 import { DeviceModel } from 'app/core/models/device-model';
 import { AppConfig } from 'app/core/config/app.config';
+import { DeviceSelfTestModel } from 'app/core/models/device-selftest-model';
 import { SharedModule } from 'app/shared/shared.module';
 import { DetailSettingsModule } from 'app/layout/common/detail-settings/detail-settings.module';
 import { AttributeOverrideService } from 'app/core/config/attribute-override.service';
@@ -48,9 +49,12 @@ describe('DetailComponent', () => {
             theme: 'light',
         };
 
-        mockDetailService = jasmine.createSpyObj('DetailService', ['getData'], {
+        mockDetailService = jasmine.createSpyObj('DetailService', ['getData', 'getSelfTestData', 'getPerformanceData', 'getReplacementRisk'], {
             data$: dataSubject.asObservable(),
         });
+        mockDetailService.getSelfTestData.and.returnValue(of({ success: true, data: { self_tests: [] } }));
+        mockDetailService.getPerformanceData.and.returnValue(of({ success: true, data: { history: [], baseline: null } }));
+        mockDetailService.getReplacementRisk.and.returnValue(of({ success: true, data: null }));
         mockConfigService = jasmine.createSpyObj('ScrutinyConfigService', [], {
             config$: of(defaultConfig),
         });
@@ -100,6 +104,32 @@ describe('DetailComponent', () => {
 
     it('should create', () => {
         expect(component).toBeTruthy();
+    });
+
+    it('should load self-tests when ATA device details arrive', () => {
+        component.ngOnInit();
+
+        dataSubject.next({
+            data: {
+                device: { device_id: 'device-1', device_protocol: 'ATA', smart_display_mode: 'scrutiny' },
+                smart_results: [],
+            },
+            metadata: {},
+        });
+
+        expect(mockDetailService.getSelfTestData).toHaveBeenCalledWith('device-1');
+    });
+
+    describe('selfTestStatusLabel', () => {
+        it('should return Passed for successful self-tests', () => {
+            const selfTest = { status_passed: true } as DeviceSelfTestModel;
+            expect(component.selfTestStatusLabel(selfTest)).toBe('Passed');
+        });
+
+        it('should return Attention for non-passing self-tests', () => {
+            const selfTest = { status_passed: false } as DeviceSelfTestModel;
+            expect(component.selfTestStatusLabel(selfTest)).toBe('Attention');
+        });
     });
 
     describe('getSSDPercentageUsed', () => {
