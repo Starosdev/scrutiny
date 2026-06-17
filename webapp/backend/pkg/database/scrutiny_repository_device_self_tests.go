@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
@@ -81,4 +82,22 @@ func (sr *scrutinyRepository) syncDeviceSelfTests(ctx context.Context, device mo
 
 		return tx.Delete(&models.DeviceSelfTest{}, staleIDs).Error
 	})
+}
+
+func (sr *scrutinyRepository) GetDeviceSelfTests(ctx context.Context, deviceID string) ([]models.DeviceSelfTest, error) {
+	device, err := sr.GetDeviceDetails(ctx, deviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	deviceIdentity := deviceSelfTestIdentity(device)
+	selfTests := []models.DeviceSelfTest{}
+	if err := sr.gormClient.WithContext(ctx).
+		Where("device_identity = ?", deviceIdentity).
+		Order("lifetime_hours DESC, id DESC").
+		Find(&selfTests).Error; err != nil {
+		return nil, fmt.Errorf("could not get device self-tests from DB: %v", err)
+	}
+
+	return selfTests, nil
 }

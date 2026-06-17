@@ -55,6 +55,7 @@ type DeviceRepo interface {
 
 	SaveSmartAttributes(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo) (measurements.Smart, error)
 	GetSmartAttributeHistory(ctx context.Context, wwn string, durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) ([]measurements.Smart, error)
+	GetDeviceSelfTests(ctx context.Context, deviceID string) ([]models.DeviceSelfTest, error)
 	// GetPreviousSmartSubmission returns the previous raw SMART submission (without daily aggregation)
 	// for use in repeat notification detection. Returns the submission before the most recent one.
 	GetPreviousSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error)
