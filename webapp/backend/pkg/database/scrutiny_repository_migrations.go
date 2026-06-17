@@ -1166,6 +1166,26 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 			ID:      "m20260616000000", // add ATA SMART self-test history table (#491)
 			Migrate: m20260616000000.Migrate,
 		},
+		{
+			ID: "m20260617000000", // add dashboard layout density settings (#471)
+			Migrate: func(tx *gorm.DB) error {
+				var defaultSettings = []m20220716214900.Setting{
+					{
+						SettingKeyName:        "dashboard_columns",
+						SettingKeyDescription: "Maximum dashboard card columns on wide screens (2 | 3 | 4 | 5)",
+						SettingDataType:       "numeric",
+						SettingValueNumeric:   2,
+					},
+					{
+						SettingKeyName:        "dashboard_density",
+						SettingKeyDescription: "Dashboard card spacing density ('comfortable' | 'compact')",
+						SettingDataType:       "string",
+						SettingValueString:    "comfortable",
+					},
+				}
+				return tx.Create(&defaultSettings).Error
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {

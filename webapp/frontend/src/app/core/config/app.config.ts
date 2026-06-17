@@ -6,6 +6,10 @@ export type Theme = 'light' | 'dark' | 'system';
 // Device title to display on the dashboard
 export type DashboardDisplay = 'name' | 'serial_id' | 'uuid' | 'label';
 
+export type DashboardColumns = 2 | 3 | 4 | 5;
+
+export type DashboardDensity = 'comfortable' | 'compact';
+
 export type DashboardSort =
     | 'status'
     | 'status_asc'
@@ -96,6 +100,8 @@ export interface AppConfig {
     // Dashboard options
     dashboard_display?: DashboardDisplay;
     dashboard_sort?: DashboardSort;
+    dashboard_columns?: DashboardColumns;
+    dashboard_density?: DashboardDensity;
 
     temperature_unit?: TemperatureUnit;
 
@@ -178,6 +184,8 @@ export const appConfig: AppConfig = {
 
     dashboard_display: 'name',
     dashboard_sort: 'status',
+    dashboard_columns: 2,
+    dashboard_density: 'comfortable',
 
     temperature_unit: 'celsius',
     file_size_si_units: false,

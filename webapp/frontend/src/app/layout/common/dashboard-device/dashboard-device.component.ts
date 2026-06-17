@@ -37,6 +37,7 @@ export class DashboardDeviceComponent implements OnInit {
     }
 
     @Input() deviceSummary: DeviceSummaryModel;
+    @Input() compact: boolean = false;
     @Output() deviceArchived = new EventEmitter<string>();
     @Output() deviceUnarchived = new EventEmitter<string>();
     @Output() deviceDeleted = new EventEmitter<string>();

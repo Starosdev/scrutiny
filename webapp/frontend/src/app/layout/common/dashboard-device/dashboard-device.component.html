@@ -6,10 +6,11 @@
         'border-gray': deviceSummary.device.archived,
         'text-disabled': deviceSummary.device.archived
     }"
-    class="relative flex flex-col flex-auto p-6 pr-3 pb-3 bg-card rounded border-l-4 shadow-md overflow-hidden"
+    class="dashboard-device-shell relative flex flex-col flex-auto p-6 pr-3 pb-3 bg-card rounded border-l-4 shadow-md overflow-hidden"
+    [class.dashboard-device-shell--compact]="compact"
 >
     <!-- Status watermark icon -->
-    <div class="absolute bottom-0 right-0 w-24 h-24 -m-6">
+    <div class="dashboard-device-watermark absolute bottom-0 right-0 w-24 h-24 -m-6">
         @if (deviceStatusForModelWithThreshold(deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold) === 'passed') {
         <mat-icon class="icon-size-96 opacity-12 text-green" [svgIcon]="'heroicons_outline:check-circle'"></mat-icon>
         } @else if (deviceStatusForModelWithThreshold(deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold) === 'failed') {
@@ -91,47 +92,47 @@
     </div>
 
     <!-- Metrics -->
-    <div class="flex flex-row flex-wrap mt-4 -mx-6">
+    <div class="dashboard-device-metrics flex flex-row flex-wrap mt-4 -mx-6">
         <!-- Status -->
-        <div class="flex flex-col mx-6 my-3 xs:w-full">
-            <div class="font-semibold text-xs text-hint uppercase tracking-wider">Status</div>
+        <div class="dashboard-device-metric flex flex-col mx-6 my-3 xs:w-full">
+            <div class="dashboard-device-metric-label font-semibold text-xs text-hint uppercase tracking-wider">Status</div>
 
             @if (deviceSummary.smart?.collector_date) {
-            <div class="mt-2 font-medium text-3xl leading-none">
+            <div class="dashboard-device-metric-value mt-2 font-medium text-3xl leading-none">
                 {{ deviceStatusForModelWithThreshold(deviceSummary.device, !!deviceSummary.smart, config.metrics.status_threshold) | titlecase }}
             </div>
             } @else {
-            <div class="mt-2 font-medium text-3xl leading-none">No Data</div>
+            <div class="dashboard-device-metric-value mt-2 font-medium text-3xl leading-none">No Data</div>
             }
         </div>
 
         <!-- Temperature -->
-        <div class="flex flex-col mx-6 my-3 xs:w-full">
-            <div class="font-semibold text-xs text-hint uppercase tracking-wider">Temperature</div>
+        <div class="dashboard-device-metric flex flex-col mx-6 my-3 xs:w-full">
+            <div class="dashboard-device-metric-label font-semibold text-xs text-hint uppercase tracking-wider">Temperature</div>
 
             @if (deviceSummary.smart?.collector_date) {
-            <div class="mt-2 font-medium text-3xl leading-none">
+            <div class="dashboard-device-metric-value mt-2 font-medium text-3xl leading-none">
                 {{ deviceSummary.smart?.temp | temperature : config.temperature_unit : true }}
             </div>
             } @else {
-            <div class="mt-2 font-medium text-3xl leading-none">--</div>
+            <div class="dashboard-device-metric-value mt-2 font-medium text-3xl leading-none">--</div>
             }
         </div>
 
         <!-- Capacity -->
-        <div class="flex flex-col mx-6 my-3 xs:w-full">
-            <div class="font-semibold text-xs text-hint uppercase tracking-wider">Capacity</div>
-            <div class="mt-2 font-medium text-3xl leading-none">
+        <div class="dashboard-device-metric flex flex-col mx-6 my-3 xs:w-full">
+            <div class="dashboard-device-metric-label font-semibold text-xs text-hint uppercase tracking-wider">Capacity</div>
+            <div class="dashboard-device-metric-value mt-2 font-medium text-3xl leading-none">
                 {{ deviceSummary.device.capacity | fileSize : config.file_size_si_units }}
             </div>
         </div>
 
         <!-- Powered On -->
-        <div class="flex flex-col mx-6 my-3 xs:w-full">
-            <div class="font-semibold text-xs text-hint uppercase tracking-wider">Powered On</div>
+        <div class="dashboard-device-metric flex flex-col mx-6 my-3 xs:w-full">
+            <div class="dashboard-device-metric-label font-semibold text-xs text-hint uppercase tracking-wider">Powered On</div>
 
             @if (deviceSummary.smart?.power_on_hours) {
-            <div class="mt-2 font-medium text-3xl leading-none">
+            <div class="dashboard-device-metric-value mt-2 font-medium text-3xl leading-none">
                 {{
                     deviceSummary.smart?.power_on_hours
                         | deviceHours
@@ -144,17 +145,17 @@
                 }}
             </div>
             } @else {
-            <div class="mt-2 font-medium text-3xl leading-none">--</div>
+            <div class="dashboard-device-metric-value mt-2 font-medium text-3xl leading-none">--</div>
             }
         </div>
 
         <!-- SSD Health (only shown when available) -->
         @if (getSSDHealth()) {
-        <div class="flex flex-col mx-6 my-3 xs:w-full">
-            <div class="font-semibold text-xs text-hint uppercase tracking-wider">
+        <div class="dashboard-device-metric flex flex-col mx-6 my-3 xs:w-full">
+            <div class="dashboard-device-metric-label font-semibold text-xs text-hint uppercase tracking-wider">
                 {{ getSSDHealthLabel() }}
             </div>
-            <div class="mt-2 font-medium text-3xl leading-none">
+            <div class="dashboard-device-metric-value mt-2 font-medium text-3xl leading-none">
                 {{ getSSDHealthDisplay() }}
             </div>
         </div>

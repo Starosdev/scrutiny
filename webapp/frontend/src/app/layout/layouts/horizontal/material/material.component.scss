@@ -43,7 +43,7 @@ material-layout {
 
             .container {
                 position: relative;
-                max-width: 1440px;
+                max-width: var(--scrutiny-shell-max-width, 1440px);
                 width: calc(100% - 64px);
                 margin: 48px 32px 0 32px;
                 padding: 16px 0 12px 0;
@@ -179,7 +179,7 @@ material-layout {
             display: flex;
             flex-direction: column;
             flex: 1 1 auto;
-            max-width: 1440px;
+            max-width: var(--scrutiny-shell-max-width, 1440px);
             width: calc(100% - 64px);
             margin: 0 32px;
             box-shadow: 0 0 25px 0 rgba(0, 0, 0, 0.1), 0 0 10px 0 rgba(0, 0, 0, 0.04);
@@ -202,7 +202,7 @@ material-layout {
             flex: 1 1 auto;
             align-items: center;
             justify-content: flex-start;
-            max-width: 1440px;
+            max-width: var(--scrutiny-shell-max-width, 1440px);
             width: calc(100% - 64px);
             height: 80px;
             max-height: 80px;

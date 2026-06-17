@@ -2,6 +2,8 @@ import { Component, OnInit, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import {
     AppConfig,
+    DashboardColumns,
+    DashboardDensity,
     AttributeOverride,
     DashboardDisplay,
     DashboardSort,
@@ -85,8 +87,10 @@ export class DashboardSettingsComponent implements OnInit {
     private readonly _notifyUrlService = inject(NotifyUrlService);
     private readonly _httpClient = inject(HttpClient);
 
-    dashboardDisplay: string;
-    dashboardSort: string;
+    dashboardDisplay: DashboardDisplay;
+    dashboardSort: DashboardSort;
+    dashboardColumns: DashboardColumns;
+    dashboardDensity: DashboardDensity;
     temperatureUnit: string;
     fileSizeSIUnits: boolean;
     poweredOnHoursUnit: string;
@@ -206,6 +210,8 @@ export class DashboardSettingsComponent implements OnInit {
             // Store the config
             this.dashboardDisplay = config.dashboard_display;
             this.dashboardSort = config.dashboard_sort;
+            this.dashboardColumns = config.dashboard_columns;
+            this.dashboardDensity = config.dashboard_density;
             this.temperatureUnit = config.temperature_unit;
             this.fileSizeSIUnits = config.file_size_si_units;
             this.poweredOnHoursUnit = config.powered_on_hours_unit;
@@ -521,6 +527,8 @@ export class DashboardSettingsComponent implements OnInit {
             },
             dashboard_display: this.dashboardDisplay as DashboardDisplay,
             dashboard_sort: this.dashboardSort as DashboardSort,
+            dashboard_columns: this.dashboardColumns as DashboardColumns,
+            dashboard_density: this.dashboardDensity as DashboardDensity,
             temperature_unit: this.temperatureUnit as TemperatureUnit,
             time_format: this.timeFormat as TimeFormat,
             file_size_si_units: this.fileSizeSIUnits,

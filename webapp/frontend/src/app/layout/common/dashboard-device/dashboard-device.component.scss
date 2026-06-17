@@ -19,3 +19,29 @@
     width: 16px;
     height: 16px;
 }
+
+.dashboard-device-shell--compact {
+    padding: 0.85rem 0.75rem 0.55rem 0.6rem;
+
+    .dashboard-device-watermark {
+        width: 5rem;
+        height: 5rem;
+        margin: -1rem;
+    }
+
+    .dashboard-device-metrics {
+        margin-top: 0.5rem;
+        margin-left: -0.5rem;
+        margin-right: -0.5rem;
+    }
+
+    .dashboard-device-metric {
+        margin: 0.25rem 0.5rem;
+    }
+
+    .dashboard-device-metric-value {
+        margin-top: 0.35rem;
+        font-size: 1.35rem;
+        line-height: 1.15;
+    }
+}

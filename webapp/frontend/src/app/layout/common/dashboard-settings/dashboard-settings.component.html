@@ -60,6 +60,28 @@
 
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Dashboard Columns</mat-label>
+                <mat-select [(ngModel)]="dashboardColumns">
+                    <mat-option [value]="2">2 Columns</mat-option>
+                    <mat-option [value]="3">3 Columns</mat-option>
+                    <mat-option [value]="4">4 Columns</mat-option>
+                    <mat-option [value]="5">5 Columns</mat-option>
+                </mat-select>
+                <mat-hint>Maximum card columns on wide screens. Smaller widths still step down automatically.</mat-hint>
+            </mat-form-field>
+
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">
+                <mat-label>Dashboard Density</mat-label>
+                <mat-select [(ngModel)]="dashboardDensity">
+                    <mat-option value="comfortable">Comfortable</mat-option>
+                    <mat-option value="compact">Compact</mat-option>
+                </mat-select>
+                <mat-hint>Compact reduces dashboard card spacing and padding.</mat-hint>
+            </mat-form-field>
+        </div>
+
+        <div class="flex flex-col mt-5 gt-md:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>File Size</mat-label>
                 <mat-select [(ngModel)]="fileSizeSIUnits">
                     <mat-option [value]="true">SI Units (GB)</mat-option>
