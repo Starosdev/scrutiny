@@ -135,13 +135,13 @@ func (sa *SmartAtaAttribute) ValidateThreshold(smartMetadata thresholds.AtaAttri
 	value := sa.thresholdValue(smartMetadata.DisplayType)
 
 	for _, obsThresh := range smartMetadata.ObservedThresholds {
-		//check if "value" is in this bucket
+		// check if "value" is in this bucket
 		if !observedThresholdContains(obsThresh, value) {
 			continue
 		}
 		sa.FailureRate = observedFailureRate(obsThresh)
 		sa.applyFailureRateStatus(smartMetadata.Critical)
-		//we've found the correct bucket, we can drop out of this loop
+		// we've found the correct bucket, we can drop out of this loop
 		return
 	}
 
