@@ -44,49 +44,54 @@ func (d *Detect) findMissingDevices(detectedDevices []models.Device) ([]models.D
 	}
 
 	for _, disk := range block.Disks {
-
-		// ignore optical drives and floppy disks
-		if disk.DriveType == ghw.DRIVE_TYPE_FDD || disk.DriveType == ghw.DRIVE_TYPE_ODD {
-			d.Logger.Debugf(" => Ignore: Optical or floppy disk - (found %s)\n", disk.DriveType.String())
-			continue
-		}
-
-		// ignore removable disks
-		if disk.IsRemovable {
-			d.Logger.Debugf(" => Ignore: Removable disk (%v)\n", disk.IsRemovable)
-			continue
-		}
-
-		// ignore virtual disks & mobile phone storage devices
-		if disk.StorageController == ghw.STORAGE_CONTROLLER_VIRTIO || disk.StorageController == ghw.STORAGE_CONTROLLER_MMC {
-			d.Logger.Debugf(" => Ignore: Virtual/multi-media storage controller - (found %s)\n", disk.StorageController.String())
-			continue
-		}
-
-		// Skip unknown storage controllers, not usually S.M.A.R.T compatible.
-		if disk.StorageController == ghw.STORAGE_CONTROLLER_UNKNOWN {
-			d.Logger.Debugf(" => Ignore: Unknown storage controller - (found %s)\n", disk.StorageController.String())
+		if d.shouldIgnoreDisk(disk) {
 			continue
 		}
 
 		//check if device is already detected.
-		alreadyDetected := false
 		diskName := strings.TrimPrefix(disk.Name, DevicePrefix())
-		for _, detectedDevice := range detectedDevices {
+		if deviceAlreadyDetected(detectedDevices, diskName) {
+			continue
+		}
 
-			if detectedDevice.DeviceName == diskName {
-				alreadyDetected = true
-				break
-			}
-		}
-		if !alreadyDetected {
-			missingDevices = append(missingDevices, models.Device{
-				DeviceName: diskName,
-				DeviceType: "",
-			})
-		}
+		missingDevices = append(missingDevices, models.Device{
+			DeviceName: diskName,
+			DeviceType: "",
+		})
 	}
 	return missingDevices, nil
+}
+
+// shouldIgnoreDisk reports whether a block device should be skipped during manual detection
+// (optical/floppy, removable, virtual/multi-media, or unknown storage controllers).
+func (d *Detect) shouldIgnoreDisk(disk *ghw.Disk) bool {
+	switch {
+	case disk.DriveType == ghw.DRIVE_TYPE_FDD || disk.DriveType == ghw.DRIVE_TYPE_ODD:
+		d.Logger.Debugf(" => Ignore: Optical or floppy disk - (found %s)\n", disk.DriveType.String())
+		return true
+	case disk.IsRemovable:
+		d.Logger.Debugf(" => Ignore: Removable disk (%v)\n", disk.IsRemovable)
+		return true
+	case disk.StorageController == ghw.STORAGE_CONTROLLER_VIRTIO || disk.StorageController == ghw.STORAGE_CONTROLLER_MMC:
+		d.Logger.Debugf(" => Ignore: Virtual/multi-media storage controller - (found %s)\n", disk.StorageController.String())
+		return true
+	case disk.StorageController == ghw.STORAGE_CONTROLLER_UNKNOWN:
+		// Skip unknown storage controllers, not usually S.M.A.R.T compatible.
+		d.Logger.Debugf(" => Ignore: Unknown storage controller - (found %s)\n", disk.StorageController.String())
+		return true
+	default:
+		return false
+	}
+}
+
+// deviceAlreadyDetected reports whether diskName is already present in detectedDevices.
+func deviceAlreadyDetected(detectedDevices []models.Device, diskName string) bool {
+	for _, detectedDevice := range detectedDevices {
+		if detectedDevice.DeviceName == diskName {
+			return true
+		}
+	}
+	return false
 }
 
 // WWN values NVMe and SCSI
