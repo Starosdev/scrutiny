@@ -23,7 +23,6 @@ func (sr *scrutinyRepository) GetWorkloadInsights(ctx context.Context, durationK
 
 	insights := map[string]*models.WorkloadInsight{}
 	deviceProtocols := map[string]string{}
-	wwnToDeviceID := map[string]string{}
 	for i := range devices {
 		if devices[i].Archived {
 			continue
@@ -43,7 +42,6 @@ func (sr *scrutinyRepository) GetWorkloadInsights(ctx context.Context, durationK
 			Intensity:      "unknown",
 		}
 		deviceProtocols[devices[i].WWN] = devices[i].DeviceProtocol
-		wwnToDeviceID[devices[i].WWN] = devices[i].DeviceID
 	}
 
 	if len(insights) == 0 {
@@ -64,32 +62,41 @@ func (sr *scrutinyRepository) GetWorkloadInsights(ctx context.Context, durationK
 		// Non-fatal: continue without spike detection
 	}
 
-	// Compute insights per device
-	// InfluxDB results are keyed by WWN, so we look up by WWN using the reverse map
-	for devID, insight := range insights {
-		// Find WWN for this DeviceID to look up InfluxDB results
-		wwn := insight.DeviceWWN
-		_ = devID
-
-		first, hasFirst := firstPoints[wwn]
-		last, hasLast := lastPoints[wwn]
-
-		if !hasFirst || !hasLast {
-			continue
-		}
-
-		sr.computeWorkloadInsight(insight, first, last, deviceProtocols[wwn], maxTBWForDevice(devices, insight.DeviceID))
-
-		// Spike detection
-		if recent, ok := recentPoints[wwn]; ok && len(recent) >= 2 {
-			spike := sr.detectSpike(recent, insight.DailyWriteBytes, deviceProtocols[wwn])
-			if spike != nil {
-				insight.Spike = spike
-			}
-		}
+	// Compute insights per device.
+	// InfluxDB results are keyed by WWN, so we look up by WWN.
+	for _, insight := range insights {
+		sr.populateWorkloadInsight(insight, devices, deviceProtocols, firstPoints, lastPoints, recentPoints)
 	}
 
 	return insights, nil
+}
+
+// populateWorkloadInsight computes the rate/endurance/spike fields for a single
+// device's insight using the queried first/last/recent InfluxDB snapshots.
+func (sr *scrutinyRepository) populateWorkloadInsight(
+	insight *models.WorkloadInsight,
+	devices []models.Device,
+	deviceProtocols map[string]string,
+	firstPoints, lastPoints map[string]*workloadSnapshot,
+	recentPoints map[string][]*workloadSnapshot,
+) {
+	wwn := insight.DeviceWWN
+
+	first, hasFirst := firstPoints[wwn]
+	last, hasLast := lastPoints[wwn]
+	if !hasFirst || !hasLast {
+		return
+	}
+
+	sr.computeWorkloadInsight(insight, first, last, deviceProtocols[wwn], maxTBWForDevice(devices, insight.DeviceID))
+
+	// Spike detection
+	if recent, ok := recentPoints[wwn]; ok && len(recent) >= 2 {
+		spike := sr.detectSpike(recent, insight.DailyWriteBytes, deviceProtocols[wwn])
+		if spike != nil {
+			insight.Spike = spike
+		}
+	}
 }
 
 // workloadSnapshot holds extracted field values from a single InfluxDB data point
@@ -99,34 +106,34 @@ type workloadSnapshot struct {
 	LogicalBlockSize int64
 
 	// ATA
-	Attr241RawValue    int64 // Total LBAs Written
-	Attr242RawValue    int64 // Total LBAs Read
-	Devstat124Value    int64 // Logical Sectors Written
-	Devstat140Value    int64 // Logical Sectors Read
-	Devstat78Value     int64 // Percentage Used Endurance
-	Attr177Value       int64 // Wearout (Samsung/Crucial)
-	Attr231Value       int64 // Life Left
-	Attr232Value       int64 // Endurance Remaining
-	Attr233Value       int64 // Wearout (Intel)
+	Attr241RawValue int64 // Total LBAs Written
+	Attr242RawValue int64 // Total LBAs Read
+	Devstat124Value int64 // Logical Sectors Written
+	Devstat140Value int64 // Logical Sectors Read
+	Devstat78Value  int64 // Percentage Used Endurance
+	Attr177Value    int64 // Wearout (Samsung/Crucial)
+	Attr231Value    int64 // Life Left
+	Attr232Value    int64 // Endurance Remaining
+	Attr233Value    int64 // Wearout (Intel)
 
 	// NVMe
-	DataUnitsWritten   int64
-	DataUnitsRead      int64
-	PercentageUsed     int64
+	DataUnitsWritten int64
+	DataUnitsRead    int64
+	PercentageUsed   int64
 
 	// Track which fields were present
-	hasAttr241         bool
-	hasAttr242         bool
-	hasDevstat124      bool
-	hasDevstat140      bool
-	hasDevstat78       bool
-	hasAttr177         bool
-	hasAttr231         bool
-	hasAttr232         bool
-	hasAttr233         bool
-	hasDataUnitsW      bool
-	hasDataUnitsR      bool
-	hasPercentageUsed  bool
+	hasAttr241        bool
+	hasAttr242        bool
+	hasDevstat124     bool
+	hasDevstat140     bool
+	hasDevstat78      bool
+	hasAttr177        bool
+	hasAttr231        bool
+	hasAttr232        bool
+	hasAttr233        bool
+	hasDataUnitsW     bool
+	hasDataUnitsR     bool
+	hasPercentageUsed bool
 }
 
 // extractInt64 extracts an int64 value from InfluxDB result map.
@@ -489,42 +496,7 @@ func classifyIntensity(dailyTotalBytes int64) string {
 }
 
 func (sr *scrutinyRepository) computeEndurance(insight *models.WorkloadInsight, snap *workloadSnapshot, protocol string, cumulativeWriteBytes int64, maxTBW *float64) {
-	var percentageUsed int64
-	var hasPercentage bool
-
-	switch protocol {
-	case pkg.DeviceProtocolNvme:
-		if snap.hasPercentageUsed {
-			percentageUsed = snap.PercentageUsed
-			hasPercentage = true
-		}
-	case pkg.DeviceProtocolAta:
-		if snap.hasDevstat78 {
-			percentageUsed = snap.Devstat78Value
-			hasPercentage = true
-		} else {
-			// Check wearout attributes (higher = healthier, invert to get percentage used)
-			for _, info := range []struct {
-				has   bool
-				value int64
-			}{
-				{snap.hasAttr177, snap.Attr177Value},
-				{snap.hasAttr233, snap.Attr233Value},
-				{snap.hasAttr231, snap.Attr231Value},
-				{snap.hasAttr232, snap.Attr232Value},
-			} {
-				if info.has && info.value > 0 {
-					percentageUsed = 100 - info.value
-					if percentageUsed < 0 {
-						percentageUsed = 0
-					}
-					hasPercentage = true
-					break
-				}
-			}
-		}
-	}
-
+	percentageUsed, hasPercentage := endurancePercentageUsed(snap, protocol)
 	if !hasPercentage {
 		return
 	}
@@ -534,16 +506,7 @@ func (sr *scrutinyRepository) computeEndurance(insight *models.WorkloadInsight, 
 		PercentageUsed: percentageUsed,
 	}
 
-	if cumulativeWriteBytes > 0 {
-		estimate.TBWrittenSoFar = float64(cumulativeWriteBytes) / (1024 * 1024 * 1024 * 1024)
-		estimate.TBWrittenSoFar = math.Round(estimate.TBWrittenSoFar*100) / 100
-	}
-	if maxTBW != nil && *maxTBW > 0 {
-		estimate.TBWRated = math.Round(*maxTBW*100) / 100
-		if estimate.TBWrittenSoFar > 0 {
-			estimate.TBWUsedPercent = math.Round((estimate.TBWrittenSoFar/estimate.TBWRated)*10000) / 100
-		}
-	}
+	applyTBWEstimate(estimate, cumulativeWriteBytes, maxTBW)
 
 	if percentageUsed > 0 && snap.PowerOnHours > 0 {
 		totalLifespanHours := float64(snap.PowerOnHours) / (float64(percentageUsed) / 100.0)
@@ -554,6 +517,60 @@ func (sr *scrutinyRepository) computeEndurance(insight *models.WorkloadInsight, 
 	}
 
 	insight.Endurance = estimate
+}
+
+// endurancePercentageUsed derives the endurance "percentage used" value for the
+// given protocol from a snapshot, returning the value and whether one was found.
+func endurancePercentageUsed(snap *workloadSnapshot, protocol string) (percentageUsed int64, hasPercentage bool) {
+	switch protocol {
+	case pkg.DeviceProtocolNvme:
+		if snap.hasPercentageUsed {
+			return snap.PercentageUsed, true
+		}
+	case pkg.DeviceProtocolAta:
+		if snap.hasDevstat78 {
+			return snap.Devstat78Value, true
+		}
+		return ataWearoutPercentageUsed(snap)
+	}
+	return 0, false
+}
+
+// ataWearoutPercentageUsed inspects ATA wearout attributes (higher = healthier)
+// and inverts the first present value into a percentage used.
+func ataWearoutPercentageUsed(snap *workloadSnapshot) (percentageUsed int64, hasPercentage bool) {
+	for _, info := range []struct {
+		has   bool
+		value int64
+	}{
+		{snap.hasAttr177, snap.Attr177Value},
+		{snap.hasAttr233, snap.Attr233Value},
+		{snap.hasAttr231, snap.Attr231Value},
+		{snap.hasAttr232, snap.Attr232Value},
+	} {
+		if info.has && info.value > 0 {
+			percentageUsed = 100 - info.value
+			if percentageUsed < 0 {
+				percentageUsed = 0
+			}
+			return percentageUsed, true
+		}
+	}
+	return 0, false
+}
+
+// applyTBWEstimate fills in the terabytes-written and rated-TBW fields on the estimate.
+func applyTBWEstimate(estimate *models.EnduranceEstimate, cumulativeWriteBytes int64, maxTBW *float64) {
+	if cumulativeWriteBytes > 0 {
+		estimate.TBWrittenSoFar = float64(cumulativeWriteBytes) / (1024 * 1024 * 1024 * 1024)
+		estimate.TBWrittenSoFar = math.Round(estimate.TBWrittenSoFar*100) / 100
+	}
+	if maxTBW != nil && *maxTBW > 0 {
+		estimate.TBWRated = math.Round(*maxTBW*100) / 100
+		if estimate.TBWrittenSoFar > 0 {
+			estimate.TBWUsedPercent = math.Round((estimate.TBWrittenSoFar/estimate.TBWRated)*10000) / 100
+		}
+	}
 }
 
 func maxTBWForDevice(devices []models.Device, deviceID string) *float64 {

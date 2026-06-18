@@ -24,8 +24,8 @@ func (sr *scrutinyRepository) SaveSmartTemperature(ctx context.Context, wwn stri
 			}
 
 			intervalSec := collectorSmartData.AtaSctTemperatureHistory.LoggingIntervalMinutes * 60
-			datapointTime := collectorSmartData.LocalTime.TimeT - int64(ndx) * intervalSec
-			alignedDatapointTime := datapointTime - datapointTime % intervalSec
+			datapointTime := collectorSmartData.LocalTime.TimeT - int64(ndx)*intervalSec
+			alignedDatapointTime := datapointTime - datapointTime%intervalSec
 			smartTemp := measurements.SmartTemperature{
 				Date: time.Unix(alignedDatapointTime, 0),
 				Temp: temp,
@@ -45,8 +45,7 @@ func (sr *scrutinyRepository) SaveSmartTemperature(ctx context.Context, wwn stri
 		}
 	}
 
-
-        // Even if ata_sct_temperature_history is present, also add current temperature. See #824
+	// Even if ata_sct_temperature_history is present, also add current temperature. See #824
 	smartTemp := measurements.SmartTemperature{
 		Date: time.Unix(collectorSmartData.LocalTime.TimeT, 0),
 		Temp: measurements.CorrectedTemperature(collectorSmartData),
@@ -79,43 +78,46 @@ func (sr *scrutinyRepository) GetSmartTemperatureHistory(ctx context.Context, du
 	queryStr := sr.aggregateTempQuery(durationKey)
 
 	result, err := sr.influxQueryApi.Query(ctx, queryStr)
-	if err == nil {
-		defer result.Close()
-		// Use Next() to iterate over query result lines
-		for result.Next() {
-
-			if deviceWWN, ok := result.Record().Values()["device_wwn"]; ok {
-				wwn := deviceWWN.(string)
-				// Re-key from WWN to DeviceID
-				key := wwn
-				if devID, hasDevID := wwnToDeviceID[wwn]; hasDevID {
-					key = devID
-				}
-
-				// check if key has been seen and initialized already
-				if _, ok := deviceTempHistory[key]; !ok {
-					deviceTempHistory[key] = []measurements.SmartTemperature{}
-				}
-
-				currentTempHistory := deviceTempHistory[key]
-				smartTemp := measurements.SmartTemperature{}
-
-				for k, val := range result.Record().Values() {
-					smartTemp.Inflate(k, val)
-				}
-				smartTemp.Date = result.Record().Values()["_time"].(time.Time)
-				currentTempHistory = append(currentTempHistory, smartTemp)
-				deviceTempHistory[key] = currentTempHistory
-			}
-		}
-		if result.Err() != nil {
-			sr.logger.Errorf("Query error: %s", result.Err().Error())
-		}
-	} else {
+	if err != nil {
 		return nil, err
 	}
-	return deviceTempHistory, nil
+	defer result.Close()
 
+	// Use Next() to iterate over query result lines
+	for result.Next() {
+		appendTempRecord(deviceTempHistory, result.Record().Values(), wwnToDeviceID)
+	}
+	if result.Err() != nil {
+		sr.logger.Errorf("Query error: %s", result.Err().Error())
+	}
+	return deviceTempHistory, nil
+}
+
+// appendTempRecord re-keys a single InfluxDB temperature record from WWN to
+// DeviceID and appends the inflated SmartTemperature to the history map.
+func appendTempRecord(deviceTempHistory map[string][]measurements.SmartTemperature, values map[string]interface{}, wwnToDeviceID map[string]string) {
+	deviceWWN, ok := values["device_wwn"]
+	if !ok {
+		return
+	}
+	wwn := deviceWWN.(string)
+	// Re-key from WWN to DeviceID
+	key := wwn
+	if devID, hasDevID := wwnToDeviceID[wwn]; hasDevID {
+		key = devID
+	}
+
+	// check if key has been seen and initialized already
+	if _, ok := deviceTempHistory[key]; !ok {
+		deviceTempHistory[key] = []measurements.SmartTemperature{}
+	}
+
+	smartTemp := measurements.SmartTemperature{}
+	for k, val := range values {
+		smartTemp.Inflate(k, val)
+	}
+	smartTemp.Date = values["_time"].(time.Time)
+	deviceTempHistory[key] = append(deviceTempHistory[key], smartTemp)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -188,7 +190,6 @@ func (sr *scrutinyRepository) aggregateTempQuery(durationKey string) string {
 			"|> schema.fieldsAsCols()",
 		}...)
 	}
-
 
 	return strings.Join(partialQueryStr, "\n")
 }
