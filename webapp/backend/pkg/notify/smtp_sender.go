@@ -129,7 +129,7 @@ func startTLSIfSupported(client *smtp.Client, config *shoutrrrsmtp.Config) error
 			ServerName:         config.Host,
 			MinVersion:         tls.VersionTLS12,
 			MaxVersion:         tls.VersionTLS13,
-			InsecureSkipVerify: config.SkipTLSVerify,
+			InsecureSkipVerify: config.SkipTLSVerify, //nolint:gosec // user-configurable per notification URL
 		}); err != nil {
 			return fmt.Errorf("smtp starttls failed: %w", err)
 		}
@@ -153,7 +153,7 @@ func openSMTPClient(ctx context.Context, config *shoutrrrsmtp.Config) (*smtp.Cli
 			Config: &tls.Config{
 				ServerName:         config.Host,
 				MinVersion:         tls.VersionTLS12,
-				InsecureSkipVerify: config.SkipTLSVerify,
+				InsecureSkipVerify: config.SkipTLSVerify, //nolint:gosec // user-configurable per notification URL
 			},
 		}
 		conn, err = dialer.DialContext(ctx, "tcp", addr)
