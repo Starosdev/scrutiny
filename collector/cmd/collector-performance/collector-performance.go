@@ -38,32 +38,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Use separate config file for performance collector
-	configFilePath := "/opt/scrutiny/config/collector-performance.yaml"
-	configFilePathAlternative := "/opt/scrutiny/config/collector-performance.yml"
-	// Fall back to main collector config if performance-specific config doesn't exist
-	configFilePathFallback := "/opt/scrutiny/config/collector.yaml"
-	configFilePathFallbackAlt := "/opt/scrutiny/config/collector.yml"
-
-	if !utils.FileExists(configFilePath) && utils.FileExists(configFilePathAlternative) {
-		configFilePath = configFilePathAlternative
-	} else if !utils.FileExists(configFilePath) && !utils.FileExists(configFilePathAlternative) {
-		if utils.FileExists(configFilePathFallback) {
-			configFilePath = configFilePathFallback
-		} else if utils.FileExists(configFilePathFallbackAlt) {
-			configFilePath = configFilePathFallbackAlt
-		}
-	}
+	// Use separate config file for performance collector, falling back to the shared collector config
+	configFilePath := resolveConfigPath()
 
 	// Create a bootstrap logger for config loading
 	bootstrapLogger := logrus.WithFields(logrus.Fields{"type": "performance"})
 	bootstrapLogger.Logger.SetLevel(logrus.InfoLevel)
 
-	// Load the config file
+	// Load the config file (ignore "could not find config file")
 	err = config.ReadConfig(configFilePath, bootstrapLogger)
-	if _, ok := err.(errors.ConfigFileMissingError); ok {
-		// Ignore "could not find config file"
-	} else if err != nil {
+	if _, missing := err.(errors.ConfigFileMissingError); err != nil && !missing {
 		os.Exit(1)
 	}
 
@@ -119,78 +103,9 @@ OPTIONS:
 
 		Commands: []*cli.Command{
 			{
-				Name:  "run",
-				Usage: "Run the scrutiny performance benchmark collector",
-				Action: func(c *cli.Context) error {
-					if c.IsSet("config") {
-						err = config.ReadConfig(c.String("config"), bootstrapLogger)
-						if err != nil {
-							fmt.Printf("Could not find config file at specified path: %s", c.String("config"))
-							return err
-						}
-					}
-
-					// Override config with flags if set
-					if c.IsSet(flagHostId) {
-						config.Set("host.id", c.String(flagHostId))
-					}
-
-					if c.Bool("debug") {
-						config.Set("log.level", "DEBUG")
-					}
-
-					if c.IsSet(flagLogFile) {
-						config.Set(configKeyLogFile, c.String(flagLogFile))
-					}
-
-					if c.IsSet(flagApiEndpoint) {
-						apiEndpoint := strings.TrimSuffix(c.String(flagApiEndpoint), "/") + "/"
-						config.Set("api.endpoint", apiEndpoint)
-					}
-
-					if c.IsSet(flagApiToken) {
-						config.Set("api.token", c.String(flagApiToken))
-					}
-
-					if c.IsSet("profile") {
-						config.Set("performance.profile", c.String("profile"))
-					}
-
-					var collectorLogger *logrus.Entry
-					var logFile *os.File
-					collectorLogger, logFile, err = CreateLogger(config)
-					if logFile != nil {
-						defer logFile.Close()
-					}
-					if err != nil {
-						return err
-					}
-
-					settingsMap := config.AllSettings()
-					if apiMap, ok := settingsMap["api"].(map[string]interface{}); ok {
-						if _, hasToken := apiMap["token"]; hasToken && apiMap["token"] != "" {
-							apiMap["token"] = "[REDACTED]"
-						}
-					}
-					settingsData, settingsErr := json.MarshalIndent(settingsMap, "", "\t")
-					if settingsErr != nil {
-						collectorLogger.Warnf("Failed to marshal settings for debug logging: %v", settingsErr)
-					} else {
-						collectorLogger.Debug(string(settingsData))
-					}
-
-					var perfCollector *performance.Collector
-					perfCollector, err = performance.CreateCollector(
-						config,
-						collectorLogger,
-						config.GetString("api.endpoint"),
-					)
-					if err != nil {
-						return err
-					}
-
-					return perfCollector.Run()
-				},
+				Name:   "run",
+				Usage:  "Run the scrutiny performance benchmark collector",
+				Action: runCollectorAction(config, bootstrapLogger),
 
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -237,6 +152,99 @@ OPTIONS:
 	err = app.Run(os.Args)
 	if err != nil {
 		log.Fatal(color.HiRedString("ERROR: %v", err))
+	}
+}
+
+// resolveConfigPath returns the first existing collector config file, preferring the
+// performance-specific config and falling back to the shared collector config. Defaults to the
+// primary performance path when none exist.
+func resolveConfigPath() string {
+	candidates := []string{
+		"/opt/scrutiny/config/collector-performance.yaml",
+		"/opt/scrutiny/config/collector-performance.yml",
+		"/opt/scrutiny/config/collector.yaml",
+		"/opt/scrutiny/config/collector.yml",
+	}
+	for _, path := range candidates {
+		if utils.FileExists(path) {
+			return path
+		}
+	}
+	return candidates[0]
+}
+
+// applyRunFlags reads an explicit --config file (if set) and overlays CLI flag values onto appConfig.
+func applyRunFlags(c *cli.Context, appConfig config.Interface, bootstrapLogger *logrus.Entry) error {
+	if c.IsSet("config") {
+		if err := appConfig.ReadConfig(c.String("config"), bootstrapLogger); err != nil {
+			fmt.Printf("Could not find config file at specified path: %s", c.String("config"))
+			return err
+		}
+	}
+	if c.IsSet(flagHostId) {
+		appConfig.Set("host.id", c.String(flagHostId))
+	}
+	if c.Bool("debug") {
+		appConfig.Set("log.level", "DEBUG")
+	}
+	if c.IsSet(flagLogFile) {
+		appConfig.Set(configKeyLogFile, c.String(flagLogFile))
+	}
+	if c.IsSet(flagApiEndpoint) {
+		appConfig.Set("api.endpoint", strings.TrimSuffix(c.String(flagApiEndpoint), "/")+"/")
+	}
+	if c.IsSet(flagApiToken) {
+		appConfig.Set("api.token", c.String(flagApiToken))
+	}
+	if c.IsSet("profile") {
+		appConfig.Set("performance.profile", c.String("profile"))
+	}
+	return nil
+}
+
+// logRedactedSettings debug-logs the effective settings with the API token redacted.
+func logRedactedSettings(logger *logrus.Entry, appConfig config.Interface) {
+	settingsMap := appConfig.AllSettings()
+	if apiMap, ok := settingsMap["api"].(map[string]interface{}); ok {
+		if token, hasToken := apiMap["token"]; hasToken && token != "" {
+			apiMap["token"] = "[REDACTED]"
+		}
+	}
+	settingsData, err := json.MarshalIndent(settingsMap, "", "\t")
+	if err != nil {
+		logger.Warnf("Failed to marshal settings for debug logging: %v", err)
+		return
+	}
+	logger.Debug(string(settingsData))
+}
+
+// runCollectorAction builds the cli action that configures and runs the performance collector.
+func runCollectorAction(appConfig config.Interface, bootstrapLogger *logrus.Entry) cli.ActionFunc {
+	return func(c *cli.Context) error {
+		if err := applyRunFlags(c, appConfig, bootstrapLogger); err != nil {
+			return err
+		}
+
+		collectorLogger, logFile, loggerErr := CreateLogger(appConfig)
+		if logFile != nil {
+			defer logFile.Close()
+		}
+		if loggerErr != nil {
+			return loggerErr
+		}
+
+		logRedactedSettings(collectorLogger, appConfig)
+
+		perfCollector, collectorErr := performance.CreateCollector(
+			appConfig,
+			collectorLogger,
+			appConfig.GetString("api.endpoint"),
+		)
+		if collectorErr != nil {
+			return collectorErr
+		}
+
+		return perfCollector.Run()
 	}
 }
 
