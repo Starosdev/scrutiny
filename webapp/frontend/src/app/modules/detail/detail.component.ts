@@ -560,54 +560,20 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             return smartAttributeDataSource;
         }
         const latestSmartResult = smartResults[0];
-        let attributes: { [p: string]: SmartAttributeModel } = {};
-        if (this.isScsi()) {
-            this.smartAttributeTableColumns = ['status', 'name', 'value', 'thresh', 'history', 'actions'];
-            attributes = latestSmartResult.attrs;
-        } else if (this.isNvme()) {
-            this.smartAttributeTableColumns = ['status', 'name', 'value', 'thresh', 'ideal', 'history', 'actions'];
-            attributes = latestSmartResult.attrs;
-        } else {
-            // ATA
-            attributes = latestSmartResult.attrs;
-            // Only show 'worst' column in scrutiny or normalized mode (worst is meaningless for raw values)
-            if (this.displayMode === 'raw') {
-                this.smartAttributeTableColumns = ['status', 'id', 'name', 'value', 'thresh', 'ideal', 'failure', 'history', 'actions'];
-            } else {
-                this.smartAttributeTableColumns = ['status', 'id', 'name', 'value', 'worst', 'thresh', 'ideal', 'failure', 'history', 'actions'];
-            }
-        }
+        const attributes: { [p: string]: SmartAttributeModel } = latestSmartResult.attrs;
+        this._setSmartAttributeTableColumns();
 
         for (const attrId in attributes) {
             const attr = attributes[attrId];
 
             // chart history data
             if (!attr.chartData) {
-                const attrHistory = [];
-                for (const smartResult of smartResults) {
-                    // attrHistory.push(this.getAttributeValue(smart_result.attrs[attrId]))
-
-                    const chartDatapoint = {
-                        x: formatDate(smartResult.date, angularLongDateTime(this.config.time_format), this.locale),
-                        y: this.getAttributeValue(smartResult.attrs[attrId]),
-                    };
-                    const attributeStatusName = this.getAttributeStatusName(smartResult.attrs[attrId].status);
-                    if (attributeStatusName === 'failed') {
-                        chartDatapoint['strokeColor'] = '#F05252';
-                        chartDatapoint['fillColor'] = '#F05252';
-                    } else if (attributeStatusName === 'warn') {
-                        chartDatapoint['strokeColor'] = '#C27803';
-                        chartDatapoint['fillColor'] = '#C27803';
-                    }
-                    attrHistory.push(chartDatapoint);
-                }
-
                 attributes[attrId].chartData = [
                     {
                         name: 'chart-line-sparkline',
                         // attrHistory needs to be reversed, so the newest data is on the right
                         // fixes #339
-                        data: attrHistory.reverse(),
+                        data: this._buildAttributeChartHistory(attrId, smartResults).reverse(),
                     },
                 ];
             }
@@ -618,6 +584,41 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             }
         }
         return smartAttributeDataSource;
+    }
+
+    // Selects which SMART attribute table columns to show based on device protocol and display mode.
+    private _setSmartAttributeTableColumns(): void {
+        if (this.isScsi()) {
+            this.smartAttributeTableColumns = ['status', 'name', 'value', 'thresh', 'history', 'actions'];
+        } else if (this.isNvme()) {
+            this.smartAttributeTableColumns = ['status', 'name', 'value', 'thresh', 'ideal', 'history', 'actions'];
+        } else if (this.displayMode === 'raw') {
+            // ATA: 'worst' column is omitted in raw mode (worst is meaningless for raw values)
+            this.smartAttributeTableColumns = ['status', 'id', 'name', 'value', 'thresh', 'ideal', 'failure', 'history', 'actions'];
+        } else {
+            this.smartAttributeTableColumns = ['status', 'id', 'name', 'value', 'worst', 'thresh', 'ideal', 'failure', 'history', 'actions'];
+        }
+    }
+
+    // Builds the sparkline datapoints (oldest-first) for a single attribute across all results.
+    private _buildAttributeChartHistory(attrId: string, smartResults: SmartModel[]): any[] {
+        const attrHistory = [];
+        for (const smartResult of smartResults) {
+            const chartDatapoint = {
+                x: formatDate(smartResult.date, angularLongDateTime(this.config.time_format), this.locale),
+                y: this.getAttributeValue(smartResult.attrs[attrId]),
+            };
+            const attributeStatusName = this.getAttributeStatusName(smartResult.attrs[attrId].status);
+            if (attributeStatusName === 'failed') {
+                chartDatapoint['strokeColor'] = '#F05252';
+                chartDatapoint['fillColor'] = '#F05252';
+            } else if (attributeStatusName === 'warn') {
+                chartDatapoint['strokeColor'] = '#C27803';
+                chartDatapoint['fillColor'] = '#C27803';
+            }
+            attrHistory.push(chartDatapoint);
+        }
+        return attrHistory;
     }
 
     /**
