@@ -122,7 +122,7 @@ func (sm *Smart) inflateInfluxAttribute(key string, val interface{}) error {
 	if !strings.HasPrefix(key, "attr.") {
 		return nil
 	}
-	//this is a attribute, lets group it with its related "siblings", populating a SmartAttribute object
+	// this is an attribute, group it with its related "siblings", populating a SmartAttribute object
 	attributeId := strings.Split(key, ".")[1]
 	if _, ok := sm.Attributes[attributeId]; !ok {
 		// init the attribute group
@@ -155,7 +155,7 @@ func newAttributeForProtocol(protocol, attributeId string) (SmartAttribute, erro
 	case pkg.DeviceProtocolScsi:
 		return &SmartScsiAttribute{}, nil
 	default:
-		return nil, fmt.Errorf("Unknown Device Protocol: %s", protocol)
+		return nil, fmt.Errorf("unknown device protocol: %s", protocol)
 	}
 }
 
