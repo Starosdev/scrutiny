@@ -163,8 +163,8 @@ func TestSyncDeviceSelfTestsDedupesByDeviceIdentity(t *testing.T) {
 	updatedPayload.AtaSmartSelfTestLog.Standard.Table[0].Status.String = "Completed without error"
 	updatedPayload.AtaSmartSelfTestLog.Standard.Table[0].Status.Passed = true
 
-	require.NoError(t, repo.syncDeviceSelfTests(ctx, initialDevice, initialPayload))
-	require.NoError(t, repo.syncDeviceSelfTests(ctx, replacementDevice, updatedPayload))
+	require.NoError(t, repo.syncDeviceSelfTests(ctx, &initialDevice, initialPayload))
+	require.NoError(t, repo.syncDeviceSelfTests(ctx, &replacementDevice, updatedPayload))
 
 	var selfTests []models.DeviceSelfTest
 	require.NoError(t, repo.gormClient.WithContext(ctx).Find(&selfTests).Error)
@@ -199,7 +199,7 @@ func TestSyncDeviceSelfTestsPrunesOldEntries(t *testing.T) {
 		payload.AtaSmartSelfTestLog.Standard.Table = append(payload.AtaSmartSelfTestLog.Standard.Table, entry)
 	}
 
-	require.NoError(t, repo.syncDeviceSelfTests(ctx, device, payload))
+	require.NoError(t, repo.syncDeviceSelfTests(ctx, &device, payload))
 
 	var selfTests []models.DeviceSelfTest
 	require.NoError(t, repo.gormClient.WithContext(ctx).

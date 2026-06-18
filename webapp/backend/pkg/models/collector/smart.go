@@ -4,21 +4,21 @@ import "github.com/analogj/scrutiny/webapp/backend/pkg/models/common"
 
 type AtaSmartSelfTestLogEntry struct {
 	Type struct {
-		Value  int    `json:"value"`
 		String string `json:"string"`
+		Value  int    `json:"value"`
 	} `json:"type"`
 	Status struct {
-		Value  int    `json:"value"`
 		String string `json:"string"`
+		Value  int    `json:"value"`
 		Passed bool   `json:"passed"`
 	} `json:"status"`
 	LifetimeHours int `json:"lifetime_hours"`
 }
 
 type AtaSmartSelfTestLogTable struct {
+	Table              []AtaSmartSelfTestLogEntry `json:"table"`
 	Revision           int                        `json:"revision"`
 	Sectors            int                        `json:"sectors,omitempty"`
-	Table              []AtaSmartSelfTestLogEntry `json:"table"`
 	Count              int                        `json:"count"`
 	ErrorCountTotal    int                        `json:"error_count_total"`
 	ErrorCountOutdated int                        `json:"error_count_outdated"`
@@ -29,7 +29,7 @@ type AtaSmartSelfTestLog struct {
 	Extended AtaSmartSelfTestLogTable `json:"extended"`
 }
 
-func (l AtaSmartSelfTestLog) Entries() []AtaSmartSelfTestLogEntry {
+func (l *AtaSmartSelfTestLog) Entries() []AtaSmartSelfTestLogEntry {
 	if len(l.Standard.Table) > 0 {
 		return l.Standard.Table
 	}
