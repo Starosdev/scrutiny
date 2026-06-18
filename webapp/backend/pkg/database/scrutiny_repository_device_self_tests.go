@@ -21,7 +21,7 @@ func deviceSelfTestIdentity(device *models.Device) string {
 	return device.DeviceID
 }
 
-func (sr *scrutinyRepository) syncDeviceSelfTests(ctx context.Context, device *models.Device, collectorSmartData collector.SmartInfo) error {
+func (sr *scrutinyRepository) syncDeviceSelfTests(ctx context.Context, device *models.Device, collectorSmartData *collector.SmartInfo) error {
 	if collectorSmartData.Device.Protocol != pkg.DeviceProtocolAta {
 		return nil
 	}
