@@ -18,6 +18,36 @@ import (
 const statusReasonWithinThreshold = "Within custom threshold"
 const statusReasonThresholdExceeded = "Custom threshold exceeded"
 
+// applyOverrideResult applies a parsed override Result to an attribute's status fields.
+// thresholdValue is the value compared against custom WarnAbove/FailAbove thresholds.
+// It returns ignored=true when the attribute was marked ignored, and forcedFailure=true
+// when the override explicitly forced a Scrutiny failure status. A nil result is a no-op.
+func applyOverrideResult(result *overrides.Result, thresholdValue int64, status *pkg.AttributeStatus, statusReason *string) (ignored bool, forcedFailure bool) {
+	if result == nil {
+		return false, false
+	}
+	switch {
+	case result.ShouldIgnore:
+		*status = pkg.AttributeStatusPassed
+		*statusReason = result.StatusReason
+		return true, false
+	case result.Status != nil:
+		*status = *result.Status
+		*statusReason = result.StatusReason
+		return false, pkg.AttributeStatusHas(*result.Status, pkg.AttributeStatusFailedScrutiny)
+	case result.WarnAbove != nil || result.FailAbove != nil:
+		if thresholdStatus := overrides.ApplyThresholds(result, thresholdValue); thresholdStatus != nil {
+			*status = *thresholdStatus // Replace status entirely with custom threshold result
+			if *thresholdStatus == pkg.AttributeStatusPassed {
+				*statusReason = statusReasonWithinThreshold
+			} else {
+				*statusReason = statusReasonThresholdExceeded
+			}
+		}
+	}
+	return false, false
+}
+
 type Smart struct {
 	Date           time.Time `json:"date"`
 	DeviceWWN      string    `json:"device_wwn"` //(tag)
@@ -63,6 +93,72 @@ func (sm *Smart) Flatten() (tags map[string]string, fields map[string]interface{
 	return tags, fields
 }
 
+// parseInt64Field type-asserts an InfluxDB value to int64, logging a warning on mismatch.
+func parseInt64Field(val interface{}, name string, logger logrus.FieldLogger) (int64, bool) {
+	if intVal, ok := val.(int64); ok {
+		return intVal, true
+	}
+	logger.Warnf("unable to parse %s information: %v", name, val)
+	return 0, false
+}
+
+// coerceInt64 converts an int64/int/float64 InfluxDB value to int64, returning fallback otherwise.
+func coerceInt64(val interface{}, fallback int64) int64 {
+	switch v := val.(type) {
+	case int64:
+		return v
+	case int:
+		return int64(v)
+	case float64:
+		return int64(v)
+	default:
+		return fallback
+	}
+}
+
+// inflateInfluxAttribute groups an "attr.*" InfluxDB key into its sibling SmartAttribute,
+// creating the attribute (by protocol) on first sight. Non-"attr." keys are ignored.
+func (sm *Smart) inflateInfluxAttribute(key string, val interface{}) error {
+	if !strings.HasPrefix(key, "attr.") {
+		return nil
+	}
+	// this is an attribute, group it with its related "siblings", populating a SmartAttribute object
+	attributeId := strings.Split(key, ".")[1]
+	if _, ok := sm.Attributes[attributeId]; !ok {
+		// init the attribute group
+		attr, err := newAttributeForProtocol(sm.DeviceProtocol, attributeId)
+		if err != nil {
+			return err
+		}
+		sm.Attributes[attributeId] = attr
+	}
+	sm.Attributes[attributeId].Inflate(key, val)
+	return nil
+}
+
+// newAttributeForProtocol constructs an empty SmartAttribute of the concrete type matching
+// the device protocol (and, for ATA, the attribute ID prefix).
+func newAttributeForProtocol(protocol, attributeId string) (SmartAttribute, error) {
+	switch protocol {
+	case pkg.DeviceProtocolAta:
+		// Device statistics use string-based IDs like "devstat_7_8"
+		switch {
+		case strings.HasPrefix(attributeId, "devstat_"):
+			return &SmartAtaDeviceStatAttribute{}, nil
+		case strings.HasPrefix(attributeId, "farm_"):
+			return &SmartFarmAttribute{}, nil
+		default:
+			return &SmartAtaAttribute{}, nil
+		}
+	case pkg.DeviceProtocolNvme:
+		return &SmartNvmeAttribute{}, nil
+	case pkg.DeviceProtocolScsi:
+		return &SmartScsiAttribute{}, nil
+	default:
+		return nil, fmt.Errorf("unknown device protocol: %s", protocol)
+	}
+}
+
 func NewSmartFromInfluxDB(attrs map[string]interface{}, logger logrus.FieldLogger) (*Smart, error) {
 	//go though the massive map returned from influxdb. If a key is associated with the Smart struct, assign it. If it starts with "attr.*" group it by attributeId, and pass to attribute inflate.
 
@@ -78,60 +174,24 @@ func NewSmartFromInfluxDB(attrs map[string]interface{}, logger logrus.FieldLogge
 	for key, val := range attrs {
 		switch key {
 		case "temp":
-			if intVal, ok := val.(int64); ok {
+			if intVal, ok := parseInt64Field(val, "temp", logger); ok {
 				sm.Temp = intVal
-			} else {
-				logger.Warnf("unable to parse temp information: %v", val)
 			}
 		case "power_on_hours":
-			if intVal, ok := val.(int64); ok {
+			if intVal, ok := parseInt64Field(val, "power_on_hours", logger); ok {
 				sm.PowerOnHours = intVal
-			} else {
-				logger.Warnf("unable to parse power_on_hours information: %v", val)
 			}
 		case "power_cycle_count":
-			if intVal, ok := val.(int64); ok {
+			if intVal, ok := parseInt64Field(val, "power_cycle_count", logger); ok {
 				sm.PowerCycleCount = intVal
-			} else {
-				logger.Warnf("unable to parse power_cycle_count information: %v", val)
 			}
 		case "logical_block_size":
-			if intVal, ok := val.(int64); ok {
-				sm.LogicalBlockSize = intVal
-			} else if intVal, ok := val.(int); ok {
-				sm.LogicalBlockSize = int64(intVal)
-			} else if floatVal, ok := val.(float64); ok {
-				sm.LogicalBlockSize = int64(floatVal)
-			}
+			sm.LogicalBlockSize = coerceInt64(val, sm.LogicalBlockSize)
 		default:
-			// this key is unknown.
-			if !strings.HasPrefix(key, "attr.") {
-				continue
+			// this key is unknown; group "attr.*" keys into their SmartAttribute siblings.
+			if err := sm.inflateInfluxAttribute(key, val); err != nil {
+				return nil, err
 			}
-			//this is a attribute, lets group it with its related "siblings", populating a SmartAttribute object
-			keyParts := strings.Split(key, ".")
-			attributeId := keyParts[1]
-			if _, ok := sm.Attributes[attributeId]; !ok {
-				// init the attribute group
-				if sm.DeviceProtocol == pkg.DeviceProtocolAta {
-					// Device statistics use string-based IDs like "devstat_7_8"
-					if strings.HasPrefix(attributeId, "devstat_") {
-						sm.Attributes[attributeId] = &SmartAtaDeviceStatAttribute{}
-					} else if strings.HasPrefix(attributeId, "farm_") {
-						sm.Attributes[attributeId] = &SmartFarmAttribute{}
-					} else {
-						sm.Attributes[attributeId] = &SmartAtaAttribute{}
-					}
-				} else if sm.DeviceProtocol == pkg.DeviceProtocolNvme {
-					sm.Attributes[attributeId] = &SmartNvmeAttribute{}
-				} else if sm.DeviceProtocol == pkg.DeviceProtocolScsi {
-					sm.Attributes[attributeId] = &SmartScsiAttribute{}
-				} else {
-					return nil, fmt.Errorf("Unknown Device Protocol: %s", sm.DeviceProtocol)
-				}
-			}
-
-			sm.Attributes[attributeId].Inflate(key, val)
 		}
 
 	}
@@ -225,49 +285,33 @@ func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, modelFamily string, m
 
 		// Apply user-configured overrides
 		if cfg != nil {
-			if result := overrides.Apply(cfg, pkg.DeviceProtocolAta, attrIdStr, sm.DeviceWWN); result != nil {
-				if result.ShouldIgnore {
-					// Mark as ignored - clear any failure status
-					attrModel.Status = pkg.AttributeStatusPassed
-					attrModel.StatusReason = result.StatusReason
-					ignored = true
-				} else if result.Status != nil {
-					// Force status to user-specified value
-					attrModel.Status = *result.Status
-					attrModel.StatusReason = result.StatusReason
-				} else if result.WarnAbove != nil || result.FailAbove != nil {
-					// Apply custom thresholds
-					if thresholdStatus := overrides.ApplyThresholds(result, attrModel.RawValue); thresholdStatus != nil {
-						attrModel.Status = *thresholdStatus // Replace status entirely with custom threshold result
-						if *thresholdStatus == pkg.AttributeStatusPassed {
-							attrModel.StatusReason = statusReasonWithinThreshold
-						} else {
-							attrModel.StatusReason = statusReasonThresholdExceeded
-						}
-					}
-				}
-			}
+			result := overrides.Apply(cfg, pkg.DeviceProtocolAta, attrIdStr, sm.DeviceWWN)
+			ignored, _ = applyOverrideResult(result, attrModel.RawValue, &attrModel.Status, &attrModel.StatusReason)
 		}
 
 		sm.Attributes[attrIdStr] = &attrModel
 
-		var transient bool
-
-		if cfg != nil {
-			transients := cfg.GetIntSlice("failures.transient.ata")
-			for i := range transients {
-				if collectorAttr.ID == transients[i] {
-					transient = true
-					break
-				}
-			}
-		}
+		transient := isTransientAtaAttribute(cfg, collectorAttr.ID)
 
 		// Only propagate failure if not transient AND not ignored
 		if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !transient && !ignored {
 			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 		}
 	}
+}
+
+// isTransientAtaAttribute reports whether the given ATA attribute ID is configured as transient
+// (failures.transient.ata), meaning its failure status should not propagate to the device.
+func isTransientAtaAttribute(cfg config.Interface, attrID int) bool {
+	if cfg == nil {
+		return false
+	}
+	for _, id := range cfg.GetIntSlice("failures.transient.ata") {
+		if attrID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // isDevstatIgnored checks if an attribute ID is in the devstat ignore list
@@ -308,25 +352,8 @@ func (sm *Smart) ProcessAtaDeviceStatistics(cfg config.Interface, deviceStatisti
 
 			// Apply user-configured overrides
 			if cfg != nil {
-				if result := overrides.Apply(cfg, pkg.DeviceProtocolAta, attrId, sm.DeviceWWN); result != nil {
-					if result.ShouldIgnore {
-						attrModel.Status = pkg.AttributeStatusPassed
-						attrModel.StatusReason = result.StatusReason
-						ignored = true
-					} else if result.Status != nil {
-						attrModel.Status = *result.Status
-						attrModel.StatusReason = result.StatusReason
-					} else if result.WarnAbove != nil || result.FailAbove != nil {
-						if thresholdStatus := overrides.ApplyThresholds(result, attrModel.Value); thresholdStatus != nil {
-							attrModel.Status = *thresholdStatus // Replace status entirely with custom threshold result
-							if *thresholdStatus == pkg.AttributeStatusPassed {
-								attrModel.StatusReason = statusReasonWithinThreshold
-							} else {
-								attrModel.StatusReason = statusReasonThresholdExceeded
-							}
-						}
-					}
-				}
+				result := overrides.Apply(cfg, pkg.DeviceProtocolAta, attrId, sm.DeviceWWN)
+				ignored, _ = applyOverrideResult(result, attrModel.Value, &attrModel.Status, &attrModel.StatusReason)
 			}
 
 			sm.Attributes[attrId] = &attrModel
@@ -432,34 +459,12 @@ func (sm *Smart) ProcessScsiSmartInfo(cfg config.Interface, defectGrownList int6
 	// Apply overrides and find analyzed attribute status
 	for attrId, val := range sm.Attributes {
 		var ignored bool
-		var attrValue int64
 
 		// Get the value based on attribute type
-		if scsiAttr, ok := val.(*SmartScsiAttribute); ok {
-			attrValue = scsiAttr.Value
-
+		if scsiAttr, ok := val.(*SmartScsiAttribute); ok && cfg != nil {
 			// Apply user-configured overrides
-			if cfg != nil {
-				if result := overrides.Apply(cfg, pkg.DeviceProtocolScsi, attrId, sm.DeviceWWN); result != nil {
-					if result.ShouldIgnore {
-						scsiAttr.Status = pkg.AttributeStatusPassed
-						scsiAttr.StatusReason = result.StatusReason
-						ignored = true
-					} else if result.Status != nil {
-						scsiAttr.Status = *result.Status
-						scsiAttr.StatusReason = result.StatusReason
-					} else if result.WarnAbove != nil || result.FailAbove != nil {
-						if thresholdStatus := overrides.ApplyThresholds(result, attrValue); thresholdStatus != nil {
-							scsiAttr.Status = *thresholdStatus // Replace status entirely with custom threshold result
-							if *thresholdStatus == pkg.AttributeStatusPassed {
-								scsiAttr.StatusReason = statusReasonWithinThreshold
-							} else {
-								scsiAttr.StatusReason = statusReasonThresholdExceeded
-							}
-						}
-					}
-				}
-			}
+			result := overrides.Apply(cfg, pkg.DeviceProtocolScsi, attrId, sm.DeviceWWN)
+			ignored, _ = applyOverrideResult(result, scsiAttr.Value, &scsiAttr.Status, &scsiAttr.StatusReason)
 		}
 
 		if pkg.AttributeStatusHas(val.GetStatus(), pkg.AttributeStatusFailedScrutiny) && !ignored {
@@ -495,46 +500,17 @@ func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, modelFam
 		attrModel.PopulateAttributeStatus(profile)
 
 		attrIdStr := strconv.Itoa(collectorAttr.ID)
-		var ignored bool
 
 		// Apply merged overrides (config + database)
-		if result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrIdStr, sm.DeviceWWN); result != nil {
-			if result.ShouldIgnore {
-				attrModel.Status = pkg.AttributeStatusPassed
-				attrModel.StatusReason = result.StatusReason
-				ignored = true
-			} else if result.Status != nil {
-				attrModel.Status = *result.Status
-				attrModel.StatusReason = result.StatusReason
-				// Track if user explicitly forced a failure status
-				if pkg.AttributeStatusHas(*result.Status, pkg.AttributeStatusFailedScrutiny) {
-					sm.HasForcedFailure = true
-				}
-			} else if result.WarnAbove != nil || result.FailAbove != nil {
-				if thresholdStatus := overrides.ApplyThresholds(result, attrModel.RawValue); thresholdStatus != nil {
-					attrModel.Status = *thresholdStatus // Replace status entirely with custom threshold result
-					if *thresholdStatus == pkg.AttributeStatusPassed {
-						attrModel.StatusReason = statusReasonWithinThreshold
-					} else {
-						attrModel.StatusReason = statusReasonThresholdExceeded
-					}
-				}
-			}
+		result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrIdStr, sm.DeviceWWN)
+		ignored, forcedFailure := applyOverrideResult(result, attrModel.RawValue, &attrModel.Status, &attrModel.StatusReason)
+		if forcedFailure {
+			sm.HasForcedFailure = true
 		}
 
 		sm.Attributes[attrIdStr] = &attrModel
 
-		var transient bool
-
-		if cfg != nil {
-			transients := cfg.GetIntSlice("failures.transient.ata")
-			for i := range transients {
-				if collectorAttr.ID == transients[i] {
-					transient = true
-					break
-				}
-			}
-		}
+		transient := isTransientAtaAttribute(cfg, collectorAttr.ID)
 
 		// Only propagate failure if not transient AND not ignored
 		if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !transient && !ignored {
@@ -571,31 +547,11 @@ func (sm *Smart) processAtaDeviceStatisticsWithOverrides(cfg config.Interface, d
 
 			attrModel.PopulateAttributeStatus()
 
-			var ignored bool
-
 			// Apply merged overrides (config + database)
-			if result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrId, sm.DeviceWWN); result != nil {
-				if result.ShouldIgnore {
-					attrModel.Status = pkg.AttributeStatusPassed
-					attrModel.StatusReason = result.StatusReason
-					ignored = true
-				} else if result.Status != nil {
-					attrModel.Status = *result.Status
-					attrModel.StatusReason = result.StatusReason
-					// Track if user explicitly forced a failure status
-					if pkg.AttributeStatusHas(*result.Status, pkg.AttributeStatusFailedScrutiny) {
-						sm.HasForcedFailure = true
-					}
-				} else if result.WarnAbove != nil || result.FailAbove != nil {
-					if thresholdStatus := overrides.ApplyThresholds(result, attrModel.Value); thresholdStatus != nil {
-						attrModel.Status = *thresholdStatus // Replace status entirely with custom threshold result
-						if *thresholdStatus == pkg.AttributeStatusPassed {
-							attrModel.StatusReason = statusReasonWithinThreshold
-						} else {
-							attrModel.StatusReason = statusReasonThresholdExceeded
-						}
-					}
-				}
+			result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrId, sm.DeviceWWN)
+			ignored, forcedFailure := applyOverrideResult(result, attrModel.Value, &attrModel.Status, &attrModel.StatusReason)
+			if forcedFailure {
+				sm.HasForcedFailure = true
 			}
 
 			sm.Attributes[attrId] = &attrModel
@@ -607,9 +563,9 @@ func (sm *Smart) processAtaDeviceStatisticsWithOverrides(cfg config.Interface, d
 	}
 }
 
-// processFarmDataWithOverrides extracts Seagate FARM attributes using pre-merged overrides.
-func (sm *Smart) processFarmDataWithOverrides(cfg config.Interface, farmLog *collector.SeagateFarmLog, mergedOverrides []overrides.AttributeOverride) {
-	// Build a flat map of attribute ID -> value from the FARM struct pages
+// buildFarmAttributeValues flattens the populated pages of a Seagate FARM log into a
+// map of attribute ID -> value. Absent pages contribute no entries.
+func buildFarmAttributeValues(farmLog *collector.SeagateFarmLog) map[string]int64 {
 	farmAttrs := map[string]int64{}
 
 	if farmLog.DriveInfo != nil {
@@ -642,6 +598,13 @@ func (sm *Smart) processFarmDataWithOverrides(cfg config.Interface, farmLog *col
 		farmAttrs["farm_lowest_temperature"] = farmLog.Environ.LowestTemp
 	}
 
+	return farmAttrs
+}
+
+// processFarmDataWithOverrides extracts Seagate FARM attributes using pre-merged overrides.
+func (sm *Smart) processFarmDataWithOverrides(cfg config.Interface, farmLog *collector.SeagateFarmLog, mergedOverrides []overrides.AttributeOverride) {
+	farmAttrs := buildFarmAttributeValues(farmLog)
+
 	for attrId, value := range farmAttrs {
 		attrModel := SmartFarmAttribute{
 			AttributeId: attrId,
@@ -650,31 +613,11 @@ func (sm *Smart) processFarmDataWithOverrides(cfg config.Interface, farmLog *col
 
 		attrModel.PopulateAttributeStatus()
 
-		var ignored bool
-
 		// Apply merged overrides (config + database)
-		if result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrId, sm.DeviceWWN); result != nil {
-			switch {
-			case result.ShouldIgnore:
-				attrModel.Status = pkg.AttributeStatusPassed
-				attrModel.StatusReason = result.StatusReason
-				ignored = true
-			case result.Status != nil:
-				attrModel.Status = *result.Status
-				attrModel.StatusReason = result.StatusReason
-				if pkg.AttributeStatusHas(*result.Status, pkg.AttributeStatusFailedScrutiny) {
-					sm.HasForcedFailure = true
-				}
-			case result.WarnAbove != nil || result.FailAbove != nil:
-				if thresholdStatus := overrides.ApplyThresholds(result, attrModel.Value); thresholdStatus != nil {
-					attrModel.Status = *thresholdStatus
-					if *thresholdStatus == pkg.AttributeStatusPassed {
-						attrModel.StatusReason = statusReasonWithinThreshold
-					} else {
-						attrModel.StatusReason = statusReasonThresholdExceeded
-					}
-				}
-			}
+		result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrId, sm.DeviceWWN)
+		ignored, forcedFailure := applyOverrideResult(result, attrModel.Value, &attrModel.Status, &attrModel.StatusReason)
+		if forcedFailure {
+			sm.HasForcedFailure = true
 		}
 
 		sm.Attributes[attrId] = &attrModel
@@ -709,31 +652,12 @@ func (sm *Smart) processNvmeSmartInfoWithOverrides(cfg config.Interface, nvmeSma
 	// Apply overrides and find analyzed attribute status
 	for attrId, val := range sm.Attributes {
 		nvmeAttr := val.(*SmartNvmeAttribute)
-		var ignored bool
 
 		// Apply merged overrides (config + database)
-		if result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolNvme, attrId, sm.DeviceWWN); result != nil {
-			if result.ShouldIgnore {
-				nvmeAttr.Status = pkg.AttributeStatusPassed
-				nvmeAttr.StatusReason = result.StatusReason
-				ignored = true
-			} else if result.Status != nil {
-				nvmeAttr.Status = *result.Status
-				nvmeAttr.StatusReason = result.StatusReason
-				// Track if user explicitly forced a failure status
-				if pkg.AttributeStatusHas(*result.Status, pkg.AttributeStatusFailedScrutiny) {
-					sm.HasForcedFailure = true
-				}
-			} else if result.WarnAbove != nil || result.FailAbove != nil {
-				if thresholdStatus := overrides.ApplyThresholds(result, nvmeAttr.Value); thresholdStatus != nil {
-					nvmeAttr.Status = *thresholdStatus // Replace status entirely with custom threshold result
-					if *thresholdStatus == pkg.AttributeStatusPassed {
-						nvmeAttr.StatusReason = statusReasonWithinThreshold
-					} else {
-						nvmeAttr.StatusReason = statusReasonThresholdExceeded
-					}
-				}
-			}
+		result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolNvme, attrId, sm.DeviceWWN)
+		ignored, forcedFailure := applyOverrideResult(result, nvmeAttr.Value, &nvmeAttr.Status, &nvmeAttr.StatusReason)
+		if forcedFailure {
+			sm.HasForcedFailure = true
 		}
 
 		if pkg.AttributeStatusHas(nvmeAttr.GetStatus(), pkg.AttributeStatusFailedScrutiny) && !ignored {
@@ -753,38 +677,8 @@ func (sm *Smart) ApplyDeltaEvaluation(previousValues map[string]int64) {
 	}
 
 	deltaApplied := false
-
 	for _, attr := range sm.Attributes {
-		ataAttr, ok := attr.(*SmartAtaAttribute)
-		if !ok {
-			continue
-		}
-
-		metadata, ok := thresholds.AtaMetadata[ataAttr.AttributeId]
-		if !ok || !metadata.UseDeltaEvaluation {
-			continue
-		}
-
-		// Only suppress Scrutiny-evaluated warnings/failures, never manufacturer SMART failures
-		if pkg.AttributeStatusHas(ataAttr.Status, pkg.AttributeStatusFailedSmart) {
-			continue
-		}
-
-		// Only act on attributes that are currently warning or failing
-		if ataAttr.Status == pkg.AttributeStatusPassed {
-			continue
-		}
-
-		attrIdStr := strconv.Itoa(ataAttr.AttributeId)
-		prevValue, hasPrevious := previousValues[attrIdStr]
-		if !hasPrevious {
-			continue
-		}
-
-		// If the raw value hasn't changed, suppress the warning
-		if ataAttr.RawValue == prevValue {
-			ataAttr.Status = pkg.AttributeStatusPassed
-			ataAttr.StatusReason = "Cumulative counter unchanged since last measurement"
+		if suppressDeltaIfUnchanged(attr, previousValues) {
 			deltaApplied = true
 		}
 	}
@@ -793,6 +687,41 @@ func (sm *Smart) ApplyDeltaEvaluation(previousValues map[string]int64) {
 	if deltaApplied {
 		sm.recalculateDeviceStatus()
 	}
+}
+
+// suppressDeltaIfUnchanged downgrades a warning/failing cumulative-counter ATA attribute to
+// passed when its raw value is unchanged from the previous measurement. It returns true when a
+// suppression was applied. Manufacturer SMART failures and non-delta attributes are left alone.
+func suppressDeltaIfUnchanged(attr SmartAttribute, previousValues map[string]int64) bool {
+	ataAttr, ok := attr.(*SmartAtaAttribute)
+	if !ok {
+		return false
+	}
+
+	metadata, ok := thresholds.AtaMetadata[ataAttr.AttributeId]
+	if !ok || !metadata.UseDeltaEvaluation {
+		return false
+	}
+
+	// Only suppress Scrutiny-evaluated warnings/failures, never manufacturer SMART failures
+	if pkg.AttributeStatusHas(ataAttr.Status, pkg.AttributeStatusFailedSmart) {
+		return false
+	}
+
+	// Only act on attributes that are currently warning or failing
+	if ataAttr.Status == pkg.AttributeStatusPassed {
+		return false
+	}
+
+	prevValue, hasPrevious := previousValues[strconv.Itoa(ataAttr.AttributeId)]
+	if !hasPrevious || ataAttr.RawValue != prevValue {
+		return false
+	}
+
+	// The raw value hasn't changed, suppress the warning
+	ataAttr.Status = pkg.AttributeStatusPassed
+	ataAttr.StatusReason = "Cumulative counter unchanged since last measurement"
+	return true
 }
 
 // recalculateDeviceStatus re-aggregates device status from individual attribute statuses.
@@ -837,34 +766,14 @@ func (sm *Smart) processScsiSmartInfoWithOverrides(cfg config.Interface, defectG
 	// Apply overrides and find analyzed attribute status
 	for attrId, val := range sm.Attributes {
 		var ignored bool
-		var attrValue int64
 
 		if scsiAttr, ok := val.(*SmartScsiAttribute); ok {
-			attrValue = scsiAttr.Value
-
 			// Apply merged overrides (config + database)
-			if result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolScsi, attrId, sm.DeviceWWN); result != nil {
-				if result.ShouldIgnore {
-					scsiAttr.Status = pkg.AttributeStatusPassed
-					scsiAttr.StatusReason = result.StatusReason
-					ignored = true
-				} else if result.Status != nil {
-					scsiAttr.Status = *result.Status
-					scsiAttr.StatusReason = result.StatusReason
-					// Track if user explicitly forced a failure status
-					if pkg.AttributeStatusHas(*result.Status, pkg.AttributeStatusFailedScrutiny) {
-						sm.HasForcedFailure = true
-					}
-				} else if result.WarnAbove != nil || result.FailAbove != nil {
-					if thresholdStatus := overrides.ApplyThresholds(result, attrValue); thresholdStatus != nil {
-						scsiAttr.Status = *thresholdStatus // Replace status entirely with custom threshold result
-						if *thresholdStatus == pkg.AttributeStatusPassed {
-							scsiAttr.StatusReason = statusReasonWithinThreshold
-						} else {
-							scsiAttr.StatusReason = statusReasonThresholdExceeded
-						}
-					}
-				}
+			result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolScsi, attrId, sm.DeviceWWN)
+			var forcedFailure bool
+			ignored, forcedFailure = applyOverrideResult(result, scsiAttr.Value, &scsiAttr.Status, &scsiAttr.StatusReason)
+			if forcedFailure {
+				sm.HasForcedFailure = true
 			}
 		}
 
