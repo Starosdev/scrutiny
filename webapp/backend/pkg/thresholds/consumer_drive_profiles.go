@@ -82,50 +82,66 @@ func parseConsumerDriveProfiles(data []byte) (map[string]ConsumerDriveProfile, m
 	}
 
 	byFamily := make(map[string]ConsumerDriveProfile, len(catalog.Profiles))
-	byModel := make(map[string]ConsumerDriveProfile, len(catalog.Aliases))
 	regexProfiles := make([]ConsumerDriveProfile, 0)
-
 	for i := range catalog.Profiles {
-		profile := &catalog.Profiles[i]
-		if profile.ModelFamily == "" {
-			return nil, nil, nil, fmt.Errorf("profile missing model_family")
+		if err := addConsumerDriveProfile(&catalog.Profiles[i], byFamily, &regexProfiles); err != nil {
+			return nil, nil, nil, err
 		}
-		familyKey := normalizeConsumerDriveKey(profile.ModelFamily)
-		if familyKey == "" {
-			return nil, nil, nil, fmt.Errorf("profile has empty normalized family for %q", profile.ModelFamily)
-		}
-		if _, exists := byFamily[familyKey]; exists {
-			return nil, nil, nil, fmt.Errorf("duplicate profile family %q", profile.ModelFamily)
-		}
-		if profile.ModelPattern != "" {
-			compiled, err := regexp.Compile(profile.ModelPattern)
-			if err != nil {
-				return nil, nil, nil, fmt.Errorf("compile model_pattern for %q: %w", profile.ModelFamily, err)
-			}
-			profile.compiledPattern = compiled
-			regexProfiles = append(regexProfiles, *profile)
-		}
-		byFamily[familyKey] = *profile
 	}
 
+	byModel := make(map[string]ConsumerDriveProfile, len(catalog.Aliases))
 	for modelAlias, family := range catalog.Aliases {
-		profile, ok := byFamily[normalizeConsumerDriveKey(family)]
-		if !ok {
-			return nil, nil, nil, fmt.Errorf("alias %q points to unknown family %q", modelAlias, family)
+		if err := addConsumerDriveAlias(modelAlias, family, byFamily, byModel); err != nil {
+			return nil, nil, nil, err
 		}
-		modelKey := normalizeConsumerDriveKey(modelAlias)
-		if modelKey == "" {
-			return nil, nil, nil, fmt.Errorf("alias %q normalizes to empty key", modelAlias)
-		}
-		if existing, exists := byModel[modelKey]; exists {
-			if normalizeConsumerDriveKey(existing.ModelFamily) != normalizeConsumerDriveKey(profile.ModelFamily) {
-				return nil, nil, nil, fmt.Errorf("duplicate model alias %q", modelAlias)
-			}
-			continue
-		}
-		byModel[modelKey] = profile
 	}
 	return byFamily, byModel, regexProfiles, nil
+}
+
+// addConsumerDriveProfile validates a single profile and registers it under its normalized family
+// key, also appending it to regexProfiles when it carries a model pattern.
+func addConsumerDriveProfile(profile *ConsumerDriveProfile, byFamily map[string]ConsumerDriveProfile, regexProfiles *[]ConsumerDriveProfile) error {
+	if profile.ModelFamily == "" {
+		return fmt.Errorf("profile missing model_family")
+	}
+	familyKey := normalizeConsumerDriveKey(profile.ModelFamily)
+	if familyKey == "" {
+		return fmt.Errorf("profile has empty normalized family for %q", profile.ModelFamily)
+	}
+	if _, exists := byFamily[familyKey]; exists {
+		return fmt.Errorf("duplicate profile family %q", profile.ModelFamily)
+	}
+	if profile.ModelPattern != "" {
+		compiled, err := regexp.Compile(profile.ModelPattern)
+		if err != nil {
+			return fmt.Errorf("compile model_pattern for %q: %w", profile.ModelFamily, err)
+		}
+		profile.compiledPattern = compiled
+		*regexProfiles = append(*regexProfiles, *profile)
+	}
+	byFamily[familyKey] = *profile
+	return nil
+}
+
+// addConsumerDriveAlias resolves an alias to its family profile and registers it under the
+// normalized model key, tolerating duplicate aliases that point to the same family.
+func addConsumerDriveAlias(modelAlias, family string, byFamily, byModel map[string]ConsumerDriveProfile) error {
+	profile, ok := byFamily[normalizeConsumerDriveKey(family)]
+	if !ok {
+		return fmt.Errorf("alias %q points to unknown family %q", modelAlias, family)
+	}
+	modelKey := normalizeConsumerDriveKey(modelAlias)
+	if modelKey == "" {
+		return fmt.Errorf("alias %q normalizes to empty key", modelAlias)
+	}
+	if existing, exists := byModel[modelKey]; exists {
+		if normalizeConsumerDriveKey(existing.ModelFamily) != normalizeConsumerDriveKey(profile.ModelFamily) {
+			return fmt.Errorf("duplicate model alias %q", modelAlias)
+		}
+		return nil
+	}
+	byModel[modelKey] = profile
+	return nil
 }
 
 func LookupConsumerDriveProfile(protocol, modelFamily, modelName string) (*ConsumerDriveProfile, bool) {
