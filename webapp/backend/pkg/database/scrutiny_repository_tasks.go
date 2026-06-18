@@ -11,21 +11,21 @@ import (
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 func (sr *scrutinyRepository) EnsureTasks(ctx context.Context, orgID string) error {
 	weeklyTaskName := "tsk-weekly-aggr"
-	//weekly on Sunday at 1:00am
+	// weekly on Sunday at 1:00am
 	weeklyTaskScript := sr.DownsampleScript("weekly", weeklyTaskName, "0 1 * * 0")
 	if err := sr.ensureDownsampleTask(ctx, orgID, weeklyTaskName, weeklyTaskScript, "weekly"); err != nil {
 		return err
 	}
 
 	monthlyTaskName := "tsk-monthly-aggr"
-	//monthly on first day of the month at 1:30am
+	// monthly on first day of the month at 1:30am
 	monthlyTaskScript := sr.DownsampleScript("monthly", monthlyTaskName, "30 1 1 * *")
 	if err := sr.ensureDownsampleTask(ctx, orgID, monthlyTaskName, monthlyTaskScript, "monthly"); err != nil {
 		return err
 	}
 
 	yearlyTaskName := "tsk-yearly-aggr"
-	//yearly on the first day of the year at 2:00am
+	// yearly on the first day of the year at 2:00am
 	yearlyTaskScript := sr.DownsampleScript("yearly", yearlyTaskName, "0 2 1 1 *")
 	if err := sr.ensureDownsampleTask(ctx, orgID, yearlyTaskName, yearlyTaskScript, "yearly"); err != nil {
 		return err

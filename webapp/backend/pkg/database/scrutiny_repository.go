@@ -423,7 +423,7 @@ func (sr *scrutinyRepository) ensureRetentionBucket(ctx context.Context, org *do
 	if applyRetention {
 		// correctly set the retention period (may not be able to do it during setup/creation)
 		found.RetentionRules = domain.RetentionRules{retentionRule}
-		sr.influxClient.BucketsAPI().UpdateBucket(ctx, found)
+		_, _ = sr.influxClient.BucketsAPI().UpdateBucket(ctx, found)
 	}
 	return nil
 }
