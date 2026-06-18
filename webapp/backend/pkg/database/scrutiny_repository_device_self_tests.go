@@ -14,14 +14,14 @@ import (
 
 const maxDeviceSelfTestsPerDevice = 21
 
-func deviceSelfTestIdentity(device models.Device) string {
+func deviceSelfTestIdentity(device *models.Device) string {
 	if strings.TrimSpace(device.WWN) != "" {
 		return strings.TrimSpace(device.WWN)
 	}
 	return device.DeviceID
 }
 
-func (sr *scrutinyRepository) syncDeviceSelfTests(ctx context.Context, device models.Device, collectorSmartData collector.SmartInfo) error {
+func (sr *scrutinyRepository) syncDeviceSelfTests(ctx context.Context, device *models.Device, collectorSmartData *collector.SmartInfo) error {
 	if collectorSmartData.Device.Protocol != pkg.DeviceProtocolAta {
 		return nil
 	}
@@ -90,7 +90,7 @@ func (sr *scrutinyRepository) GetDeviceSelfTests(ctx context.Context, deviceID s
 		return nil, err
 	}
 
-	deviceIdentity := deviceSelfTestIdentity(device)
+	deviceIdentity := deviceSelfTestIdentity(&device)
 	selfTests := []models.DeviceSelfTest{}
 	if err := sr.gormClient.WithContext(ctx).
 		Where("device_identity = ?", deviceIdentity).

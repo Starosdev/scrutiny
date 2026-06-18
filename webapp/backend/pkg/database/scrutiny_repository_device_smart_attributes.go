@@ -50,7 +50,7 @@ func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, wwn strin
 	tags, fields := deviceSmartData.Flatten()
 
 	if devErr == nil {
-		if err := sr.syncDeviceSelfTests(ctx, device, collectorSmartData); err != nil {
+		if err := sr.syncDeviceSelfTests(ctx, &device, &collectorSmartData); err != nil {
 			return measurements.Smart{}, err
 		}
 	}
