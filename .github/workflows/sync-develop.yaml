@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -18,20 +19,44 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Merge master into beta
+      - name: Merge master into beta (PR fallback on conflict)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET: beta
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout beta
-          git merge origin/master --no-edit
-          git push origin beta
+          git checkout "$TARGET"
+          if git merge origin/master --no-edit; then
+            git push origin "$TARGET"
+            echo "Auto-merged master into $TARGET."
+          else
+            git merge --abort
+            echo "::warning::Merge conflict syncing master into $TARGET; opening a sync PR instead."
+            existing=$(gh pr list --base "$TARGET" --head master --state open --json number --jq '.[0].number')
+            if [ -n "$existing" ]; then
+              echo "Sync PR master -> $TARGET already open (#$existing); nothing to do."
+            else
+              body=$(printf '%s\n' \
+                "Automated branch sync could not fast-forward \`$TARGET\` because master and \`$TARGET\` have conflicting changes." \
+                "" \
+                "Resolve the conflicts and merge this PR to keep \`$TARGET\` in sync with \`master\`." \
+                "" \
+                "Note: opened by GITHUB_TOKEN, so CI does not run automatically. Verify locally before merging.")
+              gh pr create --base "$TARGET" --head master \
+                --title "chore(sync): merge master into $TARGET (manual conflict resolution)" \
+                --body "$body"
+            fi
+          fi
 
   sync-develop:
     name: Merge master into develop
     needs: sync-beta
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -39,10 +64,32 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Merge master into develop
+      - name: Merge master into develop (PR fallback on conflict)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET: develop
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout develop
-          git merge origin/master --no-edit
-          git push origin develop
+          git checkout "$TARGET"
+          if git merge origin/master --no-edit; then
+            git push origin "$TARGET"
+            echo "Auto-merged master into $TARGET."
+          else
+            git merge --abort
+            echo "::warning::Merge conflict syncing master into $TARGET; opening a sync PR instead."
+            existing=$(gh pr list --base "$TARGET" --head master --state open --json number --jq '.[0].number')
+            if [ -n "$existing" ]; then
+              echo "Sync PR master -> $TARGET already open (#$existing); nothing to do."
+            else
+              body=$(printf '%s\n' \
+                "Automated branch sync could not fast-forward \`$TARGET\` because master and \`$TARGET\` have conflicting changes." \
+                "" \
+                "Resolve the conflicts and merge this PR to keep \`$TARGET\` in sync with \`master\`." \
+                "" \
+                "Note: opened by GITHUB_TOKEN, so CI does not run automatically. Verify locally before merging.")
+              gh pr create --base "$TARGET" --head master \
+                --title "chore(sync): merge master into $TARGET (manual conflict resolution)" \
+                --body "$body"
+            fi
+          fi
