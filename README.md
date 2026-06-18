@@ -127,6 +127,7 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Mobile-Optimized Interface** - Bottom tab bar (Home, Drives, ZFS, Workload, Settings), health overview home tab, card-based data views, and responsive layouts below 960px
 - **API Timeout Configuration** - Adjust timeouts for slow storage systems
 - **Performance Benchmarking** - fio-based benchmarks for throughput, IOPS, and latency with historical tracking
+- **ATA Self-Test History** - Persist and display recent ATA SMART self-test log entries on device detail pages
 - **Scheduled Reports** [WIP] - Automated health reports on daily/weekly/monthly schedules with HTML emails and PDF export
 - **Missed Ping Digest** - Batch notification when multiple collectors go unreachable
 - **HTML Email Notifications** - Rich HTML formatting with plain-text fallback for SMTP notifications, including reports, test notifications, collector errors, missed ping digests, heartbeat, performance degradation, replacement risk, and MDADM degradation alerts
@@ -502,6 +503,16 @@ Some SSDs report misleading wear percentages through SMART. To supplement those 
 - TBW used percentage
 
 This value is user-supplied and does not replace the existing SMART wear indicators.
+
+## ATA SMART Self-Test History
+
+Scrutiny now retains ATA SMART self-test log entries that are already present in uploaded `smartctl` payloads. On ATA drive detail pages, the web UI shows a **SMART Self-Tests** card with the recorded test type, pass/attention status, controller detail string, and power-on age.
+
+- Data is read from normal SMART uploads; no separate self-test collector is required
+- Only ATA devices show this section today
+- Scrutiny keeps the most recent 21 recorded entries per physical ATA device identity
+- The API route `GET /api/device/{id}/selftest` returns the same history used by the device detail page
+- This feature records and displays history only; it does not trigger or schedule drive self-tests from the web UI
 
 ## SMART Attribute Overrides
 

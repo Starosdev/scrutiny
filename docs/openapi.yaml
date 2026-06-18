@@ -321,6 +321,23 @@ paths:
         "500":
           $ref: "#/components/responses/ErrorResponse"
   /api/device/{id}/selftest:
+    get:
+      tags: [Devices]
+      summary: Get ATA SMART self-test history for a device
+      description: Returns the ATA SMART self-test entries already recorded from normal SMART uploads for the resolved device identity.
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          description: ATA SMART self-test history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceSelfTestsResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
     post:
       tags: [Devices]
       summary: Upload self-test data for a device
@@ -1607,6 +1624,61 @@ components:
         metadata:
           type: object
           additionalProperties: true
+      required: [success, data]
+    DeviceSelfTest:
+      type: object
+      properties:
+        id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        device_id:
+          type: string
+        device_wwn:
+          type: string
+        type_value:
+          type: integer
+        type_string:
+          type: string
+        status_value:
+          type: integer
+        status_string:
+          type: string
+        status_passed:
+          type: boolean
+        lifetime_hours:
+          type: integer
+      required:
+        - id
+        - device_id
+        - device_wwn
+        - type_value
+        - type_string
+        - status_value
+        - status_string
+        - status_passed
+        - lifetime_hours
+    DeviceSelfTestsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            self_tests:
+              type: array
+              items:
+                $ref: "#/components/schemas/DeviceSelfTest"
+          required: [self_tests]
       required: [success, data]
     PerformanceUploadRequest:
       type: object

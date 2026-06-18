@@ -33,6 +33,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260523000000"
 	m20260608000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260608000000"
 	m20260610000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260610000000"
+	m20260616000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260616000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -1158,8 +1159,12 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 			},
 		},
 		{
-			ID: "m20260610000000", // add host_id column to mdadm_arrays table (#579)
+			ID:      "m20260610000000", // add host_id column to mdadm_arrays table (#579)
 			Migrate: m20260610000000.Migrate,
+		},
+		{
+			ID:      "m20260616000000", // add ATA SMART self-test history table (#491)
+			Migrate: m20260616000000.Migrate,
 		},
 	})
 

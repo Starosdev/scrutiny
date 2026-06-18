@@ -125,20 +125,6 @@ func (mr *MockDeviceRepoMockRecorder) DeleteNotifyUrl(ctx, id interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNotifyUrl", reflect.TypeOf((*MockDeviceRepo)(nil).DeleteNotifyUrl), ctx, id)
 }
 
-// UpdateNotifyUrlHeartbeat mocks base method.
-func (m *MockDeviceRepo) UpdateNotifyUrlHeartbeat(ctx context.Context, id uint, enabled bool) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateNotifyUrlHeartbeat", ctx, id, enabled)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateNotifyUrlHeartbeat indicates an expected call of UpdateNotifyUrlHeartbeat.
-func (mr *MockDeviceRepoMockRecorder) UpdateNotifyUrlHeartbeat(ctx, id, enabled interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateNotifyUrlHeartbeat", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateNotifyUrlHeartbeat), ctx, id, enabled)
-}
-
 // DeleteZFSPool mocks base method.
 func (m *MockDeviceRepo) DeleteZFSPool(ctx context.Context, guid string) error {
 	m.ctrl.T.Helper()
@@ -316,6 +302,21 @@ func (m *MockDeviceRepo) GetDeviceDetails(ctx context.Context, deviceID string) 
 func (mr *MockDeviceRepoMockRecorder) GetDeviceDetails(ctx, deviceID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeviceDetails", reflect.TypeOf((*MockDeviceRepo)(nil).GetDeviceDetails), ctx, deviceID)
+}
+
+// GetDeviceSelfTests mocks base method.
+func (m *MockDeviceRepo) GetDeviceSelfTests(ctx context.Context, deviceID string) ([]models.DeviceSelfTest, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDeviceSelfTests", ctx, deviceID)
+	ret0, _ := ret[0].([]models.DeviceSelfTest)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDeviceSelfTests indicates an expected call of GetDeviceSelfTests.
+func (mr *MockDeviceRepoMockRecorder) GetDeviceSelfTests(ctx, deviceID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeviceSelfTests", reflect.TypeOf((*MockDeviceRepo)(nil).GetDeviceSelfTests), ctx, deviceID)
 }
 
 // GetDevices mocks base method.
@@ -1157,6 +1158,20 @@ func (m *MockDeviceRepo) UpdateMdadmArrayMuted(ctx context.Context, uuid string,
 func (mr *MockDeviceRepoMockRecorder) UpdateMdadmArrayMuted(ctx, uuid, muted interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMdadmArrayMuted", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateMdadmArrayMuted), ctx, uuid, muted)
+}
+
+// UpdateNotifyUrlHeartbeat mocks base method.
+func (m *MockDeviceRepo) UpdateNotifyUrlHeartbeat(ctx context.Context, id uint, enabled bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateNotifyUrlHeartbeat", ctx, id, enabled)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateNotifyUrlHeartbeat indicates an expected call of UpdateNotifyUrlHeartbeat.
+func (mr *MockDeviceRepoMockRecorder) UpdateNotifyUrlHeartbeat(ctx, id, enabled interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateNotifyUrlHeartbeat", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateNotifyUrlHeartbeat), ctx, id, enabled)
 }
 
 // UpdateZFSPoolArchived mocks base method.

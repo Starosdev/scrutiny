@@ -137,6 +137,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 
 			api.POST("/device/:id/smart", handler.UploadDeviceMetrics) // used by Collector to upload data
 			api.POST("/device/:id/selftest", handler.UploadDeviceSelfTests)
+			api.GET("/device/:id/selftest", handler.GetDeviceSelfTests)                        // used by UI to view self-test history
 			api.GET("/device/:id/details", handler.GetDeviceDetails)                           // used by Details
 			api.POST("/device/:id/archive", handler.ArchiveDevice)                             // used by UI to archive device
 			api.POST("/device/:id/unarchive", handler.UnarchiveDevice)                         // used by UI to unarchive device

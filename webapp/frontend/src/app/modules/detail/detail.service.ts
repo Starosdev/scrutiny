@@ -4,6 +4,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { getBasePath } from 'app/app.routing';
 import { DeviceDetailsResponseWrapper } from 'app/core/models/device-details-response-wrapper';
+import { DeviceSelfTestsResponseWrapper } from 'app/core/models/device-selftests-response-wrapper';
 import { PerformanceResponseWrapper } from 'app/core/models/measurements/performance-model';
 import { ReplacementRiskResponseWrapper } from 'app/core/models/replacement-risk-model';
 
@@ -94,5 +95,9 @@ export class DetailService {
     getReplacementRisk(deviceId: string, trendWindow: string = '30d'): Observable<ReplacementRiskResponseWrapper> {
         const params = { trend_window: trendWindow };
         return this._httpClient.get<ReplacementRiskResponseWrapper>(getBasePath() + `/api/device/${deviceId}/replacement-risk`, { params });
+    }
+
+    getSelfTestData(deviceId: string): Observable<DeviceSelfTestsResponseWrapper> {
+        return this._httpClient.get<DeviceSelfTestsResponseWrapper>(getBasePath() + `/api/device/${deviceId}/selftest`);
     }
 }
