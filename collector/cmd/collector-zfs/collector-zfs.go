@@ -77,44 +77,9 @@ OPTIONS:
 
 		Commands: []*cli.Command{
 			{
-				Name:  "run",
-				Usage: "Run the scrutiny ZFS pool collector",
-				Action: func(c *cli.Context) error {
-					if c.IsSet("config") {
-						if err := cfg.ReadConfig(c.String("config"), bootstrapLogger); err != nil {
-							fmt.Printf("Could not find config file at specified path: %s", c.String("config"))
-							return err
-						}
-					}
-
-					applyCollectorOverrides(c, cfg)
-
-					collectorLogger, logFile, err := CreateLogger(cfg)
-					if logFile != nil {
-						defer logFile.Close()
-					}
-					if err != nil {
-						return err
-					}
-
-					settingsData, settingsErr := redactCollectorSettings(cfg)
-					if settingsErr != nil {
-						collectorLogger.Warnf("Failed to marshal settings for debug logging: %v", settingsErr)
-					} else {
-						collectorLogger.Debug(string(settingsData))
-					}
-
-					zfsCollector, err := zfs.CreateCollector(
-						cfg,
-						collectorLogger,
-						cfg.GetString("api.endpoint"),
-					)
-					if err != nil {
-						return err
-					}
-
-					return zfsCollector.Run()
-				},
+				Name:   "run",
+				Usage:  "Run the scrutiny ZFS pool collector",
+				Action: runCollectorAction(cfg, bootstrapLogger),
 
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -154,6 +119,46 @@ OPTIONS:
 
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(color.HiRedString("ERROR: %v", err))
+	}
+}
+
+// runCollectorAction builds the cli action that configures and runs the ZFS pool collector.
+func runCollectorAction(cfg config.Interface, bootstrapLogger *logrus.Entry) cli.ActionFunc {
+	return func(c *cli.Context) error {
+		if c.IsSet("config") {
+			if err := cfg.ReadConfig(c.String("config"), bootstrapLogger); err != nil {
+				fmt.Printf("Could not find config file at specified path: %s", c.String("config"))
+				return err
+			}
+		}
+
+		applyCollectorOverrides(c, cfg)
+
+		collectorLogger, logFile, err := CreateLogger(cfg)
+		if logFile != nil {
+			defer logFile.Close()
+		}
+		if err != nil {
+			return err
+		}
+
+		settingsData, settingsErr := redactCollectorSettings(cfg)
+		if settingsErr != nil {
+			collectorLogger.Warnf("Failed to marshal settings for debug logging: %v", settingsErr)
+		} else {
+			collectorLogger.Debug(string(settingsData))
+		}
+
+		zfsCollector, err := zfs.CreateCollector(
+			cfg,
+			collectorLogger,
+			cfg.GetString("api.endpoint"),
+		)
+		if err != nil {
+			return err
+		}
+
+		return zfsCollector.Run()
 	}
 }
 
