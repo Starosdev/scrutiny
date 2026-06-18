@@ -68,12 +68,9 @@ func ResetMigrationGuardForTests() {
 	migrationOnceErr = nil
 }
 
-func newScrutinyRepository(appConfig config.Interface, globalLogger logrus.FieldLogger, runMigrations bool) (DeviceRepo, error) {
-	backgroundContext := context.Background()
-
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Gorm/SQLite setup
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// openGormDatabase opens the SQLite database with the configured journal mode and pragmas,
+// returning a descriptive error for the common read-only/cap_drop Docker failure mode.
+func openGormDatabase(appConfig config.Interface, globalLogger logrus.FieldLogger) (*gorm.DB, error) {
 	globalLogger.Infof("Trying to connect to scrutiny sqlite db: %s\n", appConfig.GetString(cfgDatabaseLocation))
 
 	// When a transaction cannot lock the database, because it is already locked by another one,
@@ -140,11 +137,12 @@ func newScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 		return nil, fmt.Errorf("Failed to connect to database! - %v", err)
 	}
 	globalLogger.Infof("Successfully connected to scrutiny sqlite db: %s\n", appConfig.GetString(cfgDatabaseLocation))
+	return database, nil
+}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// InfluxDB setup
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+// setupInfluxClient creates the InfluxDB client and runs first-time setup when the server is
+// un-initialized.
+func setupInfluxClient(ctx context.Context, appConfig config.Interface, globalLogger logrus.FieldLogger) (influxdb2.Client, error) {
 	// Create a new client using an InfluxDB server base URL and an authentication token
 	influxdbUrl := fmt.Sprintf("%s://%s:%s", appConfig.GetString("web.influxdb.scheme"), appConfig.GetString("web.influxdb.host"), appConfig.GetString("web.influxdb.port"))
 	globalLogger.Debugf("InfluxDB url: %s", influxdbUrl)
@@ -160,7 +158,6 @@ func newScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 		influxdb2.DefaultOptions().SetTLSConfig(tlsConfig),
 	)
 
-	//if !appConfig.IsSet("web.influxdb.token") {
 	globalLogger.Debugf("Determine Influxdb setup status...")
 	influxSetupComplete, err := InfluxSetupComplete(influxdbUrl, tlsConfig)
 	if err != nil {
@@ -176,7 +173,7 @@ func newScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 		// metrics bucket will have a retention period of 8 days (since it will be down-sampled once a week)
 		// in seconds (60seconds * 60minutes * 24hours * 15 days) = 1_296_000 (see EnsureBucket() function)
 		_, err := client.SetupWithToken(
-			backgroundContext,
+			ctx,
 			appConfig.GetString("web.influxdb.init_username"),
 			appConfig.GetString("web.influxdb.init_password"),
 			appConfig.GetString(cfgInfluxDBOrg),
@@ -187,6 +184,21 @@ func newScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 		if err != nil {
 			return nil, err
 		}
+	}
+	return client, nil
+}
+
+func newScrutinyRepository(appConfig config.Interface, globalLogger logrus.FieldLogger, runMigrations bool) (DeviceRepo, error) {
+	backgroundContext := context.Background()
+
+	database, err := openGormDatabase(appConfig, globalLogger)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := setupInfluxClient(backgroundContext, appConfig, globalLogger)
+	if err != nil {
+		return nil, err
 	}
 
 	// Use blocking write client for writes to desired bucket
@@ -366,68 +378,53 @@ func InfluxSetupComplete(influxEndpoint string, tlsConfig *tls.Config) (bool, er
 }
 
 func (sr *scrutinyRepository) EnsureBuckets(ctx context.Context, org *domain.Organization) error {
+	// in tests, we may not want to set a retention policy. If "false", we can set data with old timestamps,
+	// then manually run the down sampling scripts. This should be true for production environments.
+	applyRetention := sr.appConfig.GetBool(cfgInfluxDBRetentionPolicy)
 
-	var mainBucketRetentionRule domain.RetentionRule
-	var weeklyBucketRetentionRule domain.RetentionRule
-	var monthlyBucketRetentionRule domain.RetentionRule
-	if sr.appConfig.GetBool(cfgInfluxDBRetentionPolicy) {
-
-		// in tests, we may not want to set a retention policy. If "false", we can set data with old timestamps,
-		// then manually run the down sampling scripts. This should be true for production environments.
-		mainBucketRetentionRule = domain.RetentionRule{EverySeconds: int64(sr.appConfig.GetInt("web.influxdb.retention.daily"))}
-		weeklyBucketRetentionRule = domain.RetentionRule{EverySeconds: int64(sr.appConfig.GetInt("web.influxdb.retention.weekly"))}
-		monthlyBucketRetentionRule = domain.RetentionRule{EverySeconds: int64(sr.appConfig.GetInt("web.influxdb.retention.monthly"))}
+	var mainRule, weeklyRule, monthlyRule domain.RetentionRule
+	if applyRetention {
+		mainRule = domain.RetentionRule{EverySeconds: int64(sr.appConfig.GetInt("web.influxdb.retention.daily"))}
+		weeklyRule = domain.RetentionRule{EverySeconds: int64(sr.appConfig.GetInt("web.influxdb.retention.weekly"))}
+		monthlyRule = domain.RetentionRule{EverySeconds: int64(sr.appConfig.GetInt("web.influxdb.retention.monthly"))}
 	}
 
-	mainBucket := sr.appConfig.GetString(cfgInfluxDBBucket)
-	if foundMainBucket, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, mainBucket); foundErr != nil {
-		// metrics bucket will have a retention period of 15 days (since it will be down-sampled once a week)
-		_, err := sr.influxClient.BucketsAPI().CreateBucketWithName(ctx, org, mainBucket, mainBucketRetentionRule)
-		if err != nil {
-			return err
-		}
-	} else if sr.appConfig.GetBool(cfgInfluxDBRetentionPolicy) {
-		//correctly set the retention period for the main bucket (cant do it during setup/creation)
-		foundMainBucket.RetentionRules = domain.RetentionRules{mainBucketRetentionRule}
-		sr.influxClient.BucketsAPI().UpdateBucket(ctx, foundMainBucket)
+	baseBucket := sr.appConfig.GetString(cfgInfluxDBBucket)
+	// main bucket plus the weekly/monthly down-sampling buckets
+	if err := sr.ensureRetentionBucket(ctx, org, baseBucket, mainRule, applyRetention); err != nil {
+		return err
+	}
+	if err := sr.ensureRetentionBucket(ctx, org, baseBucket+"_weekly", weeklyRule, applyRetention); err != nil {
+		return err
+	}
+	if err := sr.ensureRetentionBucket(ctx, org, baseBucket+"_monthly", monthlyRule, applyRetention); err != nil {
+		return err
 	}
 
-	//create buckets (used for downsampling)
-	weeklyBucket := fmt.Sprintf("%s_weekly", sr.appConfig.GetString(cfgInfluxDBBucket))
-	if foundWeeklyBucket, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, weeklyBucket); foundErr != nil {
-		// metrics_weekly bucket will have a retention period of 8+1 weeks (since it will be down-sampled once a month)
-		_, err := sr.influxClient.BucketsAPI().CreateBucketWithName(ctx, org, weeklyBucket, weeklyBucketRetentionRule)
-		if err != nil {
-			return err
-		}
-	} else if sr.appConfig.GetBool(cfgInfluxDBRetentionPolicy) {
-		//correctly set the retention period for the bucket (may not be able to do it during setup/creation)
-		foundWeeklyBucket.RetentionRules = domain.RetentionRules{weeklyBucketRetentionRule}
-		sr.influxClient.BucketsAPI().UpdateBucket(ctx, foundWeeklyBucket)
-	}
-
-	monthlyBucket := fmt.Sprintf("%s_monthly", sr.appConfig.GetString(cfgInfluxDBBucket))
-	if foundMonthlyBucket, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, monthlyBucket); foundErr != nil {
-		// metrics_monthly bucket will have a retention period of 24+1 months (since it will be down-sampled once a year)
-		_, err := sr.influxClient.BucketsAPI().CreateBucketWithName(ctx, org, monthlyBucket, monthlyBucketRetentionRule)
-		if err != nil {
-			return err
-		}
-	} else if sr.appConfig.GetBool(cfgInfluxDBRetentionPolicy) {
-		//correctly set the retention period for the bucket (may not be able to do it during setup/creation)
-		foundMonthlyBucket.RetentionRules = domain.RetentionRules{monthlyBucketRetentionRule}
-		sr.influxClient.BucketsAPI().UpdateBucket(ctx, foundMonthlyBucket)
-	}
-
-	yearlyBucket := fmt.Sprintf("%s_yearly", sr.appConfig.GetString(cfgInfluxDBBucket))
+	// metrics_yearly bucket will have an infinite retention period
+	yearlyBucket := baseBucket + "_yearly"
 	if _, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, yearlyBucket); foundErr != nil {
-		// metrics_yearly bucket will have an infinite retention period
-		_, err := sr.influxClient.BucketsAPI().CreateBucketWithName(ctx, org, yearlyBucket)
-		if err != nil {
+		if _, err := sr.influxClient.BucketsAPI().CreateBucketWithName(ctx, org, yearlyBucket); err != nil {
 			return err
 		}
 	}
 
+	return nil
+}
+
+// ensureRetentionBucket creates bucketName with the given retention rule when it does not exist,
+// or (when applyRetention is set) updates the existing bucket's retention rule.
+func (sr *scrutinyRepository) ensureRetentionBucket(ctx context.Context, org *domain.Organization, bucketName string, retentionRule domain.RetentionRule, applyRetention bool) error {
+	found, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, bucketName)
+	if foundErr != nil {
+		_, err := sr.influxClient.BucketsAPI().CreateBucketWithName(ctx, org, bucketName, retentionRule)
+		return err
+	}
+	if applyRetention {
+		// correctly set the retention period (may not be able to do it during setup/creation)
+		found.RetentionRules = domain.RetentionRules{retentionRule}
+		sr.influxClient.BucketsAPI().UpdateBucket(ctx, found)
+	}
 	return nil
 }
 
@@ -450,13 +447,28 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 		wwnToDeviceID[device.WWN] = device.DeviceID
 	}
 
-	// Get parser flux query result
-	// appConfig.GetString(cfgInfluxDBBucket)
-	// SSD health fields:
-	// - NVMe: attr.percentage_used.value (0-100%, higher = more worn)
-	// - ATA DevStats: attr.devstat_7_8.raw_value (0-100%, higher = more worn)
-	// - ATA Wearout: attr.177.value, attr.233.value, attr.231.value, attr.232.value (0-100%, higher = healthier)
-	queryStr := fmt.Sprintf(`
+	result, err := sr.influxQueryApi.Query(ctx, summaryFluxQuery(sr.appConfig.GetString(cfgInfluxDBBucket)))
+	if err != nil {
+		return nil, err
+	}
+	defer result.Close()
+	// Use Next() to iterate over query result lines
+	for result.Next() {
+		sr.applySummaryRecord(summaries, wwnToDeviceID, result.Record().Values())
+	}
+	if result.Err() != nil {
+		sr.logger.Errorf("Query error: %s", result.Err().Error())
+	}
+
+	sr.attachTemperatureHistory(ctx, summaries)
+
+	return summaries, nil
+}
+
+// summaryFluxQuery builds the flux query that fetches the latest summary metrics (basic metrics +
+// SSD health + risk indicator attributes) per device across the daily/weekly/monthly/yearly buckets.
+func summaryFluxQuery(bucketBaseName string) string {
+	return fmt.Sprintf(`
   	import "influxdata/influxdb/schema"
   	bucketBaseName = "%s"
 
@@ -515,80 +527,78 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 	|> tail(n: 1)
 	|> yield(name: "last")
 		`,
-		sr.appConfig.GetString(cfgInfluxDBBucket),
+		bucketBaseName,
 	)
+}
 
-	result, err := sr.influxQueryApi.Query(ctx, queryStr)
-	if err == nil {
-		defer result.Close()
-		// Use Next() to iterate over query result lines
-		for result.Next() {
-			//get summary data from Influxdb.
-			//result.Record().Values()
-			if deviceWWN, ok := result.Record().Values()["device_wwn"]; ok {
-				wwn := deviceWWN.(string)
-				devID, hasDevID := wwnToDeviceID[wwn]
-				if !hasDevID {
-					continue
-				}
-
-				// ensure summaries is initialized for this device_id
-				if _, exists := summaries[devID]; !exists {
-					summaries[devID] = &models.DeviceSummary{}
-				}
-
-				smartSummary := &models.SmartSummary{
-					Temp:          result.Record().Values()["temp"].(int64),
-					PowerOnHours:  result.Record().Values()["power_on_hours"].(int64),
-					CollectorDate: result.Record().Values()["_time"].(time.Time),
-				}
-
-				// Extract SSD health metrics
-				values := result.Record().Values()
-
-				// Check for percentage_used (NVMe) or devstat_7_8 (ATA device statistics)
-				// These represent "percentage used" where higher = more worn
-				if val, ok := values["attr.percentage_used.value"]; ok && val != nil {
-					if intVal, ok := val.(int64); ok {
-						smartSummary.PercentageUsed = &intVal
-					}
-				} else if val, ok := values["attr.devstat_7_8.raw_value"]; ok && val != nil {
-					if intVal, ok := val.(int64); ok {
-						smartSummary.PercentageUsed = &intVal
-					}
-				}
-
-				// Check for ATA wearout attributes (177, 233, 231, 232)
-				// These represent "health remaining" where higher = healthier
-				// Priority order: 177 (Samsung/Crucial), 233 (Intel), 231 (Life Left), 232 (Endurance)
-				var wearoutVal *int64
-				for _, attrId := range []string{"177", "233", "231", "232"} {
-					fieldName := fmt.Sprintf("attr.%s.value", attrId)
-					if val, ok := values[fieldName]; ok && val != nil {
-						if intVal, ok := val.(int64); ok {
-							wearoutVal = &intVal
-							break
-						}
-					}
-				}
-				smartSummary.WearoutValue = wearoutVal
-
-				// Compute simplified replacement risk from the fetched counter attrs.
-				protocol := summaries[devID].Device.DeviceProtocol
-				riskScore, riskCategory := summaryRiskScore(protocol, values)
-				smartSummary.RiskScore = &riskScore
-				smartSummary.RiskCategory = string(riskCategory)
-
-				summaries[devID].SmartResults = smartSummary
-			}
-		}
-		if result.Err() != nil {
-			sr.logger.Errorf("Query error: %s", result.Err().Error())
-		}
-	} else {
-		return nil, err
+// applySummaryRecord parses a single summary query record and populates the matching device summary.
+func (sr *scrutinyRepository) applySummaryRecord(summaries map[string]*models.DeviceSummary, wwnToDeviceID map[string]string, values map[string]interface{}) {
+	deviceWWN, ok := values["device_wwn"]
+	if !ok {
+		return
+	}
+	devID, hasDevID := wwnToDeviceID[deviceWWN.(string)]
+	if !hasDevID {
+		return
 	}
 
+	// ensure summaries is initialized for this device_id
+	if _, exists := summaries[devID]; !exists {
+		summaries[devID] = &models.DeviceSummary{}
+	}
+
+	smartSummary := &models.SmartSummary{
+		Temp:          values["temp"].(int64),
+		PowerOnHours:  values["power_on_hours"].(int64),
+		CollectorDate: values["_time"].(time.Time),
+	}
+	smartSummary.PercentageUsed = extractPercentageUsed(values)
+	smartSummary.WearoutValue = extractWearoutValue(values)
+
+	// Compute simplified replacement risk from the fetched counter attrs.
+	protocol := summaries[devID].Device.DeviceProtocol
+	riskScore, riskCategory := summaryRiskScore(protocol, values)
+	smartSummary.RiskScore = &riskScore
+	smartSummary.RiskCategory = string(riskCategory)
+
+	summaries[devID].SmartResults = smartSummary
+}
+
+// extractPercentageUsed returns the "percentage used" wear metric from NVMe (percentage_used) or
+// ATA device statistics (devstat_7_8), where higher means more worn. Returns nil when absent.
+func extractPercentageUsed(values map[string]interface{}) *int64 {
+	if val, ok := values["attr.percentage_used.value"]; ok && val != nil {
+		return asInt64Ptr(val)
+	}
+	if val, ok := values["attr.devstat_7_8.raw_value"]; ok && val != nil {
+		return asInt64Ptr(val)
+	}
+	return nil
+}
+
+// extractWearoutValue returns the first present ATA wearout "health remaining" attribute, in
+// priority order 177 (Samsung/Crucial), 233 (Intel), 231 (Life Left), 232 (Endurance).
+func extractWearoutValue(values map[string]interface{}) *int64 {
+	for _, attrId := range []string{"177", "233", "231", "232"} {
+		if val, ok := values[fmt.Sprintf("attr.%s.value", attrId)]; ok && val != nil {
+			if intVal, ok := val.(int64); ok {
+				return &intVal
+			}
+		}
+	}
+	return nil
+}
+
+// asInt64Ptr returns a pointer to val when it is an int64, otherwise nil.
+func asInt64Ptr(val interface{}) *int64 {
+	if intVal, ok := val.(int64); ok {
+		return &intVal
+	}
+	return nil
+}
+
+// attachTemperatureHistory loads forever-range temperature history and attaches it to each summary.
+func (sr *scrutinyRepository) attachTemperatureHistory(ctx context.Context, summaries map[string]*models.DeviceSummary) {
 	deviceTempHistory, err := sr.GetSmartTemperatureHistory(ctx, DURATION_KEY_FOREVER)
 	if err != nil {
 		sr.logger.Errorf("Error getting temperature history: %v", err)
@@ -598,8 +608,6 @@ func (sr *scrutinyRepository) GetSummary(ctx context.Context) (map[string]*model
 			summary.TempHistory = tempHistory
 		}
 	}
-
-	return summaries, nil
 }
 
 // GetDevicesLastSeenTimes returns a map of device WWN to the timestamp of their last SMART submission.
@@ -616,12 +624,29 @@ func (sr *scrutinyRepository) GetDevicesLastSeenTimes(ctx context.Context) (map[
 		wwnToDeviceID[devices[i].WWN] = devices[i].DeviceID
 	}
 
-	lastSeenTimes := map[string]time.Time{}
+	result, err := sr.influxQueryApi.Query(ctx, lastSeenFluxQuery(sr.appConfig.GetString(cfgInfluxDBBucket)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query last seen times: %w", err)
+	}
+	defer result.Close()
 
-	// Query to get the last submission time for each device from all buckets
-	// Note: We use "temp" field since it's always present in SMART data.
-	// The "date" field doesn't exist - Date is stored as the point timestamp (_time).
-	queryStr := fmt.Sprintf(`
+	lastSeenTimes := map[string]time.Time{}
+	for result.Next() {
+		applyLastSeenRecord(lastSeenTimes, wwnToDeviceID, result.Record().Values())
+	}
+
+	if result.Err() != nil {
+		return nil, fmt.Errorf("query result error: %w", result.Err())
+	}
+
+	return lastSeenTimes, nil
+}
+
+// lastSeenFluxQuery builds the flux query that returns the most recent SMART submission time per
+// device across all buckets. The "temp" field is used because it is always present in SMART data
+// (Date is stored as the point timestamp _time, not a field).
+func lastSeenFluxQuery(bucketBaseName string) string {
+	return fmt.Sprintf(`
 import "influxdata/influxdb/schema"
 bucketBaseName = "%s"
 
@@ -658,36 +683,31 @@ union(tables: [dailyData, weeklyData, monthlyData, yearlyData])
 |> sort(columns: ["_time"], desc: false)
 |> last()
 |> yield(name: "last_seen")
-	`, sr.appConfig.GetString(cfgInfluxDBBucket))
+	`, bucketBaseName)
+}
 
-	result, err := sr.influxQueryApi.Query(ctx, queryStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query last seen times: %w", err)
+// applyLastSeenRecord re-keys a last-seen query record from WWN to DeviceID and keeps the most
+// recent timestamp seen for that device.
+func applyLastSeenRecord(lastSeenTimes map[string]time.Time, wwnToDeviceID map[string]string, values map[string]interface{}) {
+	deviceWWN, ok := values["device_wwn"].(string)
+	if !ok {
+		return
 	}
-	defer result.Close()
-
-	for result.Next() {
-		values := result.Record().Values()
-		if deviceWWN, ok := values["device_wwn"].(string); ok {
-			if lastTime, ok := values["_time"].(time.Time); ok {
-				// Re-key from WWN to DeviceID
-				key := deviceWWN
-				if devID, hasDevID := wwnToDeviceID[deviceWWN]; hasDevID {
-					key = devID
-				}
-				// Keep the most recent time if we've seen this device before
-				if existing, exists := lastSeenTimes[key]; !exists || lastTime.After(existing) {
-					lastSeenTimes[key] = lastTime
-				}
-			}
-		}
+	lastTime, ok := values["_time"].(time.Time)
+	if !ok {
+		return
 	}
 
-	if result.Err() != nil {
-		return nil, fmt.Errorf("query result error: %w", result.Err())
+	// Re-key from WWN to DeviceID
+	key := deviceWWN
+	if devID, hasDevID := wwnToDeviceID[deviceWWN]; hasDevID {
+		key = devID
 	}
 
-	return lastSeenTimes, nil
+	// Keep the most recent time if we've seen this device before
+	if existing, exists := lastSeenTimes[key]; !exists || lastTime.After(existing) {
+		lastSeenTimes[key] = lastTime
+	}
 }
 
 // GetAvailableInfluxDBBuckets returns a list of bucket names available in InfluxDB.
