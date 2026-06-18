@@ -51,40 +51,18 @@ func (m *MDADMMetrics) Flatten() (tags map[string]string, fields map[string]inte
 
 // NewMDADMMetricsFromInfluxDB creates an MDADMMetrics from InfluxDB query result
 func NewMDADMMetricsFromInfluxDB(attrs map[string]interface{}) (*MDADMMetrics, error) {
-	m := MDADMMetrics{
-		Date:      attrs["_time"].(time.Time),
-		ArrayUUID: attrs["array_uuid"].(string),
-		ArrayName: attrs["array_name"].(string),
-	}
-
-	// Parse optional fields
-	if val, ok := attrs["active_devices"]; ok && val != nil {
-		m.ActiveDevices = int(val.(int64))
-	}
-	if val, ok := attrs["working_devices"]; ok && val != nil {
-		m.WorkingDevices = int(val.(int64))
-	}
-	if val, ok := attrs["failed_devices"]; ok && val != nil {
-		m.FailedDevices = int(val.(int64))
-	}
-	if val, ok := attrs["spare_devices"]; ok && val != nil {
-		m.SpareDevices = int(val.(int64))
-	}
-	if val, ok := attrs["state"]; ok && val != nil {
-		m.State = val.(string)
-	}
-	if val, ok := attrs["sync_progress"]; ok && val != nil {
-		m.SyncProgress = val.(float64)
-	}
-	if val, ok := attrs["raw_mdstat"]; ok && val != nil {
-		m.RawMdstat = val.(string)
-	}
-	if val, ok := attrs["array_size"]; ok && val != nil {
-		m.ArraySize = val.(int64)
-	}
-	if val, ok := attrs["used_bytes"]; ok && val != nil {
-		m.UsedBytes = val.(int64)
-	}
-
-	return &m, nil
+	return &MDADMMetrics{
+		Date:           attrs["_time"].(time.Time),
+		ArrayUUID:      attrs["array_uuid"].(string),
+		ArrayName:      attrs["array_name"].(string),
+		ActiveDevices:  int(influxInt64(attrs, "active_devices")),
+		WorkingDevices: int(influxInt64(attrs, "working_devices")),
+		FailedDevices:  int(influxInt64(attrs, "failed_devices")),
+		SpareDevices:   int(influxInt64(attrs, "spare_devices")),
+		State:          influxString(attrs, "state"),
+		SyncProgress:   influxFloat64(attrs, "sync_progress"),
+		RawMdstat:      influxString(attrs, "raw_mdstat"),
+		ArraySize:      influxInt64(attrs, "array_size"),
+		UsedBytes:      influxInt64(attrs, "used_bytes"),
+	}, nil
 }

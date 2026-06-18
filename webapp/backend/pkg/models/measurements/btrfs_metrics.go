@@ -50,60 +50,25 @@ func (m *BtrfsMetrics) Flatten() (map[string]string, map[string]interface{}) {
 }
 
 func NewBtrfsMetricsFromInfluxDB(attrs map[string]interface{}) (*BtrfsMetrics, error) {
-	m := BtrfsMetrics{
-		Date:           attrs["_time"].(time.Time),
-		FilesystemUUID: attrs["filesystem_uuid"].(string),
-	}
-	if val, ok := attrs["host_id"]; ok && val != nil {
-		m.HostID = val.(string)
-	}
-	if val, ok := attrs["label"]; ok && val != nil {
-		m.Label = val.(string)
-	}
-	if val, ok := attrs["device_size"]; ok && val != nil {
-		m.DeviceSize = val.(int64)
-	}
-	if val, ok := attrs["device_allocated"]; ok && val != nil {
-		m.DeviceAllocated = val.(int64)
-	}
-	if val, ok := attrs["device_unallocated"]; ok && val != nil {
-		m.DeviceUnallocated = val.(int64)
-	}
-	if val, ok := attrs["device_missing"]; ok && val != nil {
-		m.DeviceMissing = val.(int64)
-	}
-	if val, ok := attrs["used"]; ok && val != nil {
-		m.Used = val.(int64)
-	}
-	if val, ok := attrs["free_estimated"]; ok && val != nil {
-		m.FreeEstimated = val.(int64)
-	}
-	if val, ok := attrs["free_statfs"]; ok && val != nil {
-		m.FreeStatfs = val.(int64)
-	}
-	if val, ok := attrs["data_ratio"]; ok && val != nil {
-		m.DataRatio = val.(float64)
-	}
-	if val, ok := attrs["metadata_ratio"]; ok && val != nil {
-		m.MetadataRatio = val.(float64)
-	}
-	if val, ok := attrs["status"]; ok && val != nil {
-		m.Status = val.(string)
-	}
-	if val, ok := attrs["scrub_state"]; ok && val != nil {
-		m.ScrubState = val.(string)
-	}
-	if val, ok := attrs["scrub_read_errors"]; ok && val != nil {
-		m.ScrubReadErrors = val.(int64)
-	}
-	if val, ok := attrs["scrub_csum_errors"]; ok && val != nil {
-		m.ScrubCsumErrors = val.(int64)
-	}
-	if val, ok := attrs["scrub_verify_errors"]; ok && val != nil {
-		m.ScrubVerifyErrors = val.(int64)
-	}
-	if val, ok := attrs["scrub_super_errors"]; ok && val != nil {
-		m.ScrubSuperErrors = val.(int64)
-	}
-	return &m, nil
+	return &BtrfsMetrics{
+		Date:              attrs["_time"].(time.Time),
+		FilesystemUUID:    attrs["filesystem_uuid"].(string),
+		HostID:            influxString(attrs, "host_id"),
+		Label:             influxString(attrs, "label"),
+		DeviceSize:        influxInt64(attrs, "device_size"),
+		DeviceAllocated:   influxInt64(attrs, "device_allocated"),
+		DeviceUnallocated: influxInt64(attrs, "device_unallocated"),
+		DeviceMissing:     influxInt64(attrs, "device_missing"),
+		Used:              influxInt64(attrs, "used"),
+		FreeEstimated:     influxInt64(attrs, "free_estimated"),
+		FreeStatfs:        influxInt64(attrs, "free_statfs"),
+		DataRatio:         influxFloat64(attrs, "data_ratio"),
+		MetadataRatio:     influxFloat64(attrs, "metadata_ratio"),
+		Status:            influxString(attrs, "status"),
+		ScrubState:        influxString(attrs, "scrub_state"),
+		ScrubReadErrors:   influxInt64(attrs, "scrub_read_errors"),
+		ScrubCsumErrors:   influxInt64(attrs, "scrub_csum_errors"),
+		ScrubVerifyErrors: influxInt64(attrs, "scrub_verify_errors"),
+		ScrubSuperErrors:  influxInt64(attrs, "scrub_super_errors"),
+	}, nil
 }
