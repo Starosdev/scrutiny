@@ -48,7 +48,7 @@ func (d *Detect) findMissingDevices(detectedDevices []models.Device) ([]models.D
 			continue
 		}
 
-		//check if device is already detected.
+		// check if device is already detected.
 		diskName := strings.TrimPrefix(disk.Name, DevicePrefix())
 		if deviceAlreadyDetected(detectedDevices, diskName) {
 			continue

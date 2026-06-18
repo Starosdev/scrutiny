@@ -37,7 +37,7 @@ func (d *Detect) getMountUsage(devicePath string) (int64, error) {
 	}
 
 	usedBlocks := stat.Blocks - stat.Bfree
-	return int64(usedBlocks) * int64(stat.Bsize), nil
+	return int64(usedBlocks) * int64(stat.Bsize), nil //nolint:gosec // filesystem block counts fit in int64
 }
 
 // collectDeviceRdevs stats the array device and its first two partitions, returning their Rdev IDs.
