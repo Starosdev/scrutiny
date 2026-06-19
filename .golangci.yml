@@ -27,6 +27,9 @@ linters:
     paths:
       - .*_test\.go$
       - .*/mock/.*\.go$
+      # Frozen migration history: uses deprecated migration schema types (SA1019) and verbatim
+      # legacy struct literals that must match external collector types (fieldalignment/hugeParam).
+      - webapp/backend/pkg/database/scrutiny_repository_migrations\.go$
       - vendor
       - testdata
       - third_party$
