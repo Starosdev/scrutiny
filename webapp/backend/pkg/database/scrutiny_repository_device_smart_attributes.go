@@ -40,12 +40,18 @@ func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, wwn strin
 	// If a cumulative counter hasn't increased, suppress the warning since the underlying issue
 	// may have been resolved.
 	previousSmartData, prevErr := sr.GetLatestSmartSubmission(ctx, wwn)
+	var previousSmart *measurements.Smart
 	if prevErr != nil || len(previousSmartData) < 1 {
 		sr.logger.Debugln("No previous SMART submission available for delta evaluation (expected for first submission)")
 	} else {
-		previousValues := extractPreviousRawValues(&previousSmartData[0])
+		previousSmart = &previousSmartData[0]
+		previousValues := extractPreviousRawValues(previousSmart)
 		deviceSmartData.ApplyDeltaEvaluation(previousValues)
 	}
+
+	// Flag Power-On Hours rollover (16-bit counter wrap) on attribute 9. Uses the previous
+	// submission (when available) plus cross-attribute hour-counters; safe with a nil previous.
+	deviceSmartData.DetectPowerOnHoursRollover(previousSmart)
 
 	tags, fields := deviceSmartData.Flatten()
 
