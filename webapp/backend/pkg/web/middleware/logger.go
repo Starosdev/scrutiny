@@ -36,16 +36,7 @@ func LoggerMiddleware(logger *logrus.Entry) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-
-		//clone the request body reader.
-		var reqBody string
-		if c.Request.Body != nil {
-			buf, _ := ioutil.ReadAll(c.Request.Body)
-			reqBodyReader1 := ioutil.NopCloser(bytes.NewBuffer(buf))
-			reqBodyReader2 := ioutil.NopCloser(bytes.NewBuffer(buf)) //We have to create a new Buffer, because reqBodyReader1 will be read.
-			c.Request.Body = reqBodyReader2
-			reqBody = readBody(reqBodyReader1)
-		}
+		reqBody := cloneRequestBody(c)
 
 		// other handler can change c.Path so:
 		path := c.Request.URL.Path
@@ -54,8 +45,7 @@ func LoggerMiddleware(logger *logrus.Entry) gin.HandlerFunc {
 		c.Set("LOGGER", logger)
 		start := time.Now()
 		c.Next()
-		stop := time.Since(start)
-		latency := int(math.Ceil(float64(stop.Nanoseconds()) / 1000000.0))
+		latency := int(math.Ceil(float64(time.Since(start).Nanoseconds()) / 1000000.0))
 		statusCode := c.Writer.Status()
 		clientIP := c.ClientIP()
 		clientUserAgent := c.Request.UserAgent()
@@ -77,26 +67,50 @@ func LoggerMiddleware(logger *logrus.Entry) gin.HandlerFunc {
 			"userAgent":  clientUserAgent,
 		})
 
-		if len(c.Errors) > 0 {
-			entry.Error(c.Errors.ByType(gin.ErrorTypePrivate).String())
-		} else {
-			msg := fmt.Sprintf("%s - %s [%s] \"%s %s\" %d %d \"%s\" \"%s\" (%dms)", clientIP, hostname, time.Now().Format(timeFormat), c.Request.Method, path, statusCode, respLength, referer, clientUserAgent, latency)
-			if statusCode >= http.StatusInternalServerError {
-				entry.Error(msg)
-			} else if statusCode >= http.StatusBadRequest {
-				entry.Warn(msg)
-			} else {
-				entry.Info(msg)
-			}
-		}
-		if strings.Contains(path, "/api/") {
-			//only debug log request/response from api endpoint.
-			if len(reqBody) > 0 {
-				entry.WithField("bodyType", "request").Debugln(reqBody) // Print request body
-			}
-			entry.WithField("bodyType", "response").Debugln(blw.body.String())
-		}
+		msg := fmt.Sprintf("%s - %s [%s] \"%s %s\" %d %d \"%s\" \"%s\" (%dms)", clientIP, hostname, time.Now().Format(timeFormat), c.Request.Method, path, statusCode, respLength, referer, clientUserAgent, latency)
+		logRequestResult(c, entry, msg, statusCode)
+		logAPIBodies(entry, path, reqBody, blw.body.String())
 	}
+}
+
+// cloneRequestBody reads and replaces the request body so it can be both logged and consumed
+// downstream, returning the body content (empty when there is no body).
+func cloneRequestBody(c *gin.Context) string {
+	if c.Request.Body == nil {
+		return ""
+	}
+	buf, _ := ioutil.ReadAll(c.Request.Body)
+	// We have to create a new Buffer because the read reader will be consumed.
+	c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+	return readBody(ioutil.NopCloser(bytes.NewBuffer(buf)))
+}
+
+// logRequestResult logs the request at the level appropriate for its status code, or logs the
+// private gin errors when present.
+func logRequestResult(c *gin.Context, entry *logrus.Entry, msg string, statusCode int) {
+	if len(c.Errors) > 0 {
+		entry.Error(c.Errors.ByType(gin.ErrorTypePrivate).String())
+		return
+	}
+	switch {
+	case statusCode >= http.StatusInternalServerError:
+		entry.Error(msg)
+	case statusCode >= http.StatusBadRequest:
+		entry.Warn(msg)
+	default:
+		entry.Info(msg)
+	}
+}
+
+// logAPIBodies debug-logs the request and response bodies for /api/ endpoints only.
+func logAPIBodies(entry *logrus.Entry, path, reqBody, respBody string) {
+	if !strings.Contains(path, "/api/") {
+		return
+	}
+	if len(reqBody) > 0 {
+		entry.WithField("bodyType", "request").Debugln(reqBody) // Print request body
+	}
+	entry.WithField("bodyType", "response").Debugln(respBody)
 }
 
 // Response Logging

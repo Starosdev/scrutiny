@@ -182,58 +182,63 @@ func AuthMiddleware(appConfig config.Interface, logger *logrus.Entry) gin.Handle
 
 	return func(c *gin.Context) {
 		c.Set("AUTH_ENABLED", ac.authEnabled)
-		requestPath := c.Request.URL.Path
-
-		// When general auth is disabled, only metrics may require its own token.
-		if !ac.authEnabled {
-			if ac.metricsToken != "" && isMetricsPath(requestPath) && !ac.validateMetricsToken(c) {
-				rejectUnauthorized(c, "Metrics endpoint requires authentication. Provide a Bearer token.")
-				return
-			}
-			c.Next()
-			return
-		}
-
-		// Served docs can be public or private independently of the broader auth toggle.
-		if isDocsPath(requestPath) {
-			if ac.docsPublic {
-				c.Next()
-				return
-			}
-			if ac.validateGeneralAuth(c) {
-				c.Next()
-				return
-			}
-			rejectMissingOrInvalid(c)
-			return
-		}
-
-		// Non-API routes (frontend static files, SPA routes) bypass auth.
-		// Only /api/* paths are subject to authentication.
-		if !strings.Contains(requestPath, "/api/") {
-			c.Next()
-			return
-		}
-
-		// Public API routes bypass authentication entirely.
-		if isPublicPath(requestPath) {
-			c.Next()
-			return
-		}
-
-		// Dedicated metrics token: accepted as an alternative for /api/metrics.
-		if isMetricsPath(requestPath) && ac.validateMetricsToken(c) {
-			c.Set("AUTH_TYPE", "metrics_token")
-			c.Next()
-			return
-		}
-
-		// General auth: API token or JWT.
-		if ac.validateGeneralAuth(c) {
-			c.Next()
-			return
-		}
-
-		rejectMissingOrInvalid(c)
+		ac.authorize(c)
 	}
+}
+
+// authorize applies the request-path-based authentication rules for a single request.
+func (ac *authContext) authorize(c *gin.Context) {
+	requestPath := c.Request.URL.Path
+
+	if !ac.authEnabled {
+		ac.handleAuthDisabled(c, requestPath)
+		return
+	}
+
+	// Served docs can be public or private independently of the broader auth toggle.
+	if isDocsPath(requestPath) {
+		ac.handleDocsPath(c)
+		return
+	}
+
+	// Non-API routes (frontend static files, SPA routes) and public API routes bypass auth.
+	// Only authenticated /api/* paths are subject to authentication.
+	if !strings.Contains(requestPath, "/api/") || isPublicPath(requestPath) {
+		c.Next()
+		return
+	}
+
+	// Dedicated metrics token: accepted as an alternative for /api/metrics.
+	if isMetricsPath(requestPath) && ac.validateMetricsToken(c) {
+		c.Set("AUTH_TYPE", "metrics_token")
+		c.Next()
+		return
+	}
+
+	// General auth: API token or JWT.
+	if ac.validateGeneralAuth(c) {
+		c.Next()
+		return
+	}
+
+	rejectMissingOrInvalid(c)
+}
+
+// handleAuthDisabled handles requests when general auth is disabled: only the metrics endpoint may
+// still require its own token.
+func (ac *authContext) handleAuthDisabled(c *gin.Context, requestPath string) {
+	if ac.metricsToken != "" && isMetricsPath(requestPath) && !ac.validateMetricsToken(c) {
+		rejectUnauthorized(c, "Metrics endpoint requires authentication. Provide a Bearer token.")
+		return
+	}
+	c.Next()
+}
+
+// handleDocsPath authorizes the served docs path, which may be public or require general auth.
+func (ac *authContext) handleDocsPath(c *gin.Context) {
+	if ac.docsPublic || ac.validateGeneralAuth(c) {
+		c.Next()
+		return
+	}
+	rejectMissingOrInvalid(c)
 }

@@ -444,56 +444,92 @@ func (m *MissedPingMonitor) GetStatus(ctx context.Context) (*models.MissedPingSt
 	if err != nil {
 		return nil, fmt.Errorf("failed to load settings: %w", err)
 	}
-
-	// Set defaults if not configured
-	timeoutMinutes := DefaultMissedPingTimeoutMinutes
-	checkInterval := DefaultMissedPingCheckIntervalMins
-	enabled := false
-
-	if settings != nil {
-		enabled = settings.Metrics.NotifyOnMissedPing
-		if settings.Metrics.MissedPingTimeoutMinutes > 0 {
-			timeoutMinutes = settings.Metrics.MissedPingTimeoutMinutes
-		}
-		if settings.Metrics.MissedPingCheckIntervalMins > 0 {
-			checkInterval = settings.Metrics.MissedPingCheckIntervalMins
-		}
-	}
+	timeoutMinutes, checkInterval, enabled := resolveMissedPingSettings(settings)
 
 	// Get device counts
 	devices, err := deviceRepo.GetDevices(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get devices: %w", err)
 	}
+	monitoredDevices := countMonitoredDevices(devices)
 
-	totalDevices := len(devices)
-	monitoredDevices := 0
-	for _, device := range devices {
-		if !device.Archived && !device.Muted {
-			monitoredDevices++
-		}
+	// Get last seen times from InfluxDB, then build the notified-device details
+	lastSeenTimes, _ := deviceRepo.GetDevicesLastSeenTimes(ctx)
+	notifiedDevices, notifiedDetails := m.buildNotifiedDeviceDetails(devices, lastSeenTimes)
+
+	// Validate InfluxDB buckets
+	influxStatus := m.validateInfluxDBBuckets(ctx, deviceRepo)
+
+	// Check notification configuration
+	notifyUrls := m.appEngine.Config.GetStringSlice("notify.urls")
+
+	status := &models.MissedPingStatusData{
+		Enabled:                enabled,
+		TimeoutMinutes:         timeoutMinutes,
+		CheckIntervalMinutes:   checkInterval,
+		NotifyConfigured:       len(notifyUrls) > 0,
+		NotifyEndpointCount:    len(notifyUrls),
+		LastCheckTime:          lastCheck.Format(time.RFC3339),
+		NextCheckTime:          nextCheck.Format(time.RFC3339),
+		MonitorRunning:         m.ctx.Err() == nil,
+		TotalDevices:           len(devices),
+		MonitoredDevices:       monitoredDevices,
+		NotifiedDevices:        notifiedDevices,
+		NotifiedDevicesDetails: notifiedDetails,
+		InfluxDBStatus:         influxStatus,
 	}
 
-	// Get last seen times from InfluxDB
-	lastSeenTimes, _ := deviceRepo.GetDevicesLastSeenTimes(ctx)
+	if lastErr != nil {
+		status.LastError = lastErr.Error()
+		status.LastErrorTime = lastErrTime.Format(time.RFC3339)
+	}
 
-	// Get notified devices info
+	return status, nil
+}
+
+// resolveMissedPingSettings derives the effective timeout/interval/enabled values from settings,
+// applying defaults when settings is nil or unset.
+func resolveMissedPingSettings(settings *models.Settings) (timeoutMinutes, checkInterval int, enabled bool) {
+	timeoutMinutes = DefaultMissedPingTimeoutMinutes
+	checkInterval = DefaultMissedPingCheckIntervalMins
+	if settings == nil {
+		return timeoutMinutes, checkInterval, false
+	}
+
+	enabled = settings.Metrics.NotifyOnMissedPing
+	if settings.Metrics.MissedPingTimeoutMinutes > 0 {
+		timeoutMinutes = settings.Metrics.MissedPingTimeoutMinutes
+	}
+	if settings.Metrics.MissedPingCheckIntervalMins > 0 {
+		checkInterval = settings.Metrics.MissedPingCheckIntervalMins
+	}
+	return timeoutMinutes, checkInterval, enabled
+}
+
+// countMonitoredDevices counts devices that are neither archived nor muted.
+func countMonitoredDevices(devices []models.Device) int {
+	count := 0
+	for _, device := range devices {
+		if !device.Archived && !device.Muted {
+			count++
+		}
+	}
+	return count
+}
+
+// buildNotifiedDeviceDetails snapshots the currently-notified devices with their names, WWNs, and
+// last-seen times for the status response.
+func (m *MissedPingMonitor) buildNotifiedDeviceDetails(devices []models.Device, lastSeenTimes map[string]time.Time) ([]string, []models.NotifiedDeviceInfo) {
 	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	notifiedDevices := make([]string, 0, len(m.notifiedDevices))
 	notifiedDetails := make([]models.NotifiedDeviceInfo, 0, len(m.notifiedDevices))
 
 	for devID, notifyTime := range m.notifiedDevices {
 		notifiedDevices = append(notifiedDevices, devID)
 
-		// Find device details
-		var deviceName, deviceWWN string
-		for _, device := range devices {
-			if device.DeviceID == devID {
-				deviceName = device.DeviceName
-				deviceWWN = device.WWN
-				break
-			}
-		}
+		deviceName, deviceWWN := deviceNameAndWWN(devices, devID)
 
 		// Get last seen time from InfluxDB (keyed by DeviceID)
 		var lastSeenTime time.Time
@@ -509,37 +545,17 @@ func (m *MissedPingMonitor) GetStatus(ctx context.Context) (*models.MissedPingSt
 			LastSeenTime:     lastSeenTime.Format(time.RFC3339),
 		})
 	}
-	m.mu.RUnlock()
+	return notifiedDevices, notifiedDetails
+}
 
-	// Validate InfluxDB buckets
-	influxStatus := m.validateInfluxDBBuckets(ctx, deviceRepo)
-
-	// Check notification configuration
-	notifyUrls := m.appEngine.Config.GetStringSlice("notify.urls")
-	notifyConfigured := len(notifyUrls) > 0
-
-	status := &models.MissedPingStatusData{
-		Enabled:                enabled,
-		TimeoutMinutes:         timeoutMinutes,
-		CheckIntervalMinutes:   checkInterval,
-		NotifyConfigured:       notifyConfigured,
-		NotifyEndpointCount:    len(notifyUrls),
-		LastCheckTime:          lastCheck.Format(time.RFC3339),
-		NextCheckTime:          nextCheck.Format(time.RFC3339),
-		MonitorRunning:         m.ctx.Err() == nil,
-		TotalDevices:           totalDevices,
-		MonitoredDevices:       monitoredDevices,
-		NotifiedDevices:        notifiedDevices,
-		NotifiedDevicesDetails: notifiedDetails,
-		InfluxDBStatus:         influxStatus,
+// deviceNameAndWWN returns the device name and WWN for the given device ID, or empty strings.
+func deviceNameAndWWN(devices []models.Device, devID string) (string, string) {
+	for _, device := range devices {
+		if device.DeviceID == devID {
+			return device.DeviceName, device.WWN
+		}
 	}
-
-	if lastErr != nil {
-		status.LastError = lastErr.Error()
-		status.LastErrorTime = lastErrTime.Format(time.RFC3339)
-	}
-
-	return status, nil
+	return "", ""
 }
 
 // validateInfluxDBBuckets checks if all required InfluxDB buckets exist

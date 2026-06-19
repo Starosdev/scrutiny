@@ -7,6 +7,7 @@ import (
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/notify"
 	"github.com/sirupsen/logrus"
 )
@@ -187,10 +188,7 @@ func (m *HeartbeatMonitor) checkAndSendHeartbeat() {
 	deviceRepo, err := m.getOrCreateRepo()
 	if err != nil {
 		m.logger.Errorf("Failed to get/create repository for heartbeat: %v", err)
-		m.statusMu.Lock()
-		m.lastError = err
-		m.lastErrorTime = time.Now()
-		m.statusMu.Unlock()
+		m.recordError(err)
 		return
 	}
 
@@ -198,18 +196,13 @@ func (m *HeartbeatMonitor) checkAndSendHeartbeat() {
 	if err != nil {
 		m.resetRepo()
 		m.logger.Errorf("Failed to load settings for heartbeat: %v", err)
-		m.statusMu.Lock()
-		m.lastError = err
-		m.lastErrorTime = time.Now()
-		m.statusMu.Unlock()
+		m.recordError(err)
 		return
 	}
 
 	if settings == nil || !settings.Metrics.HeartbeatEnabled {
 		m.logger.Debug("Heartbeat notifications are disabled")
-		m.statusMu.Lock()
-		m.lastError = nil
-		m.statusMu.Unlock()
+		m.clearError()
 		return
 	}
 
@@ -217,32 +210,16 @@ func (m *HeartbeatMonitor) checkAndSendHeartbeat() {
 	if err != nil {
 		m.resetRepo()
 		m.logger.Errorf("Failed to load devices for heartbeat: %v", err)
-		m.statusMu.Lock()
-		m.lastError = err
-		m.lastErrorTime = time.Now()
-		m.statusMu.Unlock()
+		m.recordError(err)
 		return
 	}
 
 	// Clear previous error on successful data load
-	m.statusMu.Lock()
-	m.lastError = nil
-	m.statusMu.Unlock()
+	m.clearError()
 
 	// Filter to monitored devices (not archived, not muted)
 	totalCount := len(devices)
-	monitoredCount := 0
-	allHealthy := true
-
-	for _, device := range devices {
-		if device.Archived || device.Muted {
-			continue
-		}
-		monitoredCount++
-		if device.DeviceStatus != pkg.DeviceStatusPassed {
-			allHealthy = false
-		}
-	}
+	monitoredCount, allHealthy := countHealthyMonitored(devices)
 
 	// Don't send heartbeat if no monitored devices
 	if monitoredCount == 0 {
@@ -258,22 +235,59 @@ func (m *HeartbeatMonitor) checkAndSendHeartbeat() {
 
 	// All monitored drives are healthy -- send heartbeat
 	m.logger.Infof("All %d monitored drives healthy, sending heartbeat notification", monitoredCount)
+	m.sendHeartbeatNotification(monitoredCount, totalCount, settings)
+}
 
+// recordError stores the most recent heartbeat error and the time it occurred.
+func (m *HeartbeatMonitor) recordError(err error) {
+	m.statusMu.Lock()
+	m.lastError = err
+	m.lastErrorTime = time.Now()
+	m.statusMu.Unlock()
+}
+
+// clearError clears the most recent heartbeat error after a successful operation.
+func (m *HeartbeatMonitor) clearError() {
+	m.statusMu.Lock()
+	m.lastError = nil
+	m.statusMu.Unlock()
+}
+
+// countHealthyMonitored returns the count of monitored (non-archived, non-muted) devices and
+// whether all of them currently report a passed status.
+func countHealthyMonitored(devices []models.Device) (monitoredCount int, allHealthy bool) {
+	allHealthy = true
+	for _, device := range devices {
+		if device.Archived || device.Muted {
+			continue
+		}
+		monitoredCount++
+		if device.DeviceStatus != pkg.DeviceStatusPassed {
+			allHealthy = false
+		}
+	}
+	return monitoredCount, allHealthy
+}
+
+// sendHeartbeatNotification builds and dispatches the heartbeat, routing through the notification
+// gate when present (bypassing quiet hours, as heartbeats are informational).
+func (m *HeartbeatMonitor) sendHeartbeatNotification(monitoredCount, totalCount int, settings *models.Settings) {
 	notification := notify.NewHeartbeat(m.logger, m.appEngine.Config, monitoredCount, totalCount)
 	notification.LoadHeartbeatDatabaseUrls(m.ctx, m.deviceRepo)
 
-	// Route through notification gate (bypass quiet hours -- heartbeats are informational)
 	if gate := m.appEngine.NotificationGate; gate != nil {
 		gate.TrySend(&notification, settings, true)
-	} else {
-		if err := notification.Send(); err != nil {
-			if err.Error() == "no notification endpoints configured" {
-				m.logger.Warn("Heartbeat ready but no notification endpoints are configured. Configure notify.urls in scrutiny.yaml to receive heartbeat alerts.")
-				return
-			}
-			m.logger.Errorf("Failed to send heartbeat notification: %v", err)
+		m.logger.Info("Heartbeat notification sent successfully")
+		return
+	}
+
+	if err := notification.Send(); err != nil {
+		if err.Error() == "no notification endpoints configured" {
+			m.logger.Warn("Heartbeat ready but no notification endpoints are configured. Configure notify.urls in scrutiny.yaml to receive heartbeat alerts.")
 			return
 		}
+		m.logger.Errorf("Failed to send heartbeat notification: %v", err)
+		return
 	}
 
 	m.logger.Info("Heartbeat notification sent successfully")
