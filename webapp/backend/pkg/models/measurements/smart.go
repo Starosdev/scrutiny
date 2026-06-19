@@ -743,6 +743,155 @@ func (sm *Smart) recalculateDeviceStatus() {
 	sm.Status = newStatus
 }
 
+// rolloverCrossCheckMarginHours is the slack allowed when comparing Power-On Hours against
+// other hour-counters (FARM, Head Flying Hours). Differences smaller than this are treated as
+// normal unit/rounding noise rather than a rollover, to avoid false positives across vendors.
+const rolloverCrossCheckMarginHours = 100
+
+// parseHoursFromRaw extracts an hours value from a SMART raw value/string. It mirrors the
+// parsing used by the attribute 9 (Power-On Hours) Transform: smartctl "h+m+s" form
+// (e.g. "1730h+05m+02.453s"), the parenthetical "(NNNN hours)" form, and falls back to the
+// numeric raw value (masking the lower 32 bits when extra data is packed in the upper bytes).
+func parseHoursFromRaw(rawValue int64, rawString string) int64 {
+	if hours, ok := parseHoursFromHmsString(rawString); ok {
+		return hours
+	}
+	if hours, ok := parseHoursFromParenString(rawString); ok {
+		return hours
+	}
+
+	// Packed 48-bit raw value with extra data in the upper bytes; hours are the lower 32 bits.
+	if rawValue > 0xFFFFFFFF {
+		return rawValue & 0xFFFFFFFF
+	}
+
+	return rawValue
+}
+
+// parseHoursFromHmsString parses the smartctl "h+m+s" form (e.g. "1730h+05m+02.453s").
+func parseHoursFromHmsString(rawString string) (int64, bool) {
+	hIdx := strings.Index(rawString, "h+")
+	if hIdx <= 0 {
+		return 0, false
+	}
+	hours, err := strconv.ParseInt(rawString[:hIdx], 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return hours, true
+}
+
+// parseHoursFromParenString parses the smartctl parenthetical form (e.g. "103800 (1730 hours)").
+func parseHoursFromParenString(rawString string) (int64, bool) {
+	if !strings.Contains(rawString, "hours)") {
+		return 0, false
+	}
+	parenStart := strings.Index(rawString, "(")
+	if parenStart < 0 {
+		return 0, false
+	}
+	inner := rawString[parenStart+1:]
+	spaceIdx := strings.Index(inner, " ")
+	if spaceIdx <= 0 {
+		return 0, false
+	}
+	hours, err := strconv.ParseInt(inner[:spaceIdx], 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return hours, true
+}
+
+// DetectPowerOnHoursRollover flags attribute 9 (Power-On Hours) with a Scrutiny warning when
+// the value appears to have rolled over. Older ATA drives store Power-On Hours in a 16-bit
+// counter that wraps to 0 after 65535 hours (~7.5 years), silently corrupting the value.
+//
+// Two signals are used:
+//  1. History: Power-On Hours is monotonic in normal operation, so a decrease since the previous
+//     submission indicates a wrap/reset (catches the wrap moment). previousSmart may be nil.
+//  2. Cross-attribute: hour-counters that should never exceed true Power-On Hours (Seagate FARM
+//     power-on/spindle/head-flight hours, and ATA Head Flying Hours). If any exceeds the current
+//     Power-On Hours by more than rolloverCrossCheckMarginHours, the counter has wrapped (persists
+//     after the wrap moment).
+//
+// The detection only raises a warning (data artifact, not a failure) and never changes device
+// status; recalculateDeviceStatus only reacts to FailedScrutiny.
+func (sm *Smart) DetectPowerOnHoursRollover(previousSmart *Smart) {
+	if sm.DeviceProtocol != pkg.DeviceProtocolAta {
+		return
+	}
+
+	poh, ok := sm.Attributes["9"].(*SmartAtaAttribute)
+	if !ok {
+		return
+	}
+	currentPoH := poh.TransformedValue
+	if currentPoH <= 0 {
+		return
+	}
+
+	reason := sm.rolloverReasonFromHistory(currentPoH, previousSmart)
+	if reason == "" {
+		reason = sm.rolloverReasonFromCrossCheck(currentPoH)
+	}
+	if reason == "" {
+		return
+	}
+
+	poh.Status = pkg.AttributeStatusSet(poh.Status, pkg.AttributeStatusWarningScrutiny)
+	if poh.StatusReason != "" {
+		poh.StatusReason += "; " + reason
+	} else {
+		poh.StatusReason = reason
+	}
+}
+
+// rolloverReasonFromHistory returns a rollover reason when Power-On Hours decreased since the
+// previous submission (a monotonic violation), or "" otherwise.
+func (sm *Smart) rolloverReasonFromHistory(currentPoH int64, previousSmart *Smart) string {
+	if previousSmart == nil {
+		return ""
+	}
+	prevPoH, ok := previousSmart.Attributes["9"].(*SmartAtaAttribute)
+	if !ok || prevPoH.TransformedValue <= 0 || currentPoH >= prevPoH.TransformedValue {
+		return ""
+	}
+	return fmt.Sprintf("Power-On Hours decreased from %dh to %dh (possible 16-bit counter rollover)", prevPoH.TransformedValue, currentPoH)
+}
+
+// rolloverReasonFromCrossCheck returns a rollover reason when an hours-counter that should never
+// exceed true Power-On Hours (FARM power-on/spindle/head-flight hours, or ATA Head Flying Hours)
+// exceeds the current Power-On Hours by more than the margin, or "" otherwise.
+func (sm *Smart) rolloverReasonFromCrossCheck(currentPoH int64) string {
+	bestSource := ""
+	var bestHours int64
+	consider := func(source string, hours int64) {
+		if hours > bestHours {
+			bestHours = hours
+			bestSource = source
+		}
+	}
+
+	farmSources := []struct{ id, source string }{
+		{"farm_poh", "FARM Power-On Hours"},
+		{"farm_spoh", "FARM Spindle Power-On Hours"},
+		{"farm_head_flight_hours", "FARM Head Flight Hours"},
+	}
+	for _, c := range farmSources {
+		if farmAttr, ok := sm.Attributes[c.id].(*SmartFarmAttribute); ok {
+			consider(c.source, farmAttr.Value)
+		}
+	}
+	if headFlying, ok := sm.Attributes["240"].(*SmartAtaAttribute); ok {
+		consider("Head Flying Hours", parseHoursFromRaw(headFlying.RawValue, headFlying.RawString))
+	}
+
+	if bestHours > currentPoH+rolloverCrossCheckMarginHours {
+		return fmt.Sprintf("Power-On Hours (%dh) is below %s (%dh); possible 16-bit counter rollover", currentPoH, bestSource, bestHours)
+	}
+	return ""
+}
+
 // processScsiSmartInfoWithOverrides generates SmartScsiAttribute entries using pre-merged overrides.
 func (sm *Smart) processScsiSmartInfoWithOverrides(cfg config.Interface, defectGrownList int64, scsiErrorCounterLog collector.ScsiErrorCounterLog, temperature map[string]collector.ScsiTemperatureData, mergedOverrides []overrides.AttributeOverride) {
 	sm.Attributes = map[string]SmartAttribute{
