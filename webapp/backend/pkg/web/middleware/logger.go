@@ -67,6 +67,7 @@ func LoggerMiddleware(logger *logrus.Entry) gin.HandlerFunc {
 			"userAgent":  clientUserAgent,
 		})
 
+		//nolint:gocritic // fixed access-log format; %q would change the quoting/escaping
 		msg := fmt.Sprintf("%s - %s [%s] \"%s %s\" %d %d \"%s\" \"%s\" (%dms)", clientIP, hostname, time.Now().Format(timeFormat), c.Request.Method, path, statusCode, respLength, referer, clientUserAgent, latency)
 		logRequestResult(c, entry, msg, statusCode)
 		logAPIBodies(entry, path, reqBody, blw.body.String())

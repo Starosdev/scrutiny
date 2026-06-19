@@ -509,8 +509,8 @@ func resolveMissedPingSettings(settings *models.Settings) (timeoutMinutes, check
 // countMonitoredDevices counts devices that are neither archived nor muted.
 func countMonitoredDevices(devices []models.Device) int {
 	count := 0
-	for _, device := range devices {
-		if !device.Archived && !device.Muted {
+	for i := range devices {
+		if !devices[i].Archived && !devices[i].Muted {
 			count++
 		}
 	}
@@ -550,9 +550,9 @@ func (m *MissedPingMonitor) buildNotifiedDeviceDetails(devices []models.Device, 
 
 // deviceNameAndWWN returns the device name and WWN for the given device ID, or empty strings.
 func deviceNameAndWWN(devices []models.Device, devID string) (string, string) {
-	for _, device := range devices {
-		if device.DeviceID == devID {
-			return device.DeviceName, device.WWN
+	for i := range devices {
+		if devices[i].DeviceID == devID {
+			return devices[i].DeviceName, devices[i].WWN
 		}
 	}
 	return "", ""

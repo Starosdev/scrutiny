@@ -257,12 +257,12 @@ func (m *HeartbeatMonitor) clearError() {
 // whether all of them currently report a passed status.
 func countHealthyMonitored(devices []models.Device) (monitoredCount int, allHealthy bool) {
 	allHealthy = true
-	for _, device := range devices {
-		if device.Archived || device.Muted {
+	for i := range devices {
+		if devices[i].Archived || devices[i].Muted {
 			continue
 		}
 		monitoredCount++
-		if device.DeviceStatus != pkg.DeviceStatusPassed {
+		if devices[i].DeviceStatus != pkg.DeviceStatusPassed {
 			allHealthy = false
 		}
 	}
