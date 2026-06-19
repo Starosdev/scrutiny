@@ -37,27 +37,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	configFilePath := "/opt/scrutiny/config/collector-btrfs.yaml"
-	configFilePathAlternative := "/opt/scrutiny/config/collector-btrfs.yml"
-	configFilePathFallback := "/opt/scrutiny/config/collector.yaml"
-	configFilePathFallbackAlt := "/opt/scrutiny/config/collector.yml"
-
-	if !utils.FileExists(configFilePath) && utils.FileExists(configFilePathAlternative) {
-		configFilePath = configFilePathAlternative
-	} else if !utils.FileExists(configFilePath) && !utils.FileExists(configFilePathAlternative) {
-		if utils.FileExists(configFilePathFallback) {
-			configFilePath = configFilePathFallback
-		} else if utils.FileExists(configFilePathFallbackAlt) {
-			configFilePath = configFilePathFallbackAlt
-		}
-	}
+	configFilePath := resolveConfigPath()
 
 	bootstrapLogger := logrus.WithFields(logrus.Fields{"type": "btrfs"})
 	bootstrapLogger.Logger.SetLevel(logrus.InfoLevel)
 
 	err = appConfig.ReadConfig(configFilePath, bootstrapLogger)
-	if _, ok := err.(errors.ConfigFileMissingError); ok {
-	} else if err != nil {
+	if _, missing := err.(errors.ConfigFileMissingError); err != nil && !missing {
 		os.Exit(1)
 	}
 
@@ -91,66 +77,9 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			{
-				Name:  "run",
-				Usage: "Run the scrutiny Btrfs filesystem collector",
-				Action: func(c *cli.Context) error {
-					if c.IsSet("config") {
-						err = appConfig.ReadConfig(c.String("config"), bootstrapLogger)
-						if err != nil {
-							fmt.Printf("Could not find config file at specified path: %s", c.String("config"))
-							return err
-						}
-					}
-
-					if c.IsSet(flagHostID) {
-						appConfig.Set("host.id", c.String(flagHostID))
-					}
-					if c.Bool("debug") {
-						appConfig.Set("log.level", "DEBUG")
-					}
-					if c.IsSet(flagLogFile) {
-						appConfig.Set(configKeyLogFile, c.String(flagLogFile))
-					}
-					if c.IsSet(flagAPIEndpoint) {
-						apiEndpoint := strings.TrimSuffix(c.String(flagAPIEndpoint), "/") + "/"
-						appConfig.Set("api.endpoint", apiEndpoint)
-					}
-					if c.IsSet(flagAPIToken) {
-						appConfig.Set("api.token", c.String(flagAPIToken))
-					}
-
-					collectorLogger, logFile, loggerErr := CreateLogger(appConfig)
-					if logFile != nil {
-						defer logFile.Close()
-					}
-					if loggerErr != nil {
-						return loggerErr
-					}
-
-					settingsMap := appConfig.AllSettings()
-					if apiMap, ok := settingsMap["api"].(map[string]interface{}); ok {
-						if _, hasToken := apiMap["token"]; hasToken && apiMap["token"] != "" {
-							apiMap["token"] = "[REDACTED]"
-						}
-					}
-					settingsData, settingsErr := json.MarshalIndent(settingsMap, "", "\t")
-					if settingsErr != nil {
-						collectorLogger.Warnf("Failed to marshal settings for debug logging: %v", settingsErr)
-					} else {
-						collectorLogger.Debug(string(settingsData))
-					}
-
-					btrfsCollector, collectorErr := btrfs.CreateCollector(
-						appConfig,
-						collectorLogger,
-						appConfig.GetString("api.endpoint"),
-					)
-					if collectorErr != nil {
-						return collectorErr
-					}
-
-					return btrfsCollector.Run()
-				},
+				Name:   "run",
+				Usage:  "Run the scrutiny Btrfs filesystem collector",
+				Action: runCollectorAction(appConfig, bootstrapLogger),
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "config", Usage: "Specify the path to the config file"},
 					&cli.StringFlag{Name: flagAPIEndpoint, Usage: "The api server endpoint", EnvVars: []string{"COLLECTOR_BTRFS_API_ENDPOINT", "COLLECTOR_API_ENDPOINT"}},
@@ -166,6 +95,96 @@ func main() {
 	err = app.Run(os.Args)
 	if err != nil {
 		log.Fatal(color.HiRedString("ERROR: %v", err))
+	}
+}
+
+// resolveConfigPath returns the first existing collector config file, preferring the
+// btrfs-specific config and falling back to the shared collector config. Defaults to the
+// primary btrfs path when none exist.
+func resolveConfigPath() string {
+	candidates := []string{
+		"/opt/scrutiny/config/collector-btrfs.yaml",
+		"/opt/scrutiny/config/collector-btrfs.yml",
+		"/opt/scrutiny/config/collector.yaml",
+		"/opt/scrutiny/config/collector.yml",
+	}
+	for _, path := range candidates {
+		if utils.FileExists(path) {
+			return path
+		}
+	}
+	return candidates[0]
+}
+
+// applyRunFlags reads an explicit --config file (if set) and overlays CLI flag values onto appConfig.
+func applyRunFlags(c *cli.Context, appConfig config.Interface, bootstrapLogger *logrus.Entry) error {
+	if c.IsSet("config") {
+		if err := appConfig.ReadConfig(c.String("config"), bootstrapLogger); err != nil {
+			fmt.Printf("Could not find config file at specified path: %s", c.String("config"))
+			return err
+		}
+	}
+	if c.IsSet(flagHostID) {
+		appConfig.Set("host.id", c.String(flagHostID))
+	}
+	if c.Bool("debug") {
+		appConfig.Set("log.level", "DEBUG")
+	}
+	if c.IsSet(flagLogFile) {
+		appConfig.Set(configKeyLogFile, c.String(flagLogFile))
+	}
+	if c.IsSet(flagAPIEndpoint) {
+		appConfig.Set("api.endpoint", strings.TrimSuffix(c.String(flagAPIEndpoint), "/")+"/")
+	}
+	if c.IsSet(flagAPIToken) {
+		appConfig.Set("api.token", c.String(flagAPIToken))
+	}
+	return nil
+}
+
+// logRedactedSettings debug-logs the effective settings with the API token redacted.
+func logRedactedSettings(logger *logrus.Entry, appConfig config.Interface) {
+	settingsMap := appConfig.AllSettings()
+	if apiMap, ok := settingsMap["api"].(map[string]interface{}); ok {
+		if token, hasToken := apiMap["token"]; hasToken && token != "" {
+			apiMap["token"] = "[REDACTED]"
+		}
+	}
+	settingsData, err := json.MarshalIndent(settingsMap, "", "\t")
+	if err != nil {
+		logger.Warnf("Failed to marshal settings for debug logging: %v", err)
+		return
+	}
+	logger.Debug(string(settingsData))
+}
+
+// runCollectorAction builds the cli action that configures and runs the Btrfs collector.
+func runCollectorAction(appConfig config.Interface, bootstrapLogger *logrus.Entry) cli.ActionFunc {
+	return func(c *cli.Context) error {
+		if err := applyRunFlags(c, appConfig, bootstrapLogger); err != nil {
+			return err
+		}
+
+		collectorLogger, logFile, loggerErr := CreateLogger(appConfig)
+		if logFile != nil {
+			defer logFile.Close()
+		}
+		if loggerErr != nil {
+			return loggerErr
+		}
+
+		logRedactedSettings(collectorLogger, appConfig)
+
+		btrfsCollector, collectorErr := btrfs.CreateCollector(
+			appConfig,
+			collectorLogger,
+			appConfig.GetString("api.endpoint"),
+		)
+		if collectorErr != nil {
+			return collectorErr
+		}
+
+		return btrfsCollector.Run()
 	}
 }
 

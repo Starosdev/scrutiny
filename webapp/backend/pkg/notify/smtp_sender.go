@@ -25,29 +25,10 @@ func (n *Notify) SendSMTPNotification(rawURL string) error {
 		return fmt.Errorf("failed to parse smtp notification URL: %w", err)
 	}
 
-	config := &shoutrrrsmtp.Config{
-		Port:        shoutrrrsmtp.DefaultSMTPPort,
-		ToAddresses: nil,
-		Subject:     "",
-		Auth:        shoutrrrsmtp.AuthTypes.Unknown,
-		UseStartTLS: true,
-		UseHTML:     n.Payload.HTMLMessage != "",
-		Encryption:  shoutrrrsmtp.EncMethods.Auto,
-		ClientHost:  "localhost",
-		Timeout:     10 * time.Second,
+	config, err := n.buildSMTPConfig(serviceURL)
+	if err != nil {
+		return err
 	}
-	if err := config.SetURL(serviceURL); err != nil {
-		return fmt.Errorf("failed to parse smtp config: %w", err)
-	}
-	if config.Auth == shoutrrrsmtp.AuthTypes.Unknown {
-		if config.Username != "" {
-			config.Auth = shoutrrrsmtp.AuthTypes.Plain
-		} else {
-			config.Auth = shoutrrrsmtp.AuthTypes.None
-		}
-	}
-	config.Subject = n.Payload.Subject
-	config.FixEmailTags()
 
 	n.Logger.Infof("Sending SMTP notification to %s", config.Host)
 
@@ -60,30 +41,60 @@ func (n *Notify) SendSMTPNotification(rawURL string) error {
 	}
 	defer client.Close()
 
-	clientHost := config.ClientHost
-	if clientHost == "auto" || clientHost == "" {
-		if hostname, hostErr := os.Hostname(); hostErr == nil {
-			clientHost = hostname
-		} else {
-			clientHost = "localhost"
+	if err := negotiateSMTP(client, config); err != nil {
+		return err
+	}
+
+	for _, toAddress := range config.ToAddresses {
+		if err := sendSMTPRecipient(client, config, toAddress, n.Payload.Message, n.Payload.HTMLMessage); err != nil {
+			return err
 		}
 	}
-	if err := client.Hello(clientHost); err != nil {
+
+	if err := client.Quit(); err != nil && !strings.Contains(err.Error(), "short response") {
+		return fmt.Errorf("smtp quit failed: %w", err)
+	}
+	return nil
+}
+
+// buildSMTPConfig constructs the shoutrrr SMTP config from the service URL and current payload,
+// applying defaults for auth type and subject.
+func (n *Notify) buildSMTPConfig(serviceURL *url.URL) (*shoutrrrsmtp.Config, error) {
+	config := &shoutrrrsmtp.Config{
+		Port:        shoutrrrsmtp.DefaultSMTPPort,
+		ToAddresses: nil,
+		Subject:     "",
+		Auth:        shoutrrrsmtp.AuthTypes.Unknown,
+		UseStartTLS: true,
+		UseHTML:     n.Payload.HTMLMessage != "",
+		Encryption:  shoutrrrsmtp.EncMethods.Auto,
+		ClientHost:  "localhost",
+		Timeout:     10 * time.Second,
+	}
+	if err := config.SetURL(serviceURL); err != nil {
+		return nil, fmt.Errorf("failed to parse smtp config: %w", err)
+	}
+	if config.Auth == shoutrrrsmtp.AuthTypes.Unknown {
+		if config.Username != "" {
+			config.Auth = shoutrrrsmtp.AuthTypes.Plain
+		} else {
+			config.Auth = shoutrrrsmtp.AuthTypes.None
+		}
+	}
+	config.Subject = n.Payload.Subject
+	config.FixEmailTags()
+	return config, nil
+}
+
+// negotiateSMTP performs the EHLO/STARTTLS/AUTH handshake on an open SMTP client.
+func negotiateSMTP(client *smtp.Client, config *shoutrrrsmtp.Config) error {
+	if err := client.Hello(resolveClientHost(config.ClientHost)); err != nil {
 		return fmt.Errorf("smtp hello failed: %w", err)
 	}
 
 	if config.UseStartTLS && !smtpUseImplicitTLS(config) {
-		if ok, _ := client.Extension("STARTTLS"); ok {
-			if err := client.StartTLS(&tls.Config{
-				ServerName:         config.Host,
-				MinVersion:         tls.VersionTLS12,
-				MaxVersion:         tls.VersionTLS13,
-				InsecureSkipVerify: config.SkipTLSVerify,
-			}); err != nil {
-				return fmt.Errorf("smtp starttls failed: %w", err)
-			}
-		} else if config.RequireStartTLS {
-			return fmt.Errorf("smtp server does not support STARTTLS")
+		if err := startTLSIfSupported(client, config); err != nil {
+			return err
 		}
 	}
 
@@ -96,15 +107,36 @@ func (n *Notify) SendSMTPNotification(rawURL string) error {
 			return fmt.Errorf("smtp auth failed: %w", err)
 		}
 	}
+	return nil
+}
 
-	for _, toAddress := range config.ToAddresses {
-		if err := sendSMTPRecipient(client, config, toAddress, n.Payload.Message, n.Payload.HTMLMessage); err != nil {
-			return err
-		}
+// resolveClientHost returns the EHLO client hostname, resolving "auto"/empty to the OS hostname.
+func resolveClientHost(clientHost string) string {
+	if clientHost != "auto" && clientHost != "" {
+		return clientHost
 	}
+	if hostname, err := os.Hostname(); err == nil {
+		return hostname
+	}
+	return "localhost"
+}
 
-	if err := client.Quit(); err != nil && !strings.Contains(err.Error(), "short response") {
-		return fmt.Errorf("smtp quit failed: %w", err)
+// startTLSIfSupported upgrades the connection via STARTTLS when the server advertises it,
+// erroring only when STARTTLS is required but unavailable.
+func startTLSIfSupported(client *smtp.Client, config *shoutrrrsmtp.Config) error {
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		if err := client.StartTLS(&tls.Config{
+			ServerName:         config.Host,
+			MinVersion:         tls.VersionTLS12,
+			MaxVersion:         tls.VersionTLS13,
+			InsecureSkipVerify: config.SkipTLSVerify, //nolint:gosec // user-configurable per notification URL
+		}); err != nil {
+			return fmt.Errorf("smtp starttls failed: %w", err)
+		}
+		return nil
+	}
+	if config.RequireStartTLS {
+		return fmt.Errorf("smtp server does not support STARTTLS")
 	}
 	return nil
 }
@@ -121,7 +153,7 @@ func openSMTPClient(ctx context.Context, config *shoutrrrsmtp.Config) (*smtp.Cli
 			Config: &tls.Config{
 				ServerName:         config.Host,
 				MinVersion:         tls.VersionTLS12,
-				InsecureSkipVerify: config.SkipTLSVerify,
+				InsecureSkipVerify: config.SkipTLSVerify, //nolint:gosec // user-configurable per notification URL
 			},
 		}
 		conn, err = dialer.DialContext(ctx, "tcp", addr)
@@ -180,48 +212,10 @@ func sendSMTPRecipient(client *smtp.Client, config *shoutrrrsmtp.Config, toAddre
 		return fmt.Errorf("smtp DATA failed: %w", err)
 	}
 
-	var body bytes.Buffer
-	if htmlBody != "" {
-		boundary, err := randomSMTPBoundary()
-		if err != nil {
-			_ = writer.Close()
-			return err
-		}
-		headers := map[string]string{
-			"Subject":      config.Subject,
-			"Date":         time.Now().Format(time.RFC1123Z),
-			"To":           toAddress,
-			"From":         formatSMTPFrom(config),
-			"MIME-Version": "1.0",
-			"Content-Type": fmt.Sprintf("multipart/alternative; boundary=%q", boundary),
-		}
-		if err := writeSMTPHeaders(&body, headers); err != nil {
-			_ = writer.Close()
-			return err
-		}
-		if err := writeSMTPPart(&body, boundary, "text/plain; charset=UTF-8", textBody); err != nil {
-			_ = writer.Close()
-			return err
-		}
-		if err := writeSMTPPart(&body, boundary, "text/html; charset=UTF-8", htmlBody); err != nil {
-			_ = writer.Close()
-			return err
-		}
-		fmt.Fprintf(&body, "--%s--\r\n", boundary)
-	} else {
-		headers := map[string]string{
-			"Subject":      config.Subject,
-			"Date":         time.Now().Format(time.RFC1123Z),
-			"To":           toAddress,
-			"From":         formatSMTPFrom(config),
-			"MIME-Version": "1.0",
-			"Content-Type": "text/plain; charset=UTF-8",
-		}
-		if err := writeSMTPHeaders(&body, headers); err != nil {
-			_ = writer.Close()
-			return err
-		}
-		body.WriteString(normalizeSMTPBody(textBody))
+	body, err := buildSMTPMessage(config, toAddress, textBody, htmlBody)
+	if err != nil {
+		_ = writer.Close()
+		return err
 	}
 
 	if _, err := writer.Write(body.Bytes()); err != nil {
@@ -232,6 +226,49 @@ func sendSMTPRecipient(client *smtp.Client, config *shoutrrrsmtp.Config, toAddre
 		return fmt.Errorf("smtp data close failed: %w", err)
 	}
 	return nil
+}
+
+// smtpHeaders builds the common SMTP message headers for a recipient and content type.
+func smtpHeaders(config *shoutrrrsmtp.Config, toAddress, contentType string) map[string]string {
+	return map[string]string{
+		"Subject":      config.Subject,
+		"Date":         time.Now().Format(time.RFC1123Z),
+		"To":           toAddress,
+		"From":         formatSMTPFrom(config),
+		"MIME-Version": "1.0",
+		"Content-Type": contentType,
+	}
+}
+
+// buildSMTPMessage renders the full RFC822 message body, multipart/alternative when an HTML body
+// is present, otherwise plain text.
+func buildSMTPMessage(config *shoutrrrsmtp.Config, toAddress, textBody, htmlBody string) (*bytes.Buffer, error) {
+	var body bytes.Buffer
+
+	if htmlBody == "" {
+		if err := writeSMTPHeaders(&body, smtpHeaders(config, toAddress, "text/plain; charset=UTF-8")); err != nil {
+			return nil, err
+		}
+		body.WriteString(normalizeSMTPBody(textBody))
+		return &body, nil
+	}
+
+	boundary, err := randomSMTPBoundary()
+	if err != nil {
+		return nil, err
+	}
+	contentType := fmt.Sprintf("multipart/alternative; boundary=%q", boundary)
+	if err := writeSMTPHeaders(&body, smtpHeaders(config, toAddress, contentType)); err != nil {
+		return nil, err
+	}
+	if err := writeSMTPPart(&body, boundary, "text/plain; charset=UTF-8", textBody); err != nil {
+		return nil, err
+	}
+	if err := writeSMTPPart(&body, boundary, "text/html; charset=UTF-8", htmlBody); err != nil {
+		return nil, err
+	}
+	fmt.Fprintf(&body, "--%s--\r\n", boundary)
+	return &body, nil
 }
 
 func formatSMTPFrom(config *shoutrrrsmtp.Config) string {

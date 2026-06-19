@@ -371,54 +371,64 @@ func parseScrubStatus(fs *Filesystem, output string) {
 		if line == "" {
 			continue
 		}
-
-		if strings.HasPrefix(line, "scrub status for ") {
-			fs.UUID = strings.TrimSpace(strings.TrimPrefix(line, "scrub status for "))
-			continue
-		}
-		if strings.HasPrefix(line, "scrub started at ") || strings.HasPrefix(line, "scrub resumed at ") {
-			parseSynologyScrubTiming(fs, line)
-			continue
-		}
-		if strings.EqualFold(line, "no stats available") {
-			fs.ScrubState = ScrubStateIdle
-			fs.ScrubErrorSummary = scrubNoErrorsFound
-			continue
-		}
-
-		key, value := splitUsageKV(line)
-		switch key {
-		case "UUID":
-			if fs.UUID == "" {
-				fs.UUID = value
-			}
-		case "Scrub started":
-			if ts, err := parseBtrfsTime(value); err == nil {
-				fs.ScrubStartedAt = &ts
-			}
-		case "Status":
-			fs.ScrubState = parseScrubState(value)
-		case "Duration":
-			fs.ScrubDuration = value
-		case "Total to scrub":
-			fs.ScrubTotalBytes = parseLeadingInt(value)
-		case "Bytes scrubbed":
-			fs.ScrubScrubbedBytes = parseLeadingInt(value)
-		case "Error summary":
-			fs.ScrubErrorSummary = value
-			parseScrubErrorSummary(fs, value)
-		case "data_bytes_scrubbed", "tree_bytes_scrubbed":
-			fs.ScrubScrubbedBytes += parseLeadingInt(value)
-		case "read_errors":
-			fs.ScrubReadErrors = parseLeadingInt(value)
-		case "csum_errors":
-			fs.ScrubCsumErrors = parseLeadingInt(value)
-		case "verify_errors":
-			fs.ScrubVerifyErrors = parseLeadingInt(value)
-		case "super_errors":
-			fs.ScrubSuperErrors = parseLeadingInt(value)
-		}
+		parseScrubStatusLine(fs, line)
 	}
+	finalizeScrubStatus(fs)
+}
+
+// parseScrubStatusLine applies a single (non-empty) line of `btrfs scrub status` output to fs.
+func parseScrubStatusLine(fs *Filesystem, line string) {
+	if strings.HasPrefix(line, "scrub status for ") {
+		fs.UUID = strings.TrimSpace(strings.TrimPrefix(line, "scrub status for "))
+		return
+	}
+	if strings.HasPrefix(line, "scrub started at ") || strings.HasPrefix(line, "scrub resumed at ") {
+		parseSynologyScrubTiming(fs, line)
+		return
+	}
+	if strings.EqualFold(line, "no stats available") {
+		fs.ScrubState = ScrubStateIdle
+		fs.ScrubErrorSummary = scrubNoErrorsFound
+		return
+	}
+
+	key, value := splitUsageKV(line)
+	switch key {
+	case "UUID":
+		if fs.UUID == "" {
+			fs.UUID = value
+		}
+	case "Scrub started":
+		if ts, err := parseBtrfsTime(value); err == nil {
+			fs.ScrubStartedAt = &ts
+		}
+	case "Status":
+		fs.ScrubState = parseScrubState(value)
+	case "Duration":
+		fs.ScrubDuration = value
+	case "Total to scrub":
+		fs.ScrubTotalBytes = parseLeadingInt(value)
+	case "Bytes scrubbed":
+		fs.ScrubScrubbedBytes = parseLeadingInt(value)
+	case "Error summary":
+		fs.ScrubErrorSummary = value
+		parseScrubErrorSummary(fs, value)
+	case "data_bytes_scrubbed", "tree_bytes_scrubbed":
+		fs.ScrubScrubbedBytes += parseLeadingInt(value)
+	case "read_errors":
+		fs.ScrubReadErrors = parseLeadingInt(value)
+	case "csum_errors":
+		fs.ScrubCsumErrors = parseLeadingInt(value)
+	case "verify_errors":
+		fs.ScrubVerifyErrors = parseLeadingInt(value)
+	case "super_errors":
+		fs.ScrubSuperErrors = parseLeadingInt(value)
+	}
+}
+
+// finalizeScrubStatus fills in derived scrub fields (default error summary, total bytes, and
+// finished timestamp) once all status lines have been parsed.
+func finalizeScrubStatus(fs *Filesystem) {
 	if fs.ScrubErrorSummary == "" && fs.ScrubReadErrors == 0 && fs.ScrubCsumErrors == 0 && fs.ScrubVerifyErrors == 0 && fs.ScrubSuperErrors == 0 {
 		fs.ScrubErrorSummary = scrubNoErrorsFound
 	}

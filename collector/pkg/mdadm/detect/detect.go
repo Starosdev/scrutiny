@@ -116,42 +116,60 @@ func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMet
 	}
 
 	array, metrics, err := d.parseMdadmOutput(name, string(output))
-	if err == nil && strings.TrimSpace(array.UUID) == "" {
-		exportUUID, exportErr := d.getArrayUUIDFromExport(devicePath)
-		if exportErr != nil {
-			d.Logger.Debugf("Could not determine UUID for %s via mdadm --detail --export: %v", devicePath, exportErr)
-		} else {
-			array.UUID = exportUUID
-		}
-	}
-	if err == nil && strings.TrimSpace(array.UUID) == "" {
-		array.UUID = d.syntheticArrayID(name)
-		d.Logger.Warnf("Using synthetic MDADM identifier for %s because mdadm did not expose a UUID", devicePath)
-	}
-	if err == nil {
-		rawMdstat, _ := d.getRawMdstat(name)
-		metrics.RawMdstat = rawMdstat
-
-		// Parse sync/check/rebuild/recovery progress from /proc/mdstat if not already set
-		// by mdadm --detail. The "check = X%" line only appears in /proc/mdstat.
-		if metrics.SyncProgress == 0 && rawMdstat != "" {
-			mdstatProgressPattern := regexp.MustCompile(`(?:check|resync|recovery|rebuild)\s*=\s*(\d+(?:\.\d+)?)%`)
-			if m := mdstatProgressPattern.FindStringSubmatch(rawMdstat); m != nil {
-				metrics.SyncProgress, _ = strconv.ParseFloat(m[1], 64)
-			}
-		}
-
-		// Get filesystem-level used bytes if the array is mounted in the container.
-		usedBytes, statErr := d.getMountUsage(devicePath)
-		if statErr != nil {
-			d.Logger.Debugf("Could not get mount usage for %s (may not be mounted in container): %v", devicePath, statErr)
-		} else {
-			metrics.UsedBytes = usedBytes
-		}
+	if err != nil {
+		return array, metrics, err
 	}
 
-	return array, metrics, err
+	d.resolveArrayUUID(&array, devicePath, name)
+	d.enrichArrayMetrics(&metrics, name, devicePath)
+
+	return array, metrics, nil
 }
+
+// resolveArrayUUID fills array.UUID when mdadm --detail did not expose one, first via
+// mdadm --detail --export and finally with a synthetic identifier.
+func (d *Detect) resolveArrayUUID(array *models.MDADMArray, devicePath, name string) {
+	if strings.TrimSpace(array.UUID) != "" {
+		return
+	}
+
+	if exportUUID, exportErr := d.getArrayUUIDFromExport(devicePath); exportErr != nil {
+		d.Logger.Debugf("Could not determine UUID for %s via mdadm --detail --export: %v", devicePath, exportErr)
+	} else {
+		array.UUID = exportUUID
+	}
+
+	if strings.TrimSpace(array.UUID) != "" {
+		return
+	}
+	array.UUID = d.syntheticArrayID(name)
+	d.Logger.Warnf("Using synthetic MDADM identifier for %s because mdadm did not expose a UUID", devicePath)
+}
+
+// enrichArrayMetrics augments parsed metrics with /proc/mdstat data (raw block, sync progress)
+// and filesystem usage when the array is mounted in the container.
+func (d *Detect) enrichArrayMetrics(metrics *models.MDADMMetrics, name, devicePath string) {
+	rawMdstat, _ := d.getRawMdstat(name)
+	metrics.RawMdstat = rawMdstat
+
+	// Parse sync/check/rebuild/recovery progress from /proc/mdstat if not already set
+	// by mdadm --detail. The "check = X%" line only appears in /proc/mdstat.
+	if metrics.SyncProgress == 0 && rawMdstat != "" {
+		if m := mdstatProgressPattern.FindStringSubmatch(rawMdstat); m != nil {
+			metrics.SyncProgress, _ = strconv.ParseFloat(m[1], 64)
+		}
+	}
+
+	// Get filesystem-level used bytes if the array is mounted in the container.
+	if usedBytes, statErr := d.getMountUsage(devicePath); statErr != nil {
+		d.Logger.Debugf("Could not get mount usage for %s (may not be mounted in container): %v", devicePath, statErr)
+	} else {
+		metrics.UsedBytes = usedBytes
+	}
+}
+
+// mdstatProgressPattern matches the "check|resync|recovery|rebuild = X%" progress line in /proc/mdstat.
+var mdstatProgressPattern = regexp.MustCompile(`(?:check|resync|recovery|rebuild)\s*=\s*(\d+(?:\.\d+)?)%`)
 
 func (d *Detect) getArrayUUIDFromExport(devicePath string) (string, error) {
 	var cmd *exec.Cmd

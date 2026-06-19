@@ -22,29 +22,11 @@ func summaryRiskScore(protocol string, values map[string]interface{}) (int, mode
 
 	switch {
 	case strings.EqualFold(protocol, "NVMe"):
-		maxRaw = 60.0
-		if val := summaryInt64(values, "attr.percentage_used.value"); val > 0 {
-			raw += math.Min(float64(val)/100.0, 1.0) * 40.0
-		}
-		if val := summaryInt64(values, "attr.media_errors.value"); val > 0 {
-			raw += summaryCounterSeverity(val) * 20.0
-		}
+		maxRaw, raw = 60.0, nvmeRiskRaw(values)
 	case strings.EqualFold(protocol, "SCSI"):
-		maxRaw = 40.0
-		if val := summaryInt64(values, "attr.scsi_grown_defect_list.value"); val > 0 {
-			raw += summaryCounterSeverity(val) * 40.0
-		}
+		maxRaw, raw = 40.0, scsiRiskRaw(values)
 	default: // ATA
-		maxRaw = 65.0
-		if val := summaryInt64(values, "attr.5.raw_value"); val > 0 {
-			raw += summaryCounterSeverity(val) * 25.0
-		}
-		if val := summaryInt64(values, "attr.197.raw_value"); val > 0 {
-			raw += summaryCounterSeverity(val) * 20.0
-		}
-		if val := summaryInt64(values, "attr.198.raw_value"); val > 0 {
-			raw += summaryCounterSeverity(val) * 20.0
-		}
+		maxRaw, raw = 65.0, ataRiskRaw(values)
 	}
 
 	if maxRaw == 0 || raw == 0 {
@@ -56,6 +38,41 @@ func summaryRiskScore(protocol string, values map[string]interface{}) (int, mode
 		scaled = 100
 	}
 	return scaled, models.ScoreToRiskCategory(scaled)
+}
+
+// nvmeRiskRaw sums the NVMe partial risk weights (percentage_used 40pt, media_errors 20pt).
+func nvmeRiskRaw(values map[string]interface{}) float64 {
+	var raw float64
+	if val := summaryInt64(values, "attr.percentage_used.value"); val > 0 {
+		raw += math.Min(float64(val)/100.0, 1.0) * 40.0
+	}
+	if val := summaryInt64(values, "attr.media_errors.value"); val > 0 {
+		raw += summaryCounterSeverity(val) * 20.0
+	}
+	return raw
+}
+
+// scsiRiskRaw returns the SCSI partial risk weight (scsi_grown_defect_list 40pt).
+func scsiRiskRaw(values map[string]interface{}) float64 {
+	if val := summaryInt64(values, "attr.scsi_grown_defect_list.value"); val > 0 {
+		return summaryCounterSeverity(val) * 40.0
+	}
+	return 0
+}
+
+// ataRiskRaw sums the ATA partial risk weights (attr 5 25pt, attr 197 20pt, attr 198 20pt).
+func ataRiskRaw(values map[string]interface{}) float64 {
+	var raw float64
+	if val := summaryInt64(values, "attr.5.raw_value"); val > 0 {
+		raw += summaryCounterSeverity(val) * 25.0
+	}
+	if val := summaryInt64(values, "attr.197.raw_value"); val > 0 {
+		raw += summaryCounterSeverity(val) * 20.0
+	}
+	if val := summaryInt64(values, "attr.198.raw_value"); val > 0 {
+		raw += summaryCounterSeverity(val) * 20.0
+	}
+	return raw
 }
 
 // summaryInt64 extracts an int64 from the InfluxDB result values map.

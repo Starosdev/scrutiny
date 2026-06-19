@@ -213,55 +213,13 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy {
         const start = dayjs(value.start);
         const end = dayjs(value.end);
 
-        // If we are only setting the start date...
         if (whichDate === 'start') {
-            // Set the start date
+            this._applyStartDate(start);
+        } else if (whichDate === 'end') {
+            this._applyEndDate(end);
+        } else {
+            // Setting both dates: keep the end date unless it precedes the start date.
             this._range.start = start.clone();
-
-            // If the selected start date is after the end date...
-            if (this._range.start.isAfter(this._range.end)) {
-                // Set the end date to the start date but keep the end date's time
-                const endDate = start.clone().hour(this._range.end.hour()).minute(this._range.end.minute()).second(this._range.end.second());
-
-                // Test this new end date to see if it's ahead of the start date
-                if (this._range.start.isBefore(endDate)) {
-                    // If it's, set the new end date
-                    this._range.end = endDate;
-                } else {
-                    // Otherwise, set the end date same as the start date
-                    this._range.end = start.clone();
-                }
-            }
-        }
-
-        // If we are only setting the end date...
-        if (whichDate === 'end') {
-            // Set the end date
-            this._range.end = end.clone();
-
-            // If the selected end date is before the start date...
-            if (this._range.start.isAfter(this._range.end)) {
-                // Set the start date to the end date but keep the start date's time
-                const startDate = end.clone().hour(this._range.start.hour()).minute(this._range.start.minute()).second(this._range.start.second());
-
-                // Test this new end date to see if it's ahead of the start date
-                if (this._range.end.isAfter(startDate)) {
-                    // If it's, set the new start date
-                    this._range.start = startDate;
-                } else {
-                    // Otherwise, set the start date same as the end date
-                    this._range.start = end.clone();
-                }
-            }
-        }
-
-        // If we are setting both dates...
-        if (!whichDate) {
-            // Set the start date
-            this._range.start = start.clone();
-
-            // If the start date is before the end date, set the end date as normal.
-            // If the start date is after the end date, set the end date same as the start date.
             this._range.end = start.isBefore(end) ? end.clone() : start.clone();
         }
 
@@ -302,6 +260,38 @@ export class TreoDateRangeComponent implements ControlValueAccessor, OnDestroy {
 
         // Reset the programmatic change status
         this._programmaticChange = false;
+    }
+
+    /**
+     * Set the start date, clamping the end date forward when the new start moves past it
+     * (preserving the end date's time-of-day where possible).
+     */
+    private _applyStartDate(start: Dayjs): void {
+        this._range.start = start.clone();
+
+        if (!this._range.start.isAfter(this._range.end)) {
+            return;
+        }
+
+        // Set the end date to the start date but keep the end date's time
+        const endDate = start.clone().hour(this._range.end.hour()).minute(this._range.end.minute()).second(this._range.end.second());
+        this._range.end = this._range.start.isBefore(endDate) ? endDate : start.clone();
+    }
+
+    /**
+     * Set the end date, clamping the start date backward when the new end moves before it
+     * (preserving the start date's time-of-day where possible).
+     */
+    private _applyEndDate(end: Dayjs): void {
+        this._range.end = end.clone();
+
+        if (!this._range.start.isAfter(this._range.end)) {
+            return;
+        }
+
+        // Set the start date to the end date but keep the start date's time
+        const startDate = end.clone().hour(this._range.start.hour()).minute(this._range.start.minute()).second(this._range.start.second());
+        this._range.start = this._range.end.isAfter(startDate) ? startDate : end.clone();
     }
 
     get range(): any {

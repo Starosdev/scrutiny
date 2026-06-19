@@ -438,33 +438,10 @@ export class DashboardSettingsComponent implements OnInit {
 
     buildAppriseUrl(): string {
         switch (this.selectedAppriseService) {
-            case 'custom': {
-                const rawUrl = this.newAppriseUrlRaw.trim();
-                if (!rawUrl) {
-                    return '';
-                }
-                return rawUrl.startsWith('apprise+') ? rawUrl : `apprise+${rawUrl}`;
-            }
-            case 'email': {
-                if (!this.smtpHost || !this.smtpFrom || !this.smtpTo) {
-                    return '';
-                }
-                const fromDomain = this.smtpFrom.includes('@') ? this.smtpFrom.split('@').pop() : '';
-                const domain = fromDomain || this.smtpHost;
-                const scheme = this.smtpPort === '25' ? 'mailto' : 'mailtos';
-                const params = new URLSearchParams();
-                params.set('smtp', this.smtpHost);
-                params.set('from', this.smtpFrom);
-                params.set('to', this.smtpTo);
-                if (this.smtpUsername) {
-                    params.set('user', this.smtpUsername);
-                }
-                if (this.smtpPassword) {
-                    params.set('pass', this.smtpPassword);
-                }
-                const port = this.smtpPort ? `:${this.smtpPort}` : '';
-                return `apprise+${scheme}://${domain}${port}?${params.toString()}`;
-            }
+            case 'custom':
+                return this.buildCustomAppriseUrl();
+            case 'email':
+                return this.buildEmailAppriseUrl();
             case 'discord':
                 return this.discordWebhookUrl.trim() ? `apprise+${this.discordWebhookUrl.trim()}` : '';
             case 'slack':
@@ -474,6 +451,35 @@ export class DashboardSettingsComponent implements OnInit {
             default:
                 return '';
         }
+    }
+
+    private buildCustomAppriseUrl(): string {
+        const rawUrl = this.newAppriseUrlRaw.trim();
+        if (!rawUrl) {
+            return '';
+        }
+        return rawUrl.startsWith('apprise+') ? rawUrl : `apprise+${rawUrl}`;
+    }
+
+    private buildEmailAppriseUrl(): string {
+        if (!this.smtpHost || !this.smtpFrom || !this.smtpTo) {
+            return '';
+        }
+        const fromDomain = this.smtpFrom.includes('@') ? this.smtpFrom.split('@').pop() : '';
+        const domain = fromDomain || this.smtpHost;
+        const scheme = this.smtpPort === '25' ? 'mailto' : 'mailtos';
+        const params = new URLSearchParams();
+        params.set('smtp', this.smtpHost);
+        params.set('from', this.smtpFrom);
+        params.set('to', this.smtpTo);
+        if (this.smtpUsername) {
+            params.set('user', this.smtpUsername);
+        }
+        if (this.smtpPassword) {
+            params.set('pass', this.smtpPassword);
+        }
+        const port = this.smtpPort ? `:${this.smtpPort}` : '';
+        return `apprise+${scheme}://${domain}${port}?${params.toString()}`;
     }
 
     buildNotifyUrl(): string {
