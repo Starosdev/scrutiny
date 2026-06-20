@@ -2,6 +2,41 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.65.0-beta.1](https://github.com/Starosdev/scrutiny/compare/v1.64.0...v1.65.0-beta.1) (2026-06-20)
+
+### Features
+
+* **api:** expose and update heartbeat_enabled on notify URLs ([99bb242](https://github.com/Starosdev/scrutiny/commit/99bb24280c386a3be5fd04ed4975577ef5399340))
+* **heartbeat:** filter notify URLs by heartbeat_enabled ([24f359a](https://github.com/Starosdev/scrutiny/commit/24f359ac6981803461f3b8be90c06c30d81bacd4))
+* **notify:** add heartbeat_enabled field to notify_urls ([6432a2c](https://github.com/Starosdev/scrutiny/commit/6432a2c9b16223b8f3e1cfdf9c621ffedd2f5393))
+* **notify:** LoadHeartbeatDatabaseUrls filters by heartbeat_enabled ([51d8662](https://github.com/Starosdev/scrutiny/commit/51d866237bc4b876ab0058bc7918b0d32ae856cb))
+* **thresholds:** detect Power-On Hours 16-bit counter rollover ([#595](https://github.com/Starosdev/scrutiny/issues/595)) ([#625](https://github.com/Starosdev/scrutiny/issues/625)) ([390de8b](https://github.com/Starosdev/scrutiny/commit/390de8b1d0144cb3f6b9183ff319b764a42a632e))
+* **ui:** add contextual help links for settings docs ([#492](https://github.com/Starosdev/scrutiny/issues/492)) ([8ceb12b](https://github.com/Starosdev/scrutiny/commit/8ceb12b92d095dcb2c8001f6f07b8fda704b6713))
+* **ui:** add contextual help links pointing to docs folder ([#492](https://github.com/Starosdev/scrutiny/issues/492)) ([7b484a0](https://github.com/Starosdev/scrutiny/commit/7b484a0d463f8f86b601c294f5e9a8ca1f207f7d))
+* **ui:** add heartbeat toggle per notification URL ([e6bbfea](https://github.com/Starosdev/scrutiny/commit/e6bbfea6978eed6c625ac46bcab9b2fac945123a))
+* **ui:** add navigation visibility settings for ZFS, MDADM, Btrfs, Workload ([#588](https://github.com/Starosdev/scrutiny/issues/588)) ([fca1ae3](https://github.com/Starosdev/scrutiny/commit/fca1ae313cecbdec26d0dfac51a82b6ae6605df3))
+* **ui:** group MDADM and Workload pages by host ([#579](https://github.com/Starosdev/scrutiny/issues/579)) ([3e3aa73](https://github.com/Starosdev/scrutiny/commit/3e3aa73e69c7086e66b58fba00c78fb5eadbd089))
+
+### Bug Fixes
+
+* **api:** return 404 when heartbeat toggle targets non-existent notify URL ([8c375c2](https://github.com/Starosdev/scrutiny/commit/8c375c288aeaa68c1257a62be1cec71178ef3139))
+* **backend:** pass SmartInfo by pointer to syncDeviceSelfTests (hugeParam) ([e027c33](https://github.com/Starosdev/scrutiny/commit/e027c336f810e666043762a82b15d7fed7fc4bdc))
+* **backend:** satisfy gocritic hugeParam and govet fieldalignment lint ([be05416](https://github.com/Starosdev/scrutiny/commit/be054166d7577db9eb0fbf05198ecbbfb9912835))
+* **db:** simplify migration func to satisfy unlambda linter ([8158a34](https://github.com/Starosdev/scrutiny/commit/8158a346e3fdc85dcb3c084eb11ca9467c8fa0c0))
+* **ui:** style learn more link in Consumer Drive Profiles hint ([#492](https://github.com/Starosdev/scrutiny/issues/492)) ([ba5b6c3](https://github.com/Starosdev/scrutiny/commit/ba5b6c38aeda1520e0048c81214c605413a2951d))
+
+### Refactoring
+
+* **collector:** reduce cognitive complexity in collector commands ([#617](https://github.com/Starosdev/scrutiny/issues/617)) ([dedf386](https://github.com/Starosdev/scrutiny/commit/dedf386ebbd9c6f0b58cc739ac35ecfe9cfb2d1f)), closes [#616](https://github.com/Starosdev/scrutiny/issues/616)
+* **collector:** reduce cognitive complexity in device detection ([#619](https://github.com/Starosdev/scrutiny/issues/619)) ([b2e5a9d](https://github.com/Starosdev/scrutiny/commit/b2e5a9de791c1682b1e758c6d991294a9b1daa45))
+* **database:** reduce cognitive complexity in repository ([#621](https://github.com/Starosdev/scrutiny/issues/621)) ([4990d88](https://github.com/Starosdev/scrutiny/commit/4990d8846216f422c41cbaca37ca32ae3c36d993))
+* **database:** reduce cognitive complexity in the migration runner ([#624](https://github.com/Starosdev/scrutiny/issues/624)) ([037c82d](https://github.com/Starosdev/scrutiny/commit/037c82d08d75994c06bf85aece0a1e85f61b22f6))
+* **frontend:** reduce cognitive complexity in components ([#620](https://github.com/Starosdev/scrutiny/issues/620)) ([278cd44](https://github.com/Starosdev/scrutiny/commit/278cd44bca76cbc3e7947efc28dbb56a6fd78792))
+* **measurements:** reduce cognitive complexity in smart.go ([#616](https://github.com/Starosdev/scrutiny/issues/616)) ([b82e0f5](https://github.com/Starosdev/scrutiny/commit/b82e0f5a6591227753091d0c0282a7b990fa84a0))
+* **models:** reduce cognitive complexity in measurement models ([#622](https://github.com/Starosdev/scrutiny/issues/622)) ([900e4c3](https://github.com/Starosdev/scrutiny/commit/900e4c323a4d494eb88a8242dc0eb86fcf0a44d9))
+* **notify:** reduce cognitive complexity in notification senders ([#618](https://github.com/Starosdev/scrutiny/issues/618)) ([249d836](https://github.com/Starosdev/scrutiny/commit/249d83631f1f38a1ec431740ccddf49924070122)), closes [#616](https://github.com/Starosdev/scrutiny/issues/616) [#617](https://github.com/Starosdev/scrutiny/issues/617)
+* **web:** reduce cognitive complexity in middleware and monitors ([#623](https://github.com/Starosdev/scrutiny/issues/623)) ([8695dc8](https://github.com/Starosdev/scrutiny/commit/8695dc833a9b34c48ebca240204c177673296373))
+
 ## [1.64.0](https://github.com/Starosdev/scrutiny/compare/v1.63.0...v1.64.0) (2026-06-18)
 
 ### Features
