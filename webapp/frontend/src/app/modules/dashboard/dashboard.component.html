@@ -152,8 +152,7 @@
                                 <div class="text-xs">Array Size</div>
                                 <div class="text-xs font-medium">{{ array.array_size | fileSize : config?.file_size_si_units }}</div>
                             </div>
-                            }
-                            @if (array.used_bytes !== undefined && array.used_bytes !== null) {
+                            } @if (array.used_bytes !== undefined && array.used_bytes !== null) {
                             <div class="flex items-center justify-between mt-1 text-secondary">
                                 <div class="text-xs">Used</div>
                                 <div class="text-xs font-medium">{{ array.used_bytes | fileSize : config?.file_size_si_units }}</div>
