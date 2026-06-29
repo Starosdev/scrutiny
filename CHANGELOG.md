@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.65.0](https://github.com/Starosdev/scrutiny/compare/v1.64.0...v1.65.0) (2026-06-29)
+
+### Features
+
+* **release:** v1.65.0 - PoH rollover detection, dashboard density controls, settings fix ([#629](https://github.com/Starosdev/scrutiny/issues/629)) ([2516ca1](https://github.com/Starosdev/scrutiny/commit/2516ca196b80130add104e9dcbf5ec1c37274d7f)), closes [#595](https://github.com/Starosdev/scrutiny/issues/595) [#625](https://github.com/Starosdev/scrutiny/issues/625) [#471](https://github.com/Starosdev/scrutiny/issues/471) [616-#624](https://github.com/Starosdev/616-/issues/624)
+
 ## [1.65.0-beta.1](https://github.com/Starosdev/scrutiny/compare/v1.64.0...v1.65.0-beta.1) (2026-06-20)
 
 ### Features
