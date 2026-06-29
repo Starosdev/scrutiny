@@ -26,7 +26,15 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout "$TARGET"
+          if git ls-remote --exit-code --heads origin "$TARGET" >/dev/null 2>&1; then
+            git checkout "$TARGET"
+          else
+            echo "::warning::Branch $TARGET does not exist on origin; recreating it from master."
+            git checkout -B "$TARGET" origin/master
+            git push origin "$TARGET"
+            echo "Recreated $TARGET from master; already in sync."
+            exit 0
+          fi
           if git merge origin/master --no-edit; then
             git push origin "$TARGET"
             echo "Auto-merged master into $TARGET."
@@ -71,7 +79,15 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout "$TARGET"
+          if git ls-remote --exit-code --heads origin "$TARGET" >/dev/null 2>&1; then
+            git checkout "$TARGET"
+          else
+            echo "::warning::Branch $TARGET does not exist on origin; recreating it from master."
+            git checkout -B "$TARGET" origin/master
+            git push origin "$TARGET"
+            echo "Recreated $TARGET from master; already in sync."
+            exit 0
+          fi
           if git merge origin/master --no-edit; then
             git push origin "$TARGET"
             echo "Auto-merged master into $TARGET."
