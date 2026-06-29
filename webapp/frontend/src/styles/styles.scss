@@ -10,6 +10,48 @@
     --mat-menu-container-color: #1e293b;
     --mat-autocomplete-background-color: #1e293b;
 
+    // The legacy Treo theme (pre-MDC) does not emit M3 component tokens for
+    // overlay-rendered components, so dialogs, selects and form fields fall back
+    // to Material's light defaults. Patch the dark tokens here so the Settings
+    // dialog and its dropdowns honor dark mode.
+
+    // Dialog surface + text (Settings dialog)
+    --mat-dialog-container-color: #1e293b;
+    --mat-dialog-subhead-color: #f8fafc;
+    --mat-dialog-supporting-text-color: #e2e8f0;
+
+    // Select dropdown option text (was dark-on-dark, unreadable)
+    --mat-option-label-text-color: #e2e8f0;
+    --mat-option-selected-state-label-text-color: #ffffff;
+    --mat-select-enabled-trigger-text-color: #f1f5f9;
+    --mat-select-placeholder-text-color: #94a3b8;
+    --mat-select-enabled-arrow-color: #cbd5e1;
+    --mat-select-focused-arrow-color: #38bdf8;
+
+    // Expansion panels (Scheduled Reports, SMART Overrides, Notifications, Navigation)
+    --mat-expansion-container-background-color: #243044;
+    --mat-expansion-container-text-color: #e2e8f0;
+    --mat-expansion-header-text-color: #f8fafc;
+    --mat-expansion-header-description-color: #cbd5e1;
+    --mat-expansion-header-indicator-color: #cbd5e1;
+    --mat-expansion-actions-divider-color: rgba(148, 163, 184, 0.2);
+
+    // Filled form fields (inputs, labels, hints) inside the dialog
+    --mat-form-field-filled-container-color: rgba(255, 255, 255, 0.06);
+    --mat-form-field-filled-input-text-color: #f1f5f9;
+    --mat-form-field-filled-input-text-placeholder-color: #94a3b8;
+    --mat-form-field-filled-label-text-color: #cbd5e1;
+    --mat-form-field-filled-focus-label-text-color: #38bdf8;
+    --mat-form-field-filled-caret-color: #38bdf8;
+    --mat-form-field-filled-active-indicator-color: rgba(148, 163, 184, 0.5);
+    --mat-form-field-filled-hover-active-indicator-color: #cbd5e1;
+    --mat-form-field-filled-focus-active-indicator-color: #38bdf8;
+
+    // mat-hint / subscript text has no dedicated color token; force it readable
+    .mat-mdc-form-field-subscript-wrapper {
+        color: #94a3b8;
+    }
+
     .yellow-50 {
         background-color: #242b38 !important;
         color: #e2e8f0 !important;
