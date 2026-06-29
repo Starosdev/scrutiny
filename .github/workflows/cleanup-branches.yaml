@@ -40,7 +40,7 @@ jobs:
           echo ""
 
           # Protected branches (never delete)
-          PROTECTED_BRANCHES="master develop main"
+          PROTECTED_BRANCHES="master develop beta main"
 
           DELETED_COUNT=0
           KEPT_COUNT=0
