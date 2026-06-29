@@ -245,13 +245,9 @@
 
                 @if (replacementRisk.device_protocol === 'ATA') {
                 <div class="text-sm text-secondary mb-4">
-                    @if (!replacementRisk.consumer_drive_profiles_enabled) {
-                    Using generic ATA rules. Consumer drive profile overrides are disabled in Settings.
-                    } @else if (replacementRisk.consumer_drive_profile_applied) {
-                    Using consumer drive profile: {{ replacementRisk.consumer_drive_profile_family }}.
-                    } @else {
-                    Using generic ATA rules. No vetted consumer drive profile matched this drive.
-                    }
+                    @if (!replacementRisk.consumer_drive_profiles_enabled) { Using generic ATA rules. Consumer drive profile overrides are disabled in Settings. } @else if
+                    (replacementRisk.consumer_drive_profile_applied) { Using consumer drive profile: {{ replacementRisk.consumer_drive_profile_family }}. } @else { Using generic
+                    ATA rules. No vetted consumer drive profile matched this drive. }
                 </div>
                 }
 
@@ -347,7 +343,10 @@
                             <tr class="border-b border-opacity-50">
                                 <td class="py-2 pr-4">{{ selfTest.type_string }}</td>
                                 <td class="py-2 pr-4">
-                                    <span class="inline-flex items-center font-bold text-xs px-2 py-2px rounded-full tracking-wide uppercase" [ngClass]="selfTestStatusClass(selfTest)">
+                                    <span
+                                        class="inline-flex items-center font-bold text-xs px-2 py-2px rounded-full tracking-wide uppercase"
+                                        [ngClass]="selfTestStatusClass(selfTest)"
+                                    >
                                         <span class="w-2 h-2 rounded-full mr-2" [ngClass]="selfTestDotClass(selfTest)"></span>
                                         {{ selfTestStatusLabel(selfTest) }}
                                     </span>

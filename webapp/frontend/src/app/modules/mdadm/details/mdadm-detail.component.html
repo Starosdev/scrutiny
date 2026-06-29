@@ -46,14 +46,12 @@
                         <span class="text-secondary">Sync Progress</span>
                         <span class="font-medium text-blue-500">{{ latestMetrics?.sync_progress }}%</span>
                     </div>
-                    }
-                    @if (latestMetrics?.array_size) {
+                    } @if (latestMetrics?.array_size) {
                     <div class="flex justify-between border-b pb-2">
                         <span class="text-secondary">Array Size</span>
                         <span class="font-medium">{{ latestMetrics?.array_size | fileSize : config?.file_size_si_units }}</span>
                     </div>
-                    }
-                    @if (latestMetrics?.used_bytes !== undefined && latestMetrics?.used_bytes !== null) {
+                    } @if (latestMetrics?.used_bytes !== undefined && latestMetrics?.used_bytes !== null) {
                     <div class="flex justify-between border-b pb-2">
                         <span class="text-secondary">Used</span>
                         <span class="font-medium">{{ latestMetrics?.used_bytes | fileSize : config?.file_size_si_units }}</span>
@@ -88,14 +86,10 @@
                         [legend]="chartOptions.legend"
                     >
                     </apx-chart>
-                    }
-                    @if (!chartOptions && history === null) {
+                    } @if (!chartOptions && history === null) {
                     <div class="flex items-center justify-center h-full text-secondary">Loading history data...</div>
-                    }
-                    @if (history?.length === 0) {
-                    <div class="flex items-center justify-center h-full text-secondary">
-                        Insufficient history data. Check back later once more data points are collected!
-                    </div>
+                    } @if (history?.length === 0) {
+                    <div class="flex items-center justify-center h-full text-secondary">Insufficient history data. Check back later once more data points are collected!</div>
                     }
                 </div>
             </div>

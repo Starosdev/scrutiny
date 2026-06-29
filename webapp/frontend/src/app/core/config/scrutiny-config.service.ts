@@ -45,7 +45,16 @@ export class ScrutinyConfigService {
             .pipe(
                 map((response: any) => {
                     const merged = this._mergeWithDefaults(this._defaultConfig, response.settings);
-                    return { ...merged, server_version: response.server_version };
+                    // Preserve server-capability flags. These are not part of saved
+                    // settings, so fall back to the current config when the save
+                    // response omits them, otherwise the "Run collectors" button
+                    // (gated on collector_trigger_enabled) vanishes after any save.
+                    const current = this._config.getValue();
+                    return {
+                        ...merged,
+                        server_version: response.server_version ?? current.server_version,
+                        collector_trigger_enabled: response.collector_trigger_enabled ?? current.collector_trigger_enabled,
+                    };
                 }),
                 tap((settings: AppConfig) => {
                     this._config.next(settings);

@@ -38,14 +38,11 @@
                     <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link">S.M.A.R.T</a>
                     @if (config.navigation?.show_zfs_pools !== false) {
                     <a routerLink="/zfs-pools" routerLinkActive="active" class="nav-link">ZFS Pools</a>
-                    }
-                    @if (config.navigation?.show_mdadm !== false) {
+                    } @if (config.navigation?.show_mdadm !== false) {
                     <a routerLink="/mdadm" routerLinkActive="active" class="nav-link">MDADM RAID</a>
-                    }
-                    @if (config.navigation?.show_btrfs !== false) {
+                    } @if (config.navigation?.show_btrfs !== false) {
                     <a routerLink="/btrfs-filesystems" routerLinkActive="active" class="nav-link">Btrfs</a>
-                    }
-                    @if (config.navigation?.show_workload !== false) {
+                    } @if (config.navigation?.show_workload !== false) {
                     <a routerLink="/workload" routerLinkActive="active" class="nav-link">Workload</a>
                     }
                 </nav>
