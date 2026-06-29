@@ -1763,6 +1763,10 @@ components:
           type: string
         dashboard_sort:
           type: string
+        dashboard_columns:
+          type: integer
+        dashboard_density:
+          type: string
         temperature_unit:
           type: string
         line_stroke:

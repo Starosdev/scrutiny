@@ -298,59 +298,63 @@ func (d *Detect) calculateTotalErrors(pool *models.ZFSPool) {
 	addErrors(pool.Vdevs)
 }
 
+// zpool status "scan:" line patterns. Examples:
+//
+//	scan: scrub repaired 0B in 00:10:30 with 0 errors on Sun Jan  5 00:34:31 2026
+//	scan: scrub repaired 0B in 1 days 00:12:08 with 0 errors on Mon Jan 12 00:36:38 2026
+//	scan: scrub in progress since Sun Jan  5 00:24:01 2026
+//	scan: scrub canceled on Sun Jan  5 00:30:00 2026
+//	scan: resilver repaired 1.5K in 00:05:30 with 0 errors on Tue Jan  6 12:00:00 2026
+//	scan: resilver in progress since Tue Jan  6 11:54:30 2026
+//	scan: none requested
+var (
+	zfsScanInProgress = regexp.MustCompile(`scan:\s+(?:scrub|resilver) in progress since (.+)`)
+	zfsScanFinished   = regexp.MustCompile(`scan:\s+(?:scrub|resilver) repaired (\S+) in (.+?) with (\d+) errors on (.+)`)
+	zfsScanCanceled   = regexp.MustCompile(`scan:\s+(?:scrub|resilver) canceled on (.+)`)
+	zfsScanProgress   = regexp.MustCompile(`(\d+(?:\.\d+)?)\s*%\s+done`)
+)
+
 // parseScrubStatus parses scrub information from zpool status output
 func (d *Detect) parseScrubStatus(pool *models.ZFSPool, output string) {
-	// Look for scan: line
-	// Examples:
-	// scan: scrub repaired 0B in 00:10:30 with 0 errors on Sun Jan  5 00:34:31 2026
-	// scan: scrub repaired 0B in 1 days 00:12:08 with 0 errors on Mon Jan 12 00:36:38 2026
-	// scan: scrub in progress since Sun Jan  5 00:24:01 2026
-	// scan: scrub canceled on Sun Jan  5 00:30:00 2026
-	// scan: resilver repaired 1.5K in 00:05:30 with 0 errors on Tue Jan  6 12:00:00 2026
-	// scan: resilver in progress since Tue Jan  6 11:54:30 2026
-	// scan: none requested
-
-	scanInProgress := regexp.MustCompile(`scan:\s+(?:scrub|resilver) in progress since (.+)`)
-	scanFinished := regexp.MustCompile(`scan:\s+(?:scrub|resilver) repaired (\S+) in (.+?) with (\d+) errors on (.+)`)
-	scanCanceled := regexp.MustCompile(`scan:\s+(?:scrub|resilver) canceled on (.+)`)
-	scanProgress := regexp.MustCompile(`(\d+(?:\.\d+)?)\s*%\s+done`)
-
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	for scanner.Scan() {
-		line := scanner.Text()
+		d.parseZFSScanLine(pool, scanner.Text())
+	}
+}
 
-		if matches := scanInProgress.FindStringSubmatch(line); matches != nil {
-			pool.ScrubState = models.ZFSScrubStateScanning
-			if t, err := d.parseZFSDate(matches[1]); err == nil {
-				pool.ScrubStartTime = &t
-			}
-			continue
+// parseZFSScanLine applies a single "scan:" status line to the pool's scrub fields.
+func (d *Detect) parseZFSScanLine(pool *models.ZFSPool, line string) {
+	if matches := zfsScanInProgress.FindStringSubmatch(line); matches != nil {
+		pool.ScrubState = models.ZFSScrubStateScanning
+		if t, err := d.parseZFSDate(matches[1]); err == nil {
+			pool.ScrubStartTime = &t
 		}
+		return
+	}
 
-		if matches := scanFinished.FindStringSubmatch(line); matches != nil {
-			pool.ScrubState = models.ZFSScrubStateFinished
-			pool.ScrubIssuedBytes = parseZFSBytes(matches[1])
-			pool.ScrubErrorsCount, _ = strconv.ParseInt(matches[3], 10, 64)
-			if t, err := d.parseZFSDate(matches[4]); err == nil {
-				pool.ScrubEndTime = &t
-			}
-			pool.ScrubPercentComplete = 100.0
-			continue
+	if matches := zfsScanFinished.FindStringSubmatch(line); matches != nil {
+		pool.ScrubState = models.ZFSScrubStateFinished
+		pool.ScrubIssuedBytes = parseZFSBytes(matches[1])
+		pool.ScrubErrorsCount, _ = strconv.ParseInt(matches[3], 10, 64)
+		if t, err := d.parseZFSDate(matches[4]); err == nil {
+			pool.ScrubEndTime = &t
 		}
+		pool.ScrubPercentComplete = 100.0
+		return
+	}
 
-		if matches := scanCanceled.FindStringSubmatch(line); matches != nil {
-			pool.ScrubState = models.ZFSScrubStateCanceled
-			if t, err := d.parseZFSDate(matches[1]); err == nil {
-				pool.ScrubEndTime = &t
-			}
-			continue
+	if matches := zfsScanCanceled.FindStringSubmatch(line); matches != nil {
+		pool.ScrubState = models.ZFSScrubStateCanceled
+		if t, err := d.parseZFSDate(matches[1]); err == nil {
+			pool.ScrubEndTime = &t
 		}
+		return
+	}
 
-		// Parse progress percentage if scanning
-		if pool.ScrubState == models.ZFSScrubStateScanning {
-			if matches := scanProgress.FindStringSubmatch(line); matches != nil {
-				pool.ScrubPercentComplete, _ = strconv.ParseFloat(matches[1], 64)
-			}
+	// Parse progress percentage if scanning
+	if pool.ScrubState == models.ZFSScrubStateScanning {
+		if matches := zfsScanProgress.FindStringSubmatch(line); matches != nil {
+			pool.ScrubPercentComplete, _ = strconv.ParseFloat(matches[1], 64)
 		}
 	}
 }

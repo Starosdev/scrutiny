@@ -1049,25 +1049,9 @@ func (s *mockSMTPServer) serve(t *testing.T) {
 		case strings.HasPrefix(line, "RCPT TO:"):
 			writeSMTPLine(t, writer, "250 OK")
 		case strings.HasPrefix(line, "DATA"):
-			writeSMTPLine(t, writer, "354 End data with <CR><LF>.<CR><LF>")
-
-			var data strings.Builder
-			for {
-				part, readErr := reader.ReadString('\n')
-				if readErr != nil {
-					return
-				}
-				if part == ".\r\n" {
-					break
-				}
-				data.WriteString(part)
+			if !s.handleSMTPData(t, reader, writer) {
+				return
 			}
-
-			s.mu.Lock()
-			s.lastData = data.String()
-			s.mu.Unlock()
-
-			writeSMTPLine(t, writer, "250 OK")
 		case strings.HasPrefix(line, "QUIT"):
 			writeSMTPLine(t, writer, "221 Bye")
 			return
@@ -1075,6 +1059,32 @@ func (s *mockSMTPServer) serve(t *testing.T) {
 			writeSMTPLine(t, writer, "250 OK")
 		}
 	}
+}
+
+// handleSMTPData consumes a DATA payload up to the terminating "." line and records it.
+// Returns false when the connection should be closed (read error).
+func (s *mockSMTPServer) handleSMTPData(t *testing.T, reader *bufio.Reader, writer *bufio.Writer) bool {
+	t.Helper()
+	writeSMTPLine(t, writer, "354 End data with <CR><LF>.<CR><LF>")
+
+	var data strings.Builder
+	for {
+		part, readErr := reader.ReadString('\n')
+		if readErr != nil {
+			return false
+		}
+		if part == ".\r\n" {
+			break
+		}
+		data.WriteString(part)
+	}
+
+	s.mu.Lock()
+	s.lastData = data.String()
+	s.mu.Unlock()
+
+	writeSMTPLine(t, writer, "250 OK")
+	return true
 }
 
 func writeSMTPLine(t *testing.T, writer *bufio.Writer, line string) {

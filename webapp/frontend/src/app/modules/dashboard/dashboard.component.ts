@@ -5,7 +5,7 @@ import { ApexOptions, ChartComponent } from 'ng-apexcharts';
 import { DashboardService } from 'app/modules/dashboard/dashboard.service';
 import { MatDialog as MatDialog } from '@angular/material/dialog';
 import { DashboardSettingsComponent } from 'app/layout/common/dashboard-settings/dashboard-settings.component';
-import { AppConfig } from 'app/core/config/app.config';
+import { AppConfig, DashboardColumns, DashboardDensity } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { Router, RouterLink } from '@angular/router';
 import { TemperaturePipe } from 'app/shared/temperature.pipe';
@@ -21,11 +21,18 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatMenuTrigger, MatMenu, MatMenuItem } from '@angular/material/menu';
 import { DashboardDeviceComponent } from '../../layout/common/dashboard-device/dashboard-device.component';
-import { NgClass, DecimalPipe, TitleCasePipe, DatePipe, KeyValuePipe } from '@angular/common';
+import { DOCUMENT, NgClass, DecimalPipe, TitleCasePipe, DatePipe, KeyValuePipe } from '@angular/common';
 import { MatCheckbox } from '@angular/material/checkbox';
 import { MatDivider } from '@angular/material/divider';
 import { FileSizePipe } from '../../shared/file-size.pipe';
 import { DeviceSortPipe } from '../../shared/device-sort.pipe';
+
+const DASHBOARD_SHELL_WIDTHS: Record<DashboardColumns, string> = {
+    2: '1440px',
+    3: '1680px',
+    4: '1920px',
+    5: '2240px',
+};
 
 @Component({
     selector: 'example',
@@ -61,6 +68,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private readonly _mdadmService = inject(MDADMService);
     private readonly _configService = inject(ScrutinyConfigService);
     private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+    private readonly _document = inject(DOCUMENT);
     dialog = inject(MatDialog);
     private readonly router = inject(Router);
 
@@ -112,6 +120,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
             if (oldConfig !== newConfig) {
                 // Store the config
                 this.config = config;
+                this._syncDashboardShellMaxWidth();
 
                 if (oldConfig) {
                     this.refreshComponent();
@@ -158,6 +167,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
      * On destroy
      */
     ngOnDestroy(): void {
+        this._clearDashboardShellMaxWidth();
+
         // Unsubscribe from all subscriptions
         this._unsubscribeAll.next();
         this._unsubscribeAll.complete();
@@ -171,6 +182,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.router.routeReuseStrategy.shouldReuseRoute = () => false;
         this.router.onSameUrlNavigation = 'reload';
         this.router.navigate([currentUrl]);
+    }
+
+    private _syncDashboardShellMaxWidth(): void {
+        this._document.documentElement.style.setProperty('--scrutiny-shell-max-width', DASHBOARD_SHELL_WIDTHS[this.dashboardColumns()]);
+    }
+
+    private _clearDashboardShellMaxWidth(): void {
+        this._document.documentElement.style.removeProperty('--scrutiny-shell-max-width');
     }
 
     deviceDashboardTitle(deviceSummary: DeviceSummaryModel): string {
@@ -471,6 +490,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     onDeviceUnarchived(wwn: string): void {
         this.summaryData[wwn].device.archived = false;
+    }
+
+    dashboardColumns(): DashboardColumns {
+        const configuredColumns = this.config?.dashboard_columns;
+        if (configuredColumns === 3 || configuredColumns === 4 || configuredColumns === 5) {
+            return configuredColumns;
+        }
+        return 2;
+    }
+
+    dashboardDensity(): DashboardDensity {
+        return this.config?.dashboard_density === 'compact' ? 'compact' : 'comfortable';
+    }
+
+    dashboardGridClass(): string {
+        return `dashboard-device-grid--cols-${this.dashboardColumns()}`;
+    }
+
+    isCompactDashboard(): boolean {
+        return this.dashboardDensity() === 'compact';
     }
 
     get allDrivesVisible(): boolean {

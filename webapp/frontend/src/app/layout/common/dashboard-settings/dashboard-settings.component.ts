@@ -2,6 +2,8 @@ import { Component, OnInit, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import {
     AppConfig,
+    DashboardColumns,
+    DashboardDensity,
     AttributeOverride,
     DashboardDisplay,
     DashboardSort,
@@ -85,8 +87,10 @@ export class DashboardSettingsComponent implements OnInit {
     private readonly _notifyUrlService = inject(NotifyUrlService);
     private readonly _httpClient = inject(HttpClient);
 
-    dashboardDisplay: string;
-    dashboardSort: string;
+    dashboardDisplay: DashboardDisplay;
+    dashboardSort: DashboardSort;
+    dashboardColumns: DashboardColumns;
+    dashboardDensity: DashboardDensity;
     temperatureUnit: string;
     fileSizeSIUnits: boolean;
     poweredOnHoursUnit: string;
@@ -206,6 +210,8 @@ export class DashboardSettingsComponent implements OnInit {
             // Store the config
             this.dashboardDisplay = config.dashboard_display;
             this.dashboardSort = config.dashboard_sort;
+            this.dashboardColumns = config.dashboard_columns;
+            this.dashboardDensity = config.dashboard_density;
             this.temperatureUnit = config.temperature_unit;
             this.fileSizeSIUnits = config.file_size_si_units;
             this.poweredOnHoursUnit = config.powered_on_hours_unit;
@@ -432,33 +438,10 @@ export class DashboardSettingsComponent implements OnInit {
 
     buildAppriseUrl(): string {
         switch (this.selectedAppriseService) {
-            case 'custom': {
-                const rawUrl = this.newAppriseUrlRaw.trim();
-                if (!rawUrl) {
-                    return '';
-                }
-                return rawUrl.startsWith('apprise+') ? rawUrl : `apprise+${rawUrl}`;
-            }
-            case 'email': {
-                if (!this.smtpHost || !this.smtpFrom || !this.smtpTo) {
-                    return '';
-                }
-                const fromDomain = this.smtpFrom.includes('@') ? this.smtpFrom.split('@').pop() : '';
-                const domain = fromDomain || this.smtpHost;
-                const scheme = this.smtpPort === '25' ? 'mailto' : 'mailtos';
-                const params = new URLSearchParams();
-                params.set('smtp', this.smtpHost);
-                params.set('from', this.smtpFrom);
-                params.set('to', this.smtpTo);
-                if (this.smtpUsername) {
-                    params.set('user', this.smtpUsername);
-                }
-                if (this.smtpPassword) {
-                    params.set('pass', this.smtpPassword);
-                }
-                const port = this.smtpPort ? `:${this.smtpPort}` : '';
-                return `apprise+${scheme}://${domain}${port}?${params.toString()}`;
-            }
+            case 'custom':
+                return this.buildCustomAppriseUrl();
+            case 'email':
+                return this.buildEmailAppriseUrl();
             case 'discord':
                 return this.discordWebhookUrl.trim() ? `apprise+${this.discordWebhookUrl.trim()}` : '';
             case 'slack':
@@ -468,6 +451,35 @@ export class DashboardSettingsComponent implements OnInit {
             default:
                 return '';
         }
+    }
+
+    private buildCustomAppriseUrl(): string {
+        const rawUrl = this.newAppriseUrlRaw.trim();
+        if (!rawUrl) {
+            return '';
+        }
+        return rawUrl.startsWith('apprise+') ? rawUrl : `apprise+${rawUrl}`;
+    }
+
+    private buildEmailAppriseUrl(): string {
+        if (!this.smtpHost || !this.smtpFrom || !this.smtpTo) {
+            return '';
+        }
+        const fromDomain = this.smtpFrom.includes('@') ? this.smtpFrom.split('@').pop() : '';
+        const domain = fromDomain || this.smtpHost;
+        const scheme = this.smtpPort === '25' ? 'mailto' : 'mailtos';
+        const params = new URLSearchParams();
+        params.set('smtp', this.smtpHost);
+        params.set('from', this.smtpFrom);
+        params.set('to', this.smtpTo);
+        if (this.smtpUsername) {
+            params.set('user', this.smtpUsername);
+        }
+        if (this.smtpPassword) {
+            params.set('pass', this.smtpPassword);
+        }
+        const port = this.smtpPort ? `:${this.smtpPort}` : '';
+        return `apprise+${scheme}://${domain}${port}?${params.toString()}`;
     }
 
     buildNotifyUrl(): string {
@@ -521,6 +533,8 @@ export class DashboardSettingsComponent implements OnInit {
             },
             dashboard_display: this.dashboardDisplay as DashboardDisplay,
             dashboard_sort: this.dashboardSort as DashboardSort,
+            dashboard_columns: this.dashboardColumns as DashboardColumns,
+            dashboard_density: this.dashboardDensity as DashboardDensity,
             temperature_unit: this.temperatureUnit as TemperatureUnit,
             time_format: this.timeFormat as TimeFormat,
             file_size_si_units: this.fileSizeSIUnits,

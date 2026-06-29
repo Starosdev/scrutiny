@@ -45,10 +45,12 @@ type Settings struct {
 	Layout             string `json:"layout" mapstructure:"layout"`
 	DashboardDisplay   string `json:"dashboard_display" mapstructure:"dashboard_display"`
 	DashboardSort      string `json:"dashboard_sort" mapstructure:"dashboard_sort"`
+	DashboardDensity   string `json:"dashboard_density" mapstructure:"dashboard_density"`
 	TemperatureUnit    string `json:"temperature_unit" mapstructure:"temperature_unit"`
 	LineStroke         string `json:"line_stroke" mapstructure:"line_stroke"`
 	PoweredOnHoursUnit string `json:"powered_on_hours_unit" mapstructure:"powered_on_hours_unit"`
 	TimeFormat         string `json:"time_format" mapstructure:"time_format"`
+	DashboardColumns   int    `json:"dashboard_columns" mapstructure:"dashboard_columns"`
 	FileSizeSIUnits    bool   `json:"file_size_si_units" mapstructure:"file_size_si_units"`
 	Collector          struct {
 		RetrieveSCTHistory bool `json:"retrieve_sct_temperature_history" mapstructure:"retrieve_sct_temperature_history"`
@@ -94,10 +96,12 @@ func (s *Settings) ApplyDefaults() {
 	defaultStr(&s.Layout, "material")
 	defaultStr(&s.DashboardDisplay, "name")
 	defaultStr(&s.DashboardSort, "status")
+	defaultStr(&s.DashboardDensity, "comfortable")
 	defaultStr(&s.TemperatureUnit, "celsius")
 	defaultStr(&s.LineStroke, "smooth")
 	defaultStr(&s.PoweredOnHoursUnit, "humanize")
 	defaultStr(&s.TimeFormat, "24")
+	defaultInt(&s.DashboardColumns, 2)
 
 	// Metrics: numeric fields where 0 is not a valid value.
 	// Note: StatusFilterAttributes defaults to 0 (All), which is the zero value, so no check needed.

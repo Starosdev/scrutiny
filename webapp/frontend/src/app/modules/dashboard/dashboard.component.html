@@ -1,6 +1,6 @@
 @if (summaryData) {
 <div>
-    <div class="flex flex-col flex-auto w-full p-8 xs:p-2">
+    <div class="dashboard-page flex flex-col flex-auto w-full p-8 xs:p-2" [class.dashboard-page--compact]="isCompactDashboard()">
         <div class="flex flex-wrap w-full">
             <!-- Header -->
             <div class="flex items-center justify-between w-full my-4 px-4 xs:pr-0">
@@ -88,12 +88,13 @@
                 </div>
                 }
 
-                <div class="flex flex-wrap w-full">
+                <div class="dashboard-device-grid" [class.dashboard-device-grid--compact]="isCompactDashboard()" [ngClass]="dashboardGridClass()">
                     @for ( deviceSummary of ( deviceSummariesForHostGroup(hostId.value) | deviceSort:config.dashboard_sort:config.dashboard_display ); track deviceSummary ) { @if
                     (showArchived ? $any(deviceSummary).device.archived : !$any(deviceSummary).device.archived) {
                     <app-dashboard-device
-                        class="flex gt-sm:w-1/2 min-w-80 p-4"
+                        class="dashboard-device-grid__item"
                         [deviceSummary]="deviceSummary"
+                        [compact]="isCompactDashboard()"
                         (deviceArchived)="onDeviceArchived($event)"
                         (deviceUnarchived)="onDeviceUnarchived($event)"
                         (deviceDeleted)="onDeviceDeleted($event)"
@@ -151,8 +152,7 @@
                                 <div class="text-xs">Array Size</div>
                                 <div class="text-xs font-medium">{{ array.array_size | fileSize : config?.file_size_si_units }}</div>
                             </div>
-                            }
-                            @if (array.used_bytes !== undefined && array.used_bytes !== null) {
+                            } @if (array.used_bytes !== undefined && array.used_bytes !== null) {
                             <div class="flex items-center justify-between mt-1 text-secondary">
                                 <div class="text-xs">Used</div>
                                 <div class="text-xs font-medium">{{ array.used_bytes | fileSize : config?.file_size_si_units }}</div>

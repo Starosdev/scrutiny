@@ -5,6 +5,59 @@ example {
 
 }
 
+.dashboard-page.dashboard-page--compact {
+    padding: 1rem;
+
+    @media (max-width: 599px) {
+        padding: 0.5rem;
+    }
+}
+
+.dashboard-device-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    width: 100%;
+}
+
+.dashboard-device-grid--compact {
+    gap: 0.5rem;
+}
+
+.dashboard-device-grid__item {
+    min-width: 0;
+}
+
+@media (min-width: 960px) {
+    .dashboard-device-grid--cols-2,
+    .dashboard-device-grid--cols-3,
+    .dashboard-device-grid--cols-4,
+    .dashboard-device-grid--cols-5 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1280px) {
+    .dashboard-device-grid--cols-3,
+    .dashboard-device-grid--cols-4,
+    .dashboard-device-grid--cols-5 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1440px) {
+    .dashboard-device-grid--cols-4,
+    .dashboard-device-grid--cols-5 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1920px) {
+    .dashboard-device-grid--cols-5 {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+
 // -----------------------------------------------------------------------------------------------------
 // @ Theming
 // -----------------------------------------------------------------------------------------------------

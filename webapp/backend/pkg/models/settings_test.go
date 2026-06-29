@@ -15,9 +15,11 @@ func TestApplyDefaults_AllZeroValues(t *testing.T) {
 	require.Equal(t, "material", s.Layout)
 	require.Equal(t, "name", s.DashboardDisplay)
 	require.Equal(t, "status", s.DashboardSort)
+	require.Equal(t, "comfortable", s.DashboardDensity)
 	require.Equal(t, "celsius", s.TemperatureUnit)
 	require.Equal(t, "smooth", s.LineStroke)
 	require.Equal(t, "humanize", s.PoweredOnHoursUnit)
+	require.Equal(t, 2, s.DashboardColumns)
 
 	// Metrics numeric defaults
 	require.Equal(t, 2, s.Metrics.NotifyLevel)
@@ -57,9 +59,11 @@ func TestApplyDefaults_PreservesExistingValues(t *testing.T) {
 		Layout:             "empty",
 		DashboardDisplay:   "serial_id",
 		DashboardSort:      "title",
+		DashboardDensity:   "compact",
 		TemperatureUnit:    "fahrenheit",
 		LineStroke:         "straight",
 		PoweredOnHoursUnit: "device_hours",
+		DashboardColumns:   4,
 	}
 	s.Metrics.NotifyLevel = 1
 	s.Metrics.StatusThreshold = 1
@@ -80,9 +84,11 @@ func TestApplyDefaults_PreservesExistingValues(t *testing.T) {
 	require.Equal(t, "empty", s.Layout)
 	require.Equal(t, "serial_id", s.DashboardDisplay)
 	require.Equal(t, "title", s.DashboardSort)
+	require.Equal(t, "compact", s.DashboardDensity)
 	require.Equal(t, "fahrenheit", s.TemperatureUnit)
 	require.Equal(t, "straight", s.LineStroke)
 	require.Equal(t, "device_hours", s.PoweredOnHoursUnit)
+	require.Equal(t, 4, s.DashboardColumns)
 	require.Equal(t, 1, s.Metrics.NotifyLevel)
 	require.Equal(t, 1, s.Metrics.StatusThreshold)
 	require.Equal(t, 30, s.Metrics.MissedPingTimeoutMinutes)
@@ -106,9 +112,11 @@ func TestApplyDefaults_PartiallyPopulated(t *testing.T) {
 
 	s.ApplyDefaults()
 
-	require.Equal(t, "dark", s.Theme)              // preserved
-	require.Equal(t, "material", s.Layout)         // defaulted
-	require.Equal(t, "name", s.DashboardDisplay)   // defaulted
+	require.Equal(t, "dark", s.Theme)            // preserved
+	require.Equal(t, "material", s.Layout)       // defaulted
+	require.Equal(t, "name", s.DashboardDisplay) // defaulted
+	require.Equal(t, "comfortable", s.DashboardDensity)
 	require.Equal(t, 1, s.Metrics.NotifyLevel)     // preserved
 	require.Equal(t, 3, s.Metrics.StatusThreshold) // defaulted
+	require.Equal(t, 2, s.DashboardColumns)
 }

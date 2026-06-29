@@ -4,6 +4,8 @@ export const settings = {
         layout: 'material',
         dashboard_display: 'name',
         dashboard_sort: 'status',
+        dashboard_columns: 2,
+        dashboard_density: 'comfortable',
         temperature_unit: 'celsius',
         file_size_si_units: false,
         powered_on_hours_unit: 'humanize',

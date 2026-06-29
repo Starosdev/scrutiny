@@ -79,25 +79,35 @@ func (sr *scrutinyRepository) reconcileLegacyDeviceIdentity(tx *gorm.DB, incomin
 		return nil
 	}
 
-	var canonical *models.Device
-	legacyCandidates := make([]models.Device, 0, len(sameWWN))
-	for i := range sameWWN {
-		existing := sameWWN[i]
-		if existing.DeviceID == incoming.DeviceID {
-			canonical = &sameWWN[i]
-			continue
-		}
-		if isLegacyIdentityCandidate(&sameWWN[i], incoming) {
-			legacyCandidates = append(legacyCandidates, existing)
-		}
-	}
-
+	canonical, legacyCandidates := matchLegacyDeviceCandidates(sameWWN, incoming)
 	if len(legacyCandidates) != 1 {
 		return nil
 	}
 
-	legacy := legacyCandidates[0]
+	return sr.mergeLegacyDevice(tx, canonical, &legacyCandidates[0], incoming)
+}
 
+// matchLegacyDeviceCandidates partitions devices sharing the incoming WWN into the canonical row
+// (same DeviceID) and the legacy-identity candidates eligible for reconciliation.
+func matchLegacyDeviceCandidates(sameWWN []models.Device, incoming *models.Device) (*models.Device, []models.Device) {
+	var canonical *models.Device
+	legacyCandidates := make([]models.Device, 0, len(sameWWN))
+	for i := range sameWWN {
+		if sameWWN[i].DeviceID == incoming.DeviceID {
+			canonical = &sameWWN[i]
+			continue
+		}
+		if isLegacyIdentityCandidate(&sameWWN[i], incoming) {
+			legacyCandidates = append(legacyCandidates, sameWWN[i])
+		}
+	}
+	return canonical, legacyCandidates
+}
+
+// mergeLegacyDevice reconciles a single legacy device row against the incoming identity: when a
+// canonical row exists the legacy row is deleted (preserving the earlier created_at), otherwise the
+// legacy row is re-keyed to the incoming DeviceID.
+func (sr *scrutinyRepository) mergeLegacyDevice(tx *gorm.DB, canonical, legacy, incoming *models.Device) error {
 	if canonical != nil {
 		if legacy.CreatedAt.Before(canonical.CreatedAt) {
 			if err := tx.Model(&models.Device{}).

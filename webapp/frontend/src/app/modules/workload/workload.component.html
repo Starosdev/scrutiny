@@ -39,11 +39,9 @@
             <!-- Mobile: Card layout -->
             @if (isMobile) {
             <div class="w-full px-4">
-                @for (group of hostGroups | keyvalue; track group) {
-                @if (group.key) {
+                @for (group of hostGroups | keyvalue; track group) { @if (group.key) {
                 <h3 class="mb-2 mt-4">{{ group.key }}</h3>
-                }
-                @for (row of group.value; track row.device_id) {
+                } @for (row of group.value; track row.device_id) {
                 <div class="workload-card bg-card shadow rounded-lg mb-3 p-4 cursor-pointer" (click)="navigateToDevice(row.device_id)">
                     <div class="flex items-center justify-between mb-3">
                         <span class="font-semibold text-sm truncate">{{ getDeviceDisplayTitle(row) }}</span>
@@ -98,15 +96,13 @@
                     </div>
                     }
                 </div>
-                }
-                }
+                } }
             </div>
             } @else {
 
             <!-- Desktop: Device table grouped by host -->
             <div class="w-full px-4">
-                @for (group of hostGroups | keyvalue; track group) {
-                @if (group.key) {
+                @for (group of hostGroups | keyvalue; track group) { @if (group.key) {
                 <h3 class="mb-2 mt-4">{{ group.key }}</h3>
                 }
                 <div class="mat-elevation-z2 rounded-lg overflow-hidden scrutiny-dark-table mb-6">
