@@ -203,7 +203,7 @@ func TestParseConsumerDriveProfilesRejectsConflictingDuplicateAlias(t *testing.T
 		],
 		"aliases":{"Model A":"Family A","Model_A":"Family B"}
 	}`
-	_, _, _, err := parseConsumerDriveProfiles([]byte(invalidJSON))
+	_, err := parseConsumerDriveProfiles([]byte(invalidJSON))
 	if err == nil || !strings.Contains(err.Error(), "duplicate model alias") {
 		t.Fatalf("expected duplicate alias error, got %v", err)
 	}
@@ -214,7 +214,7 @@ func TestParseConsumerDriveProfilesRejectsUnknownFamilyAlias(t *testing.T) {
 		"profiles":[{"protocol":"ATA","source":"test","model_family":"Family A","sample_count":25}],
 		"aliases":{"Model A":"Missing Family"}
 	}`
-	_, _, _, err := parseConsumerDriveProfiles([]byte(invalidJSON))
+	_, err := parseConsumerDriveProfiles([]byte(invalidJSON))
 	if err == nil || !strings.Contains(err.Error(), "unknown family") {
 		t.Fatalf("expected unknown family alias error, got %v", err)
 	}
