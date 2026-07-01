@@ -60,34 +60,48 @@ func run(catalogPath, fixturesPath string, write, strict bool) error {
 
 	// Expected-match fixtures.
 	if fixturesPath != "" {
-		if err := runFixtures(handle, fixturesPath); err != nil {
-			return err
+		if fixturesErr := runFixtures(handle, fixturesPath); fixturesErr != nil {
+			return fixturesErr
 		}
 	}
 
 	// Canonical form check / rewrite.
-	canonical, err := thresholds.CanonicalizeConsumerDriveProfileCatalog(data)
-	if err != nil {
-		return fmt.Errorf("canonicalize catalog: %w", err)
-	}
-	if write {
-		if !bytes.Equal(canonical, data) {
-			if err := os.WriteFile(catalogPath, canonical, 0644); err != nil {
-				return fmt.Errorf("write canonical catalog: %w", err)
-			}
-			fmt.Printf("OK: rewrote %s in canonical form\n", catalogPath)
-		} else {
-			fmt.Println("OK: catalog already in canonical form")
-		}
-	} else if !bytes.Equal(canonical, data) {
-		fmt.Println("WARN: catalog is not in canonical form; run with -write to normalize it")
-		if strict {
-			return fmt.Errorf("catalog is not in canonical form")
-		}
+	if canonicalErr := checkCanonicalForm(catalogPath, data, write, strict); canonicalErr != nil {
+		return canonicalErr
 	}
 
 	if strict && len(lintResult.Warnings) > 0 {
 		return fmt.Errorf("%d lint warning(s) in strict mode", len(lintResult.Warnings))
+	}
+	return nil
+}
+
+// checkCanonicalForm compares the catalog against its canonical byte form and
+// either rewrites it (write) or reports drift (failing in strict mode).
+func checkCanonicalForm(catalogPath string, data []byte, write, strict bool) error {
+	canonical, err := thresholds.CanonicalizeConsumerDriveProfileCatalog(data)
+	if err != nil {
+		return fmt.Errorf("canonicalize catalog: %w", err)
+	}
+
+	if bytes.Equal(canonical, data) {
+		if write {
+			fmt.Println("OK: catalog already in canonical form")
+		}
+		return nil
+	}
+
+	if write {
+		if writeErr := os.WriteFile(catalogPath, canonical, 0600); writeErr != nil {
+			return fmt.Errorf("write canonical catalog: %w", writeErr)
+		}
+		fmt.Printf("OK: rewrote %s in canonical form\n", catalogPath)
+		return nil
+	}
+
+	fmt.Println("WARN: catalog is not in canonical form; run with -write to normalize it")
+	if strict {
+		return fmt.Errorf("catalog is not in canonical form")
 	}
 	return nil
 }

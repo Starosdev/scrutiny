@@ -77,14 +77,14 @@ type ConsumerDriveProfileMatch struct {
 	// MatchedValue is the input value (family or model name) that matched.
 	MatchedValue string
 
-	// Applied reports whether the profile should be used for scoring.
-	Applied bool
-
 	// SkipReason explains why a matched profile was not applied. Empty when Applied.
 	SkipReason string
 
 	// CatalogVersion is the version string of the bundled catalog.
 	CatalogVersion string
+
+	// Applied reports whether the profile should be used for scoring.
+	Applied bool
 }
 
 func (p *ConsumerDriveProfile) MeetsConfidenceThreshold() bool {

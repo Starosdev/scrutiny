@@ -16,17 +16,17 @@ type ConsumerDriveProfileFixture struct {
 	ModelFamily string `json:"model_family,omitempty"`
 	ModelName   string `json:"model_name,omitempty"`
 
-	// ExpectMatched is true when the catalog should recognize the drive.
-	ExpectMatched bool `json:"expect_matched"`
-
-	// ExpectApplied is true when the matched profile should actually be used.
-	ExpectApplied bool `json:"expect_applied"`
-
 	// ExpectFamily is the catalog family the drive must resolve to (when matched).
 	ExpectFamily string `json:"expect_family,omitempty"`
 
 	// ExpectMethod is the required match method (when matched).
 	ExpectMethod string `json:"expect_method,omitempty"`
+
+	// ExpectMatched is true when the catalog should recognize the drive.
+	ExpectMatched bool `json:"expect_matched"`
+
+	// ExpectApplied is true when the matched profile should actually be used.
+	ExpectApplied bool `json:"expect_applied"`
 }
 
 // CheckConsumerDriveProfileFixtures runs every fixture against the catalog and
@@ -44,12 +44,12 @@ func CheckConsumerDriveProfileFixtures(handle *ConsumerDriveCatalogHandle, fixtu
 		if label == "" {
 			label = fmt.Sprintf("fixture #%d (family=%q model=%q)", i, fixture.ModelFamily, fixture.ModelName)
 		}
-		failures = append(failures, checkConsumerDriveProfileFixture(handle, fixture, label)...)
+		failures = append(failures, checkConsumerDriveProfileFixture(handle, &fixtures[i], label)...)
 	}
 	return failures, nil
 }
 
-func checkConsumerDriveProfileFixture(handle *ConsumerDriveCatalogHandle, fixture ConsumerDriveProfileFixture, label string) []string {
+func checkConsumerDriveProfileFixture(handle *ConsumerDriveCatalogHandle, fixture *ConsumerDriveProfileFixture, label string) []string {
 	match := handle.Match(fixture.Protocol, fixture.ModelFamily, fixture.ModelName, nil)
 
 	if !fixture.ExpectMatched {
@@ -90,6 +90,7 @@ func CanonicalizeConsumerDriveProfileCatalog(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("unmarshal consumer drive profiles: %w", err)
 	}
 
+	//nolint:govet // field order defines the canonical JSON layout of the catalog file
 	ordered := struct {
 		Version  string                 `json:"version,omitempty"`
 		Profiles []ConsumerDriveProfile `json:"profiles"`

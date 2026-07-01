@@ -18,22 +18,8 @@ type DriveProfileInspection struct {
 	// ModelName is the model name used for matching.
 	ModelName string `json:"model_name,omitempty"`
 
-	// ProfilesEnabled reports the global consumer drive profiles toggle.
-	ProfilesEnabled bool `json:"profiles_enabled"`
-
-	// Denylist echoes the normalized family keys currently denylisted in settings.
-	Denylist []string `json:"denylist,omitempty"`
-
 	// CatalogVersion is the version of the bundled profile catalog.
 	CatalogVersion string `json:"catalog_version,omitempty"`
-
-	// Matched reports whether the catalog recognized this drive at all,
-	// regardless of whether the profile was applied.
-	Matched bool `json:"matched"`
-
-	// Applied reports whether the matched profile is actually used for SMART
-	// status evaluation and replacement-risk scoring.
-	Applied bool `json:"applied"`
 
 	// MatchMethod is the lookup stage that matched: "model_family",
 	// "model_name", "model_name_normalized", or "model_pattern".
@@ -51,14 +37,12 @@ type DriveProfileInspection struct {
 	// ProfileSource is the provenance string of the matched profile.
 	ProfileSource string `json:"profile_source,omitempty"`
 
-	// SampleCount is the sample size behind the matched profile.
-	SampleCount int `json:"sample_count,omitempty"`
+	// FallbackReason explains, in plain language, why generic ATA rules are in
+	// effect. Empty when a profile is applied.
+	FallbackReason string `json:"fallback_reason,omitempty"`
 
-	// MinSamples is the confidence gate the matched profile must satisfy.
-	MinSamples int `json:"min_samples,omitempty"`
-
-	// ConfidenceMet reports whether the matched profile passes its confidence gate.
-	ConfidenceMet bool `json:"confidence_met"`
+	// Denylist echoes the normalized family keys currently denylisted in settings.
+	Denylist []string `json:"denylist,omitempty"`
 
 	// ObservedThresholdAttributes lists ATA attribute IDs whose observed-threshold
 	// buckets are overridden by the matched profile during SMART status evaluation.
@@ -68,9 +52,25 @@ type DriveProfileInspection struct {
 	// breakpoints are overridden by the matched profile during replacement-risk scoring.
 	CounterSeverityAttributes []string `json:"counter_severity_attributes,omitempty"`
 
-	// FallbackReason explains, in plain language, why generic ATA rules are in
-	// effect. Empty when a profile is applied.
-	FallbackReason string `json:"fallback_reason,omitempty"`
+	// SampleCount is the sample size behind the matched profile.
+	SampleCount int `json:"sample_count,omitempty"`
+
+	// MinSamples is the confidence gate the matched profile must satisfy.
+	MinSamples int `json:"min_samples,omitempty"`
+
+	// ProfilesEnabled reports the global consumer drive profiles toggle.
+	ProfilesEnabled bool `json:"profiles_enabled"`
+
+	// Matched reports whether the catalog recognized this drive at all,
+	// regardless of whether the profile was applied.
+	Matched bool `json:"matched"`
+
+	// Applied reports whether the matched profile is actually used for SMART
+	// status evaluation and replacement-risk scoring.
+	Applied bool `json:"applied"`
+
+	// ConfidenceMet reports whether the matched profile passes its confidence gate.
+	ConfidenceMet bool `json:"confidence_met"`
 }
 
 // DriveProfileInspectionResponse is the API response envelope for the

@@ -59,11 +59,12 @@ func GetDeviceDriveProfile(c *gin.Context) {
 // on the inspection from a catalog match result.
 func populateDriveProfileMatch(inspection *models.DriveProfileInspection, match *thresholds.ConsumerDriveProfileMatch, profilesEnabled bool) {
 	if match == nil {
-		if inspection.DeviceProtocol != pkg.DeviceProtocolAta {
+		switch {
+		case inspection.DeviceProtocol != pkg.DeviceProtocolAta:
 			inspection.FallbackReason = "Device protocol is not ATA; consumer drive profiles apply to ATA drives only."
-		} else if !profilesEnabled {
+		case !profilesEnabled:
 			inspection.FallbackReason = "Consumer drive profiles are disabled globally in Settings."
-		} else {
+		default:
 			inspection.FallbackReason = "No profile in the bundled catalog matched this drive's model family or model name."
 		}
 		return
