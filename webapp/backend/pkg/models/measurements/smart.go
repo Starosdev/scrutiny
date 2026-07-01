@@ -256,10 +256,7 @@ func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn s
 
 // generate SmartAtaAttribute entries from Scrutiny Collector Smart data.
 func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, modelFamily string, modelName string, tableItems []collector.AtaSmartAttributesTableItem) {
-	var profile *thresholds.ConsumerDriveProfile
-	if consumerDriveProfilesEnabled(cfg) {
-		profile, _ = thresholds.LookupConsumerDriveProfile(pkg.DeviceProtocolAta, modelFamily, modelName)
-	}
+	profile := consumerDriveProfileForDevice(cfg, modelFamily, modelName)
 	for _, collectorAttr := range tableItems {
 		attrModel := SmartAtaAttribute{
 			AttributeId: collectorAttr.ID,
@@ -475,10 +472,7 @@ func (sm *Smart) ProcessScsiSmartInfo(cfg config.Interface, defectGrownList int6
 
 // processAtaSmartInfoWithOverrides generates SmartAtaAttribute entries using pre-merged overrides.
 func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, modelFamily string, modelName string, tableItems []collector.AtaSmartAttributesTableItem, mergedOverrides []overrides.AttributeOverride) {
-	var profile *thresholds.ConsumerDriveProfile
-	if consumerDriveProfilesEnabled(cfg) {
-		profile, _ = thresholds.LookupConsumerDriveProfile(pkg.DeviceProtocolAta, modelFamily, modelName)
-	}
+	profile := consumerDriveProfileForDevice(cfg, modelFamily, modelName)
 	for _, collectorAttr := range tableItems {
 		attrModel := SmartAtaAttribute{
 			AttributeId: collectorAttr.ID,
@@ -528,6 +522,24 @@ func consumerDriveProfilesEnabled(cfg config.Interface) bool {
 		return true
 	}
 	return cfg.GetBool(key)
+}
+
+// consumerDriveProfileForDevice resolves the applied consumer drive profile for
+// an ATA device, honoring the global toggle and the per-family denylist.
+func consumerDriveProfileForDevice(cfg config.Interface, modelFamily string, modelName string) *thresholds.ConsumerDriveProfile {
+	if !consumerDriveProfilesEnabled(cfg) {
+		return nil
+	}
+	var denied map[string]struct{}
+	if cfg != nil {
+		denied = thresholds.ParseConsumerDriveProfileDenylist(
+			cfg.GetString(config.DB_USER_SETTINGS_SUBKEY + ".metrics.consumer_drive_profiles_denylist"))
+	}
+	match := thresholds.MatchConsumerDriveProfile(pkg.DeviceProtocolAta, modelFamily, modelName, denied)
+	if match == nil || !match.Applied {
+		return nil
+	}
+	return match.Profile
 }
 
 // processAtaDeviceStatisticsWithOverrides extracts device statistics using pre-merged overrides.
