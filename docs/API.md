@@ -43,6 +43,7 @@ See [AUTH.md](./AUTH.md) for configuration and deployment details.
 - Some collector payloads are intentionally documented as structured objects with representative fields because the backend accepts large collector-origin JSON models.
 - `GET /api/device/{id}/selftest` returns ATA SMART self-test history already recorded during normal SMART uploads. The separate `POST /api/device/{id}/selftest` route remains reserved for future ingestion work.
 - Notification URL endpoints cover existing Shoutrrr syntax, explicit `apprise+...` targets, `script://` targets, and raw `http(s)` webhooks.
-- The replacement-risk endpoint includes ATA-specific metadata describing whether a bundled consumer-drive profile was enabled and applied for that score.
+- The replacement-risk endpoint includes ATA-specific metadata describing whether a bundled consumer-drive profile was enabled and applied for that score, plus provenance fields (source, sample count, match method, catalog version) when a profile is applied.
+- `GET /api/device/{id}/drive-profile` is a debug surface reporting the full consumer-drive profile match path: match method, confidence gate result, applied overrides, and fallback reason.
 - For operator-facing behavior and the global opt-out setting, see [CONSUMER_DRIVE_PROFILES.md](./CONSUMER_DRIVE_PROFILES.md).
 - If a route is added or changed in `server.go`, update `openapi.yaml` in the same change.
