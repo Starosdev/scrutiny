@@ -182,6 +182,18 @@
             </mat-form-field>
         </div>
 
+        @if (consumerDriveProfilesEnabled) {
+        <div class="flex flex-col mt-5 gt-md:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Consumer Drive Profile Denylist</mat-label>
+                <input matInput [(ngModel)]="consumerDriveProfilesDenylist" placeholder="e.g. Seagate Barracuda 7200.14 (AF), Crucial MX500" />
+                <mat-hint>
+                    Comma-separated profile families that should never be applied. Matching drives fall back to generic ATA rules. Leave empty to allow all vetted profiles.
+                </mat-hint>
+            </mat-form-field>
+        </div>
+        }
+
         <!-- Collector Error Notifications -->
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">

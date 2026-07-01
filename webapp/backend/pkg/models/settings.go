@@ -28,6 +28,7 @@ type Settings struct {
 		ReportWeeklyDay               int    `json:"report_weekly_day" mapstructure:"report_weekly_day"`
 		MissedPingTimeoutMinutes      int    `json:"missed_ping_timeout_minutes" mapstructure:"missed_ping_timeout_minutes"`
 		UptimeKumaIntervalSeconds     int    `json:"uptime_kuma_interval_seconds" mapstructure:"uptime_kuma_interval_seconds"`
+		ConsumerDriveProfilesDenylist string `json:"consumer_drive_profiles_denylist" mapstructure:"consumer_drive_profiles_denylist"`
 		ReportEnabled                 bool   `json:"report_enabled" mapstructure:"report_enabled"`
 		ReportDailyEnabled            bool   `json:"report_daily_enabled" mapstructure:"report_daily_enabled"`
 		ConsumerDriveProfilesEnabled  bool   `json:"consumer_drive_profiles_enabled" mapstructure:"consumer_drive_profiles_enabled"`

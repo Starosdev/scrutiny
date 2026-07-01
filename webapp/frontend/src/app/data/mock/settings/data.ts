@@ -17,6 +17,7 @@ export const settings = {
             status_threshold: 3,
             repeat_notifications: true,
             consumer_drive_profiles_enabled: true,
+            consumer_drive_profiles_denylist: '',
         },
     },
 };

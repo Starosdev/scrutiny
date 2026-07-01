@@ -609,6 +609,10 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				return tx.Create(&defaultSettings).Error
 			},
 		},
+		{
+			ID:      "m20260701000000", // add consumer drive profile family denylist setting (#552)
+			Migrate: sr.migrateM20260701000000,
+		},
 	})
 
 	if err := m.Migrate(); err != nil {
@@ -1539,4 +1543,23 @@ func buildLegacyScsiErrorLog(preSmartResult *m20201107210306.Smart) (int64, coll
 		}
 	}
 	return postScsiGrownDefectList, postScsiErrorCounterLog
+}
+
+// migrateM20260701000000 seeds the consumer drive profile family denylist setting (#552).
+func (sr *scrutinyRepository) migrateM20260701000000(tx *gorm.DB) error {
+	var count int64
+	if err := tx.Model(&m20220716214900.Setting{}).Where("setting_key_name = ?", "metrics.consumer_drive_profiles_denylist").Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
+
+	defaultSetting := m20220716214900.Setting{
+		SettingKeyName:        "metrics.consumer_drive_profiles_denylist",
+		SettingKeyDescription: "Comma-separated consumer drive profile families excluded from profile matching (empty = none)",
+		SettingDataType:       "string",
+		SettingValueString:    "",
+	}
+	return tx.Create(&defaultSetting).Error
 }
