@@ -147,6 +147,7 @@ export interface AppConfig {
         report_enabled?: boolean;
         report_daily_enabled?: boolean;
         consumer_drive_profiles_enabled?: boolean;
+        consumer_drive_profiles_denylist?: string;
         report_daily_time?: string;
         report_weekly_enabled?: boolean;
         report_weekly_day?: number;
@@ -226,6 +227,7 @@ export const appConfig: AppConfig = {
         report_enabled: false,
         report_daily_enabled: false,
         consumer_drive_profiles_enabled: true,
+        consumer_drive_profiles_denylist: '',
         report_daily_time: '08:00',
         report_weekly_enabled: false,
         report_weekly_day: 1,

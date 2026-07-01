@@ -140,6 +140,7 @@ export class DashboardSettingsComponent implements OnInit {
     reportEnabled: boolean;
     reportDailyEnabled: boolean;
     consumerDriveProfilesEnabled: boolean;
+    consumerDriveProfilesDenylist: string;
     reportDailyTime: string;
     reportWeeklyEnabled: boolean;
     reportWeeklyDay: number;
@@ -261,6 +262,7 @@ export class DashboardSettingsComponent implements OnInit {
             this.reportEnabled = config.metrics.report_enabled ?? false;
             this.reportDailyEnabled = config.metrics.report_daily_enabled ?? false;
             this.consumerDriveProfilesEnabled = config.metrics.consumer_drive_profiles_enabled ?? true;
+            this.consumerDriveProfilesDenylist = config.metrics.consumer_drive_profiles_denylist ?? '';
             this.reportDailyTime = config.metrics.report_daily_time ?? '08:00';
             this.reportWeeklyEnabled = config.metrics.report_weekly_enabled ?? false;
             this.reportWeeklyDay = config.metrics.report_weekly_day ?? 1;
@@ -565,6 +567,7 @@ export class DashboardSettingsComponent implements OnInit {
                 report_enabled: this.reportEnabled,
                 report_daily_enabled: this.reportDailyEnabled,
                 consumer_drive_profiles_enabled: this.consumerDriveProfilesEnabled,
+                consumer_drive_profiles_denylist: this.consumerDriveProfilesDenylist?.trim() ?? '',
                 report_daily_time: this.reportDailyTime,
                 report_weekly_enabled: this.reportWeeklyEnabled,
                 report_weekly_day: this.reportWeeklyDay,
