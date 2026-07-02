@@ -28,7 +28,7 @@ jobs:
       new_release_version: ${{ steps.semantic.outputs.new_release_version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -155,7 +155,7 @@ jobs:
           - { on: windows-latest, goos: windows, goarch: arm64 }
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: v${{ needs.release.outputs.new_release_version }}
       # Build from the published release tag so the binaries embed the same
