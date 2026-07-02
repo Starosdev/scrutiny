@@ -115,6 +115,23 @@ type ReplacementRiskScore struct {
 
 	// ConsumerDriveProfileFamily is the matched profile family when ConsumerDriveProfileApplied is true.
 	ConsumerDriveProfileFamily string `json:"consumer_drive_profile_family,omitempty"`
+
+	// ConsumerDriveProfileSource is the provenance string of the applied profile
+	// (curated dataset description). Omitted when generic ATA logic is used.
+	ConsumerDriveProfileSource string `json:"consumer_drive_profile_source,omitempty"`
+
+	// ConsumerDriveProfileSampleCount is the sample size behind the applied profile.
+	// Omitted when generic ATA logic is used.
+	ConsumerDriveProfileSampleCount int `json:"consumer_drive_profile_sample_count,omitempty"`
+
+	// ConsumerDriveProfileMatchMethod reports which lookup stage matched the drive:
+	// "model_family", "model_name", "model_name_normalized", or "model_pattern".
+	// Omitted when generic ATA logic is used.
+	ConsumerDriveProfileMatchMethod string `json:"consumer_drive_profile_match_method,omitempty"`
+
+	// ConsumerDriveProfileCatalogVersion is the bundled catalog version the applied
+	// profile came from. Omitted when generic ATA logic is used.
+	ConsumerDriveProfileCatalogVersion string `json:"consumer_drive_profile_catalog_version,omitempty"`
 }
 
 // ReplacementRiskResponse is the API response envelope for the

@@ -153,6 +153,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.POST("/device/:id/performance", handler.UploadDevicePerformance)               // used by Collector to upload performance benchmarks
 			api.GET("/device/:id/performance", handler.GetDevicePerformance)                   // used by UI to view performance history
 			api.GET("/device/:id/replacement-risk", handler.GetDeviceReplacementRisk)          // used by UI to display drive replacement prediction
+			api.GET("/device/:id/drive-profile", handler.GetDeviceDriveProfile)                // debug/inspection surface for consumer drive profile matching
 			api.POST("/device/:id/collector-error", handler.UploadCollectorError)              // used by Collector to report smartctl errors
 			api.POST("/collector/scan-error", handler.UploadCollectorScanError)                // used by Collector to report scan-level errors (no device context)
 

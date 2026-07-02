@@ -75,9 +75,13 @@ func GetDeviceReplacementRisk(c *gin.Context) {
 
 	weights := thresholds.ReplacementRiskWeightsForProtocol(device.DeviceProtocol)
 	profilesEnabled := consumerDriveProfilesEnabled(appConfig)
+	var match *thresholds.ConsumerDriveProfileMatch
 	var profile *thresholds.ConsumerDriveProfile
 	if profilesEnabled {
-		profile, _ = thresholds.LookupConsumerDriveProfile(device.DeviceProtocol, device.ModelFamily, device.ModelName)
+		match = thresholds.MatchConsumerDriveProfile(device.DeviceProtocol, device.ModelFamily, device.ModelName, consumerDriveProfileDenylist(appConfig))
+		if match != nil && match.Applied {
+			profile = match.Profile
+		}
 	}
 	contributions, totalScore, totalTrendBonus := computeRiskContributions(weights, latestAttrs, oldestAttrs, profile)
 
@@ -100,6 +104,10 @@ func GetDeviceReplacementRisk(c *gin.Context) {
 	}
 	if profile != nil {
 		riskScore.ConsumerDriveProfileFamily = profile.ModelFamily
+		riskScore.ConsumerDriveProfileSource = profile.Source
+		riskScore.ConsumerDriveProfileSampleCount = profile.SampleCount
+		riskScore.ConsumerDriveProfileMatchMethod = string(match.Method)
+		riskScore.ConsumerDriveProfileCatalogVersion = match.CatalogVersion
 	}
 
 	c.JSON(http.StatusOK, models.ReplacementRiskResponse{
@@ -117,6 +125,16 @@ func consumerDriveProfilesEnabled(cfg config.Interface) bool {
 		return true
 	}
 	return cfg.GetBool(key)
+}
+
+// consumerDriveProfileDenylist returns the set of normalized family keys the
+// operator has excluded from profile matching via settings.
+func consumerDriveProfileDenylist(cfg config.Interface) map[string]struct{} {
+	if cfg == nil {
+		return nil
+	}
+	return thresholds.ParseConsumerDriveProfileDenylist(
+		cfg.GetString(config.DB_USER_SETTINGS_SUBKEY + ".metrics.consumer_drive_profiles_denylist"))
 }
 
 // computeRiskContributions builds the per-attribute contribution list and returns

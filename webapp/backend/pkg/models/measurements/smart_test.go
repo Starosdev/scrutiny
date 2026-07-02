@@ -18,6 +18,7 @@ import (
 
 func expectConsumerDriveProfilesEnabledDefault(fakeConfig *mock_config.MockInterface) {
 	fakeConfig.EXPECT().IsSet("user.metrics.consumer_drive_profiles_enabled").Return(false).AnyTimes()
+	fakeConfig.EXPECT().GetString("user.metrics.consumer_drive_profiles_denylist").Return("").AnyTimes()
 }
 
 func TestSmart_Flatten(t *testing.T) {

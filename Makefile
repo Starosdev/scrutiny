@@ -103,6 +103,14 @@ binary-test: binary-dep
 binary-test-coverage: binary-dep
 	go test -coverprofile=coverage.txt -covermode=atomic -v $(STATIC_TAGS) ./...
 
+.PHONY: catalog-lint
+catalog-lint:
+	go run ./webapp/backend/cmd/catalog-lint -strict
+
+.PHONY: catalog-fix
+catalog-fix:
+	go run ./webapp/backend/cmd/catalog-lint -write
+
 .PHONY: binary-collector
 binary-collector: binary-dep
 	go build -buildvcs=false -ldflags "$(LD_FLAGS)" -o $(COLLECTOR_BINARY_NAME) $(STATIC_TAGS) ./collector/cmd/collector-metrics/
