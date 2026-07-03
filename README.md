@@ -168,6 +168,16 @@ That's it! The fork maintains full backwards compatibility with the original pro
 
 # Getting Started
 
+## Optional: CodeGraph
+
+If you want repo-local code navigation in this checkout, initialize CodeGraph from the repo root:
+
+```bash
+codegraph init .
+```
+
+The `.codegraph/` directory is local-only and gitignored. Create it separately in each worktree where you want the index. Once it exists, use `codegraph_explore` when the MCP tool is available or `codegraph explore "<symbol names or question>"` from the shell.
+
 ## RAID/Virtual Drives
 
 Scrutiny uses `smartctl --scan` to detect devices/drives.
