@@ -101,6 +101,7 @@ AGENTS.md
 
 # Session progress tracking
 OVERRIDE_FIX_PROGRESS.md
+.codegraph/
 
 # Build Binaries
 /scrutiny-collector-mdadm
