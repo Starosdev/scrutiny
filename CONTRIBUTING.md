@@ -26,6 +26,14 @@ We use a Gitflow-style workflow:
 4. Update `README.md` when your change affects the top-level product surface, feature set, supported deployment paths, or published image matrix
 5. Submit a PR to `develop` (or `master` for hotfixes)
 
+### Loop Pilot Workflows
+
+This repo also has read-only and draft-only loop pilot workflows on `master`.
+
+- `loop-pilot-triage.yaml` can run on schedule or via `workflow_dispatch`.
+- `loop-pilot-pr-babysitter.yaml` and `loop-pilot-dependency-sweeper.yaml` are manual analyzers only.
+- These workflows publish markdown artifacts and Actions summaries, but they do not commit, push, merge, label, or comment on PRs.
+
 ## Code Style
 
 - No emojis in code, commits, comments, or documentation
