@@ -95,6 +95,11 @@ This repo includes a loop pilot for PR flow, issue triage, and dependency hygien
 - Manual draft-only analyzers:
   - [`.github/workflows/loop-pilot-pr-babysitter.yaml`](./.github/workflows/loop-pilot-pr-babysitter.yaml)
   - [`.github/workflows/loop-pilot-dependency-sweeper.yaml`](./.github/workflows/loop-pilot-dependency-sweeper.yaml)
+- Actions run names:
+  - `Loop Pilot Triage`
+  - `Loop Pilot PR Babysitter`
+  - `Loop Pilot Dependency Sweeper`
+- Default-branch dispatch: available from GitHub Actions on `master`
 
 The pilot is intentionally draft-only for action loops: it can summarize blockers and produce artifacts, but it does not commit, push, merge, label, or comment on PRs.
 
