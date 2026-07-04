@@ -33,6 +33,18 @@ Production releases are created manually through `.github/workflows/release.yaml
 - The generator uses merged PR metadata as the source of truth, renders note content from each PR's `## Summary` block plus linked issues, and validates that no extracted summary items were dropped before it emits notes.
 - OpenAI polishing is optional and wording-only. If the polish step changes the entry structure or drops sub-bullets, the workflow falls back to the raw deterministic notes.
 
+## Loop Pilot Workflows
+
+This repo also ships non-deploy workflow automation for PR flow, issue triage, and dependency hygiene.
+
+| Workflow | Trigger | Purpose |
+| --- | --- | --- |
+| `.github/workflows/loop-pilot-triage.yaml` | Daily cron + manual | Read-only triage report covering open PRs, issues, and dependency hygiene candidates |
+| `.github/workflows/loop-pilot-pr-babysitter.yaml` | Manual | Draft-only blocker analysis for one PR |
+| `.github/workflows/loop-pilot-dependency-sweeper.yaml` | Manual | Draft-only dependency PR risk analysis for one target |
+
+These workflows do not publish images, deploy environments, SSH to Zeus, or mutate PR state. They only generate markdown summaries and uploaded artifacts.
+
 ## Required GitHub Secrets
 
 - `GITHUB_TOKEN`
