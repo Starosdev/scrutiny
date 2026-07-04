@@ -1,0 +1,37 @@
+name: Loop Pilot Triage
+
+on:
+  schedule:
+    - cron: '20 13 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: loop-pilot-triage
+  cancel-in-progress: true
+
+jobs:
+  triage:
+    name: Generate read-only triage report
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Generate triage markdown
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 ops/loop_pilot.py triage --output out/loop-pilot-triage.md
+
+      - name: Upload triage artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: scrutiny-loop-pilot-triage-${{ github.run_id }}
+          path: out/loop-pilot-triage.md
+          if-no-files-found: error
