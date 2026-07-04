@@ -1,0 +1,41 @@
+name: Loop Pilot PR Babysitter
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Open PR number to inspect'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: loop-pilot-pr-babysitter-${{ inputs.pr_number }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Generate draft-only PR blocker report
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Generate PR babysitter markdown
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 ops/loop_pilot.py pr-babysitter \
+            --pr-number "${{ inputs.pr_number }}" \
+            --output out/loop-pilot-pr-babysitter.md
+
+      - name: Upload PR babysitter artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: scrutiny-loop-pilot-pr-babysitter-${{ github.run_id }}
+          path: out/loop-pilot-pr-babysitter.md
+          if-no-files-found: error

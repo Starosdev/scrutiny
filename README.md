@@ -86,6 +86,18 @@ This repository also owns the testing and production deployment definitions for 
 - Host smoke checks require `/api/health` to return `200`, while the root path may legitimately redirect depending on auth or proxy behavior.
 - Deployment compose files, env templates, and host expectations live in [docs/DEPLOYMENTS.md](./docs/DEPLOYMENTS.md)
 
+## Loop pilot
+
+This repo includes a loop pilot for PR flow, issue triage, and dependency hygiene.
+
+- Control docs: [`LOOP.md`](./LOOP.md), [`STATE.md`](./STATE.md), [`loop-budget.md`](./loop-budget.md)
+- Scheduled triage: [`.github/workflows/loop-pilot-triage.yaml`](./.github/workflows/loop-pilot-triage.yaml)
+- Manual draft-only analyzers:
+  - [`.github/workflows/loop-pilot-pr-babysitter.yaml`](./.github/workflows/loop-pilot-pr-babysitter.yaml)
+  - [`.github/workflows/loop-pilot-dependency-sweeper.yaml`](./.github/workflows/loop-pilot-dependency-sweeper.yaml)
+
+The pilot is intentionally draft-only for action loops: it can summarize blockers and produce artifacts, but it does not commit, push, merge, label, or comment on PRs.
+
 # Introduction
 
 If you run a server with more than a couple of hard drives, you're probably already familiar with S.M.A.R.T and the `smartd` daemon. If not, it's an incredible open source project described as the following:
