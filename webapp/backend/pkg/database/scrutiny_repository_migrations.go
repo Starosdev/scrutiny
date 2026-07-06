@@ -1384,7 +1384,7 @@ func m20201107210306_FromPreInfluxDBSmartResultsCreatePostInfluxDBSmartResults(d
 	}
 
 	if preDevice.IsAta() {
-		postDeviceSmartData.ProcessAtaSmartInfo(nil, "", preDevice.ModelName, buildLegacyAtaAttributesTable(&preSmartResult))
+		postDeviceSmartData.ProcessAtaSmartInfo(nil, "", preDevice.ModelName, preDevice.RotationSpeed == 0, buildLegacyAtaAttributesTable(&preSmartResult))
 
 	} else if preDevice.IsNvme() {
 		postDeviceSmartData.ProcessNvmeSmartInfo(nil, buildLegacyNvmeHealthLog(&preSmartResult))

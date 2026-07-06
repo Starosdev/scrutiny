@@ -993,6 +993,29 @@
     },
     {
       "protocol": "ATA",
+      "source": "scrutiny ATA SSD compatibility profile",
+      "vendor": "Crucial",
+      "model_family": "Crucial/Micron RealSSD m4/C400/P400",
+      "ata_observed_thresholds": {
+        "189": [
+          {
+            "low": 0,
+            "high": 0,
+            "annual_failure_rate": 0,
+            "error_interval": null
+          },
+          {
+            "low": 1,
+            "high": 9223372036854775807,
+            "annual_failure_rate": 0,
+            "error_interval": null
+          }
+        ]
+      },
+      "sample_count": 20
+    },
+    {
+      "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "Crucial",
       "model_family": "Crucial BX500",

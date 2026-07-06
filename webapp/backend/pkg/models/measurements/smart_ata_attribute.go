@@ -2,12 +2,23 @@ package measurements
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
 )
+
+var ataAttributeNameTokenPattern = regexp.MustCompile(`[^a-z0-9]+`)
+
+var ataAttributeNameIgnoredTokens = map[string]struct{}{
+	"ct":    {},
+	"count": {},
+	"total": {},
+}
+
+const ataSsdVendorSpecificThresholdSkipReason = "Skipped generic ATA observed-threshold scoring for vendor-specific SSD attribute"
 
 type SmartAtaAttribute struct {
 	AttributeId int    `json:"attribute_id"`
@@ -97,7 +108,7 @@ func (sa *SmartAtaAttribute) Inflate(key string, val interface{}) {
 
 // populate attribute status, using SMART Thresholds & Observed Metadata
 // Chainable
-func (sa *SmartAtaAttribute) PopulateAttributeStatus(profile *thresholds.ConsumerDriveProfile) *SmartAtaAttribute {
+func (sa *SmartAtaAttribute) PopulateAttributeStatus(profile *thresholds.ConsumerDriveProfile, isAtaSsd bool) *SmartAtaAttribute {
 	if strings.ToUpper(sa.WhenFailed) == pkg.AttributeWhenFailedFailingNow {
 		//this attribute has previously failed
 		sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusFailedSmart)
@@ -111,6 +122,10 @@ func (sa *SmartAtaAttribute) PopulateAttributeStatus(profile *thresholds.Consume
 	}
 
 	if smartMetadata, ok := thresholds.AtaMetadata[sa.AttributeId]; ok {
+		if sa.Status == pkg.AttributeStatusPassed && shouldSkipAtaSsdObservedThresholdScoring(isAtaSsd, smartMetadata, sa.Name) {
+			sa.StatusReason = ataSsdVendorSpecificThresholdSkipReason
+			return sa
+		}
 		if profile != nil {
 			if profileThresholds, ok := profile.AtaObservedThresholds[sa.AttributeId]; ok && len(profileThresholds) > 0 {
 				smartMetadata.ObservedThresholds = profileThresholds
@@ -120,6 +135,63 @@ func (sa *SmartAtaAttribute) PopulateAttributeStatus(profile *thresholds.Consume
 	}
 
 	return sa
+}
+
+func shouldSkipAtaSsdObservedThresholdScoring(isAtaSsd bool, smartMetadata thresholds.AtaAttributeMetadata, attributeName string) bool {
+	if !isAtaSsd || len(smartMetadata.ObservedThresholds) == 0 {
+		return false
+	}
+	return !ataAttributeNamesSemanticallyMatch(attributeName, smartMetadata.DisplayName)
+}
+
+func ataAttributeNamesSemanticallyMatch(reportedName string, metadataName string) bool {
+	reportedTokens := ataAttributeNameTokens(reportedName)
+	metadataTokens := ataAttributeNameTokens(metadataName)
+	if len(reportedTokens) == 0 || len(metadataTokens) == 0 {
+		return false
+	}
+
+	shorter := reportedTokens
+	longer := metadataTokens
+	if len(shorter) > len(longer) {
+		shorter, longer = longer, shorter
+	}
+
+	return orderedSubsequence(shorter, longer)
+}
+
+func ataAttributeNameTokens(name string) []string {
+	normalized := strings.ToLower(strings.TrimSpace(name))
+	if normalized == "" {
+		return nil
+	}
+
+	rawTokens := ataAttributeNameTokenPattern.Split(normalized, -1)
+	tokens := make([]string, 0, len(rawTokens))
+	for _, token := range rawTokens {
+		if token == "" {
+			continue
+		}
+		if _, ignored := ataAttributeNameIgnoredTokens[token]; ignored {
+			continue
+		}
+		tokens = append(tokens, token)
+	}
+	return tokens
+}
+
+func orderedSubsequence(shorter []string, longer []string) bool {
+	idx := 0
+	for _, token := range longer {
+		if shorter[idx] != token {
+			continue
+		}
+		idx++
+		if idx == len(shorter) {
+			return true
+		}
+	}
+	return false
 }
 
 // compare the attribute (raw, normalized, transformed) value to observed thresholds, and update status if necessary

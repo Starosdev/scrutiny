@@ -236,7 +236,7 @@ func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn s
 	// process ATA/NVME/SCSI protocol data
 	sm.Attributes = map[string]SmartAttribute{}
 	if sm.DeviceProtocol == pkg.DeviceProtocolAta {
-		sm.processAtaSmartInfoWithOverrides(cfg, info.ModelFamily, info.ModelName, info.AtaSmartAttributes.Table, mergedOverrides)
+		sm.processAtaSmartInfoWithOverrides(cfg, info.ModelFamily, info.ModelName, isAtaSsdSmartInfo(&info), info.AtaSmartAttributes.Table, mergedOverrides)
 		// Also process ATA Device Statistics (GP Log 0x04) for enterprise SSD metrics
 		if len(info.AtaDeviceStatistics.Pages) > 0 {
 			sm.processAtaDeviceStatisticsWithOverrides(cfg, info, mergedOverrides)
@@ -255,7 +255,7 @@ func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn s
 }
 
 // generate SmartAtaAttribute entries from Scrutiny Collector Smart data.
-func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, modelFamily string, modelName string, tableItems []collector.AtaSmartAttributesTableItem) {
+func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, modelFamily string, modelName string, isAtaSsd bool, tableItems []collector.AtaSmartAttributesTableItem) {
 	profile := consumerDriveProfileForDevice(cfg, modelFamily, modelName)
 	for _, collectorAttr := range tableItems {
 		attrModel := SmartAtaAttribute{
@@ -275,7 +275,7 @@ func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, modelFamily string, m
 				attrModel.TransformedValue = smartMetadata.Transform(attrModel.Value, attrModel.RawValue, attrModel.RawString)
 			}
 		}
-		attrModel.PopulateAttributeStatus(profile)
+		attrModel.PopulateAttributeStatus(profile, isAtaSsd)
 
 		attrIdStr := strconv.Itoa(collectorAttr.ID)
 		var ignored bool
@@ -309,6 +309,10 @@ func isTransientAtaAttribute(cfg config.Interface, attrID int) bool {
 		}
 	}
 	return false
+}
+
+func isAtaSsdSmartInfo(info *collector.SmartInfo) bool {
+	return info != nil && info.Device.Protocol == pkg.DeviceProtocolAta && info.RotationRate == 0
 }
 
 // isDevstatIgnored checks if an attribute ID is in the devstat ignore list
@@ -471,7 +475,7 @@ func (sm *Smart) ProcessScsiSmartInfo(cfg config.Interface, defectGrownList int6
 }
 
 // processAtaSmartInfoWithOverrides generates SmartAtaAttribute entries using pre-merged overrides.
-func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, modelFamily string, modelName string, tableItems []collector.AtaSmartAttributesTableItem, mergedOverrides []overrides.AttributeOverride) {
+func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, modelFamily string, modelName string, isAtaSsd bool, tableItems []collector.AtaSmartAttributesTableItem, mergedOverrides []overrides.AttributeOverride) {
 	profile := consumerDriveProfileForDevice(cfg, modelFamily, modelName)
 	for _, collectorAttr := range tableItems {
 		attrModel := SmartAtaAttribute{
@@ -491,7 +495,7 @@ func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, modelFam
 				attrModel.TransformedValue = smartMetadata.Transform(attrModel.Value, attrModel.RawValue, attrModel.RawString)
 			}
 		}
-		attrModel.PopulateAttributeStatus(profile)
+		attrModel.PopulateAttributeStatus(profile, isAtaSsd)
 
 		attrIdStr := strconv.Itoa(collectorAttr.ID)
 
