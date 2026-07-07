@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## Unreleased
+
+### Bug Fixes
+
+* **smart:** skip generic HDD observed-threshold scoring for vendor-specific ATA SSD attributes and add a Crucial RealSSD compatibility profile ([#587](https://github.com/Starosdev/scrutiny/issues/587))
+
 ## [1.65.0](https://github.com/Starosdev/scrutiny/compare/v1.64.0...v1.65.0) (2026-06-29)
 
 ### Features

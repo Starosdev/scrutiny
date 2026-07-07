@@ -1,0 +1,126 @@
+[
+  {
+    "description": "exact model_family hit wins over model name stages",
+    "protocol": "ATA",
+    "model_family": "Seagate Barracuda 7200.14 (AF)",
+    "model_name": "ST4000DM000-1F2168",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Seagate Barracuda 7200.14 (AF)",
+    "expect_method": "model_family"
+  },
+  {
+    "description": "exact model_family hit for Samsung based SSDs",
+    "protocol": "ATA",
+    "model_family": "Samsung based SSDs",
+    "model_name": "",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Samsung based SSDs",
+    "expect_method": "model_family"
+  },
+  {
+    "description": "exact alias hit for Hitachi model string",
+    "protocol": "ATA",
+    "model_family": "",
+    "model_name": "Hitachi HDS721050DLE630",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Hitachi Deskstar 7K1000.D",
+    "expect_method": "model_name"
+  },
+  {
+    "description": "underscored WDC model string normalizes to the spaced alias",
+    "protocol": "ATA",
+    "model_family": "",
+    "model_name": "WDC_WD140EDFZ-11A0VA0",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "WDC Red Plus",
+    "expect_method": "model_name"
+  },
+  {
+    "description": "capacity variant without alias resolves via vendor normalization",
+    "protocol": "ATA",
+    "model_family": "",
+    "model_name": "Samsung SSD 870 EVO 2TB",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Samsung SSD 870 EVO",
+    "expect_method": "model_name_normalized"
+  },
+  {
+    "description": "870 QVO capacity variant without alias resolves via vendor normalization",
+    "protocol": "ATA",
+    "model_family": "",
+    "model_name": "Samsung SSD 870 QVO 4TB",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Samsung SSD 870 QVO",
+    "expect_method": "model_name_normalized"
+  },
+  {
+    "description": "Crucial capacity variant without alias falls back to model_pattern",
+    "protocol": "ATA",
+    "model_family": "",
+    "model_name": "CT2000MX500SSD1",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Crucial MX500",
+    "expect_method": "model_pattern"
+  },
+  {
+    "description": "Seagate firmware suffix variant without alias falls back to model_pattern",
+    "protocol": "ATA",
+    "model_family": "",
+    "model_name": "ST2000DM001-9YN164",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Seagate Barracuda 7200.12",
+    "expect_method": "model_pattern"
+  },
+  {
+    "description": "WDC Red firmware variant without alias falls back to model_pattern",
+    "protocol": "ATA",
+    "model_family": "",
+    "model_name": "WDC WD30EFRX-68EUZN0",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "WDC Red",
+    "expect_method": "model_pattern"
+  },
+  {
+    "description": "WDC Caviar Blue firmware variant without alias falls back to model_pattern",
+    "protocol": "ATA",
+    "model_family": "",
+    "model_name": "WD10EZEX-22MFCA0",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "WDC Caviar Blue",
+    "expect_method": "model_pattern"
+  },
+  {
+    "description": "unknown Toshiba drive stays unmatched and falls back to generic ATA rules",
+    "protocol": "ATA",
+    "model_family": "",
+    "model_name": "TOSHIBA DT01ACA100",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
+    "description": "unknown model family with unknown model stays unmatched",
+    "protocol": "ATA",
+    "model_family": "Some Unknown Family",
+    "model_name": "UNKNOWN-DRIVE-123",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
+    "description": "non-ATA protocol bypasses the catalog entirely",
+    "protocol": "NVMe",
+    "model_family": "Samsung based SSDs",
+    "model_name": "Samsung SSD 860 EVO 500GB",
+    "expect_matched": false,
+    "expect_applied": false
+  }
+]

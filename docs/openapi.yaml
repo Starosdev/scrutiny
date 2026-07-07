@@ -621,6 +621,29 @@ paths:
                 $ref: "#/components/schemas/ReplacementRiskResponse"
         "500":
           $ref: "#/components/responses/ErrorResponse"
+  /api/device/{id}/drive-profile:
+    get:
+      tags: [Devices]
+      summary: Inspect consumer drive profile matching for a device
+      description: |
+        Debug and inspection surface for the ATA consumer-drive profile system.
+        Reports which bundled catalog entry matched the device (if any), the match
+        method and confidence gate result, which overrides would be applied, and a
+        plain-language fallback reason when generic ATA rules are in effect.
+        The catalog match is computed even when the feature is globally disabled so
+        operators can inspect what would happen; the `applied` flag reflects the
+        effective state.
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          description: Drive profile match diagnostics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriveProfileInspectionResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/device/{id}/collector-error:
     post:
       tags: [Devices]
@@ -1343,6 +1366,12 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Requested resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     SuccessResponse:
       type: object
@@ -1804,6 +1833,9 @@ components:
             consumer_drive_profiles_enabled:
               type: boolean
               description: Enable vetted ATA consumer drive model or family overrides for SMART status evaluation and replacement-risk scoring. When false, all ATA devices use generic ATA rules.
+            consumer_drive_profiles_denylist:
+              type: string
+              description: Comma-separated consumer drive profile families that must never be applied. Matching drives fall back to generic ATA rules. Ignored when `consumer_drive_profiles_enabled` is false (everything already falls back). Empty means no families are excluded.
             notification_rate_limit:
               type: integer
             notification_quiet_start:
@@ -3287,6 +3319,19 @@ components:
             consumer_drive_profile_family:
               type: string
               description: Matched ATA consumer-drive profile family when `consumer_drive_profile_applied` is true.
+            consumer_drive_profile_source:
+              type: string
+              description: Provenance string of the applied profile (curated dataset description). Omitted when generic ATA logic is used.
+            consumer_drive_profile_sample_count:
+              type: integer
+              description: Sample size behind the applied profile. Omitted when generic ATA logic is used.
+            consumer_drive_profile_match_method:
+              type: string
+              enum: [model_family, model_name, model_name_normalized, model_pattern]
+              description: Lookup stage that matched the drive, strongest-first. Omitted when generic ATA logic is used.
+            consumer_drive_profile_catalog_version:
+              type: string
+              description: Version of the bundled profile catalog the applied profile came from. Omitted when generic ATA logic is used.
             contributions:
               type: array
               items:
@@ -3305,6 +3350,72 @@ components:
                     format: int64
                   trend_score:
                     type: number
+    DriveProfileInspectionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            device_wwn:
+              type: string
+            device_protocol:
+              type: string
+            model_family:
+              type: string
+            model_name:
+              type: string
+            profiles_enabled:
+              type: boolean
+              description: Global consumer drive profiles toggle state.
+            denylist:
+              type: array
+              items:
+                type: string
+              description: Normalized family keys currently denylisted in settings.
+            catalog_version:
+              type: string
+              description: Version of the bundled profile catalog.
+            matched:
+              type: boolean
+              description: True when the catalog recognized this drive, regardless of whether the profile was applied.
+            applied:
+              type: boolean
+              description: True when the matched profile is actually used for SMART status evaluation and replacement-risk scoring.
+            match_method:
+              type: string
+              enum: [model_family, model_name, model_name_normalized, model_pattern]
+              description: Lookup stage that matched the drive.
+            matched_value:
+              type: string
+              description: Input value (family or model name) that matched.
+            profile_family:
+              type: string
+            profile_vendor:
+              type: string
+            profile_source:
+              type: string
+            sample_count:
+              type: integer
+            min_samples:
+              type: integer
+              description: Confidence gate the matched profile must satisfy.
+            confidence_met:
+              type: boolean
+            observed_threshold_attributes:
+              type: array
+              items:
+                type: integer
+              description: ATA attribute IDs whose observed-threshold buckets are overridden during SMART status evaluation.
+            counter_severity_attributes:
+              type: array
+              items:
+                type: string
+              description: ATA attribute IDs whose counter severity breakpoints are overridden during replacement-risk scoring.
+            fallback_reason:
+              type: string
+              description: Plain-language explanation of why generic ATA rules are in effect. Empty when a profile is applied.
     MissedPingStatusResponse:
       type: object
       properties:

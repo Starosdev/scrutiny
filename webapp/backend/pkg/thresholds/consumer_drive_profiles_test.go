@@ -125,6 +125,19 @@ func TestLookupConsumerDriveProfileByCrucialMx300Alias(t *testing.T) {
 	}
 }
 
+func TestLookupConsumerDriveProfileByCrucialRealSsdFamily(t *testing.T) {
+	profile, ok := LookupConsumerDriveProfile("ATA", "Crucial/Micron RealSSD m4/C400/P400", "")
+	if !ok || profile == nil {
+		t.Fatalf("expected Crucial RealSSD family match")
+	}
+	if profile.ModelFamily != "Crucial/Micron RealSSD m4/C400/P400" {
+		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
+	}
+	if _, ok := profile.AtaObservedThresholds[189]; !ok {
+		t.Fatalf("expected attr 189 override")
+	}
+}
+
 func TestLookupConsumerDriveProfileByCrucialBx500Regex4TB(t *testing.T) {
 	profile, ok := LookupConsumerDriveProfile("ATA", "", "CT4000BX500SSD1")
 	if !ok || profile == nil {
@@ -203,7 +216,7 @@ func TestParseConsumerDriveProfilesRejectsConflictingDuplicateAlias(t *testing.T
 		],
 		"aliases":{"Model A":"Family A","Model_A":"Family B"}
 	}`
-	_, _, _, err := parseConsumerDriveProfiles([]byte(invalidJSON))
+	_, err := parseConsumerDriveProfiles([]byte(invalidJSON))
 	if err == nil || !strings.Contains(err.Error(), "duplicate model alias") {
 		t.Fatalf("expected duplicate alias error, got %v", err)
 	}
@@ -214,7 +227,7 @@ func TestParseConsumerDriveProfilesRejectsUnknownFamilyAlias(t *testing.T) {
 		"profiles":[{"protocol":"ATA","source":"test","model_family":"Family A","sample_count":25}],
 		"aliases":{"Model A":"Missing Family"}
 	}`
-	_, _, _, err := parseConsumerDriveProfiles([]byte(invalidJSON))
+	_, err := parseConsumerDriveProfiles([]byte(invalidJSON))
 	if err == nil || !strings.Contains(err.Error(), "unknown family") {
 		t.Fatalf("expected unknown family alias error, got %v", err)
 	}

@@ -1,0 +1,2394 @@
+{
+  "json_format_version": [
+    1,
+    0
+  ],
+  "smartctl": {
+    "version": [
+      7,
+      4
+    ],
+    "pre_release": false,
+    "svn_revision": "5530",
+    "platform_info": "x86_64-linux-6.12.91-production+truenas",
+    "build_info": "(local build)",
+    "argv": [
+      "smartctl",
+      "--xall",
+      "--json",
+      "/dev/sdd"
+    ],
+    "drive_database_version": {
+      "string": "7.3/5528"
+    },
+    "exit_status": 0
+  },
+  "local_time": {
+    "time_t": 1783265471,
+    "asctime": "Sun Jul  5 17:31:11 2026 CEST"
+  },
+  "device": {
+    "name": "/dev/sdd",
+    "info_name": "/dev/sdd [SAT]",
+    "type": "sat",
+    "protocol": "ATA"
+  },
+  "model_family": "Crucial/Micron RealSSD m4/C400/P400",
+  "model_name": "MTFDDAK128MAM-1J1",
+  "serial_number": "123009116906",
+  "wwn": {
+    "naa": 5,
+    "oui": 41077,
+    "id": 4447103238
+  },
+  "firmware_version": "0809",
+  "user_capacity": {
+    "blocks": 250069680,
+    "bytes": 128035676160
+  },
+  "logical_block_size": 512,
+  "physical_block_size": 512,
+  "rotation_rate": 0,
+  "form_factor": {
+    "ata_value": 3,
+    "name": "2.5 inches"
+  },
+  "trim": {
+    "supported": true,
+    "deterministic": true,
+    "zeroed": true
+  },
+  "in_smartctl_database": true,
+  "ata_version": {
+    "string": "ACS-2, ATA8-ACS T13/1699-D revision 6",
+    "major_value": 1016,
+    "minor_value": 40
+  },
+  "sata_version": {
+    "string": "SATA 3.0",
+    "value": 63
+  },
+  "interface_speed": {
+    "max": {
+      "sata_value": 14,
+      "string": "6.0 Gb/s",
+      "units_per_second": 60,
+      "bits_per_unit": 100000000
+    },
+    "current": {
+      "sata_value": 3,
+      "string": "6.0 Gb/s",
+      "units_per_second": 60,
+      "bits_per_unit": 100000000
+    }
+  },
+  "smart_support": {
+    "available": true,
+    "enabled": true
+  },
+  "ata_apm": {
+    "enabled": false
+  },
+  "read_lookahead": {
+    "enabled": true
+  },
+  "write_cache": {
+    "enabled": true
+  },
+  "ata_security": {
+    "state": 32801,
+    "string": "Disabled, NOT FROZEN [SEC1]",
+    "enabled": false,
+    "frozen": false,
+    "master_password_id": 65534
+  },
+  "smart_status": {
+    "passed": true
+  },
+  "ata_smart_data": {
+    "offline_data_collection": {
+      "status": {
+        "value": 0,
+        "string": "was never started"
+      },
+      "completion_seconds": 595
+    },
+    "self_test": {
+      "status": {
+        "value": 0,
+        "string": "completed without error",
+        "passed": true
+      },
+      "polling_minutes": {
+        "short": 2,
+        "extended": 9,
+        "conveyance": 3
+      }
+    },
+    "capabilities": {
+      "values": [
+        123,
+        3
+      ],
+      "exec_offline_immediate_supported": true,
+      "offline_is_aborted_upon_new_cmd": false,
+      "offline_surface_scan_supported": true,
+      "self_tests_supported": true,
+      "conveyance_self_test_supported": true,
+      "selective_self_test_supported": true,
+      "attribute_autosave_enabled": true,
+      "error_logging_supported": true,
+      "gp_logging_supported": true
+    }
+  },
+  "ata_sct_capabilities": {
+    "value": 61,
+    "error_recovery_control_supported": true,
+    "feature_control_supported": true,
+    "data_table_supported": true
+  },
+  "ata_smart_attributes": {
+    "revision": 16,
+    "table": [
+      {
+        "id": 1,
+        "name": "Raw_Read_Error_Rate",
+        "value": 100,
+        "worst": 100,
+        "thresh": 50,
+        "when_failed": "",
+        "flags": {
+          "value": 47,
+          "string": "POSR-K ",
+          "prefailure": true,
+          "updated_online": true,
+          "performance": true,
+          "error_rate": true,
+          "event_count": false,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 0,
+          "string": "0"
+        }
+      },
+      {
+        "id": 5,
+        "name": "Reallocated_Sector_Ct",
+        "value": 100,
+        "worst": 100,
+        "thresh": 10,
+        "when_failed": "",
+        "flags": {
+          "value": 51,
+          "string": "PO--CK ",
+          "prefailure": true,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 0,
+          "string": "0"
+        }
+      },
+      {
+        "id": 9,
+        "name": "Power_On_Hours",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 50,
+          "string": "-O--CK ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 4179,
+          "string": "4179"
+        }
+      },
+      {
+        "id": 12,
+        "name": "Power_Cycle_Count",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 50,
+          "string": "-O--CK ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 1931,
+          "string": "1931"
+        }
+      },
+      {
+        "id": 170,
+        "name": "Grown_Failing_Block_Ct",
+        "value": 100,
+        "worst": 100,
+        "thresh": 10,
+        "when_failed": "",
+        "flags": {
+          "value": 51,
+          "string": "PO--CK ",
+          "prefailure": true,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 0,
+          "string": "0"
+        }
+      },
+      {
+        "id": 171,
+        "name": "Program_Fail_Count",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 50,
+          "string": "-O--CK ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 0,
+          "string": "0"
+        }
+      },
+      {
+        "id": 172,
+        "name": "Erase_Fail_Count",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 50,
+          "string": "-O--CK ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 130,
+          "string": "130"
+        }
+      },
+      {
+        "id": 173,
+        "name": "Wear_Leveling_Count",
+        "value": 98,
+        "worst": 98,
+        "thresh": 10,
+        "when_failed": "",
+        "flags": {
+          "value": 51,
+          "string": "PO--CK ",
+          "prefailure": true,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 68,
+          "string": "68"
+        }
+      },
+      {
+        "id": 174,
+        "name": "Unexpect_Power_Loss_Ct",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 50,
+          "string": "-O--CK ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 1,
+          "string": "1"
+        }
+      },
+      {
+        "id": 181,
+        "name": "Non4k_Aligned_Access",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 34,
+          "string": "-O---K ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": false,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 8306523505707,
+          "string": "1934 866 1067"
+        }
+      },
+      {
+        "id": 183,
+        "name": "SATA_Iface_Downshift",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 50,
+          "string": "-O--CK ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 0,
+          "string": "0"
+        }
+      },
+      {
+        "id": 184,
+        "name": "End-to-End_Error",
+        "value": 100,
+        "worst": 100,
+        "thresh": 50,
+        "when_failed": "",
+        "flags": {
+          "value": 51,
+          "string": "PO--CK ",
+          "prefailure": true,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 0,
+          "string": "0"
+        }
+      },
+      {
+        "id": 187,
+        "name": "Reported_Uncorrect",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 50,
+          "string": "-O--CK ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 0,
+          "string": "0"
+        }
+      },
+      {
+        "id": 188,
+        "name": "Command_Timeout",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 50,
+          "string": "-O--CK ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 0,
+          "string": "0"
+        }
+      },
+      {
+        "id": 189,
+        "name": "Factory_Bad_Block_Ct",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 14,
+          "string": "-OSR-- ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": true,
+          "error_rate": true,
+          "event_count": false,
+          "auto_keep": false
+        },
+        "raw": {
+          "value": 81,
+          "string": "81"
+        }
+      },
+      {
+        "id": 194,
+        "name": "Temperature_Celsius",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 34,
+          "string": "-O---K ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": false,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 0,
+          "string": "0"
+        }
+      },
+      {
+        "id": 195,
+        "name": "Hardware_ECC_Recovered",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 58,
+          "string": "-O-RCK ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": true,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 0,
+          "string": "0"
+        }
+      },
+      {
+        "id": 196,
+        "name": "Reallocated_Event_Count",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 50,
+          "string": "-O--CK ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 0,
+          "string": "0"
+        }
+      },
+      {
+        "id": 197,
+        "name": "Current_Pending_Sector",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 50,
+          "string": "-O--CK ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": false,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 0,
+          "string": "0"
+        }
+      },
+      {
+        "id": 198,
+        "name": "Offline_Uncorrectable",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 48,
+          "string": "----CK ",
+          "prefailure": false,
+          "updated_online": false,
+          "performance": false,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 0,
+          "string": "0"
+        }
+      },
+      {
+        "id": 199,
+        "name": "UDMA_CRC_Error_Count",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 54,
+          "string": "-OS-CK ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": true,
+          "error_rate": false,
+          "event_count": true,
+          "auto_keep": true
+        },
+        "raw": {
+          "value": 0,
+          "string": "0"
+        }
+      },
+      {
+        "id": 202,
+        "name": "Perc_Rated_Life_Used",
+        "value": 98,
+        "worst": 98,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 24,
+          "string": "---RC- ",
+          "prefailure": false,
+          "updated_online": false,
+          "performance": false,
+          "error_rate": true,
+          "event_count": true,
+          "auto_keep": false
+        },
+        "raw": {
+          "value": 2,
+          "string": "2"
+        }
+      },
+      {
+        "id": 206,
+        "name": "Write_Error_Rate",
+        "value": 100,
+        "worst": 100,
+        "thresh": 0,
+        "when_failed": "",
+        "flags": {
+          "value": 14,
+          "string": "-OSR-- ",
+          "prefailure": false,
+          "updated_online": true,
+          "performance": true,
+          "error_rate": true,
+          "event_count": false,
+          "auto_keep": false
+        },
+        "raw": {
+          "value": 0,
+          "string": "0"
+        }
+      }
+    ]
+  },
+  "power_on_time": {
+    "hours": 4179
+  },
+  "power_cycle_count": 1931,
+  "ata_log_directory": {
+    "gp_dir_version": 1,
+    "smart_dir_version": 1,
+    "smart_dir_multi_sector": true,
+    "table": [
+      {
+        "address": 0,
+        "name": "Log Directory",
+        "read": true,
+        "write": false,
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 1,
+        "name": "Summary SMART error log",
+        "read": true,
+        "write": false,
+        "smart_sectors": 1
+      },
+      {
+        "address": 2,
+        "name": "Comprehensive SMART error log",
+        "read": true,
+        "write": false,
+        "smart_sectors": 51
+      },
+      {
+        "address": 3,
+        "name": "Ext. Comprehensive SMART error log",
+        "read": true,
+        "write": false,
+        "gp_sectors": 16383
+      },
+      {
+        "address": 4,
+        "name": "Device Statistics log",
+        "read": true,
+        "write": false,
+        "gp_sectors": 255,
+        "smart_sectors": 255
+      },
+      {
+        "address": 6,
+        "name": "SMART self-test log",
+        "read": true,
+        "write": false,
+        "smart_sectors": 1
+      },
+      {
+        "address": 7,
+        "name": "Extended self-test log",
+        "read": true,
+        "write": false,
+        "gp_sectors": 3449
+      },
+      {
+        "address": 9,
+        "name": "Selective self-test log",
+        "read": true,
+        "write": true,
+        "smart_sectors": 1
+      },
+      {
+        "address": 16,
+        "name": "NCQ Command Error log",
+        "read": true,
+        "write": false,
+        "gp_sectors": 1
+      },
+      {
+        "address": 17,
+        "name": "SATA Phy Event Counters log",
+        "read": true,
+        "write": false,
+        "gp_sectors": 1
+      },
+      {
+        "address": 128,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "smart_sectors": 1
+      },
+      {
+        "address": 129,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "smart_sectors": 1
+      },
+      {
+        "address": 130,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "smart_sectors": 1
+      },
+      {
+        "address": 131,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "smart_sectors": 1
+      },
+      {
+        "address": 132,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 133,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 134,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 135,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 136,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 137,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 138,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 139,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 140,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 141,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 142,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 143,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 144,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 145,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 146,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 147,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 148,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 149,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 150,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 151,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 152,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 153,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 154,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 155,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 156,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 157,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 158,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 159,
+        "name": "Host vendor specific log",
+        "read": true,
+        "write": true,
+        "gp_sectors": 16,
+        "smart_sectors": 16
+      },
+      {
+        "address": 160,
+        "name": "Device vendor specific log",
+        "gp_sectors": 2000,
+        "smart_sectors": 208
+      },
+      {
+        "address": 161,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 162,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 163,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 164,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 165,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 166,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 167,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 168,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 169,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 170,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 171,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 172,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 173,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 174,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 175,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 176,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 177,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 178,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 179,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 180,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 181,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 182,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 183,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 184,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 185,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 186,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 187,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 188,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 189,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 190,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 191,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 192,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 193,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 194,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 195,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 196,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 197,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 198,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 199,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 200,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 201,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 202,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 203,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 204,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 205,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 206,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 207,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 208,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 209,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 210,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 211,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 212,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 213,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 214,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 215,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 216,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 217,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 218,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 219,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 220,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 221,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 222,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 223,
+        "name": "Device vendor specific log",
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 224,
+        "name": "SCT Command/Status",
+        "read": true,
+        "write": true,
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      },
+      {
+        "address": 225,
+        "name": "SCT Data Transfer",
+        "read": true,
+        "write": true,
+        "gp_sectors": 1,
+        "smart_sectors": 1
+      }
+    ]
+  },
+  "ata_smart_error_log": {
+    "extended": {
+      "revision": 1,
+      "sectors": 16383,
+      "count": 0
+    }
+  },
+  "ata_smart_self_test_log": {
+    "standard": {
+      "revision": 1,
+      "count": 0
+    }
+  },
+  "ata_smart_selective_self_test_log": {
+    "revision": 1,
+    "table": [
+      {
+        "lba_min": 0,
+        "lba_max": 0,
+        "status": {
+          "value": 0,
+          "string": "Not_testing"
+        }
+      },
+      {
+        "lba_min": 0,
+        "lba_max": 0,
+        "status": {
+          "value": 0,
+          "string": "Not_testing"
+        }
+      },
+      {
+        "lba_min": 0,
+        "lba_max": 0,
+        "status": {
+          "value": 0,
+          "string": "Not_testing"
+        }
+      },
+      {
+        "lba_min": 0,
+        "lba_max": 0,
+        "status": {
+          "value": 0,
+          "string": "Not_testing"
+        }
+      },
+      {
+        "lba_min": 0,
+        "lba_max": 0,
+        "status": {
+          "value": 0,
+          "string": "Not_testing"
+        }
+      }
+    ],
+    "flags": {
+      "value": 0,
+      "remainder_scan_enabled": false
+    },
+    "power_up_scan_resume_minutes": 0
+  },
+  "ata_sct_status": {
+    "format_version": 3,
+    "sct_version": 1,
+    "device_state": {
+      "value": 0,
+      "string": "Active"
+    },
+    "temperature": {
+      "current": 0,
+      "power_cycle_max": 0,
+      "lifetime_max": 0
+    }
+  },
+  "temperature": {
+    "current": 0,
+    "power_cycle_max": 0,
+    "lifetime_max": 0,
+    "op_limit_min": 0,
+    "op_limit_max": 70,
+    "limit_min": -5,
+    "limit_max": 75,
+    "lifetime_min": 0
+  },
+  "ata_sct_temperature_history": {
+    "version": 2,
+    "sampling_period_minutes": 10,
+    "logging_interval_minutes": 10,
+    "temperature": {
+      "op_limit_min": 0,
+      "op_limit_max": 70,
+      "limit_min": -5,
+      "limit_max": 75
+    },
+    "size": 478,
+    "index": 23,
+    "table": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "ata_sct_erc": {
+    "read": {
+      "enabled": true,
+      "deciseconds": 40
+    },
+    "write": {
+      "enabled": true,
+      "deciseconds": 40
+    }
+  },
+  "ata_device_statistics": {
+    "pages": [
+      {
+        "number": 1,
+        "name": "General Statistics",
+        "revision": 2,
+        "table": [
+          {
+            "offset": 8,
+            "name": "Lifetime Power-On Resets",
+            "size": 4,
+            "value": 1931,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 16,
+            "name": "Power-on Hours",
+            "size": 4,
+            "value": 4179,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 24,
+            "name": "Logical Sectors Written",
+            "size": 6,
+            "value": 13843916035,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 32,
+            "name": "Number of Write Commands",
+            "size": 6,
+            "value": 297320424,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 40,
+            "name": "Logical Sectors Read",
+            "size": 6,
+            "value": 20683670158,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 48,
+            "name": "Number of Read Commands",
+            "size": 6,
+            "value": 285738347,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          }
+        ]
+      },
+      {
+        "number": 4,
+        "name": "General Errors Statistics",
+        "revision": 1,
+        "table": [
+          {
+            "offset": 8,
+            "name": "Number of Reported Uncorrectable Errors",
+            "size": 4,
+            "value": 0,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 16,
+            "name": "Resets Between Cmd Acceptance and Completion",
+            "size": 4,
+            "value": 0,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          }
+        ]
+      },
+      {
+        "number": 5,
+        "name": "Temperature Statistics",
+        "revision": 1,
+        "table": [
+          {
+            "offset": 8,
+            "name": "Current Temperature",
+            "size": 1,
+            "value": 0,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 16,
+            "name": "Average Short Term Temperature",
+            "size": 1,
+            "value": 0,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 24,
+            "name": "Average Long Term Temperature",
+            "size": 1,
+            "value": 0,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 32,
+            "name": "Highest Temperature",
+            "size": 1,
+            "value": 0,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 40,
+            "name": "Lowest Temperature",
+            "size": 1,
+            "value": 0,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 48,
+            "name": "Highest Average Short Term Temperature",
+            "size": 1,
+            "value": 0,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 56,
+            "name": "Lowest Average Short Term Temperature",
+            "size": 1,
+            "value": 0,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 64,
+            "name": "Highest Average Long Term Temperature",
+            "size": 1,
+            "value": 0,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 72,
+            "name": "Lowest Average Long Term Temperature",
+            "size": 1,
+            "value": 0,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 80,
+            "name": "Time in Over-Temperature",
+            "size": 4,
+            "flags": {
+              "value": 128,
+              "string": "---- ",
+              "valid": false,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 88,
+            "name": "Specified Maximum Operating Temperature",
+            "size": 1,
+            "value": 70,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 96,
+            "name": "Time in Under-Temperature",
+            "size": 4,
+            "flags": {
+              "value": 128,
+              "string": "---- ",
+              "valid": false,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 104,
+            "name": "Specified Minimum Operating Temperature",
+            "size": 1,
+            "value": 0,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          }
+        ]
+      },
+      {
+        "number": 6,
+        "name": "Transport Statistics",
+        "revision": 1,
+        "table": [
+          {
+            "offset": 8,
+            "name": "Number of Hardware Resets",
+            "size": 4,
+            "value": 0,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 16,
+            "name": "Number of ASR Events",
+            "size": 4,
+            "value": 0,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          },
+          {
+            "offset": 24,
+            "name": "Number of Interface CRC Errors",
+            "size": 4,
+            "value": 0,
+            "flags": {
+              "value": 192,
+              "string": "V--- ",
+              "valid": true,
+              "normalized": false,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          }
+        ]
+      },
+      {
+        "number": 7,
+        "name": "Solid State Device Statistics",
+        "revision": 1,
+        "table": [
+          {
+            "offset": 8,
+            "name": "Percentage Used Endurance Indicator",
+            "size": 1,
+            "value": 3,
+            "flags": {
+              "value": 224,
+              "string": "VN-- ",
+              "valid": true,
+              "normalized": true,
+              "supports_dsn": false,
+              "monitored_condition_met": false
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "sata_phy_event_counters": {
+    "table": [
+      {
+        "id": 1,
+        "name": "Command failed due to ICRC error",
+        "size": 4,
+        "value": 0,
+        "overflow": false
+      },
+      {
+        "id": 10,
+        "name": "Device-to-host register FISes sent due to a COMRESET",
+        "size": 4,
+        "value": 1,
+        "overflow": false
+      }
+    ],
+    "reset": false
+  },
+  "seagate_farm_log": {
+    "supported": false
+  }
+}

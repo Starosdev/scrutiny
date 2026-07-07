@@ -115,3 +115,10 @@ scratch.md
 # Scratch Scripts
 scratch.go
 test_flux.go
+
+# Local architecture knowledge base (agent/maintainer guidance, not shipped)
+CONTEXT.md
+docs/adr/
+docs/agents/invariants.md
+docs/agents/danger-zones.md
+docs/agents/review-checklist.md

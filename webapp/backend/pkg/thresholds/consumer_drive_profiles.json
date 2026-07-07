@@ -1,584 +1,1621 @@
 {
+  "version": "2026.07.0",
   "profiles": [
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "Samsung",
       "model_family": "Samsung based SSDs",
-      "sample_count": 200,
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 2, "high": 8, "critical": 24 },
-        "196": { "low": 0, "moderate": 2, "high": 8, "critical": 24 },
-        "197": { "low": 0, "moderate": 1, "high": 4, "critical": 12 },
-        "198": { "low": 0, "moderate": 1, "high": 4, "critical": 12 }
-      }
+        "196": {
+          "low": 0,
+          "moderate": 2,
+          "high": 8,
+          "critical": 24
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 12
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 12
+        },
+        "5": {
+          "low": 0,
+          "moderate": 2,
+          "high": 8,
+          "critical": 24
+        }
+      },
+      "sample_count": 200
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "Hitachi",
       "model_family": "Hitachi Deskstar 7K1000.D",
-      "sample_count": 41,
       "ata_observed_thresholds": {
         "5": [
-          { "low": 0, "high": 0, "annual_failure_rate": 0.02, "error_interval": [0.01, 0.03] },
-          { "low": 1, "high": 8, "annual_failure_rate": 0.06, "error_interval": [0.03, 0.1] },
-          { "low": 8, "high": 32, "annual_failure_rate": 0.18, "error_interval": [0.1, 0.27] },
-          { "low": 32, "high": 128, "annual_failure_rate": 0.35, "error_interval": [0.22, 0.49] }
+          {
+            "low": 0,
+            "high": 0,
+            "annual_failure_rate": 0.02,
+            "error_interval": [
+              0.01,
+              0.03
+            ]
+          },
+          {
+            "low": 1,
+            "high": 8,
+            "annual_failure_rate": 0.06,
+            "error_interval": [
+              0.03,
+              0.1
+            ]
+          },
+          {
+            "low": 8,
+            "high": 32,
+            "annual_failure_rate": 0.18,
+            "error_interval": [
+              0.1,
+              0.27
+            ]
+          },
+          {
+            "low": 32,
+            "high": 128,
+            "annual_failure_rate": 0.35,
+            "error_interval": [
+              0.22,
+              0.49
+            ]
+          }
         ]
       },
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 4, "high": 16, "critical": 48 },
-        "196": { "low": 0, "moderate": 4, "high": 16, "critical": 48 },
-        "197": { "low": 0, "moderate": 2, "high": 8, "critical": 24 },
-        "198": { "low": 0, "moderate": 2, "high": 8, "critical": 24 },
-        "10": { "low": 0, "moderate": 1, "high": 3, "critical": 8 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "196": {
+          "low": 0,
+          "moderate": 4,
+          "high": 16,
+          "critical": 48
+        },
+        "197": {
+          "low": 0,
+          "moderate": 2,
+          "high": 8,
+          "critical": 24
+        },
+        "198": {
+          "low": 0,
+          "moderate": 2,
+          "high": 8,
+          "critical": 24
+        },
+        "5": {
+          "low": 0,
+          "moderate": 4,
+          "high": 16,
+          "critical": 48
+        }
+      },
+      "sample_count": 41
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "WDC",
       "model_family": "WDC Red",
-      "sample_count": 44,
-      "model_pattern": "^(WDC[_ ]WD(80EFAX|60EFRX|30EFRX).*)$",
       "ata_observed_thresholds": {
         "5": [
-          { "low": 0, "high": 0, "annual_failure_rate": 0.02, "error_interval": [0.01, 0.03] },
-          { "low": 1, "high": 4, "annual_failure_rate": 0.05, "error_interval": [0.03, 0.08] },
-          { "low": 4, "high": 16, "annual_failure_rate": 0.14, "error_interval": [0.09, 0.2] },
-          { "low": 16, "high": 64, "annual_failure_rate": 0.28, "error_interval": [0.19, 0.38] }
+          {
+            "low": 0,
+            "high": 0,
+            "annual_failure_rate": 0.02,
+            "error_interval": [
+              0.01,
+              0.03
+            ]
+          },
+          {
+            "low": 1,
+            "high": 4,
+            "annual_failure_rate": 0.05,
+            "error_interval": [
+              0.03,
+              0.08
+            ]
+          },
+          {
+            "low": 4,
+            "high": 16,
+            "annual_failure_rate": 0.14,
+            "error_interval": [
+              0.09,
+              0.2
+            ]
+          },
+          {
+            "low": 16,
+            "high": 64,
+            "annual_failure_rate": 0.28,
+            "error_interval": [
+              0.19,
+              0.38
+            ]
+          }
         ]
       },
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 2, "high": 8, "critical": 24 },
-        "196": { "low": 0, "moderate": 2, "high": 8, "critical": 24 },
-        "197": { "low": 0, "moderate": 1, "high": 4, "critical": 12 },
-        "198": { "low": 0, "moderate": 1, "high": 4, "critical": 12 },
-        "10": { "low": 0, "moderate": 1, "high": 2, "critical": 6 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 6
+        },
+        "196": {
+          "low": 0,
+          "moderate": 2,
+          "high": 8,
+          "critical": 24
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 12
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 12
+        },
+        "5": {
+          "low": 0,
+          "moderate": 2,
+          "high": 8,
+          "critical": 24
+        }
+      },
+      "model_pattern": "^(WDC[_ ]WD(80EFAX|60EFRX|30EFRX).*)$",
+      "sample_count": 44
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "WDC",
       "model_family": "WDC Red Plus",
-      "sample_count": 147,
-      "model_pattern": "^(WDC[_ ]WD140EDFZ.*)$",
       "ata_observed_thresholds": {
         "5": [
-          { "low": 0, "high": 0, "annual_failure_rate": 0.01, "error_interval": [0.005, 0.02] },
-          { "low": 1, "high": 4, "annual_failure_rate": 0.03, "error_interval": [0.02, 0.05] },
-          { "low": 4, "high": 16, "annual_failure_rate": 0.09, "error_interval": [0.06, 0.13] },
-          { "low": 16, "high": 64, "annual_failure_rate": 0.18, "error_interval": [0.12, 0.25] }
+          {
+            "low": 0,
+            "high": 0,
+            "annual_failure_rate": 0.01,
+            "error_interval": [
+              0.005,
+              0.02
+            ]
+          },
+          {
+            "low": 1,
+            "high": 4,
+            "annual_failure_rate": 0.03,
+            "error_interval": [
+              0.02,
+              0.05
+            ]
+          },
+          {
+            "low": 4,
+            "high": 16,
+            "annual_failure_rate": 0.09,
+            "error_interval": [
+              0.06,
+              0.13
+            ]
+          },
+          {
+            "low": 16,
+            "high": 64,
+            "annual_failure_rate": 0.18,
+            "error_interval": [
+              0.12,
+              0.25
+            ]
+          }
         ]
       },
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
-        "196": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
-        "197": { "low": 0, "moderate": 2, "high": 6, "critical": 16 },
-        "198": { "low": 0, "moderate": 2, "high": 6, "critical": 16 },
-        "10": { "low": 0, "moderate": 1, "high": 3, "critical": 8 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "196": {
+          "low": 0,
+          "moderate": 3,
+          "high": 10,
+          "critical": 28
+        },
+        "197": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        },
+        "198": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        },
+        "5": {
+          "low": 0,
+          "moderate": 3,
+          "high": 10,
+          "critical": 28
+        }
+      },
+      "model_pattern": "^(WDC[_ ]WD140EDFZ.*)$",
+      "sample_count": 147
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "Seagate",
       "model_family": "Seagate Desktop SSHD",
-      "sample_count": 322,
-      "model_pattern": "^ST6000DX000-1H217Z$",
       "ata_observed_thresholds": {
         "5": [
-          { "low": 0, "high": 0, "annual_failure_rate": 0.03, "error_interval": [0.02, 0.05] },
-          { "low": 1, "high": 4, "annual_failure_rate": 0.08, "error_interval": [0.05, 0.11] },
-          { "low": 4, "high": 16, "annual_failure_rate": 0.17, "error_interval": [0.12, 0.23] },
-          { "low": 16, "high": 64, "annual_failure_rate": 0.33, "error_interval": [0.24, 0.43] }
+          {
+            "low": 0,
+            "high": 0,
+            "annual_failure_rate": 0.03,
+            "error_interval": [
+              0.02,
+              0.05
+            ]
+          },
+          {
+            "low": 1,
+            "high": 4,
+            "annual_failure_rate": 0.08,
+            "error_interval": [
+              0.05,
+              0.11
+            ]
+          },
+          {
+            "low": 4,
+            "high": 16,
+            "annual_failure_rate": 0.17,
+            "error_interval": [
+              0.12,
+              0.23
+            ]
+          },
+          {
+            "low": 16,
+            "high": 64,
+            "annual_failure_rate": 0.33,
+            "error_interval": [
+              0.24,
+              0.43
+            ]
+          }
         ]
       },
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 1, "high": 6, "critical": 18 },
-        "196": { "low": 0, "moderate": 1, "high": 6, "critical": 18 },
-        "197": { "low": 0, "moderate": 1, "high": 3, "critical": 10 },
-        "198": { "low": 0, "moderate": 1, "high": 3, "critical": 10 },
-        "10": { "low": 0, "moderate": 1, "high": 2, "critical": 5 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 5
+        },
+        "196": {
+          "low": 0,
+          "moderate": 1,
+          "high": 6,
+          "critical": 18
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 10
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 10
+        },
+        "5": {
+          "low": 0,
+          "moderate": 1,
+          "high": 6,
+          "critical": 18
+        }
+      },
+      "model_pattern": "^ST6000DX000-1H217Z$",
+      "sample_count": 322
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "Seagate",
       "model_family": "Seagate Barracuda 7200.14 (AF)",
-      "sample_count": 6657,
-      "model_pattern": "^ST4000DM000-.*$",
       "ata_observed_thresholds": {
         "5": [
-          { "low": 0, "high": 0, "annual_failure_rate": 0.04, "error_interval": [0.03, 0.05] },
-          { "low": 1, "high": 4, "annual_failure_rate": 0.1, "error_interval": [0.08, 0.13] },
-          { "low": 4, "high": 16, "annual_failure_rate": 0.22, "error_interval": [0.18, 0.27] },
-          { "low": 16, "high": 64, "annual_failure_rate": 0.4, "error_interval": [0.33, 0.48] }
+          {
+            "low": 0,
+            "high": 0,
+            "annual_failure_rate": 0.04,
+            "error_interval": [
+              0.03,
+              0.05
+            ]
+          },
+          {
+            "low": 1,
+            "high": 4,
+            "annual_failure_rate": 0.1,
+            "error_interval": [
+              0.08,
+              0.13
+            ]
+          },
+          {
+            "low": 4,
+            "high": 16,
+            "annual_failure_rate": 0.22,
+            "error_interval": [
+              0.18,
+              0.27
+            ]
+          },
+          {
+            "low": 16,
+            "high": 64,
+            "annual_failure_rate": 0.4,
+            "error_interval": [
+              0.33,
+              0.48
+            ]
+          }
         ]
       },
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 1, "high": 4, "critical": 12 },
-        "196": { "low": 0, "moderate": 1, "high": 4, "critical": 12 },
-        "197": { "low": 0, "moderate": 1, "high": 3, "critical": 8 },
-        "198": { "low": 0, "moderate": 1, "high": 3, "critical": 8 },
-        "10": { "low": 0, "moderate": 1, "high": 2, "critical": 5 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 5
+        },
+        "196": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 12
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "5": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 12
+        }
+      },
+      "model_pattern": "^ST4000DM000-.*$",
+      "sample_count": 6657
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "WDC",
       "model_family": "WDC Caviar Blue",
-      "sample_count": 305,
-      "model_pattern": "^WD10EZEX-.*$",
       "ata_observed_thresholds": {
         "5": [
-          { "low": 0, "high": 0, "annual_failure_rate": 0.03, "error_interval": [0.02, 0.04] },
-          { "low": 1, "high": 4, "annual_failure_rate": 0.07, "error_interval": [0.05, 0.1] },
-          { "low": 4, "high": 16, "annual_failure_rate": 0.16, "error_interval": [0.12, 0.21] },
-          { "low": 16, "high": 64, "annual_failure_rate": 0.31, "error_interval": [0.24, 0.39] }
+          {
+            "low": 0,
+            "high": 0,
+            "annual_failure_rate": 0.03,
+            "error_interval": [
+              0.02,
+              0.04
+            ]
+          },
+          {
+            "low": 1,
+            "high": 4,
+            "annual_failure_rate": 0.07,
+            "error_interval": [
+              0.05,
+              0.1
+            ]
+          },
+          {
+            "low": 4,
+            "high": 16,
+            "annual_failure_rate": 0.16,
+            "error_interval": [
+              0.12,
+              0.21
+            ]
+          },
+          {
+            "low": 16,
+            "high": 64,
+            "annual_failure_rate": 0.31,
+            "error_interval": [
+              0.24,
+              0.39
+            ]
+          }
         ]
       },
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 2, "high": 8, "critical": 20 },
-        "196": { "low": 0, "moderate": 2, "high": 8, "critical": 20 },
-        "197": { "low": 0, "moderate": 1, "high": 4, "critical": 10 },
-        "198": { "low": 0, "moderate": 1, "high": 4, "critical": 10 },
-        "10": { "low": 0, "moderate": 1, "high": 2, "critical": 5 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 5
+        },
+        "196": {
+          "low": 0,
+          "moderate": 2,
+          "high": 8,
+          "critical": 20
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        },
+        "5": {
+          "low": 0,
+          "moderate": 2,
+          "high": 8,
+          "critical": 20
+        }
+      },
+      "model_pattern": "^WD10EZEX-.*$",
+      "sample_count": 305
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "WDC",
       "model_family": "WDC Caviar Green",
-      "sample_count": 150,
-      "model_pattern": "^WD20EARS-.*$",
       "ata_observed_thresholds": {
         "5": [
-          { "low": 0, "high": 0, "annual_failure_rate": 0.04, "error_interval": [0.03, 0.05] },
-          { "low": 1, "high": 4, "annual_failure_rate": 0.09, "error_interval": [0.06, 0.12] },
-          { "low": 4, "high": 16, "annual_failure_rate": 0.2, "error_interval": [0.15, 0.26] },
-          { "low": 16, "high": 64, "annual_failure_rate": 0.38, "error_interval": [0.29, 0.48] }
+          {
+            "low": 0,
+            "high": 0,
+            "annual_failure_rate": 0.04,
+            "error_interval": [
+              0.03,
+              0.05
+            ]
+          },
+          {
+            "low": 1,
+            "high": 4,
+            "annual_failure_rate": 0.09,
+            "error_interval": [
+              0.06,
+              0.12
+            ]
+          },
+          {
+            "low": 4,
+            "high": 16,
+            "annual_failure_rate": 0.2,
+            "error_interval": [
+              0.15,
+              0.26
+            ]
+          },
+          {
+            "low": 16,
+            "high": 64,
+            "annual_failure_rate": 0.38,
+            "error_interval": [
+              0.29,
+              0.48
+            ]
+          }
         ]
       },
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 1, "high": 6, "critical": 18 },
-        "196": { "low": 0, "moderate": 1, "high": 6, "critical": 18 },
-        "197": { "low": 0, "moderate": 1, "high": 3, "critical": 8 },
-        "198": { "low": 0, "moderate": 1, "high": 3, "critical": 8 },
-        "10": { "low": 0, "moderate": 1, "high": 2, "critical": 5 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 5
+        },
+        "196": {
+          "low": 0,
+          "moderate": 1,
+          "high": 6,
+          "critical": 18
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "5": {
+          "low": 0,
+          "moderate": 1,
+          "high": 6,
+          "critical": 18
+        }
+      },
+      "model_pattern": "^WD20EARS-.*$",
+      "sample_count": 150
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "Seagate",
       "model_family": "Seagate Barracuda 7200.12",
-      "sample_count": 3071,
-      "model_pattern": "^ST2000DM001-.*$",
       "ata_observed_thresholds": {
         "5": [
-          { "low": 0, "high": 0, "annual_failure_rate": 0.05, "error_interval": [0.04, 0.06] },
-          { "low": 1, "high": 4, "annual_failure_rate": 0.12, "error_interval": [0.1, 0.15] },
-          { "low": 4, "high": 16, "annual_failure_rate": 0.25, "error_interval": [0.21, 0.3] },
-          { "low": 16, "high": 64, "annual_failure_rate": 0.45, "error_interval": [0.38, 0.53] }
+          {
+            "low": 0,
+            "high": 0,
+            "annual_failure_rate": 0.05,
+            "error_interval": [
+              0.04,
+              0.06
+            ]
+          },
+          {
+            "low": 1,
+            "high": 4,
+            "annual_failure_rate": 0.12,
+            "error_interval": [
+              0.1,
+              0.15
+            ]
+          },
+          {
+            "low": 4,
+            "high": 16,
+            "annual_failure_rate": 0.25,
+            "error_interval": [
+              0.21,
+              0.3
+            ]
+          },
+          {
+            "low": 16,
+            "high": 64,
+            "annual_failure_rate": 0.45,
+            "error_interval": [
+              0.38,
+              0.53
+            ]
+          }
         ]
       },
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 1, "high": 4, "critical": 10 },
-        "196": { "low": 0, "moderate": 1, "high": 4, "critical": 10 },
-        "197": { "low": 0, "moderate": 1, "high": 3, "critical": 6 },
-        "198": { "low": 0, "moderate": 1, "high": 3, "critical": 6 },
-        "10": { "low": 0, "moderate": 1, "high": 2, "critical": 4 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 4
+        },
+        "196": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 6
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 6
+        },
+        "5": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        }
+      },
+      "model_pattern": "^ST2000DM001-.*$",
+      "sample_count": 3071
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "Seagate",
       "model_family": "Seagate Desktop HDD.15",
-      "sample_count": 320,
-      "model_pattern": "^ST3000DM001-.*$",
       "ata_observed_thresholds": {
         "5": [
-          { "low": 0, "high": 0, "annual_failure_rate": 0.05, "error_interval": [0.04, 0.07] },
-          { "low": 1, "high": 4, "annual_failure_rate": 0.13, "error_interval": [0.1, 0.17] },
-          { "low": 4, "high": 16, "annual_failure_rate": 0.27, "error_interval": [0.21, 0.34] },
-          { "low": 16, "high": 64, "annual_failure_rate": 0.46, "error_interval": [0.36, 0.56] }
+          {
+            "low": 0,
+            "high": 0,
+            "annual_failure_rate": 0.05,
+            "error_interval": [
+              0.04,
+              0.07
+            ]
+          },
+          {
+            "low": 1,
+            "high": 4,
+            "annual_failure_rate": 0.13,
+            "error_interval": [
+              0.1,
+              0.17
+            ]
+          },
+          {
+            "low": 4,
+            "high": 16,
+            "annual_failure_rate": 0.27,
+            "error_interval": [
+              0.21,
+              0.34
+            ]
+          },
+          {
+            "low": 16,
+            "high": 64,
+            "annual_failure_rate": 0.46,
+            "error_interval": [
+              0.36,
+              0.56
+            ]
+          }
         ]
       },
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 1, "high": 4, "critical": 10 },
-        "196": { "low": 0, "moderate": 1, "high": 4, "critical": 10 },
-        "197": { "low": 0, "moderate": 1, "high": 3, "critical": 6 },
-        "198": { "low": 0, "moderate": 1, "high": 3, "critical": 6 },
-        "10": { "low": 0, "moderate": 1, "high": 2, "critical": 4 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 4
+        },
+        "196": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 6
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 6
+        },
+        "5": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        }
+      },
+      "model_pattern": "^ST3000DM001-.*$",
+      "sample_count": 320
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "Samsung",
       "model_family": "Samsung SSD 850 PRO",
-      "sample_count": 355,
-      "model_pattern": "^(X SSD 850 PRO 128GB|Samsung SSD 850 PRO.*)$",
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
-        "196": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
-        "197": { "low": 0, "moderate": 2, "high": 6, "critical": 16 },
-        "198": { "low": 0, "moderate": 2, "high": 6, "critical": 16 }
-      }
+        "196": {
+          "low": 0,
+          "moderate": 3,
+          "high": 10,
+          "critical": 28
+        },
+        "197": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        },
+        "198": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        },
+        "5": {
+          "low": 0,
+          "moderate": 3,
+          "high": 10,
+          "critical": 28
+        }
+      },
+      "model_pattern": "^(X SSD 850 PRO 128GB|Samsung SSD 850 PRO.*)$",
+      "sample_count": 355
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "Samsung",
       "model_family": "Samsung SSD 850 EVO",
-      "sample_count": 1184,
-      "model_pattern": "^Samsung SSD 850 EVO.*$",
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
-        "196": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
-        "197": { "low": 0, "moderate": 2, "high": 6, "critical": 16 },
-        "198": { "low": 0, "moderate": 2, "high": 6, "critical": 16 }
-      }
+        "196": {
+          "low": 0,
+          "moderate": 3,
+          "high": 10,
+          "critical": 28
+        },
+        "197": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        },
+        "198": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        },
+        "5": {
+          "low": 0,
+          "moderate": 3,
+          "high": 10,
+          "critical": 28
+        }
+      },
+      "model_pattern": "^Samsung SSD 850 EVO.*$",
+      "sample_count": 1184
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "Samsung",
       "model_family": "Samsung SSD 870 EVO",
-      "sample_count": 897,
-      "model_pattern": "^Samsung SSD 870 EVO.*$",
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
-        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
-      }
+        "196": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        },
+        "197": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "198": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "5": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        }
+      },
+      "model_pattern": "^Samsung SSD 870 EVO.*$",
+      "sample_count": 897
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "Samsung",
       "model_family": "Samsung SSD 860 PRO",
-      "sample_count": 246,
-      "model_pattern": "^Samsung SSD 860 PRO.*$",
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
-        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
-      }
+        "196": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        },
+        "197": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "198": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "5": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        }
+      },
+      "model_pattern": "^Samsung SSD 860 PRO.*$",
+      "sample_count": 246
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "Samsung",
       "model_family": "Samsung SSD 870 QVO",
-      "sample_count": 254,
-      "model_pattern": "^Samsung SSD 870 QVO.*$",
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
-        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
-      }
+        "196": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        },
+        "197": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "198": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "5": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        }
+      },
+      "model_pattern": "^Samsung SSD 870 QVO.*$",
+      "sample_count": 254
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "Crucial",
       "model_family": "Crucial MX500",
-      "sample_count": 2214,
-      "model_pattern": "^CT(250|500|1000|2000|4000)MX500SSD1.*$",
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
-        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
-      }
+        "196": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        },
+        "197": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "198": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "5": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        }
+      },
+      "model_pattern": "^CT(250|500|1000|2000|4000)MX500SSD1.*$",
+      "sample_count": 2214
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "Crucial",
       "model_family": "Crucial MX300",
-      "sample_count": 426,
-      "model_pattern": "^CT(275|525|750|1050)MX300SSD1.*$",
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
-        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
-      }
+        "196": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        },
+        "197": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "198": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "5": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        }
+      },
+      "model_pattern": "^CT(275|525|750|1050)MX300SSD1.*$",
+      "sample_count": 426
+    },
+    {
+      "protocol": "ATA",
+      "source": "scrutiny ATA SSD compatibility profile",
+      "vendor": "Crucial",
+      "model_family": "Crucial/Micron RealSSD m4/C400/P400",
+      "ata_observed_thresholds": {
+        "189": [
+          {
+            "low": 0,
+            "high": 0,
+            "annual_failure_rate": 0,
+            "error_interval": null
+          },
+          {
+            "low": 1,
+            "high": 9223372036854775807,
+            "annual_failure_rate": 0,
+            "error_interval": null
+          }
+        ]
+      },
+      "sample_count": 20
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "Crucial",
       "model_family": "Crucial BX500",
-      "sample_count": 481,
-      "model_pattern": "^CT(120|240|480|500|1000|2000|4000)BX500SSD1.*$",
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
-        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
-      }
+        "196": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        },
+        "197": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "198": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "5": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        }
+      },
+      "model_pattern": "^CT(120|240|480|500|1000|2000|4000)BX500SSD1.*$",
+      "sample_count": 481
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "SanDisk",
       "model_family": "SanDisk Ultra II",
-      "sample_count": 214,
-      "model_pattern": "^SanDisk SDSSDHII-.*$",
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
-        "196": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
-        "197": { "low": 0, "moderate": 2, "high": 6, "critical": 16 },
-        "198": { "low": 0, "moderate": 2, "high": 6, "critical": 16 }
-      }
+        "196": {
+          "low": 0,
+          "moderate": 3,
+          "high": 10,
+          "critical": 28
+        },
+        "197": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        },
+        "198": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        },
+        "5": {
+          "low": 0,
+          "moderate": 3,
+          "high": 10,
+          "critical": 28
+        }
+      },
+      "model_pattern": "^SanDisk SDSSDHII-.*$",
+      "sample_count": 214
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "SanDisk",
       "model_family": "SanDisk 3D SSD",
-      "sample_count": 163,
-      "model_pattern": "^SanDisk SDSSDA-.*$",
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
-        "196": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
-        "197": { "low": 0, "moderate": 2, "high": 6, "critical": 16 },
-        "198": { "low": 0, "moderate": 2, "high": 6, "critical": 16 }
-      }
+        "196": {
+          "low": 0,
+          "moderate": 3,
+          "high": 10,
+          "critical": 28
+        },
+        "197": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        },
+        "198": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        },
+        "5": {
+          "low": 0,
+          "moderate": 3,
+          "high": 10,
+          "critical": 28
+        }
+      },
+      "model_pattern": "^SanDisk SDSSDA-.*$",
+      "sample_count": 163
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "Intel",
       "model_family": "Intel SSD 545s Series",
-      "sample_count": 171,
-      "model_pattern": "^INTEL SSDSC2KW(128|256|512)G8.*$",
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
-        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
-      }
+        "196": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        },
+        "197": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "198": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "5": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        }
+      },
+      "model_pattern": "^INTEL SSDSC2KW(128|256|512)G8.*$",
+      "sample_count": 171
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "WDC",
       "model_family": "WDC Scorpio Blue",
-      "sample_count": 222,
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 2, "high": 6, "critical": 16 },
-        "196": { "low": 0, "moderate": 2, "high": 6, "critical": 16 },
-        "197": { "low": 0, "moderate": 1, "high": 3, "critical": 8 },
-        "198": { "low": 0, "moderate": 1, "high": 3, "critical": 8 },
-        "10": { "low": 0, "moderate": 1, "high": 2, "critical": 4 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 4
+        },
+        "196": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "5": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        }
+      },
+      "sample_count": 222
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "WDC",
       "model_family": "WDC Blue Mobile",
-      "sample_count": 140,
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 2, "high": 6, "critical": 16 },
-        "196": { "low": 0, "moderate": 2, "high": 6, "critical": 16 },
-        "197": { "low": 0, "moderate": 1, "high": 3, "critical": 8 },
-        "198": { "low": 0, "moderate": 1, "high": 3, "critical": 8 },
-        "10": { "low": 0, "moderate": 1, "high": 2, "critical": 4 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 4
+        },
+        "196": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "5": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        }
+      },
+      "sample_count": 140
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "Seagate",
       "model_family": "Seagate Barracuda 7200.10",
-      "sample_count": 2156,
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 1, "high": 4, "critical": 10 },
-        "196": { "low": 0, "moderate": 1, "high": 4, "critical": 10 },
-        "197": { "low": 0, "moderate": 1, "high": 3, "critical": 6 },
-        "198": { "low": 0, "moderate": 1, "high": 3, "critical": 6 },
-        "10": { "low": 0, "moderate": 1, "high": 2, "critical": 4 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 4
+        },
+        "196": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 6
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 6
+        },
+        "5": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        }
+      },
+      "sample_count": 2156
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "Seagate",
       "model_family": "Seagate Barracuda 7200.9",
-      "sample_count": 756,
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 1, "high": 4, "critical": 10 },
-        "196": { "low": 0, "moderate": 1, "high": 4, "critical": 10 },
-        "197": { "low": 0, "moderate": 1, "high": 3, "critical": 6 },
-        "198": { "low": 0, "moderate": 1, "high": 3, "critical": 6 },
-        "10": { "low": 0, "moderate": 1, "high": 2, "critical": 4 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 4
+        },
+        "196": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 6
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 6
+        },
+        "5": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        }
+      },
+      "sample_count": 756
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "Samsung",
       "model_family": "Samsung SSD 840 EVO",
-      "sample_count": 445,
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
-        "196": { "low": 0, "moderate": 3, "high": 10, "critical": 28 },
-        "197": { "low": 0, "moderate": 2, "high": 6, "critical": 16 },
-        "198": { "low": 0, "moderate": 2, "high": 6, "critical": 16 }
-      }
+        "196": {
+          "low": 0,
+          "moderate": 3,
+          "high": 10,
+          "critical": 28
+        },
+        "197": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        },
+        "198": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 16
+        },
+        "5": {
+          "low": 0,
+          "moderate": 3,
+          "high": 10,
+          "critical": 28
+        }
+      },
+      "sample_count": 445
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "Samsung",
       "model_family": "Samsung SSD 860 EVO",
-      "sample_count": 1717,
-      "model_pattern": "^Samsung SSD 860 EVO( [0-9].*|$)",
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
-        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
-      }
+        "196": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        },
+        "197": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "198": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "5": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        }
+      },
+      "model_pattern": "^Samsung SSD 860 EVO( [0-9].*|$)",
+      "sample_count": 1717
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer SSD profile",
       "vendor": "Samsung",
       "model_family": "Samsung SSD 860 EVO M.2",
-      "sample_count": 173,
-      "model_pattern": "^Samsung SSD 860 EVO M\\.2.*$",
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "196": { "low": 0, "moderate": 4, "high": 12, "critical": 32 },
-        "197": { "low": 0, "moderate": 3, "high": 8, "critical": 20 },
-        "198": { "low": 0, "moderate": 3, "high": 8, "critical": 20 }
-      }
+        "196": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        },
+        "197": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "198": {
+          "low": 0,
+          "moderate": 3,
+          "high": 8,
+          "critical": 20
+        },
+        "5": {
+          "low": 0,
+          "moderate": 4,
+          "high": 12,
+          "critical": 32
+        }
+      },
+      "model_pattern": "^Samsung SSD 860 EVO M\\.2.*$",
+      "sample_count": 173
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "WDC",
       "model_family": "WDC Scorpio Black",
-      "sample_count": 52,
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 2, "high": 6, "critical": 14 },
-        "196": { "low": 0, "moderate": 2, "high": 6, "critical": 14 },
-        "197": { "low": 0, "moderate": 1, "high": 3, "critical": 8 },
-        "198": { "low": 0, "moderate": 1, "high": 3, "critical": 8 },
-        "10": { "low": 0, "moderate": 1, "high": 2, "critical": 4 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 4
+        },
+        "196": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 14
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "5": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 14
+        }
+      },
+      "sample_count": 52
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "WDC",
       "model_family": "WDC Black Mobile",
-      "sample_count": 31,
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 2, "high": 6, "critical": 14 },
-        "196": { "low": 0, "moderate": 2, "high": 6, "critical": 14 },
-        "197": { "low": 0, "moderate": 1, "high": 3, "critical": 8 },
-        "198": { "low": 0, "moderate": 1, "high": 3, "critical": 8 },
-        "10": { "low": 0, "moderate": 1, "high": 2, "critical": 4 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 4
+        },
+        "196": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 14
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "5": {
+          "low": 0,
+          "moderate": 2,
+          "high": 6,
+          "critical": 14
+        }
+      },
+      "sample_count": 31
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "Seagate",
       "model_family": "Seagate Barracuda Green (AF)",
-      "sample_count": 447,
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 1, "high": 4, "critical": 10 },
-        "196": { "low": 0, "moderate": 1, "high": 4, "critical": 10 },
-        "197": { "low": 0, "moderate": 1, "high": 3, "critical": 6 },
-        "198": { "low": 0, "moderate": 1, "high": 3, "critical": 6 },
-        "10": { "low": 0, "moderate": 1, "high": 2, "critical": 4 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 4
+        },
+        "196": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 6
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 6
+        },
+        "5": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        }
+      },
+      "sample_count": 447
     },
     {
       "protocol": "ATA",
       "source": "linuxhw/SMART curated consumer HDD profile",
       "vendor": "Seagate",
       "model_family": "Seagate Barracuda LP",
-      "sample_count": 167,
       "ata_counter_severity_overrides": {
-        "5": { "low": 0, "moderate": 1, "high": 4, "critical": 10 },
-        "196": { "low": 0, "moderate": 1, "high": 4, "critical": 10 },
-        "197": { "low": 0, "moderate": 1, "high": 3, "critical": 6 },
-        "198": { "low": 0, "moderate": 1, "high": 3, "critical": 6 },
-        "10": { "low": 0, "moderate": 1, "high": 2, "critical": 4 }
-      }
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 4
+        },
+        "196": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 6
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 6
+        },
+        "5": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        }
+      },
+      "sample_count": 167
     }
   ],
   "aliases": {
-    "Samsung SSD 860 EVO 500GB": "Samsung SSD 860 EVO",
-    "Samsung SSD 860 EVO 250GB": "Samsung SSD 860 EVO",
-    "Samsung SSD 860 EVO 1TB": "Samsung SSD 860 EVO",
-    "Samsung SSD 860 EVO 2TB": "Samsung SSD 860 EVO",
-    "Samsung SSD 860 EVO M.2 500GB": "Samsung SSD 860 EVO M.2",
-    "Samsung SSD 860 EVO M.2 1TB": "Samsung SSD 860 EVO M.2",
-    "Samsung SSD 860 EVO M.2 2TB": "Samsung SSD 860 EVO M.2",
-    "Samsung SSD 840 Series": "Samsung based SSDs",
-    "Hitachi HDS721050DLE630": "Hitachi Deskstar 7K1000.D",
-    "WDC WD80EFAX-68LHPN0": "WDC Red",
-    "WDC_WD80EFAX-68LHPN0": "WDC Red",
-    "WDC WD60EFRX-68MYMN1": "WDC Red",
-    "WDC_WD60EFRX-68MYMN1": "WDC Red",
-    "WDC WD30EFRX-68AX9N0": "WDC Red",
-    "WDC_WD140EDFZ-11A0VA0": "WDC Red Plus",
-    "WDC WD140EDFZ-11A0VA0": "WDC Red Plus",
-    "ST6000DX000-1H217Z": "Seagate Desktop SSHD",
-    "ST4000DM000-1CD168": "Seagate Barracuda 7200.14 (AF)",
-    "ST4000DM000-1F2168": "Seagate Barracuda 7200.14 (AF)",
-    "WD10EZEX-08WN4A0": "WDC Caviar Blue",
-    "WD10EZEX-00BN5A0": "WDC Caviar Blue",
-    "WD20EARS-00MVWB0": "WDC Caviar Green",
-    "ST2000DM001-1ER164": "Seagate Barracuda 7200.12",
-    "ST2000DM001-1CH164": "Seagate Barracuda 7200.12",
-    "ST3000DM001-1ER166": "Seagate Desktop HDD.15",
-    "ST3000DM001-1CH166": "Seagate Desktop HDD.15",
-    "X SSD 850 PRO 128GB": "Samsung SSD 850 PRO",
-    "Samsung SSD 850 EVO 250GB": "Samsung SSD 850 EVO",
-    "Samsung SSD 850 EVO 500GB": "Samsung SSD 850 EVO",
-    "Samsung SSD 850 EVO 1TB": "Samsung SSD 850 EVO",
-    "Samsung SSD 870 EVO 1TB": "Samsung SSD 870 EVO",
-    "Samsung SSD 870 EVO 500GB": "Samsung SSD 870 EVO",
-    "Samsung SSD 860 PRO 512GB": "Samsung SSD 860 PRO",
-    "Samsung SSD 860 PRO 1TB": "Samsung SSD 860 PRO",
-    "Samsung SSD 870 QVO 1TB": "Samsung SSD 870 QVO",
-    "Samsung SSD 870 QVO 2TB": "Samsung SSD 870 QVO",
-    "CT500MX500SSD1": "Crucial MX500",
+    "CT1000BX500SSD1": "Crucial BX500",
     "CT1000MX500SSD1": "Crucial MX500",
-    "CT525MX300SSD1": "Crucial MX300",
     "CT1050MX300SSD1": "Crucial MX300",
     "CT500BX500SSD1": "Crucial BX500",
-    "CT1000BX500SSD1": "Crucial BX500",
-    "SanDisk SDSSDHII-480G": "SanDisk Ultra II",
-    "SanDisk SDSSDHII-240G": "SanDisk Ultra II",
-    "SanDisk SDSSDA-500G": "SanDisk 3D SSD",
-    "SanDisk SDSSDA-1T00-G26": "SanDisk 3D SSD",
+    "CT500MX500SSD1": "Crucial MX500",
+    "CT525MX300SSD1": "Crucial MX300",
+    "Hitachi HDS721050DLE630": "Hitachi Deskstar 7K1000.D",
     "INTEL SSDSC2KW256G8": "Intel SSD 545s Series",
     "INTEL SSDSC2KW512G8": "Intel SSD 545s Series",
-    "Samsung SSD 840 EVO 500GB": "Samsung SSD 840 EVO",
-    "Samsung SSD 840 EVO 250GB": "Samsung SSD 840 EVO",
+    "ST2000DM001-1CH164": "Seagate Barracuda 7200.12",
+    "ST2000DM001-1ER164": "Seagate Barracuda 7200.12",
+    "ST3000DM001-1CH166": "Seagate Desktop HDD.15",
+    "ST3000DM001-1ER166": "Seagate Desktop HDD.15",
+    "ST4000DM000-1CD168": "Seagate Barracuda 7200.14 (AF)",
+    "ST4000DM000-1F2168": "Seagate Barracuda 7200.14 (AF)",
+    "ST6000DX000-1H217Z": "Seagate Desktop SSHD",
+    "Samsung SSD 840 EVO 120GB": "Samsung SSD 840 EVO",
     "Samsung SSD 840 EVO 1TB": "Samsung SSD 840 EVO",
-    "Samsung SSD 840 EVO 120GB": "Samsung SSD 840 EVO"
+    "Samsung SSD 840 EVO 250GB": "Samsung SSD 840 EVO",
+    "Samsung SSD 840 EVO 500GB": "Samsung SSD 840 EVO",
+    "Samsung SSD 840 Series": "Samsung based SSDs",
+    "Samsung SSD 850 EVO 1TB": "Samsung SSD 850 EVO",
+    "Samsung SSD 850 EVO 250GB": "Samsung SSD 850 EVO",
+    "Samsung SSD 850 EVO 500GB": "Samsung SSD 850 EVO",
+    "Samsung SSD 860 EVO 1TB": "Samsung SSD 860 EVO",
+    "Samsung SSD 860 EVO 250GB": "Samsung SSD 860 EVO",
+    "Samsung SSD 860 EVO 2TB": "Samsung SSD 860 EVO",
+    "Samsung SSD 860 EVO 500GB": "Samsung SSD 860 EVO",
+    "Samsung SSD 860 EVO M.2 1TB": "Samsung SSD 860 EVO M.2",
+    "Samsung SSD 860 EVO M.2 2TB": "Samsung SSD 860 EVO M.2",
+    "Samsung SSD 860 EVO M.2 500GB": "Samsung SSD 860 EVO M.2",
+    "Samsung SSD 860 PRO 1TB": "Samsung SSD 860 PRO",
+    "Samsung SSD 860 PRO 512GB": "Samsung SSD 860 PRO",
+    "Samsung SSD 870 EVO 1TB": "Samsung SSD 870 EVO",
+    "Samsung SSD 870 EVO 500GB": "Samsung SSD 870 EVO",
+    "Samsung SSD 870 QVO 1TB": "Samsung SSD 870 QVO",
+    "Samsung SSD 870 QVO 2TB": "Samsung SSD 870 QVO",
+    "SanDisk SDSSDA-1T00-G26": "SanDisk 3D SSD",
+    "SanDisk SDSSDA-500G": "SanDisk 3D SSD",
+    "SanDisk SDSSDHII-240G": "SanDisk Ultra II",
+    "SanDisk SDSSDHII-480G": "SanDisk Ultra II",
+    "WD10EZEX-00BN5A0": "WDC Caviar Blue",
+    "WD10EZEX-08WN4A0": "WDC Caviar Blue",
+    "WD20EARS-00MVWB0": "WDC Caviar Green",
+    "WDC WD140EDFZ-11A0VA0": "WDC Red Plus",
+    "WDC WD30EFRX-68AX9N0": "WDC Red",
+    "WDC WD60EFRX-68MYMN1": "WDC Red",
+    "WDC WD80EFAX-68LHPN0": "WDC Red",
+    "WDC_WD140EDFZ-11A0VA0": "WDC Red Plus",
+    "WDC_WD60EFRX-68MYMN1": "WDC Red",
+    "WDC_WD80EFAX-68LHPN0": "WDC Red",
+    "X SSD 850 PRO 128GB": "Samsung SSD 850 PRO"
   }
 }
