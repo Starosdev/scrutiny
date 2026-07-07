@@ -463,6 +463,108 @@ func TestFromCollectorSmartInfo_Fail_ScrutinyNonCriticalFailed(t *testing.T) {
 	require.Equal(t, 14, len(smartMdl.Attributes))
 }
 
+func TestFromCollectorSmartInfo_ATA_Issue587VendorSpecificSsdAttribute(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-ata-issue587-realssd-m4.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+	require.Equal(t, pkg.DeviceStatusPassed, smartMdl.Status)
+	require.Equal(t, int64(0), smartMdl.Temp)
+
+	attr189 := smartMdl.Attributes["189"].(*measurements.SmartAtaAttribute)
+	require.Equal(t, pkg.AttributeStatusPassed, attr189.Status)
+	require.Equal(t, "Skipped generic ATA observed-threshold scoring for vendor-specific SSD attribute", attr189.StatusReason)
+	require.Zero(t, attr189.FailureRate)
+}
+
+func TestFromCollectorSmartInfo_ATA_HddHighFlyWritesStillUsesGenericScoring(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-sat.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+	smartJson.RotationRate = 7200
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+
+	attr189 := smartMdl.Attributes["189"].(*measurements.SmartAtaAttribute)
+	require.Equal(t, pkg.AttributeStatusPassed, attr189.Status)
+	require.Empty(t, attr189.StatusReason)
+	require.Greater(t, attr189.FailureRate, 0.0)
+}
+
+func TestFromCollectorSmartInfo_ATA_SsdRuntimeBadBlockStillUsesGenericScoring(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-ata-failed-scrutiny.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+
+	attr183 := smartMdl.Attributes["183"].(*measurements.SmartAtaAttribute)
+	require.Equal(t, pkg.AttributeStatusPassed, attr183.Status)
+	require.Empty(t, attr183.StatusReason)
+	require.Greater(t, attr183.FailureRate, 0.0)
+}
+
 //TODO: Scrutiny Warn
 //TODO: Smart + Scrutiny Warn
 

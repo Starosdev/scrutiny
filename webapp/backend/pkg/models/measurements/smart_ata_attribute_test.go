@@ -238,7 +238,7 @@ func TestValidateThreshold_Attr177_AboveNormal_NormalizedValue110_Passes(t *test
 
 func TestValidateThreshold_Attr177_NoBucketWarning_Eliminated(t *testing.T) {
 	sa := SmartAtaAttribute{AttributeId: 177, Value: 92, RawValue: 200}
-	sa.PopulateAttributeStatus(nil)
+	sa.PopulateAttributeStatus(nil, false)
 
 	require.False(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusWarningScrutiny))
 	require.False(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
@@ -255,7 +255,7 @@ func TestPopulateAttributeStatus_UsesConsumerDriveProfileThresholds(t *testing.T
 		},
 	}
 
-	sa.PopulateAttributeStatus(profile)
+	sa.PopulateAttributeStatus(profile, false)
 
 	require.InDelta(t, 0.30, sa.FailureRate, 0.001)
 	require.True(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
@@ -264,8 +264,30 @@ func TestPopulateAttributeStatus_UsesConsumerDriveProfileThresholds(t *testing.T
 func TestPopulateAttributeStatus_FallsBackWithoutProfile(t *testing.T) {
 	sa := SmartAtaAttribute{AttributeId: 5, RawValue: 40}
 
-	sa.PopulateAttributeStatus(nil)
+	sa.PopulateAttributeStatus(nil, false)
 
 	require.InDelta(t, 0.23589260654405794, sa.FailureRate, 0.001)
 	require.True(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
+}
+
+func TestAtaAttributeNamesSemanticallyMatch(t *testing.T) {
+	require.True(t, ataAttributeNamesSemanticallyMatch("High_Fly_Writes", "High Fly Writes"))
+	require.True(t, ataAttributeNamesSemanticallyMatch("Runtime_Bad_Block", "SATA Downshift Error Count or Runtime Bad Block"))
+	require.True(t, ataAttributeNamesSemanticallyMatch("Factory_Bad_Block_Ct", "Factory Bad Block Count"))
+	require.False(t, ataAttributeNamesSemanticallyMatch("Factory_Bad_Block_Ct", "High Fly Writes"))
+}
+
+func TestPopulateAttributeStatus_SkipsGenericObservedThresholdsForVendorSpecificAtaSsd(t *testing.T) {
+	sa := SmartAtaAttribute{
+		AttributeId: 189,
+		Name:        "Factory_Bad_Block_Ct",
+		Value:       100,
+		RawValue:    81,
+	}
+
+	sa.PopulateAttributeStatus(nil, true)
+
+	require.Equal(t, pkg.AttributeStatusPassed, sa.Status)
+	require.Equal(t, ataSsdVendorSpecificThresholdSkipReason, sa.StatusReason)
+	require.Zero(t, sa.FailureRate)
 }

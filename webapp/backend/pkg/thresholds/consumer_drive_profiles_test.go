@@ -125,6 +125,19 @@ func TestLookupConsumerDriveProfileByCrucialMx300Alias(t *testing.T) {
 	}
 }
 
+func TestLookupConsumerDriveProfileByCrucialRealSsdFamily(t *testing.T) {
+	profile, ok := LookupConsumerDriveProfile("ATA", "Crucial/Micron RealSSD m4/C400/P400", "")
+	if !ok || profile == nil {
+		t.Fatalf("expected Crucial RealSSD family match")
+	}
+	if profile.ModelFamily != "Crucial/Micron RealSSD m4/C400/P400" {
+		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
+	}
+	if _, ok := profile.AtaObservedThresholds[189]; !ok {
+		t.Fatalf("expected attr 189 override")
+	}
+}
+
 func TestLookupConsumerDriveProfileByCrucialBx500Regex4TB(t *testing.T) {
 	profile, ok := LookupConsumerDriveProfile("ATA", "", "CT4000BX500SSD1")
 	if !ok || profile == nil {
