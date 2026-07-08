@@ -9,12 +9,11 @@ import (
 	"strings"
 	"time"
 
-	_ "go.uber.org/automaxprocs"
-
 	utils "github.com/analogj/go-util/utils"
 	"github.com/analogj/scrutiny/collector/pkg/config"
 	"github.com/analogj/scrutiny/collector/pkg/errors"
 	"github.com/analogj/scrutiny/collector/pkg/zfs"
+	"github.com/analogj/scrutiny/pkg/startup"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
@@ -39,8 +38,8 @@ func main() {
 	}
 
 	// Create a bootstrap logger for config loading
-	bootstrapLogger := logrus.WithFields(logrus.Fields{"type": "zfs"})
-	bootstrapLogger.Logger.SetLevel(logrus.InfoLevel)
+	bootstrapLogger := startup.NewBootstrapLogger("zfs", cfg)
+	startup.ConfigureMaxProcs(bootstrapLogger)
 
 	if err := readOptionalCollectorConfig(cfg, resolveCollectorConfigPath("zfs"), bootstrapLogger); err != nil {
 		os.Exit(1)
@@ -71,7 +70,9 @@ OPTIONS:
 			},
 		},
 		Before: func(c *cli.Context) error {
-			color.New(color.FgGreen).Fprintf(c.App.Writer, "%s", collectorBanner("Starosdev/scrutiny/zfs"))
+			if startup.ShouldPrintBanner() {
+				color.New(color.FgGreen).Fprintf(c.App.Writer, "%s", collectorBanner("Starosdev/scrutiny/zfs"))
+			}
 			return nil
 		},
 

@@ -695,6 +695,12 @@ The test route sends through the same configured targets as normal notifications
 Scrutiny provides various methods to change the log level and generate log files.
 The web server and collector have **independent** log configurations and can be set separately.
 
+## Shared Startup Banner Suppression
+
+Set `SCRUTINY_NO_LOGO=true` to suppress the ASCII startup banner in the web binary and all container-facing collector binaries.
+
+This env var is evaluated at process startup, so it works alongside `SCRUTINY_LOG_LEVEL` and `COLLECTOR_LOG_LEVEL` when you want quiet `WARN` or `ERROR` startup behavior.
+
 ## Valid Log Levels
 
 The following log levels are supported (case-insensitive), listed from highest to lowest severity:
@@ -718,6 +724,7 @@ You can use environmental variables to enable debug logging and/or log files for
 
 ```bash
 DEBUG=true
+SCRUTINY_NO_LOGO=true
 SCRUTINY_LOG_FILE=/tmp/web.log
 ```
 
@@ -799,6 +806,7 @@ Example:
 ```bash
 docker run -e SCRUTINY_WEB_LISTEN_PORT=9090 \
   -e SCRUTINY_WEB_INFLUXDB_HOST=influxdb.local \
+  -e SCRUTINY_NO_LOGO=true \
   -e SCRUTINY_LOG_LEVEL=DEBUG \
   ghcr.io/starosdev/scrutiny:latest-web
 ```
@@ -809,6 +817,7 @@ You can use environmental variables to enable debug logging and/or log files for
 
 ```bash
 DEBUG=true
+SCRUTINY_NO_LOGO=true
 COLLECTOR_LOG_FILE=/tmp/collector.log
 ```
 
@@ -846,6 +855,7 @@ Example:
 ```bash
 docker run -e COLLECTOR_COMMANDS_METRICS_SMART_ARGS="--xall --json -T permissive" \
   -e COLLECTOR_API_ENDPOINT=http://scrutiny-web:8080 \
+  -e SCRUTINY_NO_LOGO=true \
   ghcr.io/starosdev/scrutiny:latest-collector
 ```
 
@@ -865,6 +875,7 @@ The performance collector is a separate binary (`scrutiny-collector-performance`
 
 ```bash
 DEBUG=true
+SCRUTINY_NO_LOGO=true
 COLLECTOR_PERF_LOG_FILE=/tmp/performance.log
 ```
 
