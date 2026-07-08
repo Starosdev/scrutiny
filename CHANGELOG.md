@@ -2,6 +2,16 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.66.0](https://github.com/Starosdev/scrutiny/compare/v1.65.0...v1.66.0) (2026-07-08)
+
+### Features
+
+* **release:** promote beta to master ([#650](https://github.com/Starosdev/scrutiny/issues/650)) ([c963973](https://github.com/Starosdev/scrutiny/commit/c9639733617fe1833414f8073820caf57c4a1ebf))
+
+### Bug Fixes
+
+* **ui:** dark mode tokens for settings dialog and dropdowns ([#634](https://github.com/Starosdev/scrutiny/issues/634)) ([c38d06f](https://github.com/Starosdev/scrutiny/commit/c38d06ff1d9bf1ef09eaaafaa6a91734b1ec3030))
+
 ## Unreleased
 
 ### Bug Fixes
