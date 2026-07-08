@@ -247,6 +247,9 @@ the following Docker images:
 
 - `ghcr.io/starosdev/scrutiny:latest-collector` - Contains the Scrutiny data collector, `smartctl` binary and cron-like
   scheduler. You can run one collector on each server.
+- `ghcr.io/starosdev/scrutiny:latest-collector-omnibus` - Recommended single-spoke image for hub/spoke deployments.
+  Bundles the SMART, ZFS, MDADM, Btrfs, filesystem, and performance collectors in one container while keeping each
+  optional collector disabled until you enable its existing schedule or run-on-startup env vars.
 - `ghcr.io/starosdev/scrutiny:latest-collector-zfs` - ZFS pool collector for monitoring ZFS health.
   Run alongside or instead of the standard collector if you use ZFS. See [docs/ZFS_POOL_MONITORING.md](./docs/ZFS_POOL_MONITORING.md) for setup instructions.
 - `ghcr.io/starosdev/scrutiny:latest-collector-mdadm` - MDADM collector for Linux software RAID monitoring.
@@ -268,7 +271,7 @@ Branch channel tags follow the same pattern across images:
 Default CI image publishing currently builds:
 
 - `collector` for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`
-- `web`, `collector-zfs`, `collector-mdadm`, `collector-btrfs`, and `collector-performance` for `linux/amd64` and `linux/arm64`
+- `collector-omnibus`, `web`, `collector-zfs`, `collector-mdadm`, `collector-btrfs`, and `collector-performance` for `linux/amd64` and `linux/arm64`
 
 > See [docker/example.hubspoke.docker-compose.yml](docker/example.hubspoke.docker-compose.yml) for a docker-compose file.
 
@@ -286,12 +289,16 @@ docker run -p 8080:8080 --restart unless-stopped \
 docker run --restart unless-stopped \
   -v /run/udev:/run/udev:ro \
   --cap-add SYS_RAWIO \
+  --cap-add SYS_ADMIN \
   --device=/dev/sda \
   --device=/dev/sdb \
   -e COLLECTOR_API_ENDPOINT=http://SCRUTINY_WEB_IPADDRESS:8080 \
   --name scrutiny-collector \
-  ghcr.io/starosdev/scrutiny:latest-collector
+  ghcr.io/starosdev/scrutiny:latest-collector-omnibus
 ```
+
+Use `ghcr.io/starosdev/scrutiny:latest-collector` instead if you only want the SMART collector in that spoke and do not
+need the extra host tooling for ZFS, MDADM, Btrfs, filesystem, or fio workloads.
 
 ## Manual Installation (without-Docker)
 
@@ -335,7 +342,8 @@ None of these files are required, however if provided, they allow you to configu
 
 ## Cron Schedule
 Unfortunately the Cron schedule cannot be configured via the `collector.yaml` (as the collector binary needs to be triggered by a scheduler/cron).
-However, if you are using the official `ghcr.io/starosdev/scrutiny:latest-collector` or `ghcr.io/starosdev/scrutiny:latest-omnibus` docker images,
+However, if you are using the official `ghcr.io/starosdev/scrutiny:latest-collector`, `ghcr.io/starosdev/scrutiny:latest-collector-omnibus`,
+or `ghcr.io/starosdev/scrutiny:latest-omnibus` docker images,
 you can use the `COLLECTOR_CRON_SCHEDULE` environmental variable to override the default cron schedule (daily @ midnight - `0 0 * * *`).
 
 `docker run -e COLLECTOR_CRON_SCHEDULE="0 0 * * *" ...`

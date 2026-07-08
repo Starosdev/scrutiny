@@ -1,0 +1,105 @@
+# syntax=docker/dockerfile:1.4
+########################################################################################################################
+# Collector Omnibus Image
+########################################################################################################################
+
+FROM golang:1.26-trixie AS backendbuild
+
+WORKDIR /go/src/github.com/analogj/scrutiny
+COPY --link . /go/src/github.com/analogj/scrutiny
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --no-install-recommends \
+    file \
+    && rm -rf /var/lib/apt/lists/*
+RUN make binary-clean \
+    binary-collector \
+    binary-collector-zfs \
+    binary-collector-performance \
+    binary-collector-mdadm \
+    binary-collector-filesystem \
+    binary-collector-btrfs
+
+FROM debian:trixie-slim AS runtime
+ARG TARGETARCH
+WORKDIR /opt/scrutiny
+ENV PATH="/opt/scrutiny/bin:${PATH}"
+ENV S6VER="3.1.6.2"
+SHELL ["/usr/bin/sh", "-c"]
+
+RUN sed -i 's/Components: main/Components: main contrib/' /etc/apt/sources.list.d/debian.sources \
+    && echo "deb http://deb.debian.org/debian trixie-backports main" > /etc/apt/sources.list.d/backports.list \
+    && apt-get update && DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    cron \
+    curl \
+    tzdata \
+    procps \
+    xz-utils \
+    btrfs-progs \
+    zfsutils-linux \
+    mdadm \
+    fio \
+    && apt-get install -y --no-install-recommends -t trixie-backports smartmontools \
+    && rm -rf /var/lib/apt/lists/* \
+    && update-ca-certificates \
+    && download_and_extract_xz() { \
+           url="$1"; \
+           archive="$2"; \
+           checksum_file="${archive}.sha256"; \
+           curl --fail --location --show-error --silent \
+               --retry 5 --retry-all-errors --retry-delay 2 --max-time 300 \
+               "$url" --output "$archive" \
+           && curl --fail --location --show-error --silent \
+               --retry 5 --retry-all-errors --retry-delay 2 --max-time 60 \
+               "${url}.sha256" --output "$checksum_file" \
+           && awk -v archive="$archive" '{print $1 "  " archive}' "$checksum_file" | sha256sum -c - \
+           && xz -t "$archive" \
+           && tar -Jxpf "$archive" -C / \
+           && rm -f "$archive" "$checksum_file"; \
+       } \
+    && case ${TARGETARCH} in \
+           "amd64")  S6_ARCH=x86_64  ;; \
+           "arm64")  S6_ARCH=aarch64  ;; \
+       esac \
+    && mkdir -p /opt/scrutiny/bin \
+    && download_and_extract_xz \
+        "https://github.com/just-containers/s6-overlay/releases/download/v${S6VER}/s6-overlay-noarch.tar.xz" \
+        /tmp/s6-overlay-noarch.tar.xz \
+    && download_and_extract_xz \
+        "https://github.com/just-containers/s6-overlay/releases/download/v${S6VER}/s6-overlay-${S6_ARCH}.tar.xz" \
+        /tmp/s6-overlay-${S6_ARCH}.tar.xz
+
+COPY /docker/apparmor-profile /opt/scrutiny/apparmor-profile
+COPY /docker/entrypoint-collector-omnibus-startup.sh /etc/cont-init.d/60-collector-startup
+COPY /rootfs/etc/cont-init.d/01-timezone /etc/cont-init.d/01-timezone
+COPY /rootfs/etc/cont-init.d/50-cron-config /etc/cont-init.d/50-cron-config
+COPY /rootfs/etc/cron.d/scrutiny /etc/cron.d/scrutiny
+COPY /rootfs/etc/cron.d/scrutiny-zfs /etc/cron.d/scrutiny-zfs
+COPY /rootfs/etc/cron.d/scrutiny-performance /etc/cron.d/scrutiny-performance
+COPY /rootfs/etc/cron.d/scrutiny-mdadm /etc/cron.d/scrutiny-mdadm
+COPY /rootfs/etc/cron.d/scrutiny-filesystem /etc/cron.d/scrutiny-filesystem
+COPY /rootfs/etc/cron.d/scrutiny-btrfs /etc/cron.d/scrutiny-btrfs
+COPY /rootfs/etc/services.d/cron /etc/services.d/cron
+
+COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny-collector-metrics /opt/scrutiny/bin/
+COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny-collector-zfs /opt/scrutiny/bin/
+COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny-collector-performance /opt/scrutiny/bin/
+COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny-collector-mdadm /opt/scrutiny/bin/
+COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny-collector-filesystem /opt/scrutiny/bin/
+COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/scrutiny-collector-btrfs /opt/scrutiny/bin/
+
+RUN chmod 0644 /etc/cron.d/scrutiny \
+    && chmod 0644 /etc/cron.d/scrutiny-zfs \
+    && chmod 0644 /etc/cron.d/scrutiny-performance \
+    && chmod 0644 /etc/cron.d/scrutiny-mdadm \
+    && chmod 0644 /etc/cron.d/scrutiny-filesystem \
+    && chmod 0644 /etc/cron.d/scrutiny-btrfs \
+    && rm -f /etc/cron.daily/* \
+    && mkdir -p /opt/scrutiny/config \
+    && chmod -R ugo+rwx /opt/scrutiny/config \
+    && chmod +x /etc/cont-init.d/* \
+    && chmod +x /etc/services.d/*/run \
+    && chmod +x /etc/services.d/*/finish
+
+ENTRYPOINT ["/init"]

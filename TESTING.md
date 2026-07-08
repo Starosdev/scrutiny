@@ -189,7 +189,7 @@ npm run lint:fix      # Auto-fix what it can
 
 ## 3. Building Docker Images Locally
 
-The project produces five Docker images. Build whichever you need to test:
+Build whichever image matches the path you changed:
 
 ```bash
 # Omnibus (web + all collectors + InfluxDB, all-in-one)
@@ -204,9 +204,21 @@ make docker-web
 make docker-collector
 # -> ghcr.io/starosdev/scrutiny-dev:collector
 
+# Single-container hub/spoke collector bundle
+make docker-collector-omnibus
+# -> ghcr.io/starosdev/scrutiny-dev:collector-omnibus
+
 # ZFS collector only
 make docker-collector-zfs
 # -> ghcr.io/starosdev/scrutiny-dev:collector-zfs
+
+# MDADM collector only
+make docker-collector-mdadm
+# -> ghcr.io/starosdev/scrutiny-dev:collector-mdadm
+
+# Btrfs collector only
+make docker-collector-btrfs
+# -> ghcr.io/starosdev/scrutiny-dev:collector-btrfs
 
 # Performance collector only
 make docker-collector-performance

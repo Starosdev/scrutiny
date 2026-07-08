@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>scrutiny-collector-omnibus</Name>
+  <Repository>ghcr.io/starosdev/scrutiny:latest-collector-omnibus</Repository>
+  <Registry>https://github.com/Starosdev/scrutiny/pkgs/container/scrutiny</Registry>
+  <Branch>
+    <Tag>latest-collector-omnibus</Tag>
+    <TagDescription>Stable collector omnibus spoke release</TagDescription>
+  </Branch>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Starosdev/scrutiny/issues</Support>
+  <Project>https://github.com/Starosdev/scrutiny</Project>
+  <Overview>Scrutiny Collector Omnibus (Hub/Spoke mode). Bundles the SMART, ZFS, MDADM, Btrfs, filesystem, and performance collectors in one spoke container. Requires a running Scrutiny web server instance. Optional collectors stay disabled until their schedule or startup variables are set and the required host mounts are provided.</Overview>
+  <Category>Tools: Productivity:</Category>
+  <Icon>https://raw.githubusercontent.com/Starosdev/scrutiny/master/webapp/frontend/src/assets/images/logo/scrutiny-logo-dark.png</Icon>
+  <ExtraParams>--cap-add SYS_RAWIO --cap-add SYS_ADMIN</ExtraParams>
+  <Shell>bash</Shell>
+  <Config Name="Udev" Target="/run/udev" Default="/run/udev" Mode="ro" Description="Required for device detection. Do not change." Type="Path" Display="always-hide" Required="true" Mask="false"/>
+  <Config Name="Disk 1" Target="" Default="/dev/sda" Description="First disk to monitor. Add more Device entries for additional disks. For NVMe, pass both /dev/nvme0 (controller) and /dev/nvme0n1 (namespace)." Type="Device" Display="always" Required="false" Mask="false"/>
+  <Config Name="Host Mount Root" Target="/mnt" Default="/mnt" Description="Optional bind mount for filesystem or fio-backed mount visibility." Type="Path" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Btrfs State" Target="/var/lib/btrfs" Default="/var/lib/btrfs" Description="Optional bind mount for persisted Btrfs scrub state." Type="Path" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Host Dev" Target="/dev" Default="/dev" Description="Optional bind mount for MDADM discovery and broad device visibility." Type="Path" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Host mdstat" Target="/host/proc/mdstat" Default="/proc/mdstat" Description="Optional bind mount for MDADM array state." Type="Path" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="API Endpoint" Target="COLLECTOR_API_ENDPOINT" Default="" Description="Scrutiny web server URL (e.g. http://scrutiny-web:8080). Required." Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="Host ID" Target="COLLECTOR_HOST_ID" Default="" Description="Unique identifier for this collector host. Shared by all bundled collectors unless overridden by collector-specific config." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="API Token" Target="COLLECTOR_API_TOKEN" Default="" Description="Server auth token. Required when web.auth.enabled is true." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="SMART Schedule" Target="COLLECTOR_CRON_SCHEDULE" Default="0 0 * * *" Description="S.M.A.R.T data collection schedule (cron format)." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="SMART Startup" Target="COLLECTOR_RUN_STARTUP" Default="false" Description="Run S.M.A.R.T collection immediately on container startup." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="ZFS Schedule" Target="COLLECTOR_ZFS_CRON_SCHEDULE" Default="" Description="ZFS pool collection schedule. Leave blank to disable." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="ZFS Startup" Target="COLLECTOR_ZFS_RUN_STARTUP" Default="false" Description="Run ZFS pool collection immediately on container startup." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="MDADM Schedule" Target="COLLECTOR_MDADM_CRON_SCHEDULE" Default="" Description="MDADM collection schedule. Leave blank to disable." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="MDADM Startup" Target="COLLECTOR_MDADM_RUN_STARTUP" Default="false" Description="Run MDADM collection immediately on container startup." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Btrfs Schedule" Target="COLLECTOR_BTRFS_CRON_SCHEDULE" Default="" Description="Btrfs collection schedule. Leave blank to disable." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Btrfs Startup" Target="COLLECTOR_BTRFS_RUN_STARTUP" Default="false" Description="Run Btrfs collection immediately on container startup." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Filesystem Schedule" Target="COLLECTOR_FILESYSTEM_CRON_SCHEDULE" Default="" Description="Filesystem capacity collection schedule. Leave blank to disable." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Filesystem Startup" Target="COLLECTOR_FILESYSTEM_RUN_STARTUP" Default="false" Description="Run filesystem capacity collection immediately on container startup." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Performance Schedule" Target="COLLECTOR_PERF_CRON_SCHEDULE" Default="" Description="fio benchmark schedule. Leave blank to disable." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Performance Startup" Target="COLLECTOR_PERF_RUN_STARTUP" Default="false" Description="Run fio benchmarks immediately on container startup." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Performance Profile" Target="COLLECTOR_PERF_PROFILE" Default="quick" Description="Benchmark profile: quick or comprehensive." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>

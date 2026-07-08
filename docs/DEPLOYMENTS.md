@@ -17,7 +17,7 @@ For release-version verification details, see [RELEASE_VERSION_VERIFICATION.md](
 - Check out the repo
 - Normalize the GHCR image name to lowercase
 - Build the omnibus image for `linux/amd64` and `linux/arm64`
-- Build the default `web`, `collector-zfs`, `collector-mdadm`, `collector-btrfs`, and `collector-performance` images for `linux/amd64` and `linux/arm64`
+- Build the default `collector-omnibus`, `web`, `collector-zfs`, `collector-mdadm`, `collector-btrfs`, and `collector-performance` images for `linux/amd64` and `linux/arm64`
 - Build the base `collector` image for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`
 - Exclude `webapp/backend/pkg/version/version.go` from the Docker workflow path trigger so release-version sync commits do not rebuild images on their own
 - Push the published tags to GHCR
