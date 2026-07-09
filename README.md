@@ -707,7 +707,7 @@ The web server and collector have **independent** log configurations and can be 
 
 Set `SCRUTINY_NO_LOGO=true` to suppress the ASCII startup banner in the web binary and all container-facing collector binaries.
 
-This env var is evaluated at process startup, so it works alongside `SCRUTINY_LOG_LEVEL` and `COLLECTOR_LOG_LEVEL` when you want quiet `WARN` or `ERROR` startup behavior.
+By default, the banner is still printed during startup. This env var is evaluated at process startup, so it works alongside `SCRUTINY_LOG_LEVEL` and `COLLECTOR_LOG_LEVEL` when you want quiet `WARN` or `ERROR` startup behavior without changing the default banner behavior for other runs.
 
 ## Valid Log Levels
 

@@ -95,7 +95,7 @@ panic: a username and password is required for a setup
 or 
 
 ```
-Start the scrutiny server
+time="2022-06-11T10:35:04-04:00" level=info msg="Start the scrutiny server" type=web
 time="2022-06-11T10:35:04-04:00" level=info msg="Trying to connect to scrutiny sqlite db: \n"
 time="2022-06-11T10:35:04-04:00" level=info msg="Successfully connected to scrutiny sqlite db: \n"
 panic: failed to check influxdb setup status - parse "://:": missing protocol scheme
