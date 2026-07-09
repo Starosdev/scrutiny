@@ -1,7 +1,11 @@
 #!/command/with-contenv bash
 
-echo "waiting for influxdb"
-until $(curl --output /dev/null --silent --head --fail http://localhost:8086/health); do echo "influxdb not ready" && sleep 5; done
+log_info() {
+    printf 'time="%s" level=info msg="%s" type=web\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$1"
+}
 
-echo "starting scrutiny"
+log_info "waiting for influxdb"
+until $(curl --output /dev/null --silent --head --fail http://localhost:8086/health); do log_info "influxdb not ready" && sleep 5; done
+
+log_info "starting scrutiny"
 exec scrutiny start

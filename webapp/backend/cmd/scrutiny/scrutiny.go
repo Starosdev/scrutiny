@@ -107,7 +107,6 @@ func newCLIApp(cfg config.Interface, bootstrapLogger *logrus.Entry) *cli.App {
 				Name:  "start",
 				Usage: "Start the scrutiny server",
 				Action: func(c *cli.Context) error {
-					fmt.Fprintln(c.App.Writer, c.Command.Usage)
 					if c.IsSet("config") {
 						if err := cfg.ReadConfig(c.String("config"), bootstrapLogger); err != nil { // Find and read the config file
 							//ignore "could not find config file"
@@ -131,6 +130,8 @@ func newCLIApp(cfg config.Interface, bootstrapLogger *logrus.Entry) *cli.App {
 					if err != nil {
 						return err
 					}
+
+					webLogger.Info(c.Command.Usage)
 
 					settingsData, err := json.Marshal(cfg.AllSettings())
 					webLogger.Debug(string(settingsData), err)
