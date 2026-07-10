@@ -33,7 +33,10 @@ export class MDADMService {
     getSummaryData(): Observable<MDADMArrayModel[]> {
         return this._httpClient.get(getBasePath() + '/api/mdadm/summary').pipe(
             map((response: MDADMArrayResponseWrapper) => {
-                return response.data;
+                return response.data.map((array) => ({
+                    ...array,
+                    devices: array.devices ?? [],
+                }));
             }),
             tap((response: MDADMArrayModel[]) => {
                 this._data.next(response);

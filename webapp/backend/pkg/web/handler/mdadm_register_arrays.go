@@ -33,12 +33,16 @@ func RegisterMdadmArrays(c *gin.Context) {
 			registrationErrors = append(registrationErrors, fmt.Sprintf("array %s rejected: missing UUID", collectorArray.Name))
 			continue
 		}
+		devices := collectorArray.Devices
+		if devices == nil {
+			devices = []string{}
+		}
 
 		array := models.MDADMArray{
 			UUID:    trimmedUUID,
 			Name:    collectorArray.Name,
 			Level:   collectorArray.Level,
-			Devices: collectorArray.Devices,
+			Devices: devices,
 			HostID:  collectorArray.HostID,
 		}
 
