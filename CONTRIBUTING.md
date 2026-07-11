@@ -87,7 +87,7 @@ unless the task specifically requires host-level device access from Zeus.
     ```
 4. if you need a Dockerized InfluxDB dependency, start it on Zeus rather than on this Mac.
     ```bash
-    docker run -p 8086:8086 --rm influxdb:2.2
+    docker run -p 8086:8086 --rm influxdb:2.9
     ```
 5. start the scrutiny web server
     ```bash
@@ -151,7 +151,7 @@ you'll need to follow the steps below:
     ```
 4. start a InfluxDB docker container.
     ```bash
-    docker run -p 8086:8086 --rm influxdb:2.2
+    docker run -p 8086:8086 --rm influxdb:2.9
     ```
 5. build the Angular Frontend Application
     ```bash
@@ -175,7 +175,7 @@ If you'd like to populate the database with some test data,  you can run the fol
 > This is done automatically by the `webapp/backend/pkg/models/testdata/helper.go` script
 
 ```
-docker run -p 8086:8086 --rm influxdb:2.2
+docker run -p 8086:8086 --rm influxdb:2.9
 
 
 # curl -X POST -H "Content-Type: application/json" -d @webapp/backend/pkg/web/testdata/register-devices-req.json localhost:8080/api/devices/register
@@ -249,7 +249,7 @@ docker run -p 8086:8086 -d --rm \
 -e DOCKER_INFLUXDB_INIT_ORG=scrutiny \
 -e DOCKER_INFLUXDB_INIT_BUCKET=metrics \
 -e DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-auth-token \
-influxdb:2.2
+influxdb:2.9
 
 go test ./...                                    # Run all tests
 go test -v ./webapp/backend/pkg/web/...          # Run tests in specific package

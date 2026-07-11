@@ -31,7 +31,7 @@ WORKDIR /opt/scrutiny
 ENV PATH="/opt/scrutiny/bin:${PATH}"
 ENV INFLUXD_CONFIG_PATH=/opt/scrutiny/influxdb
 ENV S6VER="3.1.6.2"
-ENV INFLUXVER="2.2.0"
+ENV INFLUXVER="2.9.1-1"
 ENV S6_SERVICES_READYTIME=1000
 SHELL ["/usr/bin/sh", "-c"]
 
@@ -83,7 +83,7 @@ RUN sed -i 's/Components: main/Components: main contrib/' /etc/apt/sources.list.
     && download_and_extract_xz \
         "https://github.com/just-containers/s6-overlay/releases/download/v${S6VER}/s6-overlay-${S6_ARCH}.tar.xz" \
         /tmp/s6-overlay-${S6_ARCH}.tar.xz
-RUN curl -L https://dl.influxdata.com/influxdb/releases/influxdb2-${INFLUXVER}-${TARGETARCH}.deb --output /tmp/influxdb2-${INFLUXVER}-${TARGETARCH}.deb \
+RUN curl -L https://dl.influxdata.com/influxdb/releases/influxdb2_${INFLUXVER}_${TARGETARCH}.deb --output /tmp/influxdb2-${INFLUXVER}-${TARGETARCH}.deb \
     && dpkg -i --force-all /tmp/influxdb2-${INFLUXVER}-${TARGETARCH}.deb \
     && rm -rf /tmp/influxdb2-${INFLUXVER}-${TARGETARCH}.deb
 
