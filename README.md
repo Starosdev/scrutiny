@@ -77,12 +77,13 @@ This repository also owns the testing and production deployment definitions for 
 - Beta images publish from the `beta` branch through [`Publish Beta Image`](./.github/workflows/deploy-beta.yml)
 - Production deploys from the `master` branch through [`Automated Release and Deploy`](./.github/workflows/release-and-deploy.yml)
 - `beta` is an optional pre-release channel for features that need validation before going to `master`
-- Zeus production and testing are separate host appdata trees:
+- Zeus currently runs separate develop, beta, and production host appdata trees:
+  - develop: `/mnt/user/appdata/scrutiny-develop`
+  - beta: `/mnt/user/appdata/scrutiny-beta`
   - production: `/mnt/user/appdata/scrutiny`
-  - testing: `/mnt/user/appdata/scrutiny-dev`
 - Zeus host-side deploy helpers target the live appdata-root compose files, not the repo `deploy/*` example compose files:
+  - develop helper: `/mnt/user/appdata/scrutiny-develop/docker-compose.yml`
   - production helper: `/mnt/user/appdata/scrutiny/docker-compose.yml`
-  - testing helper: `/mnt/user/appdata/scrutiny-dev/docker-compose.yml`
 - Host smoke checks require `/api/health` to return `200`, while the root path may legitimately redirect depending on auth or proxy behavior.
 - Deployment compose files, env templates, and host expectations live in [docs/DEPLOYMENTS.md](./docs/DEPLOYMENTS.md)
 
@@ -955,6 +956,8 @@ The MDADM collector prefers its own config file, `collector-mdadm.yaml`, and fal
 | `COLLECTOR_MDADM_RUN_STARTUP_SLEEP` | `1` | Delay in seconds before the startup run |
 
 For mounts, capabilities, compose examples, and troubleshooting, see [docs/MDADM_MONITORING.md](docs/MDADM_MONITORING.md).
+
+If you upgrade from a build that registered MDADM arrays before `host_id` was persisted on re-registration, run one fresh MDADM collection on each affected host so grouped host headings can backfill correctly in the UI.
 
 # Supported Architectures
 
