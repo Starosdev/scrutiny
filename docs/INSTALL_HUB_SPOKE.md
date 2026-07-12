@@ -74,6 +74,7 @@ services:
       - DOCKER_INFLUXDB_INIT_ORG=homelab
       - DOCKER_INFLUXDB_INIT_BUCKET=scrutiny
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=your-very-secret-token
+      - INFLUXD_USE_HASHED_TOKENS="false"
     networks:
       - monitoring
 

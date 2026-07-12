@@ -32,6 +32,7 @@ ENV PATH="/opt/scrutiny/bin:${PATH}"
 ENV INFLUXD_CONFIG_PATH=/opt/scrutiny/influxdb
 ENV S6VER="3.1.6.2"
 ENV INFLUXVER="2.9.1-1"
+ENV INFLUXD_USE_HASHED_TOKENS=false
 ENV S6_SERVICES_READYTIME=1000
 SHELL ["/usr/bin/sh", "-c"]
 

@@ -329,6 +329,7 @@ services:
             DOCKER_INFLUXDB_INIT_ORG: scrutiny
             DOCKER_INFLUXDB_INIT_BUCKET: metrics
             DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: my-super-secret-auth-token
+            INFLUXD_USE_HASHED_TOKENS: "false"
 
     web:
         image: ghcr.io/starosdev/scrutiny:latest-web

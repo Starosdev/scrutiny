@@ -55,7 +55,7 @@ main repository.
 
 ```bash
 # Run all backend tests
-docker run -p 8086:8086 -d --rm influxdb:2.9   # InfluxDB required
+docker run -p 8086:8086 -d -e INFLUXD_USE_HASHED_TOKENS=false --rm influxdb:2.9   # InfluxDB required
 go test ./...
 
 # Run all frontend tests
@@ -96,6 +96,7 @@ docker run -p 8086:8086 -d --rm \
   -e DOCKER_INFLUXDB_INIT_ORG=scrutiny \
   -e DOCKER_INFLUXDB_INIT_BUCKET=metrics \
   -e DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-auth-token \
+  -e INFLUXD_USE_HASHED_TOKENS=false \
   influxdb:2.9
 ```
 
@@ -284,6 +285,7 @@ For testing changes to individual components in isolation:
 # 1. Start InfluxDB
 docker run -d --name influxdb \
   -p 8086:8086 \
+  -e INFLUXD_USE_HASHED_TOKENS=false \
   influxdb:2.9
 
 # 2. Build and start the web server
@@ -322,6 +324,8 @@ services:
     image: influxdb:2.9
     ports:
       - '8086:8086'
+    environment:
+      INFLUXD_USE_HASHED_TOKENS: "false"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
       interval: 5s
@@ -771,6 +775,7 @@ docker run -p 8086:8086 -d --rm \
   -e DOCKER_INFLUXDB_INIT_ORG=scrutiny \
   -e DOCKER_INFLUXDB_INIT_BUCKET=metrics \
   -e DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-auth-token \
+  -e INFLUXD_USE_HASHED_TOKENS=false \
   influxdb:2.9
 
 go mod vendor

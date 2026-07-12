@@ -278,6 +278,7 @@ Default CI image publishing currently builds:
 ```bash
 docker run -p 8086:8086 --restart unless-stopped \
   -v `pwd`/influxdb2:/var/lib/influxdb2 \
+  -e INFLUXD_USE_HASHED_TOKENS=false \
   --name scrutiny-influxdb \
   influxdb:2.9
 

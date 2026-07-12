@@ -450,3 +450,25 @@ web:
 
 It's safe to change the InfluxDB Admin username/password after setup has completed, only the API token is used for
 subsequent communication with InfluxDB.
+
+## InfluxDB v2.9 and Token hashing 
+
+InfluxDB v2.9 introduced token hashing as a default feature. Scrutiny disables this option by default. 
+If you've upgraded to v2.9+ and need to downgrade to an earlier version, follow the procedure below:
+
+#### 1. Stop Scrutiny and backup your InfluxDB data:
+
+```
+docker compose stop scrutiny
+cp -a ./influxdb ./influxdb.2.9-backup
+```
+
+#### 2. Run the InfluxDB downgrade command:
+```
+docker run --rm \
+  -v ./influxdb:/var/lib/influxdb2 \
+  influxdb:2.9.1 \
+  influxd downgrade 2.1 \
+    --bolt-path /var/lib/influxdb2/influxd.bolt \
+    --sqlite-path /var/lib/influxdb2/influxd.sqlite
+```
