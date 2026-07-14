@@ -456,22 +456,35 @@ subsequent communication with InfluxDB.
 
 **InfluxDB v2.9 introduced token hashing by default.** Scrutiny keeps this **disabled by default**, so most users can downgrade safely.
 
-However, **if you manually enabled token hashing in v2.9**, your tokens will be hashed and become incompatible with v2.2, causing **HTTP 401 Unauthorized errors** upon downgrade.
+If InfluxDB 2.9 was started **without explicitly disabling** token hashing, tokens will be hashed and become incompatible with v2.2, causing **HTTP 401 Unauthorized errors** upon downgrade.
 
-#### If you did NOT enable token hashing (recommended path)
+#### If token hashing is disabled (recommended path)
 Proceed with the downgrade steps below — your tokens will work fine in v2.2.
 
-#### If you DID enable token hashing
+#### If token hashing is enabled
 Before downgrading, you have two options:
 
 1. Restore from a pre-upgrade backup of your `influxdb2` directory taken before upgrading to v2.9.
 2. Recreate your tokens and update Scrutiny's configuration with the new token values.
 
+```
+docker run --rm \
+  -v ./influxdb2:/opt/scrutiny/influxdb \
+  influxdb:2.2 \
+  influxd recovery auth create-operator \
+    --bolt-path /opt/scrutiny/influxdb/influxd.bolt \
+    --org <your-org> \
+    --username <your-username>
+```
+The generated token should then replace `web.influxdb.token` before restarting Scrutiny.
+
 ### Downgrading path:
 
-1. Stop Scrutiny and backup your InfluxDB data:
+> Note for Hub/Spoke users: Substitute your configured container name and host:container data path in the commands below.
 
 For Omnibus users:
+
+1. Stop Scrutiny and backup your InfluxDB data:
 
 ```
 # stop the container or stack via docker compose
@@ -479,17 +492,7 @@ docker stop scrutiny
 cp -a ./influxdb2 ./influxdb.2.9-backup
 ```
 
-For Hub/Spoke users:
-
-```
-# stop the container or stack via docker compose
-docker stop scrutiny-influxdb
-cp -a ./influxdb2 ./influxdb.2.9-backup
-```
-
 2. Run the InfluxDB downgrade command:
-
-For Omnibus users:
 
 ```
 docker run --rm \
@@ -498,15 +501,4 @@ docker run --rm \
   influxd downgrade 2.1 \
     --bolt-path /opt/scrutiny/influxdb/influxd.bolt \
     --sqlite-path /opt/scrutiny/influxdb/influxd.sqlite
-```
-
-For Hub/Spoke users:
-
-```
-docker run --rm \
-  -v ./influxdb2:/var/lib/influxdb2 \
-  influxdb:2.9.1 \
-  influxd downgrade 2.1 \
-    --bolt-path /var/lib/influxdb2/influxd.bolt \
-    --sqlite-path /var/lib/influxdb2/influxd.sqlite
 ```
