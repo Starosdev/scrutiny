@@ -98,6 +98,33 @@ If you point the develop deploy helper at `/mnt/user/appdata/scrutiny`, you will
 
 The `deploy/` compose files in this repo remain available as repo-owned examples, but the Zeus helpers default to the live appdata-root compose files because those are what the host actually runs today.
 
+### Zeus Develop Rebuild Preflight
+
+- **Problem:** Unraid can renumber `/dev/sd*` devices. A stale compose `devices:` source prevents Docker from recreating the container and leaves it exited with an error such as `error gathering device information ... no such file or directory`.
+- **Approach:** Compare every configured device source with the current `lsblk` output. Map a missing path to the same physical disk by model and serial before updating the develop compose file.
+- **Dead end:** Re-running `docker compose up` without correcting a missing device path repeats the exit-128 failure; restarting the old container does not repair the compose configuration.
+- **Rule:** Every device source in `/mnt/user/appdata/scrutiny-develop/docker-compose.yml` must exist before a forced recreate.
+
+The deploy helper requires a checkout at `/mnt/user/appdata/scrutiny-develop/repo`. If that checkout is absent, use the live compose project directly:
+
+```bash
+ROOT=/mnt/user/appdata/scrutiny-develop
+
+docker compose \
+  -p scrutiny-develop \
+  -f "$ROOT/docker-compose.yml" \
+  --env-file "$ROOT/testing.env" \
+  pull
+
+docker compose \
+  -p scrutiny-develop \
+  -f "$ROOT/docker-compose.yml" \
+  --env-file "$ROOT/testing.env" \
+  up -d --force-recreate --remove-orphans
+```
+
+Before an embedded InfluxDB upgrade, back up the complete `influxdb` directory and follow the rollback guidance in [TROUBLESHOOTING_INFLUXDB.md](./TROUBLESHOOTING_INFLUXDB.md).
+
 ## Zeus MDADM Testing Notes
 
 For actual deployment and troubleshooting steps, see [MDADM_MONITORING.md](./MDADM_MONITORING.md).
