@@ -3,9 +3,11 @@ version: '2.4'
 services:
   influxdb:
     restart: unless-stopped
-    image: influxdb:2.2
+    image: influxdb:2.9
     ports:
       - '8086:8086'
+    environment:
+      INFLUXD_USE_HASHED_TOKENS: "false"
     volumes:
       - './influxdb:/var/lib/influxdb2'
     healthcheck:

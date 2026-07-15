@@ -260,7 +260,7 @@ the following Docker images:
 - `ghcr.io/starosdev/scrutiny:latest-collector-performance` - Performance benchmark collector using fio.
   Runs periodic benchmarks and tracks throughput, IOPS, and latency over time. See [Performance Benchmarking](#performance-benchmarking) for details.
 - `ghcr.io/starosdev/scrutiny:latest-web` - Contains the Web UI and API. Only one container necessary
-- `influxdb:2.2` - InfluxDB image, used by the Web container to persist SMART data. Only one container necessary.
+- `influxdb:2.9` - InfluxDB image, used by the Web container to persist SMART data. Only one container necessary.
   See [docs/TROUBLESHOOTING_INFLUXDB.md](./docs/TROUBLESHOOTING_INFLUXDB.md)
 
 Branch channel tags follow the same pattern across images:
@@ -279,8 +279,9 @@ Default CI image publishing currently builds:
 ```bash
 docker run -p 8086:8086 --restart unless-stopped \
   -v `pwd`/influxdb2:/var/lib/influxdb2 \
+  -e INFLUXD_USE_HASHED_TOKENS=false \
   --name scrutiny-influxdb \
-  influxdb:2.2
+  influxdb:2.9
 
 docker run -p 8080:8080 --restart unless-stopped \
   -v `pwd`/scrutiny:/opt/scrutiny/config \

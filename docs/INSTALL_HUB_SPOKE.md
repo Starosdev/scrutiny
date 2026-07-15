@@ -61,7 +61,7 @@ services:
   influxdb:
     restart: unless-stopped
     container_name: influxdb
-    image: influxdb:2.1-alpine
+    image: influxdb:2.9-alpine
     ports:
       - 8086:8086
     volumes:
@@ -74,6 +74,7 @@ services:
       - DOCKER_INFLUXDB_INIT_ORG=homelab
       - DOCKER_INFLUXDB_INIT_BUCKET=scrutiny
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=your-very-secret-token
+      - INFLUXD_USE_HASHED_TOKENS="false"
     networks:
       - monitoring
 
