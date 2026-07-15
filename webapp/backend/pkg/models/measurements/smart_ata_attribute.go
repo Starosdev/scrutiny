@@ -122,7 +122,7 @@ func (sa *SmartAtaAttribute) PopulateAttributeStatus(profile *thresholds.Consume
 	}
 
 	if smartMetadata, ok := thresholds.AtaMetadata[sa.AttributeId]; ok {
-		if sa.Status == pkg.AttributeStatusPassed && shouldSkipAtaSsdObservedThresholdScoring(isAtaSsd, smartMetadata, sa.Name) {
+		if sa.Status == pkg.AttributeStatusPassed && shouldSkipAtaSsdObservedThresholdScoring(isAtaSsd, &smartMetadata, sa.Name) {
 			sa.StatusReason = ataSsdVendorSpecificThresholdSkipReason
 			return sa
 		}
@@ -137,8 +137,8 @@ func (sa *SmartAtaAttribute) PopulateAttributeStatus(profile *thresholds.Consume
 	return sa
 }
 
-func shouldSkipAtaSsdObservedThresholdScoring(isAtaSsd bool, smartMetadata thresholds.AtaAttributeMetadata, attributeName string) bool {
-	if !isAtaSsd || len(smartMetadata.ObservedThresholds) == 0 {
+func shouldSkipAtaSsdObservedThresholdScoring(isAtaSsd bool, smartMetadata *thresholds.AtaAttributeMetadata, attributeName string) bool {
+	if !isAtaSsd || smartMetadata == nil || len(smartMetadata.ObservedThresholds) == 0 {
 		return false
 	}
 	return !ataAttributeNamesSemanticallyMatch(attributeName, smartMetadata.DisplayName)
