@@ -10,9 +10,23 @@ Scrutiny is made up of three components: an influxdb Database, a collector and a
 
 ## InfluxDB
 
-Please follow the official InfluxDB installation guide. Note, you'll need to install v2.2.0+. 
+Please follow the official InfluxDB installation guide. Note, you'll need to install v2.9.0+.
 
-https://docs.influxdata.com/influxdb/v2.2/install/
+https://docs.influxdata.com/influxdb/v2/install/
+
+**Important**: Starting with InfluxDB 2.9.0, token hashing is enabled by default. If you want to keep tokens unhashed (for compatibility or debugging), set the following environment variable before starting InfluxDB:
+
+1. Edit `/etc/default/influxdb2` and add:
+
+```
+ARG1="--use-hashed-tokens=false"
+```
+
+2. Edit `/lib/systemd/system/influxdb.service` and update the `ExecStart` line to pass the variable:
+
+```
+ExecStart=/usr/bin/influxd $ARG1
+```
 
 ## Webapp/API
 

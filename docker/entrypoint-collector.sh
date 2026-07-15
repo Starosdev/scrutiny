@@ -5,6 +5,10 @@
 # will then source into the crontab file (/etc/cron.d/scrutiny)
 (set -o posix; export -p) > /env.sh
 
+log_info() {
+    printf 'time="%s" level=info msg="%s" type=metrics\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$1"
+}
+
 # adding ability to customize the cron schedule.
 COLLECTOR_CRON_SCHEDULE=${COLLECTOR_CRON_SCHEDULE:-"0 0 * * *"}
 COLLECTOR_RUN_STARTUP=${COLLECTOR_RUN_STARTUP:-"false"}
@@ -18,11 +22,11 @@ sed -i 's|{COLLECTOR_CRON_SCHEDULE}|'"${COLLECTOR_CRON_SCHEDULE}"'|g' /etc/cron.
 
 if [[ "${COLLECTOR_RUN_STARTUP}" == "true" ]]; then
     sleep ${COLLECTOR_RUN_STARTUP_SLEEP}
-    echo "starting scrutiny collector (run-once mode. subsequent calls will be triggered via cron service)"
+    log_info "starting scrutiny collector (run-once mode. subsequent calls will be triggered via cron service)"
     COLLECTOR_CRON_SCHEDULE= COLLECTOR_RUN_STARTUP= /opt/scrutiny/bin/scrutiny-collector-metrics run
 fi
 
 
 # now that we have the env start cron in the foreground
-echo "starting cron"
+log_info "starting cron"
 exec su -c "cron -f -L 15" root

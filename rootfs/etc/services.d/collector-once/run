@@ -1,19 +1,23 @@
 #!/command/with-contenv bash
 
+log_info() {
+  printf 'time="%s" level=info msg="%s" type=metrics\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$1"
+}
+
 # ensure not run (successfully) before
 if [ -f /tmp/custom-init-performed ]; then
-  echo 'INFO: custom init already performed'
+  log_info "custom init already performed"
   s6-svc -D /run/service/collector-once     # prevent s6 from restarting service
   exit 0
 fi
 
-echo "waiting for scrutiny service to start"
+log_info "waiting for scrutiny service to start"
 s6-svwait -u /run/service/scrutiny
 
 # wait until scrutiny is "Ready"
-until $(curl --output /dev/null --silent --head --fail http://localhost:8080/api/health); do echo "scrutiny api not ready" && sleep 5; done
+until $(curl --output /dev/null --silent --head --fail http://localhost:8080/api/health); do log_info "scrutiny api not ready" && sleep 5; done
 
-echo "starting scrutiny collector (run-once mode. subsequent calls will be triggered via cron service)"
+log_info "starting scrutiny collector (run-once mode. subsequent calls will be triggered via cron service)"
 COLLECTOR_CRON_SCHEDULE= COLLECTOR_RUN_STARTUP= /opt/scrutiny/bin/scrutiny-collector-metrics run
 
 # prevent script's core logic from running again

@@ -9,12 +9,11 @@ import (
 	"strings"
 	"time"
 
-	_ "go.uber.org/automaxprocs"
-
 	utils "github.com/analogj/go-util/utils"
 	"github.com/analogj/scrutiny/collector/pkg/config"
 	"github.com/analogj/scrutiny/collector/pkg/errors"
 	"github.com/analogj/scrutiny/collector/pkg/performance"
+	"github.com/analogj/scrutiny/pkg/startup"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
@@ -42,8 +41,8 @@ func main() {
 	configFilePath := resolveConfigPath()
 
 	// Create a bootstrap logger for config loading
-	bootstrapLogger := logrus.WithFields(logrus.Fields{"type": "performance"})
-	bootstrapLogger.Logger.SetLevel(logrus.InfoLevel)
+	bootstrapLogger := startup.NewBootstrapLogger("performance", config)
+	startup.ConfigureMaxProcs(bootstrapLogger)
 
 	// Load the config file (ignore "could not find config file")
 	err = config.ReadConfig(configFilePath, bootstrapLogger)
@@ -76,6 +75,9 @@ OPTIONS:
 			},
 		},
 		Before: func(c *cli.Context) error {
+			if !startup.ShouldPrintBanner() {
+				return nil
+			}
 			collectorPerf := "Starosdev/scrutiny/performance"
 
 			var versionInfo string

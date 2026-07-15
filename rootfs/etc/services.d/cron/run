@@ -1,4 +1,4 @@
 #!/command/with-contenv bash
 
-echo "starting cron"
+printf 'time="%s" level=info msg="%s" type=cron\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "starting cron"
 exec cron -f -L 15

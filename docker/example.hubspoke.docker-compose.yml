@@ -3,9 +3,11 @@ version: '2.4'
 services:
   influxdb:
     restart: unless-stopped
-    image: influxdb:2.2
+    image: influxdb:2.9
     ports:
       - '8086:8086'
+    environment:
+      INFLUXD_USE_HASHED_TOKENS: "false"
     volumes:
       - './influxdb:/var/lib/influxdb2'
     healthcheck:
@@ -47,10 +49,11 @@ services:
 
   collector:
     restart: unless-stopped
-    image: 'ghcr.io/starosdev/scrutiny:latest-collector'
+    image: 'ghcr.io/starosdev/scrutiny:latest-collector-omnibus'
     cap_add:
       - SYS_RAWIO
       - SYS_ADMIN  # Required for NVMe devices
+    # Use latest-collector instead if you only want SMART metrics in this spoke.
     # AppArmor: on systems with AppArmor enforced (TrueNAS SCALE, Ubuntu, Debian),
     # the default Docker profile blocks raw device I/O even with SYS_RAWIO/SYS_ADMIN.
     # Option 1 (recommended): load the custom profile on the host, then uncomment:
@@ -63,12 +66,35 @@ services:
     #   - apparmor=unconfined
     volumes:
       - '/run/udev:/run/udev:ro'
+      # Filesystem/Btrfs collectors need host mount visibility:
+      # - '/mnt:/mnt:ro'
+      # - '/var/lib/btrfs:/var/lib/btrfs:ro'
+      # MDADM collector needs host mdstat and broad device visibility:
+      # - '/dev:/dev'
+      # - '/proc/mdstat:/host/proc/mdstat:ro'
+      # Performance collector can use mounted filesystem paths for fio targets:
+      # - '/mnt/data:/mnt/data'
+      # - '/mnt/backup:/mnt/backup'
     environment:
       COLLECTOR_API_ENDPOINT: 'http://web:8080'
       COLLECTOR_HOST_ID: 'scrutiny-collector-hostname'
       # If true forces the collector to run on startup (cron will be started after the collector completes)
       # see: https://github.com/Starosdev/scrutiny/blob/master/docs/TROUBLESHOOTING_DEVICE_COLLECTOR.md#collector-trigger-on-startup
       COLLECTOR_RUN_STARTUP: false
+      # Optional collectors stay disabled until their own schedules or run-on-startup flags are set.
+      # COLLECTOR_ZFS_CRON_SCHEDULE: '*/15 * * * *'
+      # COLLECTOR_ZFS_RUN_STARTUP: 'true'
+      # COLLECTOR_MDADM_CRON_SCHEDULE: '*/15 * * * *'
+      # COLLECTOR_MDADM_RUN_STARTUP: 'true'
+      # COLLECTOR_BTRFS_CRON_SCHEDULE: '*/15 * * * *'
+      # COLLECTOR_BTRFS_RUN_STARTUP: 'true'
+      # COLLECTOR_FILESYSTEM_CRON_SCHEDULE: '*/15 * * * *'
+      # COLLECTOR_FILESYSTEM_RUN_STARTUP: 'true'
+      # COLLECTOR_PERF_CRON_SCHEDULE: '0 2 * * 0'
+      # COLLECTOR_PERF_RUN_STARTUP: 'false'
+      # COLLECTOR_PERF_PROFILE: 'quick'
+      # COLLECTOR_PERFORMANCE_MOUNT_POINTS_SDA: '/mnt/data'
+      # COLLECTOR_PERFORMANCE_MOUNT_POINTS_SDB: '/mnt/backup'
       # Required when server auth is enabled (must match SCRUTINY_WEB_AUTH_TOKEN)
       # COLLECTOR_API_TOKEN: 'your-secret-api-token'
     depends_on:
@@ -81,7 +107,7 @@ services:
       # - "/dev/nvme0"
       # - "/dev/nvme0n1"
 
-  # ZFS Pool Collector (optional - only needed if you use ZFS)
+  # Smaller dedicated collector images remain available when you do not want the collector omnibus image:
   # See docs/ZFS_POOL_MONITORING.md for details
   # collector-zfs:
   #   restart: unless-stopped

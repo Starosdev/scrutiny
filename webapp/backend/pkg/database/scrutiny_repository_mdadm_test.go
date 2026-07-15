@@ -46,6 +46,32 @@ func TestRegisterMdadmArrayUpdatesExistingArrayDevices(t *testing.T) {
 	require.Equal(t, updated.Devices, loaded.Devices)
 }
 
+func TestRegisterMdadmArrayUpdatesExistingArrayHostID(t *testing.T) {
+	repo := createMdadmTestRepository(t)
+	ctx := context.Background()
+
+	initial := models.MDADMArray{
+		UUID:    "ad005595:61305895:4de01d37:669bf162",
+		Name:    "md2",
+		Level:   "raid5",
+		Devices: []string{"/dev/sde", "/dev/sdd"},
+	}
+	require.NoError(t, repo.RegisterMdadmArray(ctx, initial))
+
+	updated := models.MDADMArray{
+		UUID:    initial.UUID,
+		Name:    initial.Name,
+		Level:   initial.Level,
+		Devices: initial.Devices,
+		HostID:  "nas-01",
+	}
+	require.NoError(t, repo.RegisterMdadmArray(ctx, updated))
+
+	loaded, err := repo.GetMdadmArrayDetails(ctx, initial.UUID)
+	require.NoError(t, err)
+	require.Equal(t, updated.HostID, loaded.HostID)
+}
+
 func TestGetMdadmArraysExcludesLegacyBlankUUIDRows(t *testing.T) {
 	repo := createMdadmTestRepository(t)
 	ctx := context.Background()

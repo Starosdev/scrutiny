@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       influxdb:
-        image: influxdb:2.2
+        image: influxdb:2.9
         env:
           DOCKER_INFLUXDB_INIT_MODE: setup
           DOCKER_INFLUXDB_INIT_USERNAME: admin
@@ -24,6 +24,7 @@ jobs:
           DOCKER_INFLUXDB_INIT_ORG: scrutiny
           DOCKER_INFLUXDB_INIT_BUCKET: metrics
           DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: my-super-secret-auth-token
+          INFLUXD_USE_HASHED_TOKENS: "false"
         ports:
           - 8086:8086
     env:

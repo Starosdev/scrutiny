@@ -9,12 +9,11 @@ import (
 	"strings"
 	"time"
 
-	_ "go.uber.org/automaxprocs"
-
 	utils "github.com/analogj/go-util/utils"
 	"github.com/analogj/scrutiny/collector/pkg/btrfs"
 	"github.com/analogj/scrutiny/collector/pkg/config"
 	"github.com/analogj/scrutiny/collector/pkg/errors"
+	"github.com/analogj/scrutiny/pkg/startup"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
@@ -39,8 +38,8 @@ func main() {
 
 	configFilePath := resolveConfigPath()
 
-	bootstrapLogger := logrus.WithFields(logrus.Fields{"type": "btrfs"})
-	bootstrapLogger.Logger.SetLevel(logrus.InfoLevel)
+	bootstrapLogger := startup.NewBootstrapLogger("btrfs", appConfig)
+	startup.ConfigureMaxProcs(bootstrapLogger)
 
 	err = appConfig.ReadConfig(configFilePath, bootstrapLogger)
 	if _, missing := err.(errors.ConfigFileMissingError); err != nil && !missing {
@@ -53,6 +52,9 @@ func main() {
 		Version:  version.VERSION,
 		Compiled: time.Now(),
 		Before: func(c *cli.Context) error {
+			if !startup.ShouldPrintBanner() {
+				return nil
+			}
 			collectorName := "Starosdev/scrutiny/btrfs"
 
 			var versionInfo string

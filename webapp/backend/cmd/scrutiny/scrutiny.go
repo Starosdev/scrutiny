@@ -7,9 +7,8 @@ import (
 	"os"
 	"time"
 
-	_ "go.uber.org/automaxprocs"
-
 	utils "github.com/analogj/go-util/utils"
+	"github.com/analogj/scrutiny/pkg/startup"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/errors"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
@@ -28,13 +27,14 @@ const (
 )
 
 func main() {
-	// Create a bootstrap logger early so all startup errors use structured logging
-	bootstrapLogger := newBootstrapLogger()
-
 	cfg, createErr := config.Create()
 	if createErr != nil {
-		bootstrapLogger.Fatalf("FATAL: %+v", createErr)
+		fmt.Printf("FATAL: %+v\n", createErr)
+		os.Exit(1)
 	}
+
+	bootstrapLogger := newBootstrapLogger(cfg)
+	startup.ConfigureMaxProcs(bootstrapLogger)
 
 	if err := readOptionalConfig(cfg, resolveWebConfigPath(), bootstrapLogger); err != nil {
 		bootstrapLogger.Error(color.HiRedString("CONFIG ERROR: %v", err))
@@ -62,10 +62,8 @@ OPTIONS:
 
 }
 
-func newBootstrapLogger() *logrus.Entry {
-	bootstrapLogger := logrus.WithFields(logrus.Fields{"type": "web"})
-	bootstrapLogger.Logger.SetLevel(logrus.InfoLevel)
-	return bootstrapLogger
+func newBootstrapLogger(cfg config.Interface) *logrus.Entry {
+	return startup.NewBootstrapLogger("web", cfg)
 }
 
 func resolveWebConfigPath() string {
@@ -98,7 +96,9 @@ func newCLIApp(cfg config.Interface, bootstrapLogger *logrus.Entry) *cli.App {
 			},
 		},
 		Before: func(c *cli.Context) error {
-			color.New(color.FgGreen).Fprintf(c.App.Writer, "%s", scrutinyBanner("github.com/AnalogJ/scrutiny"))
+			if startup.ShouldPrintBanner() {
+				color.New(color.FgGreen).Fprintf(c.App.Writer, "%s", scrutinyBanner("github.com/AnalogJ/scrutiny"))
+			}
 			return nil
 		},
 
@@ -107,7 +107,6 @@ func newCLIApp(cfg config.Interface, bootstrapLogger *logrus.Entry) *cli.App {
 				Name:  "start",
 				Usage: "Start the scrutiny server",
 				Action: func(c *cli.Context) error {
-					fmt.Fprintln(c.App.Writer, c.Command.Usage)
 					if c.IsSet("config") {
 						if err := cfg.ReadConfig(c.String("config"), bootstrapLogger); err != nil { // Find and read the config file
 							//ignore "could not find config file"
@@ -131,6 +130,8 @@ func newCLIApp(cfg config.Interface, bootstrapLogger *logrus.Entry) *cli.App {
 					if err != nil {
 						return err
 					}
+
+					webLogger.Info(c.Command.Usage)
 
 					settingsData, err := json.Marshal(cfg.AllSettings())
 					webLogger.Debug(string(settingsData), err)

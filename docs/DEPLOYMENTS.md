@@ -17,7 +17,7 @@ For release-version verification details, see [RELEASE_VERSION_VERIFICATION.md](
 - Check out the repo
 - Normalize the GHCR image name to lowercase
 - Build the omnibus image for `linux/amd64` and `linux/arm64`
-- Build the default `web`, `collector-zfs`, `collector-mdadm`, `collector-btrfs`, and `collector-performance` images for `linux/amd64` and `linux/arm64`
+- Build the default `collector-omnibus`, `web`, `collector-zfs`, `collector-mdadm`, `collector-btrfs`, and `collector-performance` images for `linux/amd64` and `linux/arm64`
 - Build the base `collector` image for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`
 - Exclude `webapp/backend/pkg/version/version.go` from the Docker workflow path trigger so release-version sync commits do not rebuild images on their own
 - Push the published tags to GHCR
@@ -55,25 +55,31 @@ The workflows use the built-in GitHub token to push images to `ghcr.io`.
 
 Environment rollout is outside GitHub Actions.
 
-If Zeus should move to a new image, do that from the host by pulling the published tags and restarting the compose project there. The current Zeus mapping is still:
+If Zeus should move to a new image, do that from the host by pulling the published tags and restarting the compose project there. The current Zeus mapping is:
 
 - develop image path: `ghcr.io/starosdev/scrutiny:develop-omnibus`
 - beta image path: `ghcr.io/starosdev/scrutiny:beta-omnibus`
 - production image path: `ghcr.io/starosdev/scrutiny:latest`
-- develop port: `8680`
-- beta port: choose a separate host port for side-by-side validation if you run it alongside testing or production
+- develop compose project: `scrutiny-develop`
+- beta compose project: `scrutiny-beta`
+- production compose project: `scrutiny`
+- develop port: `8780`
+- beta port: `8680`
 - production port: `8580`
+- develop appdata root: `/mnt/user/appdata/scrutiny-develop`
+- beta appdata root: `/mnt/user/appdata/scrutiny-beta`
 - production appdata root: `/mnt/user/appdata/scrutiny`
-- Zeus testing appdata root: `/mnt/user/appdata/scrutiny-dev`
+- develop compose file: `/mnt/user/appdata/scrutiny-develop/docker-compose.yml`
+- beta compose file: `/mnt/user/appdata/scrutiny-beta/docker-compose.yml`
 - production compose file: `/mnt/user/appdata/scrutiny/docker-compose.yml`
-- testing compose file: `/mnt/user/appdata/scrutiny-dev/docker-compose.yml`
 
 ## Current Zeus Host Layout
 
-Zeus does not currently run testing and production from the same appdata tree.
+Zeus currently runs three separate appdata trees and compose projects side by side.
 
+- Develop uses `/mnt/user/appdata/scrutiny-develop`
+- Beta uses `/mnt/user/appdata/scrutiny-beta`
 - Production uses `/mnt/user/appdata/scrutiny`
-- Testing uses `/mnt/user/appdata/scrutiny-dev`
 
 This repo now treats `beta` as an optional pre-release channel for changes that need validation before `master`.
 
@@ -84,9 +90,11 @@ This repo now treats `beta` as an optional pre-release channel for changes that 
 That distinction matters for both manual host rollouts and the helper scripts in `ops/`:
 
 - `ops/deploy-production.sh` should target `/mnt/user/appdata/scrutiny/docker-compose.yml` with compose project `scrutiny`
-- `ops/deploy-testing.sh` should target `/mnt/user/appdata/scrutiny-dev/docker-compose.yml` with compose project `scrutiny-dev`
+- `ops/deploy-testing.sh` should target `/mnt/user/appdata/scrutiny-develop/docker-compose.yml` with compose project `scrutiny-develop`
 
-If you point the testing deploy helper at `/mnt/user/appdata/scrutiny`, you will be operating on the production environment instead of Zeus testing.
+There is no repo-owned beta deploy helper today. Beta rollouts on Zeus are still host-side operations against `/mnt/user/appdata/scrutiny-beta/docker-compose.yml`.
+
+If you point the develop deploy helper at `/mnt/user/appdata/scrutiny`, you will be operating on the production environment instead of the development environment.
 
 The `deploy/` compose files in this repo remain available as repo-owned examples, but the Zeus helpers default to the live appdata-root compose files because those are what the host actually runs today.
 

@@ -55,7 +55,7 @@ main repository.
 
 ```bash
 # Run all backend tests
-docker run -p 8086:8086 -d --rm influxdb:2.2   # InfluxDB required
+docker run -p 8086:8086 -d -e INFLUXD_USE_HASHED_TOKENS=false --rm influxdb:2.9   # InfluxDB required
 go test ./...
 
 # Run all frontend tests
@@ -96,7 +96,8 @@ docker run -p 8086:8086 -d --rm \
   -e DOCKER_INFLUXDB_INIT_ORG=scrutiny \
   -e DOCKER_INFLUXDB_INIT_BUCKET=metrics \
   -e DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-auth-token \
-  influxdb:2.2
+  -e INFLUXD_USE_HASHED_TOKENS=false \
+  influxdb:2.9
 ```
 
 Then run tests:
@@ -189,7 +190,7 @@ npm run lint:fix      # Auto-fix what it can
 
 ## 3. Building Docker Images Locally
 
-The project produces five Docker images. Build whichever you need to test:
+Build whichever image matches the path you changed:
 
 ```bash
 # Omnibus (web + all collectors + InfluxDB, all-in-one)
@@ -204,9 +205,21 @@ make docker-web
 make docker-collector
 # -> ghcr.io/starosdev/scrutiny-dev:collector
 
+# Single-container hub/spoke collector bundle
+make docker-collector-omnibus
+# -> ghcr.io/starosdev/scrutiny-dev:collector-omnibus
+
 # ZFS collector only
 make docker-collector-zfs
 # -> ghcr.io/starosdev/scrutiny-dev:collector-zfs
+
+# MDADM collector only
+make docker-collector-mdadm
+# -> ghcr.io/starosdev/scrutiny-dev:collector-mdadm
+
+# Btrfs collector only
+make docker-collector-btrfs
+# -> ghcr.io/starosdev/scrutiny-dev:collector-btrfs
 
 # Performance collector only
 make docker-collector-performance
@@ -272,7 +285,8 @@ For testing changes to individual components in isolation:
 # 1. Start InfluxDB
 docker run -d --name influxdb \
   -p 8086:8086 \
-  influxdb:2.2
+  -e INFLUXD_USE_HASHED_TOKENS=false \
+  influxdb:2.9
 
 # 2. Build and start the web server
 docker build -f docker/Dockerfile.web -t scrutiny-web:local .
@@ -307,9 +321,11 @@ For a more production-like test, use the provided compose files:
 cat > docker-compose.test.yaml << 'EOF'
 services:
   influxdb:
-    image: influxdb:2.2
+    image: influxdb:2.9
     ports:
       - '8086:8086'
+    environment:
+      INFLUXD_USE_HASHED_TOKENS: "false"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
       interval: 5s
@@ -759,7 +775,8 @@ docker run -p 8086:8086 -d --rm \
   -e DOCKER_INFLUXDB_INIT_ORG=scrutiny \
   -e DOCKER_INFLUXDB_INIT_BUCKET=metrics \
   -e DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-auth-token \
-  influxdb:2.2
+  -e INFLUXD_USE_HASHED_TOKENS=false \
+  influxdb:2.9
 
 go mod vendor
 go test ./...
