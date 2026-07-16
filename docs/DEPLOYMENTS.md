@@ -125,6 +125,23 @@ docker compose \
 
 Before an embedded InfluxDB upgrade, back up the complete `influxdb` directory and follow the rollback guidance in [TROUBLESHOOTING_INFLUXDB.md](./TROUBLESHOOTING_INFLUXDB.md).
 
+### Omnibus InfluxDB 2.9 Upgrade Preflight
+
+The Omnibus image blocks InfluxDB 2.9.1 from starting when it detects existing data without a completed upgrade preflight. This prevents an unattended image update from migrating data before the operator has a rollback copy.
+
+For an existing Docker Compose installation:
+
+1. Stop Scrutiny.
+2. Back up the complete host directory mounted at `/opt/scrutiny/influxdb`. With the example Compose file, copy `./influxdb` to storage outside the active mount.
+3. Set `SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED=true` in the environment or `.env` file.
+4. Start Scrutiny and confirm InfluxDB and the Scrutiny health endpoint are healthy.
+
+For Unraid, stop the container and back up the complete Database path shown in the template. Then change **InfluxDB 2.9 Backup Confirmed** to `true` before starting the updated container.
+
+Fresh installations start without acknowledgement because no existing InfluxDB data is present. After a fresh start or confirmed upgrade, Scrutiny writes a persistent preflight marker in the InfluxDB data directory, so later restarts do not require the variable.
+
+If startup is blocked, the container log identifies the mounted data path and the exact acknowledgement variable. Do not set the variable until the backup is complete.
+
 ## Zeus MDADM Testing Notes
 
 For actual deployment and troubleshooting steps, see [MDADM_MONITORING.md](./MDADM_MONITORING.md).

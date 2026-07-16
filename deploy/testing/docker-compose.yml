@@ -15,3 +15,4 @@ services:
       - "${SCRUTINY_INFLUXDB_DIR:-./influxdb}:/opt/scrutiny/influxdb"
     environment:
       TZ: ${TZ:-UTC}
+      SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED: ${SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED:-false}

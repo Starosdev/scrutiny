@@ -454,6 +454,18 @@ subsequent communication with InfluxDB.
 
 ## Important: Token Hashing and Downgrade Compatibility
 
+### Omnibus upgrade blocked pending backup confirmation
+
+Omnibus images containing InfluxDB 2.9.1 refuse to start the embedded database when existing data is detected without a completed preflight. The container log includes:
+
+```text
+InfluxDB 2.9 upgrade blocked: existing Omnibus data detected
+```
+
+Stop Scrutiny, back up the complete host directory mounted at `/opt/scrutiny/influxdb`, then set `SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED=true` and restart. Compose and Unraid examples expose this setting. Do not set it before taking the backup.
+
+Fresh installations do not require confirmation. A successful fresh start or confirmed upgrade writes a persistent marker into the InfluxDB data directory, so the check is not repeated on later restarts.
+
 **InfluxDB v2.9 introduced token hashing by default.** Scrutiny keeps this **disabled by default**, so most users can downgrade safely.
 
 If InfluxDB 2.9 was started **without explicitly disabling** token hashing, tokens will be hashed and become incompatible with v2.2, causing **HTTP 401 Unauthorized errors** upon downgrade.

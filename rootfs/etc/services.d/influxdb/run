@@ -4,6 +4,8 @@ log_info() {
     printf 'time="%s" level=info msg="%s" type=influxdb\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$1"
 }
 
+/usr/local/bin/scrutiny-influxdb-upgrade-preflight
+
 mkdir -p /opt/scrutiny/influxdb/
 
 if [ -f "/opt/scrutiny/influxdb/config.yaml" ]; then

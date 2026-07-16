@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+data_dir="${INFLUXD_CONFIG_PATH:-/opt/scrutiny/influxdb}"
+marker_file="${data_dir}/.scrutiny-influxdb-2.9-preflight-complete"
+backup_confirmed="${SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED:-false}"
+
+log() {
+    local level="$1"
+    local message="$2"
+    printf 'time="%s" level=%s msg="%s" type=influxdb-upgrade-preflight\n' \
+        "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$level" "$message"
+}
+
+mkdir -p "$data_dir"
+
+if [[ -f "$marker_file" ]]; then
+    exit 0
+fi
+
+existing_data=false
+if [[ -e "${data_dir}/influxd.bolt" || -e "${data_dir}/influxd.sqlite" ]]; then
+    existing_data=true
+elif [[ -d "${data_dir}/engine" ]] && find "${data_dir}/engine" -mindepth 1 -print -quit | grep -q .; then
+    existing_data=true
+fi
+
+if [[ "$existing_data" == "false" ]]; then
+    touch "$marker_file"
+    log info "no existing InfluxDB data detected; upgrade backup confirmation is not required"
+    exit 0
+fi
+
+if [[ "$backup_confirmed" == "true" ]]; then
+    touch "$marker_file"
+    log info "InfluxDB 2.9 backup confirmation accepted; preflight complete"
+    exit 0
+fi
+
+log error "InfluxDB 2.9 upgrade blocked: existing Omnibus data detected at ${data_dir}"
+log error "stop Scrutiny and back up the complete InfluxDB data directory before continuing"
+log error "after the backup is complete, set SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED=true and restart"
+log error "instructions: https://github.com/Starosdev/scrutiny/blob/master/docs/DEPLOYMENTS.md#omnibus-influxdb-29-upgrade-preflight"
+exit 78
