@@ -112,6 +112,7 @@ RUN chmod 0644 /etc/cron.d/scrutiny && \
     mkdir -p /opt/scrutiny/docs && \
     mkdir -p /opt/scrutiny/config && \
     chmod -R ugo+rwx /opt/scrutiny/config && \
+    chmod +x /usr/local/bin/scrutiny-influxdb-upgrade-preflight && \
     chmod +x /etc/cont-init.d/* && \
     chmod +x /etc/services.d/*/run && \
     chmod +x /etc/services.d/*/finish

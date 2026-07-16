@@ -17,3 +17,4 @@ services:
       - /proc/mdstat:/host/proc/mdstat:ro
     environment:
       - TZ=America/Los_Angeles
+      - SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED=${SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED:-false}
