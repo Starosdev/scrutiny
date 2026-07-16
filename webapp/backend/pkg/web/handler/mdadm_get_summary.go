@@ -39,11 +39,15 @@ func GetMdadmSummary(c *gin.Context) {
 
 	summaries := make([]ArraySummary, 0, len(arrays))
 	for _, array := range arrays {
+		devices := array.Devices
+		if devices == nil {
+			devices = []string{}
+		}
 		summary := ArraySummary{
 			UUID:     array.UUID,
 			Name:     array.Name,
 			Level:    array.Level,
-			Devices:  array.Devices,
+			Devices:  devices,
 			Label:    array.Label,
 			Archived: array.Archived,
 			Muted:    array.Muted,

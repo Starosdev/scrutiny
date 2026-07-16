@@ -11,12 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	_ "go.uber.org/automaxprocs"
-
 	utils "github.com/analogj/go-util/utils"
 	"github.com/analogj/scrutiny/collector/pkg/collector"
 	"github.com/analogj/scrutiny/collector/pkg/config"
 	"github.com/analogj/scrutiny/collector/pkg/errors"
+	"github.com/analogj/scrutiny/pkg/startup"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
 	"github.com/fatih/color"
 	"github.com/robfig/cron/v3"
@@ -41,9 +40,8 @@ func main() {
 		configFilePath = configFilePathAlternative
 	}
 
-	// Create a bootstrap logger for config loading (before config-based logger is available)
-	bootstrapLogger := logrus.WithFields(logrus.Fields{"type": "metrics"})
-	bootstrapLogger.Logger.SetLevel(logrus.InfoLevel)
+	bootstrapLogger := startup.NewBootstrapLogger("metrics", config)
+	startup.ConfigureMaxProcs(bootstrapLogger)
 
 	//we're going to load the config file manually, since we need to validate it.
 	err = config.ReadConfig(configFilePath, bootstrapLogger) // Find and read the config file
@@ -78,6 +76,9 @@ OPTIONS:
 			},
 		},
 		Before: func(c *cli.Context) error {
+			if !startup.ShouldPrintBanner() {
+				return nil
+			}
 
 			collectorMetrics := "AnalogJ/scrutiny/metrics"
 

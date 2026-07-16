@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="${SCRUTINY_REPO_DIR:-/mnt/user/appdata/scrutiny-dev/repo}"
-ENV_FILE="${SCRUTINY_ENV_FILE:-/mnt/user/appdata/scrutiny-dev/testing.env}"
+REPO_DIR="${SCRUTINY_REPO_DIR:-/mnt/user/appdata/scrutiny-develop/repo}"
+ENV_FILE="${SCRUTINY_ENV_FILE:-/mnt/user/appdata/scrutiny-develop/testing.env}"
 APPDATA_ROOT="${SCRUTINY_APPDATA_ROOT:-${REPO_DIR%/repo}}"
 COMPOSE_FILE="${SCRUTINY_COMPOSE_FILE:-$APPDATA_ROOT/docker-compose.yml}"
-PROJECT="${SCRUTINY_PROJECT_NAME:-scrutiny-dev}"
+PROJECT="${SCRUTINY_PROJECT_NAME:-scrutiny-develop}"
 BRANCH="${SCRUTINY_DEPLOY_BRANCH:-develop}"
 
-echo "=== Scrutiny Testing Deploy ==="
+echo "=== Scrutiny Develop Deploy ==="
 echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "Target appdata root: $APPDATA_ROOT"
 

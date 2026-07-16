@@ -1,4 +1,4 @@
-#!/command/execlineb -S0
+#!/command/with-contenv bash
 
-echo "cron exiting"
+printf 'time="%s" level=info msg="%s" type=cron\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "cron exiting"
 s6-svscanctl -t /var/run/s6/services

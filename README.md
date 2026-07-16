@@ -77,12 +77,13 @@ This repository also owns the testing and production deployment definitions for 
 - Beta images publish from the `beta` branch through [`Publish Beta Image`](./.github/workflows/deploy-beta.yml)
 - Production deploys from the `master` branch through [`Automated Release and Deploy`](./.github/workflows/release-and-deploy.yml)
 - `beta` is an optional pre-release channel for features that need validation before going to `master`
-- Zeus production and testing are separate host appdata trees:
+- Zeus currently runs separate develop, beta, and production host appdata trees:
+  - develop: `/mnt/user/appdata/scrutiny-develop`
+  - beta: `/mnt/user/appdata/scrutiny-beta`
   - production: `/mnt/user/appdata/scrutiny`
-  - testing: `/mnt/user/appdata/scrutiny-dev`
 - Zeus host-side deploy helpers target the live appdata-root compose files, not the repo `deploy/*` example compose files:
+  - develop helper: `/mnt/user/appdata/scrutiny-develop/docker-compose.yml`
   - production helper: `/mnt/user/appdata/scrutiny/docker-compose.yml`
-  - testing helper: `/mnt/user/appdata/scrutiny-dev/docker-compose.yml`
 - Host smoke checks require `/api/health` to return `200`, while the root path may legitimately redirect depending on auth or proxy behavior.
 - Deployment compose files, env templates, and host expectations live in [docs/DEPLOYMENTS.md](./docs/DEPLOYMENTS.md)
 
@@ -247,6 +248,9 @@ the following Docker images:
 
 - `ghcr.io/starosdev/scrutiny:latest-collector` - Contains the Scrutiny data collector, `smartctl` binary and cron-like
   scheduler. You can run one collector on each server.
+- `ghcr.io/starosdev/scrutiny:latest-collector-omnibus` - Recommended single-spoke image for hub/spoke deployments.
+  Bundles the SMART, ZFS, MDADM, Btrfs, filesystem, and performance collectors in one container while keeping each
+  optional collector disabled until you enable its existing schedule or run-on-startup env vars.
 - `ghcr.io/starosdev/scrutiny:latest-collector-zfs` - ZFS pool collector for monitoring ZFS health.
   Run alongside or instead of the standard collector if you use ZFS. See [docs/ZFS_POOL_MONITORING.md](./docs/ZFS_POOL_MONITORING.md) for setup instructions.
 - `ghcr.io/starosdev/scrutiny:latest-collector-mdadm` - MDADM collector for Linux software RAID monitoring.
@@ -256,7 +260,7 @@ the following Docker images:
 - `ghcr.io/starosdev/scrutiny:latest-collector-performance` - Performance benchmark collector using fio.
   Runs periodic benchmarks and tracks throughput, IOPS, and latency over time. See [Performance Benchmarking](#performance-benchmarking) for details.
 - `ghcr.io/starosdev/scrutiny:latest-web` - Contains the Web UI and API. Only one container necessary
-- `influxdb:2.2` - InfluxDB image, used by the Web container to persist SMART data. Only one container necessary.
+- `influxdb:2.9` - InfluxDB image, used by the Web container to persist SMART data. Only one container necessary.
   See [docs/TROUBLESHOOTING_INFLUXDB.md](./docs/TROUBLESHOOTING_INFLUXDB.md)
 
 Branch channel tags follow the same pattern across images:
@@ -268,15 +272,16 @@ Branch channel tags follow the same pattern across images:
 Default CI image publishing currently builds:
 
 - `collector` for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`
-- `web`, `collector-zfs`, `collector-mdadm`, `collector-btrfs`, and `collector-performance` for `linux/amd64` and `linux/arm64`
+- `collector-omnibus`, `web`, `collector-zfs`, `collector-mdadm`, `collector-btrfs`, and `collector-performance` for `linux/amd64` and `linux/arm64`
 
 > See [docker/example.hubspoke.docker-compose.yml](docker/example.hubspoke.docker-compose.yml) for a docker-compose file.
 
 ```bash
 docker run -p 8086:8086 --restart unless-stopped \
   -v `pwd`/influxdb2:/var/lib/influxdb2 \
+  -e INFLUXD_USE_HASHED_TOKENS=false \
   --name scrutiny-influxdb \
-  influxdb:2.2
+  influxdb:2.9
 
 docker run -p 8080:8080 --restart unless-stopped \
   -v `pwd`/scrutiny:/opt/scrutiny/config \
@@ -286,12 +291,16 @@ docker run -p 8080:8080 --restart unless-stopped \
 docker run --restart unless-stopped \
   -v /run/udev:/run/udev:ro \
   --cap-add SYS_RAWIO \
+  --cap-add SYS_ADMIN \
   --device=/dev/sda \
   --device=/dev/sdb \
   -e COLLECTOR_API_ENDPOINT=http://SCRUTINY_WEB_IPADDRESS:8080 \
   --name scrutiny-collector \
-  ghcr.io/starosdev/scrutiny:latest-collector
+  ghcr.io/starosdev/scrutiny:latest-collector-omnibus
 ```
+
+Use `ghcr.io/starosdev/scrutiny:latest-collector` instead if you only want the SMART collector in that spoke and do not
+need the extra host tooling for ZFS, MDADM, Btrfs, filesystem, or fio workloads.
 
 ## Manual Installation (without-Docker)
 
@@ -335,7 +344,8 @@ None of these files are required, however if provided, they allow you to configu
 
 ## Cron Schedule
 Unfortunately the Cron schedule cannot be configured via the `collector.yaml` (as the collector binary needs to be triggered by a scheduler/cron).
-However, if you are using the official `ghcr.io/starosdev/scrutiny:latest-collector` or `ghcr.io/starosdev/scrutiny:latest-omnibus` docker images,
+However, if you are using the official `ghcr.io/starosdev/scrutiny:latest-collector`, `ghcr.io/starosdev/scrutiny:latest-collector-omnibus`,
+or `ghcr.io/starosdev/scrutiny:latest-omnibus` docker images,
 you can use the `COLLECTOR_CRON_SCHEDULE` environmental variable to override the default cron schedule (daily @ midnight - `0 0 * * *`).
 
 `docker run -e COLLECTOR_CRON_SCHEDULE="0 0 * * *" ...`
@@ -695,6 +705,12 @@ The test route sends through the same configured targets as normal notifications
 Scrutiny provides various methods to change the log level and generate log files.
 The web server and collector have **independent** log configurations and can be set separately.
 
+## Shared Startup Banner Suppression
+
+Set `SCRUTINY_NO_LOGO=true` to suppress the ASCII startup banner in the web binary and all container-facing collector binaries.
+
+By default, the banner is still printed during startup. This env var is evaluated at process startup, so it works alongside `SCRUTINY_LOG_LEVEL` and `COLLECTOR_LOG_LEVEL` when you want quiet `WARN` or `ERROR` startup behavior without changing the default banner behavior for other runs.
+
 ## Valid Log Levels
 
 The following log levels are supported (case-insensitive), listed from highest to lowest severity:
@@ -718,6 +734,7 @@ You can use environmental variables to enable debug logging and/or log files for
 
 ```bash
 DEBUG=true
+SCRUTINY_NO_LOGO=true
 SCRUTINY_LOG_FILE=/tmp/web.log
 ```
 
@@ -799,6 +816,7 @@ Example:
 ```bash
 docker run -e SCRUTINY_WEB_LISTEN_PORT=9090 \
   -e SCRUTINY_WEB_INFLUXDB_HOST=influxdb.local \
+  -e SCRUTINY_NO_LOGO=true \
   -e SCRUTINY_LOG_LEVEL=DEBUG \
   ghcr.io/starosdev/scrutiny:latest-web
 ```
@@ -809,6 +827,7 @@ You can use environmental variables to enable debug logging and/or log files for
 
 ```bash
 DEBUG=true
+SCRUTINY_NO_LOGO=true
 COLLECTOR_LOG_FILE=/tmp/collector.log
 ```
 
@@ -846,6 +865,7 @@ Example:
 ```bash
 docker run -e COLLECTOR_COMMANDS_METRICS_SMART_ARGS="--xall --json -T permissive" \
   -e COLLECTOR_API_ENDPOINT=http://scrutiny-web:8080 \
+  -e SCRUTINY_NO_LOGO=true \
   ghcr.io/starosdev/scrutiny:latest-collector
 ```
 
@@ -865,6 +885,7 @@ The performance collector is a separate binary (`scrutiny-collector-performance`
 
 ```bash
 DEBUG=true
+SCRUTINY_NO_LOGO=true
 COLLECTOR_PERF_LOG_FILE=/tmp/performance.log
 ```
 
@@ -936,6 +957,8 @@ The MDADM collector prefers its own config file, `collector-mdadm.yaml`, and fal
 | `COLLECTOR_MDADM_RUN_STARTUP_SLEEP` | `1` | Delay in seconds before the startup run |
 
 For mounts, capabilities, compose examples, and troubleshooting, see [docs/MDADM_MONITORING.md](docs/MDADM_MONITORING.md).
+
+If you upgrade from a build that registered MDADM arrays before `host_id` was persisted on re-registration, run one fresh MDADM collection on each affected host so grouped host headings can backfill correctly in the UI.
 
 # Supported Architectures
 

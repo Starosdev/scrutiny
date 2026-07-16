@@ -33,13 +33,13 @@ flowchart LR
 
 ## Hub/Spoke
 
-The Hub/Spoke deployment separates the collector from the central web/API service. One or more `latest-collector` containers run on the systems that have access to disks, then send their results to a hub running `latest-web` plus its databases.
+The Hub/Spoke deployment separates the collector from the central web/API service. One or more collector containers run on the systems that have access to disks, then send their results to a hub running `latest-web` plus its databases. Use `latest-collector` for SMART-only spokes or `latest-collector-omnibus` when you want one spoke container that can also run the ZFS, MDADM, Btrfs, filesystem, and performance collectors.
 
 ```mermaid
 flowchart LR
     Browser["Frontend / Browser"]
     CollectorA["Collector (`latest-collector`)"]
-    CollectorB["Collector (`latest-collector`)"]
+    CollectorB["Collector Omnibus (`latest-collector-omnibus`)"]
 
     subgraph Hub["Hub services"]
         Web["Web/API server (`latest-web`)"]
@@ -56,6 +56,7 @@ flowchart LR
 ```
 
 - Collectors run close to the disks they monitor and communicate with the hub over the network.
+- The collector-omnibus spoke image bundles the non-web collector binaries and host tools, but still uses the same per-collector env vars and schedules to decide which optional collectors run.
 - The hub's web/API service aggregates data from all spokes and serves the frontend.
 - InfluxDB remains the time-series store for SMART history.
 - SQLite remains the metadata store for device records, settings, and other app state managed by the web/API layer.

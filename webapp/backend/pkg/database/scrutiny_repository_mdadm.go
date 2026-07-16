@@ -39,6 +39,7 @@ func (sr *scrutinyRepository) RegisterMdadmArray(ctx context.Context, array mode
 		existing.Name = array.Name
 		existing.Level = array.Level
 		existing.Devices = array.Devices
+		existing.HostID = array.HostID
 		existing.UpdatedAt = array.UpdatedAt
 
 		if err := sr.gormClient.WithContext(ctx).Save(&existing).Error; err != nil {

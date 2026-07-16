@@ -212,6 +212,11 @@ docker-collector:
 	@echo "building collector docker image"
 	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.collector -t ghcr.io/starosdev/scrutiny-dev:collector .
 
+.PHONY: docker-collector-omnibus
+docker-collector-omnibus:
+	@echo "building collector omnibus docker image"
+	docker build $(DOCKER_TARGETARCH_BUILD_ARG) -f docker/Dockerfile.collector-omnibus -t ghcr.io/starosdev/scrutiny-dev:collector-omnibus .
+
 .PHONY: docker-collector-zfs
 docker-collector-zfs:
 	@echo "building ZFS collector docker image"

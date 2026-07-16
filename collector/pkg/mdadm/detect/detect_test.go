@@ -18,7 +18,7 @@ md0 : active raid1 sdb[1] sda[0]
       1048512 blocks super 1.2 [2/2] [UU]
 
 unused devices: <none>`
-	
+
 	tmpfile, err := ioutil.TempFile("", "mdstat")
 	require.NoError(t, err)
 	defer os.Remove(tmpfile.Name())
@@ -31,7 +31,7 @@ unused devices: <none>`
 	// We need to override the file path in the implementation or use a trick
 	// Since I can't easily override os.Open("/proc/mdstat"), I'll modify the implementation
 	// to take a path or I'll just test the parsing logic directly if I split it.
-	
+
 	// For now, I'll test the parseMdadmOutput logic which is more complex.
 }
 
@@ -131,6 +131,39 @@ Consistency Policy : resync
 	// 2097024 KiB * 1024 = 2147352576 bytes (array size)
 	assert.Equal(t, int64(2147352576), metrics.ArraySize)
 	// Note: UsedBytes is populated by getMountUsage (statfs) in getArrayDetail, not by parseMdadmOutput.
+}
+
+func TestDetect_ParseMdadmOutput_DeviceWithNoRaidSlot(t *testing.T) {
+	d := &Detect{
+		Logger: logrus.NewEntry(logrus.New()),
+	}
+
+	output := `/dev/md0:
+        Raid Level : raid1
+              UUID : 12345678:12345678:12345678:12345678
+
+    Number   Major   Minor   RaidDevice State
+       0       8        2        0      active sync   /dev/sda2
+       2       8       34        -      spare   /dev/sdc2`
+
+	array, _, err := d.parseMdadmOutput("md0", output)
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"/dev/sda2", "/dev/sdc2"}, array.Devices)
+}
+
+func TestParseMdstatDevices(t *testing.T) {
+	rawMdstat := `md1 : active raid6 sde2[0] sdc2[1](F) sdg2[2] sdf2[3]
+      15627534336 blocks super 1.2 level 6, 512k chunk, algorithm 2 [4/3] [U_UU]`
+
+	assert.Equal(t, []string{"/dev/sde2", "/dev/sdc2", "/dev/sdg2", "/dev/sdf2"}, parseMdstatDevices(rawMdstat))
+}
+
+func TestParseMdstatDevicesReturnsEmptySliceForMissingHeader(t *testing.T) {
+	devices := parseMdstatDevices("")
+
+	assert.NotNil(t, devices)
+	assert.Empty(t, devices)
 }
 
 func TestParseMdadmExportUUID(t *testing.T) {

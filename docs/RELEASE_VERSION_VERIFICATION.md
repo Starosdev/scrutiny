@@ -20,7 +20,7 @@ Issue `#496` was investigated against the current release flow on May 10, 2026.
   - `scrutiny-collector-zfs-darwin-arm64`
   - `scrutiny-collector-btrfs-darwin-arm64`
   - `scrutiny-collector-performance-darwin-arm64`
-- Ran each binary with no arguments and confirmed the startup banner showed the expected semantic version, for example `darwin.arm64-1.53.1`.
+- Ran each binary with no arguments and confirmed the startup banner showed the expected semantic version, for example `darwin.arm64-1.53.1`. This check assumes `SCRUTINY_NO_LOGO` is unset, because banner suppression is opt-in.
 - Built the same five binaries locally from the `v1.53.1` tag using:
 
 ```bash
@@ -42,4 +42,5 @@ GOOS=darwin GOARCH=arm64 go build -buildvcs=false \
 ## Notes
 
 - Development builds may still show `dev-<version>` when `goos` and `goarch` are not injected.
+- If `SCRUTINY_NO_LOGO=true` is set, the banner check above will be suppressed by design. Unset it before using the no-arguments startup path for release verification.
 - A local `scrutiny start` check may fail before `/api/settings` is reachable if the environment does not provide the required SQLite path or InfluxDB dependency. That startup failure is separate from release-version injection.

@@ -1,9 +1,13 @@
 #!/command/with-contenv bash
 
+log_info() {
+    printf 'time="%s" level=info msg="%s" type=influxdb\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$1"
+}
+
 mkdir -p /opt/scrutiny/influxdb/
 
 if [ -f "/opt/scrutiny/influxdb/config.yaml" ]; then
-    echo "influxdb config file already exists. skipping."
+    log_info "influxdb config file already exists. skipping."
 else
 cat << 'EOF' > /opt/scrutiny/influxdb/config.yaml
 bolt-path: /opt/scrutiny/influxdb/influxd.bolt
@@ -15,5 +19,5 @@ storage-cache-snapshot-memory-size: 25000000
 EOF
 fi
 
-echo "starting influxdb"
+log_info "starting influxdb"
 exec influxd run

@@ -1,26 +1,30 @@
 #!/command/with-contenv bash
 
+log_info() {
+    printf 'time="%s" level=info msg="%s" type=btrfs\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$1"
+}
+
 # Only run if Btrfs collection is enabled
 if [ -z "${COLLECTOR_BTRFS_CRON_SCHEDULE}" ] && [ "${COLLECTOR_BTRFS_RUN_STARTUP}" != "true" ]; then
-    echo 'INFO: Btrfs collector not enabled'
+    log_info "Btrfs collector not enabled"
     s6-svc -D /run/service/collector-btrfs-once
     exit 0
 fi
 
 # ensure not run before
 if [ -f /tmp/btrfs-collector-init-performed ]; then
-    echo 'INFO: Btrfs collector init already performed'
+    log_info "Btrfs collector init already performed"
     s6-svc -D /run/service/collector-btrfs-once
     exit 0
 fi
 
-echo "waiting for scrutiny service to start"
+log_info "waiting for scrutiny service to start"
 s6-svwait -u /run/service/scrutiny
 
 # wait until scrutiny is "Ready"
-until $(curl --output /dev/null --silent --head --fail http://localhost:8080/api/health); do echo "scrutiny api not ready" && sleep 5; done
+until $(curl --output /dev/null --silent --head --fail http://localhost:8080/api/health); do log_info "scrutiny api not ready" && sleep 5; done
 
-echo "starting Btrfs collector (run-once mode)"
+log_info "starting Btrfs collector (run-once mode)"
 COLLECTOR_CRON_SCHEDULE= COLLECTOR_BTRFS_RUN_STARTUP= /opt/scrutiny/bin/scrutiny-collector-btrfs run
 
 touch /tmp/btrfs-collector-init-performed

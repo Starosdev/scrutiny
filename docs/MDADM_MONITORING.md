@@ -107,6 +107,12 @@ curl -s http://localhost:8080/api/mdadm/summary | jq .
 
 4. Open the MDADM page in the UI and verify the arrays show a state and size, not just static metadata.
 
+Upgrade note:
+
+- builds that persist MDADM `host_id` on array re-registration do not retroactively backfill older rows
+- if arrays were first registered before that fix, run one fresh MDADM collection on each affected host
+- confirm `GET /api/mdadm/summary` now includes `host_id` for those arrays before expecting grouped host headings in the UI
+
 ## Troubleshooting
 
 ### `No MDADM arrays found`
@@ -144,6 +150,16 @@ Check the backend logs for a per-array registration error. Common causes include
 - the array did not report a UUID
 - the array UUID collided with another discovered array
 - the database rejected one array record while accepting the others
+
+### Arrays are present but not grouped under the correct host
+
+Check:
+
+- `GET /api/mdadm/summary` includes a non-empty `host_id` for each affected array
+- the affected host has completed at least one fresh MDADM collector registration after upgrading
+- the collector `host.id` value is stable and not changing between runs
+
+If older rows were created before `host_id` was persisted on re-registration, force one new collection on each affected host to backfill the stored `host_id`.
 
 ## Related Docs
 

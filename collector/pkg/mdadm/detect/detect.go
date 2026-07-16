@@ -121,7 +121,7 @@ func (d *Detect) getArrayDetail(name string) (models.MDADMArray, models.MDADMMet
 	}
 
 	d.resolveArrayUUID(&array, devicePath, name)
-	d.enrichArrayMetrics(&metrics, name, devicePath)
+	d.enrichArrayMetrics(&array, &metrics, name, devicePath)
 
 	return array, metrics, nil
 }
@@ -146,11 +146,14 @@ func (d *Detect) resolveArrayUUID(array *models.MDADMArray, devicePath, name str
 	d.Logger.Warnf("Using synthetic MDADM identifier for %s because mdadm did not expose a UUID", devicePath)
 }
 
-// enrichArrayMetrics augments parsed metrics with /proc/mdstat data (raw block, sync progress)
-// and filesystem usage when the array is mounted in the container.
-func (d *Detect) enrichArrayMetrics(metrics *models.MDADMMetrics, name, devicePath string) {
+// enrichArrayMetrics augments parsed array data with /proc/mdstat member devices and metrics,
+// plus filesystem usage when the array is mounted in the container.
+func (d *Detect) enrichArrayMetrics(array *models.MDADMArray, metrics *models.MDADMMetrics, name, devicePath string) {
 	rawMdstat, _ := d.getRawMdstat(name)
 	metrics.RawMdstat = rawMdstat
+	if len(array.Devices) == 0 {
+		array.Devices = parseMdstatDevices(rawMdstat)
+	}
 
 	// Parse sync/check/rebuild/recovery progress from /proc/mdstat if not already set
 	// by mdadm --detail. The "check = X%" line only appears in /proc/mdstat.
@@ -170,6 +173,29 @@ func (d *Detect) enrichArrayMetrics(metrics *models.MDADMMetrics, name, devicePa
 
 // mdstatProgressPattern matches the "check|resync|recovery|rebuild = X%" progress line in /proc/mdstat.
 var mdstatProgressPattern = regexp.MustCompile(`(?:check|resync|recovery|rebuild)\s*=\s*(\d+(?:\.\d+)?)%`)
+
+var mdstatDevicePattern = regexp.MustCompile(`(\S+)\[\d+\]`)
+
+// parseMdstatDevices extracts member device names from an array's first /proc/mdstat line.
+// mdstat omits the /dev prefix, so normalize the result to match mdadm --detail output.
+func parseMdstatDevices(rawMdstat string) []string {
+	devices := []string{}
+	firstLine, _, _ := strings.Cut(rawMdstat, "\n")
+	_, members, found := strings.Cut(firstLine, ":")
+	if !found {
+		return devices
+	}
+
+	for _, match := range mdstatDevicePattern.FindAllStringSubmatch(members, -1) {
+		device := match[1]
+		if !strings.HasPrefix(device, "/") {
+			device = "/dev/" + device
+		}
+		devices = append(devices, device)
+	}
+
+	return devices
+}
 
 func (d *Detect) getArrayUUIDFromExport(devicePath string) (string, error) {
 	var cmd *exec.Cmd
@@ -234,7 +260,7 @@ func (d *Detect) parseMdadmOutput(name string, output string) (models.MDADMArray
 
 	// Device list starts after the header
 	inDeviceList := false
-	devicePattern := regexp.MustCompile(`\s+\d+\s+\d+\s+\d+\s+\d+\s+.+\s+(/dev/\S+)`)
+	devicePattern := regexp.MustCompile(`(/dev/\S+)\s*$`)
 
 	for scanner.Scan() {
 		line := scanner.Text()

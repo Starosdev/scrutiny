@@ -41,14 +41,14 @@ The growth rate is pretty unintuitive -- see https://github.com/AnalogJ/scrutiny
 
 InfluxDB is a required dependency for Scrutiny v0.4.0+.
 
-https://docs.influxdata.com/influxdb/v2.2/install/
+https://docs.influxdata.com/influxdb/v2/install/
 
 ## Persistence
 
 To ensure that all data is correctly stored, you must also persist the InfluxDB database directory
 
 - If you're using the Official Scrutiny Omnibus image (`ghcr.io/Starosdev/scrutiny:master-omnibus`), the path is `/opt/scrutiny/influxdb`
-- If you're deploying in Hub/Spoke mode with the InfluxDB maintained image (`influxdb:2.2`), the path is `/var/lib/influxdb2`
+- If you're deploying in Hub/Spoke mode with the InfluxDB maintained image (`influxdb:2.9`), the path is `/var/lib/influxdb2`
 
 If you attempt to restart Scrutiny but you forgot to persist the InfluxDB directory, you will get an error message like follows:
 
@@ -95,7 +95,7 @@ panic: a username and password is required for a setup
 or 
 
 ```
-Start the scrutiny server
+time="2022-06-11T10:35:04-04:00" level=info msg="Start the scrutiny server" type=web
 time="2022-06-11T10:35:04-04:00" level=info msg="Trying to connect to scrutiny sqlite db: \n"
 time="2022-06-11T10:35:04-04:00" level=info msg="Successfully connected to scrutiny sqlite db: \n"
 panic: failed to check influxdb setup status - parse "://:": missing protocol scheme
@@ -450,3 +450,55 @@ web:
 
 It's safe to change the InfluxDB Admin username/password after setup has completed, only the API token is used for
 subsequent communication with InfluxDB.
+
+
+## Important: Token Hashing and Downgrade Compatibility
+
+**InfluxDB v2.9 introduced token hashing by default.** Scrutiny keeps this **disabled by default**, so most users can downgrade safely.
+
+If InfluxDB 2.9 was started **without explicitly disabling** token hashing, tokens will be hashed and become incompatible with v2.2, causing **HTTP 401 Unauthorized errors** upon downgrade.
+
+#### If token hashing is disabled (recommended path)
+Proceed with the downgrade steps below — your tokens will work fine in v2.2.
+
+#### If token hashing is enabled
+Before downgrading, you have two options:
+
+1. Restore from a pre-upgrade backup of your `influxdb2` directory taken before upgrading to v2.9.
+2. Recreate your tokens and update Scrutiny's configuration with the new token values.
+
+```
+docker run --rm \
+  -v ./influxdb2:/opt/scrutiny/influxdb \
+  influxdb:2.2 \
+  influxd recovery auth create-operator \
+    --bolt-path /opt/scrutiny/influxdb/influxd.bolt \
+    --org <your-org> \
+    --username <your-username>
+```
+The generated token should then replace `web.influxdb.token` before restarting Scrutiny.
+
+### Downgrading path:
+
+> Note for Hub/Spoke users: Substitute your configured container name and host:container data path in the commands below.
+
+For Omnibus users:
+
+1. Stop Scrutiny and backup your InfluxDB data:
+
+```
+# stop the container or stack via docker compose
+docker stop scrutiny
+cp -a ./influxdb2 ./influxdb.2.9-backup
+```
+
+2. Run the InfluxDB downgrade command:
+
+```
+docker run --rm \
+  -v ./influxdb2:/opt/scrutiny/influxdb \
+  influxdb:2.9.1 \
+  influxd downgrade 2.1 \
+    --bolt-path /opt/scrutiny/influxdb/influxd.bolt \
+    --sqlite-path /opt/scrutiny/influxdb/influxd.sqlite
+```

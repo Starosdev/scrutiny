@@ -5,6 +5,10 @@
 # will then source into the crontab file (/etc/cron.d/scrutiny-zfs)
 (set -o posix; export -p) > /env.sh
 
+log_info() {
+    printf 'time="%s" level=info msg="%s" type=zfs\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$1"
+}
+
 # adding ability to customize the cron schedule.
 COLLECTOR_ZFS_CRON_SCHEDULE=${COLLECTOR_ZFS_CRON_SCHEDULE:-"*/15 * * * *"}
 COLLECTOR_ZFS_RUN_STARTUP=${COLLECTOR_ZFS_RUN_STARTUP:-"false"}
@@ -18,11 +22,11 @@ sed -i 's|{COLLECTOR_ZFS_CRON_SCHEDULE}|'"${COLLECTOR_ZFS_CRON_SCHEDULE}"'|g' /e
 
 if [[ "${COLLECTOR_ZFS_RUN_STARTUP}" == "true" ]]; then
     sleep ${COLLECTOR_ZFS_RUN_STARTUP_SLEEP}
-    echo "starting scrutiny ZFS collector (run-once mode. subsequent calls will be triggered via cron service)"
+    log_info "starting scrutiny ZFS collector (run-once mode. subsequent calls will be triggered via cron service)"
     COLLECTOR_CRON_SCHEDULE= COLLECTOR_ZFS_RUN_STARTUP= /opt/scrutiny/bin/scrutiny-collector-zfs run
 fi
 
 
 # now that we have the env start cron in the foreground
-echo "starting cron"
+log_info "starting cron"
 exec su -c "cron -f -L 15" root
