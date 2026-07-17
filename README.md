@@ -223,10 +223,13 @@ For a component-level overview of how Omnibus and Hub/Spoke fit together, see [d
 
 > See [docker/example.omnibus.docker-compose.yml](docker/example.omnibus.docker-compose.yml) for a docker-compose file.
 
+> **Existing Omnibus installations upgrading to InfluxDB 2.9.1:** Stop Scrutiny and back up the complete host directory mounted at `/opt/scrutiny/influxdb` before starting the new image. Then set `SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED=true`. The container blocks InfluxDB startup until this acknowledgement is provided. Fresh installations do not require it. See [Omnibus InfluxDB 2.9 upgrade preflight](docs/DEPLOYMENTS.md#omnibus-influxdb-29-upgrade-preflight).
+
 ```bash
 docker run -p 8080:8080 -p 8086:8086 --restart unless-stopped \
   -v `pwd`/scrutiny:/opt/scrutiny/config \
   -v `pwd`/influxdb2:/opt/scrutiny/influxdb \
+  -e SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED=false \
   -v /run/udev:/run/udev:ro \
   --cap-add SYS_RAWIO \
   --device=/dev/sda \
