@@ -119,6 +119,15 @@ test_flux.go
 # Local architecture knowledge base (agent/maintainer guidance, not shipped)
 CONTEXT.md
 docs/adr/
+
+# Agent instruction and session surfaces are intentionally local-only.
+AGENTS.md
+CLAUDE.md
+.agents/
+.claude/
+.codex/
+.agent-session
+.codex-session-*
 docs/agents/invariants.md
 docs/agents/danger-zones.md
 docs/agents/review-checklist.md
