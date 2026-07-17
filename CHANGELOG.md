@@ -2,6 +2,16 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.67.0](https://github.com/Starosdev/scrutiny/compare/v1.66.0...v1.67.0) (2026-07-17)
+
+### Features
+
+* **release:** promote develop to master ([#661](https://github.com/Starosdev/scrutiny/issues/661)) ([d464935](https://github.com/Starosdev/scrutiny/commit/d464935c6244e0f710604957fff1641d54af559f))
+
+### Bug Fixes
+
+* **docker:** gate InfluxDB 2.9 upgrade on backup ([c9bf302](https://github.com/Starosdev/scrutiny/commit/c9bf302358ffe879d3f57f04d189c724fa552195))
+
 ## [1.66.0](https://github.com/Starosdev/scrutiny/compare/v1.65.0...v1.66.0) (2026-07-08)
 
 ### Features
