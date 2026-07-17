@@ -38,6 +38,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+      - name: Test Omnibus InfluxDB upgrade preflight
+        run: bash docker/tests/influxdb-upgrade-preflight_test.sh
       - name: Setup Go
         uses: actions/setup-go@v6
         with:

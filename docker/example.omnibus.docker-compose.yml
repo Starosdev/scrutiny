@@ -42,6 +42,9 @@ services:
       # - /volume1:/volume1:ro
       # - /volume2:/volume2:ro
     environment:
+      # Existing Omnibus installs: stop Scrutiny, back up the complete
+      # ./influxdb directory, then set this to "true" for the 2.9 upgrade.
+      SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED: "${SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED:-false}"
       # Enable ZFS pool monitoring (uncomment to enable)
       # See docs/ZFS_POOL_MONITORING.md for details
       # COLLECTOR_ZFS_CRON_SCHEDULE: "*/15 * * * *"
