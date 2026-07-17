@@ -1,7 +1,7 @@
 services:
   scrutiny:
     container_name: scrutiny-testing
-    image: ${SCRUTINY_IMAGE:-ghcr.io/starosdev/scrutiny:testing}
+    image: ${SCRUTINY_IMAGE:-ghcr.io/starosdev/scrutiny:develop-omnibus}
     restart: unless-stopped
     cap_add:
       - SYS_RAWIO

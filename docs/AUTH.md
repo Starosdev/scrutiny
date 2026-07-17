@@ -32,7 +32,7 @@ Then configure each collector with the same token. See [Collector Authentication
 | `web.docs.public` | `SCRUTINY_WEB_DOCS_PUBLIC` | `false` | Expose `/docs/api` and `/api/docs/openapi.yaml` without authentication. Leave `false` for production-facing deployments. |
 | `web.metrics.token` | `SCRUTINY_WEB_METRICS_TOKEN` | (empty) | Independent bearer token for the Prometheus `/api/metrics` endpoint. See [Prometheus Metrics Authentication](#prometheus-metrics-authentication). |
 
-### Collector (`collector.yaml` / `collector-performance.yaml`)
+### Collector configuration files
 
 | Config Key | Environment Variable | Default | Description |
 |---|---|---|---|
@@ -40,6 +40,8 @@ Then configure each collector with the same token. See [Collector Authentication
 | `api.token` (performance) | `COLLECTOR_PERF_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the performance collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
 | `api.token` (zfs) | `COLLECTOR_ZFS_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the ZFS collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
 | `api.token` (btrfs) | `COLLECTOR_BTRFS_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the Btrfs collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
+| `api.token` (mdadm) | `COLLECTOR_MDADM_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the MDADM collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
+| `api.token` (filesystem) | `COLLECTOR_FILESYSTEM_API_TOKEN` (falls back to `COLLECTOR_API_TOKEN`) | (empty) | API token for the filesystem collector. Falls back to `COLLECTOR_API_TOKEN` if not set. |
 
 ## Public Endpoints
 
@@ -306,7 +308,7 @@ services:
             SCRUTINY_WEB_AUTH_JWT_SECRET: 'a-stable-64-character-hex-string'
             # Optional: independent Prometheus metrics token
             SCRUTINY_WEB_METRICS_TOKEN: 'your-metrics-token-here'
-            # All embedded collectors (metrics, performance, ZFS) read this automatically
+            # All embedded collectors read this automatically
             COLLECTOR_API_TOKEN: 'your-secret-api-token-here'
 ```
 
@@ -391,7 +393,7 @@ Set the same token on every collector so they can continue sending data. The sim
 COLLECTOR_API_TOKEN='your-secret-api-token-here'
 ```
 
-This works for the metrics collector, performance collector, and ZFS collector. See [Collector Authentication](#collector-authentication) for per-collector details.
+This works for all collectors, including metrics, performance, ZFS, Btrfs, MDADM, and filesystem collectors. See [Collector Authentication](#collector-authentication) for per-collector details.
 
 ### Step 3 (Optional): Enable Password Login
 

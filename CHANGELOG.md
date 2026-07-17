@@ -1180,14 +1180,14 @@ All notable changes to Scrutiny will be documented in this file.
 
 ### Bug Fixes
 
-* **collector:** handle large LBA values in SMART data parsing ([7f4bceb](https://github.com/Starosdev/scrutiny/commit/7f4bceb85506606d6318253fd406da4b55921383)), closes [#24](https://github.com/Starosdev/scrutiny/issues/24) [AnalogJ/scrutiny#800](https://github.com/AnalogJ/scrutiny/issues/800)
+* **collector:** handle large LBA values in SMART data parsing ([7f4bceb](https://github.com/Starosdev/scrutiny/commit/7f4bceb85506606d6318253fd406da4b55921383)), closes [#24](https://github.com/Starosdev/scrutiny/issues/24)
 * **collector:** ignore bit 6 in smartctl exit-code during detect ([735fe2e](https://github.com/Starosdev/scrutiny/commit/735fe2e57d9afc9d32832619d6c3c758ec91eb11))
 * **collector:** keep existing device type ([b5bb1a2](https://github.com/Starosdev/scrutiny/commit/b5bb1a232a2e38e6bbffb041ffa397b54999fc02))
-* **config:** use structured logging for config file messages ([03513b7](https://github.com/Starosdev/scrutiny/commit/03513b742622b77d27cd08b941147eadf35bec91)), closes [#22](https://github.com/Starosdev/scrutiny/issues/22) [AnalogJ/scrutiny#814](https://github.com/AnalogJ/scrutiny/issues/814)
-* **database:** use WAL mode to prevent readonly errors in restricted Docker ([1db337d](https://github.com/Starosdev/scrutiny/commit/1db337d872b655e0c68a4a506f9706f0cb7d4a79)), closes [#25](https://github.com/Starosdev/scrutiny/issues/25) [AnalogJ/scrutiny#772](https://github.com/AnalogJ/scrutiny/issues/772)
+* **config:** use structured logging for config file messages ([03513b7](https://github.com/Starosdev/scrutiny/commit/03513b742622b77d27cd08b941147eadf35bec91)), closes [#22](https://github.com/Starosdev/scrutiny/issues/22)
+* **database:** use WAL mode to prevent readonly errors in restricted Docker ([1db337d](https://github.com/Starosdev/scrutiny/commit/1db337d872b655e0c68a4a506f9706f0cb7d4a79)), closes [#25](https://github.com/Starosdev/scrutiny/issues/25)
 * **notify:** try to unmarshal notify.urls as JSON array ([9109fb5](https://github.com/Starosdev/scrutiny/commit/9109fb5447080b5faab3377721b830f1e0266500))
 * **thresholds:** add observed threshold for attribute 188 with value 0 ([c86ee89](https://github.com/Starosdev/scrutiny/commit/c86ee894468068830fa9e8cf93cde3ef6df1f5d0))
-* **thresholds:** mark wear leveling count (attr 177) as critical ([c072119](https://github.com/Starosdev/scrutiny/commit/c0721199b86b02ae398afcc439f4162a760f1d5e)), closes [#21](https://github.com/Starosdev/scrutiny/issues/21) [AnalogJ/scrutiny#818](https://github.com/AnalogJ/scrutiny/issues/818)
+* **thresholds:** mark wear leveling count (attr 177) as critical ([c072119](https://github.com/Starosdev/scrutiny/commit/c0721199b86b02ae398afcc439f4162a760f1d5e)), closes [#21](https://github.com/Starosdev/scrutiny/issues/21)
 * **ui:** display temperature graph times in local timezone ([6123347](https://github.com/Starosdev/scrutiny/commit/6123347165794a5de177248802229c9ea0ea4a9f)), closes [#30](https://github.com/Starosdev/scrutiny/issues/30)
 
 ## [1.1.0](https://github.com/Starosdev/scrutiny/compare/v1.0.0...v1.1.0) (2025-11-30)
@@ -1225,7 +1225,7 @@ All notable changes to Scrutiny will be documented in this file.
 ### Bug Fixes
 
 * **collector:** show correct nvme capacity ([db86bac](https://github.com/Starosdev/scrutiny/commit/db86bac9efb10ca11177a1cf00621a8ea91dc6aa)), closes [#466](https://github.com/Starosdev/scrutiny/issues/466)
-* https://github.com/AnalogJ/scrutiny/issues/643 ([50561f3](https://github.com/Starosdev/scrutiny/commit/50561f34ead034c118dd7ea5f1d1f067b0d1d97a))
+* historical collector fix ([50561f3](https://github.com/Starosdev/scrutiny/commit/50561f34ead034c118dd7ea5f1d1f067b0d1d97a))
 * igeneric types ([e9cf8a9](https://github.com/Starosdev/scrutiny/commit/e9cf8a9180e5d181f62076bb602888e34596885b))
 * increase timeout ([222b810](https://github.com/Starosdev/scrutiny/commit/222b8103d635ddfafd29ac93ea110c3d851a3112))
 * prod build command ([50321d8](https://github.com/Starosdev/scrutiny/commit/50321d897a21faa515b142f4b2e285ba16815acd))

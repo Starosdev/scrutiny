@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for your interest in contributing to Scrutiny! This is an actively maintained fork of the original [AnalogJ/scrutiny](https://github.com/AnalogJ/scrutiny) project.
+Thank you for your interest in contributing to Scrutiny! This is an actively maintained community fork.
 
 ## Before You Start
 

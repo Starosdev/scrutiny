@@ -5,7 +5,7 @@ data is missing, this is probably due to a `smartctl` issue.
 The following page will document commonly asked questions and troubleshooting steps for the Scrutiny S.M.A.R.T. data collector.
 
 ## WWN vs Device name
-As discussed in [`#117`](https://github.com/AnalogJ/scrutiny/issues/117), `/dev/sd*` device paths are ephemeral. 
+`/dev/sd*` device paths are ephemeral.
 
 > Device paths in Linux aren't guaranteed to be consistent across restarts. Device names consist of major numbers (letters) and minor numbers. When the Linux storage device driver detects a new device, the driver assigns major and minor numbers from the available range to the device. When a device is removed, the device numbers are freed for reuse.
 >
@@ -70,7 +70,7 @@ docker run -it --rm \
   --cap-add SYS_RAWIO \
   --device=/dev/sda \
   --device=/dev/sdb \
-  ghcr.io/Starosdev/scrutiny:master-collector smartctl --scan
+  ghcr.io/Starosdev/scrutiny:latest-collector smartctl --scan
 ```
 
 If the output is the same, your devices will be processed by Scrutiny.
@@ -81,7 +81,7 @@ first. Fix the container device mappings until `smartctl --scan` and direct
 the container.
 
 ### Collector Config File
-In some cases `--scan` does not correctly detect the device type, returning [incomplete SMART data](https://github.com/AnalogJ/scrutiny/issues/45).
+In some cases `--scan` does not correctly detect the device type, returning incomplete SMART data.
 Scrutiny will supports overriding the detected device type via the config file.
 
 [example.collector.yaml](https://github.com/Starosdev/scrutiny/blob/master/example.collector.yaml)
@@ -89,19 +89,19 @@ Scrutiny will supports overriding the detected device type via the config file.
 ### RAID Controllers (Megaraid/3ware/HBA/Adaptec/HPE/etc)
 Smartctl has support for a large number of [RAID controllers](https://www.smartmontools.org/wiki/Supported_RAID-Controllers), however this 
 support is not automatic, and may require some additional device type hinting. You can provide this information to the Scrutiny collector
-using a collector config file. See [example.collector.yaml](/example.collector.yaml)
+using a collector config file. See [example.collector.yaml](../example.collector.yaml)
 
 > NOTE: If you use docker, you **must** pass though the RAID virtual disk to the container using `--device` (see below)
 >
 > This device may be in `/dev/*` or `/dev/bus/*`.
-> If you do not see a virtual device file `/dev/bus/*` you may need to use the `--privileged` flag. See [#366 for more info](https://github.com/AnalogJ/scrutiny/issues/366#issuecomment-1253196407)
+> If you do not see a virtual device file `/dev/bus/*` you may need to use the `--privileged` flag.
 >
 > If you're unsure, run `smartctl --scan` on your host, and pass all listed devices to the container.
 
 ```yaml
 # /opt/scrutiny/config/collector.yaml
 devices:
-  # Dell PERC/Broadcom Megaraid example: https://github.com/AnalogJ/scrutiny/issues/30
+  # Dell PERC/Broadcom Megaraid example
   - device: /dev/bus/0
     type:
       - megaraid,14
@@ -120,13 +120,13 @@ devices:
       - 3ware,4
       - 3ware,5
   
-  # Adapec RAID: https://github.com/AnalogJ/scrutiny/issues/189
+  # Adapec RAID
   - device: /dev/sdb
     type:
       - aacraid,0,0,0
       - aacraid,0,0,1
 
-  # HPE Smart Array example:  https://github.com/AnalogJ/scrutiny/issues/213
+  # HPE Smart Array example
   - device: /dev/sda
     type:
       - 'cciss,0'
@@ -137,11 +137,11 @@ devices:
 
 ### NVMe Drives
 
-As mentioned in the [README.md](/README.md), NVMe devices require both `--cap-add SYS_RAWIO` and `--cap-add SYS_ADMIN`
-to allow smartctl permission to query your NVMe device SMART data [#26](https://github.com/AnalogJ/scrutiny/issues/26)
+As mentioned in the [README.md](../README.md), NVMe devices require both `--cap-add SYS_RAWIO` and `--cap-add SYS_ADMIN`
+to allow smartctl permission to query your NVMe device SMART data.
 
 When attaching NVMe devices using `--device=/dev/nvme..`, make sure to provide the device controller (`/dev/nvme0`)
-instead of the block device (`/dev/nvme0n1`). See [#209](https://github.com/AnalogJ/scrutiny/issues/209).
+instead of the block device (`/dev/nvme0n1`).
 
 > The character device /dev/nvme0 is the NVME device controller, and block devices like /dev/nvme0n1 are the NVME storage namespaces: the devices you use for actual storage, which will behave essentially as disks.
 >
@@ -151,7 +151,7 @@ instead of the block device (`/dev/nvme0n1`). See [#209](https://github.com/Anal
 
 ### USB Devices
 
-The following information is extracted from [#266](https://github.com/AnalogJ/scrutiny/issues/266)
+The following guidance covers common device passthrough cases.
 
 External HDDs support two modes of operation usb-storage (old, slower, stable) and uas (new, faster, sometimes unstable)
 . On some external HDDs, uas mode does not properly pass through SMART information, or even causes hardware issues, so
@@ -193,8 +193,7 @@ debug, but you can look at the table (and associated links) below to debug `smar
 
 Disks in Standby/Sleep can also cause `smartctl` to exit abnormally, usually with `exit code: 2`. 
 
-- https://github.com/AnalogJ/scrutiny/issues/221
-- https://github.com/AnalogJ/scrutiny/issues/157
+Standby/sleeping disks can produce the same behavior; inspect the `smartctl` exit code and wake the disk before retrying.
 
 ### Volume Mount All Devices (`/dev`) - Privileged
 
@@ -215,7 +214,7 @@ docker run -it --rm -p 8080:8080 -p 8086:8086 \
   --privileged \
   -v /dev:/dev \
   --name scrutiny \
-  ghcr.io/Starosdev/scrutiny:master-omnibus
+  ghcr.io/Starosdev/scrutiny:latest-omnibus
 ```
 
 ## Scrutiny detects Failure but SMART Passed?
@@ -263,7 +262,7 @@ UPDATE devices SET device_status = null;
 
 ### Seagate Drives Failing
 
-As thoroughly discussed in [#255](https://github.com/AnalogJ/scrutiny/issues/255) and [#522](https://github.com/AnalogJ/scrutiny/issues/522), Seagate (Ironwolf & others) drives are almost always marked as failed by Scrutiny. 
+Some Seagate (Ironwolf and other) drives are often marked as failed by Scrutiny.
 
 #### Seek Error Rate & Read Error Rate (#255)
 > The `Seek Error Rate` & `Read Error Rate` attribute raw values are typically very high, and the 
@@ -303,7 +302,7 @@ other drives, please read the following:
 #### Seagate Raw Values are incorrect (#522)
 Basically Seagate drives are known to use a custom data format for a number of their SMART attributes. This causes issues with Scrutiny's threshold analysis. 
 
-- The workaround is to customize the smartctl command that Scrutiny uses for your drive by [creating a collector.yaml file](https://github.com/AnalogJ/scrutiny/issues/522#issuecomment-1766727988) and "fixing" each attribute
+- The workaround is to customize the smartctl command that Scrutiny uses for your drive by [creating a collector.yaml file](../example.collector.yaml) and "fixing" each attribute
 - The **real "fix"** is to make sure your Seagate drive is correctly supported by smartmontools. See this [PR](https://github.com/smartmontools/smartmontools/pull/247)
 
 Sorry for the bad news, but this is a known issue and there's just not much we can do on the Scrutiny side. 
@@ -327,7 +326,7 @@ the host-id:
   argument: [master/collector/cmd/collector-metrics/collector-metrics.go#L180-L185](https://github.com/Starosdev/scrutiny/blob/master/collector/cmd/collector-metrics/collector-metrics.go#L180-L185)
 - using the `COLLECTOR_HOST_ID` environmental variable.
 
-See the [docs/INSTALL_HUB_SPOKE.md](/docs/INSTALL_HUB_SPOKE.md) guide for more information.
+See the [Hub/Spoke installation guide](./INSTALL_HUB_SPOKE.md) for more information.
 
 ## Collector DEBUG mode
 
