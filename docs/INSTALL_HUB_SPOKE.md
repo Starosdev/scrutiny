@@ -81,7 +81,7 @@ services:
   scrutiny:
     restart: unless-stopped
     container_name: scrutiny
-    image: ghcr.io/Starosdev/scrutiny:master-web
+    image: ghcr.io/Starosdev/scrutiny:latest-web
     ports:
       - 8080:8080
     volumes:
@@ -173,7 +173,7 @@ services:
 
   collector:
     restart: unless-stopped
-    image: 'ghcr.io/Starosdev/scrutiny:master-collector'
+    image: 'ghcr.io/Starosdev/scrutiny:latest-collector'
     cap_add:
       - SYS_RAWIO
     volumes:

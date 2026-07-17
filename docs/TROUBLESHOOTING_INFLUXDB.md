@@ -14,7 +14,7 @@ a bunch of testing and analysis before I made the change. With InfluxDB the memo
 ### Data Size
 
 It's surprisingly easy to reach extremely large database sizes, if you don't use downsampling, or you downsample incorrectly. 
-The growth rate is pretty unintuitive -- see https://github.com/AnalogJ/scrutiny/issues/650#issuecomment-2365174940 
+The growth rate is unintuitive; monitor retention and downsampling when estimating storage needs.
 
 > Fasten stores the SMART metrics in a timeseries database (InfluxDB), and automatically downsamples the data on a schedule.
 >
@@ -47,7 +47,7 @@ https://docs.influxdata.com/influxdb/v2/install/
 
 To ensure that all data is correctly stored, you must also persist the InfluxDB database directory
 
-- If you're using the Official Scrutiny Omnibus image (`ghcr.io/Starosdev/scrutiny:master-omnibus`), the path is `/opt/scrutiny/influxdb`
+- If you're using the Official Scrutiny Omnibus image (`ghcr.io/Starosdev/scrutiny:latest-omnibus`), the path is `/opt/scrutiny/influxdb`
 - If you're deploying in Hub/Spoke mode with the InfluxDB maintained image (`influxdb:2.9`), the path is `/var/lib/influxdb2`
 
 If you attempt to restart Scrutiny but you forgot to persist the InfluxDB directory, you will get an error message like follows:
@@ -101,8 +101,7 @@ time="2022-06-11T10:35:04-04:00" level=info msg="Successfully connected to scrut
 panic: failed to check influxdb setup status - parse "://:": missing protocol scheme
 ```
 
-As discussed in [#248](https://github.com/AnalogJ/scrutiny/issues/248) and [#234](https://github.com/AnalogJ/scrutiny/issues/234),
-this usually related to either:
+This usually relates to either:
 
 - Upgrading from the LSIO Scrutiny image to the Official Scrutiny image, without removing LSIO specific environmental
   variables
@@ -112,7 +111,7 @@ this usually related to either:
 - Updated versions of the [LSIO Scrutiny images are broken](https://github.com/linuxserver/docker-scrutiny/issues/22),
   as they have not installed InfluxDB which is a required dependency of Scrutiny v0.4.x
   - You can revert to an earlier version of the LSIO image (`lscr.io/linuxserver/scrutiny:060ac7b8-ls34`), or just
-    change to the official Scrutiny image (`ghcr.io/Starosdev/scrutiny:master-omnibus`)
+    change to the official Scrutiny image (`ghcr.io/Starosdev/scrutiny:latest-omnibus`)
 
 Here's a couple of confirmed working docker-compose files that you may want to look at:
 

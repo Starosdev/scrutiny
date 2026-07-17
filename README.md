@@ -22,7 +22,7 @@
 
 This fork exists to keep Scrutiny alive and growing. The original [AnalogJ/scrutiny](https://github.com/AnalogJ/scrutiny) project development slowed significantly in 2024, while community contributions and feature requests continued to grow. This fork picks up where the original left off, merging pending community PRs and adding new features.
 
-Full credit for the original vision and architecture goes to [AnalogJ](https://github.com/AnalogJ). I started this fork as a learning project, so contributions from more experienced developers are greatly appreciated. Full disclosure: I use Claude to assist with development, but all code is manually reviewed by me before merging.
+Full credit for the original vision and architecture goes to [AnalogJ](https://github.com/AnalogJ). I started this fork as a learning project, so contributions from more experienced developers are greatly appreciated. All changes are reviewed before merging.
 
 | | Original | This Fork |
 |---|---|---|
@@ -675,10 +675,10 @@ curl -X POST http://localhost:8080/api/settings \
 
 ```bash
 # Generate and send a report immediately
-curl -X POST 'http://localhost:8080/api/reports/generate?period=daily&test=true'
+curl 'http://localhost:8080/api/reports/generate?period=daily&test=true'
 
 # Generate a PDF report
-curl -X POST 'http://localhost:8080/api/reports/generate?period=daily&format=pdf'
+curl 'http://localhost:8080/api/reports/generate?period=daily&format=pdf'
 ```
 
 **Report content includes:**
