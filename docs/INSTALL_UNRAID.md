@@ -40,7 +40,7 @@ For distributed deployments, separate templates are available:
 | `scrutiny-web.xml` | `ghcr.io/starosdev/scrutiny:latest-web` | Web dashboard and API. Requires external InfluxDB. |
 | `scrutiny-collector.xml` | `ghcr.io/starosdev/scrutiny:latest-collector` | S.M.A.R.T metrics collector. Point it at your web server. |
 | `scrutiny-collector-omnibus.xml` | `ghcr.io/starosdev/scrutiny:latest-collector-omnibus` | Recommended single spoke container. Bundles the SMART, ZFS, MDADM, Btrfs, filesystem, and performance collectors. |
-| `scrutiny-collector-zfs.xml` | `ghcr.io/starosdev/scrutiny:latest-collector-zfs` | ZFS pool health collector (amd64 only). |
+| `scrutiny-collector-zfs.xml` | `ghcr.io/starosdev/scrutiny:latest-collector-zfs` | ZFS pool health collector. |
 | `scrutiny-collector-btrfs.xml` | `ghcr.io/starosdev/scrutiny:latest-collector-btrfs` | Btrfs filesystem health collector. Requires host Btrfs mounts and `btrfs-progs` access. |
 | `scrutiny-collector-performance.xml` | `ghcr.io/starosdev/scrutiny:latest-collector-performance` | fio drive benchmarks for throughput/IOPS/latency tracking. |
 

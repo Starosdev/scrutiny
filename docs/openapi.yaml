@@ -818,6 +818,30 @@ paths:
         "500":
           $ref: "#/components/responses/ErrorResponse"
   /api/settings/notify-urls/{id}:
+    patch:
+      tags: [Settings]
+      summary: Toggle heartbeat notifications for a UI-managed notification URL
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+              required: [enabled]
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
     delete:
       tags: [Settings]
       summary: Delete a UI-managed notification URL
