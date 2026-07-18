@@ -15,7 +15,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/influxdata/influxdb-client-go/v2 v2.14.0
-	github.com/jaypipes/ghw v0.24.0
+	github.com/jaypipes/ghw v0.25.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/nicholas-fedor/shoutrrr v0.16.1
 	github.com/prometheus/client_golang v1.23.2
