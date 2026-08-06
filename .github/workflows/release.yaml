@@ -161,7 +161,7 @@ jobs:
       # Build from the published release tag so the binaries embed the same
       # VERSION constant that semantic-release committed for that release.
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Build Binaries
