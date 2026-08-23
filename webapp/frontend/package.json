@@ -37,7 +37,7 @@
     "crypto-js": "^4.1.1",
     "dayjs": "^1.11.20",
     "highlight.js": "^11.6.0",
-    "humanize-duration": "^3.27.3",
+    "humanize-duration": "^3.34.1",
     "lodash": "^4.18.1",
     "marked": "^17.0.1",
     "ng-apexcharts": "^2.4.0",
