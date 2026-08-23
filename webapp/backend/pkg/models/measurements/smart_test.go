@@ -11,6 +11,7 @@ import (
 	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -150,10 +151,10 @@ func TestSmart_Flatten_SCSI(t *testing.T) {
 		"attr.read_errors_corrected_by_eccfast.thresh":            int64(0),
 		"attr.read_errors_corrected_by_eccfast.transformed_value": int64(0),
 		"attr.read_errors_corrected_by_eccfast.value":             int64(300357663),
-		"logical_block_size":                                      int64(512),
-		"power_cycle_count":                                       int64(10),
-		"power_on_hours":                                          int64(10),
-		"temp":                                                    int64(50)},
+		"logical_block_size": int64(512),
+		"power_cycle_count":  int64(10),
+		"power_on_hours":     int64(10),
+		"temp":               int64(50)},
 		fields)
 }
 
@@ -1750,4 +1751,30 @@ func TestNewSmartFromInfluxDB_WithFarmAttributes(t *testing.T) {
 	require.True(t, ok, "farm_poh should be SmartFarmAttribute type")
 	require.Equal(t, "farm_poh", farmAttr.AttributeId)
 	require.Equal(t, int64(2344), farmAttr.Value)
+}
+
+func TestSmartApplyOverridesProjectsStableDeviceOverride(t *testing.T) {
+	smart := measurements.Smart{
+		DeviceWWN:      "nvme-serial",
+		DeviceProtocol: pkg.DeviceProtocolNvme,
+		Attributes: map[string]measurements.SmartAttribute{
+			"media_errors": &measurements.SmartNvmeAttribute{
+				AttributeId: "media_errors",
+				Value:       3,
+				Status:      pkg.AttributeStatusFailedScrutiny,
+			},
+		},
+	}
+
+	smart.ApplyOverrides([]overrides.AttributeOverride{{
+		Protocol:    pkg.DeviceProtocolNvme,
+		AttributeId: "media_errors",
+		DeviceID:    "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e",
+		Action:      overrides.AttributeOverrideActionForceStatus,
+		Status:      "passed",
+	}}, "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e")
+
+	attribute := smart.Attributes["media_errors"].(*measurements.SmartNvmeAttribute)
+	require.Equal(t, pkg.AttributeStatusPassed, attribute.Status)
+	require.Equal(t, "Status forced by user configuration", attribute.StatusReason)
 }

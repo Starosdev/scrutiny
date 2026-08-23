@@ -652,6 +652,18 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				}).Error
 			},
 		},
+		{
+			ID: "m20260823000000", // add stable device selector to attribute overrides (#755)
+			Migrate: func(tx *gorm.DB) error {
+				if err := tx.Exec("ALTER TABLE attribute_overrides ADD COLUMN device_id TEXT NOT NULL DEFAULT ''").Error; err != nil {
+					return fmt.Errorf("failed to add attribute override device_id: %w", err)
+				}
+				if err := tx.Exec("DROP INDEX IF EXISTS idx_override_lookup").Error; err != nil {
+					return fmt.Errorf("failed to replace attribute override index: %w", err)
+				}
+				return tx.Exec("CREATE UNIQUE INDEX idx_override_lookup ON attribute_overrides (protocol, attribute_id, device_id, wwn)").Error
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {

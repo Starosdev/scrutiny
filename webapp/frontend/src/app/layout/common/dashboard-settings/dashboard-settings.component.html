@@ -492,6 +492,11 @@
                         <td mat-cell *matCellDef="let override">{{ override.attribute_id }}</td>
                     </ng-container>
 
+                    <ng-container matColumnDef="device">
+                        <th mat-header-cell *matHeaderCellDef>Device</th>
+                        <td mat-cell *matCellDef="let override">{{ overrideDeviceLabel(override) }}</td>
+                    </ng-container>
+
                     <ng-container matColumnDef="action">
                         <th mat-header-cell *matHeaderCellDef>Action</th>
                         <td mat-cell *matCellDef="let override">{{ getActionLabel(override.action) }}</td>
@@ -577,16 +582,28 @@
                         }
 
                         <mat-form-field class="flex-1 min-w-[200px]">
-                            <mat-label>Device WWN (optional)</mat-label>
-                            <input matInput [(ngModel)]="newOverride.wwn" placeholder="Leave empty for all devices" />
+                            <mat-label>Device (optional)</mat-label>
+                            <mat-select [(ngModel)]="newOverride.device_id">
+                                <mat-option value="">All devices</mat-option>
+                                @for (device of overrideDevices; track device.device_id) {
+                                <mat-option [value]="device.device_id">{{ device.model_name }} ({{ device.serial_number || device.device_name || device.device_id }})</mat-option>
+                                }
+                            </mat-select>
+                            <mat-hint>Uses stable Scrutiny device identity.</mat-hint>
                         </mat-form-field>
                     </div>
+
+                    @if (overrideError) {
+                    <p class="text-red-600 mt-2" role="alert" aria-live="assertive">{{ overrideError }}</p>
+                    }
+                    <p id="override-form-hint" class="text-gray-500 mt-2">Choose a protocol and attribute ID. Custom thresholds need at least one value.</p>
 
                     <button
                         mat-raised-button
                         color="primary"
                         class="mt-4"
                         (click)="addOverride()"
+                        aria-describedby="override-form-hint"
                         [disabled]="
                             !newOverride.protocol ||
                             !newOverride.attribute_id ||

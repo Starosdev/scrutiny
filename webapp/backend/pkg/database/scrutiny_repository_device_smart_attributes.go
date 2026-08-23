@@ -18,6 +18,13 @@ import (
 func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo) (measurements.Smart, error) {
 	deviceSmartData := measurements.Smart{}
 
+	// Look up the device before processing so device-scoped overrides apply to
+	// the incoming SMART result as well as read-time projections.
+	device, devErr := sr.GetDeviceByWWN(ctx, wwn)
+	if devErr == nil {
+		deviceSmartData.DeviceID = device.DeviceID
+	}
+
 	// Get merged overrides (config + database) for SMART attribute processing
 	mergedOverrides := sr.GetMergedOverrides(ctx)
 
@@ -25,13 +32,6 @@ func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, wwn strin
 	if err != nil {
 		sr.logger.Errorln("Could not process SMART metrics", err)
 		return measurements.Smart{}, err
-	}
-
-	// Look up the device via WWN so the current upload can carry a stable device_id tag
-	// and self-test history can be attached to the correct SQLite row set.
-	device, devErr := sr.GetDeviceByWWN(ctx, wwn)
-	if devErr == nil {
-		deviceSmartData.DeviceID = device.DeviceID
 	}
 
 	// Apply delta-based evaluation for cumulative counter attributes (e.g., UltraDMA CRC Error Count).

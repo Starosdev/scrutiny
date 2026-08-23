@@ -73,6 +73,7 @@ export interface AttributeOverride {
     id?: number;
     protocol: OverrideProtocol;
     attribute_id: string;
+    device_id?: string;
     wwn?: string;
     action?: OverrideAction;
     status?: OverrideStatus;

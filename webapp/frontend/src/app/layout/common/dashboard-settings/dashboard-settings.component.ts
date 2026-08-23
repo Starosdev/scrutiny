@@ -23,6 +23,8 @@ import {
 } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { AttributeOverrideService } from 'app/core/config/attribute-override.service';
+import { DashboardService } from 'app/modules/dashboard/dashboard.service';
+import { DeviceModel } from 'app/core/models/device-model';
 import { NotifyUrlService } from 'app/core/config/notify-url.service';
 import { getBasePath } from 'app/app.routing';
 import { Subject } from 'rxjs';
@@ -86,6 +88,7 @@ import { HelpLinkIconComponent } from 'app/layout/common/help-link-icon/help-lin
 export class DashboardSettingsComponent implements OnInit {
     private readonly _configService = inject(ScrutinyConfigService);
     private readonly _overrideService = inject(AttributeOverrideService);
+    private readonly _dashboardService = inject(DashboardService);
     private readonly _notifyUrlService = inject(NotifyUrlService);
     private readonly _httpClient = inject(HttpClient);
 
@@ -157,7 +160,9 @@ export class DashboardSettingsComponent implements OnInit {
 
     // Attribute overrides
     overrides: AttributeOverride[] = [];
-    displayedColumns: string[] = ['protocol', 'attribute_id', 'action', 'source', 'actions'];
+    overrideDevices: DeviceModel[] = [];
+    overrideError: string | null = null;
+    displayedColumns: string[] = ['protocol', 'attribute_id', 'device', 'action', 'source', 'actions'];
     protocols: OverrideProtocol[] = ['ATA', 'NVMe', 'SCSI'];
     actions: { value: OverrideAction; label: string }[] = [
         { value: 'ignore', label: 'Ignore' },
@@ -282,6 +287,7 @@ export class DashboardSettingsComponent implements OnInit {
 
         // Load attribute overrides
         this.loadOverrides();
+        this.loadOverrideDevices();
 
         // Load notification URLs
         this.loadNotifyUrls();
@@ -296,8 +302,19 @@ export class DashboardSettingsComponent implements OnInit {
             });
     }
 
+    loadOverrideDevices(): void {
+        this._dashboardService
+            .getSummaryData()
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe((summary) => {
+                this.overrideDevices = Object.values(summary).map((entry) => entry.device);
+            });
+    }
+
     addOverride(): void {
+        this.overrideError = null;
         if (!this.newOverride.protocol || !this.newOverride.attribute_id) {
+            this.overrideError = 'Choose a protocol and attribute ID.';
             return;
         }
         if (this.newOverride.action === '' && this.newOverride.warn_above == null && this.newOverride.fail_above == null) {
@@ -312,6 +329,7 @@ export class DashboardSettingsComponent implements OnInit {
             this.newOverride.fail_above != null &&
             this.newOverride.warn_above >= this.newOverride.fail_above
         ) {
+            this.overrideError = 'Fail Above must be greater than Warn Above. Use only Fail Above for a fail-only threshold.';
             return;
         }
 
@@ -319,7 +337,7 @@ export class DashboardSettingsComponent implements OnInit {
             protocol: this.newOverride.protocol as OverrideProtocol,
             attribute_id: this.newOverride.attribute_id,
             action: this.newOverride.action as OverrideAction,
-            wwn: this.newOverride.wwn || '',
+            device_id: this.newOverride.device_id || '',
             status: this.newOverride.status as OverrideStatus,
             warn_above: this.newOverride.warn_above,
             fail_above: this.newOverride.fail_above,
@@ -328,15 +346,23 @@ export class DashboardSettingsComponent implements OnInit {
         this._overrideService
             .saveOverride(override)
             .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((saved) => {
-                this.overrides = [...this.overrides, saved];
-                // Reset form
-                this.newOverride = {
-                    protocol: 'ATA',
-                    attribute_id: '',
-                    action: 'ignore',
-                };
+            .subscribe({
+                next: (saved) => {
+                    this.overrides = [...this.overrides, saved];
+                    this.newOverride = { protocol: 'ATA', attribute_id: '', action: 'ignore' };
+                },
+                error: (error) => {
+                    this.overrideError = error?.error?.error || 'Could not save override.';
+                },
             });
+    }
+
+    overrideDeviceLabel(override: AttributeOverride): string {
+        const device = this.overrideDevices.find((entry) => entry.device_id === override.device_id);
+        if (device) {
+            return `${device.model_name} (${device.serial_number || device.device_name || device.device_id})`;
+        }
+        return override.wwn ? `Legacy WWN: ${override.wwn}` : 'All devices';
     }
 
     removeOverride(override: AttributeOverride): void {

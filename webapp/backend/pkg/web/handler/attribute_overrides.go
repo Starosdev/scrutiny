@@ -2,17 +2,14 @@ package handler
 
 import (
 	"net/http"
-	"regexp"
 	"strconv"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
-
-// wwnPattern matches a valid WWN: optional 0x prefix followed by 1-16 hex digits.
-var wwnPattern = regexp.MustCompile(`(?i)^(0x)?[0-9a-f]{1,16}$`)
 
 // validProtocols defines the allowed protocol values
 var validProtocols = map[string]bool{
@@ -70,8 +67,14 @@ func validateAttributeOverride(o *models.AttributeOverride) string {
 	if !validActions[o.Action] {
 		return "Invalid action. Must be empty, 'ignore', or 'force_status'"
 	}
-	if o.WWN != "" && !wwnPattern.MatchString(o.WWN) {
-		return "Invalid WWN format. Must be a hex value (e.g. 0x5000cca264eb01d7)"
+	if o.DeviceID != "" && o.WWN != "" {
+		return "Choose either device_id or legacy wwn, not both"
+	}
+	if o.DeviceID != "" && validation.ValidateUUID(o.DeviceID) != nil {
+		return "Invalid device_id format"
+	}
+	if o.WWN != "" && validation.ValidateWWN(o.WWN) != nil {
+		return "Invalid WWN format"
 	}
 	if o.Action == "force_status" {
 		return validateForceStatus(o)
@@ -184,7 +187,11 @@ func recalculateDeviceStatusForOverride(c *gin.Context, logger *logrus.Entry, de
 	}
 	for i := range devices {
 		device := &devices[i]
-		if override.WWN != "" {
+		if override.DeviceID != "" {
+			if device.DeviceID != override.DeviceID {
+				continue
+			}
+		} else if override.WWN != "" {
 			// Override applies to specific device - match by WWN
 			if device.WWN != override.WWN {
 				continue
