@@ -48,6 +48,34 @@ func applyOverrideResult(result *overrides.Result, thresholdValue int64, status 
 	return false, false
 }
 
+// ApplyOverrideToAttribute applies an override to one in-memory attribute.
+// It is used for ingestion and read-time projection without rewriting history.
+func ApplyOverrideToAttribute(attribute SmartAttribute, result *overrides.Result) (ignored bool, forcedFailure bool) {
+	switch attr := attribute.(type) {
+	case *SmartAtaAttribute:
+		return applyOverrideResult(result, attr.RawValue, &attr.Status, &attr.StatusReason)
+	case *SmartAtaDeviceStatAttribute:
+		return applyOverrideResult(result, attr.Value, &attr.Status, &attr.StatusReason)
+	case *SmartFarmAttribute:
+		return applyOverrideResult(result, attr.Value, &attr.Status, &attr.StatusReason)
+	case *SmartNvmeAttribute:
+		return applyOverrideResult(result, attr.Value, &attr.Status, &attr.StatusReason)
+	case *SmartScsiAttribute:
+		return applyOverrideResult(result, attr.Value, &attr.Status, &attr.StatusReason)
+	default:
+		return false, false
+	}
+}
+
+// ApplyOverrides projects current override rules over a stored SMART result.
+// It changes only response data; raw InfluxDB history is retained.
+func (sm *Smart) ApplyOverrides(overrideList []overrides.AttributeOverride, deviceID string) {
+	for attributeID, attribute := range sm.Attributes {
+		result := overrides.ApplyWithOverrides(overrideList, sm.DeviceProtocol, attributeID, deviceID, sm.DeviceWWN)
+		ApplyOverrideToAttribute(attribute, result)
+	}
+}
+
 type Smart struct {
 	Date           time.Time `json:"date"`
 	DeviceWWN      string    `json:"device_wwn"` //(tag)
@@ -500,7 +528,7 @@ func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, modelFam
 		attrIdStr := strconv.Itoa(collectorAttr.ID)
 
 		// Apply merged overrides (config + database)
-		result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrIdStr, sm.DeviceWWN)
+		result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrIdStr, sm.DeviceID, sm.DeviceWWN)
 		ignored, forcedFailure := applyOverrideResult(result, attrModel.RawValue, &attrModel.Status, &attrModel.StatusReason)
 		if forcedFailure {
 			sm.HasForcedFailure = true
@@ -564,7 +592,7 @@ func (sm *Smart) processAtaDeviceStatisticsWithOverrides(cfg config.Interface, d
 			attrModel.PopulateAttributeStatus()
 
 			// Apply merged overrides (config + database)
-			result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrId, sm.DeviceWWN)
+			result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrId, sm.DeviceID, sm.DeviceWWN)
 			ignored, forcedFailure := applyOverrideResult(result, attrModel.Value, &attrModel.Status, &attrModel.StatusReason)
 			if forcedFailure {
 				sm.HasForcedFailure = true
@@ -630,7 +658,7 @@ func (sm *Smart) processFarmDataWithOverrides(cfg config.Interface, farmLog *col
 		attrModel.PopulateAttributeStatus()
 
 		// Apply merged overrides (config + database)
-		result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrId, sm.DeviceWWN)
+		result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrId, sm.DeviceID, sm.DeviceWWN)
 		ignored, forcedFailure := applyOverrideResult(result, attrModel.Value, &attrModel.Status, &attrModel.StatusReason)
 		if forcedFailure {
 			sm.HasForcedFailure = true
@@ -670,7 +698,7 @@ func (sm *Smart) processNvmeSmartInfoWithOverrides(cfg config.Interface, nvmeSma
 		nvmeAttr := val.(*SmartNvmeAttribute)
 
 		// Apply merged overrides (config + database)
-		result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolNvme, attrId, sm.DeviceWWN)
+		result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolNvme, attrId, sm.DeviceID, sm.DeviceWWN)
 		ignored, forcedFailure := applyOverrideResult(result, nvmeAttr.Value, &nvmeAttr.Status, &nvmeAttr.StatusReason)
 		if forcedFailure {
 			sm.HasForcedFailure = true
@@ -934,7 +962,7 @@ func (sm *Smart) processScsiSmartInfoWithOverrides(cfg config.Interface, defectG
 
 		if scsiAttr, ok := val.(*SmartScsiAttribute); ok {
 			// Apply merged overrides (config + database)
-			result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolScsi, attrId, sm.DeviceWWN)
+			result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolScsi, attrId, sm.DeviceID, sm.DeviceWWN)
 			var forcedFailure bool
 			ignored, forcedFailure = applyOverrideResult(result, scsiAttr.Value, &scsiAttr.Status, &scsiAttr.StatusReason)
 			if forcedFailure {

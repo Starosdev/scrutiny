@@ -8,7 +8,7 @@ For release-version verification details, see [RELEASE_VERSION_VERIFICATION.md](
 
 | Environment | Branch | Workflow | Published Image | Notes |
 | --- | --- | --- | --- | --- |
-| Testing | `develop` | `.github/workflows/deploy-testing.yml` | `ghcr.io/staros-labs/scrutiny:develop` and `develop-omnibus` | External hosts pull these tags when they want the latest testing build |
+| Testing | `develop` | `.github/workflows/deploy-testing.yml` | `ghcr.io/starosdev/scrutiny:develop` and `develop-omnibus` | External hosts pull these tags when they want the latest testing build |
 | Beta | `beta` | `.github/workflows/deploy-beta.yml` | `ghcr.io/starosdev/scrutiny:beta` and `beta-omnibus` | External hosts pull these tags when they want a pre-release candidate ahead of stable |
 | Production | `master` | `.github/workflows/release-and-deploy.yml` | `ghcr.io/starosdev/scrutiny:latest` and `latest-omnibus` | External hosts pull these tags when they want the latest production build |
 
@@ -81,7 +81,7 @@ Environment rollout is outside GitHub Actions.
 
 If Zeus should move to a new image, do that from the host by pulling the published tags and restarting the compose project there. The current Zeus mapping is:
 
-- develop image path: `ghcr.io/staros-labs/scrutiny:develop-omnibus`
+- develop image path: `ghcr.io/starosdev/scrutiny:develop-omnibus`
 - beta image path: `ghcr.io/starosdev/scrutiny:beta-omnibus`
 - production image path: `ghcr.io/starosdev/scrutiny:latest`
 - develop compose project: `scrutiny-develop`

@@ -271,18 +271,12 @@ func recalculateStatusFromSmart(device *models.Device, latestSmart *measurements
 
 func recalculatedAttributeStatus(device *models.Device, attrID string, attr measurements.SmartAttribute, mergedOverrides []overrides.AttributeOverride) (pkg.AttributeStatus, bool, bool) {
 	attrStatus := attr.GetStatus()
-	result := overrides.ApplyWithOverrides(mergedOverrides, device.DeviceProtocol, attrID, device.WWN)
+	result := overrides.ApplyWithOverrides(mergedOverrides, device.DeviceProtocol, attrID, device.DeviceID, device.WWN)
 	if result == nil {
 		return attrStatus, false, false
 	}
-	if result.ShouldIgnore {
-		return attrStatus, true, false
-	}
-	if result.Status == nil {
-		return attrStatus, false, false
-	}
-	attrStatus = *result.Status
-	return attrStatus, false, pkg.AttributeStatusHas(*result.Status, pkg.AttributeStatusFailedScrutiny)
+	ignored, forcedFailure := measurements.ApplyOverrideToAttribute(attr, result)
+	return attr.GetStatus(), ignored, forcedFailure
 }
 
 func (sr *scrutinyRepository) persistRecalculatedDeviceStatus(ctx context.Context, deviceID string, device *models.Device, newStatus pkg.DeviceStatus) error {

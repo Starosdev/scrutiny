@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -253,7 +254,7 @@ func TestSaveAttributeOverride_InvalidWWN(t *testing.T) {
 
 	router := setupOverridesRouter(t, mockRepo)
 
-	body := strings.NewReader(`{"protocol": "ATA", "attribute_id": "5", "action": "ignore", "wwn": "not-a-wwn"}`)
+	body := strings.NewReader(`{"protocol": "ATA", "attribute_id": "5", "action": "ignore", "wwn": "not/a/wwn"}`)
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/api/settings/overrides", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -263,6 +264,25 @@ func TestSaveAttributeOverride_InvalidWWN(t *testing.T) {
 	var response map[string]interface{}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
 	require.Contains(t, response["error"], "WWN")
+}
+
+func TestSaveAttributeOverride_ValidDeviceID(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	t.Cleanup(mockCtrl.Finish)
+	mockRepo := mock_database.NewMockDeviceRepo(mockCtrl)
+	mockRepo.EXPECT().SaveAttributeOverride(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, override *models.AttributeOverride) error {
+		require.Equal(t, "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e", override.DeviceID)
+		return nil
+	})
+	mockRepo.EXPECT().GetDevices(gomock.Any()).Return([]models.Device{}, nil)
+
+	router := setupOverridesRouter(t, mockRepo)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPost, "/api/settings/overrides", strings.NewReader(`{"protocol":"NVMe","attribute_id":"media_errors","action":"ignore","device_id":"b62e6d86-6ce0-50da-8bff-b2ee54c4af4e"}`))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestSaveAttributeOverride_ValidIgnore(t *testing.T) {

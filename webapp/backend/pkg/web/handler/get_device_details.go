@@ -30,6 +30,10 @@ func GetDeviceDetails(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
 	}
+	mergedOverrides := deviceRepo.GetMergedOverrides(c)
+	for i := range smartResults {
+		smartResults[i].ApplyOverrides(mergedOverrides, device.DeviceID)
+	}
 
 	var deviceMetadata interface{}
 	if device.IsAta() {

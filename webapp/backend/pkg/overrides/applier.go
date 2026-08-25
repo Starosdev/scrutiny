@@ -31,6 +31,9 @@ type AttributeOverride struct {
 	// Optional: Limit override to specific device by WWN
 	WWN string `json:"wwn,omitempty" mapstructure:"wwn"`
 
+	// Optional: Limit override to one stable Scrutiny device identifier.
+	DeviceID string `json:"device_id,omitempty" mapstructure:"device_id"`
+
 	// Optional: Action to take (ignore or force_status)
 	// If not set, custom thresholds are applied
 	Action AttributeOverrideAction `json:"action,omitempty" mapstructure:"action"`
@@ -47,14 +50,17 @@ type AttributeOverride struct {
 }
 
 // Matches checks if this override applies to the given attribute
-func (ao *AttributeOverride) Matches(protocol, attributeId, wwn string) bool {
+func (ao *AttributeOverride) Matches(protocol, attributeId, deviceID, wwn string) bool {
 	if ao.Protocol != protocol {
 		return false
 	}
 	if ao.AttributeId != attributeId {
 		return false
 	}
-	// WWN is optional - if not set, matches all devices
+	if ao.DeviceID != "" {
+		return ao.DeviceID == deviceID
+	}
+	// WWN is optional legacy selector - if not set, matches all devices.
 	if ao.WWN != "" && ao.WWN != wwn {
 		return false
 	}
@@ -76,13 +82,27 @@ func (ao *AttributeOverride) GetForcedStatus() pkg.AttributeStatus {
 }
 
 // FindOverride searches the override list for a matching override
-func FindOverride(overrides []AttributeOverride, protocol, attributeId, wwn string) *AttributeOverride {
+func FindOverride(overrides []AttributeOverride, protocol, attributeId, deviceID, wwn string) *AttributeOverride {
+	var selected *AttributeOverride
+	selectedPriority := -1
 	for i := range overrides {
-		if overrides[i].Matches(protocol, attributeId, wwn) {
-			return &overrides[i]
+		override := &overrides[i]
+		if !override.Matches(protocol, attributeId, deviceID, wwn) {
+			continue
+		}
+		priority := 0
+		if override.WWN != "" {
+			priority = 1
+		}
+		if override.DeviceID != "" {
+			priority = 2
+		}
+		if priority > selectedPriority {
+			selected = override
+			selectedPriority = priority
 		}
 	}
-	return nil
+	return selected
 }
 
 // Result contains the outcome of applying an override
@@ -122,7 +142,7 @@ func ParseOverrides(cfg config.Interface) []AttributeOverride {
 // Returns nil if no override matches.
 func Apply(cfg config.Interface, protocol, attributeId, wwn string) *Result {
 	overrideList := ParseOverrides(cfg)
-	override := FindOverride(overrideList, protocol, attributeId, wwn)
+	override := FindOverride(overrideList, protocol, attributeId, "", wwn)
 
 	if override == nil {
 		return nil
@@ -190,13 +210,13 @@ func MergeOverrides(configOverrides, dbOverrides []AttributeOverride) []Attribut
 
 	// Add config overrides first (lower priority)
 	for _, o := range configOverrides {
-		key := fmt.Sprintf("%s|%s|%s", o.Protocol, o.AttributeId, o.WWN)
+		key := fmt.Sprintf("%s|%s|%s|%s", o.Protocol, o.AttributeId, o.DeviceID, o.WWN)
 		merged[key] = o
 	}
 
 	// Add/override with database overrides (higher priority)
 	for _, o := range dbOverrides {
-		key := fmt.Sprintf("%s|%s|%s", o.Protocol, o.AttributeId, o.WWN)
+		key := fmt.Sprintf("%s|%s|%s|%s", o.Protocol, o.AttributeId, o.DeviceID, o.WWN)
 		merged[key] = o
 	}
 
@@ -210,8 +230,8 @@ func MergeOverrides(configOverrides, dbOverrides []AttributeOverride) []Attribut
 // ApplyWithOverrides checks if an override exists in the provided list and returns the result.
 // This is used when the caller has already merged config and database overrides.
 // Returns nil if no override matches.
-func ApplyWithOverrides(overrideList []AttributeOverride, protocol, attributeId, wwn string) *Result {
-	override := FindOverride(overrideList, protocol, attributeId, wwn)
+func ApplyWithOverrides(overrideList []AttributeOverride, protocol, attributeId, deviceID, wwn string) *Result {
+	override := FindOverride(overrideList, protocol, attributeId, deviceID, wwn)
 
 	if override == nil {
 		return nil
