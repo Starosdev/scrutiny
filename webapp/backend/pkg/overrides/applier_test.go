@@ -5,6 +5,7 @@ import (
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAttributeOverride_Matches(t *testing.T) {
@@ -84,7 +85,7 @@ func TestAttributeOverride_Matches(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.override.Matches(tt.protocol, tt.attributeId, tt.wwn)
+			got := tt.override.Matches(tt.protocol, tt.attributeId, "", tt.wwn)
 			assert.Equal(t, tt.expected, got)
 		})
 	}
@@ -189,7 +190,7 @@ func TestFindOverride(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := FindOverride(overrides, tt.protocol, tt.attributeId, tt.wwn)
+			result := FindOverride(overrides, tt.protocol, tt.attributeId, "", tt.wwn)
 			if tt.expectFound {
 				assert.NotNil(t, result)
 				assert.Equal(t, tt.expectId, result.AttributeId)
@@ -198,6 +199,18 @@ func TestFindOverride(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFindOverride_PrefersStableDeviceIDOverLegacyAndGlobalSelectors(t *testing.T) {
+	overrides := []AttributeOverride{
+		{Protocol: "NVMe", AttributeId: "media_errors", Action: AttributeOverrideActionIgnore},
+		{Protocol: "NVMe", AttributeId: "media_errors", WWN: "serial-1", Status: "warn", Action: AttributeOverrideActionForceStatus},
+		{Protocol: "NVMe", AttributeId: "media_errors", DeviceID: "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e", Status: "passed", Action: AttributeOverrideActionForceStatus},
+	}
+
+	result := FindOverride(overrides, "NVMe", "media_errors", "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e", "serial-1")
+	require.NotNil(t, result)
+	assert.Equal(t, "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e", result.DeviceID)
 }
 
 func TestApplyThresholds(t *testing.T) {

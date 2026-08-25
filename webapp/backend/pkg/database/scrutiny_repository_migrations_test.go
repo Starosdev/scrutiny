@@ -97,6 +97,19 @@ func TestMigrateBackfillsDistinctDeviceIDsForLegacyDevicesWithMissingWWN(t *test
 	require.Equal(t, int64(2), nullWWNCount)
 }
 
+func TestMigrateAttributeOverridesSupportsDistinctDeviceSelectors(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+	require.NoError(t, repo.Migrate(context.Background()))
+
+	first := models.AttributeOverride{Protocol: "NVMe", AttributeId: "media_errors", DeviceID: "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e", Action: "ignore"}
+	second := models.AttributeOverride{Protocol: "NVMe", AttributeId: "media_errors", DeviceID: "c4ac4ff4-1a4d-52aa-9724-40fbc47dd306", Action: "ignore"}
+	require.NoError(t, repo.gormClient.Create(&first).Error)
+	require.NoError(t, repo.gormClient.Create(&second).Error)
+
+	duplicate := models.AttributeOverride{Protocol: "NVMe", AttributeId: "media_errors", DeviceID: first.DeviceID, Action: "force_status", Status: "passed"}
+	require.Error(t, repo.gormClient.Create(&duplicate).Error)
+}
+
 func TestMigratePreservesDeviceColumnsAcrossSQLiteTableRebuilds(t *testing.T) {
 	repo := createMigrationTestRepositoryWithAppliedMigrations(t, []string{
 		"20201107210306",
