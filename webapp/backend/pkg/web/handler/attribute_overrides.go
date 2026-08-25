@@ -187,16 +187,17 @@ func recalculateDeviceStatusForOverride(c *gin.Context, logger *logrus.Entry, de
 	}
 	for i := range devices {
 		device := &devices[i]
-		if override.DeviceID != "" {
+		switch {
+		case override.DeviceID != "":
 			if device.DeviceID != override.DeviceID {
 				continue
 			}
-		} else if override.WWN != "" {
+		case override.WWN != "":
 			// Override applies to specific device - match by WWN
 			if device.WWN != override.WWN {
 				continue
 			}
-		} else if device.DeviceProtocol != override.Protocol {
+		case device.DeviceProtocol != override.Protocol:
 			// Override applies to all devices of this protocol
 			continue
 		}
