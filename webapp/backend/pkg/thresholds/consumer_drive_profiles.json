@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.0",
+  "version": "2026.08.0",
   "profiles": [
     {
       "protocol": "ATA",
@@ -1562,6 +1562,46 @@
         }
       },
       "sample_count": 167
+    },
+    {
+      "protocol": "ATA",
+      "source": "linuxhw/SMART curated Toshiba N300 HDD profile",
+      "vendor": "Toshiba",
+      "model_family": "Toshiba N300",
+      "ata_counter_severity_overrides": {
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 4
+        },
+        "196": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "5": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        }
+      },
+      "model_pattern": "^TOSHIBA[_ ]HDWG(11A|160|180|21C|21E|440|460|480).*$",
+      "sample_count": 73
     }
   ],
   "aliases": {
