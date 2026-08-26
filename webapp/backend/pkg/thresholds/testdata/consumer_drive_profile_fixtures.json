@@ -118,6 +118,24 @@
     "expect_applied": false
   },
   {
+    "description": "WD Gold WD102KRYZ resolves via model pattern",
+    "protocol": "ATA",
+    "model_family": "Western Digital Gold",
+    "model_name": "WDC WD102KRYZ-01A5AB0",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Western Digital Gold WD102KRYZ",
+    "expect_method": "model_pattern"
+  },
+  {
+    "description": "adjacent WD Gold model stays outside the WD102KRYZ profile",
+    "protocol": "ATA",
+    "model_family": "Western Digital Gold",
+    "model_name": "WDC WD103KRYZ-01A5AB0",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
     "description": "unknown Toshiba drive stays unmatched and falls back to generic ATA rules",
     "protocol": "ATA",
     "model_family": "",
