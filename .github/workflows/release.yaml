@@ -169,7 +169,7 @@ jobs:
           GOARM: ${{ matrix.cfg.goarm }}
         run: make package-collector-omnibus
       - name: Upload artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: binaries-${{ matrix.cfg.goos }}-${{ matrix.cfg.goarch }}${{ matrix.cfg.goarm }}
           path: |
