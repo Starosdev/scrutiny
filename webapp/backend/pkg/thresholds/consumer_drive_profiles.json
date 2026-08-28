@@ -1602,6 +1602,46 @@
       },
       "model_pattern": "^TOSHIBA[_ ]HDWG(11A|160|180|21C|21E|440|460|480).*$",
       "sample_count": 73
+    },
+    {
+      "protocol": "ATA",
+      "source": "linuxhw/SMART curated WD Gold HDD profile",
+      "vendor": "WDC",
+      "model_family": "Western Digital Gold WD102KRYZ",
+      "ata_counter_severity_overrides": {
+        "10": {
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 4
+        },
+        "196": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        },
+        "197": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "198": {
+          "low": 0,
+          "moderate": 1,
+          "high": 3,
+          "critical": 8
+        },
+        "5": {
+          "low": 0,
+          "moderate": 1,
+          "high": 4,
+          "critical": 10
+        }
+      },
+      "model_pattern": "^(WDC[_ ])?WD102KRYZ-.*$",
+      "sample_count": 20
     }
   ],
   "aliases": {
