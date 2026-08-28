@@ -100,6 +100,24 @@
     "expect_method": "model_pattern"
   },
   {
+    "description": "Toshiba N300 HDWG11A resolves via model pattern",
+    "protocol": "ATA",
+    "model_family": "",
+    "model_name": "TOSHIBA HDWG11A",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Toshiba N300",
+    "expect_method": "model_pattern"
+  },
+  {
+    "description": "Toshiba X300 model near miss stays unmatched",
+    "protocol": "ATA",
+    "model_family": "",
+    "model_name": "TOSHIBA HDWR11A",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
     "description": "unknown Toshiba drive stays unmatched and falls back to generic ATA rules",
     "protocol": "ATA",
     "model_family": "",
