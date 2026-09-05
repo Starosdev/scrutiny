@@ -220,10 +220,18 @@ func (sr *scrutinyRepository) rewriteAnalogJInfluxHistory(ctx context.Context, m
 	deleteStart := time.Unix(0, 0).UTC()
 	deleteStop := time.Now().UTC().Add(24 * time.Hour)
 	for _, bucket := range buckets {
+		bucketInfo, err := sr.influxClient.BucketsAPI().FindBucketByName(ctx, bucket)
+		if err != nil {
+			return fmt.Errorf("could not inspect retention for AnalogJ history in bucket %s: %w", bucket, err)
+		}
+		var retentionSeconds int64
+		if len(bucketInfo.RetentionRules) > 0 {
+			retentionSeconds = bucketInfo.RetentionRules[0].EverySeconds
+		}
 		for _, legacyUUID := range legacyUUIDs {
 			targetWWN := mapping[legacyUUID]
 			sr.logger.Debugf("Rewriting AnalogJ history in bucket %s from scrutiny_uuid %s to device_wwn %s", bucket, legacyUUID, targetWWN)
-			query := analogJInfluxMigrationQuery(bucket, org, legacyUUID, targetWWN)
+			query := analogJInfluxMigrationQuery(bucket, org, legacyUUID, targetWWN, retentionSeconds)
 			result, err := sr.influxQueryApi.Query(ctx, query)
 			if err != nil {
 				return fmt.Errorf("could not rewrite AnalogJ history in bucket %s for %s: %w", bucket, legacyUUID, err)
@@ -253,12 +261,18 @@ func (sr *scrutinyRepository) rewriteAnalogJInfluxHistory(ctx context.Context, m
 	return nil
 }
 
-func analogJInfluxMigrationQuery(bucket, org, legacyUUID, targetWWN string) string {
+func analogJInfluxMigrationQuery(bucket, org, legacyUUID, targetWWN string, retentionSeconds int64) string {
+	// Expired shards can remain queryable even though their points can no longer
+	// be written. Use the server's retention window, including custom durations.
+	start := "0"
+	if retentionSeconds > 0 {
+		start = fmt.Sprintf("-%ds", retentionSeconds)
+	}
 	return fmt.Sprintf(`from(bucket: %q)
-|> range(start: 0)
+|> range(start: %s)
 |> filter(fn: (r) => r["_measurement"] == "smart" or r["_measurement"] == "temp")
 |> filter(fn: (r) => exists r["scrutiny_uuid"] and r["scrutiny_uuid"] == %q)
 |> drop(columns: ["scrutiny_uuid"])
 |> set(key: "device_wwn", value: %q)
-|> to(bucket: %q, org: %q)`, bucket, legacyUUID, targetWWN, bucket, org)
+|> to(bucket: %q, org: %q)`, bucket, start, legacyUUID, targetWWN, bucket, org)
 }
