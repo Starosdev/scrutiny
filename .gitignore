@@ -117,16 +117,11 @@ test_flux.go
 CONTEXT.md
 docs/adr/
 
-# Local agent session surfaces are intentionally local-only.
+# Local agent guidance is intentionally local-only.
 CLAUDE.md
 .agents/
 .claude/
 .codex/
-.agent-session
-.codex-session-*
 docs/agents/invariants.md
 docs/agents/danger-zones.md
 docs/agents/review-checklist.md
-.codex-session-linear
-.codex-session-active
-.git-only-rollout-session
