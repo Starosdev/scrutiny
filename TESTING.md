@@ -827,8 +827,9 @@ Common issues:
 
 - Ensure you passed `--device=/dev/sdX` to the Docker container
 - Ensure `--cap-add SYS_RAWIO` (and `SYS_ADMIN` for NVMe) are set
-- On AppArmor systems (Ubuntu, Debian, TrueNAS SCALE): either load the custom
-  profile from `docker/apparmor-profile` or use `--security-opt apparmor=unconfined`
+- On AppArmor systems (Ubuntu, Debian, TrueNAS SCALE): apply the custom
+  profile only after confirming a policy denial in host audit logs. See
+  [AppArmor troubleshooting and regression checks](docs/TROUBLESHOOTING_APPARMOR.md).
 - Check collector logs: `docker logs <collector_container>`
 
 ### Test Data Timestamps Too Old

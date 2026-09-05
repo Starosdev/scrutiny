@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'docker/**'
+      - 'rootfs/**'
       - 'webapp/frontend/**'
       - 'Makefile'
       - 'go.mod'
@@ -20,3 +21,33 @@ jobs:
         uses: actions/checkout@v7.0.1
       - name: Test Docker frontend permissions
         run: bash docker/tests/frontend-permissions_test.sh
+
+  apparmor:
+    name: AppArmor (${{ matrix.image }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: omnibus
+            dockerfile: docker/Dockerfile
+            kind: omnibus
+          - image: collector
+            dockerfile: docker/Dockerfile.collector
+            kind: collector
+          - image: collector-omnibus
+            dockerfile: docker/Dockerfile.collector-omnibus
+            kind: collector
+          - image: collector-performance
+            dockerfile: docker/Dockerfile.collector-performance
+            kind: collector
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Install AppArmor tools
+        run: sudo apt-get update && sudo apt-get install -y apparmor
+      - name: Build image
+        run: docker build -f "${{ matrix.dockerfile }}" -t scrutiny-apparmor-test .
+      - name: Test enforcing AppArmor profile
+        run: bash docker/tests/apparmor_test.sh scrutiny-apparmor-test "${{ matrix.kind }}"
