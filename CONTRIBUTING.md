@@ -4,9 +4,10 @@ Thank you for your interest in contributing to Scrutiny! This is an actively mai
 
 ## Before You Start
 
-- Check [GitHub Issues](https://github.com/Staros-Labs/scrutiny/issues) for existing issues and planned work
+- Check [GitHub Issues](https://github.com/Starosdev/scrutiny/issues) for existing issues and planned work
 - For bug reports or feature requests, please open a GitHub issue first
 - For large changes, please discuss your approach in an issue before starting work
+- Scrutiny does not participate in Linear startup or Agent Coordination workflow. Use this repository's GitHub issue, branch, and pull-request flow.
 
 ## Branch Workflow
 
@@ -66,7 +67,7 @@ unless the task specifically requires host-level device access from Zeus.
 
 1. install the [Go runtime](https://go.dev/doc/install) (v1.25+)
 2. download the `scrutiny-web-frontend.tar.gz` for
-   the [latest release](https://github.com/Staros-Labs/scrutiny/releases/latest). Extract to a folder named `dist`
+   the [latest release](https://github.com/Starosdev/scrutiny/releases/latest). Extract to a folder named `dist`
 3. create a `scrutiny.yaml` config file
     ```yaml
     # config file for local development. store as scrutiny.yaml

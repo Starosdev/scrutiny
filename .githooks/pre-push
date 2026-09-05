@@ -1,4 +1,2 @@
 #!/usr/bin/env bash
 set -euo pipefail
-"$(git rev-parse --show-toplevel)/scripts/require-agent-lease.sh" deliver
-GIT_ONLY_ROLLOUT_OPTIONAL=1 "$(git rev-parse --show-toplevel)/scripts/require-git-only-rollout.sh" push
