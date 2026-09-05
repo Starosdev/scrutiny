@@ -566,7 +566,10 @@ Scrutiny now retains ATA SMART self-test log entries that are already present in
 
 - Data is read from normal SMART uploads; no separate self-test collector is required
 - Only ATA devices show this section today
-- Scrutiny keeps the most recent 21 recorded entries per physical ATA device identity
+- Scrutiny keeps the most recent 21 entries per physical ATA device identity using collection time and controller log position, including when lifetime hours wrap
+- Raw controller hours remain available. Absolute power-on ages are shown only when the current Power-On Hours and log order identify one rollover epoch; otherwise the UI shows "Unknown (may be wrapped)"
+- Existing history remains intact during upgrade. Ages stay unknown until a new collection provides enough context; already pruned or overwritten records cannot be recovered
+- Rolling back to a web release that uses the old raw-lifetime uniqueness key requires restoring a pre-upgrade database backup
 - The API route `GET /api/device/{id}/selftest` returns the same history used by the device detail page
 - This feature records and displays history only; it does not trigger or schedule drive self-tests from the web UI
 
