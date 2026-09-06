@@ -104,6 +104,39 @@ collectors:
 	require.ErrorContains(t, err, `collector "metrics" binary`)
 }
 
+// A PowerShell operator cannot pass an empty schedule override: assigning ""
+// deletes the variable. Documented workaround is a whitespace value, which the
+// loader trims. Both halves are a documented contract in
+// docs/INSTALL_COLLECTOR_OMNIBUS.md, so pin them here.
+func TestLoadConfigScheduleOverrideClearingBehavior(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, filepath.Join(dir, executableName("scrutiny-collector-metrics")))
+	writeTestFile(t, filepath.Join(dir, "collector.yaml"))
+	configPath := filepath.Join(dir, "collector-omnibus.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte(`
+collectors:
+  metrics:
+    enabled: true
+    schedule: "0 0 * * *"
+    run_on_startup: true
+    config: collector.yaml
+`), 0o600))
+	executablePath := filepath.Join(dir, "scrutiny-collector-omnibus")
+
+	absent, err := LoadConfig(configPath, executablePath, mapLookup(nil))
+	require.NoError(t, err)
+	assert.Equal(t, "0 0 * * *", absent.Collectors["metrics"].Schedule)
+
+	whitespace, err := LoadConfig(configPath, executablePath, mapLookup(map[string]string{
+		"COLLECTOR_CRON_SCHEDULE": " ",
+	}))
+	require.NoError(t, err)
+	metrics := whitespace.Collectors["metrics"]
+	assert.Empty(t, metrics.Schedule)
+	assert.True(t, metrics.Enabled)
+	assert.True(t, metrics.RunOnStartup)
+}
+
 func mapLookup(values map[string]string) LookupEnv {
 	return func(key string) (string, bool) {
 		value, ok := values[key]
