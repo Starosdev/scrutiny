@@ -12,6 +12,9 @@ on:
     branches:
       - master
       - develop
+  merge_group:
+    branches:
+      - master
 
 permissions:
   contents: read

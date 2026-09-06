@@ -9,6 +9,9 @@ on:
     branches:
       - master
       - develop
+  merge_group:
+    branches:
+      - master
   schedule:
     - cron: "17 3 * * 1"
   workflow_dispatch:
