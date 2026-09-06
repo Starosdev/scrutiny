@@ -81,6 +81,28 @@ then retrieving the API token, and writing it to your `scrutiny.yaml` config fil
 
 ![influx db admin token](./influxdb-admin-token.png)
 
+## AnalogJ 0.9.x history repair and expired points
+
+Migration `m20260803000000` restores the `device_wwn` history tag used by this
+fork. Issue #776 exposed a startup failure when its rewrite encountered points
+older than a bucket's retention period. InfluxDB can still return expired points
+until its retention service removes their shard group; querying them does not
+mean they can be written again. See [InfluxDB retention enforcement](https://docs.influxdata.com/influxdb/v2/reference/internals/data-retention/).
+
+The repair reads each bucket's actual retention rule and limits the Flux query
+to that window. Unlimited buckets retain the full history query. This respects
+custom retention periods without changing bucket configuration.
+
+Do not suppress all HTTP 422 or partial-write errors: Flux may stop before all
+eligible history is copied, and streamed errors do not carry an HTTP status.
+Legacy series are deleted only after the rewrite completes successfully. A
+write failure, including a point expiring during the query, still stops the
+migration and preserves that source series for a retry.
+
+The integration regression seeds old and current SMART and temperature points
+with unlimited retention, shortens retention, then verifies that current points
+survive, unlimited history remains, legacy tags are removed, and reruns are safe.
+
 ## Upgrading from v0.3.x to v0.4.x
 
 When upgrading from v0.3.x to v0.4.x, some users have noticed problems such as:

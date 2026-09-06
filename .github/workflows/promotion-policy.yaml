@@ -1,0 +1,23 @@
+name: Promotion Policy
+
+on:
+  pull_request:
+    branches:
+      - master
+  merge_group:
+    branches:
+      - master
+
+jobs:
+  promotion-policy:
+    name: Promotion Policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require develop promotion branch
+        if: github.event_name != 'merge_group' && github.head_ref != 'develop'
+        run: |
+          echo "Only pull requests from develop may target master."
+          exit 1
+      - name: Confirm develop promotion branch
+        if: github.event_name == 'merge_group' || github.head_ref == 'develop'
+        run: echo "develop promotion branch confirmed"

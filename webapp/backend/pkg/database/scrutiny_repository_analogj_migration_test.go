@@ -2,11 +2,15 @@ package database
 
 import (
 	"context"
+	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -17,6 +21,7 @@ import (
 	"github.com/glebarez/sqlite"
 	"github.com/golang/mock/gomock"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
+	"github.com/influxdata/influxdb-client-go/v2/domain"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -28,6 +33,7 @@ func TestAnalogJInfluxMigrationQueryRewritesOnlyLegacySmartData(t *testing.T) {
 		"scrutiny",
 		"9027cd65-fe19-562d-ac5d-0bb05818087f",
 		"nvme123",
+		0,
 	)
 
 	require.Contains(t, query, `from(bucket: "metrics_weekly")`)
@@ -48,6 +54,73 @@ func TestLegacyScrutinyUUIDMatchesAnalogJIdentity(t *testing.T) {
 		"7a14ef35-ed3a-552a-9980-46291bd986e3",
 		legacyScrutinyUUID("WDC WD80EFZZ-68BTXN0", "WD-CA2XZ08L", "0x50014ee2c06ce3c3"),
 	)
+}
+
+func TestAnalogJHistoryRewritePreservesSourceOnFailureAndRetries(t *testing.T) {
+	for _, failure := range []string{"bucket lookup", "HTTP rejection", "streamed retention", "streamed field conflict", "delete"} {
+		t.Run(failure, func(t *testing.T) {
+			var fail atomic.Bool
+			fail.Store(true)
+			var deletes atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/api/v2/buckets":
+					if fail.Load() && failure == "bucket lookup" {
+						http.Error(w, "bucket access denied", http.StatusForbidden)
+						return
+					}
+					w.Header().Set("Content-Type", "application/json")
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
+						"buckets": []domain.Bucket{{Name: r.URL.Query().Get("name"), RetentionRules: domain.RetentionRules{{EverySeconds: 5443200}}}},
+					})
+				case "/api/v2/query":
+					if fail.Load() && failure == "HTTP rejection" {
+						w.Header().Set("Content-Type", "application/json")
+						w.WriteHeader(http.StatusUnprocessableEntity)
+						_, _ = w.Write([]byte(`{"code":"unprocessable entity","message":"field type conflict"}`))
+						return
+					}
+					w.Header().Set("Content-Type", "text/csv")
+					if fail.Load() && strings.HasPrefix(failure, "streamed") {
+						message := "partial write: field type conflict"
+						if failure == "streamed retention" {
+							message = "partial write: dropped 268 points outside retention policy of duration 1512h0m0s"
+						}
+						writer := csv.NewWriter(w)
+						_ = writer.WriteAll([][]string{{"#datatype", "string", "string"}, {"", "error", "reference"}, {"", message, ""}})
+					}
+				case "/api/v2/delete":
+					if fail.Load() && failure == "delete" {
+						http.Error(w, "delete access denied", http.StatusForbidden)
+						return
+					}
+					deletes.Add(1)
+					w.WriteHeader(http.StatusNoContent)
+				default:
+					t.Errorf("unexpected request: %s %s", r.Method, r.URL)
+					http.NotFound(w, r)
+				}
+			}))
+			t.Cleanup(server.Close)
+			client := influxdb2.NewClient(server.URL, "test-token")
+			t.Cleanup(client.Close)
+			mockCtrl := gomock.NewController(t)
+			fakeConfig := mock_config.NewMockInterface(mockCtrl)
+			fakeConfig.EXPECT().GetString(cfgInfluxDBBucket).Return("metrics").AnyTimes()
+			fakeConfig.EXPECT().GetString(cfgInfluxDBOrg).Return("scrutiny").AnyTimes()
+			repo := &scrutinyRepository{
+				appConfig: fakeConfig, influxClient: client,
+				influxQueryApi: client.QueryAPI("scrutiny"), logger: logrus.New(),
+			}
+			mapping := map[string]string{"legacy-uuid": "current-wwn"}
+			err := repo.rewriteAnalogJInfluxHistory(context.Background(), mapping)
+			require.Error(t, err)
+			require.Zero(t, deletes.Load(), "failed rewrites must not delete source history")
+			fail.Store(false)
+			require.NoError(t, repo.rewriteAnalogJInfluxHistory(context.Background(), mapping))
+			require.EqualValues(t, 4, deletes.Load(), "retry must complete all four buckets")
+		})
+	}
 }
 
 func TestPrepareAnalogJDeviceRepairRestoresNVMeIdentityAndMergesDuplicate(t *testing.T) {
@@ -231,18 +304,36 @@ func TestAnalogJMigrationIntegration(t *testing.T) {
 	for _, bucket := range buckets {
 		writeAPI := repo.influxClient.WriteAPIBlocking("scrutiny", bucket)
 		tags := map[string]string{"scrutiny_uuid": legacyUUID, "device_protocol": pkg.DeviceProtocolNvme}
-		require.NoError(t, writeAPI.WritePoint(ctx, influxdb2.NewPoint(
-			"smart",
-			tags,
-			map[string]interface{}{"temp": int64(41), "power_on_hours": int64(694)},
-			pointTime,
-		)))
-		require.NoError(t, writeAPI.WritePoint(ctx, influxdb2.NewPoint(
-			"temp",
-			tags,
-			map[string]interface{}{"temp": int64(41)},
-			pointTime,
-		)))
+		// Seed expired history while retention is unlimited, then shorten the
+		// window. InfluxDB can still read these points until shard cleanup (#776).
+		for _, timestamp := range []time.Time{pointTime.Add(-64 * 24 * time.Hour), pointTime} {
+			require.NoError(t, writeAPI.WritePoint(ctx, influxdb2.NewPoint(
+				"smart",
+				tags,
+				map[string]interface{}{"temp": int64(41), "power_on_hours": int64(694)},
+				timestamp,
+			)))
+			require.NoError(t, writeAPI.WritePoint(ctx, influxdb2.NewPoint(
+				"temp",
+				tags,
+				map[string]interface{}{"temp": int64(41)},
+				timestamp,
+			)))
+		}
+		if bucket != "metrics_yearly" {
+			bucketInfo, err := repo.influxClient.BucketsAPI().FindBucketByName(ctx, bucket)
+			require.NoError(t, err)
+			originalRules := bucketInfo.RetentionRules
+			t.Cleanup(func() {
+				bucketInfo.RetentionRules = originalRules
+				_, err := repo.influxClient.BucketsAPI().UpdateBucket(ctx, bucketInfo)
+				require.NoError(t, err)
+			})
+			bucketInfo.RetentionRules = domain.RetentionRules{{EverySeconds: 63 * 24 * 60 * 60}}
+			_, err = repo.influxClient.BucketsAPI().UpdateBucket(ctx, bucketInfo)
+			require.NoError(t, err)
+		}
+		require.Equal(t, 6, influxRecordCount(t, repo, bucket, "scrutiny_uuid", legacyUUID))
 	}
 
 	deleteStart := time.Unix(0, 0).UTC()
@@ -262,7 +353,11 @@ func TestAnalogJMigrationIntegration(t *testing.T) {
 	require.NoError(t, repo.gormClient.Where(queryDeviceID, currentDeviceID).First(&repaired).Error)
 	require.Equal(t, targetWWN, repaired.WWN)
 	for _, bucket := range buckets {
-		require.Positive(t, influxRecordCount(t, repo, bucket, "device_wwn", targetWWN))
+		expectedFields := 3
+		if bucket == "metrics_yearly" {
+			expectedFields = 6
+		}
+		require.Equal(t, expectedFields, influxRecordCount(t, repo, bucket, "device_wwn", targetWWN))
 		require.Zero(t, influxRecordCount(t, repo, bucket, "scrutiny_uuid", legacyUUID))
 	}
 
@@ -274,7 +369,7 @@ func TestAnalogJMigrationIntegration(t *testing.T) {
 	require.NoError(t, repo.gormClient.Transaction(func(tx *gorm.DB) error {
 		return repo.migrateM20260803000000(ctx, tx)
 	}))
-	require.Positive(t, influxRecordCount(t, repo, "metrics", "device_wwn", targetWWN))
+	require.Equal(t, 3, influxRecordCount(t, repo, "metrics", "device_wwn", targetWWN))
 }
 
 func influxRecordCount(t *testing.T, repo *scrutinyRepository, bucket, tag, value string) int {
@@ -288,7 +383,7 @@ func influxRecordCount(t *testing.T, repo *scrutinyRepository, bucket, tag, valu
 	defer result.Close()
 	count := 0
 	for result.Next() {
-		count++
+		count += int(result.Record().Value().(int64))
 	}
 	require.NoError(t, result.Err())
 	return count

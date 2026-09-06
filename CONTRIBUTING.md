@@ -102,6 +102,14 @@ unless the task specifically requires host-level device access from Zeus.
     ```
 6. open your browser to [http://localhost:8080/web](http://localhost:8080/web)
 
+## ATA self-test chronology
+
+ATA self-test lifetime hours wrap independently of the device's reported Power-On Hours. Keep the raw value unchanged and resolve an absolute age only when the controller's newest-first log order and a trustworthy current Power-On Hours value allow one epoch. A lone value such as 100 at device age 68,000 could mean either 100 or 65,636 hours; choosing the latest possible epoch would invent certainty.
+
+Retention uses collection time and controller log position. Repeated raw values can describe separate occurrences, so matching must consider resolved ages and the power-on context of earlier observations. If a later collection allows a new epoch but cannot identify the occurrence, retaining an ambiguous row alongside the earlier record is safer than overwriting history. This can retain a possible duplicate until the 21-row retention limit removes it. Without a collection timestamp, arrival time is the fallback and stale replay detection is unavailable.
+
+Migration preserves legacy raw values and IDs. Do not backfill absolute ages from raw sorting or database insertion order; only a fresh collection can supply the missing context. Regression checks must cover rollover ordering, repeated uploads, cross-epoch collisions, legacy migration, and ambiguous ages in both layouts.
+
 # Modifying the Scrutiny Frontend Angular SPA
 
 The frontend is written in Angular. If you're working on the frontend and can use mocked data rather than a real backend, you can follow the instructions below:
