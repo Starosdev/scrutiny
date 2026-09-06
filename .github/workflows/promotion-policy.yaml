@@ -18,6 +18,22 @@ jobs:
         run: |
           echo "Only pull requests from develop may target master."
           exit 1
+      - name: Require product-change declaration
+        if: github.event_name != 'merge_group' && github.head_ref == 'develop'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if ! awk '
+            /^## Product changes$/ { product_changes = 1; next }
+            product_changes && /^## Summary$/ { summary = 1; next }
+            summary && /^## / { exit }
+            summary && $0 !~ /^[[:space:]]*$/ { content = 1 }
+            END { exit !(product_changes && summary && content) }
+          ' <<< "$PR_BODY"; then
+            echo "Master promotion PRs need ## Product changes followed by ## Summary content."
+            echo "Use None. as summary content when there is no user-facing change."
+            exit 1
+          fi
       - name: Confirm develop promotion branch
         if: github.event_name == 'merge_group' || github.head_ref == 'develop'
         run: echo "develop promotion branch confirmed"
