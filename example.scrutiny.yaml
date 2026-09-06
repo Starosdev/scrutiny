@@ -314,6 +314,16 @@ failures:
 #      warn_above: 80
 #      fail_above: 95
 
+#    # Example 6: Acknowledge a value you have already looked at. Unlike force_status,
+#    # this passes only while the value stays put; any change restores the normal
+#    # verdict. pinned_value is required here because the config file has no device
+#    # context to read a current value from. The UI fills it in for you.
+#    - protocol: ATA
+#      attribute_id: "197"          # Current_Pending_Sector
+#      wwn: "0x5000cca264eb01d7"
+#      action: acknowledge
+#      pinned_value: 8              # Passes at 8; fails again at 9
+
 # Notification "urls" support Shoutrrr, Apprise, custom scripts, and raw webhooks.
 # Shoutrrr documentation: https://nicholas-fedor.github.io/shoutrrr/
 # Apprise documentation: https://appriseit.com/

@@ -34,6 +34,7 @@ import (
 	m20260608000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260608000000"
 	m20260610000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260610000000"
 	m20260616000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260616000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260906000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -665,6 +666,12 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 			},
 		},
 		{ID: "m20260905000000", Migrate: migrateSelfTestChronology},
+		{
+			ID: "m20260906000000", // add pinned_value to attribute overrides for acknowledge action (#775)
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&m20260906000000.AttributeOverride{})
+			},
+		},
 	})
 
 	if err := m.Migrate(); err != nil {

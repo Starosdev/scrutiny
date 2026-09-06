@@ -582,7 +582,7 @@ Scrutiny allows you to customize how individual SMART attributes are evaluated. 
 1. Click on a drive to open its detail page
 2. Find the attribute in the SMART table
 3. Click the three-dot menu in the **Actions** column (appears on failed/warning attributes)
-4. Select **Ignore attribute** to suppress it, or **Force passed** to override its status
+4. Select **Ignore attribute** to suppress it, **Force passed** to override its status, or **Acknowledge current value** to accept the value as it stands today
 
 These quick actions create device-specific overrides. To remove an override, click the purple tune icon and select **Remove override**.
 
@@ -593,7 +593,8 @@ These quick actions create device-specific overrides. To remove an override, cli
 3. Fill in the override form:
    - **Protocol**: ATA, NVMe, or SCSI
    - **Attribute ID**: The attribute identifier (e.g., `199` for UltraDMA CRC Error Count, `media_errors` for NVMe)
-   - **Action**: Ignore, Force Status, or Custom Threshold
+   - **Action**: Ignore, Force Status, Acknowledge Current Value, or Custom Threshold
+   - **Device**: required for Acknowledge, since it pins the pass to one device's current value
    - **Device WWN** (optional): Leave empty to apply globally, or specify a WWN for a single device
 4. Click **Add Override**
 
@@ -607,6 +608,7 @@ Add overrides to `scrutiny.yaml` under `smart.attribute_overrides`. See [example
 | ------ | -------- |
 | Ignore | Attribute marked as passed; excluded from device failure status and notifications |
 | Force Status | Overrides computed status to passed, warn, or failed |
+| Acknowledge Current Value | Attribute passes while its value stays where it is now. Any change restores the normal verdict, so a one-off event stops alerting without hiding the next one. Requires a device. A manufacturer SMART failure is never masked |
 | Custom Threshold | Replaces default thresholds with user-defined warn_above/fail_above values |
 
 Overrides apply at the next SMART data collection. Device status is recalculated immediately when overrides are added or removed via the UI.
