@@ -6,7 +6,7 @@ import { ZFSPoolDetailService } from 'app/modules/zfs-pool-detail/zfs-pool-detai
 import { AppConfig } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { Router } from '@angular/router';
-import { ZFSPoolModel, ZFSPoolStatus, ZFSVdevModel } from 'app/core/models/zfs-pool-model';
+import { ZFSPoolModel, ZFSPoolStatus, ZFSVdevModel, zfsUsableSize } from 'app/core/models/zfs-pool-model';
 import { ZFSPoolMetricsHistoryModel } from 'app/core/models/zfs-pool-summary-model';
 import { apexShortDateTime } from 'app/shared/time-format.utils';
 import { MatIconButton, MatButton } from '@angular/material/button';
@@ -144,6 +144,8 @@ export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
         }
         return this.pool?.name || 'Unknown Pool';
     }
+
+    usableSize = zfsUsableSize;
 
     getStatusColorClass(status: ZFSPoolStatus): string {
         switch (status) {

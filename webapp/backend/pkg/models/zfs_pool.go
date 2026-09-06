@@ -33,7 +33,12 @@ type ZFSPoolWrapper struct {
 	Success bool      `json:"success"`
 }
 
-// ZFSPool represents a ZFS storage pool
+// ZFSPool represents a ZFS storage pool.
+//
+// Size, Allocated, and Free are raw vdev capacity from zpool list and count
+// parity. UsableUsed and UsableFree come from the pool's root dataset via
+// zfs list and exclude it; both are 0 for pools last reported by a collector
+// that predates them.
 type ZFSPool struct {
 	CreatedAt            time.Time     `json:"created_at"`
 	UpdatedAt            time.Time     `json:"updated_at"`
@@ -62,6 +67,8 @@ type ZFSPool struct {
 	TotalChecksumErrors  int64         `json:"total_checksum_errors"`
 	Allocated            int64         `json:"allocated"`
 	Size                 int64         `json:"size"`
+	UsableUsed           int64         `json:"usable_used"`
+	UsableFree           int64         `json:"usable_free"`
 	Muted                bool          `json:"muted"`
 	Archived             bool          `json:"archived"`
 }

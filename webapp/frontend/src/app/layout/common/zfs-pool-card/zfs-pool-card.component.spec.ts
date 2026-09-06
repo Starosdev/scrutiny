@@ -23,6 +23,8 @@ describe('ZFSPoolCardComponent', () => {
         free: 75,
         fragmentation: 0,
         capacity_percent: 25,
+        usable_used: 0,
+        usable_free: 0,
         scrub_state: 'none',
         scrub_scanned_bytes: 0,
         scrub_issued_bytes: 0,
@@ -66,5 +68,22 @@ describe('ZFSPoolCardComponent', () => {
         fixture.detectChanges();
 
         expect(fixture.nativeElement.querySelector('[aria-label="Open ZFS pool actions"]')).not.toBeNull();
+    });
+
+    it('leads with usable size and shows raw capacity beneath it', () => {
+        fixture.componentRef.setInput('poolSummary', { ...pool, usable_used: 25, usable_free: 35 });
+        fixture.detectChanges();
+
+        const text = fixture.nativeElement.textContent as string;
+        expect(text).toContain('60 B');
+        expect(text).toContain('100 B raw');
+    });
+
+    it('shows only raw size when the collector reported no usable capacity', () => {
+        fixture.detectChanges();
+
+        const text = fixture.nativeElement.textContent as string;
+        expect(text).toContain('100 B');
+        expect(text).not.toContain('raw');
     });
 });

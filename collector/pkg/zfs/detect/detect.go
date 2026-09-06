@@ -36,10 +36,13 @@ func (d *Detect) Start() ([]models.ZFSPool, error) {
 		return nil, err
 	}
 
-	// Get detailed status for each pool (vdevs, scrub, errors)
+	// Get detailed status for each pool (vdevs, scrub, errors) and its usable capacity
 	for i := range pools {
 		if err := d.getPoolStatus(&pools[i]); err != nil {
 			d.Logger.Warnf("Failed to get status for pool %s: %v", pools[i].Name, err)
+		}
+		if err := d.getUsableSpace(&pools[i]); err != nil {
+			d.Logger.Warnf("Failed to get usable space for pool %s: %v", pools[i].Name, err)
 		}
 	}
 
@@ -100,6 +103,52 @@ func (d *Detect) listPools() ([]models.ZFSPool, error) {
 	}
 
 	return pools, nil
+}
+
+// getUsableSpace reads the pool's post-parity capacity from its root dataset.
+// zpool list reports raw vdev capacity, which counts parity and so overstates
+// what a raidz pool can store; zfs list reports the usable figure. The fields
+// stay at zero when zfs is unavailable or the pool has no root dataset, so a
+// failure here leaves consumers on the raw values.
+func (d *Detect) getUsableSpace(pool *models.ZFSPool) error {
+	// zfs list -H -p -o used,available <poolname>
+	cmd := exec.Command("zfs", "list", "-H", "-p", "-o", "used,available", pool.Name)
+	output, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to list root dataset: %w", err)
+	}
+
+	used, available, err := parseUsableSpace(string(output))
+	if err != nil {
+		return err
+	}
+
+	pool.UsableUsed = used
+	pool.UsableFree = available
+
+	return nil
+}
+
+// parseUsableSpace parses one tab-separated "used\tavailable" row of byte
+// counts, as printed by zfs list -H -p.
+func parseUsableSpace(output string) (int64, int64, error) {
+	trimmed := strings.TrimSpace(output)
+	fields := strings.Split(trimmed, "\t")
+	if len(fields) < 2 {
+		return 0, 0, fmt.Errorf("unexpected zfs list output: %q", trimmed)
+	}
+
+	used, err := strconv.ParseInt(fields[0], 10, 64)
+	if err != nil {
+		return 0, 0, fmt.Errorf("unable to parse used bytes %q: %w", fields[0], err)
+	}
+
+	available, err := strconv.ParseInt(fields[1], 10, 64)
+	if err != nil {
+		return 0, 0, fmt.Errorf("unable to parse available bytes %q: %w", fields[1], err)
+	}
+
+	return used, available, nil
 }
 
 // getPoolStatus gets detailed status for a pool including vdevs and scrub
