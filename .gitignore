@@ -87,6 +87,9 @@ PLANNING.md
 # Local builder skill files
 .codex/skills/
 
+# Local MCP configuration
+.mcp.json
+
 # Local compiled binaries
 collector-dev
 collector-metrics
