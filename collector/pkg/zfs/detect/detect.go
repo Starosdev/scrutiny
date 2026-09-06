@@ -112,6 +112,7 @@ func (d *Detect) listPools() ([]models.ZFSPool, error) {
 // failure here leaves consumers on the raw values.
 func (d *Detect) getUsableSpace(pool *models.ZFSPool) error {
 	// zfs list -H -p -o used,available <poolname>
+	//nolint:gosec // pool name comes from zpool list on this host, and exec.Command passes argv directly without a shell
 	cmd := exec.Command("zfs", "list", "-H", "-p", "-o", "used,available", pool.Name)
 	output, err := cmd.Output()
 	if err != nil {
