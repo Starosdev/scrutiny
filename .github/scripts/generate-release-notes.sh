@@ -1,9 +1,9 @@
 #!/bin/bash
-# Generate release notes from merged PRs between two tags.
+# Generate release notes from PRs represented by commits between two tags.
 # Usage: ./generate-release-notes.sh <previous-tag> <new-tag>
 #
 # This script is deterministic:
-# - merged PR metadata is the source of truth
+# - commits reachable from the release tag determine included PRs
 # - PR ## Summary blocks provide normal note content
 # - Release promotion PRs preserve authored sections through ## Test plan
 # - linked issues come from PR bodies
@@ -25,53 +25,26 @@ fi
 
 echo "Generating release notes for $PREV_TAG..$NEW_TAG" >&2
 
-PREV_DATE=$(git log -1 --format=%aI "$PREV_TAG" 2>/dev/null || echo "1970-01-01T00:00:00Z")
-NEW_DATE=$(git log -1 --format=%aI "$NEW_TAG" 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)
 RELEASE_DATE=$(git log -1 --format=%as "$NEW_TAG" 2>/dev/null || date +%Y-%m-%d)
 
-DEVELOP_JSON=$(mktemp)
-MASTER_JSON=$(mktemp)
-INTEGRATION_JSON=$(mktemp)
-DEVELOP_FILTERED_FILE=$(mktemp)
+PRS_JSON=$(mktemp)
 OUTPUT_FILE=$(mktemp)
 EXPECTED_FILE=$(mktemp)
-trap 'rm -f "$DEVELOP_JSON" "$MASTER_JSON" "$INTEGRATION_JSON" "$DEVELOP_FILTERED_FILE" "$OUTPUT_FILE" "$EXPECTED_FILE"' EXIT
+trap 'rm -f "$PRS_JSON" "$OUTPUT_FILE" "$EXPECTED_FILE"' EXIT
 
-gh pr list --repo "$REPO" --state merged --base develop --limit 200 \
-    --json number,title,mergedAt,body,headRefName \
-    --jq "[.[] | select(.mergedAt > \"$PREV_DATE\" and .mergedAt <= \"$NEW_DATE\")]" \
-    > "$DEVELOP_JSON" 2>/dev/null || echo "[]" > "$DEVELOP_JSON"
+while IFS= read -r commit; do
+    [ -z "$commit" ] && continue
+    gh api --paginate "repos/$REPO/commits/$commit/pulls" \
+        | jq '[.[] | select(.base.ref == "master" and .merged_at != null) | {
+            number,
+            title,
+            mergedAt: .merged_at,
+            body,
+            headRefName: .head.ref
+        }]' >> "$PRS_JSON"
+done < <(git rev-list "$PREV_TAG..$NEW_TAG")
 
-gh pr list --repo "$REPO" --state merged --base master --limit 200 \
-    --json number,title,mergedAt,body,headRefName \
-    --jq "[.[] | select(.mergedAt > \"$PREV_DATE\" and .mergedAt <= \"$NEW_DATE\") | select(.headRefName != \"develop\")]" \
-    > "$MASTER_JSON" 2>/dev/null || echo "[]" > "$MASTER_JSON"
-
-gh pr list --repo "$REPO" --state merged --base master --limit 200 \
-    --json number,title,mergedAt,body,headRefName \
-    --jq "[.[] | select(.mergedAt > \"$PREV_DATE\" and .mergedAt <= \"$NEW_DATE\") | select(.headRefName == \"develop\")]" \
-    > "$INTEGRATION_JSON" 2>/dev/null || echo "[]" > "$INTEGRATION_JSON"
-
-COVERED_PRS=$(
-    jq -r '.[].body // "", .[].title // ""' "$INTEGRATION_JSON" 2>/dev/null \
-        | { grep -oE '(Closes|Fixes|Resolves) #[0-9]+|\(#[0-9]+\)' || true; } \
-        | { grep -oE '[0-9]+' || true; } \
-        | sort -u \
-        | paste -sd '|' - 2>/dev/null || echo ""
-)
-
-if [ -n "$COVERED_PRS" ]; then
-    DEVELOP_FILTERED=$(jq "[.[] | select(.number | tostring | test(\"^($COVERED_PRS)$\") | not)]" "$DEVELOP_JSON")
-else
-    DEVELOP_FILTERED=$(cat "$DEVELOP_JSON")
-fi
-
-echo "$DEVELOP_FILTERED" > "$DEVELOP_FILTERED_FILE"
-MERGED_JSON=$(jq -s \
-    --slurpfile master "$MASTER_JSON" \
-    --slurpfile integration "$INTEGRATION_JSON" \
-    '.[0] + $master[0] + $integration[0] | unique_by(.number) | sort_by(.mergedAt, .number)' \
-    "$DEVELOP_FILTERED_FILE")
+MERGED_JSON=$(jq -s 'flatten | unique_by(.number) | sort_by(.mergedAt, .number)' "$PRS_JSON")
 
 get_summary_block() {
     local body="$1"
@@ -204,6 +177,10 @@ for ((i = 0; i < PR_COUNT; i++)); do
     [ -z "$pr_num" ] && continue
 
     if [[ "$pr_num" =~ $EXCLUDED_PRS_REGEX ]]; then
+        continue
+    fi
+
+    if [[ "$pr_title" =~ ^(docs|style|chore|test|ci)(\(.+\))?!?: ]]; then
         continue
     fi
 

@@ -664,6 +664,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				return tx.Exec("CREATE UNIQUE INDEX idx_override_lookup ON attribute_overrides (protocol, attribute_id, device_id, wwn)").Error
 			},
 		},
+		{ID: "m20260905000000", Migrate: migrateSelfTestChronology},
 	})
 
 	if err := m.Migrate(); err != nil {
@@ -1613,4 +1614,16 @@ func (sr *scrutinyRepository) migrateM20260701000000(tx *gorm.DB) error {
 		SettingValueString:    "",
 	}
 	return tx.Create(&defaultSetting).Error
+}
+
+// Existing rows have no reliable epoch or controller position. Preserve their
+// raw values and IDs; the next collection can supply chronology for matching rows.
+func migrateSelfTestChronology(tx *gorm.DB) error {
+	if err := tx.Exec("DROP INDEX IF EXISTS idx_device_self_tests_identity").Error; err != nil {
+		return err
+	}
+	if err := tx.Exec("DROP INDEX IF EXISTS idx_device_self_tests_history").Error; err != nil {
+		return err
+	}
+	return tx.AutoMigrate(&models.DeviceSelfTest{})
 }

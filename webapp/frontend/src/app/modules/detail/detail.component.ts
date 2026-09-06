@@ -806,6 +806,14 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         };
     }
 
+    selfTestAgeTooltip(selfTest: DeviceSelfTestModel): string {
+        const raw = `Controller lifetime: ${selfTest.lifetime_hours} hours.`;
+        if (selfTest.effective_lifetime_hours == null) {
+            return `${raw} Absolute power-on age is unknown because the lifetime counter may have wrapped or power-on context is unavailable.`;
+        }
+        return `${raw} Resolved power-on age: ${selfTest.effective_lifetime_hours} hours.`;
+    }
+
     selfTestStatusLabel(selfTest: DeviceSelfTestModel): string {
         return selfTest.status_passed ? 'Passed' : 'Attention';
     }

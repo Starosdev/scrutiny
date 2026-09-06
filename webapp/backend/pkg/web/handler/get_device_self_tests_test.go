@@ -24,17 +24,20 @@ func TestGetDeviceSelfTests(t *testing.T) {
 
 	fakeRepo := mock_database.NewMockDeviceRepo(mockCtrl)
 	device := models.Device{DeviceID: "device-1", WWN: testDeviceWWN, DeviceName: "/dev/sda"}
+	effectiveHours := int64(68000)
 	selfTests := []models.DeviceSelfTest{
 		{
-			DeviceID:      "device-1",
-			DeviceWWN:     testDeviceWWN,
-			TypeValue:     1,
-			TypeString:    "Short offline",
-			StatusValue:   0,
-			StatusString:  "Completed without error",
-			StatusPassed:  true,
-			LifetimeHours: 1708,
+			DeviceID:               "device-1",
+			DeviceWWN:              testDeviceWWN,
+			TypeValue:              1,
+			TypeString:             "Short offline",
+			StatusValue:            0,
+			StatusString:           "Completed without error",
+			StatusPassed:           true,
+			LifetimeHours:          2464,
+			EffectiveLifetimeHours: &effectiveHours,
 		},
+		{LifetimeHours: 100},
 	}
 
 	fakeRepo.EXPECT().GetDeviceDetails(gomock.Any(), "device-1").Return(device, nil)
@@ -63,8 +66,11 @@ func TestGetDeviceSelfTests(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
 	require.True(t, response.Success)
-	require.Len(t, response.Data.SelfTests, 1)
-	require.Equal(t, 1708, response.Data.SelfTests[0].LifetimeHours)
+	require.Len(t, response.Data.SelfTests, 2)
+	require.Nil(t, response.Data.SelfTests[1].EffectiveLifetimeHours)
+	require.Contains(t, w.Body.String(), `"effective_lifetime_hours":null`)
+	require.Equal(t, 2464, response.Data.SelfTests[0].LifetimeHours)
+	require.Equal(t, int64(68000), *response.Data.SelfTests[0].EffectiveLifetimeHours)
 	require.Equal(t, "Short offline", response.Data.SelfTests[0].TypeString)
 }
 
