@@ -367,11 +367,10 @@
                                     </span>
                                 </td>
                                 <td class="py-2 pr-4 text-secondary">{{ selfTest.status_string }}</td>
-                                <td
-                                    class="py-2 text-right"
-                                    matTooltip="{{ humanizeDuration(selfTest.lifetime_hours * 60 * 60 * 1000, { conjunction: ' and ', serialComma: false }) }}"
-                                >
-                                    {{ selfTest.lifetime_hours | deviceHours : config.powered_on_hours_unit : { round: true, largest: 1, units: ['y', 'd', 'h'] } }}
+                                <td class="py-2 text-right" [matTooltip]="selfTestAgeTooltip(selfTest)">
+                                    @if (selfTest.effective_lifetime_hours !== null && selfTest.effective_lifetime_hours !== undefined) {
+                                    {{ selfTest.effective_lifetime_hours | deviceHours : config.powered_on_hours_unit : { round: true, largest: 1, units: ['y', 'd', 'h'] } }}
+                                    } @else { Unknown (may be wrapped) }
                                 </td>
                             </tr>
                             }
@@ -391,11 +390,10 @@
                                 <span class="w-2 h-2 rounded-full mr-2" [ngClass]="selfTestDotClass(selfTest)"></span>
                                 {{ selfTestStatusLabel(selfTest) }}
                             </div>
-                            <div
-                                class="text-xs text-secondary mt-1"
-                                matTooltip="{{ humanizeDuration(selfTest.lifetime_hours * 60 * 60 * 1000, { conjunction: ' and ', serialComma: false }) }}"
-                            >
-                                {{ selfTest.lifetime_hours | deviceHours : config.powered_on_hours_unit : { round: true, largest: 1, units: ['y', 'd', 'h'] } }}
+                            <div class="text-xs text-secondary mt-1" [matTooltip]="selfTestAgeTooltip(selfTest)">
+                                @if (selfTest.effective_lifetime_hours !== null && selfTest.effective_lifetime_hours !== undefined) {
+                                {{ selfTest.effective_lifetime_hours | deviceHours : config.powered_on_hours_unit : { round: true, largest: 1, units: ['y', 'd', 'h'] } }}
+                                } @else { Unknown (may be wrapped) }
                             </div>
                         </div>
                     </div>

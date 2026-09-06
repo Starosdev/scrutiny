@@ -563,3 +563,25 @@ func TestMigrateEnablesTemperatureHistoryStorage(t *testing.T) {
 	require.Equal(t, "bool", setting.SettingDataType)
 	require.True(t, setting.SettingValueBool)
 }
+
+func TestMigrateSelfTestChronologyPreservesLegacyHistory(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+	require.NoError(t, repo.gormClient.Exec(`CREATE TABLE device_self_tests (
+        id INTEGER PRIMARY KEY, created_at DATETIME, updated_at DATETIME, deleted_at DATETIME,
+        device_identity TEXT, device_id TEXT, device_wwn TEXT, type_value INTEGER,
+        type_string TEXT, status_value INTEGER, status_string TEXT, status_passed NUMERIC, lifetime_hours INTEGER
+    )`).Error)
+	require.NoError(t, repo.gormClient.Exec(`CREATE UNIQUE INDEX idx_device_self_tests_identity ON device_self_tests(device_identity,type_value,lifetime_hours)`).Error)
+	require.NoError(t, repo.gormClient.Exec(`CREATE INDEX idx_device_self_tests_history ON device_self_tests(device_identity,lifetime_hours)`).Error)
+	require.NoError(t, repo.gormClient.Exec(`INSERT INTO device_self_tests(id,device_identity,device_id,device_wwn,type_value,lifetime_hours) VALUES (42,'wwn-1','device-1','wwn-1',1,2464)`).Error)
+	require.NoError(t, repo.gormClient.Exec(`INSERT INTO migrations(id) VALUES ('m20260616000000')`).Error)
+	require.NoError(t, repo.Migrate(context.Background()))
+	require.NoError(t, repo.Migrate(context.Background()))
+	var row models.DeviceSelfTest
+	require.NoError(t, repo.gormClient.First(&row, 42).Error)
+	require.Equal(t, 2464, row.LifetimeHours)
+	require.Nil(t, row.EffectiveLifetimeHours)
+	require.Zero(t, row.ObservedAt)
+	require.False(t, repo.gormClient.Migrator().HasIndex(&models.DeviceSelfTest{}, "idx_device_self_tests_identity"))
+	require.NoError(t, repo.gormClient.Exec(`INSERT INTO device_self_tests(device_identity,type_value,lifetime_hours,effective_lifetime_hours) VALUES ('wwn-1',1,2464,68000)`).Error)
+}
