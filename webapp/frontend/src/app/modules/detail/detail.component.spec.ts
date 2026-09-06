@@ -120,6 +120,54 @@ describe('DetailComponent', () => {
         expect(mockDetailService.getSelfTestData).toHaveBeenCalledWith('device-1');
     });
 
+    describe('self-test power-on age', () => {
+        const row: DeviceSelfTestModel = {
+            id: 1,
+            created_at: '',
+            updated_at: '',
+            device_id: 'device-1',
+            device_wwn: 'wwn-1',
+            type_value: 2,
+            type_string: 'Extended offline',
+            status_value: 0,
+            status_string: 'Completed without error',
+            status_passed: true,
+            lifetime_hours: 2464,
+            effective_lifetime_hours: 68000,
+        };
+
+        it('keeps raw and resolved hours in the tooltip', () => {
+            expect(component.selfTestAgeTooltip(row)).toContain('Controller lifetime: 2464 hours.');
+            expect(component.selfTestAgeTooltip(row)).toContain('Resolved power-on age: 68000 hours.');
+        });
+
+        for (const hours of [null, undefined]) {
+            it(`explains ambiguous age for ${hours}`, () => {
+                const tooltip = component.selfTestAgeTooltip({ ...row, effective_lifetime_hours: hours });
+                expect(tooltip).toContain('Absolute power-on age is unknown');
+                expect(tooltip).toContain('2464 hours');
+            });
+        }
+
+        for (const mobile of [false, true]) {
+            it(`renders resolved and ambiguous ages with mobile=${mobile}`, () => {
+                fixture.detectChanges();
+                component.isMobile = mobile;
+                component.config.powered_on_hours_unit = 'device_hours';
+                component.selfTestsLoading = false;
+                component.selfTestsLoaded = true;
+                component.selfTests = [row, { ...row, id: 2, effective_lifetime_hours: null }, { ...row, id: 3, effective_lifetime_hours: 0 }];
+                fixture.changeDetectorRef.markForCheck();
+                fixture.detectChanges();
+                const text = fixture.nativeElement.textContent;
+                expect(text).toContain('68000 hours');
+                expect(text).toContain('Unknown (may be wrapped)');
+                expect(text).toContain('0 hours');
+                expect(text).not.toContain('2464 hours');
+            });
+        }
+    });
+
     describe('selfTestStatusLabel', () => {
         it('should return Passed for successful self-tests', () => {
             const selfTest = { status_passed: true } as DeviceSelfTestModel;

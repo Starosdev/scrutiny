@@ -487,7 +487,7 @@ paths:
     get:
       tags: [Devices]
       summary: Get ATA SMART self-test history for a device
-      description: Returns the ATA SMART self-test entries already recorded from normal SMART uploads for the resolved device identity.
+      description: Returns up to 21 ATA SMART self-test entries in newest observed log order. Absolute power-on ages are null when rollover cannot be resolved from the collection.
       parameters:
         - $ref: "#/components/parameters/DeviceId"
       responses:
@@ -1963,6 +1963,12 @@ components:
           type: boolean
         lifetime_hours:
           type: integer
+          description: Raw controller lifetime counter, preserved without adjustment.
+        effective_lifetime_hours:
+          type: integer
+          format: int64
+          nullable: true
+          description: Absolute power-on age resolved from controller log order and current Power-On Hours, or null when context is missing, unreliable, or allows multiple rollover epochs.
       required:
         - id
         - device_id
@@ -1973,6 +1979,7 @@ components:
         - status_string
         - status_passed
         - lifetime_hours
+        - effective_lifetime_hours
     DeviceSelfTestsResponse:
       type: object
       properties:

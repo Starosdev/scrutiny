@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
@@ -56,7 +57,7 @@ func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, wwn strin
 	tags, fields := deviceSmartData.Flatten()
 
 	if devErr == nil {
-		if err := sr.syncDeviceSelfTests(ctx, &device, &collectorSmartData); err != nil {
+		if err := sr.syncDeviceSelfTests(ctx, &device, &collectorSmartData, selfTestPowerOnHours(&deviceSmartData, previousSmart)); err != nil {
 			return measurements.Smart{}, err
 		}
 	}
@@ -340,4 +341,16 @@ func (sr *scrutinyRepository) generateSmartAttributesSubquery(wwn string, durati
 	partialQueryStr = append(partialQueryStr, "|> schema.fieldsAsCols()")
 
 	return strings.Join(partialQueryStr, "\n")
+}
+
+// Self-test epochs require a trustworthy absolute upper bound. A warning or a
+// counter decrease is evidence against treating the reported hours as absolute.
+func selfTestPowerOnHours(current, previous *measurements.Smart) int64 {
+	if previous != nil && previous.PowerOnHours > current.PowerOnHours {
+		return 0
+	}
+	if attribute, ok := current.Attributes["9"].(*measurements.SmartAtaAttribute); ok && pkg.AttributeStatusHas(attribute.Status, pkg.AttributeStatusWarningScrutiny) {
+		return 0
+	}
+	return current.PowerOnHours
 }
