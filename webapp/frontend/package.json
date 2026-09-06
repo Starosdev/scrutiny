@@ -11,6 +11,7 @@
     "build:prod:mem": "node --max_old_space_size=6144 ./node_modules/@angular/cli/bin/ng build --prod",
     "test": "ng test",
     "test:icons": "node scripts/check-icon-references.mjs",
+    "test:theme": "node scripts/check-theme-tokens.mjs",
     "lint": "ng lint",
     "lint:fix": "ng lint --fix",
     "format": "prettier --write \"src/**/*.{ts,html,json}\"",
