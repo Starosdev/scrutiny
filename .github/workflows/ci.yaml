@@ -61,6 +61,7 @@ jobs:
           go-version-file: go.mod
       - name: Test Backend
         run: |
+          bash scripts/tests/generate-release-notes_test.sh
           make binary-clean binary-test-coverage
   lint-backend:
     name: Lint Backend (Go)
