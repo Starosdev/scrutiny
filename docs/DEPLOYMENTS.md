@@ -52,8 +52,8 @@ npm ci, then runs .github/scripts/run-semantic-release.mjs. Update
 package.json and package-lock.json together when changing release tooling.
 
 - Semantic versioning still comes from conventional commits and `semantic-release`.
-- Raw release notes are generated deterministically from PRs associated with commits reachable between the previous tag and the new tag.
-- The generator uses merged `master` PR metadata as the source of truth, renders note content from each PR's `## Summary` block plus linked issues, and preserves authored release-promotion sections through `## Test plan`.
+- Raw release notes are generated deterministically from `master` PR merge commits reachable between the previous tag and the new tag.
+- The generator uses merged PR metadata as the source of truth. Master promotion PRs must contain `## Product changes` followed by `## Summary`. Only non-`None.` summaries are user-facing; their linked issues supply release-note content.
 - Validation checks that extracted summary content survives note formatting before it emits notes.
 - If note generation fails, the release workflow fails for manual repair instead of silently completing with semantic-release defaults.
 

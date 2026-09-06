@@ -18,6 +18,10 @@ case "$1" in
         ;;
     rev-list)
         echo "released-commit"
+        echo "released-merge"
+        echo "stale-commit"
+        echo "operational-commit"
+        echo "operational-merge"
         echo "develop-only-commit"
         ;;
 esac
@@ -28,12 +32,22 @@ cat > "$MOCK_BIN/gh" <<'EOF'
 case "${!#}" in
     */released-commit/pulls)
         cat <<'JSON'
-[{"number":42,"title":"feat: release change","merged_at":"2026-09-05T00:00:00Z","body":"## Summary\n\n- Visible change\n\nCloses #41\n\n## Test plan\n\n- test","base":{"ref":"master"},"head":{"ref":"feature/released"}}]
+[{"number":42,"title":"feat: release change","merged_at":"2026-09-05T00:00:00Z","merge_commit_sha":"released-merge","body":"## Product changes\n\n## Summary\n\n- Visible change\n\nCloses #41\n\n## Test plan\n\n- test","base":{"ref":"master"},"head":{"ref":"develop"}}]
+JSON
+        ;;
+    */stale-commit/pulls)
+        cat <<'JSON'
+[{"number":99,"title":"feat: stale association","merged_at":"2026-08-01T00:00:00Z","merge_commit_sha":"stale-merge","body":"## Product changes\n\n## Summary\n\n- Stale change","base":{"ref":"master"},"head":{"ref":"develop"}}]
+JSON
+        ;;
+    */operational-commit/pulls)
+        cat <<'JSON'
+[{"number":44,"title":"fix(release): workflow repair","merged_at":"2026-09-05T00:00:00Z","merge_commit_sha":"operational-merge","body":"## Product changes\n\n## Summary\n\nNone.\n\n## Test plan\n\n- test","base":{"ref":"master"},"head":{"ref":"develop"}}]
 JSON
         ;;
     */develop-only-commit/pulls)
         cat <<'JSON'
-[{"number":43,"title":"feat: unreleased change","merged_at":"2026-09-05T00:00:00Z","body":"## Summary\n\n- Unreleased change","base":{"ref":"develop"},"head":{"ref":"feature/develop"}},{"number":44,"title":"chore: release administration","merged_at":"2026-09-05T00:00:00Z","body":"## Summary\n\n- Internal change","base":{"ref":"master"},"head":{"ref":"chore/release"}}]
+[{"number":43,"title":"feat: develop-only change","merged_at":"2026-09-05T00:00:00Z","merge_commit_sha":"develop-only-commit","body":"## Product changes\n\n## Summary\n\n- Develop-only change","base":{"ref":"develop"},"head":{"ref":"feature/develop"}},{"number":44,"title":"chore: release administration","merged_at":"2026-09-05T00:00:00Z","body":"## Summary\n\n- Internal change","base":{"ref":"master"},"head":{"ref":"chore/release"}}]
 JSON
         ;;
 esac
@@ -46,4 +60,7 @@ NOTES=$(PATH="$MOCK_BIN:$PATH" "$ROOT/.github/scripts/generate-release-notes.sh"
 grep -Fq "[#42](https://github.com/Starosdev/scrutiny/pull/42)" <<< "$NOTES"
 grep -Fq "Visible change" <<< "$NOTES"
 ! grep -Fq "#43" <<< "$NOTES"
+! grep -Fq "Develop-only change" <<< "$NOTES"
 ! grep -Fq "#44" <<< "$NOTES"
+! grep -Fq "#99" <<< "$NOTES"
+! grep -Fq "Stale change" <<< "$NOTES"
