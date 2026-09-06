@@ -14,6 +14,12 @@ export interface ZFSPoolModel {
     fragmentation: number;
     capacity_percent: number;
 
+    // usable_used and usable_free come from the pool's root dataset and exclude
+    // parity, unlike size/allocated/free which are raw vdev capacity. Both are 0
+    // for pools last reported by a collector that predates them.
+    usable_used: number;
+    usable_free: number;
+
     scrub_state: ZFSScrubState;
     scrub_start_time?: string;
     scrub_end_time?: string;
@@ -31,6 +37,15 @@ export interface ZFSPoolModel {
 
     created_at: string;
     updated_at: string;
+}
+
+/**
+ * Post-parity capacity the pool can actually store, from its root dataset.
+ * Returns 0 when the pool was last reported by a collector that predates
+ * usable capacity, which callers treat as "fall back to the raw size".
+ */
+export function zfsUsableSize(pool: ZFSPoolModel): number {
+    return (pool.usable_used || 0) + (pool.usable_free || 0);
 }
 
 export type ZFSPoolStatus = 'ONLINE' | 'DEGRADED' | 'FAULTED' | 'OFFLINE' | 'REMOVED' | 'UNAVAIL';

@@ -2391,6 +2391,18 @@ components:
           format: int64
         capacity_percent:
           type: number
+        usable_used:
+          type: integer
+          format: int64
+          description: >-
+            Bytes used in the pool's root dataset, excluding parity. 0 when the
+            pool was last reported by a collector that predates this field.
+        usable_free:
+          type: integer
+          format: int64
+          description: >-
+            Bytes available in the pool's root dataset, excluding parity. 0 when
+            the pool was last reported by a collector that predates this field.
         fragmentation:
           type: integer
         total_read_errors:

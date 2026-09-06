@@ -35,6 +35,7 @@ import (
 	m20260610000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260610000000"
 	m20260616000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260616000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260906000000"
+	m20260907000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260907000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -671,6 +672,10 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 			Migrate: func(tx *gorm.DB) error {
 				return tx.AutoMigrate(&m20260906000000.AttributeOverride{})
 			},
+		},
+		{
+			ID:      "m20260907000000", // add usable capacity columns to zfs_pools table (#754)
+			Migrate: m20260907000000.Migrate,
 		},
 	})
 

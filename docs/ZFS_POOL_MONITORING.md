@@ -6,6 +6,7 @@ Scrutiny can monitor ZFS pool health alongside individual drive S.M.A.R.T metric
 
 - Pool health status (ONLINE, DEGRADED, FAULTED, OFFLINE, REMOVED, UNAVAIL)
 - Capacity metrics (size, allocated, free, fragmentation percentage)
+- Usable capacity from the pool's root dataset, reported alongside raw vdev capacity
 - Error tracking (read errors, write errors, checksum errors)
 - Scrub operation monitoring (state, progress, errors, timing)
 - Virtual device (vdev) hierarchy with per-vdev status and errors
@@ -181,6 +182,27 @@ curl http://localhost:8080/api/zfs/summary
 # Check details for a specific pool (replace GUID with your pool's GUID)
 curl http://localhost:8080/api/zfs/pool/GUID/details
 ```
+
+## Raw and Usable Capacity
+
+The UI reports two capacity figures for each pool, because ZFS itself reports two.
+
+`zpool list` gives raw vdev capacity, which counts the parity drives. On an
+8-drive raidz3 pool of 14.6 TB drives that is roughly 116 TB, even though
+parity means only 5 drives' worth of that is available to store data.
+
+`zfs list` on the pool's root dataset gives the usable figure, `used` plus
+`available`, which for the same pool is roughly 66 TB. This is the number that
+matches what a `df` on a mounted dataset reports.
+
+The Zpools tab and the pool detail page lead with the usable figure and show
+the raw one beneath it. A pool last reported by a collector older than this
+feature has no usable figure stored, so it shows only the raw one until the
+collector next runs.
+
+Usable capacity moves with compression, quotas, and reservations, so it is not
+a fixed property of the pool the way raw capacity is. Two pools built on
+identical drives can report different usable sizes.
 
 ## Troubleshooting
 

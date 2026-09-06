@@ -25,6 +25,8 @@ describe('ZFSPoolDetailComponent', () => {
         free: 75,
         fragmentation: 0,
         capacity_percent: 25,
+        usable_used: 0,
+        usable_free: 0,
         scrub_state: 'none',
         scrub_scanned_bytes: 0,
         scrub_issued_bytes: 0,
