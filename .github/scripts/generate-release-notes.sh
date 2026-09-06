@@ -3,9 +3,9 @@
 # Usage: ./generate-release-notes.sh <previous-tag> <new-tag>
 #
 # This script is deterministic:
-# - commits reachable from the release tag determine included PRs
+# - merged PR commits in the tagged range determine included PRs
 # - PR ## Summary blocks provide normal note content
-# - Release promotion PRs preserve authored sections through ## Test plan
+# - user-facing PRs opt in through a ## Product changes section
 # - linked issues come from PR bodies
 # - completeness is validated before notes are emitted
 
@@ -15,9 +15,6 @@ PREV_TAG="${1:-$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")}"
 NEW_TAG="${2:-$(git describe --tags --abbrev=0 HEAD 2>/dev/null || echo "HEAD")}"
 REPO="${GITHUB_REPOSITORY:-Starosdev/scrutiny}"
 MAX_SUMMARY_BULLETS=8
-# Operational-only PRs excluded from user-facing release notes.
-EXCLUDED_PRS_REGEX='^(701|719|724|726)$'
-
 if [ -z "$PREV_TAG" ]; then
     echo "Error: Could not determine previous tag" >&2
     exit 1
@@ -30,7 +27,10 @@ RELEASE_DATE=$(git log -1 --format=%as "$NEW_TAG" 2>/dev/null || date +%Y-%m-%d)
 PRS_JSON=$(mktemp)
 OUTPUT_FILE=$(mktemp)
 EXPECTED_FILE=$(mktemp)
-trap 'rm -f "$PRS_JSON" "$OUTPUT_FILE" "$EXPECTED_FILE"' EXIT
+RANGE_COMMITS_FILE=$(mktemp)
+trap 'rm -f "$PRS_JSON" "$OUTPUT_FILE" "$EXPECTED_FILE" "$RANGE_COMMITS_FILE"' EXIT
+
+git rev-list "$PREV_TAG..$NEW_TAG" > "$RANGE_COMMITS_FILE"
 
 while IFS= read -r commit; do
     [ -z "$commit" ] && continue
@@ -39,27 +39,43 @@ while IFS= read -r commit; do
             number,
             title,
             mergedAt: .merged_at,
+            mergeCommitSha: .merge_commit_sha,
             body,
+            baseRefName: .base.ref,
             headRefName: .head.ref
         }]' >> "$PRS_JSON"
 done < <(git rev-list "$PREV_TAG..$NEW_TAG")
 
-MERGED_JSON=$(jq -s 'flatten | unique_by(.number) | sort_by(.mergedAt, .number)' "$PRS_JSON")
+MERGED_JSON=$(jq -s --rawfile range_commits "$RANGE_COMMITS_FILE" '
+    flatten
+    | unique_by(.number)
+    | map(select(
+        .baseRefName == "master"
+        and (.mergeCommitSha as $merge_commit
+          | $merge_commit != null
+          | ($range_commits | split("\n") | index($merge_commit)) != null)
+    ))
+    | sort_by(.mergedAt, .number)
+' "$PRS_JSON")
 
 get_summary_block() {
     local body="$1"
     [ -z "$body" ] && return
 
-    if echo "$body" | grep -q '^## Product changes$'; then
-        echo "$body" | awk '
-            /^## Summary$/ { in_release=1 }
-            /^## Test plan$/ { in_release=0 }
-            in_release { print }
-        '
-        return
-    fi
+    echo "$body" | awk '
+        /^## Product changes$/ { product_changes=1; next }
+        product_changes && /^## Summary$/ { in_summary=1; next }
+        in_summary && /^## / { exit }
+        in_summary { print }
+    '
+}
 
-    echo "$body" | tr -d '\r' | sed -n '/^## Summary/,/^## /{/^## /d; p;}'
+has_product_changes() {
+    local body="$1"
+    local summary
+    summary=$(get_summary_block "$body")
+
+    [ -n "$summary" ] && ! printf '%s\n' "$summary" | tr -d '\r' | sed '/^[[:space:]]*$/d' | grep -qx 'None\.'
 }
 
 clean_text() {
@@ -176,15 +192,7 @@ for ((i = 0; i < PR_COUNT; i++)); do
 
     [ -z "$pr_num" ] && continue
 
-    if [[ "$pr_num" =~ $EXCLUDED_PRS_REGEX ]]; then
-        continue
-    fi
-
-    if [[ "$pr_title" =~ ^(docs|style|chore|test|ci)(\(.+\))?!?: ]]; then
-        continue
-    fi
-
-    if [[ "$pr_title" =~ ^Release:|^chore\(release\) ]]; then
+    if ! has_product_changes "$pr_body"; then
         continue
     fi
 
