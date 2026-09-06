@@ -43,7 +43,7 @@ jobs:
       - name: Force release commit (manual trigger only)
         if: github.event_name == 'workflow_dispatch' && inputs.release_type != 'auto'
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -67,7 +67,7 @@ jobs:
         id: semantic
         run: node .github/scripts/run-semantic-release.mjs
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
         # semantic-release updates webapp/backend/pkg/version/version.go in the
         # release commit. The build job must compile the tagged release commit,
         # not the pre-release workspace state, so runtime banners and API
@@ -84,7 +84,7 @@ jobs:
         id: release_notes
         if: steps.semantic.outputs.new_release_published == 'true'
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           chmod +x .github/scripts/generate-release-notes.sh
