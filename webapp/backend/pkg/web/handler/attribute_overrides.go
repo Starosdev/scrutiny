@@ -6,6 +6,7 @@ import (
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -23,6 +24,7 @@ var validActions = map[string]bool{
 	"":             true, // empty means custom thresholds only
 	"ignore":       true,
 	"force_status": true,
+	"acknowledge":  true,
 }
 
 // validStatuses defines the allowed status values for force_status action
@@ -76,11 +78,26 @@ func validateAttributeOverride(o *models.AttributeOverride) string {
 	if o.WWN != "" && validation.ValidateWWN(o.WWN) != nil {
 		return "Invalid WWN format"
 	}
-	if o.Action == "force_status" {
-		return validateForceStatus(o)
+	if o.Action != "acknowledge" && o.PinnedValue != nil {
+		return "pinned_value is only valid when action is 'acknowledge'"
 	}
-	if o.Action == "" {
+	switch o.Action {
+	case "force_status":
+		return validateForceStatus(o)
+	case "acknowledge":
+		return validateAcknowledge(o)
+	case "":
 		return validateThresholds(o)
+	}
+	return ""
+}
+
+// validateAcknowledge checks an acknowledge override. Acknowledgement pins a
+// status to one device's current value, so a fleet-wide rule cannot express it:
+// the same attribute holds a different value on every device.
+func validateAcknowledge(o *models.AttributeOverride) string {
+	if o.DeviceID == "" && o.WWN == "" {
+		return "Acknowledge requires a specific device (device_id or wwn)"
 	}
 	return ""
 }
@@ -131,6 +148,13 @@ func SaveAttributeOverride(c *gin.Context) {
 	// Source is always "ui" for API-created overrides
 	override.Source = "ui"
 
+	if override.Action == "acknowledge" && override.PinnedValue == nil {
+		if errMsg := resolvePinnedValue(c, deviceRepo, &override); errMsg != "" {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": errMsg})
+			return
+		}
+	}
+
 	if err := deviceRepo.SaveAttributeOverride(c, &override); err != nil {
 		logger.Errorln("Error saving attribute override:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to save override"})
@@ -141,6 +165,42 @@ func SaveAttributeOverride(c *gin.Context) {
 	recalculateDeviceStatusForOverride(c, logger, deviceRepo, &override)
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": override})
+}
+
+// resolvePinnedValue fills in the value an acknowledgement pins to, read from the device's
+// latest stored SMART submission. The server resolves it rather than trusting a client-sent
+// value because which field an attribute is evaluated against differs by protocol (ATA
+// compares the raw value, every other protocol the normalized one) and that rule already
+// lives in measurements.AttributeThresholdValue. Restating it in the frontend would let the
+// two drift apart silently.
+func resolvePinnedValue(c *gin.Context, deviceRepo database.DeviceRepo, override *models.AttributeOverride) string {
+	var device models.Device
+	var err error
+	if override.DeviceID != "" {
+		device, err = deviceRepo.GetDeviceByID(c, override.DeviceID)
+	} else {
+		device, err = deviceRepo.GetDeviceByWWN(c, override.WWN)
+	}
+	if err != nil {
+		return "Device not found for acknowledge override"
+	}
+
+	submissions, err := deviceRepo.GetLatestSmartSubmission(c, device.WWN)
+	if err != nil || len(submissions) == 0 {
+		return "No SMART data available to acknowledge for this device"
+	}
+
+	attribute, found := submissions[0].Attributes[override.AttributeId]
+	if !found {
+		return "Attribute not present in the device's latest SMART data"
+	}
+
+	value, ok := measurements.AttributeThresholdValue(attribute)
+	if !ok {
+		return "Attribute type cannot be acknowledged"
+	}
+	override.PinnedValue = &value
+	return ""
 }
 
 // DeleteAttributeOverride removes an attribute override by ID

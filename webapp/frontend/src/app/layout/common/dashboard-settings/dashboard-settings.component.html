@@ -596,7 +596,10 @@
                     @if (overrideError) {
                     <p class="text-red-600 mt-2" role="alert" aria-live="assertive">{{ overrideError }}</p>
                     }
-                    <p id="override-form-hint" class="text-gray-500 mt-2">Choose a protocol and attribute ID. Custom thresholds need at least one value.</p>
+                    <p id="override-form-hint" class="text-gray-500 mt-2">
+                        Choose a protocol and attribute ID. Custom thresholds need at least one value. Acknowledge needs a device: it pins the pass to that device's current value
+                        and fails again if the value changes.
+                    </p>
 
                     <button
                         mat-raised-button
@@ -610,7 +613,8 @@
                             (newOverride.action === '' &&
                                 (newOverride.warn_above === null || newOverride.warn_above === undefined) &&
                                 (newOverride.fail_above === null || newOverride.fail_above === undefined)) ||
-                            (newOverride.action === 'force_status' && !newOverride.status)
+                            (newOverride.action === 'force_status' && !newOverride.status) ||
+                            (newOverride.action === 'acknowledge' && !newOverride.device_id)
                         "
                     >
                         Add Override

@@ -639,4 +639,15 @@ describe('DetailComponent', () => {
             expect(component.getSSDWearoutValue()).toBe(87);
         });
     });
+
+    describe('overrideDescription', () => {
+        it('names the pinned value for an acknowledge override', () => {
+            expect(component.overrideDescription({ protocol: 'NVMe', attribute_id: 'media_errors', action: 'acknowledge', pinned_value: 3 })).toBe('Acknowledged at 3');
+        });
+
+        it('distinguishes acknowledge from the permanent force_status override', () => {
+            expect(component.overrideDescription({ protocol: 'NVMe', attribute_id: 'media_errors', action: 'force_status', status: 'passed' })).toBe('Forced passed');
+            expect(component.overrideDescription({ protocol: 'NVMe', attribute_id: 'media_errors', action: 'ignore' })).toBe('Ignored');
+        });
+    });
 });

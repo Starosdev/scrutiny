@@ -14,6 +14,10 @@ type AttributeOverrideAction string
 const (
 	AttributeOverrideActionIgnore      AttributeOverrideAction = "ignore"
 	AttributeOverrideActionForceStatus AttributeOverrideAction = "force_status"
+	// AttributeOverrideActionAcknowledge passes an attribute only while its value stays
+	// at PinnedValue. Any change re-exposes the underlying evaluation, unlike
+	// force_status which masks the attribute permanently.
+	AttributeOverrideActionAcknowledge AttributeOverrideAction = "acknowledge"
 )
 
 // AttributeOverride defines a user-configured override for SMART attribute evaluation
@@ -47,6 +51,10 @@ type AttributeOverride struct {
 
 	// Custom threshold: fail when value exceeds this (takes precedence over warn)
 	FailAbove *int64 `json:"fail_above,omitempty" mapstructure:"fail_above"`
+
+	// For acknowledge action: the value the acknowledgement is pinned to.
+	// The attribute passes only while its current value equals this.
+	PinnedValue *int64 `json:"pinned_value,omitempty" mapstructure:"pinned_value"`
 }
 
 // Matches checks if this override applies to the given attribute
@@ -117,6 +125,10 @@ type Result struct {
 	WarnAbove *int64
 	// FailAbove is the custom failure threshold
 	FailAbove *int64
+	// AcknowledgedValue is the value an acknowledgement is pinned to. The attribute
+	// passes only while its current value equals this; any change restores the
+	// underlying evaluation.
+	AcknowledgedValue *int64
 }
 
 // ParseOverrides converts raw config data to typed AttributeOverride slice
@@ -159,6 +171,10 @@ func Apply(cfg config.Interface, protocol, attributeId, wwn string) *Result {
 		status := override.GetForcedStatus()
 		result.Status = &status
 		result.StatusReason = "Status forced by user configuration"
+
+	case AttributeOverrideActionAcknowledge:
+		result.AcknowledgedValue = override.PinnedValue
+
 	}
 
 	// Custom thresholds are only evaluated when action is empty (see smart.go).
@@ -248,6 +264,10 @@ func ApplyWithOverrides(overrideList []AttributeOverride, protocol, attributeId,
 		status := override.GetForcedStatus()
 		result.Status = &status
 		result.StatusReason = "Status forced by user configuration"
+
+	case AttributeOverrideActionAcknowledge:
+		result.AcknowledgedValue = override.PinnedValue
+
 	}
 
 	// Custom thresholds are only evaluated when action is empty (see smart.go).

@@ -17,6 +17,8 @@ import (
 // Custom threshold status reason strings (S1192: deduplicated string literals)
 const statusReasonWithinThreshold = "Within custom threshold"
 const statusReasonThresholdExceeded = "Custom threshold exceeded"
+const statusReasonAcknowledged = "Acknowledged at value %d"
+const statusReasonAcknowledgementStale = "Acknowledgement no longer applies: value changed from %d to %d"
 
 // applyOverrideResult applies a parsed override Result to an attribute's status fields.
 // thresholdValue is the value compared against custom WarnAbove/FailAbove thresholds.
@@ -31,6 +33,8 @@ func applyOverrideResult(result *overrides.Result, thresholdValue int64, status 
 		*status = pkg.AttributeStatusPassed
 		*statusReason = result.StatusReason
 		return true, false
+	case result.AcknowledgedValue != nil:
+		applyAcknowledgement(*result.AcknowledgedValue, thresholdValue, status, statusReason)
 	case result.Status != nil:
 		*status = *result.Status
 		*statusReason = result.StatusReason
@@ -46,6 +50,43 @@ func applyOverrideResult(result *overrides.Result, thresholdValue int64, status 
 		}
 	}
 	return false, false
+}
+
+// applyAcknowledgement passes an attribute only while its value still equals the value the
+// user acknowledged. Any change restores the underlying evaluation, which is the difference
+// between this and force_status. A manufacturer SMART failure is never masked, matching
+// ApplyDeltaEvaluation: the drive itself reporting failure is not a Scrutiny verdict the
+// user can acknowledge away.
+func applyAcknowledgement(pinnedValue, currentValue int64, status *pkg.AttributeStatus, statusReason *string) {
+	if currentValue != pinnedValue {
+		*statusReason = fmt.Sprintf(statusReasonAcknowledgementStale, pinnedValue, currentValue)
+		return
+	}
+	if pkg.AttributeStatusHas(*status, pkg.AttributeStatusFailedSmart) {
+		return
+	}
+	*status = pkg.AttributeStatusPassed
+	*statusReason = fmt.Sprintf(statusReasonAcknowledged, pinnedValue)
+}
+
+// AttributeThresholdValue returns the value an attribute is evaluated against by
+// applyOverrideResult. It is the single source of truth for which field each protocol
+// compares, so callers that need to pin or threshold a value never restate the rule.
+func AttributeThresholdValue(attribute SmartAttribute) (int64, bool) {
+	switch attr := attribute.(type) {
+	case *SmartAtaAttribute:
+		return attr.RawValue, true
+	case *SmartAtaDeviceStatAttribute:
+		return attr.Value, true
+	case *SmartFarmAttribute:
+		return attr.Value, true
+	case *SmartNvmeAttribute:
+		return attr.Value, true
+	case *SmartScsiAttribute:
+		return attr.Value, true
+	default:
+		return 0, false
+	}
 }
 
 // ApplyOverrideToAttribute applies an override to one in-memory attribute.
