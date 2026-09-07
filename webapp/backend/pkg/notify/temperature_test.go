@@ -175,6 +175,27 @@ func TestGateSharesTemperatureTracker(t *testing.T) {
 	require.Same(t, gate.Temperature(), gate.Temperature())
 }
 
+func TestTemperatureSubjectDeviceFormat(t *testing.T) {
+	cfg, err := config.Create()
+	require.NoError(t, err)
+	now := time.Now()
+	for _, tc := range []struct {
+		label, host, suffix string
+	}{
+		{"", "", "device: /dev/sda"},
+		{"Backup", "", "device: Backup (/dev/sda)"},
+		{"", "nas", "device: /dev/sda (host: nas)"},
+		{" Backup ", " nas ", "device: Backup (/dev/sda) (host: nas)"},
+		{" ", " ", "device: /dev/sda"},
+	} {
+		t.Run(tc.suffix, func(t *testing.T) {
+			device := &models.Device{DeviceName: "/dev/sda", Label: tc.label, HostId: tc.host}
+			n := NewTemperatureNotify(logrus.New(), cfg, device, 60, testTemperatureThreshold, now, now, "celsius")
+			require.Equal(t, "Scrutiny temperature alert (60°C >= 55°C for 0s) on "+tc.suffix, n.Payload.Subject)
+		})
+	}
+}
+
 func TestTemperaturePayloadPrecisionAndMissingLabels(t *testing.T) {
 	require.Equal(t, "107.6°F", formatTemperature(42, "fahrenheit"))
 	cfg, err := config.Create()

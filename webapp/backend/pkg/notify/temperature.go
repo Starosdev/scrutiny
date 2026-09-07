@@ -138,15 +138,12 @@ func NewTemperatureNotify(logger logrus.FieldLogger, appconfig config.Interface,
 	if label := strings.TrimSpace(device.Label); label != "" {
 		identifier = fmt.Sprintf(fmtLabelWithName, label, identifier)
 	}
-	if host := strings.TrimSpace(device.HostId); host != "" {
-		identifier = fmt.Sprintf("[%s]%s", host, identifier)
-	}
 	elapsed := now.Sub(since).Truncate(time.Minute)
 	if elapsed < 0 {
 		elapsed = 0
 	}
 	condition := fmt.Sprintf("%s >= %s for %s", formatTemperature(tempC, unit), formatTemperature(int64(thresholdC), unit), elapsed)
-	payload.Subject = fmt.Sprintf("Scrutiny temperature alert (%s) on device: %s", condition, identifier)
+	payload.Subject = fmt.Sprintf("Scrutiny temperature alert (%s) on %s", condition, formatSubjectDevice(identifier, payload.HostId))
 	rows := [][2]string{
 		{notifyRowFailureType, NotifyFailureTypeTemperature},
 		{"Temperature", condition}, {"Device", identifier},
