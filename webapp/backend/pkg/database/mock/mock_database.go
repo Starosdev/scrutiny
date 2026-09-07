@@ -649,6 +649,21 @@ func (mr *MockDeviceRepoMockRecorder) GetSummaryPage(ctx, options interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSummaryPage", reflect.TypeOf((*MockDeviceRepo)(nil).GetSummaryPage), ctx, options)
 }
 
+// GetTemperatureNotificationHistory mocks base method.
+func (m *MockDeviceRepo) GetTemperatureNotificationHistory(ctx context.Context, deviceID string) ([]measurements.SmartTemperature, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTemperatureNotificationHistory", ctx, deviceID)
+	ret0, _ := ret[0].([]measurements.SmartTemperature)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTemperatureNotificationHistory indicates an expected call of GetTemperatureNotificationHistory.
+func (mr *MockDeviceRepoMockRecorder) GetTemperatureNotificationHistory(ctx, deviceID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTemperatureNotificationHistory", reflect.TypeOf((*MockDeviceRepo)(nil).GetTemperatureNotificationHistory), ctx, deviceID)
+}
+
 // GetWorkloadInsights mocks base method.
 func (m *MockDeviceRepo) GetWorkloadInsights(ctx context.Context, durationKey string) (map[string]*models.WorkloadInsight, error) {
 	m.ctrl.T.Helper()

@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
@@ -79,6 +80,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 	}
 
 	clearCollectorErrorState(c, updatedDevice.DeviceID)
+	settings := loadNotificationSettings(c, logger, deviceRepo)
 
 	// check for error
 	if notify.ShouldNotify(
@@ -94,10 +96,15 @@ func UploadDeviceMetrics(c *gin.Context) {
 		deviceRepo,
 		appConfig,
 	) {
-		sendDeviceNotification(c, logger, appConfig, deviceRepo, device.DeviceID, &updatedDevice)
+		sendDeviceNotification(c, logger, appConfig, deviceRepo, device.DeviceID, &updatedDevice, settings)
 	}
 
-	maybeNotifyReplacementRiskFromSettings(c, logger, appConfig, deviceRepo, &updatedDevice, smartData.Attributes)
+	if settings != nil {
+		if settings.Metrics.NotifyOnReplacementRisk {
+			maybeNotifyReplacementRisk(c, logger, appConfig, deviceRepo, &updatedDevice, smartData.Attributes, settings)
+		}
+		maybeNotifyTemperature(c, logger, appConfig, deviceRepo, &updatedDevice, &smartData, settings, time.Now())
+	}
 
 	refreshPrometheusMetrics(c, logger, deviceRepo, device.DeviceID, &updatedDevice, &smartData)
 
@@ -169,19 +176,13 @@ func reconcileDeviceStatus(c *gin.Context, logger *logrus.Entry, deviceRepo data
 	return device, true
 }
 
-func sendDeviceNotification(c *gin.Context, logger *logrus.Entry, appConfig config.Interface, deviceRepo database.DeviceRepo, deviceID string, updatedDevice *models.Device) {
+func sendDeviceNotification(c *gin.Context, logger *logrus.Entry, appConfig config.Interface, deviceRepo database.DeviceRepo, deviceID string, updatedDevice *models.Device, settings *models.Settings) {
 	liveNotify := notify.New(logger, appConfig, *updatedDevice, false)
 	liveNotify.LoadDatabaseUrls(c, deviceRepo)
 	if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
-		if gate, ok := gateVal.(*notify.NotificationGate); ok {
-			settings, settingsErr := deviceRepo.LoadSettings(c)
-			if settingsErr != nil {
-				logger.Warnf("Failed to load settings for notification gate: %v", settingsErr)
-			}
-			if settings != nil {
-				gate.TrySend(&liveNotify, settings, false)
-				return
-			}
+		if gate, ok := gateVal.(*notify.NotificationGate); ok && gate != nil && settings != nil {
+			gate.TrySend(&liveNotify, settings, false)
+			return
 		}
 	}
 	if sendErr := liveNotify.Send(); sendErr != nil {
@@ -189,14 +190,13 @@ func sendDeviceNotification(c *gin.Context, logger *logrus.Entry, appConfig conf
 	}
 }
 
-func maybeNotifyReplacementRiskFromSettings(c *gin.Context, logger *logrus.Entry, appConfig config.Interface, deviceRepo database.DeviceRepo, updatedDevice *models.Device, attributes map[string]measurements.SmartAttribute) {
-	riskSettings, riskSettingsErr := deviceRepo.LoadSettings(c)
-	if riskSettingsErr != nil {
-		logger.Warnf("Could not load settings for replacement risk notification: %v", riskSettingsErr)
+func loadNotificationSettings(c *gin.Context, logger *logrus.Entry, deviceRepo database.DeviceRepo) *models.Settings {
+	settings, err := deviceRepo.LoadSettings(c)
+	if err != nil {
+		logger.Warnf("Could not load notification settings: %v", err)
+		return nil
 	}
-	if riskSettings != nil && riskSettings.Metrics.NotifyOnReplacementRisk {
-		maybeNotifyReplacementRisk(c, logger, appConfig, deviceRepo, updatedDevice, attributes, riskSettings)
-	}
+	return settings
 }
 
 func refreshPrometheusMetrics(c *gin.Context, logger *logrus.Entry, deviceRepo database.DeviceRepo, deviceID string, updatedDevice *models.Device, smartData *measurements.Smart) {

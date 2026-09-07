@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -24,6 +25,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
 	"github.com/gin-gonic/gin"
+	"github.com/kvz/logstreamer"
 	"github.com/nicholas-fedor/shoutrrr"
 	shoutrrrTypes "github.com/nicholas-fedor/shoutrrr/pkg/types"
 	"github.com/sirupsen/logrus"
@@ -48,6 +50,7 @@ const NotifyFailureTypeBothFailure = "SmartFailure" //SmartFailure always takes 
 const NotifyFailureTypeSmartFailure = "SmartFailure"
 const NotifyFailureTypeScrutinyFailure = "ScrutinyFailure"
 const NotifyFailureTypeMissedPing = "MissedPing"
+const NotifyFailureTypeTemperature = "Temperature"
 const NotifyFailureTypeHeartbeat = "Heartbeat"
 const NotifyFailureTypePerformanceDegradation = "PerformanceDegradation"
 const NotifyFailureTypeReport = "Report"
@@ -57,8 +60,13 @@ const AppriseURLPrefix = "apprise+"
 
 const appriseCommandName = "apprise"
 const appriseCommandTimeout = 30 * time.Second
+const scriptCommandTimeout = 30 * time.Second
+const notificationCommandWaitDelay = time.Second
+const scriptLogPrefix = " >> "
 
 var execCommandContext = exec.CommandContext
+
+var errNoNotificationEndpoints = errors.New("no notification endpoints configured")
 
 // requiredNotifyStatuses returns the device and attribute statuses that qualify for notification
 // given the configured status threshold and notify level.
@@ -525,8 +533,7 @@ func (n *Notify) Send() error {
 		uniqueUrls, len(configUrls), len(uniqueUrls))
 
 	if len(uniqueUrls) == 0 {
-		n.Logger.Warnf("No notification endpoints configured. Cannot send notification.")
-		return errors.New("no notification endpoints configured")
+		return errNoNotificationEndpoints
 	}
 
 	return n.sendToUrls(uniqueUrls)
@@ -659,6 +666,7 @@ func (n *Notify) SendAppriseNotification(rawURL string) error {
 		targetURL,
 	}
 	cmd := execCommandContext(ctx, appriseCommandName, args...)
+	cmd.WaitDelay = notificationCommandWaitDelay
 	cmd.Stdin = strings.NewReader(body)
 
 	var stdout bytes.Buffer
@@ -683,7 +691,13 @@ func (n *Notify) SendAppriseNotification(rawURL string) error {
 	return nil
 }
 
+const webhookRequestTimeout = 10 * time.Second
+
 func (n *Notify) SendWebhookNotification(webhookUrl string) error {
+	return n.sendWebhookNotification(webhookUrl, &http.Client{Timeout: webhookRequestTimeout})
+}
+
+func (n *Notify) sendWebhookNotification(webhookUrl string, client *http.Client) error {
 	n.Logger.Infof("Sending Webhook to %s", webhookUrl)
 	requestBody, err := json.Marshal(n.Payload)
 	if err != nil {
@@ -691,24 +705,32 @@ func (n *Notify) SendWebhookNotification(webhookUrl string) error {
 		return err
 	}
 
-	resp, err := http.Post(webhookUrl, "application/json", bytes.NewBuffer(requestBody))
+	resp, err := client.Post(webhookUrl, "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
 		n.Logger.Errorf("An error occurred while sending Webhook to %s: %v", webhookUrl, err)
 		return err
 	}
 	defer resp.Body.Close()
-	//we don't care about resp body content, but maybe we should log it?
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return fmt.Errorf("webhook returned HTTP %s", resp.Status)
+	}
 	return nil
 }
 
 func (n *Notify) SendScriptNotification(scriptUrl string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), scriptCommandTimeout)
+	defer cancel()
+	return n.sendScriptNotification(ctx, scriptUrl)
+}
+
+func (n *Notify) sendScriptNotification(ctx context.Context, scriptUrl string) error {
 	//check if the script exists.
 	scriptPath := strings.TrimPrefix(scriptUrl, "script://")
 	n.Logger.Infof("Executing Script %s", scriptPath)
 
 	if !utils.FileExists(scriptPath) {
 		n.Logger.Errorf("Script does not exist: %s", scriptPath)
-		return errors.New(fmt.Sprintf("custom script path does not exist: %s", scriptPath))
+		return fmt.Errorf("custom script path does not exist: %s", scriptPath)
 	}
 
 	copyEnv := os.Environ()
@@ -722,8 +744,22 @@ func (n *Notify) SendScriptNotification(scriptUrl string) error {
 	if len(n.Payload.HostId) > 0 {
 		copyEnv = append(copyEnv, fmt.Sprintf("SCRUTINY_HOST_ID=%s", n.Payload.HostId))
 	}
-	err := utils.CmdExec(scriptPath, []string{}, "", copyEnv, "")
+	// Preserve live script output on raw stdout, independent of the application
+	// logger. Separate streamers retain stream labels and flush trailing lines.
+	logger := log.New(os.Stdout, scriptLogPrefix, log.Ldate|log.Ltime)
+	stdout := logstreamer.NewLogstreamer(logger, "stdout", false)
+	stderr := logstreamer.NewLogstreamer(logger, "stderr", false)
+	defer stdout.Close()
+	defer stderr.Close()
+	cmd := exec.CommandContext(ctx, scriptPath)
+	cmd.Env = copyEnv
+	cmd.Stdout, cmd.Stderr = stdout, stderr
+	cmd.WaitDelay = notificationCommandWaitDelay
+	err := cmd.Run()
 	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("script notification interrupted: %w", ctx.Err())
+		}
 		n.Logger.Errorf("An error occurred while executing script %s: %v", scriptPath, err)
 		return err
 	}
@@ -746,6 +782,11 @@ func (n *Notify) SendShoutrrrNotification(shoutrrrUrl string) error {
 		senderUrl = appendQueryParam(senderUrl, "usehtml=Yes")
 	}
 
+	// Audited with Shoutrrr v0.17.0: router sends time out after 10s. Sender
+	// construction is synchronous; only Matrix initializes over the network,
+	// using up to two HTTP requests with 10s deadlines. Re-audit initialization
+	// and send bounds on dependency upgrades (including the v0.19.0 update).
+	// Do not wrap construction in a timeout goroutine that abandons live work.
 	sender, err := shoutrrr.CreateSender(senderUrl)
 	if err != nil {
 		n.Logger.Errorf("An error occurred while sending notifications %v: %v", shoutrrrUrl, err)

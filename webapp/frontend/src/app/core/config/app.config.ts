@@ -30,6 +30,13 @@ export type DashboardSort =
 
 export type TemperatureUnit = 'celsius' | 'fahrenheit';
 
+export const DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS = 55;
+export const DEFAULT_TEMPERATURE_DURATION_MINUTES = 30;
+export const MIN_TEMPERATURE_THRESHOLD_CELSIUS = 1;
+export const MAX_TEMPERATURE_THRESHOLD_CELSIUS = 150;
+// Largest whole-minute duration representable by the backend's int64 nanoseconds.
+export const MAX_TEMPERATURE_DURATION_MINUTES = 153722867;
+
 export type LineStroke = 'smooth' | 'straight' | 'stepline';
 
 export type DevicePoweredOnUnit = 'humanize' | 'device_hours';
@@ -129,6 +136,9 @@ export interface AppConfig {
     };
 
     metrics?: {
+        notify_on_temperature?: boolean;
+        temperature_threshold_celsius?: number;
+        temperature_duration_minutes?: number;
         notify_level?: MetricsNotifyLevel;
         status_filter_attributes?: MetricsStatusFilterAttributes;
         status_threshold?: MetricsStatusThreshold;
@@ -223,6 +233,9 @@ export const appConfig: AppConfig = {
     },
 
     metrics: {
+        notify_on_temperature: false,
+        temperature_threshold_celsius: DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS,
+        temperature_duration_minutes: DEFAULT_TEMPERATURE_DURATION_MINUTES,
         notify_level: MetricsNotifyLevel.Fail,
         status_filter_attributes: MetricsStatusFilterAttributes.All,
         status_threshold: MetricsStatusThreshold.Both,

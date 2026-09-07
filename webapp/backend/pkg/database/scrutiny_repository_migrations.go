@@ -677,6 +677,8 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 			ID:      "m20260907000000", // add usable capacity columns to zfs_pools table (#754)
 			Migrate: m20260907000000.Migrate,
 		},
+		{ID: "m20260908000000", Migrate: migrateTemperatureStorageKey},
+		{ID: "m20260908000001", Migrate: migrateTemperatureNotificationSettings},
 	})
 
 	if err := m.Migrate(); err != nil {
@@ -1638,4 +1640,32 @@ func migrateSelfTestChronology(tx *gorm.DB) error {
 		return err
 	}
 	return tx.AutoMigrate(&models.DeviceSelfTest{})
+}
+
+// Keep an existing canonical value if an installation already repaired the key.
+func migrateTemperatureStorageKey(tx *gorm.DB) error {
+	const legacyKey = "store_temperature_history"
+	const canonicalKey = "collector.store_temperature_history"
+	var count int64
+	if err := tx.Model(&models.SettingEntry{}).Where("setting_key_name = ?", canonicalKey).Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return tx.Unscoped().Where("setting_key_name = ?", legacyKey).Delete(&models.SettingEntry{}).Error
+	}
+	return tx.Model(&models.SettingEntry{}).Where("setting_key_name = ?", legacyKey).Update("setting_key_name", canonicalKey).Error
+}
+
+func migrateTemperatureNotificationSettings(tx *gorm.DB) error {
+	entries := []models.SettingEntry{
+		{SettingKeyName: "metrics.notify_on_temperature", SettingKeyDescription: "Notify when drive temperature stays at or above the threshold", SettingDataType: "bool", SettingValueBool: false},
+		{SettingKeyName: "metrics.temperature_threshold_celsius", SettingKeyDescription: "Temperature notification threshold in Celsius", SettingDataType: "numeric", SettingValueNumeric: models.DefaultTemperatureThresholdCelsius},
+		{SettingKeyName: "metrics.temperature_duration_minutes", SettingKeyDescription: "Sustained hot duration in minutes (0 = immediate)", SettingDataType: "numeric", SettingValueNumeric: models.DefaultTemperatureDurationMinutes},
+	}
+	for _, entry := range entries {
+		if err := tx.Where("setting_key_name = ?", entry.SettingKeyName).FirstOrCreate(&entry).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }

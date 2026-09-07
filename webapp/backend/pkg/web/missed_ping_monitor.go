@@ -193,7 +193,8 @@ type checkMissedPingsData struct {
 	lastSeenTimes   map[string]time.Time
 }
 
-// loadCheckData loads all data needed for missed ping checks
+// loadCheckData loads settings, flushes pending quiet-hours notifications, then
+// loads device data if missed ping checks are enabled.
 func (m *MissedPingMonitor) loadCheckData() (*checkMissedPingsData, error) {
 	deviceRepo, err := m.getOrCreateRepo()
 	if err != nil {
@@ -206,6 +207,13 @@ func (m *MissedPingMonitor) loadCheckData() (*checkMissedPingsData, error) {
 		m.resetRepo()
 		m.logger.Errorf("Failed to load settings from database: %v", err)
 		return nil, err
+	}
+
+	// Quiet-hours delivery is independent of missed ping alerts and device queries.
+	if gate := m.appEngine.NotificationGate; gate != nil && settings != nil && gate.QueueLength() > 0 {
+		flushNotify := notify.Notify{Logger: m.logger, Config: m.appEngine.Config}
+		flushNotify.LoadDatabaseUrls(m.ctx, deviceRepo)
+		gate.FlushQuietQueue(&flushNotify, settings)
 	}
 
 	if settings == nil || !settings.Metrics.NotifyOnMissedPing {
@@ -332,16 +340,6 @@ func (m *MissedPingMonitor) checkMissedPings() {
 		m.lastError = nil
 		m.statusMu.Unlock()
 		return
-	}
-
-	// Flush any notifications queued during quiet hours
-	if gate := m.appEngine.NotificationGate; gate != nil && data.settings != nil {
-		flushNotify := notify.Notify{
-			Logger: m.logger,
-			Config: m.appEngine.Config,
-		}
-		flushNotify.LoadDatabaseUrls(m.ctx, m.deviceRepo)
-		gate.FlushQuietQueue(&flushNotify, data.settings)
 	}
 
 	// Clear previous error on successful data load

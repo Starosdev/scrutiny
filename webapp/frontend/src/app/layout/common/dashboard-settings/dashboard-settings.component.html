@@ -43,7 +43,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Temperature</mat-label>
-                <mat-select [(ngModel)]="temperatureUnit">
+                <mat-select [ngModel]="temperatureUnit" (ngModelChange)="setTemperatureUnit($event)">
                     <mat-option value="celsius">Celsius</mat-option>
                     <mat-option value="fahrenheit">Fahrenheit</mat-option>
                 </mat-select>
@@ -263,6 +263,45 @@
             </mat-form-field>
         </div>
         }
+
+        <!-- Temperature Notifications -->
+        <div class="flex flex-col mt-5 gt-md:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Temperature Notifications</mat-label>
+                <mat-select [(ngModel)]="notifyOnTemperature">
+                    <mat-option [value]="true">Enabled</mat-option>
+                    <mat-option [value]="false">Disabled</mat-option>
+                </mat-select>
+                <mat-hint>Alert once when a drive stays hot</mat-hint>
+            </mat-form-field>
+        </div>
+        @if (notifyOnTemperature) {
+        <div class="flex flex-col mt-5 gt-md:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Temperature Threshold ({{ temperatureUnit === 'fahrenheit' ? '°F' : '°C' }})</mat-label>
+                <input
+                    matInput
+                    type="number"
+                    [(ngModel)]="temperatureThresholdDisplay"
+                    (blur)="normalizeTemperatureThreshold()"
+                    [min]="temperatureThresholdMin"
+                    [max]="temperatureThresholdMax"
+                    step="any"
+                    required
+                />
+                <mat-hint>Stored to the nearest whole degree Celsius</mat-hint>
+            </mat-form-field>
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">
+                <mat-label>Sustained Duration (minutes)</mat-label>
+                <input matInput type="number" [(ngModel)]="temperatureDurationMinutes" min="0" [max]="maxTemperatureDurationMinutes" step="1" required />
+                <mat-hint>0 = notify on the first reading at or above the threshold</mat-hint>
+            </mat-form-field>
+        </div>
+        @if (temperatureSettingsInvalid) {
+        <p role="alert" class="mt-5">
+            Enter a threshold between {{ temperatureThresholdMin }} and {{ temperatureThresholdMax }} and a whole-minute duration between 0 and {{ maxTemperatureDurationMinutes }}.
+        </p>
+        } }
 
         <!-- Notification Rate Limiting -->
         <div class="flex flex-col mt-5 gt-md:flex-row">
@@ -888,5 +927,5 @@
 </mat-dialog-content>
 <mat-dialog-actions align="end">
     <button mat-button mat-dialog-close>Cancel</button>
-    <button mat-button mat-dialog-close (click)="saveSettings()" cdkFocusInitial>Save</button>
+    <button mat-button mat-dialog-close (click)="saveSettings()" [disabled]="temperatureSettingsInvalid" cdkFocusInitial>Save</button>
 </mat-dialog-actions>
