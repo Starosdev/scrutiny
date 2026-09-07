@@ -118,4 +118,17 @@ RUN chmod 0644 /etc/cron.d/scrutiny && \
     chmod +x /etc/services.d/*/run && \
     chmod +x /etc/services.d/*/finish
 
+# The web process runs under s6 in this image, so a crash leaves s6 (PID 1) alive
+# and the container keeps reporting Up with RestartCount=0. docker-proxy also
+# binds the published port whether or not anything listens behind it, so neither
+# container state nor a port check can see a dead web process (#806). Request a
+# real endpoint instead.
+#
+# start-period is generous because InfluxDB startup and database migrations run
+# before the web server binds; a legitimate first start must not be marked
+# unhealthy. 8080 is the in-container listen port and is independent of whatever
+# the host publishes.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8080/api/health || exit 1
+
 ENTRYPOINT ["/init"]
