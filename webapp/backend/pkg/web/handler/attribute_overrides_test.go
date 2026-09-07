@@ -10,6 +10,7 @@ import (
 
 	mock_database "github.com/analogj/scrutiny/webapp/backend/pkg/database/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/web/handler"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/mock/gomock"
@@ -396,4 +397,86 @@ func TestDeleteAttributeOverride_Success(t *testing.T) {
 	var response map[string]interface{}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
 	require.Equal(t, true, response["success"])
+}
+
+// --- acknowledge action ---
+
+const acknowledgeDeviceID = "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e"
+
+// postOverride sends one override body to the handler and returns the recorder.
+func postOverride(t *testing.T, mockRepo *mock_database.MockDeviceRepo, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	router := setupOverridesRouter(t, mockRepo)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPost, "/api/settings/overrides", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+	return w
+}
+
+func TestSaveAttributeOverride_AcknowledgeRequiresDevice(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	t.Cleanup(mockCtrl.Finish)
+	mockRepo := mock_database.NewMockDeviceRepo(mockCtrl)
+
+	w := postOverride(t, mockRepo, `{"protocol":"NVMe","attribute_id":"media_errors","action":"acknowledge"}`)
+
+	require.Equal(t, http.StatusBadRequest, w.Code)
+	require.Contains(t, w.Body.String(), "Acknowledge requires a specific device")
+}
+
+func TestSaveAttributeOverride_PinnedValueRejectedForOtherActions(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	t.Cleanup(mockCtrl.Finish)
+	mockRepo := mock_database.NewMockDeviceRepo(mockCtrl)
+
+	w := postOverride(t, mockRepo, `{"protocol":"NVMe","attribute_id":"media_errors","action":"ignore","pinned_value":3}`)
+
+	require.Equal(t, http.StatusBadRequest, w.Code)
+	require.Contains(t, w.Body.String(), "pinned_value is only valid")
+}
+
+func TestSaveAttributeOverride_AcknowledgeResolvesPinnedValueFromLatestSubmission(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	t.Cleanup(mockCtrl.Finish)
+	mockRepo := mock_database.NewMockDeviceRepo(mockCtrl)
+
+	mockRepo.EXPECT().GetDeviceByID(gomock.Any(), acknowledgeDeviceID).Return(models.Device{
+		DeviceID: acknowledgeDeviceID,
+		WWN:      "nvme-serial",
+	}, nil)
+	mockRepo.EXPECT().GetLatestSmartSubmission(gomock.Any(), "nvme-serial").Return([]measurements.Smart{{
+		Attributes: map[string]measurements.SmartAttribute{
+			"media_errors": &measurements.SmartNvmeAttribute{AttributeId: "media_errors", Value: 7},
+		},
+	}}, nil)
+	mockRepo.EXPECT().SaveAttributeOverride(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, override *models.AttributeOverride) error {
+		require.NotNil(t, override.PinnedValue)
+		require.Equal(t, int64(7), *override.PinnedValue)
+		return nil
+	})
+	mockRepo.EXPECT().GetDevices(gomock.Any()).Return([]models.Device{}, nil)
+
+	w := postOverride(t, mockRepo, `{"protocol":"NVMe","attribute_id":"media_errors","action":"acknowledge","device_id":"`+acknowledgeDeviceID+`"}`)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestSaveAttributeOverride_AcknowledgeRejectsAttributeAbsentFromLatestSubmission(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	t.Cleanup(mockCtrl.Finish)
+	mockRepo := mock_database.NewMockDeviceRepo(mockCtrl)
+
+	mockRepo.EXPECT().GetDeviceByID(gomock.Any(), acknowledgeDeviceID).Return(models.Device{
+		DeviceID: acknowledgeDeviceID,
+		WWN:      "nvme-serial",
+	}, nil)
+	mockRepo.EXPECT().GetLatestSmartSubmission(gomock.Any(), "nvme-serial").Return([]measurements.Smart{{
+		Attributes: map[string]measurements.SmartAttribute{},
+	}}, nil)
+
+	w := postOverride(t, mockRepo, `{"protocol":"NVMe","attribute_id":"media_errors","action":"acknowledge","device_id":"`+acknowledgeDeviceID+`"}`)
+
+	require.Equal(t, http.StatusBadRequest, w.Code)
+	require.Contains(t, w.Body.String(), "Attribute not present")
 }

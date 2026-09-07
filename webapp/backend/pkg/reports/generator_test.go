@@ -59,7 +59,7 @@ func TestGenerateReport_BasicSummary(t *testing.T) {
 					DeviceStatus:   pkg.DeviceStatusPassed,
 				},
 				SmartResults: &models.SmartSummary{
-					Temp:         35,
+					Temp:         tempPtr(35),
 					PowerOnHours: 25000,
 				},
 			},
@@ -74,7 +74,7 @@ func TestGenerateReport_BasicSummary(t *testing.T) {
 					DeviceStatus:   pkg.DeviceStatusFailedSmart,
 				},
 				SmartResults: &models.SmartSummary{
-					Temp:         45,
+					Temp:         tempPtr(45),
 					PowerOnHours: 8000,
 				},
 			},
@@ -114,7 +114,7 @@ func TestGenerateReport_TempAggregation(t *testing.T) {
 					DeviceName:   "/dev/sda",
 					DeviceStatus: pkg.DeviceStatusPassed,
 				},
-				SmartResults: &models.SmartSummary{Temp: 35, PowerOnHours: 100},
+				SmartResults: &models.SmartSummary{Temp: tempPtr(35), PowerOnHours: 100},
 			},
 		},
 		tempHistory: map[string][]measurements.SmartTemperature{
@@ -146,14 +146,14 @@ func TestGenerateReport_ArchivedDevicesExcluded(t *testing.T) {
 					DeviceID: "devid-active", WWN: "wwn1", DeviceName: "/dev/sda", Archived: false,
 					DeviceStatus: pkg.DeviceStatusPassed,
 				},
-				SmartResults: &models.SmartSummary{Temp: 35},
+				SmartResults: &models.SmartSummary{Temp: tempPtr(35)},
 			},
 			"devid-archived": {
 				Device: models.Device{
 					DeviceID: "devid-archived", WWN: "wwn2", DeviceName: "/dev/sdb", Archived: true,
 					DeviceStatus: pkg.DeviceStatusPassed,
 				},
-				SmartResults: &models.SmartSummary{Temp: 30},
+				SmartResults: &models.SmartSummary{Temp: tempPtr(30)},
 			},
 		},
 		tempHistory: map[string][]measurements.SmartTemperature{},

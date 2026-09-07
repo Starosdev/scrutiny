@@ -2215,9 +2215,11 @@ components:
           type: string
         wwn:
           type: string
+        device_id:
+          type: string
         action:
           type: string
-          enum: ["", ignore, force_status]
+          enum: ["", ignore, force_status, acknowledge]
         status:
           type: string
           enum: [passed, warn, failed]
@@ -2227,6 +2229,14 @@ components:
         fail_above:
           type: integer
           format: int64
+        pinned_value:
+          type: integer
+          format: int64
+          description: >-
+            Set by the server for acknowledge overrides, read from the device's latest SMART
+            submission. The attribute passes only while its value equals this; any change
+            restores the underlying evaluation. Acknowledge requires device_id or wwn, and
+            sending pinned_value with any other action is rejected.
         source:
           type: string
         created_at:
@@ -2381,6 +2391,18 @@ components:
           format: int64
         capacity_percent:
           type: number
+        usable_used:
+          type: integer
+          format: int64
+          description: >-
+            Bytes used in the pool's root dataset, excluding parity. 0 when the
+            pool was last reported by a collector that predates this field.
+        usable_free:
+          type: integer
+          format: int64
+          description: >-
+            Bytes available in the pool's root dataset, excluding parity. 0 when
+            the pool was last reported by a collector that predates this field.
         fragmentation:
           type: integer
         total_read_errors:

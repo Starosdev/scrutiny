@@ -14,6 +14,7 @@ type AttributeOverride struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 	WarnAbove   *int64    `json:"warn_above,omitempty"`
 	FailAbove   *int64    `json:"fail_above,omitempty"`
+	PinnedValue *int64    `json:"pinned_value,omitempty"`
 	Protocol    string    `json:"protocol" gorm:"not null;uniqueIndex:idx_override_lookup"`
 	AttributeId string    `json:"attribute_id" gorm:"not null;uniqueIndex:idx_override_lookup"`
 	DeviceID    string    `json:"device_id,omitempty" gorm:"uniqueIndex:idx_override_lookup"`
@@ -40,6 +41,7 @@ func (ao *AttributeOverride) ToOverride() overrides.AttributeOverride {
 		Status:      ao.Status,
 		WarnAbove:   ao.WarnAbove,
 		FailAbove:   ao.FailAbove,
+		PinnedValue: ao.PinnedValue,
 	}
 }
 

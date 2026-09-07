@@ -68,6 +68,11 @@ type ZFSPool struct {
 	Fragmentation   int     `json:"fragmentation"`
 	CapacityPercent float64 `json:"capacity_percent"`
 
+	// UsableUsed and UsableFree come from the pool's root dataset (zfs list) and
+	// exclude parity, unlike Size/Allocated/Free which are raw vdev capacity.
+	UsableUsed int64 `json:"usable_used"`
+	UsableFree int64 `json:"usable_free"`
+
 	Ashift int `json:"ashift"`
 
 	ScrubState           ZFSScrubState `json:"scrub_state"`

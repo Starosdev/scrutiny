@@ -5,7 +5,7 @@ import { Subject } from 'rxjs';
 
 dayjs.extend(relativeTime);
 import { MatDialog } from '@angular/material/dialog';
-import { ZFSPoolModel, ZFSPoolStatus } from 'app/core/models/zfs-pool-model';
+import { ZFSPoolModel, ZFSPoolStatus, zfsUsableSize } from 'app/core/models/zfs-pool-model';
 import { AppConfig } from 'app/core/config/app.config';
 import { ZFSPoolsService } from 'app/modules/zfs-pools/zfs-pools.service';
 import { NgClass, DatePipe } from '@angular/common';
@@ -97,6 +97,8 @@ export class ZFSPoolCardComponent {
         }
         return pool.name;
     }
+
+    usableSize = zfsUsableSize;
 
     getCapacityPercentClass(percent: number): string {
         if (percent >= 90) {

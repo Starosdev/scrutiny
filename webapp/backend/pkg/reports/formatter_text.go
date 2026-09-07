@@ -2,6 +2,7 @@ package reports
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -95,10 +96,10 @@ func appendTempSummary(parts []string, devices []DeviceReport) []string {
 	parts = append(parts,
 		"",
 		"Temperature Summary:",
-		fmt.Sprintf("  Highest: %s at %dC (avg %.0fC)", hottest.DisplayName(), hottest.TempCurrent, hottest.TempAvg),
+		fmt.Sprintf("  Highest: %s at %sC (avg %.0fC)", hottest.DisplayName(), formatTemp(hottest.TempCurrent), hottest.TempAvg),
 	)
-	if coldest != nil && coldest.TempCurrent != hottest.TempCurrent {
-		parts = append(parts, fmt.Sprintf("  Lowest: %s at %dC (avg %.0fC)", coldest.DisplayName(), coldest.TempCurrent, coldest.TempAvg))
+	if coldest != nil && coldest != hottest {
+		parts = append(parts, fmt.Sprintf("  Lowest: %s at %sC (avg %.0fC)", coldest.DisplayName(), formatTemp(coldest.TempCurrent), coldest.TempAvg))
 	}
 	return parts
 }
@@ -149,17 +150,30 @@ func collectAlerts(report *ReportData, status string) []alertLine {
 	return results
 }
 
-func tempExtremes(devices []DeviceReport) (*DeviceReport, *DeviceReport) {
-	if len(devices) == 0 {
-		return nil, nil
+// formatTemp renders a temperature, or a placeholder when the device reported
+// none. A device with no reading must not print as 0C.
+const tempPlaceholder = "--"
+
+func formatTemp(temp *int64) string {
+	if temp == nil {
+		return tempPlaceholder
 	}
-	hottest := &devices[0]
-	coldest := &devices[0]
+	return strconv.FormatInt(*temp, 10)
+}
+
+// tempExtremes returns the hottest and coldest device that actually reported a
+// temperature. Devices without a reading are skipped rather than counted as 0C,
+// which previously made any of them the coldest device.
+func tempExtremes(devices []DeviceReport) (*DeviceReport, *DeviceReport) {
+	var hottest, coldest *DeviceReport
 	for i := range devices {
-		if devices[i].TempCurrent > hottest.TempCurrent {
+		if devices[i].TempCurrent == nil {
+			continue
+		}
+		if hottest == nil || *devices[i].TempCurrent > *hottest.TempCurrent {
 			hottest = &devices[i]
 		}
-		if devices[i].TempCurrent < coldest.TempCurrent || coldest.TempCurrent == 0 {
+		if coldest == nil || *devices[i].TempCurrent < *coldest.TempCurrent {
 			coldest = &devices[i]
 		}
 	}

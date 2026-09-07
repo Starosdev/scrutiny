@@ -31,6 +31,12 @@ jobs:
       - name: Test Frontend
         run: |
           make binary-frontend-test-coverage
+      - name: Guard Material theme tokens
+        # The Treo theme adapter must merge into the Angular Material theme map.
+        # Rebuilding it drops '_mat-system' and the theme silently emits no color
+        # tokens, which is how overlay backgrounds went transparent in #541.
+        # Runs after Test Frontend because that target installs node_modules.
+        run: npm --prefix webapp/frontend run test:theme
   test-backend:
     name: Test Backend
     runs-on: ubuntu-latest

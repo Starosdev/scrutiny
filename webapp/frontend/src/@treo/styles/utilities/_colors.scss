@@ -79,6 +79,47 @@
 }
 
 ///
+/// Map Treo's foreground and background intent onto the Angular Material system
+/// map. Component token functions read the system map, not the legacy
+/// 'foreground' and 'background' palettes, so a value set only in those two
+/// palettes never reaches a rendered component.
+///
+/// Only the surface family is overridden here. 'primary', 'secondary', 'error'
+/// and the palette-derived 'on-*' keys are already correct because they are
+/// built from the palettes passed to the theme. The 'surface-container*' and
+/// 'neutral*' keys are read on the M3 path only and are left untouched.
+///
+/// @access private
+/// @param {Boolean} $is-dark - Whether the theme is a dark theme
+/// @param {Map} $foreground - Treo's modified foreground palette
+/// @param {Map} $background - Treo's modified background palette
+///
+@function _treo-system-color-overrides($is-dark, $foreground, $background) {
+    @return (
+        // Overlay and container surfaces: select panel, menu, autocomplete,
+        // dialog, expansion, table, card, toolbar, paginator, sidenav.
+        surface: map.get($background, card),
+        background: map.get($background, background),
+
+        // Text and iconography.
+        on-surface: map.get($foreground, text),
+        on-surface-variant: map.get($foreground, secondary-text),
+
+        // Filled form field container and slide toggle icons. Treo has no
+        // existing value for this surface, so it is defined here.
+        surface-variant: if($is-dark, rgba(255, 255, 255, 0.06), treo-color('cool-gray', 100)),
+
+        // Form field outlines and dividers.
+        outline: map.get($foreground, divider),
+        outline-variant: map.get($foreground, disabled),
+
+        // Tooltip and snack bar, which invert against the page surface.
+        inverse-surface: map.get($background, tooltip),
+        inverse-on-surface: if($is-dark, treo-color('cool-gray', 900), white)
+    );
+}
+
+///
 /// Modify the Angular Material theme object to soften foreground colors
 /// on light themes and increase contrast on dark themes
 ///
@@ -130,22 +171,26 @@
         tooltip: if($is-dark, treo-color('cool-gray', 500), treo-color('cool-gray', 800)),
     );
 
-    // Store the modified theme.
+    // Merge the modified palettes into the theme rather than rebuilding it.
     //
-    // Since modifications only being done on 'foreground'
-    // and 'background' palettes, add them from above but
-    // keep everything else original
-    $modified-theme: (
-        primary: map.get($theme, primary),
-        accent: map.get($theme, accent),
-        warn: map.get($theme, warn),
-        is-dark: map.get($theme, is-dark),
+    // The theme map carries '_mat-system', the flat system map that every
+    // Angular Material component token function reads through
+    // 'm2-utils.get-system()', along with the internal typography and density
+    // configs. Returning a freshly built map drops all of them, 'get-system()'
+    // then returns an empty map, and every color token resolves to null, so the
+    // generated theme emits no color custom properties at all.
+    //
+    // '_mat-system' is derived from the palettes and 'is-dark' alone, so the
+    // modified 'foreground' and 'background' palettes above have to be restated
+    // against the system keys to take effect on components.
+    @return map.merge($theme, (
         foreground: $foreground,
-        background: $background
-    );
-
-    // Return the modified theme
-    @return $modified-theme;
+        background: $background,
+        _mat-system: map.merge(
+            map.get($theme, _mat-system),
+            _treo-system-color-overrides($is-dark, $foreground, $background)
+        )
+    ));
 }
 
 ///
