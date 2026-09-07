@@ -23,16 +23,16 @@ func TestGeneratePDF_CreatesFile(t *testing.T) {
 			{
 				WWN: "0x5000cca264eb01d7", Name: "/dev/sda", Model: "WDC WD40EFRX",
 				Serial: "WD-12345", Protocol: "ATA", Status: 0,
-				TempCurrent: 35, TempMin: 30, TempMax: 40, TempAvg: 35.0,
+				TempCurrent: tempPtr(35), TempMin: 30, TempMax: 40, TempAvg: 35.0,
 				PowerOnHours: 25000, PowerCycleCount: 150,
 				NewAlerts: []AlertEntry{}, ActiveFailures: []AlertEntry{},
 			},
 			{
 				WWN: "0x5002538e40a22954", Name: "/dev/nvme0", Model: "Samsung 970 EVO",
 				Serial: "S4EWNF0M", Protocol: "NVMe", Status: 1,
-				TempCurrent: 45, TempMin: 40, TempMax: 50, TempAvg: 44.5,
+				TempCurrent: tempPtr(45), TempMin: 40, TempMax: 50, TempAvg: 44.5,
 				PowerOnHours: 8000,
-				NewAlerts: []AlertEntry{},
+				NewAlerts:    []AlertEntry{},
 				ActiveFailures: []AlertEntry{
 					{AttributeID: "media_errors", AttributeName: "Media Errors", Status: "failed", Value: 3},
 				},
