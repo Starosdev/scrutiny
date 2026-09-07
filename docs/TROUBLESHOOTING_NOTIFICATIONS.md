@@ -22,9 +22,11 @@ If you are troubleshooting an Apprise target, use the Apprise documentation: htt
 
 Queued alerts are sent as a digest after quiet hours end. The background check runs at **Missed Ping Check Interval** (default: 5 minutes), even when missed-ping alerts are disabled. Failed or rate-limited digests stay queued for the next check. The queue is held in memory and is lost on server restart. Partial delivery failures can repeat a digest to targets that already succeeded.
 
+Quiet-hours digests combine alert categories and retain the legacy failure type `MissedPing` in scripts and webhooks, including digests containing temperature alerts. The subject and message identify the queued alerts.
+
 # Drive Temperature Notifications
 
-Enable this feature in **Display & Notifications**. The global defaults are 55°C for 30 minutes; equality counts as hot. A duration of 0 alerts on the first hot upload. Configure targets as for other notifications. Scripts and webhooks receive failure type `Temperature`.
+Enable this feature in **Display & Notifications**. The global defaults are 55°C for 30 minutes; equality counts as hot. A duration of 0 alerts on the first hot upload. Configure targets as for other notifications. Direct deliveries to scripts and webhooks receive failure type `Temperature`; quiet-hours digests use `MissedPing` as described above.
 
 - Evaluation happens only on successful collector uploads. A collector interval longer than the configured duration delays the alert until the next upload. Fatal smartctl uploads never evaluate temperature.
 - Readings of 0 or lower are unknown: they neither start nor reset a streak and do not trigger an alert. A valid reading below the threshold re-arms the device.
@@ -32,12 +34,13 @@ Enable this feature in **Display & Notifications**. The global defaults are 55°
 - Missing readings do not prove continuous heat; elapsed time spans gaps between valid observations. Durations longer than 24 hours may need additional time after a restart. Notification state is held in memory, so an ongoing excursion can notify once again after each restart.
 - An upload while muted/disabled resets that device's timer. Changes to the threshold or duration reset it on the next evaluated upload. Resuming starts a fresh timer without reusing old history.
 - Quiet hours queue one alert for the digest described above. Rate-limited or failed direct dispatches retry on the next hot upload. As with other notifications, partial delivery failures can repeat a message to targets that already succeeded.
+- If no targets are configured, alerts remain eligible for retry so adding a target can deliver an ongoing excursion. The notification gate logs the missing-target warning once across devices and digest retries, until a delivery succeeds or the server restarts. Target settings are still checked on each retry.
 - **Repeat Notifications** does not apply to temperature alerts. A sustained hot excursion sends one alert; cooling below the threshold re-arms silently, without a recovery notification or hysteresis margin.
 - History seeding queries time out after 10 seconds. Debug logging explains when seeding is skipped because the upload timestamp is missing/ahead of the server or the current point is not yet visible in InfluxDB. The timer then starts with the current upload.
 
 To test restart seeding, use a nonzero duration and a hot history older than that duration, then restart the web app and upload another hot reading. Using duration 0 only verifies immediate delivery, not seeding. These settings live under `metrics` in the Settings API: `notify_on_temperature`, `temperature_threshold_celsius` (1–150), and `temperature_duration_minutes` (whole minutes, 0–153722867).
 
-Omitting the threshold or duration in a Settings API request applies 55°C or 30 minutes respectively. An explicit duration of 0 means immediate delivery; an explicit threshold of 0 is rejected when alerts are enabled. The UI preserves input while typing and rounds to whole Celsius on blur or save.
+Omitting the threshold or duration in a Settings API request applies 55°C or 30 minutes respectively. An explicit duration of 0 means immediate delivery. The API rejects out-of-range values, including a threshold of 0, even when alerts are disabled. The UI preserves input while typing and rounds to whole Celsius on blur or save. When saving with alerts disabled, invalid hidden temperature values use the defaults; valid values are preserved.
 
 ## Upgrade note: temperature history storage
 

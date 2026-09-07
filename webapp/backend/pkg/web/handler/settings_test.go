@@ -33,7 +33,12 @@ func TestSaveSettingsTemperatureValidation(t *testing.T) {
 		{"immediate", true, 55, 0, http.StatusOK},
 		{"minimum", true, 1, 30, http.StatusOK},
 		{"maximum", true, 150, models.MaxTemperatureDurationMinutes, http.StatusOK},
-		{"disabled", false, -1, -1, http.StatusOK},
+		{"disabled zero threshold", false, 0, 30, http.StatusBadRequest},
+		{"disabled negative threshold", false, -1, 30, http.StatusBadRequest},
+		{"disabled high threshold", false, 151, 30, http.StatusBadRequest},
+		{"disabled negative duration", false, 55, -1, http.StatusBadRequest},
+		{"disabled overflow duration", false, 55, models.MaxTemperatureDurationMinutes + 1, http.StatusBadRequest},
+		{"disabled immediate", false, 55, 0, http.StatusOK},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := mock_database.NewMockDeviceRepo(gomock.NewController(t))
@@ -58,6 +63,7 @@ func TestSaveSettingsDefaultsOmittedTemperatureValues(t *testing.T) {
 	}{
 		{"both omitted", `{"metrics":{"notify_on_temperature":true}}`, models.DefaultTemperatureDurationMinutes},
 		{"explicit immediate", `{"metrics":{"notify_on_temperature":true,"temperature_duration_minutes":0}}`, 0},
+		{"disabled omitted", `{"metrics":{"notify_on_temperature":false}}`, models.DefaultTemperatureDurationMinutes},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := mock_database.NewMockDeviceRepo(gomock.NewController(t))

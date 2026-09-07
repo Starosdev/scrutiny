@@ -167,15 +167,17 @@ export class DashboardSettingsComponent implements OnInit {
         return value == null || !Number.isFinite(value) || value < this.temperatureThresholdMin || value > this.temperatureThresholdMax;
     }
 
-    get temperatureSettingsInvalid(): boolean {
+    get temperatureDurationInvalid(): boolean {
         return (
-            this.notifyOnTemperature &&
-            (this.temperatureThresholdInvalid ||
-                this.temperatureDurationMinutes == null ||
-                !Number.isInteger(this.temperatureDurationMinutes) ||
-                this.temperatureDurationMinutes < 0 ||
-                this.temperatureDurationMinutes > MAX_TEMPERATURE_DURATION_MINUTES)
+            this.temperatureDurationMinutes == null ||
+            !Number.isInteger(this.temperatureDurationMinutes) ||
+            this.temperatureDurationMinutes < 0 ||
+            this.temperatureDurationMinutes > MAX_TEMPERATURE_DURATION_MINUTES
         );
+    }
+
+    get temperatureSettingsInvalid(): boolean {
+        return this.notifyOnTemperature && (this.temperatureThresholdInvalid || this.temperatureDurationInvalid);
     }
 
     // Missed ping settings
@@ -661,8 +663,8 @@ export class DashboardSettingsComponent implements OnInit {
                 repeat_notifications: this.repeatNotifications,
                 notify_on_collector_error: this.notifyOnCollectorError,
                 notify_on_temperature: this.notifyOnTemperature,
-                temperature_threshold_celsius: this.temperatureThresholdCelsius ?? DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS,
-                temperature_duration_minutes: this.temperatureDurationMinutes ?? DEFAULT_TEMPERATURE_DURATION_MINUTES,
+                temperature_threshold_celsius: this.temperatureThresholdInvalid ? DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS : this.temperatureThresholdCelsius,
+                temperature_duration_minutes: this.temperatureDurationInvalid ? DEFAULT_TEMPERATURE_DURATION_MINUTES : this.temperatureDurationMinutes,
                 notify_on_missed_ping: this.notifyOnMissedPing,
                 missed_ping_timeout_minutes: this.missedPingTimeoutMinutes,
                 missed_ping_check_interval_mins: this.missedPingCheckIntervalMins,

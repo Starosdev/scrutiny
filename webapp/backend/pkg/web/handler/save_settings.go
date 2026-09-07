@@ -56,9 +56,8 @@ func SaveSettings(c *gin.Context) {
 }
 
 func validTemperatureNotifySettings(settings *models.Settings) bool {
-	return !settings.Metrics.NotifyOnTemperature ||
-		(settings.Metrics.TemperatureThresholdCelsius >= models.MinTemperatureThresholdCelsius &&
-			settings.Metrics.TemperatureThresholdCelsius <= models.MaxTemperatureThresholdCelsius &&
-			settings.Metrics.TemperatureDurationMinutes >= 0 &&
-			settings.Metrics.TemperatureDurationMinutes <= models.MaxTemperatureDurationMinutes)
+	return settings.Metrics.TemperatureThresholdCelsius >= models.MinTemperatureThresholdCelsius &&
+		settings.Metrics.TemperatureThresholdCelsius <= models.MaxTemperatureThresholdCelsius &&
+		settings.Metrics.TemperatureDurationMinutes >= 0 &&
+		settings.Metrics.TemperatureDurationMinutes <= models.MaxTemperatureDurationMinutes
 }

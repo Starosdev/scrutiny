@@ -7,7 +7,7 @@ import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { AttributeOverrideService } from 'app/core/config/attribute-override.service';
 import { DashboardService } from 'app/modules/dashboard/dashboard.service';
 import { NotifyUrlService } from 'app/core/config/notify-url.service';
-import { AppConfig, appConfig } from 'app/core/config/app.config';
+import { AppConfig, appConfig, DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS, DEFAULT_TEMPERATURE_DURATION_MINUTES } from 'app/core/config/app.config';
 
 describe('DashboardSettingsComponent temperature notifications', () => {
     let component: DashboardSettingsComponent;
@@ -103,6 +103,34 @@ describe('DashboardSettingsComponent temperature notifications', () => {
         for (const invalid of [null, -1, 0.5, Infinity, 153722868]) {
             component.temperatureDurationMinutes = invalid;
             expect(component.temperatureSettingsInvalid).toBeTrue();
+        }
+    });
+
+    it('uses valid defaults for invalid hidden values when notifications are disabled', () => {
+        component.notifyOnTemperature = false;
+        for (const invalid of [null, NaN, Infinity, -1, component.temperatureThresholdMax + 1]) {
+            component.temperatureThresholdDisplay = invalid;
+            component.saveSettings();
+            expect(configService.config?.metrics?.temperature_threshold_celsius).toBe(DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS);
+        }
+        for (const invalid of [null, NaN, Infinity, -1, 0.5, component.maxTemperatureDurationMinutes + 1]) {
+            component.temperatureDurationMinutes = invalid;
+            component.saveSettings();
+            expect(configService.config?.metrics?.temperature_duration_minutes).toBe(DEFAULT_TEMPERATURE_DURATION_MINUTES);
+            expect(configService.config?.metrics?.notify_on_temperature).toBeFalse();
+        }
+    });
+
+    it('preserves valid hidden settings, including immediate delivery, when disabled', () => {
+        component.notifyOnTemperature = false;
+        component.setTemperatureUnit('fahrenheit');
+        const threshold = 60;
+        component.temperatureThresholdCelsius = threshold;
+        for (const duration of [0, component.maxTemperatureDurationMinutes]) {
+            component.temperatureDurationMinutes = duration;
+            component.saveSettings();
+            expect(configService.config?.metrics?.temperature_threshold_celsius).toBe(threshold);
+            expect(configService.config?.metrics?.temperature_duration_minutes).toBe(duration);
         }
     });
 

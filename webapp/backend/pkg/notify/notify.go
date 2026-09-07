@@ -61,6 +61,8 @@ const appriseCommandTimeout = 30 * time.Second
 
 var execCommandContext = exec.CommandContext
 
+var errNoNotificationEndpoints = errors.New("no notification endpoints configured")
+
 // requiredNotifyStatuses returns the device and attribute statuses that qualify for notification
 // given the configured status threshold and notify level.
 func requiredNotifyStatuses(statusThreshold pkg.MetricsStatusThreshold, notifyLevel pkg.MetricsNotifyLevel) (pkg.DeviceStatus, pkg.AttributeStatus) {
@@ -526,8 +528,7 @@ func (n *Notify) Send() error {
 		uniqueUrls, len(configUrls), len(uniqueUrls))
 
 	if len(uniqueUrls) == 0 {
-		n.Logger.Warnf("No notification endpoints configured. Cannot send notification.")
-		return errors.New("no notification endpoints configured")
+		return errNoNotificationEndpoints
 	}
 
 	return n.sendToUrls(uniqueUrls)

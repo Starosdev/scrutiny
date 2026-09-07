@@ -191,7 +191,7 @@ func TestTemperatureSubjectDeviceFormat(t *testing.T) {
 		t.Run(tc.suffix, func(t *testing.T) {
 			device := &models.Device{DeviceName: "/dev/sda", Label: tc.label, HostId: tc.host}
 			n := NewTemperatureNotify(logrus.New(), cfg, device, 60, testTemperatureThreshold, now, now, "celsius")
-			require.Equal(t, "Scrutiny temperature alert (60°C >= 55°C for 0s) on "+tc.suffix, n.Payload.Subject)
+			require.Equal(t, "Scrutiny temperature alert (60°C >= 55°C for 0m) on "+tc.suffix, n.Payload.Subject)
 		})
 	}
 }
@@ -202,6 +202,25 @@ func TestTemperaturePayloadPrecisionAndMissingLabels(t *testing.T) {
 	require.NoError(t, err)
 	now := time.Now()
 	n := NewTemperatureNotify(logrus.New(), cfg, &models.Device{DeviceName: "/dev/sda"}, 60, testTemperatureThreshold, now.Add(time.Hour), now, "celsius")
-	require.Contains(t, n.Payload.Subject, "for 0s")
+	require.Contains(t, n.Payload.Subject, "for 0m")
 	require.Contains(t, n.Payload.Subject, "on device: /dev/sda")
+}
+
+func TestTemperatureElapsedFormatting(t *testing.T) {
+	cfg, err := config.Create()
+	require.NoError(t, err)
+	now := time.Now()
+	for _, tc := range []struct {
+		elapsed time.Duration
+		want    string
+	}{
+		{-time.Minute, "0m"}, {0, "0m"}, {time.Second, "0m"},
+		{time.Minute, "1m"}, {testTemperatureDuration + time.Second, "30m"},
+		{time.Hour, "1h0m"}, {time.Hour + testTemperatureDuration, "1h30m"},
+	} {
+		t.Run(tc.elapsed.String(), func(t *testing.T) {
+			n := NewTemperatureNotify(logrus.New(), cfg, &models.Device{}, testTemperatureThreshold, testTemperatureThreshold, now.Add(-tc.elapsed), now, "celsius")
+			require.Contains(t, n.Payload.Subject, "for "+tc.want+")")
+		})
+	}
 }

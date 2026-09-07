@@ -12,6 +12,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,6 +24,49 @@ func newQuietFlushNotify(t *testing.T, urls ...string) *Notify {
 	cfg.EXPECT().GetStringSlice("notify.urls").Return(nil).AnyTimes()
 	cfg.EXPECT().GetString("notify.urls").Return("").AnyTimes()
 	return &Notify{Logger: logrus.New(), Config: cfg, DatabaseUrls: urls}
+}
+
+func TestGateMissingEndpointsWarnsOnceAndKeepsRetrying(t *testing.T) {
+	n := newQuietFlushNotify(t)
+	logger, hook := logrustest.NewNullLogger()
+	logger.SetLevel(logrus.WarnLevel)
+	n.Logger = logger
+	gate := NewNotificationGate(logger)
+	settings := &models.Settings{}
+	const attempts = 20
+	var workers sync.WaitGroup
+	var accepted atomic.Int32
+	for range attempts {
+		workers.Go(func() {
+			if gate.TrySend(n, settings, false) {
+				accepted.Add(1)
+			}
+		})
+	}
+	workers.Wait()
+	require.Zero(t, accepted.Load())
+	require.Len(t, hook.AllEntries(), 1, "all devices share one missing-endpoint warning")
+	require.Contains(t, hook.LastEntry().Message, "no notification endpoints configured")
+
+	require.True(t, gate.TrySend(&Notify{Payload: Payload{Subject: "Hot drive"}}, activeQuietSettings(), false))
+	gate.FlushQuietQueue(n, settings)
+	gate.FlushQuietQueue(n, settings)
+	require.Len(t, hook.AllEntries(), 1, "digest retries must share the warning suppression")
+	require.Equal(t, 1, gate.QueueLength())
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	n.DatabaseUrls = []string{server.URL}
+	gate.FlushQuietQueue(n, settings)
+	require.Zero(t, gate.QueueLength(), "adding an endpoint must deliver the pending digest")
+	require.True(t, gate.TrySend(n, settings, false))
+
+	n.DatabaseUrls = nil
+	require.False(t, gate.TrySend(n, settings, false))
+	require.False(t, gate.TrySend(n, settings, false))
+	require.Len(t, hook.AllEntries(), 2, "successful delivery re-arms the warning")
 }
 
 func activeQuietSettings() *models.Settings {
