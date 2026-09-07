@@ -80,6 +80,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 	}
 
 	clearCollectorErrorState(c, updatedDevice.DeviceID)
+	settings := loadNotificationSettings(c, logger, deviceRepo)
 
 	// check for error
 	if notify.ShouldNotify(
@@ -95,10 +96,10 @@ func UploadDeviceMetrics(c *gin.Context) {
 		deviceRepo,
 		appConfig,
 	) {
-		sendDeviceNotification(c, logger, appConfig, deviceRepo, device.DeviceID, &updatedDevice)
+		sendDeviceNotification(c, logger, appConfig, deviceRepo, device.DeviceID, &updatedDevice, settings)
 	}
 
-	if settings := loadNotificationSettings(c, logger, deviceRepo); settings != nil {
+	if settings != nil {
 		if settings.Metrics.NotifyOnReplacementRisk {
 			maybeNotifyReplacementRisk(c, logger, appConfig, deviceRepo, &updatedDevice, smartData.Attributes, settings)
 		}
@@ -175,19 +176,13 @@ func reconcileDeviceStatus(c *gin.Context, logger *logrus.Entry, deviceRepo data
 	return device, true
 }
 
-func sendDeviceNotification(c *gin.Context, logger *logrus.Entry, appConfig config.Interface, deviceRepo database.DeviceRepo, deviceID string, updatedDevice *models.Device) {
+func sendDeviceNotification(c *gin.Context, logger *logrus.Entry, appConfig config.Interface, deviceRepo database.DeviceRepo, deviceID string, updatedDevice *models.Device, settings *models.Settings) {
 	liveNotify := notify.New(logger, appConfig, *updatedDevice, false)
 	liveNotify.LoadDatabaseUrls(c, deviceRepo)
 	if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
-		if gate, ok := gateVal.(*notify.NotificationGate); ok {
-			settings, settingsErr := deviceRepo.LoadSettings(c)
-			if settingsErr != nil {
-				logger.Warnf("Failed to load settings for notification gate: %v", settingsErr)
-			}
-			if settings != nil {
-				gate.TrySend(&liveNotify, settings, false)
-				return
-			}
+		if gate, ok := gateVal.(*notify.NotificationGate); ok && gate != nil && settings != nil {
+			gate.TrySend(&liveNotify, settings, false)
+			return
 		}
 	}
 	if sendErr := liveNotify.Send(); sendErr != nil {

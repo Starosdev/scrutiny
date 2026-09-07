@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -61,4 +62,82 @@ func TestUploadTemperatureDeliversOnce(t *testing.T) {
 		require.Equal(t, http.StatusOK, response.Code, response.Body.String())
 	}
 	require.EqualValues(t, 1, deliveries.Load())
+}
+
+func TestUploadSharesNotificationSettings(t *testing.T) {
+	for _, scenario := range []string{"available", "missing", "load error", "no gate", "nil gate", "quiet hours", "rate limit"} {
+		t.Run(scenario, func(t *testing.T) {
+			var deliveries atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				deliveries.Add(1)
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			defer server.Close()
+			cfg, err := config.Create()
+			require.NoError(t, err)
+			cfg.Set("notify.urls", []string{server.URL})
+			cfg.Set(config.DB_USER_SETTINGS_SUBKEY+".metrics.notify_level", pkg.MetricsNotifyLevelFail)
+			cfg.Set(config.DB_USER_SETTINGS_SUBKEY+".metrics.status_threshold", pkg.MetricsStatusThresholdSmart)
+			cfg.Set(config.DB_USER_SETTINGS_SUBKEY+".metrics.repeat_notifications", true)
+			settings := &models.Settings{}
+			settings.ApplyDefaults()
+			settings.Metrics.NotifyOnTemperature = true
+			if scenario == "quiet hours" {
+				now := time.Now()
+				settings.Metrics.NotificationQuietStart = now.Add(-time.Hour).Format("15:04")
+				settings.Metrics.NotificationQuietEnd = now.Add(time.Hour).Format("15:04")
+			}
+			if scenario == "rate limit" {
+				settings.Metrics.NotificationRateLimit = 1
+			}
+			var settingsError error
+			if scenario == "missing" || scenario == "load error" {
+				settings = nil
+			}
+			if scenario == "load error" {
+				settingsError = errors.New("settings unavailable")
+			}
+			device := models.Device{DeviceID: "drive", WWN: "wwn", DeviceName: "/dev/sda", DeviceStatus: pkg.DeviceStatusFailedSmart}
+			repo := mock_database.NewMockDeviceRepo(gomock.NewController(t))
+			repo.EXPECT().GetDeviceDetails(gomock.Any(), "drive").Return(device, nil)
+			repo.EXPECT().UpdateDevice(gomock.Any(), "drive", gomock.Any()).Return(device, nil)
+			repo.EXPECT().SaveSmartAttributes(gomock.Any(), "wwn", gomock.Any()).Return(measurements.Smart{Temp: 60, Status: device.DeviceStatus}, nil)
+			repo.EXPECT().UpdateDeviceHasForcedFailure(gomock.Any(), "drive", false).Return(nil)
+			repo.EXPECT().UpdateDeviceStatus(gomock.Any(), "drive", device.DeviceStatus).Return(device, nil)
+			repo.EXPECT().SaveSmartTemperature(gomock.Any(), "wwn", "drive", gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			repo.EXPECT().LoadSettings(gomock.Any()).Return(settings, settingsError).Times(1)
+			urlLoads := 1
+			if scenario == "available" || scenario == "quiet hours" || scenario == "rate limit" {
+				urlLoads++
+			}
+			repo.EXPECT().GetNotifyUrls(gomock.Any()).Return(nil, nil).Times(urlLoads)
+			gate := notify.NewNotificationGate(logrus.New())
+			if scenario == "nil gate" {
+				gate = nil
+			}
+			router := gin.New()
+			router.Use(func(c *gin.Context) {
+				c.Set("LOGGER", logrus.WithField("test", t.Name()))
+				c.Set("CONFIG", cfg)
+				c.Set("DEVICE_REPOSITORY", repo)
+				if scenario != "no gate" {
+					c.Set("NOTIFICATION_GATE", gate)
+				}
+			})
+			router.POST("/api/device/:id/smart", handler.UploadDeviceMetrics)
+			request := httptest.NewRequest(http.MethodPost, "/api/device/drive/smart", strings.NewReader(smartPayload(0)))
+			request.Header.Set("Content-Type", "application/json")
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+			require.Equal(t, http.StatusOK, response.Code)
+			wantDeliveries := urlLoads
+			if scenario == "quiet hours" {
+				require.Equal(t, urlLoads, gate.QueueLength(), "SMART and temperature must both respect quiet hours")
+				wantDeliveries = 0
+			} else if scenario == "rate limit" {
+				wantDeliveries = settings.Metrics.NotificationRateLimit
+			}
+			require.EqualValues(t, wantDeliveries, deliveries.Load())
+		})
+	}
 }
