@@ -17,18 +17,18 @@ import (
 // Each device has its own lock so history reads and delivery retries cannot race
 // with a reset or another upload, while unrelated drives proceed independently.
 type TemperatureTracker struct {
-	mu      sync.Mutex
 	devices map[string]*temperatureState
+	mu      sync.Mutex
 }
 
 type temperatureState struct {
-	mu         sync.Mutex
 	since      time.Time
+	mu         sync.Mutex
+	threshold  int
+	duration   time.Duration
 	notified   bool
 	canSeed    bool
 	configured bool
-	threshold  int
-	duration   time.Duration
 }
 
 func NewTemperatureTracker() *TemperatureTracker {
