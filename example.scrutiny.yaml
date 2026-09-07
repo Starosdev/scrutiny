@@ -383,6 +383,19 @@ failures:
 #     -d '{"metrics": {"notify_on_missed_ping": true, "missed_ping_timeout_minutes": 60}}'
 
 ######################################################################
+# Drive Temperature Notifications (API-only settings)
+#
+# Configure in Display & Notifications or through /api/settings, not this file:
+#   metrics.notify_on_temperature: false
+#   metrics.temperature_threshold_celsius: 55   # Inclusive; 1..150 Celsius
+#   metrics.temperature_duration_minutes: 30    # Whole minutes; 0 = immediate
+#
+# Alerts once per hot excursion, evaluated on collector uploads. Restart seeding
+# uses up to 24 hours of raw history when storage is enabled. An ongoing hot
+# excursion may notify again after restarting. Quiet hours and rate limits apply.
+# Threshold/duration changes and uploads while muted/disabled reset the timer.
+#
+######################################################################
 # Scheduled Reports [WIP]
 #
 # Scrutiny can generate and email periodic health reports summarizing

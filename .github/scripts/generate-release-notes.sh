@@ -89,12 +89,28 @@ extract_summary_items() {
     [ -z "$summary_block" ] && return
 
     local prose_lines bullet_lines
+    # Join wrapped prose into one item per paragraph. A summary written as
+    # hard-wrapped paragraphs used to emit one bullet per physical line, which
+    # split sentences mid-way in the published notes. Blank lines separate
+    # paragraphs; bullets are collected separately below and are unaffected.
     prose_lines=$(
         echo "$summary_block" \
-            | grep -v '^[[:space:]]*$' \
             | grep -v '^[[:space:]]*[-*] ' \
             | grep -v '^#' \
             | grep -vE '^(Closes|Fixes|Resolves) #[0-9]+$' \
+            | awk '
+                /^[[:space:]]*$/ {
+                    if (para != "") { print para; para = "" }
+                    next
+                }
+                {
+                    line = $0
+                    gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+                    if (line == "") next
+                    para = (para == "") ? line : para " " line
+                }
+                END { if (para != "") print para }
+            ' \
             | clean_text || true
     )
     bullet_lines=$(

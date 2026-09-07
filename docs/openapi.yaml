@@ -2123,6 +2123,22 @@ components:
               type: boolean
             notify_on_missed_ping:
               type: boolean
+            notify_on_temperature:
+              type: boolean
+              default: false
+              description: Notify once per sustained hot excursion, evaluated on collector uploads. Muted devices are skipped. Ignores repeat_notifications; cooling re-arms silently without a recovery notification.
+            temperature_threshold_celsius:
+              type: integer
+              minimum: 1
+              maximum: 150
+              default: 55
+              description: Inclusive Celsius threshold; defaults to 55 when omitted. Range is validated even when temperature notifications are disabled; explicit zero is rejected.
+            temperature_duration_minutes:
+              type: integer
+              minimum: 0
+              maximum: 153722867
+              default: 30
+              description: Sustained hot duration in whole minutes; defaults to 30 when omitted. Explicit 0 alerts on the first hot reading. Range is validated even when notifications are disabled. Restart history seeding is limited to 24 hours.
             notify_on_replacement_risk:
               type: boolean
             replacement_risk_notify_category:

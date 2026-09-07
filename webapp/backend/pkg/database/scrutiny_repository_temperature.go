@@ -73,6 +73,38 @@ func (sr *scrutinyRepository) GetSmartTemperatureHistoryForDevices(ctx context.C
 	return sr.getSmartTemperatureHistory(ctx, durationKey, deviceIDs)
 }
 
+// GetTemperatureNotificationHistory uses only raw points tagged with the current
+// device ID. WWNs and legacy untagged points cannot safely establish an excursion.
+func (sr *scrutinyRepository) GetTemperatureNotificationHistory(ctx context.Context, deviceID string) ([]measurements.SmartTemperature, error) {
+	if deviceID == "" {
+		return nil, fmt.Errorf("temperature notification history requires a device ID")
+	}
+	query := fmt.Sprintf(`from(bucket: %s)
+|> range(start: %s, stop: %s)
+|> filter(fn: (r) => r["_measurement"] == "temp" and r["_field"] == "temp")
+|> filter(fn: (r) => exists r["device_id"] and r["device_id"] == %s)`,
+		strconv.Quote(sr.lookupBucketName(DURATION_KEY_DAY)), INFLUX_DURATION_1_DAY, INFLUX_NOW, strconv.Quote(deviceID))
+	result, err := sr.influxQueryApi.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer result.Close()
+	var history []measurements.SmartTemperature
+	for result.Next() {
+		record := result.Record()
+		if record.ValueByKey("device_id") != deviceID || record.Time().IsZero() {
+			continue
+		}
+		point := measurements.SmartTemperature{Date: record.Time()}
+		point.Inflate("temp", record.Value())
+		history = append(history, point)
+	}
+	if err := result.Err(); err != nil {
+		return nil, fmt.Errorf("temperature notification history query failed: %w", err)
+	}
+	return history, nil
+}
+
 func (sr *scrutinyRepository) getSmartTemperatureHistory(ctx context.Context, durationKey string, deviceIDs []string) (map[string][]measurements.SmartTemperature, error) {
 	//we can get temp history for "week", "month", DURATION_KEY_YEAR, "forever"
 
@@ -116,7 +148,7 @@ func (sr *scrutinyRepository) getSmartTemperatureHistory(ctx context.Context, du
 		appendTempRecord(deviceTempHistory, result.Record().Values(), wwnToDeviceID)
 	}
 	if result.Err() != nil {
-		sr.logger.Errorf("Query error: %s", result.Err().Error())
+		return nil, fmt.Errorf("temperature history query failed: %w", result.Err())
 	}
 	return deviceTempHistory, nil
 }

@@ -18,16 +18,58 @@ If you are troubleshooting a Shoutrrr target, use their documentation: https://n
 If you are troubleshooting an Apprise target, use the Apprise documentation: https://appriseit.com/
 
 
+# Quiet Hours
+
+Queued alerts are sent as a digest after quiet hours end. The background check runs at **Missed Ping Check Interval** (default: 5 minutes), even when missed-ping alerts are disabled. Failed or rate-limited digests stay queued for the next check. The queue is held in memory and is lost on server restart. Partial delivery failures can repeat a digest to targets that already succeeded.
+
+Quiet-hours digests combine alert categories and retain the legacy failure type `MissedPing` in scripts and webhooks, including digests containing temperature alerts. The subject and message identify the queued alerts.
+
+# Drive Temperature Notifications
+
+Enable this feature in **Display & Notifications**. The global defaults are 55°C for 30 minutes; equality counts as hot. A duration of 0 alerts on the first hot upload. Configure targets as for other notifications. Direct deliveries to scripts and webhooks receive failure type `Temperature`; quiet-hours digests use `MissedPing` as described above.
+
+- Evaluation happens only on successful collector uploads. A collector interval longer than the configured duration delays the alert until the next upload. Fatal smartctl uploads never evaluate temperature.
+- Readings of 0 or lower are unknown: they neither start nor reset a streak and do not trigger an alert. A valid reading below the threshold re-arms the device.
+- After restarting the server, seeding uses up to 24 hours of raw history tagged with the exact device ID and requires **Store Temperature History** to be enabled and the current upload to appear in the query. History from another device sharing a WWN cannot seed an alert. Empty, stale, or failed queries fall back to timing from the current upload. Keep collector clocks synchronized with the server.
+- Missing readings do not prove continuous heat; elapsed time spans gaps between valid observations. Durations longer than 24 hours may need additional time after a restart. Notification state is held in memory, so an ongoing excursion can notify once again after each restart.
+- An upload while muted/disabled resets that device's timer. Changes to the threshold or duration reset it on the next evaluated upload. Resuming starts a fresh timer without reusing old history.
+- Quiet hours queue one alert for the digest described above. Rate-limited or failed direct dispatches retry on the next hot upload. As with other notifications, partial delivery failures can repeat a message to targets that already succeeded.
+- If no targets are configured, alerts remain eligible for retry so adding a target can deliver an ongoing excursion. The notification gate logs the missing-target warning once across devices and digest retries, until a delivery succeeds or the server restarts. Target settings are still checked on each retry.
+- **Repeat Notifications** does not apply to temperature alerts. A sustained hot excursion sends one alert; cooling below the threshold re-arms silently, without a recovery notification or hysteresis margin.
+- History seeding queries time out after 10 seconds. Debug logging explains when seeding is skipped because the upload timestamp is missing/ahead of the server or the current point is not yet visible in InfluxDB. The timer then starts with the current upload.
+
+To test restart seeding, use a nonzero duration and a hot history older than that duration, then restart the web app and upload another hot reading. Using duration 0 only verifies immediate delivery, not seeding. These settings live under `metrics` in the Settings API: `notify_on_temperature`, `temperature_threshold_celsius` (1–150), and `temperature_duration_minutes` (whole minutes, 0–153722867).
+
+Omitting the threshold or duration in a Settings API request applies 55°C or 30 minutes respectively. An explicit duration of 0 means immediate delivery. The API rejects out-of-range values, including a threshold of 0, even when alerts are disabled. The UI preserves input while typing and rounds to whole Celsius on blur or save. When saving with alerts disabled, invalid hidden temperature values use the defaults; valid values are preserved.
+
+## Upgrade note: temperature history storage
+
+Device-ID tagging first shipped in v1.39.0. Older history and history affected by the AnalogJ identity repair may lack the current device-ID tag and cannot seed temperature notifications. The repair does not add or correct that tag. With new tagged uploads, affected old points age out of the 24-hour seeding window. There is no 24-hour wait for alerts: fresh hot readings start the normal duration timer immediately.
+
+This identity fix applies to notification seeding. Dashboard temperature charts (`GET /api/summary/temp`) still group history by WWN and can mix devices with shared WWNs; correcting raw and downsampled chart history is separate follow-up work.
+
+The temperature notification release also repairs the legacy database key `store_temperature_history`, migrating it to `collector.store_temperature_history`. Affected installations could show history storage enabled while uploads did not store history. The migration preserves the existing preference (and prefers the canonical key if both exist), so enabled storage resumes on subsequent uploads. Existing history is retained; missing past readings cannot be reconstructed.
+
+# SMTP Notifications
+
+The SMTP `timeout` URL parameter must be positive and defaults to `10s`. It now covers connection establishment and the entire SMTP conversation, including TLS, all recipients, and message submission. Slow but working servers may exhaust this shared budget; increase it (for example, `timeout=30s`) when needed. Zero and negative values are rejected before dialing. Timeout failures remain eligible for the normal notification retry behavior.
+
+# Webhook Notifications
+
+Raw HTTP/HTTPS webhook requests time out after 10 seconds. Only HTTP 2xx responses count as successful delivery; other statuses and timeouts are failures. Direct temperature alerts retry failed dispatches on the next hot upload.
+
 # Script Notifications
 
 While the Shoutrrr library supports many popular providers for sending notifications Scrutiny also supports a "script" based
 notification system, allowing you to execute a custom script whenever a notification needs to be sent. 
+Scripts have a 30-second execution timeout and a further 1-second allowance for closing inherited output pipes. A timeout is a delivery failure; direct temperature alerts retry on the next hot upload. The direct process is terminated on timeout, but this does not guarantee termination of every descendant. Both stdout and stderr continue streaming to raw process stdout with the existing prefix and stream labels, independently of the application logger.
+
 Data is provided to this script using the following environmental variables:
 
 ```
 SCRUTINY_SUBJECT - 	eg. "Scrutiny SMART error (%s) detected on device: %s"
 SCRUTINY_DATE 
-SCRUTINY_FAILURE_TYPE - EmailTest, SmartFail, ScrutinyFail, MissedPing, Heartbeat
+SCRUTINY_FAILURE_TYPE - EmailTest, SmartFail, ScrutinyFail, MissedPing, Heartbeat, Temperature
 SCRUTINY_DEVICE_NAME - eg. /dev/sda
 SCRUTINY_DEVICE_TYPE - ATA/SCSI/NVMe
 SCRUTINY_DEVICE_SERIAL - eg. WDDJ324KSO
@@ -50,6 +92,12 @@ Then your `shoutrrr` url will look something like:
 # Apprise Targets
 
 Apprise targets must be explicit and prefixed with `apprise+` so Scrutiny can route them through the Apprise CLI without changing the existing `notify.urls` contract.
+
+Apprise has a 30-second execution timeout and a further 1-second allowance for closing inherited pipes. Its output remains buffered for failure diagnostics.
+
+Notification targets execute in parallel, so delivery waits for the slowest complete target operation. These transport budgets are not upload deadlines: history seeding, database work, and waiting behind another upload can add time.
+
+For the audited Shoutrrr v0.17.0 Matrix password-login path, sender construction can make two sequential HTTP requests with 10-second deadlines, followed by the router's 10-second send wait: approximately 30 seconds of transport execution. This is not a total device-lock or upload deadline.
 
 Examples:
 

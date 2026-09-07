@@ -1,6 +1,7 @@
 package notify
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -14,11 +15,14 @@ import (
 // All notification dispatch should pass through Gate.TrySend() instead of
 // directly calling Notify.Send().
 type NotificationGate struct {
-	logger         logrus.FieldLogger
-	sentTimestamps []time.Time          // sliding window for rate limiting
-	quietQueue     []QueuedNotification // queued during quiet hours
-	collectorError map[string]time.Time // dedupe map for collector-side errors
-	mu             sync.Mutex
+	logger            logrus.FieldLogger
+	sentTimestamps    []time.Time          // sliding window for rate limiting
+	quietQueue        []QueuedNotification // queued during quiet hours
+	collectorError    map[string]time.Time // dedupe map for collector-side errors
+	mu                sync.Mutex
+	temperature       *TemperatureTracker
+	flushMu           sync.Mutex // Serializes digest flushes without blocking notification enqueue.
+	noEndpointsWarned bool       // Reset after successful delivery; retries remain enabled.
 }
 
 // QueuedNotification holds a notification that was deferred during quiet hours.
@@ -34,8 +38,11 @@ func NewNotificationGate(logger logrus.FieldLogger) *NotificationGate {
 	return &NotificationGate{
 		logger:         logger,
 		collectorError: map[string]time.Time{},
+		temperature:    NewTemperatureTracker(),
 	}
 }
+
+func (g *NotificationGate) Temperature() *TemperatureTracker { return g.temperature }
 
 // TrySend checks rate limiting and quiet hours before dispatching a notification.
 // If quiet hours are active, the notification summary is queued for digest delivery.
@@ -64,7 +71,7 @@ func (g *NotificationGate) TrySend(n *Notify, settings *models.Settings, bypassQ
 	}
 
 	if err := n.Send(); err != nil {
-		g.logger.Warnf("Failed to send notification: %v", err)
+		g.logSendError(n.Payload.Subject, err)
 		return false
 	}
 
@@ -112,9 +119,12 @@ func (g *NotificationGate) ClearCollectorErrorState(identity string) {
 }
 
 // FlushQuietQueue checks if quiet hours have ended and sends a digest of all
-// queued notifications. Should be called periodically (e.g., at the start of
-// each missed ping check cycle).
+// queued notifications. Failed or rate-limited digests remain queued for the
+// next periodic check, regardless of whether missed ping alerts are enabled.
 func (g *NotificationGate) FlushQuietQueue(n *Notify, settings *models.Settings) {
+	g.flushMu.Lock()
+	defer g.flushMu.Unlock()
+
 	if g.isQuietHours(settings) {
 		return
 	}
@@ -126,7 +136,6 @@ func (g *NotificationGate) FlushQuietQueue(n *Notify, settings *models.Settings)
 	}
 	queued := make([]QueuedNotification, len(g.quietQueue))
 	copy(queued, g.quietQueue)
-	g.quietQueue = nil
 	g.mu.Unlock()
 
 	subject := fmt.Sprintf("Scrutiny: %d notification(s) during quiet hours", len(queued))
@@ -152,14 +161,19 @@ func (g *NotificationGate) FlushQuietQueue(n *Notify, settings *models.Settings)
 	}
 
 	if g.isRateLimited(settings) {
-		g.logger.Warnf("Quiet hours digest dropped due to rate limit")
+		g.logger.Warnf("Quiet hours digest deferred due to rate limit")
 		return
 	}
 
 	if err := n.Send(); err != nil {
-		g.logger.Warnf("Failed to send quiet hours digest: %v", err)
+		g.logSendError(n.Payload.Subject, err)
 		return
 	}
+	// Only remove the delivered batch; new notifications may have been queued
+	// while Send was running. flushMu prevents another flush removing it first.
+	g.mu.Lock()
+	g.quietQueue = append([]QueuedNotification(nil), g.quietQueue[len(queued):]...)
+	g.mu.Unlock()
 	g.recordSent()
 	g.logger.Infof("Sent quiet hours digest with %d queued notification(s)", len(queued))
 }
@@ -216,6 +230,22 @@ func (g *NotificationGate) recordSent() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.sentTimestamps = append(g.sentTimestamps, time.Now())
+	g.noEndpointsWarned = false
+}
+
+// logSendError warns once about missing endpoints across all devices and digests.
+// Other delivery failures are always logged, and no retry state is changed.
+func (g *NotificationGate) logSendError(subject string, err error) {
+	if errors.Is(err, errNoNotificationEndpoints) {
+		g.mu.Lock()
+		alreadyWarned := g.noEndpointsWarned
+		g.noEndpointsWarned = true
+		g.mu.Unlock()
+		if alreadyWarned {
+			return
+		}
+	}
+	g.logger.Warnf("Failed to send notification %q: %v", subject, err)
 }
 
 // pruneOldTimestamps removes entries older than 1 hour from the sliding window.
