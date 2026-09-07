@@ -3,9 +3,10 @@ name: Docker
 on:
   push:
     # master is deliberately absent. Every tag this workflow publishes for a
-    # release is now enabled on the tag ref alone, so a master push would build
-    # and then push an empty tag list. Releases arrive here through the v*.*.*
-    # tag that semantic-release creates.
+    # release is enabled on the tag ref alone, so a master push resolves to zero
+    # tags and buildx fails outright with "tag is needed when pushing to
+    # registry". Releases arrive here through the v*.*.* tag that
+    # semantic-release creates.
     branches:
       - beta
       - develop
@@ -17,6 +18,15 @@ on:
       - 'Makefile'
       - 'go.mod'
       - 'go.sum'
+      # CHANGELOG.md is here so a release commit matches this filter on its own
+      # terms. semantic-release tags a chore(release) commit touching only
+      # CHANGELOG.md and version.go, and version.go is excluded above, so
+      # otherwise a release commit matches nothing and the tag build runs only
+      # because path filters have not gated tag pushes in practice. The tag build
+      # is the sole publisher of release images, and a silent miss would leave a
+      # published GitHub release with no image, so the filter should not be the
+      # thing standing between a tag and its images.
+      - 'CHANGELOG.md'
     tags:
       - 'v*.*.*'
   workflow_dispatch:
