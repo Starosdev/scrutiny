@@ -173,9 +173,42 @@ func TestTemperatureMuteAndDisableResetActiveExcursion(t *testing.T) {
 		now := time.Now()
 		repo := mock_database.NewMockDeviceRepo(gomock.NewController(t))
 		maybeNotifyTemperature(c, logrus.New(), cfg, repo, device, smart, settings, now)
+		// Hold a failed send in flight while the handler processes mute/disable.
+		const deliveryTestAllowance = 2 * time.Second
+		started, release, deliveryDone := make(chan struct{}), make(chan struct{}), make(chan struct{})
+		go func() {
+			defer close(deliveryDone)
+			gate.Temperature().Evaluate("drive", 60, settings.Metrics.TemperatureThresholdCelsius,
+				time.Duration(models.DefaultTemperatureDurationMinutes)*time.Minute, now.Add(time.Hour), nil,
+				func(time.Time) bool {
+					close(started)
+					select {
+					case <-release:
+					case <-time.After(deliveryTestAllowance):
+					}
+					return false
+				})
+		}()
+		select {
+		case <-started:
+		case <-time.After(deliveryTestAllowance):
+			t.Fatal("send did not start")
+		}
 		device.Muted = muted
 		settings.Metrics.NotifyOnTemperature = muted
-		maybeNotifyTemperature(c, logrus.New(), cfg, repo, device, smart, settings, now.Add(time.Hour))
+		resetDone := make(chan struct{})
+		go func() {
+			defer close(resetDone)
+			maybeNotifyTemperature(c, logrus.New(), cfg, repo, device, smart, settings, now.Add(time.Hour))
+		}()
+		close(release)
+		for _, done := range []chan struct{}{deliveryDone, resetDone} {
+			select {
+			case <-done:
+			case <-time.After(deliveryTestAllowance):
+				t.Fatal("mute/disable remained blocked after delivery failed")
+			}
+		}
 		device.Muted = false
 		settings.Metrics.NotifyOnTemperature = true
 		settings.Collector.StoreTempHistory = true

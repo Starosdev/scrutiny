@@ -50,6 +50,10 @@ This identity fix applies to notification seeding. Dashboard temperature charts 
 
 The temperature notification release also repairs the legacy database key `store_temperature_history`, migrating it to `collector.store_temperature_history`. Affected installations could show history storage enabled while uploads did not store history. The migration preserves the existing preference (and prefers the canonical key if both exist), so enabled storage resumes on subsequent uploads. Existing history is retained; missing past readings cannot be reconstructed.
 
+# SMTP Notifications
+
+The SMTP `timeout` URL parameter must be positive and defaults to `10s`. It now covers connection establishment and the entire SMTP conversation, including TLS, all recipients, and message submission. Slow but working servers may exhaust this shared budget; increase it (for example, `timeout=30s`) when needed. Zero and negative values are rejected before dialing. Timeout failures remain eligible for the normal notification retry behavior.
+
 # Webhook Notifications
 
 Raw HTTP/HTTPS webhook requests time out after 10 seconds. Only HTTP 2xx responses count as successful delivery; other statuses and timeouts are failures. Direct temperature alerts retry failed dispatches on the next hot upload.
@@ -58,6 +62,8 @@ Raw HTTP/HTTPS webhook requests time out after 10 seconds. Only HTTP 2xx respons
 
 While the Shoutrrr library supports many popular providers for sending notifications Scrutiny also supports a "script" based
 notification system, allowing you to execute a custom script whenever a notification needs to be sent. 
+Scripts have a 30-second execution timeout and a further 1-second allowance for closing inherited output pipes. A timeout is a delivery failure; direct temperature alerts retry on the next hot upload. The direct process is terminated on timeout, but this does not guarantee termination of every descendant. Both stdout and stderr continue streaming to raw process stdout with the existing prefix and stream labels, independently of the application logger.
+
 Data is provided to this script using the following environmental variables:
 
 ```
@@ -86,6 +92,12 @@ Then your `shoutrrr` url will look something like:
 # Apprise Targets
 
 Apprise targets must be explicit and prefixed with `apprise+` so Scrutiny can route them through the Apprise CLI without changing the existing `notify.urls` contract.
+
+Apprise has a 30-second execution timeout and a further 1-second allowance for closing inherited pipes. Its output remains buffered for failure diagnostics.
+
+Notification targets execute in parallel, so delivery waits for the slowest complete target operation. These transport budgets are not upload deadlines: history seeding, database work, and waiting behind another upload can add time.
+
+For the audited Shoutrrr v0.17.0 Matrix password-login path, sender construction can make two sequential HTTP requests with 10-second deadlines, followed by the router's 10-second send wait: approximately 30 seconds of transport execution. This is not a total device-lock or upload deadline.
 
 Examples:
 

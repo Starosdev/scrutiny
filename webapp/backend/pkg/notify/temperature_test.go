@@ -121,6 +121,82 @@ func TestTemperatureEvaluationSerializesAndRetries(t *testing.T) {
 	require.EqualValues(t, 2, sends.Load())
 }
 
+func TestTemperatureStalledDeliveryAllowsResetAndRetry(t *testing.T) {
+	for _, action := range []string{"hot", "cold", "forget"} {
+		t.Run(action, func(t *testing.T) {
+			tracker := NewTemperatureTracker()
+			now := time.Now()
+			started, release, firstDone := make(chan struct{}), make(chan struct{}), make(chan struct{})
+			go func() {
+				defer close(firstDone)
+				tracker.Evaluate("drive", 60, testTemperatureThreshold, testTemperatureDuration, now,
+					func() time.Time { return now.Add(-testTemperatureDuration) },
+					func(time.Time) bool {
+						close(started)
+						select {
+						case <-release:
+						case <-time.After(transportTestAllowance):
+						}
+						return false
+					})
+			}()
+			select {
+			case <-started:
+			case <-time.After(transportTestAllowance):
+				t.Fatal("send never started")
+			}
+			// A different device must be able to finish before this send returns.
+			otherDone := make(chan struct{})
+			go func() {
+				tracker.Evaluate("other", 40, testTemperatureThreshold, testTemperatureDuration, now, nil, nil)
+				close(otherDone)
+			}()
+			select {
+			case <-otherDone:
+			case <-time.After(transportTestAllowance):
+				t.Fatal("unrelated device blocked")
+			}
+			select {
+			case <-firstDone:
+				t.Fatal("stalled send returned before release")
+			default:
+			}
+			var sent atomic.Int32
+			send := func(time.Time) bool { sent.Add(1); return true }
+			followingDone := make(chan struct{})
+			go func() {
+				defer close(followingDone)
+				switch action {
+				case "forget":
+					tracker.Forget("drive")
+				case "cold":
+					tracker.Evaluate("drive", 40, testTemperatureThreshold, testTemperatureDuration, now, nil, send)
+				case "hot":
+					tracker.Evaluate("drive", 60, testTemperatureThreshold, testTemperatureDuration, now, nil, send)
+				}
+			}()
+			close(release)
+			for _, done := range []chan struct{}{firstDone, followingDone} {
+				select {
+				case <-done:
+				case <-time.After(transportTestAllowance):
+					t.Fatal("device remained blocked after failed send")
+				}
+			}
+			if action == "hot" {
+				require.EqualValues(t, 1, sent.Load(), "failed hot send must retry")
+			} else {
+				tracker.Evaluate("drive", 60, testTemperatureThreshold, testTemperatureDuration, now, func() time.Time { t.Error("reset must not seed again"); return now.Add(-time.Hour) }, send)
+				require.Zero(t, sent.Load())
+				tracker.Evaluate("drive", 60, testTemperatureThreshold, testTemperatureDuration, now.Add(testTemperatureDuration), nil, send)
+				require.EqualValues(t, 1, sent.Load(), "fresh excursion waits the full duration")
+			}
+			tracker.Evaluate("drive", 60, testTemperatureThreshold, testTemperatureDuration, now.Add(time.Hour), nil, send)
+			require.EqualValues(t, 1, sent.Load(), "successful excursion must not repeat")
+		})
+	}
+}
+
 func TestExceededSince(t *testing.T) {
 	now := time.Now().UTC()
 	old := now.Add(-time.Hour)
