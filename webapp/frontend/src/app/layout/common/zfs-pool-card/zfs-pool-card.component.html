@@ -103,7 +103,7 @@
             <div class="mt-2 font-medium text-3xl leading-none">
                 {{ usableSize(poolSummary) | fileSize : $safeNavigationMigration(config?.file_size_si_units) }}
             </div>
-            <div class="mt-1 text-xs text-hint">{{ poolSummary.size | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} raw</div>
+            <div class="mt-1 text-sm text-secondary">{{ poolSummary.size | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} raw</div>
             } @else {
             <div class="mt-2 font-medium text-3xl leading-none">
                 {{ poolSummary.size | fileSize : $safeNavigationMigration(config?.file_size_si_units) }}
