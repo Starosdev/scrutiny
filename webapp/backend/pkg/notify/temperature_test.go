@@ -17,7 +17,7 @@ const testTemperatureThreshold = 55
 const testTemperatureDuration = 30 * time.Minute
 
 func TestTemperatureTrackerExcursions(t *testing.T) {
-	tracker := NewTemperatureTracker()
+	state := temperatureState{canSeed: true}
 	now := time.Date(2026, time.September, 7, 12, 0, 0, 0, time.UTC)
 	for _, step := range []struct {
 		temp    int64
@@ -35,7 +35,7 @@ func TestTemperatureTrackerExcursions(t *testing.T) {
 		{60, 2 * time.Hour, false, 2 * time.Hour},
 		{60, 2*time.Hour + testTemperatureDuration, true, 2 * time.Hour},
 	} {
-		fire, since := tracker.Observe("drive", step.temp, testTemperatureThreshold, testTemperatureDuration, now.Add(step.elapsed), time.Time{})
+		fire, since := state.observe(step.temp, testTemperatureThreshold, testTemperatureDuration, now.Add(step.elapsed), time.Time{})
 		require.Equal(t, step.fire, fire)
 		if step.since == 0 {
 			require.True(t, since.IsZero())
@@ -45,25 +45,22 @@ func TestTemperatureTrackerExcursions(t *testing.T) {
 	}
 }
 
-func TestTemperatureTrackerSeedRetryAndReset(t *testing.T) {
+func TestTemperatureStateSeedAndImmediate(t *testing.T) {
 	now := time.Now()
-	tracker := NewTemperatureTracker()
+	state := temperatureState{canSeed: true}
 	seed := now.Add(-time.Hour)
-	fire, since := tracker.Observe("drive", 60, testTemperatureThreshold, testTemperatureDuration, now, seed)
+	fire, since := state.observe(60, testTemperatureThreshold, testTemperatureDuration, now, seed)
 	require.True(t, fire)
 	require.Equal(t, seed, since)
-	require.True(t, tracker.HasState("drive"))
-	tracker.Unmark("drive")
-	fire, _ = tracker.Observe("drive", 60, testTemperatureThreshold, testTemperatureDuration, now, time.Time{})
-	require.True(t, fire)
-	tracker.Forget("drive")
-	require.False(t, tracker.HasState("drive"))
-	fire, since = tracker.Observe("drive", 60, testTemperatureThreshold, testTemperatureDuration, now, seed)
+	state.reset()
+	fire, since = state.observe(60, testTemperatureThreshold, testTemperatureDuration, now, seed)
 	require.False(t, fire)
 	require.Equal(t, now, since)
-	fire, _ = tracker.Observe("instant", 55, testTemperatureThreshold, 0, now, time.Time{})
+	state = temperatureState{canSeed: true}
+	fire, _ = state.observe(55, testTemperatureThreshold, 0, now, time.Time{})
 	require.True(t, fire)
-	fire, since = tracker.Observe("future", 55, testTemperatureThreshold, testTemperatureDuration, now, now.Add(time.Hour))
+	state = temperatureState{canSeed: true}
+	fire, since = state.observe(55, testTemperatureThreshold, testTemperatureDuration, now, now.Add(time.Hour))
 	require.False(t, fire)
 	require.Equal(t, now, since)
 }
@@ -74,9 +71,9 @@ func TestTemperatureTrackerSettingChangesReset(t *testing.T) {
 		threshold int
 		duration  time.Duration
 	}{{65, testTemperatureDuration}, {55, time.Hour}} {
-		tracker := NewTemperatureTracker()
-		tracker.Observe("drive", 60, testTemperatureThreshold, testTemperatureDuration, now, now.Add(-time.Hour))
-		fire, since := tracker.Observe("drive", 70, change.threshold, change.duration, now.Add(time.Hour), now)
+		state := temperatureState{canSeed: true}
+		state.observe(60, testTemperatureThreshold, testTemperatureDuration, now, now.Add(-time.Hour))
+		fire, since := state.observe(70, change.threshold, change.duration, now.Add(time.Hour), now)
 		require.False(t, fire)
 		require.Equal(t, now.Add(time.Hour), since)
 	}
@@ -90,8 +87,8 @@ func TestTemperatureSeedOnlyBeforeFirstKnownReading(t *testing.T) {
 		sends := 0
 		seed := func() time.Time { seedCalls++; return now.Add(-time.Hour) }
 		send := func(time.Time) bool { sends++; return true }
-		tracker.Evaluate("drive", true, initial, testTemperatureThreshold, testTemperatureDuration, now, seed, send)
-		tracker.Evaluate("drive", true, 60, testTemperatureThreshold, testTemperatureDuration, now, seed, send)
+		tracker.Evaluate("drive", initial, testTemperatureThreshold, testTemperatureDuration, now, seed, send)
+		tracker.Evaluate("drive", 60, testTemperatureThreshold, testTemperatureDuration, now, seed, send)
 		if initial == 0 {
 			require.Equal(t, 1, seedCalls)
 			require.Equal(t, 1, sends)
@@ -112,15 +109,14 @@ func TestTemperatureEvaluationSerializesAndRetries(t *testing.T) {
 	var workers sync.WaitGroup
 	for range uploads {
 		workers.Go(func() {
-			tracker.Evaluate("drive", true, 60, testTemperatureThreshold, testTemperatureDuration, now, seed, send)
+			tracker.Evaluate("drive", 60, testTemperatureThreshold, testTemperatureDuration, now, seed, send)
 		})
 	}
 	workers.Wait()
 	require.EqualValues(t, 1, seeds.Load())
 	require.EqualValues(t, 2, sends.Load(), "failed first attempt must retry once")
-	tracker.Evaluate("drive", false, 60, testTemperatureThreshold, testTemperatureDuration, now, seed, send)
-	require.False(t, tracker.HasState("drive"))
-	tracker.Evaluate("drive", true, 60, testTemperatureThreshold, testTemperatureDuration, now, seed, send)
+	tracker.Forget("drive")
+	tracker.Evaluate("drive", 60, testTemperatureThreshold, testTemperatureDuration, now, seed, send)
 	require.EqualValues(t, 1, seeds.Load(), "resume must not reuse history")
 	require.EqualValues(t, 2, sends.Load())
 }

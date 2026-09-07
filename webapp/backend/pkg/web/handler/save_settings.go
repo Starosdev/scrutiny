@@ -16,6 +16,9 @@ func SaveSettings(c *gin.Context) {
 	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 
 	var settings models.Settings
+	// Defaults precede decoding so omitted values differ from explicit zeroes.
+	settings.Metrics.TemperatureThresholdCelsius = models.DefaultTemperatureThresholdCelsius
+	settings.Metrics.TemperatureDurationMinutes = models.DefaultTemperatureDurationMinutes
 	err := c.BindJSON(&settings)
 	if err != nil {
 		logger.Errorln("Cannot parse updated settings", err)

@@ -27,9 +27,21 @@ Enable this feature in **Display & Notifications**. The global defaults are 55°
 - After restarting the server, seeding uses up to 24 hours of raw history and requires **Store Temperature History** to be enabled and the current upload to appear in the query. Empty, stale, or failed queries fall back to timing from the current upload. Keep collector clocks synchronized with the server.
 - Missing readings do not prove continuous heat; elapsed time spans gaps between valid observations. Durations longer than 24 hours may need additional time after a restart. Notification state is held in memory, so an ongoing excursion can notify once again after each restart.
 - An upload while muted/disabled resets that device's timer. Changes to the threshold or duration reset it on the next evaluated upload. Resuming starts a fresh timer without reusing old history.
-- Quiet hours queue one alert for the digest. Rate-limited or failed dispatches retry on the next hot upload. As with other notifications, partial delivery failures can repeat a message to targets that already succeeded.
+- Quiet hours queue one alert for the digest. Rate-limited or failed direct dispatches retry on the next hot upload. As with other notifications, partial delivery failures can repeat a message to targets that already succeeded.
+- **Repeat Notifications** does not apply to temperature alerts. A sustained hot excursion sends one alert; cooling below the threshold re-arms silently, without a recovery notification or hysteresis margin.
+- History seeding queries time out after 10 seconds. Debug logging explains when seeding is skipped because the upload timestamp is missing/ahead of the server or the current point is not yet visible in InfluxDB. The timer then starts with the current upload.
 
 To test restart seeding, use a nonzero duration and a hot history older than that duration, then restart the web app and upload another hot reading. Using duration 0 only verifies immediate delivery, not seeding. These settings live under `metrics` in the Settings API: `notify_on_temperature`, `temperature_threshold_celsius` (1–150), and `temperature_duration_minutes` (whole minutes, 0–153722867).
+
+Omitting the threshold or duration in a Settings API request applies 55°C or 30 minutes respectively. An explicit duration of 0 means immediate delivery; an explicit threshold of 0 is rejected when alerts are enabled. The UI preserves input while typing and rounds to whole Celsius on blur or save.
+
+## Upgrade note: temperature history storage
+
+The temperature notification release also repairs the legacy database key `store_temperature_history`, migrating it to `collector.store_temperature_history`. Affected installations could show history storage enabled while uploads did not store history. The migration preserves the existing preference (and prefers the canonical key if both exist), so enabled storage resumes on subsequent uploads. Existing history is retained; missing past readings cannot be reconstructed.
+
+# Webhook Notifications
+
+Raw HTTP/HTTPS webhook requests time out after 10 seconds. Only HTTP 2xx responses count as successful delivery; other statuses and timeouts are failures. Direct temperature alerts retry failed dispatches on the next hot upload.
 
 # Script Notifications
 

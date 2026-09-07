@@ -1663,14 +1663,8 @@ func migrateTemperatureNotificationSettings(tx *gorm.DB) error {
 		{SettingKeyName: "metrics.temperature_duration_minutes", SettingKeyDescription: "Sustained hot duration in minutes (0 = immediate)", SettingDataType: "numeric", SettingValueNumeric: models.DefaultTemperatureDurationMinutes},
 	}
 	for _, entry := range entries {
-		var count int64
-		if err := tx.Model(&models.SettingEntry{}).Where("setting_key_name = ?", entry.SettingKeyName).Count(&count).Error; err != nil {
+		if err := tx.Where("setting_key_name = ?", entry.SettingKeyName).FirstOrCreate(&entry).Error; err != nil {
 			return err
-		}
-		if count == 0 {
-			if err := tx.Create(&entry).Error; err != nil {
-				return err
-			}
 		}
 	}
 	return nil

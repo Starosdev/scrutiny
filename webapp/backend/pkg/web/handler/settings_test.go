@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -46,6 +47,30 @@ func TestSaveSettingsTemperatureValidation(t *testing.T) {
 			request.Header.Set("Content-Type", "application/json")
 			router.ServeHTTP(response, request)
 			require.Equal(t, tc.status, response.Code, response.Body.String())
+		})
+	}
+}
+
+func TestSaveSettingsDefaultsOmittedTemperatureValues(t *testing.T) {
+	for _, tc := range []struct {
+		name, body string
+		duration   int
+	}{
+		{"both omitted", `{"metrics":{"notify_on_temperature":true}}`, models.DefaultTemperatureDurationMinutes},
+		{"explicit immediate", `{"metrics":{"notify_on_temperature":true,"temperature_duration_minutes":0}}`, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := mock_database.NewMockDeviceRepo(gomock.NewController(t))
+			repo.EXPECT().SaveSettings(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, settings models.Settings) error {
+				require.Equal(t, models.DefaultTemperatureThresholdCelsius, settings.Metrics.TemperatureThresholdCelsius)
+				require.Equal(t, tc.duration, settings.Metrics.TemperatureDurationMinutes)
+				return nil
+			})
+			response := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodPost, "/api/settings", strings.NewReader(tc.body))
+			request.Header.Set("Content-Type", "application/json")
+			setupSettingsRouter(t, repo, false).ServeHTTP(response, request)
+			require.Equal(t, http.StatusOK, response.Code, response.Body.String())
 		})
 	}
 }

@@ -43,7 +43,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Temperature</mat-label>
-                <mat-select [(ngModel)]="temperatureUnit">
+                <mat-select [ngModel]="temperatureUnit" (ngModelChange)="setTemperatureUnit($event)">
                     <mat-option value="celsius">Celsius</mat-option>
                     <mat-option value="fahrenheit">Fahrenheit</mat-option>
                 </mat-select>
@@ -279,7 +279,16 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Temperature Threshold ({{ temperatureUnit === 'fahrenheit' ? '°F' : '°C' }})</mat-label>
-                <input matInput type="number" [(ngModel)]="temperatureThresholdDisplay" [min]="temperatureThresholdMin" [max]="temperatureThresholdMax" step="any" required />
+                <input
+                    matInput
+                    type="number"
+                    [(ngModel)]="temperatureThresholdDisplay"
+                    (blur)="normalizeTemperatureThreshold()"
+                    [min]="temperatureThresholdMin"
+                    [max]="temperatureThresholdMax"
+                    step="any"
+                    required
+                />
                 <mat-hint>Stored to the nearest whole degree Celsius</mat-hint>
             </mat-form-field>
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">

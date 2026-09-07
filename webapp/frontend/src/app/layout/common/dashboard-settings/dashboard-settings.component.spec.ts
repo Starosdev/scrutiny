@@ -1,4 +1,5 @@
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatIconTestingModule } from '@angular/material/icon/testing';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject } from 'rxjs';
 import { DashboardSettingsComponent } from './dashboard-settings.component';
@@ -10,11 +11,13 @@ import { AppConfig, appConfig } from 'app/core/config/app.config';
 
 describe('DashboardSettingsComponent temperature notifications', () => {
     let component: DashboardSettingsComponent;
+    let fixture: ComponentFixture<DashboardSettingsComponent>;
     let configService: { config$: BehaviorSubject<AppConfig>; config?: AppConfig };
 
-    beforeEach(() => {
+    beforeEach(async () => {
         configService = { config$: new BehaviorSubject<AppConfig>(structuredClone(appConfig)) };
         TestBed.configureTestingModule({
+            imports: [DashboardSettingsComponent, MatIconTestingModule],
             providers: [
                 { provide: ScrutinyConfigService, useValue: configService },
                 { provide: AttributeOverrideService, useValue: {} },
@@ -23,11 +26,13 @@ describe('DashboardSettingsComponent temperature notifications', () => {
                 { provide: HttpClient, useValue: {} },
             ],
         });
-        component = TestBed.runInInjectionContext(() => new DashboardSettingsComponent());
+        fixture = TestBed.createComponent(DashboardSettingsComponent);
+        component = fixture.componentInstance;
         spyOn(component, 'loadOverrides');
         spyOn(component, 'loadOverrideDevices');
         spyOn(component, 'loadNotifyUrls');
-        component.ngOnInit();
+        fixture.detectChanges();
+        await fixture.whenStable();
     });
 
     it('loads defaults and preserves an immediate duration', () => {
@@ -41,21 +46,37 @@ describe('DashboardSettingsComponent temperature notifications', () => {
     it('round-trips both units and switches units without changing Celsius', () => {
         component.temperatureThresholdDisplay = 60;
         expect(component.temperatureThresholdCelsius).toBe(60);
-        component.temperatureUnit = 'fahrenheit';
+        component.setTemperatureUnit('fahrenheit');
         expect(component.temperatureThresholdDisplay).toBe(140);
         component.temperatureThresholdDisplay = 131;
         expect(component.temperatureThresholdCelsius).toBe(55);
         expect(component.temperatureThresholdMin).toBeCloseTo(33.8);
         expect(component.temperatureThresholdMax).toBe(302);
-        component.temperatureUnit = 'celsius';
+        component.setTemperatureUnit('celsius');
         expect(component.temperatureThresholdDisplay).toBe(55);
         expect(component.temperatureThresholdMin).toBe(1);
         expect(component.temperatureThresholdMax).toBe(150);
     });
 
+    it('keeps boundary thresholds valid when switching units and leaves invalid values invalid', () => {
+        component.notifyOnTemperature = true;
+        for (const boundary of [component.temperatureThresholdMin, component.temperatureThresholdMax]) {
+            component.temperatureThresholdDisplay = boundary;
+            component.setTemperatureUnit('fahrenheit');
+            expect(component.temperatureSettingsInvalid).toBeFalse();
+            component.setTemperatureUnit('celsius');
+            expect(component.temperatureThresholdDisplay).toBe(boundary);
+            expect(component.temperatureSettingsInvalid).toBeFalse();
+        }
+        component.temperatureThresholdDisplay = 0.9;
+        component.setTemperatureUnit('fahrenheit');
+        component.setTemperatureUnit('celsius');
+        expect(component.temperatureSettingsInvalid).toBeTrue();
+    });
+
     it('saves Celsius and a zero duration', () => {
         component.notifyOnTemperature = true;
-        component.temperatureUnit = 'fahrenheit';
+        component.setTemperatureUnit('fahrenheit');
         component.temperatureThresholdDisplay = 140;
         component.temperatureDurationMinutes = 0;
         component.saveSettings();
@@ -66,8 +87,9 @@ describe('DashboardSettingsComponent temperature notifications', () => {
 
     it('rejects empty and out-of-range thresholds while enabled', () => {
         component.notifyOnTemperature = true;
-        for (const invalid of [null, NaN, 0, 151]) {
+        for (const invalid of [null, NaN, Infinity, 0, 0.9, 150.1, 151]) {
             component.temperatureThresholdDisplay = invalid;
+            component.normalizeTemperatureThreshold();
             expect(component.temperatureSettingsInvalid).toBeTrue();
             component.saveSettings();
             expect(configService.config).toBeUndefined();
@@ -82,5 +104,63 @@ describe('DashboardSettingsComponent temperature notifications', () => {
             component.temperatureDurationMinutes = invalid;
             expect(component.temperatureSettingsInvalid).toBeTrue();
         }
+    });
+
+    it('preserves fractional and empty values when switching units and rounds on save', () => {
+        component.notifyOnTemperature = true;
+        component.temperatureThresholdDisplay = 55.5;
+        component.setTemperatureUnit('fahrenheit');
+        expect(component.temperatureThresholdDisplay).toBeCloseTo(131.9);
+        component.setTemperatureUnit('celsius');
+        expect(component.temperatureThresholdDisplay).toBeCloseTo(55.5);
+        component.saveSettings();
+        expect(configService.config?.metrics?.temperature_threshold_celsius).toBe(56);
+        component.temperatureThresholdDisplay = null;
+        component.setTemperatureUnit('fahrenheit');
+        expect(component.temperatureThresholdDisplay).toBeNull();
+    });
+
+    it('preserves Fahrenheit keystrokes until blur', async () => {
+        configService.config$.next({ ...appConfig, temperature_unit: 'fahrenheit', metrics: { ...appConfig.metrics, notify_on_temperature: true } });
+        fixture.changeDetectorRef.markForCheck();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        const input: HTMLInputElement = fixture.nativeElement.querySelector('input[step="any"]');
+        for (const value of ['1', '13', '131', '131.5']) {
+            input.value = value;
+            input.dispatchEvent(new Event('input'));
+            fixture.detectChanges();
+            await fixture.whenStable();
+            expect(input.value).toBe(value);
+        }
+        input.dispatchEvent(new Event('blur'));
+        fixture.detectChanges();
+        await fixture.whenStable();
+        expect(input.value).toBe('131');
+    });
+
+    it('normalizes fractional Celsius only on blur and keeps cleared input invalid', async () => {
+        component.notifyOnTemperature = true;
+        fixture.changeDetectorRef.markForCheck();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        const input: HTMLInputElement = fixture.nativeElement.querySelector('input[step="any"]');
+        input.value = '55.5';
+        input.dispatchEvent(new Event('input'));
+        fixture.detectChanges();
+        await fixture.whenStable();
+        expect(input.value).toBe('55.5');
+        input.dispatchEvent(new Event('blur'));
+        fixture.detectChanges();
+        await fixture.whenStable();
+        expect(input.value).toBe('56');
+        input.value = '';
+        input.dispatchEvent(new Event('input'));
+        input.dispatchEvent(new Event('blur'));
+        fixture.detectChanges();
+        await fixture.whenStable();
+        expect(input.value).toBe('');
+        const saveButton: HTMLButtonElement = fixture.nativeElement.querySelector('button[cdkFocusInitial]');
+        expect(saveButton.disabled).toBeTrue();
     });
 });

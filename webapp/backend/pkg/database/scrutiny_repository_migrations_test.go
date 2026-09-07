@@ -24,6 +24,9 @@ func createMigrationTestRepositoryWithAppliedMigrations(t *testing.T, appliedMig
 	dbPath := filepath.Join(tempDir, "scrutiny.db")
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	require.NoError(t, err)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
 
 	require.NoError(t, db.AutoMigrate(
 		&m20260301000000.Device{},
@@ -618,6 +621,8 @@ func TestTemperatureMigrationsPreserveExistingCanonicalSettings(t *testing.T) {
 		{SettingKeyName: "store_temperature_history", SettingDataType: "bool", SettingValueBool: true},
 		{SettingKeyName: "collector.store_temperature_history", SettingDataType: "bool", SettingValueBool: false},
 		{SettingKeyName: "metrics.temperature_duration_minutes", SettingDataType: "numeric", SettingValueNumeric: 0},
+		{SettingKeyName: "metrics.notify_on_temperature", SettingDataType: "bool", SettingValueBool: true},
+		{SettingKeyName: "metrics.temperature_threshold_celsius", SettingDataType: "numeric", SettingValueNumeric: 65},
 	}
 	require.NoError(t, repo.gormClient.Create(&entries).Error)
 	for range 2 {
@@ -630,6 +635,11 @@ func TestTemperatureMigrationsPreserveExistingCanonicalSettings(t *testing.T) {
 	var duration models.SettingEntry
 	require.NoError(t, repo.gormClient.First(&duration, entries[2].ID).Error)
 	require.Zero(t, duration.SettingValueNumeric)
+	var enabled, threshold models.SettingEntry
+	require.NoError(t, repo.gormClient.First(&enabled, entries[3].ID).Error)
+	require.True(t, enabled.SettingValueBool)
+	require.NoError(t, repo.gormClient.First(&threshold, entries[4].ID).Error)
+	require.Equal(t, 65, threshold.SettingValueNumeric)
 	var count int64
 	require.NoError(t, repo.gormClient.Model(&models.SettingEntry{}).Count(&count).Error)
 	require.EqualValues(t, 4, count)

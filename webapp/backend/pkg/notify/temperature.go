@@ -46,20 +46,6 @@ func (t *TemperatureTracker) state(deviceID string) *temperatureState {
 	return state
 }
 
-func (t *TemperatureTracker) HasState(deviceID string) bool {
-	s := t.state(deviceID)
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return !s.since.IsZero()
-}
-
-func (t *TemperatureTracker) Unmark(deviceID string) {
-	s := t.state(deviceID)
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.notified = false
-}
-
 // Forget retains a tombstone: resuming must not revive an earlier hot history.
 func (t *TemperatureTracker) Forget(deviceID string) {
 	s := t.state(deviceID)
@@ -72,13 +58,6 @@ func (s *temperatureState) reset() {
 	s.since = time.Time{}
 	s.notified = false
 	s.canSeed = false
-}
-
-func (t *TemperatureTracker) Observe(deviceID string, tempC int64, thresholdC int, minDuration time.Duration, now, firstSeen time.Time) (bool, time.Time) {
-	s := t.state(deviceID)
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.observe(tempC, thresholdC, minDuration, now, firstSeen)
 }
 
 func (s *temperatureState) observe(tempC int64, thresholdC int, minDuration time.Duration, now, firstSeen time.Time) (bool, time.Time) {
@@ -109,14 +88,10 @@ func (s *temperatureState) observe(tempC int64, thresholdC int, minDuration time
 
 // Evaluate serializes the entire observation/send transaction for one device.
 // A failed send preserves the streak and retries on the next hot upload.
-func (t *TemperatureTracker) Evaluate(deviceID string, enabled bool, tempC int64, thresholdC int, minDuration time.Duration, now time.Time, seed func() time.Time, send func(time.Time) bool) {
+func (t *TemperatureTracker) Evaluate(deviceID string, tempC int64, thresholdC int, minDuration time.Duration, now time.Time, seed func() time.Time, send func(time.Time) bool) {
 	s := t.state(deviceID)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if !enabled {
-		s.reset()
-		return
-	}
 	var firstSeen time.Time
 	if s.canSeed && tempC > 0 && tempC >= int64(thresholdC) && seed != nil {
 		firstSeen = seed()

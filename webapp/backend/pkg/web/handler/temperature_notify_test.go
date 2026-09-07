@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -16,16 +17,26 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMaybeNotifyTemperature(t *testing.T) {
-	for _, scenario := range []string{"seeded", "disabled", "muted", "storage disabled", "history error", "stale history", "empty history", "unknown", "quiet hours", "retry", "no gate", "missing gate", "wrong gate", "invalid settings", "missing date", "future date", "immediate", "rate limit"} {
+	for _, scenario := range []string{"seeded", "disabled", "muted", "storage disabled", "history error", "stale history", "empty history", "unknown", "quiet hours", "retry", "no gate", "missing gate", "wrong gate", "invalid settings", "missing date", "future date", "immediate", "rate limit", "webhook error", "request canceled"} {
 		t.Run(scenario, func(t *testing.T) {
 			cfg, err := config.Create()
 			require.NoError(t, err)
+			logger, hook := logrustest.NewNullLogger()
+			logger.SetLevel(logrus.DebugLevel)
 			var deliveries atomic.Int32
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { deliveries.Add(1); w.WriteHeader(http.StatusOK) }))
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				attempt := deliveries.Add(1)
+				if scenario == "webhook error" && attempt == 1 {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+			}))
 			defer server.Close()
 			cfg.Set("notify.urls", []string{server.URL})
 			settings := &models.Settings{}
@@ -39,6 +50,7 @@ func TestMaybeNotifyTemperature(t *testing.T) {
 			repo := mock_database.NewMockDeviceRepo(gomock.NewController(t))
 			gate := notify.NewNotificationGate(logrus.New())
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = httptest.NewRequest(http.MethodPost, "/api/device/drive/smart", nil)
 			c.Set("NOTIFICATION_GATE", gate)
 			history := []measurements.SmartTemperature{{Date: now.Add(-time.Hour), Temp: 60}, {Date: now, Temp: 60}}
 			var historyErr error
@@ -51,6 +63,11 @@ func TestMaybeNotifyTemperature(t *testing.T) {
 				settings.Collector.StoreTempHistory = false
 			case "history error":
 				historyErr = errors.New("influx unavailable")
+			case "request canceled":
+				requestCtx, cancel := context.WithCancel(c.Request.Context())
+				cancel()
+				c.Request = c.Request.WithContext(requestCtx)
+				historyErr = context.Canceled
 			case "stale history":
 				history = history[:1]
 			case "empty history":
@@ -84,15 +101,25 @@ func TestMaybeNotifyTemperature(t *testing.T) {
 			}
 			validGate := scenario != "no gate" && scenario != "missing gate" && scenario != "wrong gate"
 			if settings.Metrics.NotifyOnTemperature && !device.Muted && settings.Collector.StoreTempHistory && smart.Temp > 0 && validGate && scenario != "invalid settings" && !smart.Date.IsZero() && !smart.Date.After(now) {
-				repo.EXPECT().GetSmartTemperatureHistoryForDevices(gomock.Any(), "day", []string{"drive"}).Return(map[string][]measurements.SmartTemperature{"drive": history}, historyErr).Times(1)
+				repo.EXPECT().GetSmartTemperatureHistoryForDevices(gomock.Any(), "day", []string{"drive"}).Do(func(ctx context.Context, _ string, _ []string) {
+					deadline, exists := ctx.Deadline()
+					require.True(t, exists, "history lookup must have a deadline")
+					require.Positive(t, time.Until(deadline))
+					require.LessOrEqual(t, time.Until(deadline), temperatureHistoryTimeout)
+					if scenario == "request canceled" {
+						require.ErrorIs(t, ctx.Err(), context.Canceled)
+					}
+				}).Return(map[string][]measurements.SmartTemperature{"drive": history}, historyErr).Times(1)
 			}
-			if scenario == "seeded" || scenario == "quiet hours" || scenario == "retry" || scenario == "immediate" || scenario == "rate limit" {
+			if scenario == "seeded" || scenario == "quiet hours" || scenario == "retry" || scenario == "immediate" || scenario == "rate limit" || scenario == "webhook error" {
 				repo.EXPECT().GetNotifyUrls(gomock.Any()).Return(nil, nil).AnyTimes()
 			}
 			for range 2 {
-				maybeNotifyTemperature(c, logrus.New(), cfg, repo, device, smart, settings, now)
+				maybeNotifyTemperature(c, logger, cfg, repo, device, smart, settings, now)
 			}
 			switch scenario {
+			case "webhook error":
+				require.EqualValues(t, 2, deliveries.Load(), "HTTP failure must be retried on the next upload")
 			case "seeded", "immediate":
 				require.EqualValues(t, 1, deliveries.Load())
 			case "quiet hours":
@@ -110,8 +137,10 @@ func TestMaybeNotifyTemperature(t *testing.T) {
 			default:
 				require.Zero(t, deliveries.Load())
 			}
-			if scenario == "disabled" || scenario == "muted" || scenario == "unknown" || !validGate || scenario == "invalid settings" {
-				require.False(t, gate.Temperature().HasState("drive"))
+			if scenario == "stale history" || scenario == "empty history" || scenario == "missing date" || scenario == "future date" {
+				require.NotNil(t, hook.LastEntry())
+				require.Equal(t, logrus.DebugLevel, hook.LastEntry().Level)
+				require.Contains(t, hook.LastEntry().Message, "temperature history")
 			}
 		})
 	}
@@ -128,6 +157,10 @@ func TestTemperatureMuteAndDisableResetActiveExcursion(t *testing.T) {
 	for _, muted := range []bool{true, false} {
 		cfg, err := config.Create()
 		require.NoError(t, err)
+		var deliveries atomic.Int32
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { deliveries.Add(1); w.WriteHeader(http.StatusOK) }))
+		defer server.Close()
+		cfg.Set("notify.urls", []string{server.URL})
 		settings := &models.Settings{}
 		settings.ApplyDefaults()
 		settings.Metrics.NotifyOnTemperature = true
@@ -140,17 +173,18 @@ func TestTemperatureMuteAndDisableResetActiveExcursion(t *testing.T) {
 		now := time.Now()
 		repo := mock_database.NewMockDeviceRepo(gomock.NewController(t))
 		maybeNotifyTemperature(c, logrus.New(), cfg, repo, device, smart, settings, now)
-		require.True(t, gate.Temperature().HasState("drive"))
 		device.Muted = muted
 		settings.Metrics.NotifyOnTemperature = muted
 		maybeNotifyTemperature(c, logrus.New(), cfg, repo, device, smart, settings, now.Add(time.Hour))
-		require.False(t, gate.Temperature().HasState("drive"))
 		device.Muted = false
 		settings.Metrics.NotifyOnTemperature = true
 		settings.Collector.StoreTempHistory = true
 		smart.Date = now.Add(time.Hour)
 		// No history or notification calls are expected when resuming.
 		maybeNotifyTemperature(c, logrus.New(), cfg, repo, device, smart, settings, now.Add(time.Hour))
-		require.True(t, gate.Temperature().HasState("drive"))
+		require.Zero(t, deliveries.Load())
+		repo.EXPECT().GetNotifyUrls(gomock.Any()).Return(nil, nil).Times(1)
+		maybeNotifyTemperature(c, logrus.New(), cfg, repo, device, smart, settings, now.Add(time.Hour+time.Duration(models.DefaultTemperatureDurationMinutes)*time.Minute))
+		require.EqualValues(t, 1, deliveries.Load(), "resumed excursion must wait the full duration")
 	}
 }

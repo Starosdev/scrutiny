@@ -658,6 +658,8 @@ Checks run on collector uploads, so delivery can be delayed until the next uploa
 
 Changing the threshold/duration or receiving an upload while notifications are disabled or the device is muted resets its timer. On resuming, the next hot reading starts a new timer. See [temperature notification troubleshooting](docs/TROUBLESHOOTING_NOTIFICATIONS.md#drive-temperature-notifications) for details.
 
+Temperature alerts ignore **Repeat Notifications**: each sustained hot excursion sends one alert, and cooling below the threshold re-arms silently. There is no recovery notification or hysteresis margin.
+
 ### Heartbeat Notifications
 
 Scrutiny can send periodic "all clear" heartbeat notifications to confirm the monitoring system is running and all drives are healthy. This is useful for integration with uptime monitoring tools like Uptime Kuma. When delivered through SMTP or HTML-capable Apprise targets, heartbeat messages use the same HTML-plus-plain-text pattern as the other email notifications.

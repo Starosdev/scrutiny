@@ -120,23 +120,38 @@ export class DashboardSettingsComponent implements OnInit {
     notifyOnCollectorError: boolean;
 
     notifyOnTemperature = false;
-    temperatureThresholdCelsius: number | null = DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS;
+    temperatureThresholdDisplay: number | null = DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS;
     temperatureDurationMinutes: number | null = DEFAULT_TEMPERATURE_DURATION_MINUTES;
     readonly maxTemperatureDurationMinutes = MAX_TEMPERATURE_DURATION_MINUTES;
 
-    get temperatureThresholdDisplay(): number | null {
-        if (this.temperatureThresholdCelsius == null) {
+    get temperatureThresholdCelsius(): number | null {
+        const value = this.temperatureThresholdDisplay;
+        if (value == null || !Number.isFinite(value)) {
             return null;
         }
-        return this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.celsiusToFahrenheit(this.temperatureThresholdCelsius) : this.temperatureThresholdCelsius;
+        return Math.round(this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.fahrenheitToCelsius(value) : value);
     }
 
-    set temperatureThresholdDisplay(value: number | null) {
-        if (value == null || !Number.isFinite(value)) {
-            this.temperatureThresholdCelsius = null;
-            return;
+    set temperatureThresholdCelsius(value: number | null) {
+        this.temperatureThresholdDisplay = value == null ? null : this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.celsiusToFahrenheit(value) : value;
+    }
+
+    setTemperatureUnit(unit: string): void {
+        const value = this.temperatureThresholdDisplay;
+        let celsius = value == null ? null : this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.fahrenheitToCelsius(value) : value;
+        if (celsius != null && !this.temperatureThresholdInvalid) {
+            // Keep valid boundary values in range despite floating-point conversion error.
+            celsius = Math.min(MAX_TEMPERATURE_THRESHOLD_CELSIUS, Math.max(MIN_TEMPERATURE_THRESHOLD_CELSIUS, celsius));
         }
-        this.temperatureThresholdCelsius = Math.round(this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.fahrenheitToCelsius(value) : value);
+        this.temperatureUnit = unit;
+        this.temperatureThresholdCelsius = celsius;
+    }
+
+    normalizeTemperatureThreshold(): void {
+        if (!this.temperatureThresholdInvalid) {
+            const celsius = this.temperatureThresholdCelsius;
+            this.temperatureThresholdCelsius = celsius;
+        }
     }
 
     get temperatureThresholdMin(): number {
@@ -147,13 +162,15 @@ export class DashboardSettingsComponent implements OnInit {
         return this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.celsiusToFahrenheit(MAX_TEMPERATURE_THRESHOLD_CELSIUS) : MAX_TEMPERATURE_THRESHOLD_CELSIUS;
     }
 
+    get temperatureThresholdInvalid(): boolean {
+        const value = this.temperatureThresholdDisplay;
+        return value == null || !Number.isFinite(value) || value < this.temperatureThresholdMin || value > this.temperatureThresholdMax;
+    }
+
     get temperatureSettingsInvalid(): boolean {
         return (
             this.notifyOnTemperature &&
-            (this.temperatureThresholdCelsius == null ||
-                !Number.isInteger(this.temperatureThresholdCelsius) ||
-                this.temperatureThresholdCelsius < MIN_TEMPERATURE_THRESHOLD_CELSIUS ||
-                this.temperatureThresholdCelsius > MAX_TEMPERATURE_THRESHOLD_CELSIUS ||
+            (this.temperatureThresholdInvalid ||
                 this.temperatureDurationMinutes == null ||
                 !Number.isInteger(this.temperatureDurationMinutes) ||
                 this.temperatureDurationMinutes < 0 ||
@@ -614,6 +631,7 @@ export class DashboardSettingsComponent implements OnInit {
         if (this.temperatureSettingsInvalid) {
             return;
         }
+        this.normalizeTemperatureThreshold();
         const newSettings: AppConfig = {
             navigation: {
                 show_zfs_pools: this.showZFSPools,
