@@ -11,6 +11,12 @@ import (
 
 // summaryRecordRepository builds the minimum repository needed to exercise
 // applySummaryRecord, which reads only the logger.
+// tempPtr returns a pointer to v. SmartSummary.Temp is a pointer so that an
+// absent reading and a genuine 0C are distinguishable.
+func tempPtr(v int64) *int64 {
+	return &v
+}
+
 func summaryRecordRepository() *scrutinyRepository {
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
@@ -36,7 +42,7 @@ func TestApplySummaryRecordToleratesMissingFields(t *testing.T) {
 	cases := []struct {
 		name                 string
 		values               map[string]interface{}
-		expectedTemp         int64
+		expectedTemp         *int64
 		expectedPowerOnHours int64
 		expectedDate         time.Time
 	}{
@@ -48,7 +54,7 @@ func TestApplySummaryRecordToleratesMissingFields(t *testing.T) {
 				"power_on_hours": int64(1200),
 				"_time":          collected,
 			},
-			expectedTemp:         35,
+			expectedTemp:         tempPtr(35),
 			expectedPowerOnHours: 1200,
 			expectedDate:         collected,
 		},
@@ -80,7 +86,7 @@ func TestApplySummaryRecordToleratesMissingFields(t *testing.T) {
 				"temp":       int64(35),
 				"_time":      collected,
 			},
-			expectedTemp: 35,
+			expectedTemp: tempPtr(35),
 			expectedDate: collected,
 		},
 		{
@@ -90,7 +96,7 @@ func TestApplySummaryRecordToleratesMissingFields(t *testing.T) {
 				"temp":           int64(35),
 				"power_on_hours": int64(1200),
 			},
-			expectedTemp:         35,
+			expectedTemp:         tempPtr(35),
 			expectedPowerOnHours: 1200,
 		},
 		{
@@ -118,7 +124,12 @@ func TestApplySummaryRecordToleratesMissingFields(t *testing.T) {
 
 			results := summaries["dev-1"].SmartResults
 			require.NotNil(t, results, "a partial record must still produce a summary")
-			require.Equal(t, testCase.expectedTemp, results.Temp)
+			if testCase.expectedTemp == nil {
+				require.Nil(t, results.Temp, "an absent temperature must stay absent, not become 0")
+			} else {
+				require.NotNil(t, results.Temp)
+				require.Equal(t, *testCase.expectedTemp, *results.Temp)
+			}
 			require.Equal(t, testCase.expectedPowerOnHours, results.PowerOnHours)
 			require.Equal(t, testCase.expectedDate, results.CollectorDate)
 		})

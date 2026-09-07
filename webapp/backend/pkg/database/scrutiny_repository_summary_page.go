@@ -213,10 +213,10 @@ func summaryPowerOnHours(summary *models.DeviceSummary) int64 {
 }
 
 func summaryTemperature(summary *models.DeviceSummary) int64 {
-	if summary.SmartResults == nil {
+	if summary.SmartResults == nil || summary.SmartResults.Temp == nil {
 		return int64(^uint64(0) >> 1)
 	}
-	return summary.SmartResults.Temp
+	return *summary.SmartResults.Temp
 }
 
 func compareInt64(left, right int64) int {

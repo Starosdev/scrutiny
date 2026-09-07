@@ -568,9 +568,11 @@ func (sr *scrutinyRepository) applySummaryRecord(summaries map[string]*models.De
 	}
 
 	smartSummary := &models.SmartSummary{
-		Temp:          temp,
 		PowerOnHours:  powerOnHours,
 		CollectorDate: collectorDate,
+	}
+	if hasTemp {
+		smartSummary.Temp = &temp
 	}
 	smartSummary.PercentageUsed = extractPercentageUsed(values)
 	smartSummary.WearoutValue = extractWearoutValue(values)

@@ -160,7 +160,10 @@ func buildDeviceReport(summary *models.DeviceSummary, temps []measurements.Smart
 	}
 
 	if summary.SmartResults != nil {
-		dr.TempCurrent = summary.SmartResults.Temp
+		if summary.SmartResults.Temp != nil {
+			val := *summary.SmartResults.Temp
+			dr.TempCurrent = &val
+		}
 		dr.PowerOnHours = summary.SmartResults.PowerOnHours
 
 		if summary.SmartResults.PercentageUsed != nil {
@@ -175,10 +178,10 @@ func buildDeviceReport(summary *models.DeviceSummary, temps []measurements.Smart
 
 	if len(temps) > 0 {
 		dr.TempMin, dr.TempMax, dr.TempAvg = aggregateTemps(temps)
-	} else {
-		dr.TempMin = dr.TempCurrent
-		dr.TempMax = dr.TempCurrent
-		dr.TempAvg = float64(dr.TempCurrent)
+	} else if dr.TempCurrent != nil {
+		dr.TempMin = *dr.TempCurrent
+		dr.TempMax = *dr.TempCurrent
+		dr.TempAvg = float64(*dr.TempCurrent)
 	}
 
 	return dr
