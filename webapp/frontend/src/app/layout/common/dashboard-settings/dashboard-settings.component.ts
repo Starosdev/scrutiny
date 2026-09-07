@@ -2,6 +2,11 @@ import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/cor
 import { HttpClient } from '@angular/common/http';
 import {
     AppConfig,
+    DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS,
+    DEFAULT_TEMPERATURE_DURATION_MINUTES,
+    MIN_TEMPERATURE_THRESHOLD_CELSIUS,
+    MAX_TEMPERATURE_THRESHOLD_CELSIUS,
+    MAX_TEMPERATURE_DURATION_MINUTES,
     DashboardColumns,
     DashboardDensity,
     DashboardHostPageSize,
@@ -43,6 +48,7 @@ import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, Ma
 import { MatTooltip } from '@angular/material/tooltip';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { HelpLinkIconComponent } from 'app/layout/common/help-link-icon/help-link-icon.component';
+import { TemperaturePipe } from 'app/shared/temperature.pipe';
 
 @Component({
     selector: 'app-dashboard-settings',
@@ -112,6 +118,67 @@ export class DashboardSettingsComponent implements OnInit {
 
     // Collector error settings
     notifyOnCollectorError: boolean;
+
+    notifyOnTemperature = false;
+    temperatureThresholdDisplay: number | null = DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS;
+    temperatureDurationMinutes: number | null = DEFAULT_TEMPERATURE_DURATION_MINUTES;
+    readonly maxTemperatureDurationMinutes = MAX_TEMPERATURE_DURATION_MINUTES;
+
+    get temperatureThresholdCelsius(): number | null {
+        const value = this.temperatureThresholdDisplay;
+        if (value == null || !Number.isFinite(value)) {
+            return null;
+        }
+        return Math.round(this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.fahrenheitToCelsius(value) : value);
+    }
+
+    set temperatureThresholdCelsius(value: number | null) {
+        this.temperatureThresholdDisplay = value == null ? null : this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.celsiusToFahrenheit(value) : value;
+    }
+
+    setTemperatureUnit(unit: string): void {
+        const value = this.temperatureThresholdDisplay;
+        let celsius = value == null ? null : this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.fahrenheitToCelsius(value) : value;
+        if (celsius != null && !this.temperatureThresholdInvalid) {
+            // Keep valid boundary values in range despite floating-point conversion error.
+            celsius = Math.min(MAX_TEMPERATURE_THRESHOLD_CELSIUS, Math.max(MIN_TEMPERATURE_THRESHOLD_CELSIUS, celsius));
+        }
+        this.temperatureUnit = unit;
+        this.temperatureThresholdCelsius = celsius;
+    }
+
+    normalizeTemperatureThreshold(): void {
+        if (!this.temperatureThresholdInvalid) {
+            const celsius = this.temperatureThresholdCelsius;
+            this.temperatureThresholdCelsius = celsius;
+        }
+    }
+
+    get temperatureThresholdMin(): number {
+        return this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.celsiusToFahrenheit(MIN_TEMPERATURE_THRESHOLD_CELSIUS) : MIN_TEMPERATURE_THRESHOLD_CELSIUS;
+    }
+
+    get temperatureThresholdMax(): number {
+        return this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.celsiusToFahrenheit(MAX_TEMPERATURE_THRESHOLD_CELSIUS) : MAX_TEMPERATURE_THRESHOLD_CELSIUS;
+    }
+
+    get temperatureThresholdInvalid(): boolean {
+        const value = this.temperatureThresholdDisplay;
+        return value == null || !Number.isFinite(value) || value < this.temperatureThresholdMin || value > this.temperatureThresholdMax;
+    }
+
+    get temperatureDurationInvalid(): boolean {
+        return (
+            this.temperatureDurationMinutes == null ||
+            !Number.isInteger(this.temperatureDurationMinutes) ||
+            this.temperatureDurationMinutes < 0 ||
+            this.temperatureDurationMinutes > MAX_TEMPERATURE_DURATION_MINUTES
+        );
+    }
+
+    get temperatureSettingsInvalid(): boolean {
+        return this.notifyOnTemperature && (this.temperatureThresholdInvalid || this.temperatureDurationInvalid);
+    }
 
     // Missed ping settings
     notifyOnMissedPing: boolean;
@@ -241,6 +308,10 @@ export class DashboardSettingsComponent implements OnInit {
 
             // Collector error settings
             this.notifyOnCollectorError = config.metrics.notify_on_collector_error ?? true;
+
+            this.notifyOnTemperature = config.metrics.notify_on_temperature ?? false;
+            this.temperatureThresholdCelsius = config.metrics.temperature_threshold_celsius ?? DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS;
+            this.temperatureDurationMinutes = config.metrics.temperature_duration_minutes ?? DEFAULT_TEMPERATURE_DURATION_MINUTES;
 
             // Missed ping settings
             this.notifyOnMissedPing = config.metrics.notify_on_missed_ping ?? false;
@@ -559,6 +630,10 @@ export class DashboardSettingsComponent implements OnInit {
     }
 
     saveSettings(): void {
+        if (this.temperatureSettingsInvalid) {
+            return;
+        }
+        this.normalizeTemperatureThreshold();
         const newSettings: AppConfig = {
             navigation: {
                 show_zfs_pools: this.showZFSPools,
@@ -587,6 +662,9 @@ export class DashboardSettingsComponent implements OnInit {
                 status_threshold: this.statusThreshold as MetricsStatusThreshold,
                 repeat_notifications: this.repeatNotifications,
                 notify_on_collector_error: this.notifyOnCollectorError,
+                notify_on_temperature: this.notifyOnTemperature,
+                temperature_threshold_celsius: this.temperatureThresholdInvalid ? DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS : this.temperatureThresholdCelsius,
+                temperature_duration_minutes: this.temperatureDurationInvalid ? DEFAULT_TEMPERATURE_DURATION_MINUTES : this.temperatureDurationMinutes,
                 notify_on_missed_ping: this.notifyOnMissedPing,
                 missed_ping_timeout_minutes: this.missedPingTimeoutMinutes,
                 missed_ping_check_interval_mins: this.missedPingCheckIntervalMins,

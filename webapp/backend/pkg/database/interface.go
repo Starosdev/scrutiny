@@ -72,6 +72,7 @@ type DeviceRepo interface {
 	GetSummaryPage(ctx context.Context, options models.DeviceSummaryPageOptions) (*models.DeviceSummaryPage, error)
 	GetSmartTemperatureHistory(ctx context.Context, durationKey string) (map[string][]measurements.SmartTemperature, error)
 	GetSmartTemperatureHistoryForDevices(ctx context.Context, durationKey string, deviceIDs []string) (map[string][]measurements.SmartTemperature, error)
+	GetTemperatureNotificationHistory(ctx context.Context, deviceID string) ([]measurements.SmartTemperature, error)
 	SaveFilesystemSummary(ctx context.Context, payload models.FilesystemSummaryUpload) error
 	GetFilesystemSummary(ctx context.Context) (map[string][]models.FilesystemCapacity, map[string]*models.FilesystemHostStatus, error)
 

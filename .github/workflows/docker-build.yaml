@@ -2,8 +2,12 @@ name: Docker
 
 on:
   push:
+    # master is deliberately absent. Every tag this workflow publishes for a
+    # release is enabled on the tag ref alone, so a master push resolves to zero
+    # tags and buildx fails outright with "tag is needed when pushing to
+    # registry". Releases arrive here through the v*.*.* tag that
+    # semantic-release creates.
     branches:
-      - master
       - beta
       - develop
     paths:
@@ -14,6 +18,15 @@ on:
       - 'Makefile'
       - 'go.mod'
       - 'go.sum'
+      # CHANGELOG.md is here so a release commit matches this filter on its own
+      # terms. semantic-release tags a chore(release) commit touching only
+      # CHANGELOG.md and version.go, and version.go is excluded above, so
+      # otherwise a release commit matches nothing and the tag build runs only
+      # because path filters have not gated tag pushes in practice. The tag build
+      # is the sole publisher of release images, and a silent miss would leave a
+      # published GitHub release with no image, so the filter should not be the
+      # thing standing between a tag and its images.
+      - 'CHANGELOG.md'
     tags:
       - 'v*.*.*'
   workflow_dispatch:
@@ -72,7 +85,7 @@ jobs:
             # Manual trigger
             type=raw,value=${{ inputs.tag_suffix }}-collector,enable=${{ github.event_name == 'workflow_dispatch' }}
             # Branch builds
-            type=raw,value=latest-collector,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=latest-collector,enable=${{ startsWith(github.ref, 'refs/tags/v') && github.event_name != 'workflow_dispatch' }}
             type=raw,value=beta-collector,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-collector,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             # Version tags
@@ -132,7 +145,7 @@ jobs:
             # Manual trigger
             type=raw,value=${{ inputs.tag_suffix }}-collector-omnibus,enable=${{ github.event_name == 'workflow_dispatch' }}
             # Branch builds
-            type=raw,value=latest-collector-omnibus,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=latest-collector-omnibus,enable=${{ startsWith(github.ref, 'refs/tags/v') && github.event_name != 'workflow_dispatch' }}
             type=raw,value=beta-collector-omnibus,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-collector-omnibus,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             # Version tags
@@ -192,7 +205,7 @@ jobs:
             # Manual trigger
             type=raw,value=${{ inputs.tag_suffix }}-collector-zfs,enable=${{ github.event_name == 'workflow_dispatch' }}
             # Branch builds
-            type=raw,value=latest-collector-zfs,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=latest-collector-zfs,enable=${{ startsWith(github.ref, 'refs/tags/v') && github.event_name != 'workflow_dispatch' }}
             type=raw,value=beta-collector-zfs,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-collector-zfs,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             # Version tags
@@ -252,7 +265,7 @@ jobs:
             # Manual trigger
             type=raw,value=${{ inputs.tag_suffix }}-collector-mdadm,enable=${{ github.event_name == 'workflow_dispatch' }}
             # Branch builds
-            type=raw,value=latest-collector-mdadm,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=latest-collector-mdadm,enable=${{ startsWith(github.ref, 'refs/tags/v') && github.event_name != 'workflow_dispatch' }}
             type=raw,value=beta-collector-mdadm,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-collector-mdadm,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             # Version tags
@@ -312,7 +325,7 @@ jobs:
             # Manual trigger
             type=raw,value=${{ inputs.tag_suffix }}-collector-btrfs,enable=${{ github.event_name == 'workflow_dispatch' }}
             # Branch builds
-            type=raw,value=latest-collector-btrfs,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=latest-collector-btrfs,enable=${{ startsWith(github.ref, 'refs/tags/v') && github.event_name != 'workflow_dispatch' }}
             type=raw,value=beta-collector-btrfs,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-collector-btrfs,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             # Version tags
@@ -372,7 +385,7 @@ jobs:
             # Manual trigger
             type=raw,value=${{ inputs.tag_suffix }}-collector-performance,enable=${{ github.event_name == 'workflow_dispatch' }}
             # Branch builds
-            type=raw,value=latest-collector-performance,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=latest-collector-performance,enable=${{ startsWith(github.ref, 'refs/tags/v') && github.event_name != 'workflow_dispatch' }}
             type=raw,value=beta-collector-performance,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-collector-performance,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             # Version tags
@@ -433,7 +446,7 @@ jobs:
             # Manual trigger
             type=raw,value=${{ inputs.tag_suffix }}-web,enable=${{ github.event_name == 'workflow_dispatch' }}
             # Branch builds
-            type=raw,value=latest-web,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=latest-web,enable=${{ startsWith(github.ref, 'refs/tags/v') && github.event_name != 'workflow_dispatch' }}
             type=raw,value=beta-web,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-web,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             # Version tags
@@ -495,7 +508,7 @@ jobs:
             type=raw,value=${{ inputs.tag_suffix }}-omnibus,enable=${{ github.event_name == 'workflow_dispatch' }}
             type=raw,value=${{ inputs.tag_suffix }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.tag_suffix == 'latest' }}
             # Branch builds
-            type=raw,value=latest-omnibus,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=latest-omnibus,enable=${{ startsWith(github.ref, 'refs/tags/v') && github.event_name != 'workflow_dispatch' }}
             type=raw,value=beta-omnibus,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=beta,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-omnibus,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
@@ -504,8 +517,18 @@ jobs:
             type=semver,pattern={{version}}-omnibus
             type=semver,pattern={{major}}.{{minor}}-omnibus
             type=semver,pattern={{major}}-omnibus,enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
-            # Default latest tag (omnibus is the default)
-            type=raw,value=latest,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
+            # Bare version tags. Omnibus is the default image, so it owns the
+            # unsuffixed names. Without these the default image can only be
+            # tracked as a moving latest and cannot be pinned to a release.
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+            # Default latest tag (omnibus is the default). Tag refs only: a
+            # release pushes chore(release) to master and creates the tag, and
+            # those runs are in different concurrency groups, so enabling both
+            # let whichever finished last win latest. For v1.72.0 the master
+            # build won and latest did not point at the released image.
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && github.event_name != 'workflow_dispatch' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
