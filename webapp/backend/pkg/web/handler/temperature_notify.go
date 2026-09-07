@@ -37,15 +37,15 @@ func maybeNotifyTemperature(c *gin.Context, logger logrus.FieldLogger, appConfig
 		}
 		queryCtx, cancel := context.WithTimeout(c.Request.Context(), temperatureHistoryTimeout)
 		defer cancel()
-		history, err := repo.GetSmartTemperatureHistoryForDevices(queryCtx, database.DURATION_KEY_DAY, []string{device.DeviceID})
+		history, err := repo.GetTemperatureNotificationHistory(queryCtx, device.DeviceID)
 		if err != nil {
 			logger.Warnf("Could not seed temperature notification for device %s: %v", device.DeviceID, err)
 			return now
 		}
 		// The query must contain this upload, rather than only stale stored points.
-		for _, point := range history[device.DeviceID] {
+		for _, point := range history {
 			if point.Date.Equal(smart.Date) && point.Temp == smart.Temp {
-				return notify.ExceededSince(history[device.DeviceID], threshold, now)
+				return notify.ExceededSince(history, threshold, now)
 			}
 		}
 		logger.Debugf("Skipping temperature history seed for device %s: current upload is not visible in history; check collector/InfluxDB clocks and write visibility", device.DeviceID)

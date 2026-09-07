@@ -101,7 +101,7 @@ func TestMaybeNotifyTemperature(t *testing.T) {
 			}
 			validGate := scenario != "no gate" && scenario != "missing gate" && scenario != "wrong gate"
 			if settings.Metrics.NotifyOnTemperature && !device.Muted && settings.Collector.StoreTempHistory && smart.Temp > 0 && validGate && scenario != "invalid settings" && !smart.Date.IsZero() && !smart.Date.After(now) {
-				repo.EXPECT().GetSmartTemperatureHistoryForDevices(gomock.Any(), "day", []string{"drive"}).Do(func(ctx context.Context, _ string, _ []string) {
+				repo.EXPECT().GetTemperatureNotificationHistory(gomock.Any(), "drive").Do(func(ctx context.Context, _ string) {
 					deadline, exists := ctx.Deadline()
 					require.True(t, exists, "history lookup must have a deadline")
 					require.Positive(t, time.Until(deadline))
@@ -109,7 +109,7 @@ func TestMaybeNotifyTemperature(t *testing.T) {
 					if scenario == "request canceled" {
 						require.ErrorIs(t, ctx.Err(), context.Canceled)
 					}
-				}).Return(map[string][]measurements.SmartTemperature{"drive": history}, historyErr).Times(1)
+				}).Return(history, historyErr).Times(1)
 			}
 			if scenario == "seeded" || scenario == "quiet hours" || scenario == "retry" || scenario == "immediate" || scenario == "rate limit" || scenario == "webhook error" {
 				repo.EXPECT().GetNotifyUrls(gomock.Any()).Return(nil, nil).AnyTimes()

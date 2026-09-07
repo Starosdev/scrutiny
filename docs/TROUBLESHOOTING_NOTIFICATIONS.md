@@ -30,7 +30,7 @@ Enable this feature in **Display & Notifications**. The global defaults are 55°
 
 - Evaluation happens only on successful collector uploads. A collector interval longer than the configured duration delays the alert until the next upload. Fatal smartctl uploads never evaluate temperature.
 - Readings of 0 or lower are unknown: they neither start nor reset a streak and do not trigger an alert. A valid reading below the threshold re-arms the device.
-- After restarting the server, seeding uses up to 24 hours of raw history and requires **Store Temperature History** to be enabled and the current upload to appear in the query. Empty, stale, or failed queries fall back to timing from the current upload. Keep collector clocks synchronized with the server.
+- After restarting the server, seeding uses up to 24 hours of raw history tagged with the exact device ID and requires **Store Temperature History** to be enabled and the current upload to appear in the query. History from another device sharing a WWN cannot seed an alert. Empty, stale, or failed queries fall back to timing from the current upload. Keep collector clocks synchronized with the server.
 - Missing readings do not prove continuous heat; elapsed time spans gaps between valid observations. Durations longer than 24 hours may need additional time after a restart. Notification state is held in memory, so an ongoing excursion can notify once again after each restart.
 - An upload while muted/disabled resets that device's timer. Changes to the threshold or duration reset it on the next evaluated upload. Resuming starts a fresh timer without reusing old history.
 - Quiet hours queue one alert for the digest described above. Rate-limited or failed direct dispatches retry on the next hot upload. As with other notifications, partial delivery failures can repeat a message to targets that already succeeded.
@@ -43,6 +43,10 @@ To test restart seeding, use a nonzero duration and a hot history older than tha
 Omitting the threshold or duration in a Settings API request applies 55°C or 30 minutes respectively. An explicit duration of 0 means immediate delivery. The API rejects out-of-range values, including a threshold of 0, even when alerts are disabled. The UI preserves input while typing and rounds to whole Celsius on blur or save. When saving with alerts disabled, invalid hidden temperature values use the defaults; valid values are preserved.
 
 ## Upgrade note: temperature history storage
+
+Device-ID tagging first shipped in v1.39.0. Older history and history affected by the AnalogJ identity repair may lack the current device-ID tag and cannot seed temperature notifications. The repair does not add or correct that tag. With new tagged uploads, affected old points age out of the 24-hour seeding window. There is no 24-hour wait for alerts: fresh hot readings start the normal duration timer immediately.
+
+This identity fix applies to notification seeding. Dashboard temperature charts (`GET /api/summary/temp`) still group history by WWN and can mix devices with shared WWNs; correcting raw and downsampled chart history is separate follow-up work.
 
 The temperature notification release also repairs the legacy database key `store_temperature_history`, migrating it to `collector.store_temperature_history`. Affected installations could show history storage enabled while uploads did not store history. The migration preserves the existing preference (and prefers the canonical key if both exist), so enabled storage resumes on subsequent uploads. Existing history is retained; missing past readings cannot be reconstructed.
 

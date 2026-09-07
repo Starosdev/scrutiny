@@ -43,7 +43,7 @@ func TestUploadTemperatureDeliversOnce(t *testing.T) {
 	repo.EXPECT().UpdateDeviceHasForcedFailure(gomock.Any(), "drive", false).Return(nil).Times(2)
 	repo.EXPECT().SaveSmartTemperature(gomock.Any(), "wwn", "drive", gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(2)
 	repo.EXPECT().LoadSettings(gomock.Any()).Return(settings, nil).Times(2)
-	repo.EXPECT().GetSmartTemperatureHistoryForDevices(gomock.Any(), "day", []string{"drive"}).Return(map[string][]measurements.SmartTemperature{"drive": {{Date: now.Add(-time.Hour), Temp: 60}, {Date: now, Temp: 60}}}, nil).Times(1)
+	repo.EXPECT().GetTemperatureNotificationHistory(gomock.Any(), "drive").Return([]measurements.SmartTemperature{{Date: now.Add(-time.Hour), Temp: 60}, {Date: now, Temp: 60}}, nil).Times(1)
 	repo.EXPECT().GetNotifyUrls(gomock.Any()).Return(nil, nil).Times(1)
 	gate := notify.NewNotificationGate(logrus.New())
 	router := gin.New()
