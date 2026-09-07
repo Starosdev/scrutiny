@@ -18,6 +18,10 @@ If you are troubleshooting a Shoutrrr target, use their documentation: https://n
 If you are troubleshooting an Apprise target, use the Apprise documentation: https://appriseit.com/
 
 
+# Quiet Hours
+
+Queued alerts are sent as a digest after quiet hours end. The background check runs at **Missed Ping Check Interval** (default: 5 minutes), even when missed-ping alerts are disabled. Failed or rate-limited digests stay queued for the next check. The queue is held in memory and is lost on server restart. Partial delivery failures can repeat a digest to targets that already succeeded.
+
 # Drive Temperature Notifications
 
 Enable this feature in **Display & Notifications**. The global defaults are 55°C for 30 minutes; equality counts as hot. A duration of 0 alerts on the first hot upload. Configure targets as for other notifications. Scripts and webhooks receive failure type `Temperature`.
@@ -27,7 +31,7 @@ Enable this feature in **Display & Notifications**. The global defaults are 55°
 - After restarting the server, seeding uses up to 24 hours of raw history and requires **Store Temperature History** to be enabled and the current upload to appear in the query. Empty, stale, or failed queries fall back to timing from the current upload. Keep collector clocks synchronized with the server.
 - Missing readings do not prove continuous heat; elapsed time spans gaps between valid observations. Durations longer than 24 hours may need additional time after a restart. Notification state is held in memory, so an ongoing excursion can notify once again after each restart.
 - An upload while muted/disabled resets that device's timer. Changes to the threshold or duration reset it on the next evaluated upload. Resuming starts a fresh timer without reusing old history.
-- Quiet hours queue one alert for the digest. Rate-limited or failed direct dispatches retry on the next hot upload. As with other notifications, partial delivery failures can repeat a message to targets that already succeeded.
+- Quiet hours queue one alert for the digest described above. Rate-limited or failed direct dispatches retry on the next hot upload. As with other notifications, partial delivery failures can repeat a message to targets that already succeeded.
 - **Repeat Notifications** does not apply to temperature alerts. A sustained hot excursion sends one alert; cooling below the threshold re-arms silently, without a recovery notification or hysteresis margin.
 - History seeding queries time out after 10 seconds. Debug logging explains when seeding is skipped because the upload timestamp is missing/ahead of the server or the current point is not yet visible in InfluxDB. The timer then starts with the current upload.
 

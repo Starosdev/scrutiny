@@ -650,6 +650,8 @@ Check the `notify.urls` section of [example.scrutiny.yaml](example.scrutiny.yaml
 
 For more information and troubleshooting, see the [TROUBLESHOOTING_NOTIFICATIONS.md](./docs/TROUBLESHOOTING_NOTIFICATIONS.md) file
 
+Quiet-hours digests are delivered on the next background check after quiet hours end, even when missed-ping alerts are disabled. Failed or rate-limited digests remain queued for retry. The check uses **Missed Ping Check Interval** (default: 5 minutes).
+
 ### Drive Temperature Notifications
 
 Enable **Temperature Notifications** in **Display & Notifications** to alert when any unmuted drive stays at or above a global threshold (default: **55°C for 30 minutes**). The UI uses your selected Celsius/Fahrenheit unit; the backend stores whole degrees Celsius. A duration of **0** alerts on the first hot reading. Each excursion alerts once and re-arms after a valid reading below the threshold. Unknown readings (0 or lower) are ignored.

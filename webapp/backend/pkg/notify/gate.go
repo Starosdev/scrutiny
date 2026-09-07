@@ -20,6 +20,7 @@ type NotificationGate struct {
 	collectorError map[string]time.Time // dedupe map for collector-side errors
 	mu             sync.Mutex
 	temperature    *TemperatureTracker
+	flushMu        sync.Mutex // Serializes digest flushes without blocking notification enqueue.
 }
 
 // QueuedNotification holds a notification that was deferred during quiet hours.
@@ -116,9 +117,12 @@ func (g *NotificationGate) ClearCollectorErrorState(identity string) {
 }
 
 // FlushQuietQueue checks if quiet hours have ended and sends a digest of all
-// queued notifications. Should be called periodically (e.g., at the start of
-// each missed ping check cycle).
+// queued notifications. Failed or rate-limited digests remain queued for the
+// next periodic check, regardless of whether missed ping alerts are enabled.
 func (g *NotificationGate) FlushQuietQueue(n *Notify, settings *models.Settings) {
+	g.flushMu.Lock()
+	defer g.flushMu.Unlock()
+
 	if g.isQuietHours(settings) {
 		return
 	}
@@ -130,7 +134,6 @@ func (g *NotificationGate) FlushQuietQueue(n *Notify, settings *models.Settings)
 	}
 	queued := make([]QueuedNotification, len(g.quietQueue))
 	copy(queued, g.quietQueue)
-	g.quietQueue = nil
 	g.mu.Unlock()
 
 	subject := fmt.Sprintf("Scrutiny: %d notification(s) during quiet hours", len(queued))
@@ -156,7 +159,7 @@ func (g *NotificationGate) FlushQuietQueue(n *Notify, settings *models.Settings)
 	}
 
 	if g.isRateLimited(settings) {
-		g.logger.Warnf("Quiet hours digest dropped due to rate limit")
+		g.logger.Warnf("Quiet hours digest deferred due to rate limit")
 		return
 	}
 
@@ -164,6 +167,11 @@ func (g *NotificationGate) FlushQuietQueue(n *Notify, settings *models.Settings)
 		g.logger.Warnf("Failed to send quiet hours digest: %v", err)
 		return
 	}
+	// Only remove the delivered batch; new notifications may have been queued
+	// while Send was running. flushMu prevents another flush removing it first.
+	g.mu.Lock()
+	g.quietQueue = append([]QueuedNotification(nil), g.quietQueue[len(queued):]...)
+	g.mu.Unlock()
 	g.recordSent()
 	g.logger.Infof("Sent quiet hours digest with %d queued notification(s)", len(queued))
 }
