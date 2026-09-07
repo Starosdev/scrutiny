@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
@@ -97,7 +98,12 @@ func UploadDeviceMetrics(c *gin.Context) {
 		sendDeviceNotification(c, logger, appConfig, deviceRepo, device.DeviceID, &updatedDevice)
 	}
 
-	maybeNotifyReplacementRiskFromSettings(c, logger, appConfig, deviceRepo, &updatedDevice, smartData.Attributes)
+	if settings := loadNotificationSettings(c, logger, deviceRepo); settings != nil {
+		if settings.Metrics.NotifyOnReplacementRisk {
+			maybeNotifyReplacementRisk(c, logger, appConfig, deviceRepo, &updatedDevice, smartData.Attributes, settings)
+		}
+		maybeNotifyTemperature(c, logger, appConfig, deviceRepo, &updatedDevice, &smartData, settings, time.Now())
+	}
 
 	refreshPrometheusMetrics(c, logger, deviceRepo, device.DeviceID, &updatedDevice, &smartData)
 
@@ -189,14 +195,13 @@ func sendDeviceNotification(c *gin.Context, logger *logrus.Entry, appConfig conf
 	}
 }
 
-func maybeNotifyReplacementRiskFromSettings(c *gin.Context, logger *logrus.Entry, appConfig config.Interface, deviceRepo database.DeviceRepo, updatedDevice *models.Device, attributes map[string]measurements.SmartAttribute) {
-	riskSettings, riskSettingsErr := deviceRepo.LoadSettings(c)
-	if riskSettingsErr != nil {
-		logger.Warnf("Could not load settings for replacement risk notification: %v", riskSettingsErr)
+func loadNotificationSettings(c *gin.Context, logger *logrus.Entry, deviceRepo database.DeviceRepo) *models.Settings {
+	settings, err := deviceRepo.LoadSettings(c)
+	if err != nil {
+		logger.Warnf("Could not load notification settings: %v", err)
+		return nil
 	}
-	if riskSettings != nil && riskSettings.Metrics.NotifyOnReplacementRisk {
-		maybeNotifyReplacementRisk(c, logger, appConfig, deviceRepo, updatedDevice, attributes, riskSettings)
-	}
+	return settings
 }
 
 func refreshPrometheusMetrics(c *gin.Context, logger *logrus.Entry, deviceRepo database.DeviceRepo, deviceID string, updatedDevice *models.Device, smartData *measurements.Smart) {

@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,6 +17,38 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
+
+func TestSaveSettingsTemperatureValidation(t *testing.T) {
+	for _, tc := range []struct {
+		name                        string
+		enabled                     bool
+		threshold, duration, status int
+	}{
+		{"zero threshold", true, 0, 30, http.StatusBadRequest},
+		{"negative threshold", true, -1, 30, http.StatusBadRequest},
+		{"high threshold", true, 151, 30, http.StatusBadRequest},
+		{"negative duration", true, 55, -1, http.StatusBadRequest},
+		{"overflow duration", true, 55, models.MaxTemperatureDurationMinutes + 1, http.StatusBadRequest},
+		{"immediate", true, 55, 0, http.StatusOK},
+		{"minimum", true, 1, 30, http.StatusOK},
+		{"maximum", true, 150, models.MaxTemperatureDurationMinutes, http.StatusOK},
+		{"disabled", false, -1, -1, http.StatusOK},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := mock_database.NewMockDeviceRepo(gomock.NewController(t))
+			if tc.status == http.StatusOK {
+				repo.EXPECT().SaveSettings(gomock.Any(), gomock.Any()).Return(nil)
+			}
+			router := setupSettingsRouter(t, repo, false)
+			body := fmt.Sprintf(`{"metrics":{"notify_on_temperature":%t,"temperature_threshold_celsius":%d,"temperature_duration_minutes":%d}}`, tc.enabled, tc.threshold, tc.duration)
+			response := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodPost, "/api/settings", strings.NewReader(body))
+			request.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(response, request)
+			require.Equal(t, tc.status, response.Code, response.Body.String())
+		})
+	}
+}
 
 // setupSettingsRouter creates a minimal Gin router wired to the settings handlers.
 func setupSettingsRouter(t *testing.T, mockRepo *mock_database.MockDeviceRepo, zfsPoolModificationsAllowed bool) *gin.Engine {

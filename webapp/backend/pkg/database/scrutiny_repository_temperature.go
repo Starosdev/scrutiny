@@ -116,7 +116,7 @@ func (sr *scrutinyRepository) getSmartTemperatureHistory(ctx context.Context, du
 		appendTempRecord(deviceTempHistory, result.Record().Values(), wwnToDeviceID)
 	}
 	if result.Err() != nil {
-		sr.logger.Errorf("Query error: %s", result.Err().Error())
+		return nil, fmt.Errorf("temperature history query failed: %w", result.Err())
 	}
 	return deviceTempHistory, nil
 }

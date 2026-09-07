@@ -18,6 +18,19 @@ If you are troubleshooting a Shoutrrr target, use their documentation: https://n
 If you are troubleshooting an Apprise target, use the Apprise documentation: https://appriseit.com/
 
 
+# Drive Temperature Notifications
+
+Enable this feature in **Display & Notifications**. The global defaults are 55°C for 30 minutes; equality counts as hot. A duration of 0 alerts on the first hot upload. Configure targets as for other notifications. Scripts and webhooks receive failure type `Temperature`.
+
+- Evaluation happens only on successful collector uploads. A collector interval longer than the configured duration delays the alert until the next upload. Fatal smartctl uploads never evaluate temperature.
+- Readings of 0 or lower are unknown: they neither start nor reset a streak and do not trigger an alert. A valid reading below the threshold re-arms the device.
+- After restarting the server, seeding uses up to 24 hours of raw history and requires **Store Temperature History** to be enabled and the current upload to appear in the query. Empty, stale, or failed queries fall back to timing from the current upload. Keep collector clocks synchronized with the server.
+- Missing readings do not prove continuous heat; elapsed time spans gaps between valid observations. Durations longer than 24 hours may need additional time after a restart. Notification state is held in memory, so an ongoing excursion can notify once again after each restart.
+- An upload while muted/disabled resets that device's timer. Changes to the threshold or duration reset it on the next evaluated upload. Resuming starts a fresh timer without reusing old history.
+- Quiet hours queue one alert for the digest. Rate-limited or failed dispatches retry on the next hot upload. As with other notifications, partial delivery failures can repeat a message to targets that already succeeded.
+
+To test restart seeding, use a nonzero duration and a hot history older than that duration, then restart the web app and upload another hot reading. Using duration 0 only verifies immediate delivery, not seeding. These settings live under `metrics` in the Settings API: `notify_on_temperature`, `temperature_threshold_celsius` (1–150), and `temperature_duration_minutes` (whole minutes, 0–153722867).
+
 # Script Notifications
 
 While the Shoutrrr library supports many popular providers for sending notifications Scrutiny also supports a "script" based
@@ -27,7 +40,7 @@ Data is provided to this script using the following environmental variables:
 ```
 SCRUTINY_SUBJECT - 	eg. "Scrutiny SMART error (%s) detected on device: %s"
 SCRUTINY_DATE 
-SCRUTINY_FAILURE_TYPE - EmailTest, SmartFail, ScrutinyFail, MissedPing, Heartbeat
+SCRUTINY_FAILURE_TYPE - EmailTest, SmartFail, ScrutinyFail, MissedPing, Heartbeat, Temperature
 SCRUTINY_DEVICE_NAME - eg. /dev/sda
 SCRUTINY_DEVICE_TYPE - ATA/SCSI/NVMe
 SCRUTINY_DEVICE_SERIAL - eg. WDDJ324KSO

@@ -48,6 +48,7 @@ const NotifyFailureTypeBothFailure = "SmartFailure" //SmartFailure always takes 
 const NotifyFailureTypeSmartFailure = "SmartFailure"
 const NotifyFailureTypeScrutinyFailure = "ScrutinyFailure"
 const NotifyFailureTypeMissedPing = "MissedPing"
+const NotifyFailureTypeTemperature = "Temperature"
 const NotifyFailureTypeHeartbeat = "Heartbeat"
 const NotifyFailureTypePerformanceDegradation = "PerformanceDegradation"
 const NotifyFailureTypeReport = "Report"

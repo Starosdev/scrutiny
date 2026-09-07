@@ -5,11 +5,27 @@ import (
 	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/golang/mock/gomock"
+	influxapi "github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
 	"github.com/stretchr/testify/require"
+	"io"
 	"strings"
 	"testing"
 )
+
+type temperatureErrorQuery struct{ stubQueryAPI }
+
+func (s *temperatureErrorQuery) Query(_ context.Context, _ string) (*influxapi.QueryTableResult, error) {
+	return influxapi.NewQueryTableResult(io.NopCloser(strings.NewReader("invalid,csv\n"))), nil
+}
+
+func TestTemperatureHistoryPropagatesStreamErrors(t *testing.T) {
+	repo := createDeviceSelfTestRepository(t)
+	repo.influxQueryApi = &temperatureErrorQuery{}
+	history, err := repo.GetSmartTemperatureHistory(context.Background(), DURATION_KEY_DAY)
+	require.Error(t, err)
+	require.Nil(t, history)
+}
 
 type countingWriteAPI struct {
 	stubWriteAPI

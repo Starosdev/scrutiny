@@ -19,6 +19,7 @@ type NotificationGate struct {
 	quietQueue     []QueuedNotification // queued during quiet hours
 	collectorError map[string]time.Time // dedupe map for collector-side errors
 	mu             sync.Mutex
+	temperature    *TemperatureTracker
 }
 
 // QueuedNotification holds a notification that was deferred during quiet hours.
@@ -34,8 +35,11 @@ func NewNotificationGate(logger logrus.FieldLogger) *NotificationGate {
 	return &NotificationGate{
 		logger:         logger,
 		collectorError: map[string]time.Time{},
+		temperature:    NewTemperatureTracker(),
 	}
 }
+
+func (g *NotificationGate) Temperature() *TemperatureTracker { return g.temperature }
 
 // TrySend checks rate limiting and quiet hours before dispatching a notification.
 // If quiet hours are active, the notification summary is queued for digest delivery.

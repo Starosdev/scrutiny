@@ -650,6 +650,14 @@ Check the `notify.urls` section of [example.scrutiny.yaml](example.scrutiny.yaml
 
 For more information and troubleshooting, see the [TROUBLESHOOTING_NOTIFICATIONS.md](./docs/TROUBLESHOOTING_NOTIFICATIONS.md) file
 
+### Drive Temperature Notifications
+
+Enable **Temperature Notifications** in **Display & Notifications** to alert when any unmuted drive stays at or above a global threshold (default: **55°C for 30 minutes**). The UI uses your selected Celsius/Fahrenheit unit; the backend stores whole degrees Celsius. A duration of **0** alerts on the first hot reading. Each excursion alerts once and re-arms after a valid reading below the threshold. Unknown readings (0 or lower) are ignored.
+
+Checks run on collector uploads, so delivery can be delayed until the next upload. After a server restart, Scrutiny can seed the timer from up to 24 hours of raw temperature history when storage is enabled and the history includes the current upload. Otherwise timing starts with that upload. Longer durations may need additional time after restarting, and an ongoing excursion may notify again after each restart. Quiet hours and rate limits apply.
+
+Changing the threshold/duration or receiving an upload while notifications are disabled or the device is muted resets its timer. On resuming, the next hot reading starts a new timer. See [temperature notification troubleshooting](docs/TROUBLESHOOTING_NOTIFICATIONS.md#drive-temperature-notifications) for details.
+
 ### Heartbeat Notifications
 
 Scrutiny can send periodic "all clear" heartbeat notifications to confirm the monitoring system is running and all drives are healthy. This is useful for integration with uptime monitoring tools like Uptime Kuma. When delivered through SMTP or HTML-capable Apprise targets, heartbeat messages use the same HTML-plus-plain-text pattern as the other email notifications.

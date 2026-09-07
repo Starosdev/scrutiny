@@ -2,6 +2,8 @@ package database
 
 import (
 	"context"
+	"fmt"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"path/filepath"
 	"testing"
 
@@ -559,9 +561,78 @@ func TestMigrateEnablesTemperatureHistoryStorage(t *testing.T) {
 	require.NoError(t, repo.Migrate(context.Background()))
 
 	var setting models.SettingEntry
-	require.NoError(t, repo.gormClient.Where("setting_key_name = ?", "store_temperature_history").First(&setting).Error)
+	require.NoError(t, repo.gormClient.Where("setting_key_name = ?", "collector.store_temperature_history").First(&setting).Error)
 	require.Equal(t, "bool", setting.SettingDataType)
 	require.True(t, setting.SettingValueBool)
+}
+
+func TestTemperatureSettingsPersistAcrossConfigReload(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+	require.NoError(t, repo.Migrate(context.Background()))
+	var err error
+	repo.appConfig, err = config.Create()
+	require.NoError(t, err)
+	settings, err := repo.LoadSettings(context.Background())
+	require.NoError(t, err)
+	require.True(t, settings.Collector.StoreTempHistory)
+	require.False(t, settings.Metrics.NotifyOnTemperature)
+	require.Equal(t, models.DefaultTemperatureThresholdCelsius, settings.Metrics.TemperatureThresholdCelsius)
+	require.Equal(t, models.DefaultTemperatureDurationMinutes, settings.Metrics.TemperatureDurationMinutes)
+	for _, store := range []bool{false, true} {
+		settings.Collector.StoreTempHistory = store
+		settings.Metrics.NotifyOnTemperature = true
+		settings.Metrics.TemperatureThresholdCelsius = 65
+		settings.Metrics.TemperatureDurationMinutes = 0
+		require.NoError(t, repo.SaveSettings(context.Background(), *settings))
+		repo.appConfig, err = config.Create()
+		require.NoError(t, err)
+		settings, err = repo.LoadSettings(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, store, settings.Collector.StoreTempHistory)
+		require.Equal(t, store, repo.appConfig.GetBool("user.collector.store_temperature_history"))
+		require.True(t, settings.Metrics.NotifyOnTemperature)
+		require.Equal(t, 65, settings.Metrics.TemperatureThresholdCelsius)
+		require.Zero(t, settings.Metrics.TemperatureDurationMinutes)
+	}
+}
+
+func TestTemperatureStorageMigrationPreservesValues(t *testing.T) {
+	for _, value := range []bool{false, true} {
+		t.Run(fmt.Sprint(value), func(t *testing.T) {
+			repo := createMigrationTestRepository(t)
+			legacy := models.SettingEntry{SettingKeyName: "store_temperature_history", SettingDataType: "bool", SettingValueBool: value}
+			require.NoError(t, repo.gormClient.Create(&legacy).Error)
+			require.NoError(t, migrateTemperatureStorageKey(repo.gormClient))
+			require.NoError(t, migrateTemperatureStorageKey(repo.gormClient))
+			var saved models.SettingEntry
+			require.NoError(t, repo.gormClient.First(&saved, legacy.ID).Error)
+			require.Equal(t, "collector.store_temperature_history", saved.SettingKeyName)
+			require.Equal(t, value, saved.SettingValueBool)
+		})
+	}
+}
+
+func TestTemperatureMigrationsPreserveExistingCanonicalSettings(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+	entries := []models.SettingEntry{
+		{SettingKeyName: "store_temperature_history", SettingDataType: "bool", SettingValueBool: true},
+		{SettingKeyName: "collector.store_temperature_history", SettingDataType: "bool", SettingValueBool: false},
+		{SettingKeyName: "metrics.temperature_duration_minutes", SettingDataType: "numeric", SettingValueNumeric: 0},
+	}
+	require.NoError(t, repo.gormClient.Create(&entries).Error)
+	for range 2 {
+		require.NoError(t, migrateTemperatureStorageKey(repo.gormClient))
+		require.NoError(t, migrateTemperatureNotificationSettings(repo.gormClient))
+	}
+	var saved models.SettingEntry
+	require.NoError(t, repo.gormClient.First(&saved, entries[1].ID).Error)
+	require.False(t, saved.SettingValueBool)
+	var duration models.SettingEntry
+	require.NoError(t, repo.gormClient.First(&duration, entries[2].ID).Error)
+	require.Zero(t, duration.SettingValueNumeric)
+	var count int64
+	require.NoError(t, repo.gormClient.Model(&models.SettingEntry{}).Count(&count).Error)
+	require.EqualValues(t, 4, count)
 }
 
 func TestMigrateSelfTestChronologyPreservesLegacyHistory(t *testing.T) {
