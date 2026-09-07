@@ -684,7 +684,13 @@ func (n *Notify) SendAppriseNotification(rawURL string) error {
 	return nil
 }
 
+const webhookRequestTimeout = 10 * time.Second
+
 func (n *Notify) SendWebhookNotification(webhookUrl string) error {
+	return n.sendWebhookNotification(webhookUrl, &http.Client{Timeout: webhookRequestTimeout})
+}
+
+func (n *Notify) sendWebhookNotification(webhookUrl string, client *http.Client) error {
 	n.Logger.Infof("Sending Webhook to %s", webhookUrl)
 	requestBody, err := json.Marshal(n.Payload)
 	if err != nil {
@@ -692,13 +698,15 @@ func (n *Notify) SendWebhookNotification(webhookUrl string) error {
 		return err
 	}
 
-	resp, err := http.Post(webhookUrl, "application/json", bytes.NewBuffer(requestBody))
+	resp, err := client.Post(webhookUrl, "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
 		n.Logger.Errorf("An error occurred while sending Webhook to %s: %v", webhookUrl, err)
 		return err
 	}
 	defer resp.Body.Close()
-	//we don't care about resp body content, but maybe we should log it?
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return fmt.Errorf("webhook returned HTTP %s", resp.Status)
+	}
 	return nil
 }
 
