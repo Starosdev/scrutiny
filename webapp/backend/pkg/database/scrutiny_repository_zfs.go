@@ -44,6 +44,8 @@ func (sr *scrutinyRepository) RegisterZFSPool(ctx context.Context, pool models.Z
 			"free":                   pool.Free,
 			"fragmentation":          pool.Fragmentation,
 			"capacity_percent":       pool.CapacityPercent,
+			"usable_used":            pool.UsableUsed,
+			"usable_free":            pool.UsableFree,
 			"ashift":                 pool.Ashift,
 			"scrub_state":            pool.ScrubState,
 			"scrub_start_time":       pool.ScrubStartTime,

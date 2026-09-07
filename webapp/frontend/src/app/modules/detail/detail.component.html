@@ -497,6 +497,9 @@
                         <button mat-stroked-button class="text-xs" (click)="ignoreAttribute(attribute); $event.stopPropagation()">
                             <mat-icon class="icon-size-16 mr-1" [svgIcon]="'visibility_off'"></mat-icon> Ignore
                         </button>
+                        <button mat-stroked-button class="text-xs" (click)="acknowledgeAttribute(attribute); $event.stopPropagation()">
+                            <mat-icon class="icon-size-16 mr-1" [svgIcon]="'check_circle_outline'"></mat-icon> Acknowledge
+                        </button>
                         }
                     </div>
                 </div>
@@ -686,9 +689,7 @@
 
                                 <mat-menu #overrideMenu="matMenu">
                                     @if (getOverrideForAttribute(attribute.attribute_id); as override) {
-                                    <div class="px-4 py-2 text-secondary text-sm" mat-menu-item disabled>
-                                        Override: {{ override.action === 'ignore' ? 'Ignored' : 'Forced ' + override.status }}
-                                    </div>
+                                    <div class="px-4 py-2 text-secondary text-sm" mat-menu-item disabled>Override: {{ overrideDescription(override) }}</div>
                                     <button mat-menu-item (click)="removeOverride(attribute)">
                                         <mat-icon class="icon-size-20" [svgIcon]="'close'"></mat-icon>
                                         <span>Remove override</span>
@@ -701,6 +702,10 @@
                                     <button mat-menu-item (click)="forcePassedAttribute(attribute)">
                                         <mat-icon class="icon-size-20" [svgIcon]="'check_circle'"></mat-icon>
                                         <span>Force passed</span>
+                                    </button>
+                                    <button mat-menu-item (click)="acknowledgeAttribute(attribute)" matTooltip="Passes at the current value only; fails again if the value changes">
+                                        <mat-icon class="icon-size-20" [svgIcon]="'check_circle_outline'"></mat-icon>
+                                        <span>Acknowledge current value</span>
                                     </button>
                                     }
                                 </mat-menu>

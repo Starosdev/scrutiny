@@ -585,3 +585,34 @@ func TestMigrateSelfTestChronologyPreservesLegacyHistory(t *testing.T) {
 	require.False(t, repo.gormClient.Migrator().HasIndex(&models.DeviceSelfTest{}, "idx_device_self_tests_identity"))
 	require.NoError(t, repo.gormClient.Exec(`INSERT INTO device_self_tests(device_identity,type_value,lifetime_hours,effective_lifetime_hours) VALUES ('wwn-1',1,2464,68000)`).Error)
 }
+
+// A pre-existing override must survive the pinned_value migration with the column
+// NULL rather than 0: zero is a legitimate acknowledged value, so a defaulted column
+// would read as "acknowledged at 0" for every override created before the feature.
+func TestMigrateAttributeOverridesAddsNullablePinnedValue(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+	ctx := context.Background()
+	require.NoError(t, repo.Migrate(ctx))
+
+	existing := models.AttributeOverride{Protocol: "NVMe", AttributeId: "media_errors", DeviceID: "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e", Action: "ignore"}
+	require.NoError(t, repo.gormClient.Create(&existing).Error)
+
+	var stored models.AttributeOverride
+	require.NoError(t, repo.gormClient.First(&stored, existing.ID).Error)
+	require.Nil(t, stored.PinnedValue)
+
+	pinned := int64(0)
+	acknowledged := models.AttributeOverride{
+		Protocol:    "NVMe",
+		AttributeId: "media_errors",
+		DeviceID:    "c4ac4ff4-1a4d-52aa-9724-40fbc47dd306",
+		Action:      "acknowledge",
+		PinnedValue: &pinned,
+	}
+	require.NoError(t, repo.gormClient.Create(&acknowledged).Error)
+
+	var readBack models.AttributeOverride
+	require.NoError(t, repo.gormClient.First(&readBack, acknowledged.ID).Error)
+	require.NotNil(t, readBack.PinnedValue)
+	require.Equal(t, int64(0), *readBack.PinnedValue)
+}

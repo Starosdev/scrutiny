@@ -46,6 +46,55 @@ func TestParseZFSBytes(t *testing.T) {
 	}
 }
 
+// --- parseUsableSpace tests ---
+
+func TestParseUsableSpace(t *testing.T) {
+	tests := []struct {
+		name              string
+		input             string
+		expectedUsed      int64
+		expectedAvailable int64
+		expectError       bool
+	}{
+		{
+			name:              "raidz3 pool",
+			input:             "11213524992\t55071744000\n",
+			expectedUsed:      11213524992,
+			expectedAvailable: 55071744000,
+		},
+		{
+			name:              "empty pool",
+			input:             "0\t66285268992",
+			expectedAvailable: 66285268992,
+		},
+		{name: "single column", input: "11213524992", expectError: true},
+		{name: "no output", input: "", expectError: true},
+		{name: "non-numeric used", input: "10.4G\t51.3G", expectError: true},
+		{name: "non-numeric available", input: "11213524992\t51.3G", expectError: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			used, available, err := parseUsableSpace(tt.input)
+			if tt.expectError {
+				if err == nil {
+					t.Fatalf("parseUsableSpace(%q) expected an error, got none", tt.input)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseUsableSpace(%q) returned unexpected error: %v", tt.input, err)
+			}
+			if used != tt.expectedUsed {
+				t.Errorf("used = %d, want %d", used, tt.expectedUsed)
+			}
+			if available != tt.expectedAvailable {
+				t.Errorf("available = %d, want %d", available, tt.expectedAvailable)
+			}
+		})
+	}
+}
+
 // --- parseScrubStatus tests ---
 
 func TestParseScrubStatus_ScrubFinishedShortDuration(t *testing.T) {

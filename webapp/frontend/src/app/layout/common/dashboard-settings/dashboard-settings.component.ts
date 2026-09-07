@@ -167,6 +167,7 @@ export class DashboardSettingsComponent implements OnInit {
     actions: { value: OverrideAction; label: string }[] = [
         { value: 'ignore', label: 'Ignore' },
         { value: 'force_status', label: 'Force Status' },
+        { value: 'acknowledge', label: 'Acknowledge Current Value' },
         { value: '', label: 'Custom Threshold' },
     ];
     statuses: OverrideStatus[] = ['passed', 'warn', 'failed'];

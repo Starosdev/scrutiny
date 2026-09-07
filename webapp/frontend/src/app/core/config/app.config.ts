@@ -58,7 +58,7 @@ export enum MetricsStatusThreshold {
 export type OverrideProtocol = 'ATA' | 'NVMe' | 'SCSI';
 
 // Action types for attribute overrides
-export type OverrideAction = 'ignore' | 'force_status' | '';
+export type OverrideAction = 'ignore' | 'force_status' | 'acknowledge' | '';
 
 // Status types for force_status action
 export type OverrideStatus = 'passed' | 'warn' | 'failed';
@@ -79,6 +79,8 @@ export interface AttributeOverride {
     status?: OverrideStatus;
     warn_above?: number;
     fail_above?: number;
+    // Set by the server for 'acknowledge' overrides: the value the pass is pinned to.
+    pinned_value?: number;
     source?: OverrideSource;
 }
 

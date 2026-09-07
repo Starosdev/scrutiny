@@ -11,6 +11,7 @@
     "build:prod:mem": "node --max_old_space_size=6144 ./node_modules/@angular/cli/bin/ng build --prod",
     "test": "ng test",
     "test:icons": "node scripts/check-icon-references.mjs",
+    "test:theme": "node scripts/check-theme-tokens.mjs",
     "lint": "ng lint",
     "lint:fix": "ng lint --fix",
     "format": "prettier --write \"src/**/*.{ts,html,json}\"",
@@ -94,7 +95,8 @@
     "minimatch@3": "3.1.5",
     "postcss": "8.5.15",
     "qs": "6.15.2",
+    "engine.io": "6.6.9",
     "socket.io-parser": "4.2.6",
-    "ws": "8.20.1"
+    "ws": "8.21.3"
   }
 }

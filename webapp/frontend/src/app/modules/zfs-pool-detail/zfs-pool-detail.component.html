@@ -47,10 +47,21 @@
                     [style.width.%]="pool.capacity_percent"
                 ></div>
             </div>
+            @if (usableSize(pool) > 0) {
+            <div class="text-sm text-secondary mt-2">
+                {{ pool.usable_used | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} /
+                {{ usableSize(pool) | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} usable
+            </div>
+            <div class="text-xs text-secondary mt-1">
+                {{ pool.allocated | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} /
+                {{ pool.size | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} raw
+            </div>
+            } @else {
             <div class="text-sm text-hint mt-2">
                 {{ pool.allocated | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} /
                 {{ pool.size | fileSize : $safeNavigationMigration(config?.file_size_si_units) }}
             </div>
+            }
         </treo-card>
 
         <!-- Fragmentation Card -->

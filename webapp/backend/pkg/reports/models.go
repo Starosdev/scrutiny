@@ -69,7 +69,7 @@ type DeviceReport struct {
 	ActiveFailures []AlertEntry `json:"active_failures"`
 
 	TempAvg         float64 `json:"temp_avg"`
-	TempCurrent     int64   `json:"temp_current"`
+	TempCurrent     *int64  `json:"temp_current,omitempty"`
 	TempMin         int64   `json:"temp_min"`
 	TempMax         int64   `json:"temp_max"`
 	PowerOnHours    int64   `json:"power_on_hours"`

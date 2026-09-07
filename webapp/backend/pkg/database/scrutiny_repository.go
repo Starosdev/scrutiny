@@ -539,11 +539,11 @@ func summaryFluxQuery(bucketBaseName string) string {
 
 // applySummaryRecord parses a single summary query record and populates the matching device summary.
 func (sr *scrutinyRepository) applySummaryRecord(summaries map[string]*models.DeviceSummary, wwnToDeviceID map[string]string, values map[string]interface{}) {
-	deviceWWN, ok := values["device_wwn"]
+	deviceWWN, ok := values["device_wwn"].(string)
 	if !ok {
 		return
 	}
-	devID, hasDevID := wwnToDeviceID[deviceWWN.(string)]
+	devID, hasDevID := wwnToDeviceID[deviceWWN]
 	if !hasDevID {
 		return
 	}
@@ -553,10 +553,26 @@ func (sr *scrutinyRepository) applySummaryRecord(summaries map[string]*models.De
 		summaries[devID] = &models.DeviceSummary{}
 	}
 
+	// Every field here is optional. summaryFluxQuery unions the daily, weekly,
+	// monthly and yearly buckets and pivots with schema.fieldsAsCols(), so a
+	// device whose winning row never had one of these fields written yields a
+	// map with that key absent. An unchecked assertion on a nil value panics,
+	// and because this runs in the goroutine started by loadInitialMetrics it
+	// takes down the whole web process before it finishes binding.
+	temp, hasTemp := values["temp"].(int64)
+	powerOnHours, hasPowerOnHours := values["power_on_hours"].(int64)
+	collectorDate, hasCollectorDate := values["_time"].(time.Time)
+
+	if missing := missingSummaryFields(hasTemp, hasPowerOnHours, hasCollectorDate); len(missing) > 0 {
+		sr.logger.Debugf("summary record for device %s is missing %s; using zero values", deviceWWN, strings.Join(missing, ", "))
+	}
+
 	smartSummary := &models.SmartSummary{
-		Temp:          values["temp"].(int64),
-		PowerOnHours:  values["power_on_hours"].(int64),
-		CollectorDate: values["_time"].(time.Time),
+		PowerOnHours:  powerOnHours,
+		CollectorDate: collectorDate,
+	}
+	if hasTemp {
+		smartSummary.Temp = &temp
 	}
 	smartSummary.PercentageUsed = extractPercentageUsed(values)
 	smartSummary.WearoutValue = extractWearoutValue(values)
@@ -568,6 +584,22 @@ func (sr *scrutinyRepository) applySummaryRecord(summaries map[string]*models.De
 	smartSummary.RiskCategory = string(riskCategory)
 
 	summaries[devID].SmartResults = smartSummary
+}
+
+// missingSummaryFields names the summary fields that were absent from a record,
+// for the diagnostic log in applySummaryRecord.
+func missingSummaryFields(hasTemp, hasPowerOnHours, hasCollectorDate bool) []string {
+	missing := []string{}
+	if !hasTemp {
+		missing = append(missing, "temp")
+	}
+	if !hasPowerOnHours {
+		missing = append(missing, "power_on_hours")
+	}
+	if !hasCollectorDate {
+		missing = append(missing, "_time")
+	}
+	return missing
 }
 
 // extractPercentageUsed returns the "percentage used" wear metric from NVMe (percentage_used) or
