@@ -211,6 +211,7 @@ The Prometheus exporter is a current-state surface for scraping and alerting. Hi
 The `/api/metrics` endpoint now exposes:
 
 - Existing SMART and device inventory metrics.
+- Latest recorded ATA SMART self-test status through `scrutiny_device_self_test_last_passed`; no series means no recorded ATA self-test result.
 - ZFS pool metrics for size, allocated and free bytes, capacity, fragmentation, aggregate error counts, and scrub progress.
 - Workload metrics for daily read and write activity, total read and write bytes, read/write ratio, calculation time span, and data point count.
 - Optional workload endurance and spike metrics when those values can be derived from the available SMART history.

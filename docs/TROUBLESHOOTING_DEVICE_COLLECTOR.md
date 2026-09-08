@@ -421,6 +421,19 @@ the host-id:
 
 See the [Hub/Spoke installation guide](./INSTALL_HUB_SPOKE.md) for more information.
 
+### Moving a monitored device to another collector host
+
+`host_id` is mutable device metadata. When a collector registers a device again, Scrutiny updates its stored host ID while preserving the device identity and SMART history. Keep the device's model, serial number, and WWN available so the generated `device_id` remains stable.
+
+To move devices without deleting history:
+
+1. Set the new value with `host.id` in the collector config, `--host-id`, or `COLLECTOR_HOST_ID`.
+2. Stop the old collector before starting the new one for the same devices.
+3. Run one collection from the new host.
+4. Confirm the device appears under the new host ID in the SMART dashboard.
+
+An empty host ID clears the stored assignment. If two collectors report the same device, the most recent registration wins. Devices with no model, serial number, or WWN use a device-name and host-ID fallback identity, so host migration cannot preserve their history reliably.
+
 ## Collector DEBUG mode
 
 You can use environmental variables to enable debug logging and/or log files for the collector:

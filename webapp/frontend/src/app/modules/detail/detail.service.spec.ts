@@ -46,6 +46,12 @@ describe('DetailService', () => {
                 success: true,
                 data: {
                     self_tests: [],
+                    health: {
+                        status: 'unknown',
+                        has_result: false,
+                        latest_observed_at: null,
+                        has_failures: false,
+                    },
                 },
             };
             httpClientSpy.get.and.returnValue(of(response));

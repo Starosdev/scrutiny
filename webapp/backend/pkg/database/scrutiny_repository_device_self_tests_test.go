@@ -361,6 +361,38 @@ func TestSelfTestSameHourOccurrencesAndExtendedFallback(t *testing.T) {
 	require.Len(t, rows, 2)
 }
 
+func TestGetLatestDeviceSelfTestUsesObservedOrder(t *testing.T) {
+	repo := createDeviceSelfTestRepository(t)
+	ctx := context.Background()
+	device := models.Device{DeviceID: "device-1", WWN: "wwn-1", DeviceProtocol: "ATA"}
+	require.NoError(t, repo.gormClient.Create(&device).Error)
+	require.NoError(t, repo.gormClient.Create(&models.DeviceSelfTest{
+		DeviceID: device.DeviceID, DeviceWWN: device.WWN, DeviceIdentity: device.WWN,
+		StatusPassed: true, ObservedAt: 100, LogIndex: 0,
+	}).Error)
+	require.NoError(t, repo.gormClient.Create(&models.DeviceSelfTest{
+		DeviceID: device.DeviceID, DeviceWWN: device.WWN, DeviceIdentity: device.WWN,
+		StatusPassed: false, ObservedAt: 200, LogIndex: 0,
+	}).Error)
+
+	latest, err := repo.GetLatestDeviceSelfTest(ctx, device.DeviceID)
+	require.NoError(t, err)
+	require.NotNil(t, latest)
+	require.False(t, latest.StatusPassed)
+	require.Equal(t, int64(200), latest.ObservedAt)
+}
+
+func TestGetLatestDeviceSelfTestReturnsNilWithoutHistory(t *testing.T) {
+	repo := createDeviceSelfTestRepository(t)
+	ctx := context.Background()
+	device := models.Device{DeviceID: "device-1", WWN: "wwn-1", DeviceProtocol: "ATA"}
+	require.NoError(t, repo.gormClient.Create(&device).Error)
+
+	latest, err := repo.GetLatestDeviceSelfTest(ctx, device.DeviceID)
+	require.NoError(t, err)
+	require.Nil(t, latest)
+}
+
 func TestSelfTestRejectsUnreliablePowerOnContext(t *testing.T) {
 	current := measurements.Smart{PowerOnHours: 68000}
 	require.Equal(t, int64(68000), selfTestPowerOnHours(&current, nil))
