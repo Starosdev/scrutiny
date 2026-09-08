@@ -334,6 +334,21 @@ func (mr *MockDeviceRepoMockRecorder) GetDeviceSelfTests(ctx, deviceID interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeviceSelfTests", reflect.TypeOf((*MockDeviceRepo)(nil).GetDeviceSelfTests), ctx, deviceID)
 }
 
+// GetLatestDeviceSelfTest mocks base method.
+func (m *MockDeviceRepo) GetLatestDeviceSelfTest(ctx context.Context, deviceID string) (*models.DeviceSelfTest, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLatestDeviceSelfTest", ctx, deviceID)
+	ret0, _ := ret[0].(*models.DeviceSelfTest)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLatestDeviceSelfTest indicates an expected call of GetLatestDeviceSelfTest.
+func (mr *MockDeviceRepoMockRecorder) GetLatestDeviceSelfTest(ctx, deviceID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestDeviceSelfTest", reflect.TypeOf((*MockDeviceRepo)(nil).GetLatestDeviceSelfTest), ctx, deviceID)
+}
+
 // GetDevices mocks base method.
 func (m *MockDeviceRepo) GetDevices(ctx context.Context) ([]models.Device, error) {
 	m.ctrl.T.Helper()
