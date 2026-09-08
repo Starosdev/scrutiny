@@ -40,4 +40,13 @@ describe('ScrutinyConfigService', () => {
         expect(latestConfig.theme).toBe('dark');
         expect(latestConfig.zfs_pool_modifications_allowed).toBeTrue();
     });
+
+    it('loads the backend server version for runtime display', () => {
+        httpClientSpy.get.and.returnValue(of({ settings: {}, server_version: '1.73.0' }));
+        let latestConfig: AppConfig;
+
+        service.config$.subscribe((config) => (latestConfig = config));
+
+        expect(latestConfig.server_version).toBe('1.73.0');
+    });
 });
