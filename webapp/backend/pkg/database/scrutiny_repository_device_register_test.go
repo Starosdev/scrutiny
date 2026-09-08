@@ -36,6 +36,7 @@ func TestRegisterDeviceRefreshesMetadataOnConflict(t *testing.T) {
 	initial := models.Device{
 		DeviceID:       deviceID,
 		WWN:            "wwn-1",
+		HostId:         "TrueNAS",
 		DeviceName:     "sda",
 		ModelName:      "Samsung SSD 870 EVO 4TB",
 		SerialNumber:   "",
@@ -49,26 +50,28 @@ func TestRegisterDeviceRefreshesMetadataOnConflict(t *testing.T) {
 	require.NoError(t, repo.RegisterDevice(ctx, initial))
 
 	refreshed := models.Device{
-		DeviceID:        deviceID,
-		WWN:             "wwn-1",
-		DeviceName:      "sda",
-		ModelName:       "Samsung SSD 870 EVO 4TB",
-		Manufacturer:    "Samsung",
-		SerialNumber:    "S7HDNF0Y548663E",
-		Capacity:        4000787030016,
-		Firmware:        "SVT02B6Q",
-		InterfaceType:   "SATA",
-		InterfaceSpeed:  "6.0 Gb/s",
-		FormFactor:      "2.5 inches",
-		RotationSpeed:   0,
-		DeviceProtocol:  "ATA",
-		SmartSupport:    common.SmartSupport{Available: true},
+		DeviceID:         deviceID,
+		WWN:              "wwn-1",
+		HostId:           "homeserver2",
+		DeviceName:       "sda",
+		ModelName:        "Samsung SSD 870 EVO 4TB",
+		Manufacturer:     "Samsung",
+		SerialNumber:     "S7HDNF0Y548663E",
+		Capacity:         4000787030016,
+		Firmware:         "SVT02B6Q",
+		InterfaceType:    "SATA",
+		InterfaceSpeed:   "6.0 Gb/s",
+		FormFactor:       "2.5 inches",
+		RotationSpeed:    0,
+		DeviceProtocol:   "ATA",
+		SmartSupport:     common.SmartSupport{Available: true},
 		CollectorVersion: "1.61.0",
 	}
 	require.NoError(t, repo.RegisterDevice(ctx, refreshed))
 
 	var stored models.Device
 	require.NoError(t, repo.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).First(&stored).Error)
+	require.Equal(t, "homeserver2", stored.HostId)
 	require.Equal(t, "S7HDNF0Y548663E", stored.SerialNumber)
 	require.Equal(t, int64(4000787030016), stored.Capacity)
 	require.Equal(t, "SVT02B6Q", stored.Firmware)
@@ -76,6 +79,28 @@ func TestRegisterDeviceRefreshesMetadataOnConflict(t *testing.T) {
 	require.Equal(t, "6.0 Gb/s", stored.InterfaceSpeed)
 	require.Equal(t, "2.5 inches", stored.FormFactor)
 	require.Equal(t, "Samsung", stored.Manufacturer)
+}
+
+func TestRegisterDeviceClearsHostIDWhenCollectorStopsSendingIt(t *testing.T) {
+	repo := createDeviceRegisterTestRepository(t)
+	ctx := context.Background()
+
+	device := models.Device{
+		DeviceID:     "device-1",
+		WWN:          "wwn-1",
+		HostId:       "old-host",
+		DeviceName:   "sda",
+		ModelName:    "Samsung SSD 870 EVO 4TB",
+		SerialNumber: "S7HDNF0Y548663E",
+	}
+	require.NoError(t, repo.RegisterDevice(ctx, device))
+
+	device.HostId = ""
+	require.NoError(t, repo.RegisterDevice(ctx, device))
+
+	var stored models.Device
+	require.NoError(t, repo.gormClient.WithContext(ctx).Where(queryDeviceID, device.DeviceID).First(&stored).Error)
+	require.Empty(t, stored.HostId)
 }
 
 func TestRegisterDeviceRekeysLegacyRowWhenSerialAppearsForStableWWN(t *testing.T) {
@@ -96,15 +121,15 @@ func TestRegisterDeviceRekeysLegacyRowWhenSerialAppearsForStableWWN(t *testing.T
 	}))
 
 	require.NoError(t, repo.RegisterDevice(ctx, models.Device{
-		DeviceID:        refreshedID,
-		WWN:             "0x50014ee2c06ce3c3",
-		HostId:          "host-1",
-		DeviceName:      "sdb",
-		ModelName:       "WDC WD80EFZZ-68BTXN0",
-		Manufacturer:    "Western Digital",
-		SerialNumber:    "WD-CA2XZ08L",
-		Capacity:        8001563222016,
-		DeviceProtocol:  "ATA",
+		DeviceID:         refreshedID,
+		WWN:              "0x50014ee2c06ce3c3",
+		HostId:           "host-1",
+		DeviceName:       "sdb",
+		ModelName:        "WDC WD80EFZZ-68BTXN0",
+		Manufacturer:     "Western Digital",
+		SerialNumber:     "WD-CA2XZ08L",
+		Capacity:         8001563222016,
+		DeviceProtocol:   "ATA",
 		CollectorVersion: "1.61.0",
 	}))
 
@@ -140,28 +165,28 @@ func TestRegisterDeviceDeletesLegacyDuplicateOnceCanonicalRowExists(t *testing.T
 		Update("created_at", legacyCreatedAt).Error)
 
 	require.NoError(t, repo.RegisterDevice(ctx, models.Device{
-		DeviceID:        canonicalID,
-		WWN:             "0x50014ee2c06ce3c3",
-		HostId:          "host-1",
-		DeviceName:      "sdb",
-		ModelName:       "WDC WD80EFZZ-68BTXN0",
-		Manufacturer:    "Western Digital",
-		SerialNumber:    "WD-CA2XZ08L",
-		Capacity:        8001563222016,
-		DeviceProtocol:  "ATA",
+		DeviceID:         canonicalID,
+		WWN:              "0x50014ee2c06ce3c3",
+		HostId:           "host-1",
+		DeviceName:       "sdb",
+		ModelName:        "WDC WD80EFZZ-68BTXN0",
+		Manufacturer:     "Western Digital",
+		SerialNumber:     "WD-CA2XZ08L",
+		Capacity:         8001563222016,
+		DeviceProtocol:   "ATA",
 		CollectorVersion: "1.61.0",
 	}))
 
 	require.NoError(t, repo.RegisterDevice(ctx, models.Device{
-		DeviceID:        canonicalID,
-		WWN:             "0x50014ee2c06ce3c3",
-		HostId:          "host-1",
-		DeviceName:      "sdb",
-		ModelName:       "WDC WD80EFZZ-68BTXN0",
-		Manufacturer:    "Western Digital",
-		SerialNumber:    "WD-CA2XZ08L",
-		Capacity:        8001563222016,
-		DeviceProtocol:  "ATA",
+		DeviceID:         canonicalID,
+		WWN:              "0x50014ee2c06ce3c3",
+		HostId:           "host-1",
+		DeviceName:       "sdb",
+		ModelName:        "WDC WD80EFZZ-68BTXN0",
+		Manufacturer:     "Western Digital",
+		SerialNumber:     "WD-CA2XZ08L",
+		Capacity:         8001563222016,
+		DeviceProtocol:   "ATA",
 		CollectorVersion: "1.61.0",
 	}))
 
