@@ -76,7 +76,8 @@ This repository also owns the testing and production deployment definitions for 
 
 - Testing images publish from the `develop` branch through [`Deploy Testing Stack`](./.github/workflows/deploy-testing.yml)
 - Beta images publish from the `beta` branch through [`Publish Beta Image`](./.github/workflows/deploy-beta.yml)
-- Production deploys from the `master` branch through [`Automated Release and Deploy`](./.github/workflows/release-and-deploy.yml)
+- Production images publish from release tags through [`Docker`](./.github/workflows/docker-build.yaml)
+- Release tags are created by [`Release`](./.github/workflows/release.yaml) after semantic versioning completes
 - `beta` is an optional pre-release channel for features that need validation before going to `master`
 - Zeus currently runs separate develop, beta, and production host appdata trees:
   - develop: `/mnt/user/appdata/scrutiny-develop`
@@ -272,7 +273,7 @@ Branch channel tags follow the same pattern across images:
 
 - `develop-*` from the `develop` branch
 - `beta-*` from the `beta` branch
-- `latest-*` and semver tags from `master` and release tags
+- `latest-*` and semver tags from release tags
 
 Default CI image publishing currently builds:
 
