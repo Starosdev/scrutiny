@@ -20,8 +20,61 @@ permissions:
   pull-requests: write
 
 jobs:
+  image_matrix:
+    name: Validate Docker image matrix
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      all: ${{ steps.matrix.outputs.all }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Test Docker image matrix
+        run: bash docker/tests/image-matrix_test.sh
+      - name: Export Docker image matrix
+        id: matrix
+        run: echo "all=$(jq -c . docker/image-matrix.json)" >> "$GITHUB_OUTPUT"
+
+  validate_images:
+    name: Validate Docker image (${{ matrix.image }})
+    needs: image_matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.image_matrix.outputs.all) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.sha }}
+      - name: Populate frontend version information
+        if: matrix.frontend == true
+        run: cd webapp/frontend && ./git.version.sh
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: ${{ matrix.qemu }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platforms }}
+          push: false
+          tags: scrutiny-release-validation-${{ matrix.image }}
+          cache-from: type=gha,scope=release-validation-${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=release-validation-${{ matrix.image }}
+
   release:
     name: Semantic Release
+    needs: validate_images
     runs-on: ubuntu-latest
     outputs:
       new_release_published: ${{ steps.semantic.outputs.new_release_published }}
@@ -61,7 +114,8 @@ jobs:
           esac
 
           git commit --allow-empty -m "$COMMIT_MSG"
-          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref_name }}
+          remote="https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+          git push "$remote" "HEAD:${{ github.ref_name }}"
 
       - name: Semantic Release
         id: semantic
@@ -77,8 +131,8 @@ jobs:
         id: prev_tag
         if: steps.semantic.outputs.new_release_published == 'true'
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 v${{ steps.semantic.outputs.new_release_version }}^ 2>/dev/null || echo "")
-          echo "tag=$PREV_TAG" >> $GITHUB_OUTPUT
+          PREV_TAG=$(git describe --tags --abbrev=0 "v${{ steps.semantic.outputs.new_release_version }}^" 2>/dev/null || echo "")
+          echo "tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Generate release notes from PRs
         id: release_notes
