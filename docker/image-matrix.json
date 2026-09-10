@@ -1,0 +1,90 @@
+[
+  {
+    "image": "collector",
+    "dockerfile": "docker/Dockerfile.collector",
+    "platforms": "linux/amd64,linux/arm64,linux/arm/v7",
+    "qemu": "arm64,arm",
+    "cache_scope": "docker-collector",
+    "pr_build": false,
+    "apparmor_kind": "collector",
+    "frontend": false,
+    "default_image": false
+  },
+  {
+    "image": "collector-omnibus",
+    "dockerfile": "docker/Dockerfile.collector-omnibus",
+    "platforms": "linux/amd64,linux/arm64",
+    "qemu": "arm64,arm",
+    "cache_scope": "docker-collector-omnibus",
+    "pr_build": false,
+    "apparmor_kind": "collector",
+    "frontend": false,
+    "default_image": false
+  },
+  {
+    "image": "collector-zfs",
+    "dockerfile": "docker/Dockerfile.collector-zfs",
+    "platforms": "linux/amd64,linux/arm64",
+    "qemu": "arm64,arm",
+    "cache_scope": "docker-collector-zfs",
+    "pr_build": true,
+    "apparmor_kind": null,
+    "frontend": false,
+    "default_image": false
+  },
+  {
+    "image": "collector-mdadm",
+    "dockerfile": "docker/Dockerfile.collector-mdadm",
+    "platforms": "linux/amd64,linux/arm64",
+    "qemu": "arm64,arm",
+    "cache_scope": "docker-collector-mdadm",
+    "pr_build": true,
+    "apparmor_kind": null,
+    "frontend": false,
+    "default_image": false
+  },
+  {
+    "image": "collector-btrfs",
+    "dockerfile": "docker/Dockerfile.collector-btrfs",
+    "platforms": "linux/amd64,linux/arm64",
+    "qemu": "arm64,arm",
+    "cache_scope": "docker-collector-btrfs",
+    "pr_build": true,
+    "apparmor_kind": null,
+    "frontend": false,
+    "default_image": false
+  },
+  {
+    "image": "collector-performance",
+    "dockerfile": "docker/Dockerfile.collector-performance",
+    "platforms": "linux/amd64,linux/arm64",
+    "qemu": "arm64,arm",
+    "cache_scope": "docker-collector-performance",
+    "pr_build": false,
+    "apparmor_kind": "collector",
+    "frontend": false,
+    "default_image": false
+  },
+  {
+    "image": "web",
+    "dockerfile": "docker/Dockerfile.web",
+    "platforms": "linux/amd64,linux/arm64",
+    "qemu": "arm64,arm",
+    "cache_scope": "docker-web",
+    "pr_build": true,
+    "apparmor_kind": null,
+    "frontend": true,
+    "default_image": false
+  },
+  {
+    "image": "omnibus",
+    "dockerfile": "docker/Dockerfile",
+    "platforms": "linux/amd64,linux/arm64",
+    "qemu": "arm64,arm",
+    "cache_scope": "docker-omnibus",
+    "pr_build": false,
+    "apparmor_kind": "omnibus",
+    "frontend": true,
+    "default_image": true
+  }
+]
