@@ -75,4 +75,13 @@ describe('ZFSPoolDetailComponent', () => {
 
         expect(fixture.nativeElement.querySelector('[data-testid="zfs-pool-mute-toggle"]')).not.toBeNull();
     });
+
+    it('shows missing inventory instead of historical online status', () => {
+        fixture.componentInstance.pool = { ...pool, presence: 'missing' };
+        fixture.detectChanges();
+
+        const text = fixture.nativeElement.textContent as string;
+        expect(text).toContain('MISSING');
+        expect(text).toContain('Missing from last inventory');
+    });
 });

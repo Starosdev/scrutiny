@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
@@ -18,25 +20,62 @@ import (
 
 // RegisterZFSPool inserts or updates a ZFS pool in the database
 func (sr *scrutinyRepository) RegisterZFSPool(ctx context.Context, pool models.ZFSPool) error {
-	// Ensure UpdatedAt is set to current time
-	pool.UpdatedAt = time.Now()
+	return sr.registerZFSPoolWithDB(ctx, sr.gormClient, pool, time.Now())
+}
+
+// RegisterZFSPoolInventory atomically records a complete pool inventory for one host.
+func (sr *scrutinyRepository) RegisterZFSPoolInventory(ctx context.Context, hostID string, pools []models.ZFSPool) error {
+	hostID = strings.TrimSpace(hostID)
+	if hostID == "" {
+		return errors.New("ZFS pool inventory requires a host ID")
+	}
+
+	now := time.Now()
+	return sr.gormClient.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Advance inventory time for every previously known pool on this host. Pools
+		// absent from this report then resolve to missing instead of stale.
+		if err := tx.Model(&models.ZFSPool{}).Where("host_id = ?", hostID).
+			Update("last_inventory_at", now).Error; err != nil {
+			return err
+		}
+
+		for i := range pools {
+			pool := pools[i]
+			if pool.GUID == "" {
+				continue
+			}
+			if pool.HostID != "" && strings.TrimSpace(pool.HostID) != hostID {
+				return fmt.Errorf("pool %s belongs to host %q, inventory host is %q", pool.GUID, pool.HostID, hostID)
+			}
+			pool.HostID = hostID
+			pool.LastSeenAt = now
+			pool.LastInventoryAt = now
+			if err := sr.registerZFSPoolWithDB(ctx, tx, pool, now); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (sr *scrutinyRepository) registerZFSPoolWithDB(ctx context.Context, db *gorm.DB, pool models.ZFSPool, now time.Time) error {
+	pool.UpdatedAt = now
 
 	// Check if pool already exists
 	var existing models.ZFSPool
-	result := sr.gormClient.WithContext(ctx).Where(queryGUID, pool.GUID).First(&existing)
+	result := db.WithContext(ctx).Where(queryGUID, pool.GUID).First(&existing)
 
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		// New pool - create it
-		if err := sr.gormClient.WithContext(ctx).Create(&pool).Error; err != nil {
+		if err := db.WithContext(ctx).Create(&pool).Error; err != nil {
 			return err
 		}
 	} else if result.Error != nil {
 		return result.Error
 	} else {
 		// Existing pool - update it
-		if err := sr.gormClient.WithContext(ctx).Model(&existing).Updates(map[string]interface{}{
+		updates := map[string]interface{}{
 			"name":                   pool.Name,
-			"host_id":                pool.HostID,
 			"status":                 pool.Status,
 			"health":                 pool.Health,
 			"size":                   pool.Size,
@@ -59,7 +98,17 @@ func (sr *scrutinyRepository) RegisterZFSPool(ctx context.Context, pool models.Z
 			"total_write_errors":     pool.TotalWriteErrors,
 			"total_checksum_errors":  pool.TotalChecksumErrors,
 			"updated_at":             pool.UpdatedAt,
-		}).Error; err != nil {
+		}
+		if strings.TrimSpace(pool.HostID) != "" {
+			updates["host_id"] = strings.TrimSpace(pool.HostID)
+		}
+		if !pool.LastSeenAt.IsZero() {
+			updates["last_seen_at"] = pool.LastSeenAt
+		}
+		if !pool.LastInventoryAt.IsZero() {
+			updates["last_inventory_at"] = pool.LastInventoryAt
+		}
+		if err := db.WithContext(ctx).Model(&existing).Updates(updates).Error; err != nil {
 			return err
 		}
 	}
@@ -67,12 +116,12 @@ func (sr *scrutinyRepository) RegisterZFSPool(ctx context.Context, pool models.Z
 	// Handle vdevs - delete existing and recreate
 	if len(pool.Vdevs) > 0 {
 		// Delete existing vdevs for this pool
-		if err := sr.gormClient.WithContext(ctx).Where("pool_guid = ?", pool.GUID).Delete(&models.ZFSVdev{}).Error; err != nil {
+		if err := db.WithContext(ctx).Where("pool_guid = ?", pool.GUID).Delete(&models.ZFSVdev{}).Error; err != nil {
 			return err
 		}
 
 		// Insert new vdevs with hierarchy
-		if err := sr.insertVdevsRecursive(ctx, pool.GUID, pool.Vdevs, nil); err != nil {
+		if err := sr.insertVdevsRecursive(ctx, db, pool.GUID, pool.Vdevs, nil); err != nil {
 			return err
 		}
 	}
@@ -81,7 +130,7 @@ func (sr *scrutinyRepository) RegisterZFSPool(ctx context.Context, pool models.Z
 }
 
 // insertVdevsRecursive inserts vdevs and their children recursively
-func (sr *scrutinyRepository) insertVdevsRecursive(ctx context.Context, poolGUID string, vdevs []models.ZFSVdev, parentID *uint) error {
+func (sr *scrutinyRepository) insertVdevsRecursive(ctx context.Context, db *gorm.DB, poolGUID string, vdevs []models.ZFSVdev, parentID *uint) error {
 	for _, vdev := range vdevs {
 		vdev.PoolGUID = poolGUID
 		vdev.ParentID = parentID
@@ -90,13 +139,13 @@ func (sr *scrutinyRepository) insertVdevsRecursive(ctx context.Context, poolGUID
 		children := vdev.Children
 		vdev.Children = nil // Don't try to insert children via association
 
-		if err := sr.gormClient.WithContext(ctx).Create(&vdev).Error; err != nil {
+		if err := db.WithContext(ctx).Create(&vdev).Error; err != nil {
 			return err
 		}
 
 		// Recursively insert children
 		if len(children) > 0 {
-			if err := sr.insertVdevsRecursive(ctx, poolGUID, children, &vdev.ID); err != nil {
+			if err := sr.insertVdevsRecursive(ctx, db, poolGUID, children, &vdev.ID); err != nil {
 				return err
 			}
 		}
@@ -118,7 +167,22 @@ func (sr *scrutinyRepository) getZFSPools(ctx context.Context, includeArchived b
 	if err := query.Find(&pools).Error; err != nil {
 		return nil, fmt.Errorf("could not get ZFS pools from DB: %v", err)
 	}
+	sr.resolveZFSPoolPresence(pools)
 	return pools, nil
+}
+
+func (sr *scrutinyRepository) resolveZFSPoolPresence(pools []models.ZFSPool) {
+	staleAfter := time.Hour
+	if sr.appConfig != nil {
+		minutes := sr.appConfig.GetInt(config.WebZFSPoolStaleAfterMinutesKey)
+		if minutes > 0 {
+			staleAfter = time.Duration(minutes) * time.Minute
+		}
+	}
+	now := time.Now()
+	for i := range pools {
+		pools[i].Presence = pools[i].ResolvePresence(now, staleAfter)
+	}
 }
 
 // GetZFSPoolDetails returns a single ZFS pool with its vdev hierarchy
@@ -143,6 +207,9 @@ func (sr *scrutinyRepository) GetZFSPoolDetails(ctx context.Context, guid string
 	}
 
 	pool.Vdevs = vdevs
+	resolved := []models.ZFSPool{pool}
+	sr.resolveZFSPoolPresence(resolved)
+	pool.Presence = resolved[0].Presence
 	return pool, nil
 }
 

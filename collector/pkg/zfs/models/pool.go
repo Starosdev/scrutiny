@@ -48,9 +48,11 @@ const (
 
 // ZFSPoolWrapper wraps the response for ZFS pool API calls
 type ZFSPoolWrapper struct {
-	Success bool      `json:"success"`
-	Errors  []error   `json:"errors,omitempty"`
-	Data    []ZFSPool `json:"data"`
+	Success  bool      `json:"success"`
+	Errors   []error   `json:"errors,omitempty"`
+	HostID   string    `json:"host_id,omitempty"`
+	Complete bool      `json:"complete,omitempty"`
+	Data     []ZFSPool `json:"data"`
 }
 
 // ZFSPool represents a ZFS storage pool
