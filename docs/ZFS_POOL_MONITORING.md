@@ -117,6 +117,9 @@ Collectors without a host ID use the legacy registration path. Their pool
 presence is `unknown` because the server cannot safely associate absence with a
 host.
 
+When `zpool list` reports `no pools available`, the collector treats that expected
+exit status as an empty inventory so a complete host report still reaches the API.
+
 Configure the stale window on the web service with
 `SCRUTINY_WEB_ZFS_POOL_STALE_AFTER_MINUTES` (default: `60`).
 
