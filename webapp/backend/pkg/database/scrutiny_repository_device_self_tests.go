@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -160,4 +161,25 @@ func (sr *scrutinyRepository) GetDeviceSelfTests(ctx context.Context, deviceID s
 	}
 
 	return selfTests, nil
+}
+
+func (sr *scrutinyRepository) GetLatestDeviceSelfTest(ctx context.Context, deviceID string) (*models.DeviceSelfTest, error) {
+	device, err := sr.GetDeviceDetails(ctx, deviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	identity := deviceSelfTestIdentity(&device)
+	var selfTest models.DeviceSelfTest
+	err = sr.gormClient.WithContext(ctx).
+		Where("device_identity = ?", identity).
+		Order(selfTestHistoryOrder).
+		First(&selfTest).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("could not get latest device self-test from DB: %v", err)
+	}
+	return &selfTest, nil
 }

@@ -61,7 +61,8 @@ func TestGetDeviceSelfTests(t *testing.T) {
 	var response struct {
 		Success bool `json:"success"`
 		Data    struct {
-			SelfTests []models.DeviceSelfTest `json:"self_tests"`
+			SelfTests []models.DeviceSelfTest     `json:"self_tests"`
+			Health    models.DeviceSelfTestHealth `json:"health"`
 		} `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
@@ -72,6 +73,9 @@ func TestGetDeviceSelfTests(t *testing.T) {
 	require.Equal(t, 2464, response.Data.SelfTests[0].LifetimeHours)
 	require.Equal(t, int64(68000), *response.Data.SelfTests[0].EffectiveLifetimeHours)
 	require.Equal(t, "Short offline", response.Data.SelfTests[0].TypeString)
+	require.Equal(t, models.DeviceSelfTestStatusPassed, response.Data.Health.Status)
+	require.True(t, response.Data.Health.HasResult)
+	require.True(t, response.Data.Health.HasFailures)
 }
 
 func TestGetDeviceSelfTestsReturnsServerErrorOnRepositoryFailure(t *testing.T) {

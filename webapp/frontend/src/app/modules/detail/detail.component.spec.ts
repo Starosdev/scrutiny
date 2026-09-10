@@ -52,7 +52,15 @@ describe('DetailComponent', () => {
         mockDetailService = jasmine.createSpyObj('DetailService', ['getData', 'getSelfTestData', 'getPerformanceData', 'getReplacementRisk'], {
             data$: dataSubject.asObservable(),
         });
-        mockDetailService.getSelfTestData.and.returnValue(of({ success: true, data: { self_tests: [] } }));
+        mockDetailService.getSelfTestData.and.returnValue(
+            of({
+                success: true,
+                data: {
+                    self_tests: [],
+                    health: { status: 'unknown', has_result: false, latest_observed_at: null, has_failures: false },
+                },
+            })
+        );
         mockDetailService.getPerformanceData.and.returnValue(of({ success: true, data: { history: [], baseline: null } }));
         mockDetailService.getReplacementRisk.and.returnValue(of({ success: true, data: null }));
         mockConfigService = jasmine.createSpyObj('ScrutinyConfigService', [], {

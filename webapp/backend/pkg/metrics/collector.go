@@ -69,14 +69,15 @@ func NewCollector(logger *logrus.Entry) *Collector {
 }
 
 // UpdateDeviceMetrics updates device metrics after a SMART upload.
-func (mc *Collector) UpdateDeviceMetrics(device *models.Device, smartData *measurements.Smart) {
+func (mc *Collector) UpdateDeviceMetrics(device *models.Device, smartData *measurements.Smart, selfTestHealth models.DeviceSelfTestHealth) {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
 
 	mc.devices[device.DeviceID] = &metricsModels.DeviceMetricsData{
-		Device:    *device,
-		SmartData: *smartData,
-		UpdatedAt: time.Now(),
+		Device:         *device,
+		SmartData:      *smartData,
+		SelfTestHealth: selfTestHealth,
+		UpdatedAt:      time.Now(),
 	}
 	mc.logger.Debugf("Updated metrics for device %s", device.DeviceID)
 }
@@ -148,13 +149,15 @@ func (mc *Collector) LoadInitialData(deviceRepo database.DeviceRepo, ctx context
 	}
 
 	smartDataMap := make(map[string][]measurements.Smart)
+	selfTestHealthMap := make(map[string]models.DeviceSelfTestHealth)
 	var wg sync.WaitGroup
 	var mapMu sync.Mutex
 
 	for _, deviceSummary := range summary {
 		wwn := deviceSummary.Device.WWN
 		wg.Add(1)
-		go func(w string) {
+		deviceID := deviceSummary.Device.DeviceID
+		go func(deviceID, w string) {
 			defer wg.Done()
 			smarts, historyErr := deviceRepo.GetSmartAttributeHistory(ctx, w, "forever", 1, 0, nil)
 			if historyErr == nil && len(smarts) > 0 {
@@ -162,7 +165,15 @@ func (mc *Collector) LoadInitialData(deviceRepo database.DeviceRepo, ctx context
 				smartDataMap[w] = smarts
 				mapMu.Unlock()
 			}
-		}(wwn)
+			if deviceSummary.Device.IsAta() {
+				latest, selfTestErr := deviceRepo.GetLatestDeviceSelfTest(ctx, deviceID)
+				if selfTestErr == nil && latest != nil {
+					mapMu.Lock()
+					selfTestHealthMap[deviceID] = models.SummarizeDeviceSelfTests([]models.DeviceSelfTest{*latest})
+					mapMu.Unlock()
+				}
+			}
+		}(deviceID, wwn)
 	}
 
 	wg.Wait()
@@ -172,9 +183,10 @@ func (mc *Collector) LoadInitialData(deviceRepo database.DeviceRepo, ctx context
 		device := deviceSummary.Device
 		if smartResults, ok := smartDataMap[device.WWN]; ok && len(smartResults) > 0 {
 			nextDevices[device.DeviceID] = &metricsModels.DeviceMetricsData{
-				Device:    device,
-				SmartData: smartResults[0],
-				UpdatedAt: time.Now(),
+				Device:         device,
+				SmartData:      smartResults[0],
+				SelfTestHealth: selfTestHealthMap[device.DeviceID],
+				UpdatedAt:      time.Now(),
 			}
 		}
 	}
@@ -215,6 +227,7 @@ func (mc *Collector) Collect(ch chan<- prometheus.Metric) {
 	mc.collectDeviceInfo(ch)
 	mc.collectDeviceCapacity(ch)
 	mc.collectDeviceStatus(ch)
+	mc.collectDeviceSelfTestStatus(ch)
 	mc.collectSmartAttributes(ch)
 	mc.collectSummaryMetrics(ch)
 	mc.collectStatistics(ch)
@@ -261,6 +274,25 @@ func (mc *Collector) collectDeviceStatus(ch chan<- prometheus.Metric) {
 			prometheus.NewDesc("scrutiny_device_status", "Device status (0=passed, 1=failed)",
 				[]string{"device_id", "wwn", "device_name", "model_name", "protocol", "host_id"}, nil),
 			prometheus.GaugeValue, float64(data.Device.DeviceStatus),
+			data.Device.DeviceID, data.Device.WWN, data.Device.DeviceName, data.Device.ModelName,
+			data.Device.DeviceProtocol, data.Device.HostId,
+		)
+	}
+}
+
+func (mc *Collector) collectDeviceSelfTestStatus(ch chan<- prometheus.Metric) {
+	for _, data := range mc.devices {
+		if !data.SelfTestHealth.HasResult {
+			continue
+		}
+		value := 0.0
+		if data.SelfTestHealth.Status == models.DeviceSelfTestStatusPassed {
+			value = 1
+		}
+		ch <- prometheus.MustNewConstMetric(
+			prometheus.NewDesc("scrutiny_device_self_test_last_passed", "Whether the latest recorded ATA SMART self-test passed",
+				[]string{"device_id", "wwn", "device_name", "model_name", "protocol", "host_id"}, nil),
+			prometheus.GaugeValue, value,
 			data.Device.DeviceID, data.Device.WWN, data.Device.DeviceName, data.Device.ModelName,
 			data.Device.DeviceProtocol, data.Device.HostId,
 		)

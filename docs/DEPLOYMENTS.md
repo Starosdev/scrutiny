@@ -10,7 +10,7 @@ For release-version verification details, see [RELEASE_VERSION_VERIFICATION.md](
 | --- | --- | --- | --- | --- |
 | Testing | `develop` | `.github/workflows/deploy-testing.yml` | `ghcr.io/starosdev/scrutiny:develop` and `develop-omnibus` | External hosts pull these tags when they want the latest testing build |
 | Beta | `beta` | `.github/workflows/deploy-beta.yml` | `ghcr.io/starosdev/scrutiny:beta` and `beta-omnibus` | External hosts pull these tags when they want a pre-release candidate ahead of stable |
-| Production | `master` | `.github/workflows/release-and-deploy.yml` | `ghcr.io/starosdev/scrutiny:latest` and `latest-omnibus` | External hosts pull these tags when they want the latest production build |
+| Production | release tag | `.github/workflows/docker-build.yaml` | `ghcr.io/starosdev/scrutiny:latest` and `latest-omnibus` | External hosts pull these tags when they want the latest production build |
 
 ## Published Channel Tags
 
@@ -116,7 +116,7 @@ This repo now treats `beta` as an optional pre-release channel for changes that 
 
 - `develop` is the integration branch and testing image source
 - `beta` is the optional pre-release branch and beta image source
-- `master` is the stable branch and latest image source
+- `master` is the stable branch; release tags are the latest image source
 
 That distinction matters for both manual host rollouts and the helper scripts in `ops/`:
 
@@ -166,6 +166,8 @@ For an existing Docker Compose installation:
 2. Back up the complete host directory mounted at `/opt/scrutiny/influxdb`. With the example Compose file, copy `./influxdb` to storage outside the active mount.
 3. Set `SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED=true` in the environment or `.env` file.
 4. Start Scrutiny and confirm InfluxDB and the Scrutiny health endpoint are healthy.
+
+In Compose list syntax, use `- SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED=true`. A colon does not assign this variable and leaves the backup acknowledgement disabled.
 
 For Unraid, stop the container and back up the complete Database path shown in the template. Then change **InfluxDB 2.9 Backup Confirmed** to `true` before starting the updated container.
 

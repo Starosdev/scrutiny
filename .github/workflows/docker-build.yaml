@@ -32,9 +32,9 @@ on:
   workflow_dispatch:
     inputs:
       tag_suffix:
-        description: 'Tag suffix (e.g., latest, develop, or version like 1.0.0)'
+        description: 'Non-stable tag suffix (latest is reserved for release tags)'
         required: true
-        default: 'latest'
+        default: 'develop'
 
 concurrency:
   group: docker-build-${{ github.ref }}
@@ -45,7 +45,21 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  validate-dispatch:
+    name: Validate manual image tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject stable tag override
+        env:
+          TAG_SUFFIX: ${{ inputs.tag_suffix }}
+        run: |
+          if [[ "$TAG_SUFFIX" == "latest" ]]; then
+            echo "Stable image tags are published only from release tag refs." >&2
+            exit 1
+          fi
+
   collector:
+    needs: validate-dispatch
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -106,6 +120,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=docker-collector
 
   collector-omnibus:
+    needs: validate-dispatch
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -166,6 +181,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=docker-collector-omnibus
 
   collector-zfs:
+    needs: validate-dispatch
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -226,6 +242,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=docker-collector-zfs
 
   collector-mdadm:
+    needs: validate-dispatch
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -286,6 +303,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=docker-collector-mdadm
 
   collector-btrfs:
+    needs: validate-dispatch
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -346,6 +364,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=docker-collector-btrfs
 
   collector-performance:
+    needs: validate-dispatch
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -406,6 +425,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=docker-collector-performance
 
   web:
+    needs: validate-dispatch
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -467,6 +487,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=docker-web
 
   omnibus:
+    needs: validate-dispatch
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -523,11 +544,9 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
-            # Default latest tag (omnibus is the default). Tag refs only: a
-            # release pushes chore(release) to master and creates the tag, and
-            # those runs are in different concurrency groups, so enabling both
-            # let whichever finished last win latest. For v1.72.0 the master
-            # build won and latest did not point at the released image.
+            # Default latest tag (omnibus is the default). Release tag refs are
+            # the only publisher for moving stable tags, so they share release
+            # contents.
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && github.event_name != 'workflow_dispatch' }}
 
       - name: Build and push Docker image
