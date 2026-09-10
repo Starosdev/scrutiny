@@ -3,7 +3,6 @@ import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AuthService } from 'app/core/auth/auth.service';
-import { versionInfo } from 'environments/versions';
 import { ThemeToggleComponent } from '../../common/theme-toggle/theme-toggle.component';
 import { MatIconButton } from '@angular/material/button';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -23,14 +22,12 @@ export class MobileLayoutComponent implements OnInit, OnDestroy {
     private readonly _authService = inject(AuthService);
     private readonly _router = inject(Router);
 
-    appVersion: string;
     authEnabled: boolean = false;
 
     private readonly _unsubscribeAll: Subject<void>;
 
     constructor() {
         this._unsubscribeAll = new Subject();
-        this.appVersion = versionInfo.version;
     }
 
     ngOnInit(): void {

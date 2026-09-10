@@ -178,6 +178,37 @@ func TestCollectorIncludesZFSAndWorkloadMetrics(t *testing.T) {
 	})
 }
 
+func TestCollectorExportsLatestSelfTestStatus(t *testing.T) {
+	collector := NewCollector(logrus.New().WithField("test", t.Name()))
+	collector.devices["dev-1"] = &metricsModels.DeviceMetricsData{
+		Device: models.Device{
+			DeviceID:       "dev-1",
+			WWN:            "wwn-1",
+			DeviceName:     "/dev/sda",
+			ModelName:      "TestDrive",
+			DeviceProtocol: "ATA",
+			HostId:         "host-a",
+		},
+		SelfTestHealth: models.DeviceSelfTestHealth{
+			Status:    models.DeviceSelfTestStatusPassed,
+			HasResult: true,
+		},
+	}
+
+	families := gatherMetricFamilies(t, collector)
+	assertMetricValue(t, families, "scrutiny_device_self_test_last_passed", 1, map[string]string{
+		"device_id": "dev-1",
+		"wwn":       "wwn-1",
+	})
+
+	collector.devices["dev-1"].SelfTestHealth.Status = models.DeviceSelfTestStatusFailed
+	families = gatherMetricFamilies(t, collector)
+	assertMetricValue(t, families, "scrutiny_device_self_test_last_passed", 0, map[string]string{
+		"device_id": "dev-1",
+		"wwn":       "wwn-1",
+	})
+}
+
 func TestCollectorOmitsOptionalWorkloadMetricsAndHandlesUnknownStates(t *testing.T) {
 	collector := NewCollector(logrus.New().WithField("test", "collector"))
 	collector.zfsPools["pool-guid"] = &metricsModels.ZFSPoolMetricsData{

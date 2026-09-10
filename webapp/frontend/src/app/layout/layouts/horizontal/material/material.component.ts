@@ -5,7 +5,6 @@ import { takeUntil } from 'rxjs/operators';
 import { TreoMediaWatcherService } from '@treo/services/media-watcher';
 import { TreoNavigationService } from '@treo/components/navigation';
 import { AuthService } from 'app/core/auth/auth.service';
-import { versionInfo } from 'environments/versions';
 import { AppConfig } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { TreoVerticalNavigationComponent } from '../../../../../@treo/components/navigation/vertical/vertical.component';
@@ -31,7 +30,6 @@ export class MaterialLayoutComponent implements OnInit, OnDestroy {
     private readonly _treoNavigationService = inject(TreoNavigationService);
     private readonly _router = inject(Router);
 
-    appVersion: string;
     authEnabled: boolean = false;
     config: AppConfig = {};
     data: any;
@@ -61,8 +59,6 @@ export class MaterialLayoutComponent implements OnInit, OnDestroy {
         // Set the defaults
         this.fixedHeader = false;
         this.fixedFooter = false;
-
-        this.appVersion = versionInfo.version;
     }
 
     // -----------------------------------------------------------------------------------------------------

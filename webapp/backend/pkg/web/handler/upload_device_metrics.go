@@ -202,7 +202,16 @@ func loadNotificationSettings(c *gin.Context, logger *logrus.Entry, deviceRepo d
 func refreshPrometheusMetrics(c *gin.Context, logger *logrus.Entry, deviceRepo database.DeviceRepo, deviceID string, updatedDevice *models.Device, smartData *measurements.Smart) {
 	if collectorVal, exists := c.Get("METRICS_COLLECTOR"); exists {
 		if collector, ok := collectorVal.(*metrics.Collector); ok && collector != nil {
-			collector.UpdateDeviceMetrics(updatedDevice, smartData)
+			selfTestHealth := models.DeviceSelfTestHealth{Status: models.DeviceSelfTestStatusUnknown}
+			if updatedDevice.IsAta() {
+				latestSelfTest, err := deviceRepo.GetLatestDeviceSelfTest(c, deviceID)
+				if err != nil {
+					logger.Warnf("Failed to load latest self-test for Prometheus metrics for device %s: %v", deviceID, err)
+				} else if latestSelfTest != nil {
+					selfTestHealth = models.SummarizeDeviceSelfTests([]models.DeviceSelfTest{*latestSelfTest})
+				}
+			}
+			collector.UpdateDeviceMetrics(updatedDevice, smartData, selfTestHealth)
 			if err := collector.RefreshWorkloadMetrics(deviceRepo, c); err != nil {
 				logger.Warnf("Failed to refresh Prometheus workload metrics for device %s: %v", deviceID, err)
 			}

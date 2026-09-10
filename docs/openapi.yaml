@@ -1992,8 +1992,25 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/DeviceSelfTest"
-          required: [self_tests]
+            health:
+              $ref: "#/components/schemas/DeviceSelfTestHealth"
+          required: [self_tests, health]
       required: [success, data]
+    DeviceSelfTestHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [unknown, passed, failed]
+        has_result:
+          type: boolean
+        latest_observed_at:
+          type: integer
+          format: int64
+          nullable: true
+        has_failures:
+          type: boolean
+      required: [status, has_result, latest_observed_at, has_failures]
     PerformanceUploadRequest:
       type: object
       properties:

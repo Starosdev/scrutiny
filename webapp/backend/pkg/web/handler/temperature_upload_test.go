@@ -60,12 +60,13 @@ func TestUploadTemperatureDeliversOnce(t *testing.T) {
 			settings.Metrics.NotifyOnTemperature = true
 			settings.Metrics.TemperatureDurationMinutes = models.DefaultTemperatureDurationMinutes
 			settings.Collector.StoreTempHistory = true
-			device := models.Device{DeviceID: "drive", WWN: "wwn", DeviceName: "/dev/sda", DeviceStatus: pkg.DeviceStatusPassed}
+			device := models.Device{DeviceID: "drive", WWN: "wwn", DeviceName: "/dev/sda", DeviceProtocol: pkg.DeviceProtocolAta, DeviceStatus: pkg.DeviceStatusPassed}
 			now := time.Now().UTC().Truncate(time.Second)
 			repo := mock_database.NewMockDeviceRepo(gomock.NewController(t))
 			repo.EXPECT().GetDeviceDetails(gomock.Any(), "drive").Return(device, nil).Times(2)
 			repo.EXPECT().UpdateDevice(gomock.Any(), "drive", gomock.Any()).Return(device, nil).Times(2)
 			repo.EXPECT().SaveSmartAttributes(gomock.Any(), "wwn", gomock.Any()).Return(measurements.Smart{Temp: 60, Date: now, Status: pkg.DeviceStatusPassed}, nil).Times(2)
+			repo.EXPECT().GetLatestDeviceSelfTest(gomock.Any(), "drive").Return(nil, nil).Times(2)
 			repo.EXPECT().UpdateDeviceHasForcedFailure(gomock.Any(), "drive", false).Return(nil).Times(2)
 			repo.EXPECT().SaveSmartTemperature(gomock.Any(), "wwn", "drive", gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(2)
 			repo.EXPECT().LoadSettings(gomock.Any()).Return(settings, nil).Times(2)
