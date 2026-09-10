@@ -86,4 +86,13 @@ describe('ZFSPoolCardComponent', () => {
         expect(text).toContain('100 B');
         expect(text).not.toContain('raw');
     });
+
+    it('shows missing inventory instead of historical online status', () => {
+        fixture.componentRef.setInput('poolSummary', { ...pool, presence: 'missing' });
+        fixture.detectChanges();
+
+        const text = fixture.nativeElement.textContent as string;
+        expect(text).toContain('MISSING');
+        expect(text).toContain('Missing from last inventory');
+    });
 });

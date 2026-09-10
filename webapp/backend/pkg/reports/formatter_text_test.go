@@ -80,14 +80,14 @@ func TestFormatTextReport_WithZFS(t *testing.T) {
 		Devices:       []DeviceReport{},
 		ZFSPools: []ZFSPoolReport{
 			{Name: "tank", Health: "ONLINE", Capacity: 65.5},
-			{Name: "backup", Health: "DEGRADED", ErrorsRead: 5},
+			{Name: "backup", Health: "ONLINE", Presence: "missing", ErrorsRead: 5},
 		},
 	}
 
 	_, message := FormatTextReport(report)
 	assert.Contains(t, message, "ZFS Pools")
 	assert.Contains(t, message, "tank")
-	assert.Contains(t, message, "DEGRADED")
+	assert.Contains(t, message, "backup: MISSING")
 }
 
 func TestFormatTextReport_Truncation(t *testing.T) {

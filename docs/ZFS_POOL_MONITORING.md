@@ -12,6 +12,7 @@ Scrutiny can monitor ZFS pool health alongside individual drive S.M.A.R.T metric
 - Virtual device (vdev) hierarchy with per-vdev status and errors
 - Historical metrics with time-series storage
 - Multiple host support for monitoring pools across different servers
+- Inventory presence tracking for pools removed from a host or collectors that stop reporting
 
 ## Quick Start
 
@@ -102,6 +103,22 @@ These variables configure the collector binary itself:
 | `COLLECTOR_ZFS_HOST_ID` or `COLLECTOR_HOST_ID` | (empty) | Identifier for this host, used to group pools in the dashboard |
 | `COLLECTOR_ZFS_LOG_FILE` or `COLLECTOR_LOG_FILE` | (empty) | Path to log file. Leave empty for stdout |
 | `COLLECTOR_ZFS_DEBUG` or `COLLECTOR_DEBUG` or `DEBUG` | `false` | Enable debug logging |
+
+## Pool Presence
+
+Collectors with a host ID send a complete inventory on every successful run. An
+empty inventory is valid and marks previously known pools on that host as
+`missing`; it does not delete or archive them. Pools whose host inventory has
+not arrived within the stale window are `stale`. The dashboard, reports, and
+Prometheus metrics expose presence separately from the last observed ZFS health,
+so an old `ONLINE` result is not presented as current.
+
+Collectors without a host ID use the legacy registration path. Their pool
+presence is `unknown` because the server cannot safely associate absence with a
+host.
+
+Configure the stale window on the web service with
+`SCRUTINY_WEB_ZFS_POOL_STALE_AFTER_MINUTES` (default: `60`).
 
 ## Configuration File
 

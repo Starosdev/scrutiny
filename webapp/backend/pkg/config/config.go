@@ -15,6 +15,9 @@ const DB_USER_SETTINGS_SUBKEY = "user"
 // WebZFSAllowPoolModificationsKey controls whether user-facing ZFS pool mutation endpoints are enabled.
 const WebZFSAllowPoolModificationsKey = "web.zfs.allow_pool_modifications"
 
+// WebZFSPoolStaleAfterMinutesKey controls when a ZFS pool host is considered stale.
+const WebZFSPoolStaleAfterMinutesKey = "web.zfs.pool_stale_after_minutes"
+
 // When initializing this class the following methods must be called:
 // Config.New
 // Config.Init
@@ -44,6 +47,7 @@ func (c *configuration) Init() error {
 	c.SetDefault("web.database.location", "/opt/scrutiny/config/scrutiny.db")
 	c.SetDefault("web.database.journal_mode", "WAL")
 	c.SetDefault(WebZFSAllowPoolModificationsKey, true)
+	c.SetDefault(WebZFSPoolStaleAfterMinutesKey, 60)
 
 	c.SetDefault("log.level", "INFO")
 	c.SetDefault("log.file", "")

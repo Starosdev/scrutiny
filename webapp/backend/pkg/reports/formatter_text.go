@@ -121,7 +121,7 @@ func formatZFSPoolLine(pool *ZFSPoolReport) string {
 		details += fmt.Sprintf(", errors: %d read / %d write / %d checksum",
 			pool.ErrorsRead, pool.ErrorsWrite, pool.ErrorsChecksum)
 	}
-	return fmt.Sprintf("  - %s: %s (%s)", pool.Name, pool.Health, details)
+	return fmt.Sprintf("  - %s: %s (%s)", pool.Name, pool.DisplayHealth(), details)
 }
 
 type alertLine struct {
