@@ -364,6 +364,110 @@ CREATE TABLE attribute_overrides (
 	require.Equal(t, "ui", source)
 }
 
+func TestMigrateAttributeOverridesWithLegacySQLiteSchema(t *testing.T) {
+	repo := createMigrationTestRepositoryWithAppliedMigrations(t, []string{
+		"20201107210306",
+		"20220503113100",
+		"20220503120000",
+		"m20220509170100",
+		"m20220709181300",
+		"m20220716214900",
+		"m20221115214900",
+		"g20220802211500",
+		"m20231123123300",
+		"m20240722082740",
+		"m20250221084400",
+		"m20250609210800",
+		"m20251108044508",
+		"m20260108000000",
+		"m20260122000000",
+		"m20260124000000",
+		"m20260129000000",
+		"m20260131000000",
+		"m20260202000000",
+		"m20260207000000",
+		"m20260217000000",
+		"m20260219000000",
+		"m20260225000000",
+		"m20260226000000",
+		"m20260301000000",
+		"m20260315000000",
+		"m20260401000000",
+		"m20260402000000",
+		"m20260410000000",
+		"m20260411000000",
+		"m20260413000000",
+		"m20260414000000",
+		"m20260421000000",
+		"m20260508000000",
+		"m20260510000000",
+		"m20260514000000",
+		"m20260516000000",
+		"m20260523000000",
+		"m20260524000000",
+		"m20260528000000",
+		"m20260608000000",
+		"m20260609000000",
+		"m20260610000000",
+		"m20260616000000",
+		"m20260617000000",
+		"m20260701000000",
+		"m20260728000000",
+		"m20260729000000",
+		"m20260803000000",
+		"m20260809000000",
+		"m20260823000000",
+		"m20260905000000",
+	})
+
+	require.NoError(t, repo.gormClient.Exec("DROP TABLE attribute_overrides").Error)
+	require.NoError(t, repo.gormClient.Exec(`
+CREATE TABLE attribute_overrides (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	created_at DATETIME,
+	updated_at DATETIME,
+	protocol TEXT NOT NULL,
+	attribute_id TEXT NOT NULL,
+	wwn TEXT DEFAULT '',
+	action TEXT DEFAULT '',
+	status TEXT DEFAULT '',
+	warn_above INTEGER,
+	fail_above INTEGER,
+	source TEXT DEFAULT 'ui',
+	device_id TEXT NOT NULL DEFAULT ''
+)`).Error)
+	require.NoError(t, repo.gormClient.Exec(`
+	CREATE UNIQUE INDEX idx_override_lookup
+	ON attribute_overrides (protocol, attribute_id, device_id, wwn)
+	`).Error)
+	require.NoError(t, repo.gormClient.Exec(`
+	INSERT INTO attribute_overrides (
+		id, protocol, attribute_id, wwn, action, source
+	) VALUES (1, 'ATA', '188', '0x5000c500d575cbfc', 'ignore', 'ui')
+	`).Error)
+
+	require.NoError(t, repo.Migrate(context.Background()))
+
+	var pinnedColumnCount int64
+	require.NoError(t, repo.gormClient.Raw(`
+		SELECT COUNT(*)
+		FROM pragma_table_info('attribute_overrides')
+		WHERE name = 'pinned_value'
+	`).Scan(&pinnedColumnCount).Error)
+	require.Equal(t, int64(1), pinnedColumnCount)
+
+	var protocol, attributeID, wwn, action string
+	require.NoError(t, repo.gormClient.Raw(`
+		SELECT protocol, attribute_id, wwn, action
+		FROM attribute_overrides
+		WHERE id = 1
+	`).Row().Scan(&protocol, &attributeID, &wwn, &action))
+	require.Equal(t, "ATA", protocol)
+	require.Equal(t, "188", attributeID)
+	require.Equal(t, "0x5000c500d575cbfc", wwn)
+	require.Equal(t, "ignore", action)
+}
+
 func TestMigrateSelfHealsDriftedDeviceSchemaWhenMigrationWasRecorded(t *testing.T) {
 	repo := createMigrationTestRepositoryWithAppliedMigrations(t, []string{
 		"20201107210306",

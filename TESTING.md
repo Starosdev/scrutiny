@@ -744,6 +744,7 @@ Before submitting a pull request, ensure all of the following pass:
 - [ ] Migration is registered in `scrutiny_repository_migrations.go`
 - [ ] Tested with a fresh database (delete `scrutiny.db` and restart)
 - [ ] Tested with an existing database (migration runs without errors on upgrade)
+- [ ] For SQLite single-column additions, prefer explicit `ALTER TABLE ... ADD COLUMN` over `AutoMigrate`; SQLite `AutoMigrate` can rebuild legacy tables and copy an incomplete column set
 
 ### If You Added a New API Endpoint
 
