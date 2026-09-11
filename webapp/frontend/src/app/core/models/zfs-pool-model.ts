@@ -37,6 +37,9 @@ export interface ZFSPoolModel {
 
     created_at: string;
     updated_at: string;
+    last_seen_at?: string;
+    last_inventory_at?: string;
+    presence?: ZFSPoolPresence;
 }
 
 /**
@@ -49,6 +52,7 @@ export function zfsUsableSize(pool: ZFSPoolModel): number {
 }
 
 export type ZFSPoolStatus = 'ONLINE' | 'DEGRADED' | 'FAULTED' | 'OFFLINE' | 'REMOVED' | 'UNAVAIL';
+export type ZFSPoolPresence = 'present' | 'missing' | 'stale' | 'unknown';
 export type ZFSScrubState = 'none' | 'scanning' | 'finished' | 'canceled';
 
 export interface ZFSVdevModel {

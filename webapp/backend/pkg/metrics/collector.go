@@ -24,6 +24,13 @@ var zfsPoolStatusCodes = map[models.ZFSPoolStatus]float64{
 	models.ZFSPoolStatusUnavail:  6,
 }
 
+var zfsPoolPresenceCodes = map[models.ZFSPoolPresence]float64{
+	models.ZFSPoolPresenceUnknown: 0,
+	models.ZFSPoolPresencePresent: 1,
+	models.ZFSPoolPresenceMissing: 2,
+	models.ZFSPoolPresenceStale:   3,
+}
+
 var zfsScrubStateCodes = map[models.ZFSScrubState]float64{
 	models.ZFSScrubStateNone:     1,
 	models.ZFSScrubStateScanning: 2,
@@ -412,6 +419,12 @@ func (mc *Collector) collectZFSPoolMetrics(ch chan<- prometheus.Metric) {
 		models.ZFSScrubStateFinished,
 		models.ZFSScrubStateCanceled,
 	}
+	presenceOptions := []models.ZFSPoolPresence{
+		models.ZFSPoolPresenceUnknown,
+		models.ZFSPoolPresencePresent,
+		models.ZFSPoolPresenceMissing,
+		models.ZFSPoolPresenceStale,
+	}
 
 	for _, data := range mc.zfsPools {
 		labels := []string{data.Pool.GUID, data.Pool.Name, data.Pool.HostID}
@@ -482,7 +495,18 @@ func (mc *Collector) collectZFSPoolMetrics(ch chan<- prometheus.Metric) {
 			prometheus.GaugeValue, data.Pool.ScrubPercentComplete, labels...,
 		)
 
+		currentPresence := data.Pool.Presence
+		if currentPresence == "" {
+			// Preserve metrics behavior for callers that construct pool metrics
+			// directly. Repository reads always resolve this value.
+			currentPresence = models.ZFSPoolPresencePresent
+		}
 		currentStatus := data.Pool.Status
+		if currentPresence != models.ZFSPoolPresencePresent {
+			// Raw health is historical once inventory says this pool is absent or
+			// the host has stopped reporting. Do not export stale ONLINE as current.
+			currentStatus = ""
+		}
 		ch <- prometheus.MustNewConstMetric(
 			prometheus.NewDesc("scrutiny_zfs_pool_status_code", "ZFS pool status code",
 				[]string{"guid", "pool_name", "host_id"}, nil),
@@ -500,6 +524,30 @@ func (mc *Collector) collectZFSPoolMetrics(ch chan<- prometheus.Metric) {
 				data.Pool.GUID, data.Pool.Name, data.Pool.HostID, statusLabel,
 			)
 		}
+
+		ch <- prometheus.MustNewConstMetric(
+			prometheus.NewDesc("scrutiny_zfs_pool_presence_code", "ZFS pool presence code",
+				[]string{"guid", "pool_name", "host_id"}, nil),
+			prometheus.GaugeValue, zfsPoolPresenceCodes[currentPresence], labels...,
+		)
+		for _, presence := range presenceOptions {
+			ch <- prometheus.MustNewConstMetric(
+				prometheus.NewDesc("scrutiny_zfs_pool_presence", "ZFS pool presence as one-hot gauge",
+					[]string{"guid", "pool_name", "host_id", "presence"}, nil),
+				prometheus.GaugeValue, metricValue(currentPresence, presence),
+				data.Pool.GUID, data.Pool.Name, data.Pool.HostID, string(presence),
+			)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			prometheus.NewDesc("scrutiny_zfs_pool_last_seen_timestamp", "Unix timestamp of last authoritative ZFS pool observation",
+				[]string{"guid", "pool_name", "host_id"}, nil),
+			prometheus.GaugeValue, timestampSeconds(data.Pool.LastSeenAt), labels...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			prometheus.NewDesc("scrutiny_zfs_pool_last_inventory_timestamp", "Unix timestamp of last authoritative ZFS host inventory",
+				[]string{"guid", "pool_name", "host_id"}, nil),
+			prometheus.GaugeValue, timestampSeconds(data.Pool.LastInventoryAt), labels...,
+		)
 
 		currentScrub := data.Pool.ScrubState
 		ch <- prometheus.MustNewConstMetric(

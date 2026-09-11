@@ -47,6 +47,9 @@ export class ZFSPoolCardComponent {
         if (!pool) {
             return 'unknown';
         }
+        if (pool.presence && pool.presence !== 'present') {
+            return 'unknown';
+        }
         switch (pool.status) {
             case 'ONLINE':
                 return 'passed';
@@ -75,13 +78,19 @@ export class ZFSPoolCardComponent {
     }
 
     classPoolLastUpdatedOn(pool: ZFSPoolModel): string {
+        if (pool.presence === 'missing' || pool.presence === 'stale') {
+            return 'text-red-600 dark:text-red-400';
+        } else if (pool.presence === 'unknown') {
+            return 'text-yellow-600 dark:text-yellow-400';
+        }
         const poolStatus = this.getPoolStatus(pool);
+        const lastObservedAt = this.getLastObservedAt(pool);
         if (poolStatus === 'failed') {
             return 'text-red-600 dark:text-red-400';
         } else if (poolStatus === 'passed') {
-            if (dayjs().subtract(14, 'day').isBefore(dayjs(pool.updated_at))) {
+            if (dayjs().subtract(14, 'day').isBefore(dayjs(lastObservedAt))) {
                 return 'text-green-600 dark:text-green-400';
-            } else if (dayjs().subtract(1, 'month').isBefore(dayjs(pool.updated_at))) {
+            } else if (dayjs().subtract(1, 'month').isBefore(dayjs(lastObservedAt))) {
                 return 'text-yellow-600 dark:text-yellow-400';
             } else {
                 return 'text-red-600 dark:text-red-400';
@@ -89,6 +98,53 @@ export class ZFSPoolCardComponent {
         } else {
             return '';
         }
+    }
+
+    getPresenceLabel(pool: ZFSPoolModel): string {
+        switch (pool?.presence) {
+            case 'missing':
+                return 'Missing from last inventory';
+            case 'stale':
+                return 'Collector stale';
+            case 'unknown':
+                return 'Inventory unavailable';
+            default:
+                return '';
+        }
+    }
+
+    getPresenceColorClass(pool: ZFSPoolModel): string {
+        return pool?.presence === 'unknown' ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400';
+    }
+
+    getLastObservedAt(pool: ZFSPoolModel): string {
+        if (pool?.last_seen_at && !pool.last_seen_at.startsWith('0001-')) {
+            return pool.last_seen_at;
+        }
+        return pool.updated_at;
+    }
+
+    getStatusDisplay(pool: ZFSPoolModel): string {
+        switch (pool?.presence) {
+            case 'missing':
+                return 'MISSING';
+            case 'stale':
+                return 'STALE';
+            case 'unknown':
+                return 'UNKNOWN';
+            default:
+                return pool?.status || 'UNKNOWN';
+        }
+    }
+
+    getStatusDisplayColorClass(pool: ZFSPoolModel): string {
+        if (pool?.presence === 'missing' || pool?.presence === 'stale') {
+            return 'text-red-600 dark:text-red-400';
+        }
+        if (pool?.presence === 'unknown') {
+            return 'text-yellow-600 dark:text-yellow-400';
+        }
+        return pool ? this.getStatusColorClass(pool.status) : '';
     }
 
     getPoolTitle(pool: ZFSPoolModel): string {

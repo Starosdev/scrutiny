@@ -126,6 +126,7 @@ func (g *Generator) populateZFSPools(ctx context.Context, report *ReportData) {
 			Name:           pool.Name,
 			GUID:           pool.GUID,
 			Health:         pool.Health,
+			Presence:       string(pool.Presence),
 			Capacity:       pool.CapacityPercent,
 			ErrorsRead:     pool.TotalReadErrors,
 			ErrorsWrite:    pool.TotalWriteErrors,

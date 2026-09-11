@@ -65,7 +65,7 @@ unless the task specifically requires host-level device access from Zeus.
 
 # Modifying the Scrutiny Backend Server (API)
 
-1. install the [Go runtime](https://go.dev/doc/install) (v1.25+)
+1. install the [Go runtime](https://go.dev/doc/install) (v1.26.8+)
 2. download the `scrutiny-web-frontend.tar.gz` for
    the [latest release](https://github.com/Starosdev/scrutiny/releases/latest). Extract to a folder named `dist`
 3. create a `scrutiny.yaml` config file
@@ -145,7 +145,7 @@ This avoids startup races where layout or theme code reads `config.layout` befor
 If you're developing a feature that requires changes to the backend and the frontend, or a frontend feature that requires real data,
 you'll need to follow the steps below:
 
-1. install the [Go runtime](https://go.dev/doc/install) (v1.25+)
+1. install the [Go runtime](https://go.dev/doc/install) (v1.26.8+)
 2. install [NodeJS](https://nodejs.org/en/download/)
 3. create a `scrutiny.yaml` config file
     ```yaml

@@ -1,6 +1,8 @@
 package detect
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -12,6 +14,39 @@ func newTestDetect() *Detect {
 	logger := logrus.New()
 	return &Detect{
 		Logger: logrus.NewEntry(logger),
+	}
+}
+
+func TestListPoolsTreatsNoPoolsAsEmpty(t *testing.T) {
+	dir := t.TempDir()
+	zpoolPath := filepath.Join(dir, "zpool")
+	script := "#!/bin/sh\nprintf 'no pools available\\n' >&2\nexit 1\n"
+	if err := os.WriteFile(zpoolPath, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	pools, err := newTestDetect().listPools()
+	if err != nil {
+		t.Fatalf("listPools returned unexpected error: %v", err)
+	}
+	if len(pools) != 0 {
+		t.Fatalf("listPools returned %d pools, want none", len(pools))
+	}
+}
+
+func TestListPoolsReturnsUnexpectedCommandErrors(t *testing.T) {
+	dir := t.TempDir()
+	zpoolPath := filepath.Join(dir, "zpool")
+	script := "#!/bin/sh\nprintf 'permission denied\\n' >&2\nexit 1\n"
+	if err := os.WriteFile(zpoolPath, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	_, err := newTestDetect().listPools()
+	if err == nil {
+		t.Fatal("listPools returned nil error for unexpected command failure")
 	}
 }
 

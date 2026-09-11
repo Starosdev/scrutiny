@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"strings"
 	"time"
 )
 
@@ -124,9 +125,17 @@ type ZFSPoolReport struct {
 	Name           string     `json:"name"`
 	GUID           string     `json:"guid"`
 	Health         string     `json:"health"`
+	Presence       string     `json:"presence,omitempty"`
 	ScrubStatus    string     `json:"scrub_status"`
 	Capacity       float64    `json:"capacity"`
 	ErrorsRead     int64      `json:"errors_read"`
 	ErrorsWrite    int64      `json:"errors_write"`
 	ErrorsChecksum int64      `json:"errors_checksum"`
+}
+
+func (p *ZFSPoolReport) DisplayHealth() string {
+	if p.Presence != "" && p.Presence != "present" {
+		return strings.ToUpper(p.Presence)
+	}
+	return p.Health
 }

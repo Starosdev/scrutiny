@@ -112,6 +112,7 @@ type DeviceRepo interface {
 
 	// ZFS Pool operations
 	RegisterZFSPool(ctx context.Context, pool models.ZFSPool) error
+	RegisterZFSPoolInventory(ctx context.Context, hostID string, pools []models.ZFSPool) error
 	GetZFSPools(ctx context.Context) ([]models.ZFSPool, error)
 	GetZFSPoolDetails(ctx context.Context, guid string) (models.ZFSPool, error)
 	UpdateZFSPoolArchived(ctx context.Context, guid string, archived bool) error

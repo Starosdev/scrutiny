@@ -47,6 +47,11 @@ it is not a GitHub Actions runner.
 
 Production releases are created manually through `.github/workflows/release.yaml` via `workflow_dispatch`.
 
+Before semantic-release creates a release tag, that workflow validates every
+published Dockerfile for its production platforms with Buildx and QEMU. The
+validation does not push images; the release tag then triggers
+`.github/workflows/docker-build.yaml` to publish them.
+
 The release job installs exact versions from the root package-lock.json with
 npm ci, then runs .github/scripts/run-semantic-release.mjs. Update
 package.json and package-lock.json together when changing release tooling.
