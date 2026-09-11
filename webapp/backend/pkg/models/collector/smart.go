@@ -281,6 +281,16 @@ type SmartInfo struct {
 	ScsiErrorCounterLog ScsiErrorCounterLog `json:"scsi_error_counter_log"`
 
 	ScsiEnvironmentalReports map[string]ScsiTemperatureData `json:"scsi_environmental_reports"`
+
+	// ScsiEnduranceUsed captures the SAS SSD "Percentage used endurance indicator"
+	// from the Solid State Media log page (0x11), reported by smartctl as endurance_used.
+	// It is a pointer so we can distinguish "field absent" (non-SSD SAS/SATA-behind-SAS
+	// drives that don't support this log page) from a legitimately reported 0%.
+	ScsiEnduranceUsed *ScsiEnduranceUsed `json:"endurance_used,omitempty"`
+}
+
+type ScsiEnduranceUsed struct {
+	CurrentPercent int64 `json:"current_percent"`
 }
 
 type ScsiTemperatureData struct {

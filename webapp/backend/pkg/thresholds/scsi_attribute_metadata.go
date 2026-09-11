@@ -125,4 +125,28 @@ var ScsiMetadata = map[string]ScsiAttributeMetadata{
 		Critical:    false,
 		Description: "Current drive temperature in Celsius.",
 	},
+	"read_gigabytes_processed": {
+		ID:          "read_gigabytes_processed",
+		DisplayName: "Data Read",
+		DisplayType: "",
+		Ideal:       "",
+		Critical:    false,
+		Description: "Cumulative amount of data processed by read commands, taken from the SCSI Read Error Counter log page's \"gigabytes processed\" field. This is the SAS/SCSI equivalent of ATA LBAs Read or NVMe Data Units Read, and is the basis for workload read-rate estimates on SAS drives. Note this counts all data processed (including retries), not just unique host data, and is reported at ~1 GB granularity.",
+	},
+	"write_gigabytes_processed": {
+		ID:          "write_gigabytes_processed",
+		DisplayName: "Data Written",
+		DisplayType: "",
+		Ideal:       "",
+		Critical:    false,
+		Description: "Cumulative amount of data processed by write commands, taken from the SCSI Write Error Counter log page's \"gigabytes processed\" field. This is the SAS/SCSI equivalent of ATA LBAs Written or NVMe Data Units Written, and is the basis for workload write-rate and endurance (TBW) estimates on SAS drives. Note this counts all data processed (including retries), not just unique host data, and is reported at ~1 GB granularity.",
+	},
+	"percentage_used": {
+		ID:          "percentage_used",
+		DisplayName: "Percentage Used",
+		DisplayType: "",
+		Ideal:       "low",
+		Critical:    true,
+		Description: "SAS SSD wear indicator from the Solid State Media log page's \"Percentage used endurance indicator\". Reaches 100% at the manufacturer's rated endurance limit, but the drive may continue to operate beyond that point. Only reported by solid-state SAS drives.",
+	},
 }

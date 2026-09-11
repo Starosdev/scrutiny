@@ -545,7 +545,7 @@ Scrutiny computes drive workload statistics from existing S.M.A.R.T attribute hi
 
 - **ATA**: Uses SMART attributes 241/242 (Total LBAs Written/Read) or DeviceStats 1.24/1.40 (Logical Sectors Written/Read)
 - **NVMe**: Uses Data Units Written/Read counters
-- **SCSI**: Limited support (cumulative byte counters are not stored as SMART attributes)
+- **SCSI/SAS**: Uses the "gigabytes processed" fields from the SCSI Read/Write Error Counter log pages as cumulative read/write counters. SAS SSDs that report the Solid State Media log page's "Percentage used endurance indicator" (`endurance_used`) also get endurance/percentage-used tracking, matching NVMe. Not all SAS drives report these fields, in which case workload/endurance data is unavailable for that device.
 
 ### Viewing Workload Data
 
