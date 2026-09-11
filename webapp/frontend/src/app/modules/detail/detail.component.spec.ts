@@ -128,6 +128,36 @@ describe('DetailComponent', () => {
         expect(mockDetailService.getSelfTestData).toHaveBeenCalledWith('device-1');
     });
 
+    it('should load self-tests when SCSI device details arrive', () => {
+        component.ngOnInit();
+
+        dataSubject.next({
+            data: {
+                device: { device_id: 'device-2', device_protocol: 'SCSI', smart_display_mode: 'scrutiny' },
+                smart_results: [],
+            },
+            metadata: {},
+        });
+
+        expect(mockDetailService.getSelfTestData).toHaveBeenCalledWith('device-2');
+    });
+
+    it('should not load self-tests for NVMe devices', () => {
+        component.ngOnInit();
+
+        dataSubject.next({
+            data: {
+                device: { device_id: 'device-3', device_protocol: 'NVMe', smart_display_mode: 'scrutiny' },
+                smart_results: [],
+            },
+            metadata: {},
+        });
+
+        expect(mockDetailService.getSelfTestData).not.toHaveBeenCalled();
+        expect(component.selfTests).toEqual([]);
+        expect(component.selfTestsLoaded).toBeTrue();
+    });
+
     describe('self-test power-on age', () => {
         const row: DeviceSelfTestModel = {
             id: 1,

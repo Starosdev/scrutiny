@@ -1,0 +1,69 @@
+{
+  "device": {
+    "name": "/dev/sdl",
+    "info_name": "/dev/sdl",
+    "type": "scsi",
+    "protocol": "SCSI"
+  },
+  "scsi_vendor": "HPE",
+  "scsi_product": "VO003840JWZJK",
+  "model_name": "HPE VO003840JWZJK",
+  "serial_number": "ABCDEFGHIJKLMNOP",
+  "smart_status": {
+    "passed": true
+  },
+  "power_on_time": {
+    "hours": 48257
+  },
+  "scsi_self_test_0": {
+    "code": {
+      "value": 1,
+      "string": "Background short"
+    },
+    "result": {
+      "value": 0,
+      "string": "Completed"
+    },
+    "power_on_time": {
+      "hours": 48239,
+      "aka": "accumulated_power_on_hours"
+    }
+  },
+  "scsi_self_test_1": {
+    "code": {
+      "value": 2,
+      "string": "Background long"
+    },
+    "result": {
+      "value": 0,
+      "string": "Completed"
+    },
+    "power_on_time": {
+      "hours": 48234,
+      "aka": "accumulated_power_on_hours"
+    }
+  },
+  "scsi_self_test_2": {
+    "code": {
+      "value": 1,
+      "string": "Background short"
+    },
+    "result": {
+      "value": 0,
+      "string": "Completed"
+    },
+    "power_on_time": {
+      "hours": 48234,
+      "aka": "accumulated_power_on_hours"
+    }
+  },
+  "scsi_background_scan": {
+    "status": {
+      "value": 1,
+      "string": "scan is active",
+      "number_scans_performed": 71,
+      "scan_progress": "3.05%",
+      "number_medium_scans_performed": 71
+    }
+  }
+}

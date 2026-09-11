@@ -1,6 +1,13 @@
 package collector
 
-import "github.com/analogj/scrutiny/webapp/backend/pkg/models/common"
+import (
+	"encoding/json"
+	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models/common"
+)
 
 type AtaSmartSelfTestLogEntry struct {
 	Type struct {
@@ -65,6 +72,7 @@ type SmartInfo struct {
 		ID  uint64 `json:"id"`
 	} `json:"wwn"`
 	FirmwareVersion   string       `json:"firmware_version"`
+	ScsiRevision      string       `json:"scsi_revision"`
 	UserCapacity      UserCapacity `json:"user_capacity"`
 	LogicalBlockSize  int          `json:"logical_block_size"`
 	PhysicalBlockSize int          `json:"physical_block_size"`
@@ -281,6 +289,130 @@ type SmartInfo struct {
 	ScsiErrorCounterLog ScsiErrorCounterLog `json:"scsi_error_counter_log"`
 
 	ScsiEnvironmentalReports map[string]ScsiTemperatureData `json:"scsi_environmental_reports"`
+
+	// ScsiEnduranceUsed captures the SAS SSD "Percentage used endurance indicator"
+	// from the Solid State Media log page (0x11), reported by smartctl as endurance_used.
+	// It is a pointer so we can distinguish "field absent" (non-SSD SAS/SATA-behind-SAS
+	// drives that don't support this log page) from a legitimately reported 0%.
+	ScsiEnduranceUsed *ScsiEnduranceUsed `json:"endurance_used,omitempty"`
+
+	// ScsiSelfTests captures the SCSI/SAS self-test log. Unlike ATA, smartctl does not
+	// emit this as a JSON array; it reports each entry under its own numbered top-level
+	// key ("scsi_self_test_0", "scsi_self_test_1", ...), newest first, with no count
+	// field. See SmartInfo.UnmarshalJSON, which extracts these keys manually.
+	ScsiSelfTests []ScsiSelfTestEntry `json:"-"`
+
+	// ScsiBackgroundScan captures the SAS Background Medium Scan status ("scsi_background_scan").
+	// It describes an in-progress/periodic scan rather than a discrete self-test result, so it
+	// is not folded into ScsiSelfTests/SelfTestEntries.
+	ScsiBackgroundScan *ScsiBackgroundScan `json:"scsi_background_scan,omitempty"`
+}
+
+// ScsiSelfTestEntry represents one entry of the SCSI/SAS self-test log
+// (e.g. the "scsi_self_test_0" key in `smartctl --json -l selftest`).
+type ScsiSelfTestEntry struct {
+	Code struct {
+		String string `json:"string"`
+		Value  int    `json:"value"`
+	} `json:"code"`
+	Result struct {
+		String string `json:"string"`
+		Value  int    `json:"value"`
+	} `json:"result"`
+	PowerOnTime struct {
+		Hours int `json:"hours"`
+	} `json:"power_on_time"`
+}
+
+// ScsiBackgroundScan represents the SAS Background Medium Scan status
+// ("scsi_background_scan.status" in `smartctl --json -l background`).
+type ScsiBackgroundScan struct {
+	Status struct {
+		String                     string `json:"string"`
+		ScanProgress               string `json:"scan_progress"`
+		Value                      int    `json:"value"`
+		NumberScansPerformed       int    `json:"number_scans_performed"`
+		NumberMediumScansPerformed int    `json:"number_medium_scans_performed"`
+	} `json:"status"`
+}
+
+// scsiSelfTestKeyPrefix is the prefix smartctl uses for each numbered SCSI
+// self-test log entry key (e.g. "scsi_self_test_0", "scsi_self_test_1", ...).
+const scsiSelfTestKeyPrefix = "scsi_self_test_"
+
+// UnmarshalJSON decodes the standard SmartInfo fields, then makes a second pass
+// over the raw object to collect the SCSI self-test log entries, which smartctl
+// reports as individually numbered top-level keys rather than a JSON array.
+func (s *SmartInfo) UnmarshalJSON(data []byte) error {
+	type smartInfoAlias SmartInfo
+	var alias smartInfoAlias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+	*s = SmartInfo(alias)
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// The primary decode above already succeeded, so this should not
+		// realistically fail; if it does, just skip SCSI self-test parsing.
+		return nil
+	}
+
+	type indexedEntry struct {
+		entry ScsiSelfTestEntry
+		index int
+	}
+	var indexed []indexedEntry
+	for key, value := range raw {
+		if !strings.HasPrefix(key, scsiSelfTestKeyPrefix) {
+			continue
+		}
+		indexStr := strings.TrimPrefix(key, scsiSelfTestKeyPrefix)
+		index, err := strconv.Atoi(indexStr)
+		if err != nil {
+			continue
+		}
+		var entry ScsiSelfTestEntry
+		if err := json.Unmarshal(value, &entry); err != nil {
+			continue
+		}
+		indexed = append(indexed, indexedEntry{index: index, entry: entry})
+	}
+	sort.Slice(indexed, func(i, j int) bool { return indexed[i].index < indexed[j].index })
+	for _, item := range indexed {
+		s.ScsiSelfTests = append(s.ScsiSelfTests, item.entry)
+	}
+
+	return nil
+}
+
+// SelfTestEntries normalizes the self-test log into a single shape regardless of
+// protocol: ATA entries are returned as-is (preferring the standard log, falling
+// back to extended); SCSI entries are converted from ScsiSelfTests, using the
+// result code (0 == passed) and power-on hours as the lifetime hour equivalent.
+func (s *SmartInfo) SelfTestEntries() []AtaSmartSelfTestLogEntry {
+	if entries := s.AtaSmartSelfTestLog.Entries(); len(entries) > 0 {
+		return entries
+	}
+	if len(s.ScsiSelfTests) == 0 {
+		return nil
+	}
+	entries := make([]AtaSmartSelfTestLogEntry, 0, len(s.ScsiSelfTests))
+	for _, scsiEntry := range s.ScsiSelfTests {
+		var entry AtaSmartSelfTestLogEntry
+		entry.Type.Value = scsiEntry.Code.Value
+		entry.Type.String = scsiEntry.Code.String
+		entry.Status.Value = scsiEntry.Result.Value
+		entry.Status.String = scsiEntry.Result.String
+		entry.Status.Passed = scsiEntry.Result.Value == 0
+		entry.LifetimeHours = scsiEntry.PowerOnTime.Hours
+		entries = append(entries, entry)
+	}
+	return entries
+}
+
+type ScsiEnduranceUsed struct {
+	CurrentPercent int64 `json:"current_percent"`
 }
 
 type ScsiTemperatureData struct {
@@ -301,6 +433,19 @@ func (s *SmartInfo) Capacity() int64 {
 		return s.UserCapacity.Bytes
 	}
 	return 0
+}
+
+// Firmware returns the device's firmware/revision string.
+// smartctl only populates "firmware_version" for ATA/SAT and NVMe devices.
+// For plain SCSI/SAS devices, the equivalent value is reported under
+// "scsi_revision" instead (smartctl deliberately does not alias it to
+// "firmware_version" - see smartmontools scsiprint.cpp), so fall back to it
+// here when "firmware_version" is not present.
+func (s *SmartInfo) Firmware() string {
+	if s.FirmwareVersion != "" {
+		return s.FirmwareVersion
+	}
+	return s.ScsiRevision
 }
 
 type UserCapacity struct {

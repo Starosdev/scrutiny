@@ -525,6 +525,42 @@ func TestDetect_SmartCtlInfo(t *testing.T) {
 		assert.Equal(t, "jmb39x-q,0", someDevice.DeviceType)
 	})
 
+	// SCSI/SAS drives don't populate "firmware_version" in smartctl's JSON
+	// output; the equivalent value is reported under "scsi_revision" instead.
+	// SmartCtlInfo must fall back to it so device.Firmware is not left blank.
+	t.Run("should populate firmware from scsi_revision for a SAS SSD", func(t *testing.T) {
+		fakeShell, fakeConfig, someLogger := setupSmartCtlInfoArgvMocks(t, "sdp",
+			[]string{"--info", "--json", "/dev/sdp"},
+			"testdata/smartctl_info_sas_ssd.json", nil, nil)
+
+		d := detect.Detect{Logger: someLogger, Shell: fakeShell, Config: fakeConfig}
+		someDevice := &models.Device{DeviceName: "sdp"}
+
+		require.NoError(t, d.SmartCtlInfo(someDevice))
+
+		assert.Equal(t, "HPE VO003840JWZJK", someDevice.ModelName)
+		assert.Equal(t, "ABCDEFGHIJKLMNOP", someDevice.SerialNumber)
+		assert.Equal(t, "HPD5", someDevice.Firmware)
+		assert.Equal(t, "SCSI", someDevice.DeviceProtocol)
+	})
+
+	// A run where smartctl reports neither firmware_version nor scsi_revision
+	// (e.g. transient error, permissions, or args without -i/-x) must not blank
+	// out a firmware value already on file for the device.
+	t.Run("should not clear a previously known firmware when missing from payload", func(t *testing.T) {
+		fakeShell, fakeConfig, someLogger := setupSmartCtlInfoArgvMocks(t, "sdp",
+			[]string{"--info", "--json", "/dev/sdp"},
+			"testdata/smartctl_info_sas_ssd_no_revision.json", nil, nil)
+
+		d := detect.Detect{Logger: someLogger, Shell: fakeShell, Config: fakeConfig}
+		someDevice := &models.Device{DeviceName: "sdp", Firmware: "HPD5"}
+
+		require.NoError(t, d.SmartCtlInfo(someDevice))
+
+		assert.Equal(t, "HPE VO003840JWZJK", someDevice.ModelName)
+		assert.Equal(t, "HPD5", someDevice.Firmware)
+	})
+
 	t.Run("should reject output on a fatal exit status", func(t *testing.T) {
 		fakeShell, fakeConfig, someLogger := setupSmartCtlInfoMocks(t, "sda", "jmb39x-q,0",
 			"testdata/smartctl_info_jmb39x_exit4.json", exitErrorWithCode(t, 2))

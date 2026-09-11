@@ -147,7 +147,7 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Mobile-Optimized Interface** - Bottom tab bar (Home, Drives, ZFS, Workload, Settings), health overview home tab, card-based data views, and responsive layouts below 960px
 - **API Timeout Configuration** - Adjust timeouts for slow storage systems
 - **Performance Benchmarking** - fio-based benchmarks for throughput, IOPS, and latency with historical tracking
-- **ATA Self-Test History** - Persist and display recent ATA SMART self-test log entries on device detail pages
+- **SMART Self-Test History** - Persist and display recent ATA and SCSI/SAS SMART self-test log entries on device detail pages
 - **Scheduled Reports** [WIP] - Automated health reports on daily/weekly/monthly schedules with HTML emails and PDF export
 - **Missed Ping Digest** - Batch notification when multiple collectors go unreachable
 - **HTML Email Notifications** - Rich HTML formatting with plain-text fallback for SMTP notifications, including reports, test notifications, collector errors, missed ping digests, heartbeat, performance degradation, replacement risk, and MDADM degradation alerts
@@ -545,7 +545,7 @@ Scrutiny computes drive workload statistics from existing S.M.A.R.T attribute hi
 
 - **ATA**: Uses SMART attributes 241/242 (Total LBAs Written/Read) or DeviceStats 1.24/1.40 (Logical Sectors Written/Read)
 - **NVMe**: Uses Data Units Written/Read counters
-- **SCSI**: Limited support (cumulative byte counters are not stored as SMART attributes)
+- **SCSI/SAS**: Uses the "gigabytes processed" fields from the SCSI Read/Write Error Counter log pages as cumulative read/write counters. SAS SSDs that report the Solid State Media log page's "Percentage used endurance indicator" (`endurance_used`) also get endurance/percentage-used tracking, matching NVMe. Not all SAS drives report these fields, in which case workload/endurance data is unavailable for that device.
 
 ### Viewing Workload Data
 
@@ -561,18 +561,19 @@ Some SSDs report misleading wear percentages through SMART. To supplement those 
 
 This value is user-supplied and does not replace the existing SMART wear indicators.
 
-## ATA SMART Self-Test History
+## SMART Self-Test History
 
-Scrutiny now retains ATA SMART self-test log entries that are already present in uploaded `smartctl` payloads. On ATA drive detail pages, the web UI shows a **SMART Self-Tests** card with the recorded test type, pass/attention status, controller detail string, and power-on age.
+Scrutiny now retains ATA and SCSI/SAS SMART self-test log entries that are already present in uploaded `smartctl` payloads. On ATA and SCSI/SAS drive detail pages, the web UI shows a **SMART Self-Tests** card with the recorded test type, pass/attention status, controller detail string, and power-on age.
 
 - Data is read from normal SMART uploads; no separate self-test collector is required
-- Only ATA devices show this section today
-- Scrutiny keeps the most recent 21 entries per physical ATA device identity using collection time and controller log position, including when lifetime hours wrap
-- Raw controller hours remain available. Absolute power-on ages are shown only when the current Power-On Hours and log order identify one rollover epoch; otherwise the UI shows "Unknown (may be wrapped)"
-- Existing history remains intact during upgrade. Ages stay unknown until a new collection provides enough context; already pruned or overwritten records cannot be recovered
+- Both ATA (`AtaSmartSelfTestLog`) and SCSI/SAS (`scsi_self_test_N` log entries) devices show this section
+- Scrutiny keeps the most recent 21 entries per physical device identity using collection time and controller log position, including when ATA lifetime hours wrap
+- Raw controller hours remain available. SCSI/SAS entries report smartctl's absolute, non-wrapping `accumulated_power_on_hours`, so their power-on age is always known. ATA entries use a 16-bit lifetime-hours counter that can wrap; for those, an absolute power-on age is shown only when the current Power-On Hours and log order identify one rollover epoch, otherwise the UI shows "Unknown (may be wrapped)"
+- Existing history remains intact during upgrade. ATA ages stay unknown until a new collection provides enough context; already pruned or overwritten records cannot be recovered
 - Rolling back to a web release that uses the old raw-lifetime uniqueness key requires restoring a pre-upgrade database backup
 - The API route `GET /api/device/{id}/selftest` returns the same history used by the device detail page
 - This feature records and displays history only; it does not trigger or schedule drive self-tests from the web UI
+- See [PR #848](https://github.com/Starosdev/scrutiny/pull/848) for background on SCSI/SAS self-test history and endurance handling
 
 ## SMART Attribute Overrides
 

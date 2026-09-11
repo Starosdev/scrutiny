@@ -36,6 +36,52 @@ func TestUpdateFromCollectorSmartInfo_ShouldPopulateModelName(t *testing.T) {
 	require.True(t, *device.SmartSupport.Enabled)
 }
 
+func TestUpdateFromCollectorSmartInfo_ShouldPopulateFirmwareFromScsiRevisionForSas(t *testing.T) {
+	// setup
+	device := Device{
+		WWN:        "0x50000f0b005750f0",
+		DeviceName: "sdp",
+	}
+	smartInfo := collector.SmartInfo{
+		ModelName:    "HPE VO003840JWZJK",
+		ScsiRevision: "HPD5",
+	}
+	smartInfo.Device.Protocol = "SCSI"
+	smartInfo.SmartStatus.Passed = true
+
+	// test
+	err := device.UpdateFromCollectorSmartInfo(smartInfo)
+
+	// assert
+	require.NoError(t, err)
+	require.Equal(t, "HPE VO003840JWZJK", device.ModelName)
+	require.Equal(t, "HPD5", device.Firmware)
+	require.Equal(t, "SCSI", device.DeviceProtocol)
+}
+
+func TestUpdateFromCollectorSmartInfo_ShouldNotClearFirmwareWhenMissingFromPayload(t *testing.T) {
+	// setup: device already has a firmware value on file from a previous run
+	device := Device{
+		WWN:        "0x50000f0b005750f0",
+		DeviceName: "sdp",
+		Firmware:   "HPD5",
+	}
+	// this run's smartctl payload reports neither firmware_version nor scsi_revision
+	// (e.g. transient error, permissions issue, or args without -i/-x)
+	smartInfo := collector.SmartInfo{
+		ModelName: "HPE VO003840JWZJK",
+	}
+	smartInfo.Device.Protocol = "SCSI"
+	smartInfo.SmartStatus.Passed = true
+
+	// test
+	err := device.UpdateFromCollectorSmartInfo(smartInfo)
+
+	// assert: previously known firmware is preserved, not blanked out
+	require.NoError(t, err)
+	require.Equal(t, "HPD5", device.Firmware)
+}
+
 func TestUpdateFromCollectorSmartInfo_ShouldPopulateModelNameForAta(t *testing.T) {
 	// setup
 	device := Device{
