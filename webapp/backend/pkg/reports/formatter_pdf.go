@@ -178,11 +178,12 @@ func writeZFSSection(pdf *fpdf.Fpdf, report *ReportData) {
 	pdf.SetFont("Helvetica", "", 8)
 	for _, pool := range report.ZFSPools {
 		displayHealth := pool.DisplayHealth()
-		if displayHealth == "UNKNOWN" {
+		switch {
+		case displayHealth == "UNKNOWN":
 			pdf.SetTextColor(255, 193, 7)
-		} else if displayHealth != "ONLINE" {
+		case displayHealth != "ONLINE":
 			pdf.SetTextColor(220, 53, 69)
-		} else {
+		default:
 			pdf.SetTextColor(33, 37, 41)
 		}
 		pdf.CellFormat(colWidths[0], 6, pool.Name, "1", 0, "L", false, 0, "")

@@ -133,7 +133,7 @@ type ZFSPoolReport struct {
 	ErrorsChecksum int64      `json:"errors_checksum"`
 }
 
-func (p ZFSPoolReport) DisplayHealth() string {
+func (p *ZFSPoolReport) DisplayHealth() string {
 	if p.Presence != "" && p.Presence != "present" {
 		return strings.ToUpper(p.Presence)
 	}
