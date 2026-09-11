@@ -1,8 +1,8 @@
 # Dependency Inventory
 
-This document provides a comprehensive inventory of all project dependencies, their current versions, health status, and update recommendations.
+This document records dependency history, current security checks, and update recommendations. Package manifests and lockfiles remain version source of truth.
 
-Last updated: 2026-03-10
+Last updated: 2026-09-10
 
 ## Table of Contents
 
@@ -17,22 +17,43 @@ Last updated: 2026-03-10
 
 ## Summary
 
+> Version counts below are historical inventory from 2026-03-10. Current security status appears in section below.
+
 | Category | Total | Current | Outdated | Vulnerable |
 |----------|-------|---------|----------|------------|
 | Go Direct | 24 | 13 | 11 | TBD |
 | Go Indirect | ~60 | - | - | TBD |
-| NPM Production | 21 | 15 | 6 | 1 |
+| NPM Production | 21 | 15 | 6 | 0 |
 | NPM Development | 25 | 22 | 3 | 0 |
 
 ---
 
 ## Security Status
 
-### Known Vulnerabilities
+### Current baseline (2026-09-10)
+
+- Root release tooling: `npm audit --audit-level=low` reports 0 vulnerabilities.
+- Frontend dependencies: `npm audit --audit-level=low` reports 0 vulnerabilities.
+- Go code: `govulncheck` reports 0 reachable vulnerabilities.
+- Go module inventory still includes three uncalled `golang.org/x/crypto` findings. Two are fixed in v0.56.0, which requires Go 1.26. One has no fixed release.
+- CI enforces npm and Go checks through `.github/workflows/dependency-audit.yaml`.
+
+### Security cleanup decision record
+
+- **Problem:** Exact transitive dependency overrides stopped moving when later advisories raised fixed versions, and CI had no blocking dependency audit.
+- **Approach:** Use security minimums in npm overrides, regenerate both lockfiles, add blocking npm and Go reachability checks, and require a patched Go 1.25 toolchain.
+- **Dead ends:** `golang.org/x/crypto@v0.56.0` requires Go 1.26. `govulncheck@v1.8.0` also requires Go 1.26. Go 1.25.0 reports patched standard-library findings. Do not select those paths without an approved toolchain expansion.
+- **Rule:** Keep security overrides at patched version floors, run audits against committed lockfiles, and separate uncalled module findings from reachable vulnerabilities.
+
+### Known Reachable Vulnerabilities
+
+No known reachable vulnerabilities remain in current npm audit or Go vulnerability scans.
+
+### Historical Vulnerabilities
 
 | Package | Type | Severity | CVE/Advisory | Status |
 |---------|------|----------|--------------|--------|
-| quill | npm | Moderate | GHSA-4943-9vgg-gr5r (XSS) | Deferred - requires breaking upgrade |
+| quill | npm | Moderate | GHSA-4943-9vgg-gr5r (XSS) | Resolved by removal; retained for history |
 
 ### History
 
@@ -75,7 +96,7 @@ New Go direct dependencies added:
 
 ### Go Version
 
-- **Current**: 1.25
+- **Current floor**: 1.25.14
 - **Recommended**: Current
 
 ### Direct Dependencies
@@ -123,22 +144,21 @@ New Go direct dependencies added:
 
 | Package | Version | Status |
 |---------|---------|--------|
-| @angular/core | ^21.0.5 | Current |
-| @angular/common | ^21.0.5 | Current |
-| @angular/compiler | ^21.0.5 | Current |
-| @angular/forms | ^21.0.5 | Current |
-| @angular/router | ^21.0.5 | Current |
-| @angular/animations | ^21.0.5 | Current |
-| @angular/platform-browser | ^21.0.5 | Current |
-| @angular/platform-browser-dynamic | ^21.0.5 | Current |
+| @angular/core | ^22.1.2 | Current |
+| @angular/common | ^22.1.2 | Current |
+| @angular/compiler | ^22.1.2 | Current |
+| @angular/forms | ^22.1.2 | Current |
+| @angular/router | ^22.1.2 | Current |
+| @angular/animations | ^22.1.2 | Current |
+| @angular/platform-browser | ^22.1.2 | Current |
+| @angular/platform-browser-dynamic | ^22.1.2 | Current |
 
-### Angular Material (Version Mismatch)
+### Angular Material
 
 | Package | Version | Expected | Status |
 |---------|---------|----------|--------|
-| @angular/material | ^16.2.14 | ^21.x | 5 major versions behind |
-| @angular/cdk | ^16.2.14 | ^21.x | 5 major versions behind |
-| @angular/material-moment-adapter | ^16.2.14 | ^21.x | 5 major versions behind |
+| @angular/material | ^22.1.2 | ^22.x | Current |
+| @angular/cdk | ^22.1.2 | ^22.x | Current |
 
 ### Production Dependencies
 
@@ -147,12 +167,11 @@ New Go direct dependencies added:
 | crypto-js | ^4.1.1 | Current | |
 | highlight.js | ^11.6.0 | Current | |
 | humanize-duration | ^3.27.3 | Current | |
-| lodash | 4.17.21 | Current | Locked version |
+| lodash | ^4.18.1 | Current | |
 | marked | ^17.0.1 | Current | |
-| moment | ^2.29.4 | Deprecated | Maintainers recommend alternatives |
-| ng-apexcharts | ^1.17.1 | Current | |
+| dayjs | ^1.11.20 | Current | Replaced moment |
+| ng-apexcharts | ^2.4.0 | Current | |
 | perfect-scrollbar | ^1.5.5 | Current | |
-| quill | ^1.3.7 | Vulnerable | XSS vulnerability, upgrade to v2.0.3 |
 | rrule | ^2.7.1 | Current | |
 | rxjs | ^7.5.7 | Current | |
 | tslib | ^2.4.1 | Current | |
@@ -163,17 +182,17 @@ New Go direct dependencies added:
 
 | Package | Version | Status |
 |---------|---------|--------|
-| @angular/cli | ^21.0.3 | Current |
-| @angular/build | ^21.0.3 | Current |
-| @angular/compiler-cli | ^21.0.5 | Current |
-| @angular/language-service | ^21.0.5 | Current |
-| @angular-eslint/builder | ^21.1.0 | Current |
-| @angular-eslint/eslint-plugin | ^21.1.0 | Current |
-| @angular-eslint/eslint-plugin-template | ^21.1.0 | Current |
-| @angular-eslint/template-parser | ^21.1.0 | Current |
-| @angular-eslint/schematics | ^21.1.0 | Current |
-| @typescript-eslint/eslint-plugin | ^5.62.0 | Current |
-| @typescript-eslint/parser | ^5.62.0 | Current |
+| @angular/cli | ^22.1.4 | Current |
+| @angular/build | ^22.1.4 | Current |
+| @angular/compiler-cli | ^22.1.2 | Current |
+| @angular/language-service | ^22.1.2 | Current |
+| @angular-eslint/builder | ^22.1.0 | Current |
+| @angular-eslint/eslint-plugin | ^22.1.0 | Current |
+| @angular-eslint/eslint-plugin-template | ^22.1.0 | Current |
+| @angular-eslint/template-parser | ^22.1.0 | Current |
+| @angular-eslint/schematics | ^22.1.0 | Current |
+| @typescript-eslint/eslint-plugin | ^8.67.0 | Current |
+| @typescript-eslint/parser | ^8.67.0 | Current |
 | apexcharts | ~3.35.0 | Outdated | |
 | eslint | ^8.57.1 | Current | |
 | eslint-config-prettier | ^8.10.2 | Current | |
@@ -195,10 +214,11 @@ New Go direct dependencies added:
 
 ## Update Strategy
 
-### Immediate (This PR)
+### Immediate (2026-09-10)
 
-- [x] npm audit fix (non-breaking)
-- [x] Update @angular-eslint to v21.x
+- [x] Remediate npm audit findings in root and frontend lockfiles.
+- [x] Add recurring npm audit and Go vulnerability gates.
+- [x] Raise Go security floor to 1.25.14.
 
 ### Phase 2: Low-Risk Go Updates (Complete)
 
@@ -210,7 +230,7 @@ The following were updated as part of feature development (2026-03-10):
 - spf13/viper v1.15.0 → v1.21.0
 - nicholas-fedor/shoutrrr v0.8.17 → v0.13.2
 
-### Phase 3: Angular Material Alignment
+### Phase 3: Angular Material Alignment (Complete)
 
 ```bash
 ng update @angular/material @angular/cdk
@@ -239,9 +259,9 @@ go get -u gorm.io/gorm@latest
 ## Related Issues
 
 - GitHub #36: Dependency Health Check (this audit)
-- GitHub #69: Quill v2.0 upgrade (XSS vulnerability fix)
-- GitHub #70: moment.js migration to date-fns
-- TBD: Angular Material v21 upgrade
+- GitHub #69: Quill XSS concern (resolved by dependency removal)
+- GitHub #70: moment.js migration (resolved by dayjs)
+- Angular Material v22 alignment: Complete
 - Phase 2 Go updates: Complete (2026-03-10)
 - Phase 3 Angular Material: Pending
 - Phase 4 medium-risk Go updates: Pending
@@ -258,9 +278,8 @@ To check for vulnerabilities:
 cd webapp/frontend
 npm audit
 
-# Go (requires govulncheck)
-go install golang.org/x/vuln/cmd/govulncheck@latest
-govulncheck ./...
+# Go
+go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 ```
 
 To check for outdated packages:
