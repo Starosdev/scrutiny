@@ -65,10 +65,13 @@ func selfTestLifetimeBounds(entries []collector.AtaSmartSelfTestLogEntry, powerO
 }
 
 func (sr *scrutinyRepository) syncDeviceSelfTests(ctx context.Context, device *models.Device, collectorSmartData *collector.SmartInfo, powerOnHours int64) error {
-	if collectorSmartData.Device.Protocol != pkg.DeviceProtocolAta {
+	if collectorSmartData.Device.Protocol != pkg.DeviceProtocolAta && collectorSmartData.Device.Protocol != pkg.DeviceProtocolScsi {
 		return nil
 	}
-	entries := collectorSmartData.AtaSmartSelfTestLog.Entries()
+	// SelfTestEntries() normalizes both the ATA self-test log (a JSON array) and
+	// the SCSI/SAS self-test log (individually numbered "scsi_self_test_N" keys)
+	// into the same shape; the lifetime-bounds/dedup logic below is protocol-agnostic.
+	entries := collectorSmartData.SelfTestEntries()
 	if len(entries) == 0 {
 		return nil
 	}

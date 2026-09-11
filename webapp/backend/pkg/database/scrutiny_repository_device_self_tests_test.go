@@ -125,6 +125,38 @@ func TestSaveSmartAttributesPersistsAtaSelfTests(t *testing.T) {
 	require.Equal(t, 1157, selfTests[len(selfTests)-1].LifetimeHours)
 }
 
+func TestSaveSmartAttributesPersistsScsiSelfTests(t *testing.T) {
+	repo := createDeviceSelfTestRepository(t)
+	ctx := context.Background()
+
+	device := models.Device{
+		DeviceID:       "device-1",
+		WWN:            "wwn-1",
+		DeviceProtocol: "SCSI",
+	}
+	require.NoError(t, repo.gormClient.WithContext(ctx).Create(&device).Error)
+
+	smartInfo := loadSmartInfoFixture(t, filepath.Join("..", "models", "testdata", "smart-scsi-selftest.json"))
+	require.Len(t, smartInfo.ScsiSelfTests, 3)
+
+	_, err := repo.SaveSmartAttributes(ctx, device.WWN, smartInfo)
+	require.NoError(t, err)
+
+	var selfTests []models.DeviceSelfTest
+	require.NoError(t, repo.gormClient.WithContext(ctx).
+		Order("lifetime_hours DESC, id DESC").
+		Find(&selfTests).Error)
+
+	require.Len(t, selfTests, 3)
+	require.Equal(t, device.DeviceID, selfTests[0].DeviceID)
+	require.Equal(t, device.WWN, selfTests[0].DeviceWWN)
+	require.Equal(t, 48239, selfTests[0].LifetimeHours)
+	require.Equal(t, "Background short", selfTests[0].TypeString)
+	require.Equal(t, "Completed", selfTests[0].StatusString)
+	require.True(t, selfTests[0].StatusPassed)
+	require.Equal(t, 48234, selfTests[len(selfTests)-1].LifetimeHours)
+}
+
 func TestSyncDeviceSelfTestsDedupesByDeviceIdentity(t *testing.T) {
 	repo := createDeviceSelfTestRepository(t)
 	ctx := context.Background()

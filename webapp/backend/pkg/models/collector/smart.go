@@ -1,6 +1,13 @@
 package collector
 
-import "github.com/analogj/scrutiny/webapp/backend/pkg/models/common"
+import (
+	"encoding/json"
+	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models/common"
+)
 
 type AtaSmartSelfTestLogEntry struct {
 	Type struct {
@@ -288,6 +295,120 @@ type SmartInfo struct {
 	// It is a pointer so we can distinguish "field absent" (non-SSD SAS/SATA-behind-SAS
 	// drives that don't support this log page) from a legitimately reported 0%.
 	ScsiEnduranceUsed *ScsiEnduranceUsed `json:"endurance_used,omitempty"`
+
+	// ScsiSelfTests captures the SCSI/SAS self-test log. Unlike ATA, smartctl does not
+	// emit this as a JSON array; it reports each entry under its own numbered top-level
+	// key ("scsi_self_test_0", "scsi_self_test_1", ...), newest first, with no count
+	// field. See SmartInfo.UnmarshalJSON, which extracts these keys manually.
+	ScsiSelfTests []ScsiSelfTestEntry `json:"-"`
+
+	// ScsiBackgroundScan captures the SAS Background Medium Scan status ("scsi_background_scan").
+	// It describes an in-progress/periodic scan rather than a discrete self-test result, so it
+	// is not folded into ScsiSelfTests/SelfTestEntries.
+	ScsiBackgroundScan *ScsiBackgroundScan `json:"scsi_background_scan,omitempty"`
+}
+
+// ScsiSelfTestEntry represents one entry of the SCSI/SAS self-test log
+// (e.g. the "scsi_self_test_0" key in `smartctl --json -l selftest`).
+type ScsiSelfTestEntry struct {
+	Code struct {
+		Value  int    `json:"value"`
+		String string `json:"string"`
+	} `json:"code"`
+	Result struct {
+		Value  int    `json:"value"`
+		String string `json:"string"`
+	} `json:"result"`
+	PowerOnTime struct {
+		Hours int `json:"hours"`
+	} `json:"power_on_time"`
+}
+
+// ScsiBackgroundScan represents the SAS Background Medium Scan status
+// ("scsi_background_scan.status" in `smartctl --json -l background`).
+type ScsiBackgroundScan struct {
+	Status struct {
+		Value                      int    `json:"value"`
+		String                     string `json:"string"`
+		NumberScansPerformed       int    `json:"number_scans_performed"`
+		ScanProgress               string `json:"scan_progress"`
+		NumberMediumScansPerformed int    `json:"number_medium_scans_performed"`
+	} `json:"status"`
+}
+
+// scsiSelfTestKeyPrefix is the prefix smartctl uses for each numbered SCSI
+// self-test log entry key (e.g. "scsi_self_test_0", "scsi_self_test_1", ...).
+const scsiSelfTestKeyPrefix = "scsi_self_test_"
+
+// UnmarshalJSON decodes the standard SmartInfo fields, then makes a second pass
+// over the raw object to collect the SCSI self-test log entries, which smartctl
+// reports as individually numbered top-level keys rather than a JSON array.
+func (s *SmartInfo) UnmarshalJSON(data []byte) error {
+	type smartInfoAlias SmartInfo
+	var alias smartInfoAlias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+	*s = SmartInfo(alias)
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// The primary decode above already succeeded, so this should not
+		// realistically fail; if it does, just skip SCSI self-test parsing.
+		return nil
+	}
+
+	type indexedEntry struct {
+		index int
+		entry ScsiSelfTestEntry
+	}
+	var indexed []indexedEntry
+	for key, value := range raw {
+		if !strings.HasPrefix(key, scsiSelfTestKeyPrefix) {
+			continue
+		}
+		indexStr := strings.TrimPrefix(key, scsiSelfTestKeyPrefix)
+		index, err := strconv.Atoi(indexStr)
+		if err != nil {
+			continue
+		}
+		var entry ScsiSelfTestEntry
+		if err := json.Unmarshal(value, &entry); err != nil {
+			continue
+		}
+		indexed = append(indexed, indexedEntry{index: index, entry: entry})
+	}
+	sort.Slice(indexed, func(i, j int) bool { return indexed[i].index < indexed[j].index })
+	for _, item := range indexed {
+		s.ScsiSelfTests = append(s.ScsiSelfTests, item.entry)
+	}
+
+	return nil
+}
+
+// SelfTestEntries normalizes the self-test log into a single shape regardless of
+// protocol: ATA entries are returned as-is (preferring the standard log, falling
+// back to extended); SCSI entries are converted from ScsiSelfTests, using the
+// result code (0 == passed) and power-on hours as the lifetime hour equivalent.
+func (s *SmartInfo) SelfTestEntries() []AtaSmartSelfTestLogEntry {
+	if entries := s.AtaSmartSelfTestLog.Entries(); len(entries) > 0 {
+		return entries
+	}
+	if len(s.ScsiSelfTests) == 0 {
+		return nil
+	}
+	entries := make([]AtaSmartSelfTestLogEntry, 0, len(s.ScsiSelfTests))
+	for _, scsiEntry := range s.ScsiSelfTests {
+		var entry AtaSmartSelfTestLogEntry
+		entry.Type.Value = scsiEntry.Code.Value
+		entry.Type.String = scsiEntry.Code.String
+		entry.Status.Value = scsiEntry.Result.Value
+		entry.Status.String = scsiEntry.Result.String
+		entry.Status.Passed = scsiEntry.Result.Value == 0
+		entry.LifetimeHours = scsiEntry.PowerOnTime.Hours
+		entries = append(entries, entry)
+	}
+	return entries
 }
 
 type ScsiEnduranceUsed struct {
