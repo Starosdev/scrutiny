@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { AppConfig } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { ZFSPoolModel } from 'app/core/models/zfs-pool-model';
+import { ZFSPoolDetailsResponseWrapper } from 'app/core/models/zfs-pool-summary-model';
 import { BehaviorSubject, of } from 'rxjs';
 import { ZFSPoolDetailComponent } from './zfs-pool-detail.component';
 import { ZFSPoolDetailService } from './zfs-pool-detail.service';
@@ -11,6 +12,7 @@ import { ZFSPoolDetailService } from './zfs-pool-detail.service';
 describe('ZFSPoolDetailComponent', () => {
     let fixture: ComponentFixture<ZFSPoolDetailComponent>;
     let config: BehaviorSubject<AppConfig>;
+    let poolData: BehaviorSubject<ZFSPoolDetailsResponseWrapper>;
 
     const pool = {
         guid: '1',
@@ -42,6 +44,7 @@ describe('ZFSPoolDetailComponent', () => {
 
     beforeEach(async () => {
         config = new BehaviorSubject<AppConfig>({ zfs_pool_modifications_allowed: false });
+        poolData = new BehaviorSubject<ZFSPoolDetailsResponseWrapper>({ success: true, data: { pool, metrics_history: [] } });
         const iconRegistry = jasmine.createSpyObj<MatIconRegistry>('MatIconRegistry', ['getNamedSvgIcon']);
         iconRegistry.getNamedSvgIcon.and.returnValue(of(document.createElementNS('http://www.w3.org/2000/svg', 'svg')));
 
@@ -54,7 +57,7 @@ describe('ZFSPoolDetailComponent', () => {
                 {
                     provide: ZFSPoolDetailService,
                     useValue: {
-                        data$: of({ success: true, data: { pool, metrics_history: [] } }),
+                        data$: poolData.asObservable(),
                         setMuted: jasmine.createSpy('setMuted').and.returnValue(of({ success: true })),
                     },
                 },
@@ -77,7 +80,7 @@ describe('ZFSPoolDetailComponent', () => {
     });
 
     it('shows missing inventory instead of historical online status', () => {
-        fixture.componentInstance.pool = { ...pool, presence: 'missing' };
+        poolData.next({ success: true, data: { pool: { ...pool, presence: 'missing' }, metrics_history: [] } });
         fixture.detectChanges();
 
         const text = fixture.nativeElement.textContent as string;

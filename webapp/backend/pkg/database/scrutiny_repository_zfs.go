@@ -20,7 +20,7 @@ import (
 
 // RegisterZFSPool inserts or updates a ZFS pool in the database
 func (sr *scrutinyRepository) RegisterZFSPool(ctx context.Context, pool models.ZFSPool) error {
-	return sr.registerZFSPoolWithDB(ctx, sr.gormClient, pool, time.Now())
+	return sr.registerZFSPoolWithDB(ctx, sr.gormClient, &pool, time.Now())
 }
 
 // RegisterZFSPoolInventory atomically records a complete pool inventory for one host.
@@ -50,7 +50,7 @@ func (sr *scrutinyRepository) RegisterZFSPoolInventory(ctx context.Context, host
 			pool.HostID = hostID
 			pool.LastSeenAt = now
 			pool.LastInventoryAt = now
-			if err := sr.registerZFSPoolWithDB(ctx, tx, pool, now); err != nil {
+			if err := sr.registerZFSPoolWithDB(ctx, tx, &pool, now); err != nil {
 				return err
 			}
 		}
@@ -58,7 +58,7 @@ func (sr *scrutinyRepository) RegisterZFSPoolInventory(ctx context.Context, host
 	})
 }
 
-func (sr *scrutinyRepository) registerZFSPoolWithDB(ctx context.Context, db *gorm.DB, pool models.ZFSPool, now time.Time) error {
+func (sr *scrutinyRepository) registerZFSPoolWithDB(ctx context.Context, db *gorm.DB, pool *models.ZFSPool, now time.Time) error {
 	pool.UpdatedAt = now
 
 	// Check if pool already exists
@@ -67,7 +67,7 @@ func (sr *scrutinyRepository) registerZFSPoolWithDB(ctx context.Context, db *gor
 
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		// New pool - create it
-		if err := db.WithContext(ctx).Create(&pool).Error; err != nil {
+		if err := db.WithContext(ctx).Create(pool).Error; err != nil {
 			return err
 		}
 	} else if result.Error != nil {
