@@ -64,5 +64,4 @@ jobs:
           go-version-file: go.mod
 
       - name: Check reachable vulnerabilities
-        # v1.8.0 requires Go 1.26; keep scanner compatible with this module's Go 1.25 floor.
-        run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...

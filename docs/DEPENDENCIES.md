@@ -35,14 +35,14 @@ Last updated: 2026-09-10
 - Root release tooling: `npm audit --audit-level=low` reports 0 vulnerabilities.
 - Frontend dependencies: `npm audit --audit-level=low` reports 0 vulnerabilities.
 - Go code: `govulncheck` reports 0 reachable vulnerabilities.
-- Go module inventory still includes three uncalled `golang.org/x/crypto` findings. Two are fixed in v0.56.0, which requires Go 1.26. One has no fixed release.
+- Go module inventory still includes one uncalled `golang.org/x/crypto/openpgp` finding with no fixed release.
 - CI enforces npm and Go checks through `.github/workflows/dependency-audit.yaml`.
 
 ### Security cleanup decision record
 
 - **Problem:** Exact transitive dependency overrides stopped moving when later advisories raised fixed versions, and CI had no blocking dependency audit.
-- **Approach:** Use security minimums in npm overrides, regenerate both lockfiles, replace legacy `go-util` helpers with tested standard-library code, add blocking npm and Go reachability checks, and require a patched Go 1.25 toolchain.
-- **Dead ends:** The latest `go-util` release still imports `golang.org/x/crypto/ssh/terminal`. `golang.org/x/crypto@v0.56.0` requires Go 1.26. `govulncheck@v1.8.0` also requires Go 1.26. Go 1.25.0 reports patched standard-library findings. Do not select those paths without an approved toolchain expansion.
+- **Approach:** Use security minimums in npm overrides, regenerate both lockfiles, replace legacy `go-util` helpers with tested standard-library code, add blocking npm and Go reachability checks, and require patched Go 1.26.8.
+- **Dead ends:** The latest `go-util` release still imports `golang.org/x/crypto/ssh/terminal`. Go 1.25.0 reports patched standard-library findings. The approved Go 1.26 expansion resolves fixed `x/crypto` findings while retaining one uncalled advisory with no fixed release.
 - **Rule:** Keep security overrides at patched version floors, run audits against committed lockfiles, and separate uncalled module findings from reachable vulnerabilities.
 
 ### Known Reachable Vulnerabilities
@@ -96,7 +96,7 @@ New Go direct dependencies added:
 
 ### Go Version
 
-- **Current floor**: 1.25.14
+- **Current floor**: 1.26.8
 - **Recommended**: Current
 
 ### Direct Dependencies
@@ -218,7 +218,7 @@ New Go direct dependencies added:
 
 - [x] Remediate npm audit findings in root and frontend lockfiles.
 - [x] Add recurring npm audit and Go vulnerability gates.
-- [x] Raise Go security floor to 1.25.14.
+- [x] Raise Go security floor to 1.26.8 and update `golang.org/x/crypto` to v0.56.0.
 
 ### Phase 2: Low-Risk Go Updates (Complete)
 
@@ -279,7 +279,7 @@ cd webapp/frontend
 npm audit
 
 # Go
-go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
 ```
 
 To check for outdated packages:
