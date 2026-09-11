@@ -312,12 +312,12 @@ type SmartInfo struct {
 // (e.g. the "scsi_self_test_0" key in `smartctl --json -l selftest`).
 type ScsiSelfTestEntry struct {
 	Code struct {
-		Value  int    `json:"value"`
 		String string `json:"string"`
+		Value  int    `json:"value"`
 	} `json:"code"`
 	Result struct {
-		Value  int    `json:"value"`
 		String string `json:"string"`
+		Value  int    `json:"value"`
 	} `json:"result"`
 	PowerOnTime struct {
 		Hours int `json:"hours"`
@@ -328,10 +328,10 @@ type ScsiSelfTestEntry struct {
 // ("scsi_background_scan.status" in `smartctl --json -l background`).
 type ScsiBackgroundScan struct {
 	Status struct {
-		Value                      int    `json:"value"`
 		String                     string `json:"string"`
-		NumberScansPerformed       int    `json:"number_scans_performed"`
 		ScanProgress               string `json:"scan_progress"`
+		Value                      int    `json:"value"`
+		NumberScansPerformed       int    `json:"number_scans_performed"`
 		NumberMediumScansPerformed int    `json:"number_medium_scans_performed"`
 	} `json:"status"`
 }
@@ -359,8 +359,8 @@ func (s *SmartInfo) UnmarshalJSON(data []byte) error {
 	}
 
 	type indexedEntry struct {
-		index int
 		entry ScsiSelfTestEntry
+		index int
 	}
 	var indexed []indexedEntry
 	for key, value := range raw {

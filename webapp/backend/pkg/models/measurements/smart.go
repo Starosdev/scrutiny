@@ -317,7 +317,7 @@ func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn s
 	} else if sm.DeviceProtocol == pkg.DeviceProtocolNvme {
 		sm.processNvmeSmartInfoWithOverrides(cfg, info.NvmeSmartHealthInformationLog, mergedOverrides)
 	} else if sm.DeviceProtocol == pkg.DeviceProtocolScsi {
-		sm.processScsiSmartInfoWithOverrides(cfg, info.ScsiGrownDefectList, info.ScsiErrorCounterLog, info.ScsiEnvironmentalReports, info.ScsiEnduranceUsed, mergedOverrides)
+		sm.processScsiSmartInfoWithOverrides(cfg, info.ScsiGrownDefectList, &info.ScsiErrorCounterLog, info.ScsiEnvironmentalReports, info.ScsiEnduranceUsed, mergedOverrides)
 	}
 
 	return nil
@@ -524,7 +524,7 @@ func parseGigabytesProcessed(gigabytesProcessed string) (int64, bool) {
 // buildScsiGigabytesProcessedAttributes builds the read/write cumulative byte-processed
 // attributes (the SAS analog to ATA LBAs written/read and NVMe data units) from the SCSI
 // error counter log's "gigabytes_processed" fields, when present and parseable.
-func buildScsiGigabytesProcessedAttributes(scsiErrorCounterLog collector.ScsiErrorCounterLog) map[string]SmartAttribute {
+func buildScsiGigabytesProcessedAttributes(scsiErrorCounterLog *collector.ScsiErrorCounterLog) map[string]SmartAttribute {
 	attrs := map[string]SmartAttribute{}
 	if readBytes, ok := parseGigabytesProcessed(scsiErrorCounterLog.Read.GigabytesProcessed); ok {
 		attrs["read_gigabytes_processed"] = (&SmartScsiAttribute{AttributeId: "read_gigabytes_processed", Value: readBytes, Threshold: -1}).PopulateAttributeStatus()
@@ -554,7 +554,7 @@ func (sm *Smart) ProcessScsiSmartInfo(cfg config.Interface, defectGrownList int6
 		"write_correction_algorithm_invocations":     (&SmartScsiAttribute{AttributeId: "write_correction_algorithm_invocations", Value: scsiErrorCounterLog.Write.CorrectionAlgorithmInvocations, Threshold: -1}).PopulateAttributeStatus(),
 		"write_total_uncorrected_errors":             (&SmartScsiAttribute{AttributeId: "write_total_uncorrected_errors", Value: scsiErrorCounterLog.Write.TotalUncorrectedErrors, Threshold: 0}).PopulateAttributeStatus(),
 	}
-	for attrId, attr := range buildScsiGigabytesProcessedAttributes(scsiErrorCounterLog) {
+	for attrId, attr := range buildScsiGigabytesProcessedAttributes(&scsiErrorCounterLog) {
 		sm.Attributes[attrId] = attr
 	}
 
@@ -1010,7 +1010,7 @@ func (sm *Smart) rolloverReasonFromCrossCheck(currentPoH int64) string {
 }
 
 // processScsiSmartInfoWithOverrides generates SmartScsiAttribute entries using pre-merged overrides.
-func (sm *Smart) processScsiSmartInfoWithOverrides(cfg config.Interface, defectGrownList int64, scsiErrorCounterLog collector.ScsiErrorCounterLog, temperature map[string]collector.ScsiTemperatureData, enduranceUsed *collector.ScsiEnduranceUsed, mergedOverrides []overrides.AttributeOverride) {
+func (sm *Smart) processScsiSmartInfoWithOverrides(cfg config.Interface, defectGrownList int64, scsiErrorCounterLog *collector.ScsiErrorCounterLog, temperature map[string]collector.ScsiTemperatureData, enduranceUsed *collector.ScsiEnduranceUsed, mergedOverrides []overrides.AttributeOverride) {
 	sm.Attributes = map[string]SmartAttribute{
 		"temperature": (&SmartScsiAttribute{AttributeId: "temperature", Value: sm.Temp, Threshold: -1}).PopulateAttributeStatus(),
 
