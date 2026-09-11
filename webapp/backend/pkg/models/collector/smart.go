@@ -65,6 +65,7 @@ type SmartInfo struct {
 		ID  uint64 `json:"id"`
 	} `json:"wwn"`
 	FirmwareVersion   string       `json:"firmware_version"`
+	ScsiRevision      string       `json:"scsi_revision"`
 	UserCapacity      UserCapacity `json:"user_capacity"`
 	LogicalBlockSize  int          `json:"logical_block_size"`
 	PhysicalBlockSize int          `json:"physical_block_size"`
@@ -311,6 +312,19 @@ func (s *SmartInfo) Capacity() int64 {
 		return s.UserCapacity.Bytes
 	}
 	return 0
+}
+
+// Firmware returns the device's firmware/revision string.
+// smartctl only populates "firmware_version" for ATA/SAT and NVMe devices.
+// For plain SCSI/SAS devices, the equivalent value is reported under
+// "scsi_revision" instead (smartctl deliberately does not alias it to
+// "firmware_version" - see smartmontools scsiprint.cpp), so fall back to it
+// here when "firmware_version" is not present.
+func (s *SmartInfo) Firmware() string {
+	if s.FirmwareVersion != "" {
+		return s.FirmwareVersion
+	}
+	return s.ScsiRevision
 }
 
 type UserCapacity struct {

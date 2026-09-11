@@ -166,7 +166,14 @@ func (dv *Device) IsNvme() bool {
 func (dv *Device) UpdateFromCollectorSmartInfo(info collector.SmartInfo) error {
 	dv.ModelFamily = info.ModelFamily
 	dv.ModelName = info.ModelName
-	dv.Firmware = info.FirmwareVersion
+	// Only overwrite a previously known firmware/revision when this run actually
+	// reported one; smartctl omits both firmware_version and scsi_revision when
+	// the drive doesn't answer that inquiry (e.g. transient errors, permissions,
+	// or invocation args that didn't include -i/-x), and we don't want to blank
+	// out a value we already have on file.
+	if firmware := info.Firmware(); firmware != "" {
+		dv.Firmware = firmware
+	}
 	dv.DeviceProtocol = info.Device.Protocol
 	dv.SmartSupport = info.SmartSupport
 

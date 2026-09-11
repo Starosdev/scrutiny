@@ -34,6 +34,28 @@ func TestSmartInfo_Capacity(t *testing.T) {
 	})
 }
 
+func TestSmartInfo_Firmware(t *testing.T) {
+	t.Run("should report firmware_version when present (ATA/NVMe)", func(t *testing.T) {
+		smartInfo := SmartInfo{
+			FirmwareVersion: "0004",
+			ScsiRevision:    "HPD5",
+		}
+		assert.Equal(t, "0004", smartInfo.Firmware())
+	})
+
+	t.Run("should fall back to scsi_revision when firmware_version is empty (SCSI/SAS)", func(t *testing.T) {
+		smartInfo := SmartInfo{
+			ScsiRevision: "HPD5",
+		}
+		assert.Equal(t, "HPD5", smartInfo.Firmware())
+	})
+
+	t.Run("should report empty string when neither field is present", func(t *testing.T) {
+		var smartInfo SmartInfo
+		assert.Equal(t, "", smartInfo.Firmware())
+	})
+}
+
 func TestSmartInfo_LargeLBAValues(t *testing.T) {
 	// Test for GitHub issue #24 / upstream issue #800
 	// LBA values can be large unsigned 64-bit integers that overflow signed int

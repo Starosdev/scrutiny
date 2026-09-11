@@ -1,0 +1,70 @@
+{
+  "json_format_version": [
+    1,
+    0
+  ],
+  "smartctl": {
+    "version": [
+      7,
+      5
+    ],
+    "pre_release": false,
+    "svn_revision": "5714",
+    "platform_info": "x86_64-linux-7.0.14-9-pve",
+    "build_info": "(local build)",
+    "argv": [
+      "smartctl",
+      "--info",
+      "--json",
+      "--device",
+      "scsi",
+      "/dev/sdp"
+    ],
+    "exit_status": 0
+  },
+  "local_time": {
+    "time_t": 1789148192,
+    "asctime": "Fri Sep 11 13:36:32 2026 EDT"
+  },
+  "device": {
+    "name": "/dev/sdp",
+    "info_name": "/dev/sdp",
+    "type": "scsi",
+    "protocol": "SCSI"
+  },
+  "scsi_vendor": "HPE",
+  "scsi_product": "VO003840JWZJK",
+  "model_name": "HPE VO003840JWZJK",
+  "scsi_model_name": "HPE VO003840JWZJK",
+  "scsi_revision": "HPD5",
+  "scsi_version": "SPC-5",
+  "user_capacity": {
+    "blocks": 7501476528,
+    "bytes": 3840755982336
+  },
+  "logical_block_size": 512,
+  "physical_block_size": 4096,
+  "rotation_rate": 0,
+  "form_factor": {
+    "scsi_value": 3,
+    "name": "2.5 inches"
+  },
+  "logical_unit_id": "0x50000f0b005750f0",
+  "serial_number": "ABCDEFGHIJKLMNOP",
+  "device_type": {
+    "scsi_terminology": "Peripheral Device Type [PDT]",
+    "scsi_value": 0,
+    "name": "disk"
+  },
+  "scsi_transport_protocol": {
+    "name": "SAS (SPL-4)",
+    "value": 6
+  },
+  "smart_support": {
+    "available": true,
+    "enabled": true
+  },
+  "smart_status": {
+    "passed": true
+  }
+}
