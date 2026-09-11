@@ -1036,7 +1036,7 @@ func (sm *Smart) processScsiSmartInfoWithOverrides(cfg config.Interface, defectG
 	// protocol-specific branching. Only populated when the drive reports it (SAS SSDs only);
 	// enduranceUsed is nil for SAS/SATA HDDs and SSDs that don't support this log page.
 	if enduranceUsed != nil {
-		sm.Attributes["percentage_used"] = (&SmartScsiAttribute{AttributeId: "percentage_used", Value: enduranceUsed.CurrentPercent, Threshold: -1}).PopulateAttributeStatus()
+		sm.Attributes["percentage_used"] = (&SmartScsiAttribute{AttributeId: "percentage_used", Value: enduranceUsed.CurrentPercent, Threshold: 100}).PopulateAttributeStatus()
 	}
 
 	// Apply overrides and find analyzed attribute status

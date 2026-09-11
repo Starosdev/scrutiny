@@ -783,6 +783,50 @@ func TestFromCollectorSmartInfo_Scsi_SAS_SSD_Endurance(t *testing.T) {
 	require.Equal(t, int64(243990000000), smartMdl.Attributes["write_gigabytes_processed"].(*measurements.SmartScsiAttribute).Value)
 }
 
+// TestFromCollectorSmartInfo_Scsi_SAS_SSD_Endurance_ExceedsThreshold tests that a SAS SSD
+// reporting a "percentage_used" endurance value above 100 is flagged as failed, matching
+// NVMe's percentage_used threshold behavior. Previously the SCSI attribute was created with
+// Threshold: -1 (disabled), so a device already past its rated endurance limit stayed
+// "Passed" despite the critical metadata for this attribute.
+func TestFromCollectorSmartInfo_Scsi_SAS_SSD_Endurance_ExceedsThreshold(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-scsi-sas-ssd.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+
+	// Push the reported endurance usage past the manufacturer's rated limit.
+	smartJson.ScsiEnduranceUsed.CurrentPercent = 105
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+	require.Equal(t, pkg.DeviceStatusFailedScrutiny, smartMdl.Status)
+
+	require.Contains(t, smartMdl.Attributes, "percentage_used")
+	percentageUsedAttr, ok := smartMdl.Attributes["percentage_used"].(*measurements.SmartScsiAttribute)
+	require.True(t, ok, "SCSI percentage_used attribute should be *SmartScsiAttribute, got %T", smartMdl.Attributes["percentage_used"])
+	require.Equal(t, int64(105), percentageUsedAttr.Value)
+	require.True(t, pkg.AttributeStatusHas(percentageUsedAttr.Status, pkg.AttributeStatusFailedScrutiny),
+		"percentage_used should fail once current_percent (%d) exceeds threshold (%d)", percentageUsedAttr.Value, percentageUsedAttr.Threshold)
+}
+
 // TestFromCollectorSmartInfo_Scsi_SAS_EnvironmentalReports tests that for SAS drives
 // where the standard temperature field is 0, the temperature is correctly parsed
 // from scsi_environmental_reports.temperature_1.current (fixes GitHub issue #26)
