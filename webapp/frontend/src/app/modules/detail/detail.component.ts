@@ -475,7 +475,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             return null;
         }
 
-        // Check for percentage_used (NVMe) or devstat_7_8 (ATA)
+        // Check for percentage_used (NVMe, and SAS SSD endurance_used) or devstat_7_8 (ATA)
         const percentageUsedAttr = attrs['percentage_used'] || attrs['devstat_7_8'];
         if (percentageUsedAttr) {
             // For percentage_used, use value; for devstat_7_8, use raw_value if available, otherwise value
@@ -1050,6 +1050,12 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             return (nvmeAttr.value * 512 * 1000) / (1024 * 1024 * 1024 * 1024);
         }
 
+        // SCSI/SAS: write_gigabytes_processed is already stored in bytes
+        const scsiAttr = attrs['write_gigabytes_processed'];
+        if (scsiAttr?.value != null) {
+            return scsiAttr.value / TB;
+        }
+
         return null;
     }
 
@@ -1097,6 +1103,12 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         const nvmeAttr = attrs['data_units_read'];
         if (nvmeAttr?.value != null) {
             return (nvmeAttr.value * 512 * 1000) / (1024 * 1024 * 1024 * 1024);
+        }
+
+        // SCSI/SAS: read_gigabytes_processed is already stored in bytes
+        const scsiAttr = attrs['read_gigabytes_processed'];
+        if (scsiAttr?.value != null) {
+            return scsiAttr.value / TB;
         }
 
         return null;
