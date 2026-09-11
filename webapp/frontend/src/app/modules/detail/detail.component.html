@@ -325,13 +325,13 @@
         }
 
         <!-- SMART Self-Tests -->
-        @if (isAta()) {
+        @if (hasSelfTestSupport()) {
         <div class="flex flex-auto w-full p-4">
             <treo-card class="flex flex-auto p-4 flex-col">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <div class="font-bold text-md text-secondary uppercase tracking-wider">SMART Self-Tests</div>
-                        <div class="text-sm text-secondary">ATA self-test history from recorded smartctl uploads</div>
+                        <div class="text-sm text-secondary">Self-test history from recorded smartctl uploads</div>
                     </div>
                     @if (!selfTestsLoading && selfTests.length > 0) {
                     <div class="text-sm text-secondary">{{ selfTests.length }} entries</div>

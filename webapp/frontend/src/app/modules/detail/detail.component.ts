@@ -250,7 +250,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             // Load replacement risk (lazy, non-blocking)
             this._loadReplacementRisk(this.device.device_id);
 
-            if (this.isAta()) {
+            if (this.hasSelfTestSupport()) {
                 this._loadSelfTests(this.device.device_id);
             } else {
                 this.selfTests = [];
@@ -511,6 +511,15 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     isScsi(): boolean {
         return this.device?.device_protocol === 'SCSI';
+    }
+
+    /**
+     * SMART self-test history is recorded for both ATA and SCSI/SAS devices
+     * (smartctl's numbered scsi_self_test_N log entries are normalized into
+     * the same self-test rows as the ATA self-test log).
+     */
+    hasSelfTestSupport(): boolean {
+        return this.isAta() || this.isScsi();
     }
 
     isNvme(): boolean {
