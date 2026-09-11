@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/analogj/go-util/utils"
+	"github.com/analogj/scrutiny/pkg/utils"
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"

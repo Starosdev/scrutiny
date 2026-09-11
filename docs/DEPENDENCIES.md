@@ -41,8 +41,8 @@ Last updated: 2026-09-10
 ### Security cleanup decision record
 
 - **Problem:** Exact transitive dependency overrides stopped moving when later advisories raised fixed versions, and CI had no blocking dependency audit.
-- **Approach:** Use security minimums in npm overrides, regenerate both lockfiles, add blocking npm and Go reachability checks, and require a patched Go 1.25 toolchain.
-- **Dead ends:** `golang.org/x/crypto@v0.56.0` requires Go 1.26. `govulncheck@v1.8.0` also requires Go 1.26. Go 1.25.0 reports patched standard-library findings. Do not select those paths without an approved toolchain expansion.
+- **Approach:** Use security minimums in npm overrides, regenerate both lockfiles, replace legacy `go-util` helpers with tested standard-library code, add blocking npm and Go reachability checks, and require a patched Go 1.25 toolchain.
+- **Dead ends:** The latest `go-util` release still imports `golang.org/x/crypto/ssh/terminal`. `golang.org/x/crypto@v0.56.0` requires Go 1.26. `govulncheck@v1.8.0` also requires Go 1.26. Go 1.25.0 reports patched standard-library findings. Do not select those paths without an approved toolchain expansion.
 - **Rule:** Keep security overrides at patched version floors, run audits against committed lockfiles, and separate uncalled module findings from reachable vulnerabilities.
 
 ### Known Reachable Vulnerabilities
@@ -103,7 +103,7 @@ New Go direct dependencies added:
 
 | Package | Version | Latest | Gap | Priority |
 |---------|---------|--------|-----|----------|
-| github.com/analogj/go-util | v0.0.0-20190301 | v0.0.0-20210417 | 2 years | Low |
+| github.com/analogj/go-util | Removed | n/a | Replaced 2026-09-10 | - |
 | github.com/eclipse/paho.mqtt.golang | v1.5.0 | v1.5.0 | Current | - |
 | github.com/fatih/color | v1.18.0 | v1.18.0 | Current | - |
 | github.com/gin-gonic/gin | v1.9.1 | v1.11.0 | 2 minor | High |

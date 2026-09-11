@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	utils "github.com/analogj/go-util/utils"
 	"github.com/analogj/scrutiny/pkg/startup"
+	"github.com/analogj/scrutiny/pkg/utils"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/errors"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
