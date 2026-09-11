@@ -8,6 +8,7 @@ import (
 // HTML report color constants (S1192: deduplicated string literals)
 const colorGreen = "#28a745"
 const colorRed = "#dc3545"
+const colorYellow = "#ffc107"
 
 // FormatHTMLReport generates an HTML email body for the report.
 func FormatHTMLReport(report *ReportData) string {
@@ -196,8 +197,11 @@ func writeZFSHTMLSection(b *strings.Builder, pools []ZFSPoolReport) {
 </tr>`)
 
 	for _, pool := range pools {
+		displayHealth := pool.DisplayHealth()
 		healthColor := colorGreen
-		if pool.Health != "ONLINE" {
+		if displayHealth == "UNKNOWN" {
+			healthColor = colorYellow
+		} else if displayHealth != "ONLINE" {
 			healthColor = colorRed
 		}
 
@@ -213,7 +217,7 @@ func writeZFSHTMLSection(b *strings.Builder, pools []ZFSPoolReport) {
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;color:%s;">%s</td>
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;">%.1f%%</td>
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;">%s</td>
-</tr>`, escapeHTML(pool.Name), healthColor, pool.Health, pool.Capacity, errors)
+</tr>`, escapeHTML(pool.Name), healthColor, displayHealth, pool.Capacity, errors)
 	}
 
 	b.WriteString(`</table></td></tr>`)

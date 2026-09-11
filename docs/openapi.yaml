@@ -102,6 +102,8 @@ paths:
           $ref: "#/components/responses/SuccessResponse"
         "500":
           $ref: "#/components/responses/ErrorResponse"
+        "400":
+          description: Invalid complete inventory envelope
   /api/health/missed-ping-status:
     get:
       tags: [Health]
@@ -1086,7 +1088,7 @@ paths:
   /api/zfs/pools/register:
     post:
       tags: [ZFS]
-      summary: Register ZFS pools discovered by the collector
+      summary: Register ZFS pools or submit a complete host inventory
       requestBody:
         required: true
         content:
@@ -1102,6 +1104,8 @@ paths:
                 $ref: "#/components/schemas/ZFSPoolWrapper"
         "500":
           $ref: "#/components/responses/ErrorResponse"
+        "400":
+          description: Complete inventory is missing host_id
   /api/zfs/summary:
     get:
       tags: [ZFS]
@@ -2405,6 +2409,18 @@ components:
           type: string
         host_id:
           type: string
+        last_seen_at:
+          type: string
+          format: date-time
+          description: Last time an authoritative host inventory reported this pool.
+        last_inventory_at:
+          type: string
+          format: date-time
+          description: Last successful authoritative inventory received from this pool's host.
+        presence:
+          type: string
+          enum: [present, missing, stale, unknown]
+          description: Current presence derived from host inventory; health remains the last observed pool health.
         name:
           type: string
         label:
@@ -2465,6 +2481,12 @@ components:
           type: array
           items:
             type: string
+        host_id:
+          type: string
+          description: Host identity for an authoritative inventory report.
+        complete:
+          type: boolean
+          description: When true, data is the complete pool inventory for host_id, including an empty inventory.
         data:
           type: array
           items:

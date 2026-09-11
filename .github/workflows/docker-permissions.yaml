@@ -12,6 +12,25 @@ on:
       - '.github/workflows/docker-permissions.yaml'
 
 jobs:
+  image_matrix:
+    name: Validate Docker image matrix
+    runs-on: ubuntu-latest
+    outputs:
+      pr_build: ${{ steps.matrix.outputs.pr_build }}
+      apparmor: ${{ steps.matrix.outputs.apparmor }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Test Docker image matrix
+        run: bash docker/tests/image-matrix_test.sh
+      - name: Export Docker image matrix
+        id: matrix
+        run: |
+          {
+            echo "pr_build=$(jq -c '[.[] | select(.pr_build == true)]' docker/image-matrix.json)"
+            echo "apparmor=$(jq -c '[.[] | select(.apparmor_kind != null)]' docker/image-matrix.json)"
+          } >> "$GITHUB_OUTPUT"
+
   frontend-permissions:
     name: Test Docker frontend permissions
     runs-on: ubuntu-latest
@@ -22,40 +41,21 @@ jobs:
       - name: Test Docker frontend permissions
         run: bash docker/tests/frontend-permissions_test.sh
 
-  # Every Dockerfile this repository publishes is built here, so a broken image
-  # is caught on the pull request rather than by the tag build. That matters
-  # because release.yaml publishes the GitHub release before docker-build.yaml
-  # runs on the resulting tag: a failure there leaves a published release with
-  # no image behind it.
-  #
-  # The AppArmor matrix below is not the right place for this. It carries a
-  # "kind" that selects an AppArmor test, and half these images have nothing
-  # meaningful to assert under it.
-  #
-  # amd64 only, deliberately. The publish path builds linux/amd64 and
-  # linux/arm64 through QEMU, so an arm64-only failure still reaches the tag
-  # build first. Emulated arm64 builds of eight images on every pull request is
-  # a large standing cost for a narrower class of failure; see #824 for that
-  # half.
   build-images:
     name: Build (${{ matrix.image }})
+    needs: image_matrix
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - image: web
-            dockerfile: docker/Dockerfile.web
-          - image: collector-zfs
-            dockerfile: docker/Dockerfile.collector-zfs
-          - image: collector-mdadm
-            dockerfile: docker/Dockerfile.collector-mdadm
-          - image: collector-btrfs
-            dockerfile: docker/Dockerfile.collector-btrfs
+        include: ${{ fromJSON(needs.image_matrix.outputs.pr_build) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
+      - name: Populate frontend version information
+        if: matrix.frontend == true
+        run: cd webapp/frontend && ./git.version.sh
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
       - name: Build image
@@ -65,29 +65,19 @@ jobs:
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: false
+          tags: scrutiny-pr-${{ matrix.image }}
           cache-from: type=gha,scope=prbuild-${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=prbuild-${{ matrix.image }}
 
   apparmor:
     name: AppArmor (${{ matrix.image }})
+    needs: image_matrix
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - image: omnibus
-            dockerfile: docker/Dockerfile
-            kind: omnibus
-          - image: collector
-            dockerfile: docker/Dockerfile.collector
-            kind: collector
-          - image: collector-omnibus
-            dockerfile: docker/Dockerfile.collector-omnibus
-            kind: collector
-          - image: collector-performance
-            dockerfile: docker/Dockerfile.collector-performance
-            kind: collector
+        include: ${{ fromJSON(needs.image_matrix.outputs.apparmor) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
@@ -96,4 +86,4 @@ jobs:
       - name: Build image
         run: docker build -f "${{ matrix.dockerfile }}" -t scrutiny-apparmor-test .
       - name: Test enforcing AppArmor profile
-        run: bash docker/tests/apparmor_test.sh scrutiny-apparmor-test "${{ matrix.kind }}"
+        run: bash docker/tests/apparmor_test.sh scrutiny-apparmor-test "${{ matrix.apparmor_kind }}"

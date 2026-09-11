@@ -27,9 +27,12 @@
         <!-- Status Card -->
         <treo-card class="flex-col p-6">
             <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Status</div>
-            <div [ngClass]="getStatusColorClass(pool.status)" class="font-bold text-3xl">
-                {{ pool.status }}
+            <div [ngClass]="getStatusDisplayColorClass()" class="font-bold text-3xl">
+                {{ getStatusDisplay() }}
             </div>
+            @if (getPresenceLabel()) {
+            <div [ngClass]="getPresenceColorClass()" class="mt-2 text-sm">{{ getPresenceLabel() }}</div>
+            }
         </treo-card>
 
         <!-- Capacity Card -->

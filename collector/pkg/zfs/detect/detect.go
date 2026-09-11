@@ -56,6 +56,9 @@ func (d *Detect) listPools() ([]models.ZFSPool, error) {
 		"name,guid,size,alloc,free,frag,cap,health,ashift")
 	output, err := cmd.Output()
 	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && strings.Contains(strings.ToLower(string(exitErr.Stderr)), "no pools available") {
+			return []models.ZFSPool{}, nil
+		}
 		return nil, fmt.Errorf("failed to list pools: %w", err)
 	}
 

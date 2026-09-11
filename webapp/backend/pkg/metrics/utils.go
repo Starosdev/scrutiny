@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 )
@@ -68,6 +69,13 @@ func metricValue[T comparable](current T, candidate T) float64 {
 		return 1
 	}
 	return 0
+}
+
+func timestampSeconds(timestamp time.Time) float64 {
+	if timestamp.IsZero() {
+		return 0
+	}
+	return float64(timestamp.Unix())
 }
 
 func orderedKeys[K ~string, V any](m map[K]V) []K {
