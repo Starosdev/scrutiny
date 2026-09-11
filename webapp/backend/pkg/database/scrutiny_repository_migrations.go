@@ -34,7 +34,6 @@ import (
 	m20260608000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260608000000"
 	m20260610000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260610000000"
 	m20260616000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260616000000"
-	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260906000000"
 	m20260907000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260907000000"
 	m20260910000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260910000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
@@ -671,7 +670,10 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 		{
 			ID: "m20260906000000", // add pinned_value to attribute overrides for acknowledge action (#775)
 			Migrate: func(tx *gorm.DB) error {
-				return tx.AutoMigrate(&m20260906000000.AttributeOverride{})
+				if err := tx.Exec("ALTER TABLE attribute_overrides ADD COLUMN pinned_value INTEGER").Error; err != nil {
+					return fmt.Errorf("failed to add attribute override pinned_value: %w", err)
+				}
+				return nil
 			},
 		},
 		{
