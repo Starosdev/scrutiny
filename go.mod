@@ -1,6 +1,6 @@
 module github.com/analogj/scrutiny
 
-go 1.26.8
+go 1.27
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.5.1
@@ -17,7 +17,7 @@ require (
 	github.com/jaypipes/ghw v0.25.0
 	github.com/kvz/logstreamer v0.0.0-20201023134116-02d20f4338f5
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/nicholas-fedor/shoutrrr v0.17.0
+	github.com/nicholas-fedor/shoutrrr v0.20.0
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/client_model v0.6.3
 	github.com/robfig/cron/v3 v3.0.1
@@ -86,7 +86,7 @@ require (
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
 	golang.org/x/arch v0.22.0 // indirect
 	golang.org/x/crypto v0.56.0 // indirect
-	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
