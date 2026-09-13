@@ -50,7 +50,7 @@ jobs:
           python3 ops/loop_pilot.py dependency-sweeper "${ARGS[@]}" --output out/loop-pilot-dependency-sweeper.md
 
       - name: Upload dependency sweeper artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: scrutiny-loop-pilot-dependency-sweeper-${{ github.run_id }}
           path: out/loop-pilot-dependency-sweeper.md
