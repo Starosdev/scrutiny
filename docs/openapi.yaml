@@ -1809,6 +1809,15 @@ components:
           type: string
         firmware_version:
           type: string
+          description: >-
+            Firmware/revision string reported by smartctl. Only populated for
+            ATA/SAT and NVMe devices; SCSI/SAS devices report this value under
+            scsi_revision instead.
+        scsi_revision:
+          type: string
+          description: >-
+            SCSI/SAS equivalent of firmware_version, reported by smartctl for
+            plain SCSI/SAS devices (e.g. "-i"/"-x" output).
         wwn:
           type: object
           properties:
@@ -1915,6 +1924,13 @@ components:
           type: object
           additionalProperties:
             $ref: "#/components/schemas/ScsiTemperatureData"
+        endurance_used:
+          type: object
+          description: SAS SSD "Percentage used endurance indicator" from the Solid State Media log page (0x11). Only reported by solid-state SAS drives.
+          properties:
+            current_percent:
+              type: integer
+              format: int64
         seagate_farm_log:
           $ref: "#/components/schemas/SeagateFarmLog"
       additionalProperties: true

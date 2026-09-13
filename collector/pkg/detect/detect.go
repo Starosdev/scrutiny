@@ -222,7 +222,14 @@ func (d *Detect) SmartCtlInfo(device *models.Device) error {
 	device.ModelName = availableDeviceInfo.ModelName
 	device.InterfaceSpeed = availableDeviceInfo.InterfaceSpeed.Current.String
 	device.SerialNumber = availableDeviceInfo.SerialNumber
-	device.Firmware = availableDeviceInfo.FirmwareVersion
+	// Only overwrite a previously known firmware/revision when this run actually
+	// reported one; smartctl omits both firmware_version and scsi_revision when
+	// the drive doesn't answer that inquiry (e.g. transient errors, permissions,
+	// or invocation args that didn't include -i/-x), and we don't want to blank
+	// out a value we already have on file.
+	if firmware := availableDeviceInfo.Firmware(); firmware != "" {
+		device.Firmware = firmware
+	}
 	device.RotationSpeed = availableDeviceInfo.RotationRate
 	device.Capacity = availableDeviceInfo.Capacity()
 	device.FormFactor = availableDeviceInfo.FormFactor.Name

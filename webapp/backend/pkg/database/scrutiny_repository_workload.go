@@ -119,21 +119,27 @@ type workloadSnapshot struct {
 	// NVMe
 	DataUnitsWritten int64
 	DataUnitsRead    int64
-	PercentageUsed   int64
+	PercentageUsed   int64 // shared with SCSI (SAS SSD endurance_used.current_percent)
+
+	// SCSI
+	ScsiWriteGigabytesProcessed int64 // cumulative bytes processed by write commands
+	ScsiReadGigabytesProcessed  int64 // cumulative bytes processed by read commands
 
 	// Track which fields were present
-	hasAttr241        bool
-	hasAttr242        bool
-	hasDevstat124     bool
-	hasDevstat140     bool
-	hasDevstat78      bool
-	hasAttr177        bool
-	hasAttr231        bool
-	hasAttr232        bool
-	hasAttr233        bool
-	hasDataUnitsW     bool
-	hasDataUnitsR     bool
-	hasPercentageUsed bool
+	hasAttr241                     bool
+	hasAttr242                     bool
+	hasDevstat124                  bool
+	hasDevstat140                  bool
+	hasDevstat78                   bool
+	hasAttr177                     bool
+	hasAttr231                     bool
+	hasAttr232                     bool
+	hasAttr233                     bool
+	hasDataUnitsW                  bool
+	hasDataUnitsR                  bool
+	hasPercentageUsed              bool
+	hasScsiWriteGigabytesProcessed bool
+	hasScsiReadGigabytesProcessed  bool
 }
 
 // extractInt64 extracts an int64 value from InfluxDB result map.
@@ -188,6 +194,9 @@ func parseWorkloadSnapshot(values map[string]interface{}) *workloadSnapshot {
 		{field: "attr.data_units_written.value", dest: &snap.DataUnitsWritten, flag: &snap.hasDataUnitsW},
 		{field: "attr.data_units_read.value", dest: &snap.DataUnitsRead, flag: &snap.hasDataUnitsR},
 		{field: "attr.percentage_used.value", dest: &snap.PercentageUsed, flag: &snap.hasPercentageUsed},
+		// SCSI attributes
+		{field: "attr.write_gigabytes_processed.value", dest: &snap.ScsiWriteGigabytesProcessed, flag: &snap.hasScsiWriteGigabytesProcessed},
+		{field: "attr.read_gigabytes_processed.value", dest: &snap.ScsiReadGigabytesProcessed, flag: &snap.hasScsiReadGigabytesProcessed},
 	} {
 		*attr.dest, *attr.flag = extractInt64(values, attr.field)
 	}
@@ -259,7 +268,9 @@ func (sr *scrutinyRepository) buildWorkloadFirstLastQuery(durationKey string) st
 		`    r["_field"] == "attr.177.value" or`,
 		`    r["_field"] == "attr.231.value" or`,
 		`    r["_field"] == "attr.232.value" or`,
-		`    r["_field"] == "attr.233.value"`,
+		`    r["_field"] == "attr.233.value" or`,
+		`    r["_field"] == "attr.write_gigabytes_processed.value" or`,
+		`    r["_field"] == "attr.read_gigabytes_processed.value"`,
 		``,
 	}
 
@@ -302,7 +313,9 @@ func (sr *scrutinyRepository) buildWorkloadFirstLastQuery(durationKey string) st
 		`    (exists r["attr.devstat_1_24.value"] and r["attr.devstat_1_24.value"] > 0) or`,
 		`    (exists r["attr.devstat_1_40.value"] and r["attr.devstat_1_40.value"] > 0) or`,
 		`    (exists r["attr.data_units_written.value"] and r["attr.data_units_written.value"] > 0) or`,
-		`    (exists r["attr.data_units_read.value"] and r["attr.data_units_read.value"] > 0)`,
+		`    (exists r["attr.data_units_read.value"] and r["attr.data_units_read.value"] > 0) or`,
+		`    (exists r["attr.write_gigabytes_processed.value"] and r["attr.write_gigabytes_processed.value"] > 0) or`,
+		`    (exists r["attr.read_gigabytes_processed.value"] and r["attr.read_gigabytes_processed.value"] > 0)`,
 		`)`,
 		`|> group(columns: ["device_wwn"])`,
 		``,
@@ -364,7 +377,9 @@ func (sr *scrutinyRepository) buildWorkloadRecentQuery() string {
 		`    r["_field"] == "attr.devstat_1_24.value" or`,
 		`    r["_field"] == "attr.devstat_1_40.value" or`,
 		`    r["_field"] == "attr.data_units_written.value" or`,
-		`    r["_field"] == "attr.data_units_read.value"`,
+		`    r["_field"] == "attr.data_units_read.value" or`,
+		`    r["_field"] == "attr.write_gigabytes_processed.value" or`,
+		`    r["_field"] == "attr.read_gigabytes_processed.value"`,
 		``,
 		fmt.Sprintf("from(bucket: %q)", bucketName),
 		`|> range(start: -1w, stop: now())`,
@@ -398,8 +413,9 @@ func (sr *scrutinyRepository) computeWorkloadInsight(insight *models.WorkloadIns
 		totalWrittenBytes, totalReadBytes = sr.computeATAWorkload(first, last)
 	case pkg.DeviceProtocolNvme:
 		totalWrittenBytes, totalReadBytes = sr.computeNVMeWorkload(first, last)
+	case pkg.DeviceProtocolScsi:
+		totalWrittenBytes, totalReadBytes = sr.computeSCSIWorkload(first, last)
 	default:
-		// SCSI: no cumulative byte counters
 		insight.Intensity = "unknown"
 		sr.computeEndurance(insight, last, protocol, 0, maxTBW)
 		return
@@ -464,6 +480,20 @@ func (sr *scrutinyRepository) computeNVMeWorkload(first, last *workloadSnapshot)
 	return writtenBytes, readBytes
 }
 
+// computeSCSIWorkload derives cumulative written/read bytes for SAS/SCSI drives from the
+// delta of the "gigabytes_processed" fields in the SCSI error counter log (read/write log
+// pages). This is the SAS analog of ATA LBAs written/read and NVMe data units; the value is
+// already converted to bytes when the attribute is created (see parseGigabytesProcessed).
+func (sr *scrutinyRepository) computeSCSIWorkload(first, last *workloadSnapshot) (writtenBytes, readBytes int64) {
+	if last.hasScsiWriteGigabytesProcessed && first.hasScsiWriteGigabytesProcessed {
+		writtenBytes = last.ScsiWriteGigabytesProcessed - first.ScsiWriteGigabytesProcessed
+	}
+	if last.hasScsiReadGigabytesProcessed && first.hasScsiReadGigabytesProcessed {
+		readBytes = last.ScsiReadGigabytesProcessed - first.ScsiReadGigabytesProcessed
+	}
+	return writtenBytes, readBytes
+}
+
 func (sr *scrutinyRepository) getCumulativeWriteBytes(snap *workloadSnapshot, protocol string) int64 {
 	switch protocol {
 	case pkg.DeviceProtocolAta:
@@ -476,6 +506,10 @@ func (sr *scrutinyRepository) getCumulativeWriteBytes(snap *workloadSnapshot, pr
 	case pkg.DeviceProtocolNvme:
 		if snap.hasDataUnitsW {
 			return snap.DataUnitsWritten * 512000
+		}
+	case pkg.DeviceProtocolScsi:
+		if snap.hasScsiWriteGigabytesProcessed {
+			return snap.ScsiWriteGigabytesProcessed
 		}
 	}
 	return 0
@@ -523,7 +557,9 @@ func (sr *scrutinyRepository) computeEndurance(insight *models.WorkloadInsight, 
 // given protocol from a snapshot, returning the value and whether one was found.
 func endurancePercentageUsed(snap *workloadSnapshot, protocol string) (percentageUsed int64, hasPercentage bool) {
 	switch protocol {
-	case pkg.DeviceProtocolNvme:
+	case pkg.DeviceProtocolNvme, pkg.DeviceProtocolScsi:
+		// SCSI SAS SSDs store their endurance_used.current_percent under the shared
+		// "percentage_used" attribute ID (see processScsiSmartInfoWithOverrides).
 		if snap.hasPercentageUsed {
 			return snap.PercentageUsed, true
 		}
@@ -610,6 +646,10 @@ func (sr *scrutinyRepository) detectSpike(recentPoints []*workloadSnapshot, base
 		if newest.hasDataUnitsW && previous.hasDataUnitsW {
 			delta := newest.DataUnitsWritten - previous.DataUnitsWritten
 			recentWrittenBytes = delta * 512000
+		}
+	case pkg.DeviceProtocolScsi:
+		if newest.hasScsiWriteGigabytesProcessed && previous.hasScsiWriteGigabytesProcessed {
+			recentWrittenBytes = newest.ScsiWriteGigabytesProcessed - previous.ScsiWriteGigabytesProcessed
 		}
 	default:
 		return nil

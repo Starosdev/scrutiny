@@ -64,11 +64,35 @@ func selfTestLifetimeBounds(entries []collector.AtaSmartSelfTestLogEntry, powerO
 	return minimum, maximum
 }
 
+// selfTestAbsoluteBounds treats each entry's LifetimeHours as an already-absolute hour count
+// with no rollover ambiguity. Unlike ATA's 16-bit lifetime-hours field, SCSI/SAS self-test log
+// entries report smartctl's "accumulated_power_on_hours" value, which does not wrap at 65536,
+// so entries at or above that value still have a single, exact effective age.
+func selfTestAbsoluteBounds(entries []collector.AtaSmartSelfTestLogEntry) ([]int64, []int64) {
+	minimum := make([]int64, len(entries))
+	maximum := make([]int64, len(entries))
+	for i, entry := range entries {
+		if entry.LifetimeHours < 0 {
+			minimum[i], maximum[i] = 0, -1
+			continue
+		}
+		hours := int64(entry.LifetimeHours)
+		minimum[i], maximum[i] = hours, hours
+	}
+	return minimum, maximum
+}
+
 func (sr *scrutinyRepository) syncDeviceSelfTests(ctx context.Context, device *models.Device, collectorSmartData *collector.SmartInfo, powerOnHours int64) error {
-	if collectorSmartData.Device.Protocol != pkg.DeviceProtocolAta {
+	if collectorSmartData.Device.Protocol != pkg.DeviceProtocolAta && collectorSmartData.Device.Protocol != pkg.DeviceProtocolScsi {
 		return nil
 	}
-	entries := collectorSmartData.AtaSmartSelfTestLog.Entries()
+	// SelfTestEntries() normalizes both the ATA self-test log (a JSON array) and
+	// the SCSI/SAS self-test log (individually numbered "scsi_self_test_N" keys)
+	// into the same shape; the dedup logic below is protocol-agnostic. Resolving
+	// effective lifetime hours is not: ATA's 16-bit counter can wrap and needs
+	// epoch resolution against powerOnHours, while SCSI/SAS reports an absolute,
+	// non-wrapping accumulated power-on-hours value that needs no such resolution.
+	entries := collectorSmartData.SelfTestEntries()
 	if len(entries) == 0 {
 		return nil
 	}
@@ -77,7 +101,12 @@ func (sr *scrutinyRepository) syncDeviceSelfTests(ctx context.Context, device *m
 	if observedAt <= 0 {
 		observedAt = time.Now().Unix()
 	}
-	minimum, maximum := selfTestLifetimeBounds(entries, powerOnHours)
+	var minimum, maximum []int64
+	if collectorSmartData.Device.Protocol == pkg.DeviceProtocolScsi {
+		minimum, maximum = selfTestAbsoluteBounds(entries)
+	} else {
+		minimum, maximum = selfTestLifetimeBounds(entries, powerOnHours)
+	}
 
 	return sr.gormClient.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var existing []models.DeviceSelfTest

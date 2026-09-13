@@ -151,10 +151,10 @@ func TestSmart_Flatten_SCSI(t *testing.T) {
 		"attr.read_errors_corrected_by_eccfast.thresh":            int64(0),
 		"attr.read_errors_corrected_by_eccfast.transformed_value": int64(0),
 		"attr.read_errors_corrected_by_eccfast.value":             int64(300357663),
-		"logical_block_size": int64(512),
-		"power_cycle_count":  int64(10),
-		"power_on_hours":     int64(10),
-		"temp":               int64(50)},
+		"logical_block_size":                                      int64(512),
+		"power_cycle_count":                                       int64(10),
+		"power_on_hours":                                          int64(10),
+		"temp":                                                    int64(50)},
 		fields)
 }
 
@@ -669,10 +669,22 @@ func TestFromCollectorSmartInfo_Scsi(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "WWN-test", smartMdl.DeviceWWN)
 	require.Equal(t, pkg.DeviceStatusPassed, smartMdl.Status)
-	require.Equal(t, 14, len(smartMdl.Attributes))
+	require.Equal(t, 16, len(smartMdl.Attributes))
 
 	require.Equal(t, int64(0), smartMdl.Attributes["scsi_grown_defect_list"].(*measurements.SmartScsiAttribute).Value)
 	require.Equal(t, int64(300357663), smartMdl.Attributes["read_errors_corrected_by_eccfast"].(*measurements.SmartScsiAttribute).Value) //total_errors_corrected
+
+	// read/write_gigabytes_processed should be parsed from the SCSI error counter log's
+	// decimal-GB "gigabytes_processed" string into bytes (GB * 1e9).
+	require.Contains(t, smartMdl.Attributes, "read_gigabytes_processed")
+	require.Contains(t, smartMdl.Attributes, "write_gigabytes_processed")
+	// smart-scsi.json / smart-scsi-failed.json both use read=176987.332 write=86472.611
+	require.Equal(t, int64(176987332000000), smartMdl.Attributes["read_gigabytes_processed"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(86472611000000), smartMdl.Attributes["write_gigabytes_processed"].(*measurements.SmartScsiAttribute).Value)
+
+	// This fixture has no endurance_used field (HDD, not SSD), so percentage_used should
+	// not be created.
+	require.NotContains(t, smartMdl.Attributes, "percentage_used")
 }
 
 func TestFromCollectorSmartInfo_Scsi_Fail_Scrutiny(t *testing.T) {
@@ -720,7 +732,99 @@ func TestFromCollectorSmartInfo_Scsi_Fail_Scrutiny(t *testing.T) {
 		smartMdl.Attributes["read_total_uncorrected_errors"].(*measurements.SmartScsiAttribute).StatusReason,
 	)
 
-	require.Equal(t, 14, len(smartMdl.Attributes))
+	require.Equal(t, 16, len(smartMdl.Attributes))
+}
+
+// TestFromCollectorSmartInfo_Scsi_SAS_SSD_Endurance tests that SAS SSDs (which report the
+// Solid State Media log page as "endurance_used") get a "percentage_used" attribute, and that
+// the read/write "gigabytes_processed" counters are converted to bytes. Fixes the SAS SSD
+// workload/endurance "unknown" reporting gap.
+func TestFromCollectorSmartInfo_Scsi_SAS_SSD_Endurance(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-scsi-sas-ssd.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+	require.Equal(t, "WWN-test", smartMdl.DeviceWWN)
+	require.Equal(t, pkg.DeviceStatusPassed, smartMdl.Status)
+
+	// percentage_used should be populated from endurance_used.current_percent
+	require.Contains(t, smartMdl.Attributes, "percentage_used")
+	percentageUsedAttr, ok := smartMdl.Attributes["percentage_used"].(*measurements.SmartScsiAttribute)
+	require.True(t, ok, "SCSI percentage_used attribute should be *SmartScsiAttribute, got %T", smartMdl.Attributes["percentage_used"])
+	require.Equal(t, int64(3), percentageUsedAttr.Value)
+
+	// read_gigabytes_processed: 7.668 GB -> 7668000000 bytes
+	require.Contains(t, smartMdl.Attributes, "read_gigabytes_processed")
+	require.Equal(t, int64(7668000000), smartMdl.Attributes["read_gigabytes_processed"].(*measurements.SmartScsiAttribute).Value)
+
+	// write_gigabytes_processed: 243.990 GB -> 243990000000 bytes
+	require.Contains(t, smartMdl.Attributes, "write_gigabytes_processed")
+	require.Equal(t, int64(243990000000), smartMdl.Attributes["write_gigabytes_processed"].(*measurements.SmartScsiAttribute).Value)
+}
+
+// TestFromCollectorSmartInfo_Scsi_SAS_SSD_Endurance_ExceedsThreshold tests that a SAS SSD
+// reporting a "percentage_used" endurance value above 100 is flagged as failed, matching
+// NVMe's percentage_used threshold behavior. Previously the SCSI attribute was created with
+// Threshold: -1 (disabled), so a device already past its rated endurance limit stayed
+// "Passed" despite the critical metadata for this attribute.
+func TestFromCollectorSmartInfo_Scsi_SAS_SSD_Endurance_ExceedsThreshold(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-scsi-sas-ssd.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+
+	// Push the reported endurance usage past the manufacturer's rated limit.
+	smartJson.ScsiEnduranceUsed.CurrentPercent = 105
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+	require.Equal(t, pkg.DeviceStatusFailedScrutiny, smartMdl.Status)
+
+	require.Contains(t, smartMdl.Attributes, "percentage_used")
+	percentageUsedAttr, ok := smartMdl.Attributes["percentage_used"].(*measurements.SmartScsiAttribute)
+	require.True(t, ok, "SCSI percentage_used attribute should be *SmartScsiAttribute, got %T", smartMdl.Attributes["percentage_used"])
+	require.Equal(t, int64(105), percentageUsedAttr.Value)
+	require.True(t, pkg.AttributeStatusHas(percentageUsedAttr.Status, pkg.AttributeStatusFailedScrutiny),
+		"percentage_used should fail once current_percent (%d) exceeds threshold (%d)", percentageUsedAttr.Value, percentageUsedAttr.Threshold)
 }
 
 // TestFromCollectorSmartInfo_Scsi_SAS_EnvironmentalReports tests that for SAS drives
