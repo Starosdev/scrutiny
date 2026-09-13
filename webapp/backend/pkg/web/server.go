@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -35,15 +36,16 @@ const openAPIFile = "openapi.yaml"
 const apiSummaryPath = "/summary"
 
 type AppEngine struct {
-	Config            config.Interface
-	Logger            *logrus.Entry
-	MetricsCollector  *metrics.Collector
-	MqttPublisher     *mqtt.Publisher
-	NotificationGate  *notify.NotificationGate
-	MissedPingMonitor *MissedPingMonitor
-	HeartbeatMonitor  *HeartbeatMonitor
-	UptimeKumaMonitor *UptimeKumaMonitor
-	ReportScheduler   *reports.Scheduler
+	Config             config.Interface
+	Logger             *logrus.Entry
+	MetricsCollector   *metrics.Collector
+	MqttPublisher      *mqtt.Publisher
+	NotificationGate   *notify.NotificationGate
+	MissedPingMonitor  *MissedPingMonitor
+	HeartbeatMonitor   *HeartbeatMonitor
+	UptimeKumaMonitor  *UptimeKumaMonitor
+	ReportScheduler    *reports.Scheduler
+	mqttSyncInProgress atomic.Bool
 }
 
 func registerZFSPoolRoutes(zfs *gin.RouterGroup, allowPoolModifications bool) {
@@ -91,13 +93,17 @@ func (ae *AppEngine) registerMiddleware(r *gin.Engine, logger *logrus.Entry) {
 		if ae.MqttPublisher == nil {
 			ae.MqttPublisher = mqtt.NewPublisher(ae.Config, logger)
 		}
+		// Always register the reconnect hook before connecting so the initial
+		// connection and every automatic reconnect triggers a discovery re-sync.
+		ae.MqttPublisher.SetOnReconnected(ae.loadInitialMqttData)
 		if err := ae.MqttPublisher.Connect(); err != nil {
-			logger.Errorf("Failed to connect MQTT: %v (MQTT integration disabled)", err)
-			ae.MqttPublisher = nil
+			logger.Warnf("MQTT: initial connect failed: %v (paho keeps retrying in the background)", err)
 		} else {
-			r.Use(middleware.MqttPublisherMiddleware(ae.MqttPublisher))
 			logger.Info("MQTT Home Assistant integration enabled")
 		}
+		// Keep the middleware registered even when the initial connect failed:
+		// once paho reconnects, device state/discovery publishing resumes.
+		r.Use(middleware.MqttPublisherMiddleware(ae.MqttPublisher))
 	}
 
 	r.Use(gin.Recovery())
@@ -380,7 +386,6 @@ func (ae *AppEngine) Start() error {
 	ae.Logger.Info("Report scheduler started")
 
 	ae.loadInitialMetrics()
-	ae.loadInitialMqttData()
 
 	// Create HTTP server for graceful shutdown support
 	addr := fmt.Sprintf("%s:%s", ae.Config.GetString("web.listen.host"), ae.Config.GetString("web.listen.port"))
@@ -452,7 +457,12 @@ func (ae *AppEngine) loadInitialMqttData() {
 	if !ae.Config.GetBool(configKeyMqttEnabled) || ae.MqttPublisher == nil {
 		return
 	}
+	if !ae.mqttSyncInProgress.CompareAndSwap(false, true) {
+		return
+	}
 	go func() {
+		defer ae.mqttSyncInProgress.Store(false)
+
 		deviceRepo, err := database.NewScrutinyRepositoryWithoutMigration(ae.Config, ae.Logger)
 		if err != nil {
 			ae.Logger.Errorln("Failed to create repository for loading MQTT data:", err)

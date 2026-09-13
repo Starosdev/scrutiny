@@ -20,9 +20,10 @@ const (
 
 // Client wraps the paho MQTT client with Scrutiny-specific configuration.
 type Client struct {
-	client pahomqtt.Client
-	logger *logrus.Entry
-	qos    byte
+	client      pahomqtt.Client
+	logger      *logrus.Entry
+	qos         byte
+	onReconnect func()
 }
 
 // ClientConfig holds MQTT connection parameters.
@@ -68,6 +69,11 @@ func NewClient(cfg *ClientConfig, logger *logrus.Entry) *Client {
 		// Publish online status on every (re)connect
 		if err := c.publish(availabilityTopic, availabilityOnline, true); err != nil {
 			logger.Warnf("MQTT: failed to publish online status: %v", err)
+		}
+		// Notify the publisher that the connection is (re)established so it can
+		// re-sync discovery entities after a successful reconnect.
+		if c.onReconnect != nil {
+			c.onReconnect()
 		}
 	})
 
@@ -115,6 +121,12 @@ func (c *Client) Publish(topic string, payload string, retained bool) error {
 // IsConnected returns whether the client is currently connected.
 func (c *Client) IsConnected() bool {
 	return c.client != nil && c.client.IsConnected()
+}
+
+// SetOnReconnect registers a callback invoked every time the connection is
+// (re)established, including after an automatic reconnect succeeds.
+func (c *Client) SetOnReconnect(fn func()) {
+	c.onReconnect = fn
 }
 
 func (c *Client) publish(topic string, payload string, retained bool) error {

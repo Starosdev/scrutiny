@@ -51,6 +51,12 @@ func (p *Publisher) Connect() error {
 	return p.client.Connect()
 }
 
+// SetOnReconnected registers a callback invoked every time the MQTT connection
+// is (re)established, including after an automatic reconnect succeeds.
+func (p *Publisher) SetOnReconnected(fn func()) {
+	p.client.SetOnReconnect(fn)
+}
+
 // Disconnect cleanly disconnects from the MQTT broker.
 func (p *Publisher) Disconnect() {
 	p.client.Disconnect()
