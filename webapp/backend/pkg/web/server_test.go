@@ -17,6 +17,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/web"
@@ -117,6 +118,12 @@ func (suite *ServerTestSuite) SetupSuite() {
 		}
 	}
 	suite.T().Skip("Skipping integration tests: InfluxDB not available at localhost:8086 or influxdb:8086. See CLAUDE.md for setup instructions.")
+}
+
+// SetupTest lets each test migrate its own temporary database. Migrations run once per process, so
+// without the reset only the first database created in the package is migrated.
+func (suite *ServerTestSuite) SetupTest() {
+	database.ResetMigrationGuardForTests()
 }
 
 func TestServerTestSuite_WithEmptyBasePath(t *testing.T) {
