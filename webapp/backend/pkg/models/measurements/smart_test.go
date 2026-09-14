@@ -245,6 +245,36 @@ func TestNewSmartFromInfluxDB_ATA(t *testing.T) {
 		}, Status: 0}, smart)
 }
 
+// A point written without a device_protocol tag keeps its plain fields and skips its attributes,
+// instead of panicking or failing the whole history query.
+func TestNewSmartFromInfluxDB_MissingProtocol(t *testing.T) {
+	timeNow := time.Now()
+	attrs := map[string]interface{}{
+		"_time":               timeNow,
+		"device_wwn":          "test-wwn",
+		"attr.1.attribute_id": "1",
+		"attr.1.value":        int64(135),
+		"power_on_hours":      int64(10),
+		"temp":                int64(50),
+	}
+
+	smart, err := measurements.NewSmartFromInfluxDB(attrs, logrus.New())
+
+	require.NoError(t, err)
+	require.Equal(t, &measurements.Smart{
+		Date:         timeNow,
+		DeviceWWN:    "test-wwn",
+		Temp:         50,
+		PowerOnHours: 10,
+		Attributes:   map[string]measurements.SmartAttribute{},
+	}, smart)
+}
+
+func TestNewSmartFromInfluxDB_MissingTime(t *testing.T) {
+	_, err := measurements.NewSmartFromInfluxDB(map[string]interface{}{"device_wwn": "test-wwn"}, logrus.New())
+	require.Error(t, err)
+}
+
 func TestNewSmartFromInfluxDB_NVMe(t *testing.T) {
 	//setup
 	timeNow := time.Now()

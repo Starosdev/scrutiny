@@ -231,13 +231,23 @@ func newAttributeForProtocol(protocol, attributeId string) (SmartAttribute, erro
 func NewSmartFromInfluxDB(attrs map[string]interface{}, logger logrus.FieldLogger) (*Smart, error) {
 	//go though the massive map returned from influxdb. If a key is associated with the Smart struct, assign it. If it starts with "attr.*" group it by attributeId, and pass to attribute inflate.
 
+	date, ok := attrs["_time"].(time.Time)
+	if !ok {
+		return nil, fmt.Errorf("smart record has no _time")
+	}
+	// Tags are missing on points written without them; a missing tag must not abort a history query.
+	deviceWWN, _ := attrs["device_wwn"].(string)
+	deviceProtocol, _ := attrs["device_protocol"].(string)
+
 	sm := Smart{
-		//required fields
-		Date:           attrs["_time"].(time.Time),
-		DeviceWWN:      attrs["device_wwn"].(string),
-		DeviceProtocol: attrs["device_protocol"].(string),
+		Date:           date,
+		DeviceWWN:      deviceWWN,
+		DeviceProtocol: deviceProtocol,
 
 		Attributes: map[string]SmartAttribute{},
+	}
+	if deviceProtocol == "" {
+		logger.Warnf("SMART record for device (%s) at %s has no device_protocol tag; skipping its attributes", deviceWWN, date)
 	}
 
 	for key, val := range attrs {
@@ -257,7 +267,11 @@ func NewSmartFromInfluxDB(attrs map[string]interface{}, logger logrus.FieldLogge
 		case "logical_block_size":
 			sm.LogicalBlockSize = coerceInt64(val, sm.LogicalBlockSize)
 		default:
-			// this key is unknown; group "attr.*" keys into their SmartAttribute siblings.
+			// this key is unknown; group "attr.*" keys into their SmartAttribute siblings. Without a
+			// protocol the attribute type is unknown, so the attributes are skipped.
+			if deviceProtocol == "" {
+				continue
+			}
 			if err := sm.inflateInfluxAttribute(key, val); err != nil {
 				return nil, err
 			}

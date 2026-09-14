@@ -1,6 +1,7 @@
 package database
 
 import (
+	"strings"
 	"testing"
 
 	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
@@ -22,9 +23,19 @@ func TestDeviceHistoryQueriesUseDeviceIdentityInsteadOfHostID(t *testing.T) {
 	smartQuery := deviceRepo.aggregateSmartAttributesQuery(historyFilter, DURATION_KEY_FOREVER, 1, 0, nil)
 	require.Contains(t, smartQuery, `r["device_id"] == "device-1"`)
 	require.NotContains(t, smartQuery, "host_id")
-	// a device's tagged, untagged and stale-tagged series merge before the daily aggregation
-	mergeSeries := `|> group(columns: ["_measurement", "_field", "device_wwn", "device_protocol"])` + "\n" + `|> sort(columns: ["_time"])` + "\n" + `|> aggregateWindow(every: 1d, fn: last, createEmpty: false)`
+	// a device's series are pivoted and merged, and each day keeps its newest whole row
+	mergeSeries := strings.Join([]string{
+		"|> schema.fieldsAsCols()",
+		"|> group()",
+		`|> sort(columns: ["_time"])`,
+		"|> window(every: 1d, createEmpty: false)",
+		`|> last(column: "_time")`,
+		`|> duplicate(column: "_stop", as: "_time")`,
+		"|> group()",
+		"|> tail(n: 1, offset: 0)",
+	}, "\n")
 	require.Contains(t, smartQuery, mergeSeries)
+	require.NotContains(t, smartQuery, "aggregateWindow")
 
 	temperatureQuery := deviceRepo.aggregateTempQuery(DURATION_KEY_FOREVER, []string{"device-1"}, []string{"wwn-1"})
 	require.Contains(t, temperatureQuery, `r["device_wwn"]`)

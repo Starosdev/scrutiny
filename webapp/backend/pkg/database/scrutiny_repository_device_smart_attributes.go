@@ -307,17 +307,21 @@ func (sr *scrutinyRepository) generateSmartAttributesSubquery(historyFilter stri
 		`|> filter(fn: (r) => r["_measurement"] == "smart" )`,
 		fmt.Sprintf(`|> filter(fn: (r) => %s )`, historyFilter),
 		// One device's points can sit in several series (device_id-tagged, untagged, or tagged with an
-		// earlier device_id). Merge them before the daily aggregation so each day yields one row.
-		`|> group(columns: ["_measurement", "_field", "device_wwn", "device_protocol"])`,
+		// earlier device_id, with any protocol tag). Pivot each point into one row, merge the rows, and
+		// keep the newest whole row of each UTC day, so fields never mix across points and the entry limit
+		// counts rows. _time is the end of the day window, as aggregateWindow reported it.
+		"|> schema.fieldsAsCols()",
+		"|> group()",
 		`|> sort(columns: ["_time"])`,
+		fmt.Sprintf(`|> window(every: %s, createEmpty: false)`, RESOLUTION_1_DAY),
+		`|> last(column: "_time")`,
+		`|> duplicate(column: "_stop", as: "_time")`,
+		"|> group()",
 	}
-
-	partialQueryStr = append(partialQueryStr, fmt.Sprintf(`|> aggregateWindow(every: %s, fn: last, createEmpty: false)`, RESOLUTION_1_DAY))
 
 	if selectEntries > 0 {
 		partialQueryStr = append(partialQueryStr, fmt.Sprintf(`|> tail(n: %d, offset: %d)`, selectEntries, selectEntriesOffset))
 	}
-	partialQueryStr = append(partialQueryStr, "|> schema.fieldsAsCols()")
 
 	return strings.Join(partialQueryStr, "\n")
 }

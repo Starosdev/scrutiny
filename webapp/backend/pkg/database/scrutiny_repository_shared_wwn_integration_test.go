@@ -61,6 +61,10 @@ func TestSharedWWNHistory_Integration(t *testing.T) {
 	writePoints(map[string]string{"device_id": unique.DeviceID, "device_wwn": uniqueWWN}, 30, now.Add(-1*time.Hour))
 	writePoints(map[string]string{"device_wwn": uniqueWWN}, 31, now.Add(-2*time.Hour))
 	writePoints(map[string]string{"device_id": unique.DeviceID + "-legacy", "device_wwn": uniqueWWN}, 32, now.Add(-3*time.Hour))
+	// a smart point with another protocol tag must not split the day into a second history row
+	require.NoError(t, repo.influxWriteApi.WritePoint(ctx, influxdb2.NewPoint("smart",
+		map[string]string{"device_id": unique.DeviceID, "device_wwn": uniqueWWN, "device_protocol": "SCSI"},
+		map[string]interface{}{"temp": int64(33), "power_on_hours": int64(1000)}, now.Add(-150*time.Minute))))
 	writePoints(map[string]string{"device_id": sharedA.DeviceID, "device_wwn": sharedWWN}, 40, now.Add(-1*time.Hour))
 	writePoints(map[string]string{"device_id": sharedB.DeviceID, "device_wwn": sharedWWN}, 50, now.Add(-1*time.Hour))
 	writePoints(map[string]string{"device_wwn": sharedWWN}, 60, now.Add(-2*time.Hour))
@@ -85,7 +89,7 @@ func TestSharedWWNHistory_Integration(t *testing.T) {
 
 	// single-device history: one row per day across the device's tagged, untagged and stale-tagged series
 	require.ElementsMatch(t, newestPerDay(map[time.Time]int64{
-		now.Add(-1 * time.Hour): 30, now.Add(-2 * time.Hour): 31, now.Add(-3 * time.Hour): 32,
+		now.Add(-1 * time.Hour): 30, now.Add(-2 * time.Hour): 31, now.Add(-150 * time.Minute): 33, now.Add(-3 * time.Hour): 32,
 	}), smartTemps(unique.DeviceID))
 	require.ElementsMatch(t, []int64{40}, smartTemps(sharedA.DeviceID))
 	require.ElementsMatch(t, []int64{50}, smartTemps(sharedB.DeviceID))
