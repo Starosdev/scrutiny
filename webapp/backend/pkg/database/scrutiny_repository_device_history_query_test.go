@@ -22,6 +22,9 @@ func TestDeviceHistoryQueriesUseDeviceIdentityInsteadOfHostID(t *testing.T) {
 	smartQuery := deviceRepo.aggregateSmartAttributesQuery(historyFilter, DURATION_KEY_FOREVER, 1, 0, nil)
 	require.Contains(t, smartQuery, `r["device_id"] == "device-1"`)
 	require.NotContains(t, smartQuery, "host_id")
+	// a device's tagged, untagged and stale-tagged series merge before the daily aggregation
+	mergeSeries := `|> group(columns: ["_measurement", "_field", "device_wwn", "device_protocol"])` + "\n" + `|> sort(columns: ["_time"])` + "\n" + `|> aggregateWindow(every: 1d, fn: last, createEmpty: false)`
+	require.Contains(t, smartQuery, mergeSeries)
 
 	temperatureQuery := deviceRepo.aggregateTempQuery(DURATION_KEY_FOREVER, []string{"device-1"}, []string{"wwn-1"})
 	require.Contains(t, temperatureQuery, `r["device_wwn"]`)

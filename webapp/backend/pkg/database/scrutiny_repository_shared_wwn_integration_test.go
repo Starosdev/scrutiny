@@ -83,8 +83,10 @@ func TestSharedWWNHistory_Integration(t *testing.T) {
 		return temps
 	}
 
-	// single-device history
-	require.ElementsMatch(t, []int64{30, 31, 32}, smartTemps(unique.DeviceID))
+	// single-device history: one row per day across the device's tagged, untagged and stale-tagged series
+	require.ElementsMatch(t, newestPerDay(map[time.Time]int64{
+		now.Add(-1 * time.Hour): 30, now.Add(-2 * time.Hour): 31, now.Add(-3 * time.Hour): 32,
+	}), smartTemps(unique.DeviceID))
 	require.ElementsMatch(t, []int64{40}, smartTemps(sharedA.DeviceID))
 	require.ElementsMatch(t, []int64{50}, smartTemps(sharedB.DeviceID))
 
@@ -113,12 +115,31 @@ func TestSharedWWNHistory_Integration(t *testing.T) {
 	// deleting one of the devices that share a WWN deletes only its device_id-tagged points. The other
 	// device keeps its points and now holds the WWN alone, so the untagged point is attributed to it.
 	require.NoError(t, repo.DeleteDevice(ctx, sharedA.DeviceID))
-	require.ElementsMatch(t, []int64{50, 60}, smartTemps(sharedB.DeviceID))
+	require.ElementsMatch(t, newestPerDay(map[time.Time]int64{
+		now.Add(-1 * time.Hour): 50, now.Add(-2 * time.Hour): 60,
+	}), smartTemps(sharedB.DeviceID))
 	require.Equal(t, int64(2), countSmartTempPoints(t, repo, sharedWWN))
 
 	// deleting the device that alone holds its WWN also removes its untagged and stale-tagged points
 	require.NoError(t, repo.DeleteDevice(ctx, unique.DeviceID))
 	require.Zero(t, countSmartTempPoints(t, repo, uniqueWWN))
+}
+
+// newestPerDay returns the value of the newest point in each UTC day, which is what the daily SMART
+// history aggregation keeps. Points written a few hours apart can fall on either side of midnight.
+func newestPerDay(points map[time.Time]int64) []int64 {
+	newest := map[time.Time]time.Time{}
+	for at := range points {
+		day := at.UTC().Truncate(24 * time.Hour)
+		if at.After(newest[day]) {
+			newest[day] = at
+		}
+	}
+	values := []int64{}
+	for _, at := range newest {
+		values = append(values, points[at])
+	}
+	return values
 }
 
 func countSmartTempPoints(t *testing.T, repo *scrutinyRepository, wwn string) int64 {

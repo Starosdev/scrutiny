@@ -306,6 +306,10 @@ func (sr *scrutinyRepository) generateSmartAttributesSubquery(historyFilter stri
 		fmt.Sprintf(`|> range(start: %s, stop: %s)`, durationRange[0], durationRange[1]),
 		`|> filter(fn: (r) => r["_measurement"] == "smart" )`,
 		fmt.Sprintf(`|> filter(fn: (r) => %s )`, historyFilter),
+		// One device's points can sit in several series (device_id-tagged, untagged, or tagged with an
+		// earlier device_id). Merge them before the daily aggregation so each day yields one row.
+		`|> group(columns: ["_measurement", "_field", "device_wwn", "device_protocol"])`,
+		`|> sort(columns: ["_time"])`,
 	}
 
 	partialQueryStr = append(partialQueryStr, fmt.Sprintf(`|> aggregateWindow(every: %s, fn: last, createEmpty: false)`, RESOLUTION_1_DAY))
