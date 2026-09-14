@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 )
@@ -54,6 +55,33 @@ func deviceHistoryPredicate(deviceID, wwn string, wwnUnique bool) string {
 		predicate += fmt.Sprintf(` or (not exists r["device_id"] and r["device_wwn"] == %s)`, strconv.Quote(wwn))
 	}
 	return predicate
+}
+
+// deleteDeviceInfluxHistory deletes a device's points from every history bucket. Points tagged with
+// its device_id always go. Points are also deleted by device_wwn, the only way to reach untagged
+// legacy points, when deleteByWWN is set; callers set it only when no device outside the deletion
+// holds that WWN, because a WWN predicate removes every holder's points.
+func (sr *scrutinyRepository) deleteDeviceInfluxHistory(ctx context.Context, device models.Device, deleteByWWN bool) error {
+	predicates := []string{fmt.Sprintf("device_id=%q", device.DeviceID)}
+	if deleteByWWN && strings.TrimSpace(device.WWN) != "" {
+		predicates = append(predicates, fmt.Sprintf("device_wwn=%q", device.WWN))
+	}
+	for _, bucket := range sr.deviceHistoryBuckets() {
+		for _, predicate := range predicates {
+			sr.logger.Infof("Deleting history for device %s in bucket %s where %s", device.DeviceID, bucket, predicate)
+			if err := sr.influxClient.DeleteAPI().DeleteWithName(
+				ctx,
+				sr.appConfig.GetString(cfgInfluxDBOrg),
+				bucket,
+				time.Now().AddDate(-10, 0, 0),
+				time.Now().AddDate(10, 0, 0),
+				predicate,
+			); err != nil {
+				return fmt.Errorf("could not delete history for device %s from bucket %q: %w", device.DeviceID, bucket, err)
+			}
+		}
+	}
+	return nil
 }
 
 // uniqueWWNDeviceIDs maps each WWN held by exactly one device to that device's ID. A WWN

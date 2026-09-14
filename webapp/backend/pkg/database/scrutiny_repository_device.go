@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
@@ -420,41 +419,21 @@ func (sr *scrutinyRepository) UpdateDeviceMissedPingTimeout(ctx context.Context,
 }
 
 func (sr *scrutinyRepository) DeleteDevice(ctx context.Context, deviceID string) error {
-	// Look up device to get WWN for InfluxDB cleanup
 	var device models.Device
 	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).First(&device).Error; err != nil {
 		return fmt.Errorf("could not find device: %w", err)
+	}
+	// Decide before the row goes: once it is deleted, a WWN it shared would look unique.
+	wwnUnique, err := sr.wwnIsUnique(ctx, device.WWN)
+	if err != nil {
+		return err
 	}
 
 	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).Delete(&models.Device{}).Error; err != nil {
 		return err
 	}
 
-	// Delete data from InfluxDB using WWN (InfluxDB tags use device_wwn)
-	if device.WWN != "" {
-		buckets := []string{
-			sr.appConfig.GetString(cfgInfluxDBBucket),
-			fmt.Sprintf("%s_weekly", sr.appConfig.GetString(cfgInfluxDBBucket)),
-			fmt.Sprintf("%s_monthly", sr.appConfig.GetString(cfgInfluxDBBucket)),
-			fmt.Sprintf("%s_yearly", sr.appConfig.GetString(cfgInfluxDBBucket)),
-		}
-
-		for _, bucket := range buckets {
-			sr.logger.Infof("Deleting data for %s (wwn: %s) in bucket: %s", deviceID, device.WWN, bucket)
-			if err := sr.influxClient.DeleteAPI().DeleteWithName(
-				ctx,
-				sr.appConfig.GetString(cfgInfluxDBOrg),
-				bucket,
-				time.Now().AddDate(-10, 0, 0),
-				time.Now(),
-				fmt.Sprintf("device_wwn=%q", device.WWN),
-			); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
+	return sr.deleteDeviceInfluxHistory(ctx, device, wwnUnique)
 }
 
 func (sr *scrutinyRepository) attachDeviceEnduranceOverrides(ctx context.Context, devices []models.Device) error {

@@ -18,7 +18,9 @@ func (sr *scrutinyRepository) MergeDevices(ctx context.Context, sourceDeviceID s
 		return fmt.Errorf("source and destination devices must be different")
 	}
 
-	sourceDevice, err := sr.GetDeviceDetails(ctx, sourceDeviceID)
+	// Read the source through its history filter: a WWN it shares with another device, the
+	// destination included, must not pull that device's points into the copy.
+	sourceDevice, sourceHistoryFilter, err := sr.deviceHistoryFilter(ctx, sourceDeviceID)
 	if err != nil {
 		return fmt.Errorf("could not find source device: %w", err)
 	}
@@ -28,7 +30,7 @@ func (sr *scrutinyRepository) MergeDevices(ctx context.Context, sourceDeviceID s
 		return fmt.Errorf("could not find destination device: %w", err)
 	}
 
-	if err := sr.copyInfluxDeviceHistory(ctx, &sourceDevice, &destinationDevice); err != nil {
+	if err := sr.copyInfluxDeviceHistory(ctx, sourceHistoryFilter, &destinationDevice); err != nil {
 		return err
 	}
 
@@ -51,10 +53,10 @@ func (sr *scrutinyRepository) MergeDevices(ctx context.Context, sourceDeviceID s
 	})
 }
 
-func (sr *scrutinyRepository) copyInfluxDeviceHistory(ctx context.Context, sourceDevice, destinationDevice *models.Device) error {
+func (sr *scrutinyRepository) copyInfluxDeviceHistory(ctx context.Context, sourceHistoryFilter string, destinationDevice *models.Device) error {
 	for _, bucket := range sr.deviceHistoryBuckets() {
 		for _, measurement := range []string{"smart", "temp", "performance"} {
-			points, err := sr.queryDeviceMeasurementPoints(ctx, bucket, measurement, sourceDevice.WWN, destinationDevice)
+			points, err := sr.queryDeviceMeasurementPoints(ctx, bucket, measurement, sourceHistoryFilter, destinationDevice)
 			if err != nil {
 				return fmt.Errorf("could not query %s history in bucket %s: %w", measurement, bucket, err)
 			}
@@ -68,25 +70,17 @@ func (sr *scrutinyRepository) copyInfluxDeviceHistory(ctx context.Context, sourc
 	return nil
 }
 
+// deleteInfluxDeviceHistory deletes the merge source's history. Its WWN is used only while the source
+// alone holds it: a destination sharing the WWN has just received the copied points.
 func (sr *scrutinyRepository) deleteInfluxDeviceHistory(ctx context.Context, sourceDevice *models.Device) error {
-	if sourceDevice == nil || sourceDevice.WWN == "" {
+	if sourceDevice == nil {
 		return nil
 	}
-
-	for _, bucket := range sr.deviceHistoryBuckets() {
-		if err := sr.influxClient.DeleteAPI().DeleteWithName(
-			ctx,
-			sr.appConfig.GetString(cfgInfluxDBOrg),
-			bucket,
-			time.Now().AddDate(-10, 0, 0),
-			time.Now().AddDate(10, 0, 0),
-			fmt.Sprintf(`device_wwn=%q`, sourceDevice.WWN),
-		); err != nil {
-			return fmt.Errorf("could not delete source history from bucket %s: %w", bucket, err)
-		}
+	wwnUnique, err := sr.wwnIsUnique(ctx, sourceDevice.WWN)
+	if err != nil {
+		return err
 	}
-
-	return nil
+	return sr.deleteDeviceInfluxHistory(ctx, *sourceDevice, wwnUnique)
 }
 
 func (sr *scrutinyRepository) deviceHistoryBuckets() []string {
@@ -99,19 +93,15 @@ func (sr *scrutinyRepository) deviceHistoryBuckets() []string {
 	return buckets
 }
 
-func (sr *scrutinyRepository) queryDeviceMeasurementPoints(ctx context.Context, bucket string, measurement string, sourceWWN string, destinationDevice *models.Device) ([]*write.Point, error) {
-	if sourceWWN == "" {
-		return nil, nil
-	}
-
+func (sr *scrutinyRepository) queryDeviceMeasurementPoints(ctx context.Context, bucket string, measurement string, sourceHistoryFilter string, destinationDevice *models.Device) ([]*write.Point, error) {
 	queryStr := fmt.Sprintf(`
 from(bucket: "%s")
 |> range(start: -10y, stop: now())
 |> filter(fn: (r) => r["_measurement"] == "%s")
-|> filter(fn: (r) => r["device_wwn"] == "%s")
+|> filter(fn: (r) => %s)
 |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
 |> sort(columns: ["_time"], desc: false)
-`, bucket, measurement, sourceWWN)
+`, bucket, measurement, sourceHistoryFilter)
 
 	result, err := sr.influxQueryApi.Query(ctx, queryStr)
 	if err != nil {
