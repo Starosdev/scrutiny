@@ -80,8 +80,9 @@ func (sr *scrutinyRepository) DownsampleScript(aggregationType string, name stri
 		aggWindow = "1y"
 	}
 
-	// Aggregates group by device_id as well as device_wwn. Grouping by WWN alone dropped the
-	// device_id tag from every downsampled point and merged devices that share a WWN (#851).
+	// Aggregates group by device_id as well as device_wwn, so devices that share a WWN are
+	// aggregated separately (#851). Grouping by WWN alone merged them: the smart "last" selector
+	// kept the device_id of whichever row came last, and the temperature mean dropped device_id.
 	// ensureDownsampleTask replaces existing task scripts when this text changes.
 	//
 	// TODO: using "last" function for aggregation. This should eventually be replaced with a more accurate represenation

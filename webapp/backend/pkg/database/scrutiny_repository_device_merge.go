@@ -80,7 +80,7 @@ func (sr *scrutinyRepository) deleteInfluxDeviceHistory(ctx context.Context, sou
 	if err != nil {
 		return err
 	}
-	return sr.deleteDeviceInfluxHistory(ctx, *sourceDevice, wwnUnique)
+	return sr.deleteDeviceInfluxHistory(ctx, sourceDevice, wwnUnique)
 }
 
 func (sr *scrutinyRepository) deviceHistoryBuckets() []string {

@@ -85,16 +85,21 @@ func TestRegisterDeviceMovesSelfTestsWhenRekeyingLegacyRow(t *testing.T) {
 	require.Equal(t, expectedID, selfTests[0].DeviceIdentity)
 }
 
-// Aggregated queries group by device_id and device_wwn. A record belongs to the device in its
-// device_id tag, or to the single device holding its WWN; anything else is dropped.
-func TestHistoryRecordDeviceIDAttribution(t *testing.T) {
-	uniqueWWNs := uniqueWWNDeviceIDs([]models.Device{
+func sharedWWNHistoryOwners() historyOwners {
+	return newHistoryOwners([]models.Device{
 		{DeviceID: "device-unique", WWN: "wwn-unique"},
 		{DeviceID: "device-a", WWN: "wwn-shared"},
 		{DeviceID: "device-b", WWN: "wwn-shared"},
 		{DeviceID: "device-no-wwn"},
 	})
-	require.Equal(t, map[string]string{"wwn-unique": "device-unique"}, uniqueWWNs)
+}
+
+// Aggregated queries group by device_id and device_wwn. A record belongs to the registered device
+// in its device_id tag, otherwise to the device that alone holds its WWN, which covers untagged
+// records and records tagged with an earlier device_id of that device. Anything else is dropped.
+func TestHistoryOwnersAttribution(t *testing.T) {
+	owners := sharedWWNHistoryOwners()
+	require.Equal(t, map[string]string{"wwn-unique": "device-unique"}, owners.uniqueWWNs)
 
 	for name, testCase := range map[string]struct {
 		values   map[string]interface{}
@@ -103,17 +108,34 @@ func TestHistoryRecordDeviceIDAttribution(t *testing.T) {
 	}{
 		"tagged":               {map[string]interface{}{"device_id": "device-a", "device_wwn": "wwn-shared"}, "device-a", true},
 		"untagged unique wwn":  {map[string]interface{}{"device_wwn": "wwn-unique"}, "device-unique", true},
+		"stale tag unique wwn": {map[string]interface{}{"device_id": "device-legacy", "device_wwn": "wwn-unique"}, "device-unique", true},
 		"nil device_id tag":    {map[string]interface{}{"device_id": nil, "device_wwn": "wwn-unique"}, "device-unique", true},
 		"untagged shared wwn":  {map[string]interface{}{"device_wwn": "wwn-shared"}, "", false},
+		"stale tag shared wwn": {map[string]interface{}{"device_id": "device-legacy", "device_wwn": "wwn-shared"}, "", false},
 		"untagged unknown wwn": {map[string]interface{}{"device_wwn": "wwn-other"}, "", false},
 		"no identifiers":       {map[string]interface{}{"temp": int64(40)}, "", false},
 	} {
 		t.Run(name, func(t *testing.T) {
-			deviceID, ok := historyRecordDeviceID(testCase.values, uniqueWWNs)
+			deviceID, ok := owners.deviceFor(testCase.values)
 			require.Equal(t, testCase.ok, ok)
 			require.Equal(t, testCase.deviceID, deviceID)
 		})
 	}
+}
+
+// Several series of one device can share aggregate window timestamps; the chart gets one point each.
+func TestMergeTemperatureSeriesOrdersAndDedupesTimestamps(t *testing.T) {
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	merged := mergeTemperatureSeries([]measurements.SmartTemperature{
+		{Date: base.Add(2 * time.Hour), Temp: 41},
+		{Date: base, Temp: 40},
+		{Date: base.Add(2 * time.Hour), Temp: 42},
+	})
+
+	require.Len(t, merged, 2)
+	require.Equal(t, base, merged[0].Date)
+	require.Equal(t, base.Add(2*time.Hour), merged[1].Date)
 }
 
 // One device can return a device_id-tagged row and an older untagged row; the summary keeps the
@@ -141,11 +163,11 @@ func TestApplySummaryRecordKeepsNewestRowPerDevice(t *testing.T) {
 func TestApplyLastSeenRecordDropsUnattributableRecords(t *testing.T) {
 	seen := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	lastSeen := map[string]time.Time{}
-	uniqueWWNs := map[string]string{"wwn-unique": "device-unique"}
+	owners := sharedWWNHistoryOwners()
 
-	applyLastSeenRecord(lastSeen, uniqueWWNs, map[string]interface{}{"device_wwn": "wwn-shared", "_time": seen})
-	applyLastSeenRecord(lastSeen, uniqueWWNs, map[string]interface{}{"device_wwn": "wwn-unique", "_time": seen})
-	applyLastSeenRecord(lastSeen, uniqueWWNs, map[string]interface{}{"device_id": "device-a", "device_wwn": "wwn-shared", "_time": seen.Add(time.Hour)})
+	applyLastSeenRecord(lastSeen, owners, map[string]interface{}{"device_wwn": "wwn-shared", "_time": seen})
+	applyLastSeenRecord(lastSeen, owners, map[string]interface{}{"device_wwn": "wwn-unique", "_time": seen})
+	applyLastSeenRecord(lastSeen, owners, map[string]interface{}{"device_id": "device-a", "device_wwn": "wwn-shared", "_time": seen.Add(time.Hour)})
 
 	require.Equal(t, map[string]time.Time{"device-unique": seen, "device-a": seen.Add(time.Hour)}, lastSeen)
 }
@@ -153,11 +175,11 @@ func TestApplyLastSeenRecordDropsUnattributableRecords(t *testing.T) {
 func TestAppendTempRecordAttributesByDeviceID(t *testing.T) {
 	at := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	history := map[string][]measurements.SmartTemperature{}
-	uniqueWWNs := map[string]string{"wwn-unique": "device-unique"}
+	owners := sharedWWNHistoryOwners()
 
-	appendTempRecord(history, map[string]interface{}{"device_id": "device-a", "device_wwn": "wwn-shared", "temp": int64(40), "_time": at}, uniqueWWNs)
-	appendTempRecord(history, map[string]interface{}{"device_wwn": "wwn-shared", "temp": int64(41), "_time": at}, uniqueWWNs)
-	appendTempRecord(history, map[string]interface{}{"device_wwn": "wwn-unique", "temp": int64(42), "_time": at}, uniqueWWNs)
+	appendTempRecord(history, map[string]interface{}{"device_id": "device-a", "device_wwn": "wwn-shared", "temp": int64(40), "_time": at}, owners)
+	appendTempRecord(history, map[string]interface{}{"device_wwn": "wwn-shared", "temp": int64(41), "_time": at}, owners)
+	appendTempRecord(history, map[string]interface{}{"device_wwn": "wwn-unique", "temp": int64(42), "_time": at}, owners)
 
 	require.Len(t, history, 2)
 	require.Len(t, history["device-a"], 1)

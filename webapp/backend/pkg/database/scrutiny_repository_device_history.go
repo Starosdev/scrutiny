@@ -42,17 +42,17 @@ func (sr *scrutinyRepository) wwnIsUnique(ctx context.Context, wwn string) (bool
 	return count == 1, nil
 }
 
-// deviceHistoryPredicate builds the Flux predicate for a device's points. Points
-// tagged with device_id always match on it. Points written before device_id tagging,
-// and every downsampled point aggregated before the downsample tasks kept device_id,
-// carry only device_wwn. Those can only be attributed while no other device holds the
-// same WWN, because nothing in the point tells two such devices apart, so a shared
-// WWN leaves them out rather than guessing. Comparisons are guarded with exists, as in
-// GetTemperatureNotificationHistory, rather than comparing a column a point may lack.
+// deviceHistoryPredicate builds the Flux predicate for a device's points. Points tagged with
+// its device_id always match. While the device alone holds its WWN, every point with that WWN
+// matches too: points written before device_id tagging, temperature aggregates that lost the
+// tag, and points tagged with an earlier device_id of the same device, which legacy identity
+// reconciliation leaves behind when it re-keys the device. With a shared WWN nothing in those
+// points tells the devices apart, so only the device_id matches. Comparisons are guarded with
+// exists, as in GetTemperatureNotificationHistory, rather than comparing a column a point may lack.
 func deviceHistoryPredicate(deviceID, wwn string, wwnUnique bool) string {
 	predicate := fmt.Sprintf(`(exists r["device_id"] and r["device_id"] == %s)`, strconv.Quote(deviceID))
 	if wwnUnique {
-		predicate += fmt.Sprintf(` or (not exists r["device_id"] and r["device_wwn"] == %s)`, strconv.Quote(wwn))
+		predicate += fmt.Sprintf(` or (exists r["device_wwn"] and r["device_wwn"] == %s)`, strconv.Quote(wwn))
 	}
 	return predicate
 }
@@ -61,7 +61,7 @@ func deviceHistoryPredicate(deviceID, wwn string, wwnUnique bool) string {
 // its device_id always go. Points are also deleted by device_wwn, the only way to reach untagged
 // legacy points, when deleteByWWN is set; callers set it only when no device outside the deletion
 // holds that WWN, because a WWN predicate removes every holder's points.
-func (sr *scrutinyRepository) deleteDeviceInfluxHistory(ctx context.Context, device models.Device, deleteByWWN bool) error {
+func (sr *scrutinyRepository) deleteDeviceInfluxHistory(ctx context.Context, device *models.Device, deleteByWWN bool) error {
 	predicates := []string{fmt.Sprintf("device_id=%q", device.DeviceID)}
 	if deleteByWWN && strings.TrimSpace(device.WWN) != "" {
 		predicates = append(predicates, fmt.Sprintf("device_wwn=%q", device.WWN))
@@ -84,35 +84,44 @@ func (sr *scrutinyRepository) deleteDeviceInfluxHistory(ctx context.Context, dev
 	return nil
 }
 
-// uniqueWWNDeviceIDs maps each WWN held by exactly one device to that device's ID. A WWN
-// shared by several devices is left out: an untagged point with that WWN cannot be
-// attributed to any one of them.
-func uniqueWWNDeviceIDs(devices []models.Device) map[string]string {
+// historyOwners attributes aggregated InfluxDB records to registered devices.
+type historyOwners struct {
+	deviceIDs map[string]struct{}
+	// uniqueWWNs maps each WWN held by exactly one device to that device's ID. A shared WWN is
+	// left out: a record identified only by that WWN cannot be attributed to one of its holders.
+	uniqueWWNs map[string]string
+}
+
+func newHistoryOwners(devices []models.Device) historyOwners {
+	owners := historyOwners{deviceIDs: map[string]struct{}{}, uniqueWWNs: map[string]string{}}
 	holders := map[string]int{}
 	for i := range devices {
+		owners.deviceIDs[devices[i].DeviceID] = struct{}{}
 		if strings.TrimSpace(devices[i].WWN) != "" {
 			holders[devices[i].WWN]++
 		}
 	}
-	uniqueWWNs := map[string]string{}
 	for i := range devices {
 		if holders[devices[i].WWN] == 1 {
-			uniqueWWNs[devices[i].WWN] = devices[i].DeviceID
+			owners.uniqueWWNs[devices[i].WWN] = devices[i].DeviceID
 		}
 	}
-	return uniqueWWNs
+	return owners
 }
 
-// historyRecordDeviceID returns the device an aggregated InfluxDB record belongs to: its
-// device_id tag, or, for a record without one, the device that alone holds its device_wwn.
-func historyRecordDeviceID(values map[string]interface{}, uniqueWWNs map[string]string) (string, bool) {
-	if deviceID, ok := values["device_id"].(string); ok && deviceID != "" {
-		return deviceID, true
+// deviceFor returns the device a record belongs to: the registered device named by its device_id
+// tag, otherwise the device that alone holds its device_wwn. The fallback covers untagged records
+// and records tagged with an earlier device_id of that device, as deviceHistoryPredicate does.
+func (o historyOwners) deviceFor(values map[string]interface{}) (string, bool) {
+	if deviceID, ok := values["device_id"].(string); ok {
+		if _, registered := o.deviceIDs[deviceID]; registered {
+			return deviceID, true
+		}
 	}
 	deviceWWN, ok := values["device_wwn"].(string)
 	if !ok {
 		return "", false
 	}
-	deviceID, ok := uniqueWWNs[deviceWWN]
+	deviceID, ok := o.uniqueWWNs[deviceWWN]
 	return deviceID, ok
 }

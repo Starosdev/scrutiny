@@ -123,7 +123,7 @@ func wwnsHeldOnlyBySelectedHosts(devices []models.Device, selectedHosts map[stri
 func (sr *scrutinyRepository) deleteHostInfluxHistory(ctx context.Context, devices []models.Device, deletableWWNs map[string]struct{}) error {
 	for i := range devices {
 		_, deleteByWWN := deletableWWNs[devices[i].WWN]
-		if err := sr.deleteDeviceInfluxHistory(ctx, devices[i], deleteByWWN); err != nil {
+		if err := sr.deleteDeviceInfluxHistory(ctx, &devices[i], deleteByWWN); err != nil {
 			return err
 		}
 	}

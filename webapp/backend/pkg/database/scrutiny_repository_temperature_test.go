@@ -71,7 +71,7 @@ func TestAggregateTempQueryFiltersSelectedDevices(t *testing.T) {
 	influxDBScript := deviceRepo.aggregateTempQuery(DURATION_KEY_WEEK, []string{"device-1", `device-"2`}, []string{"wwn-1"})
 
 	require.Contains(t, influxDBScript,
-		`|> filter(fn: (r) => (exists r["device_id"] and contains(value: r["device_id"], set: ["device-1", "device-\"2"])) or (not exists r["device_id"] and contains(value: r["device_wwn"], set: ["wwn-1"])))`)
+		`|> filter(fn: (r) => (exists r["device_id"] and contains(value: r["device_id"], set: ["device-1", "device-\"2"])) or (exists r["device_wwn"] and contains(value: r["device_wwn"], set: ["wwn-1"])))`)
 	require.Equal(t, 1, strings.Count(influxDBScript, `contains(value: r["device_id"]`))
 
 	withoutLegacy := deviceRepo.aggregateTempQuery(DURATION_KEY_WEEK, []string{"device-1"}, nil)

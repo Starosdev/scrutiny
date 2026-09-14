@@ -28,14 +28,14 @@ func TestDeviceHistoryQueriesUseDeviceIdentityInsteadOfHostID(t *testing.T) {
 	require.NotContains(t, temperatureQuery, "host_id")
 }
 
-// fixes #851: points match on device_id. Points without a device_id tag fall back to
-// device_wwn only while a single device holds that WWN; a shared WWN must not pull in
-// another device's untagged history.
+// fixes #851: points match on device_id, and on device_wwn only while a single device holds that
+// WWN. The WWN branch also reaches points tagged with an earlier device_id of the device; a shared
+// WWN must not pull in another device's history.
 func TestDeviceHistoryPredicate(t *testing.T) {
 	t.Parallel()
 
 	require.Equal(t,
-		`(exists r["device_id"] and r["device_id"] == "device-1") or (not exists r["device_id"] and r["device_wwn"] == "wwn-1")`,
+		`(exists r["device_id"] and r["device_id"] == "device-1") or (exists r["device_wwn"] and r["device_wwn"] == "wwn-1")`,
 		deviceHistoryPredicate("device-1", "wwn-1", true))
 	require.Equal(t, `(exists r["device_id"] and r["device_id"] == "device-1")`, deviceHistoryPredicate("device-1", "wwn-1", false))
 }

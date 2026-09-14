@@ -49,17 +49,17 @@ func (sr *scrutinyRepository) GetWorkloadInsights(ctx context.Context, durationK
 		return insights, nil
 	}
 
-	uniqueWWNs := uniqueWWNDeviceIDs(devices)
+	owners := newHistoryOwners(devices)
 
 	// Query 1: first and last data points for rate computation
-	firstPoints, lastPoints, err := sr.queryWorkloadFirstLast(ctx, durationKey, uniqueWWNs)
+	firstPoints, lastPoints, err := sr.queryWorkloadFirstLast(ctx, durationKey, owners)
 	if err != nil {
 		sr.logger.Errorf("Error querying workload first/last points: %v", err)
 		return insights, nil
 	}
 
 	// Query 2: recent points for spike detection (raw bucket only)
-	recentPoints, err := sr.queryWorkloadRecent(ctx, uniqueWWNs)
+	recentPoints, err := sr.queryWorkloadRecent(ctx, owners)
 	if err != nil {
 		sr.logger.Errorf("Error querying workload recent points: %v", err)
 		// Non-fatal: continue without spike detection
@@ -197,7 +197,7 @@ func parseWorkloadSnapshot(values map[string]interface{}) *workloadSnapshot {
 	return snap
 }
 
-func (sr *scrutinyRepository) queryWorkloadFirstLast(ctx context.Context, durationKey string, uniqueWWNs map[string]string) (
+func (sr *scrutinyRepository) queryWorkloadFirstLast(ctx context.Context, durationKey string, owners historyOwners) (
 	firstPoints map[string]*workloadSnapshot,
 	lastPoints map[string]*workloadSnapshot,
 	err error,
@@ -216,7 +216,7 @@ func (sr *scrutinyRepository) queryWorkloadFirstLast(ctx context.Context, durati
 
 	for result.Next() {
 		values := result.Record().Values()
-		deviceID, ok := historyRecordDeviceID(values, uniqueWWNs)
+		deviceID, ok := owners.deviceFor(values)
 		if !ok {
 			continue
 		}
@@ -318,7 +318,7 @@ func (sr *scrutinyRepository) buildWorkloadFirstLastQuery(durationKey string) st
 	return strings.Join(partialQueryStr, "\n")
 }
 
-func (sr *scrutinyRepository) queryWorkloadRecent(ctx context.Context, uniqueWWNs map[string]string) (map[string][]*workloadSnapshot, error) {
+func (sr *scrutinyRepository) queryWorkloadRecent(ctx context.Context, owners historyOwners) (map[string][]*workloadSnapshot, error) {
 	recentPoints := map[string][]*workloadSnapshot{}
 
 	queryStr := sr.buildWorkloadRecentQuery()
@@ -332,7 +332,7 @@ func (sr *scrutinyRepository) queryWorkloadRecent(ctx context.Context, uniqueWWN
 
 	for result.Next() {
 		values := result.Record().Values()
-		deviceID, ok := historyRecordDeviceID(values, uniqueWWNs)
+		deviceID, ok := owners.deviceFor(values)
 		if !ok {
 			continue
 		}

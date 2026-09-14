@@ -90,7 +90,7 @@ type DeviceRepo interface {
 	SaveBtrfsMetrics(ctx context.Context, filesystem *models.BtrfsFilesystem) error
 	GetBtrfsMetricsHistory(ctx context.Context, uuid string, durationKey string) ([]measurements.BtrfsMetrics, error)
 
-	// GetDevicesLastSeenTimes returns a map of device WWN to the timestamp of their last SMART submission.
+	// GetDevicesLastSeenTimes returns a map of device_id to the timestamp of the device's last SMART submission.
 	// This is used for missed collector ping detection.
 	GetDevicesLastSeenTimes(ctx context.Context) (map[string]time.Time, error)
 

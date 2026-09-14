@@ -113,10 +113,10 @@ func (sr *scrutinyRepository) getSmartTemperatureHistory(ctx context.Context, du
 	if devErr != nil && len(deviceIDs) > 0 {
 		return nil, fmt.Errorf("failed to resolve selected temperature devices: %w", devErr)
 	}
-	uniqueWWNs := uniqueWWNDeviceIDs(devices)
+	owners := newHistoryOwners(devices)
 
 	// With a selection, filter on the selected device_ids, plus the WWNs that selected devices
-	// hold alone, which reach their untagged legacy points.
+	// hold alone, which reach their untagged points and points tagged with an earlier device_id.
 	var selectedIDs, legacyWWNs []string
 	if len(deviceIDs) > 0 {
 		wanted := map[string]struct{}{}
@@ -128,7 +128,7 @@ func (sr *scrutinyRepository) getSmartTemperatureHistory(ctx context.Context, du
 				continue
 			}
 			selectedIDs = append(selectedIDs, devices[i].DeviceID)
-			if uniqueWWNs[devices[i].WWN] == devices[i].DeviceID {
+			if owners.uniqueWWNs[devices[i].WWN] == devices[i].DeviceID {
 				legacyWWNs = append(legacyWWNs, devices[i].WWN)
 			}
 		}
@@ -149,23 +149,36 @@ func (sr *scrutinyRepository) getSmartTemperatureHistory(ctx context.Context, du
 
 	// Use Next() to iterate over query result lines
 	for result.Next() {
-		appendTempRecord(deviceTempHistory, result.Record().Values(), uniqueWWNs)
+		appendTempRecord(deviceTempHistory, result.Record().Values(), owners)
 	}
 	if result.Err() != nil {
 		return nil, fmt.Errorf("temperature history query failed: %w", result.Err())
 	}
-	// A device's tagged and untagged series arrive separately; merge them in time order.
-	for deviceID := range deviceTempHistory {
-		history := deviceTempHistory[deviceID]
-		sort.SliceStable(history, func(i, j int) bool { return history[i].Date.Before(history[j].Date) })
+	for deviceID, history := range deviceTempHistory {
+		deviceTempHistory[deviceID] = mergeTemperatureSeries(history)
 	}
 	return deviceTempHistory, nil
 }
 
+// mergeTemperatureSeries orders a device's temperature points in time and keeps one point per
+// timestamp. A device can return several series (tagged with its device_id, untagged, or tagged
+// with an earlier device_id) whose aggregate windows produce the same timestamps.
+func mergeTemperatureSeries(history []measurements.SmartTemperature) []measurements.SmartTemperature {
+	sort.SliceStable(history, func(i, j int) bool { return history[i].Date.Before(history[j].Date) })
+	merged := history[:0]
+	for i := range history {
+		if len(merged) > 0 && merged[len(merged)-1].Date.Equal(history[i].Date) {
+			continue
+		}
+		merged = append(merged, history[i])
+	}
+	return merged
+}
+
 // appendTempRecord attributes a single InfluxDB temperature record to a device (see
-// historyRecordDeviceID) and appends the inflated SmartTemperature to its history.
-func appendTempRecord(deviceTempHistory map[string][]measurements.SmartTemperature, values map[string]interface{}, uniqueWWNs map[string]string) {
-	key, ok := historyRecordDeviceID(values, uniqueWWNs)
+// historyOwners.deviceFor) and appends the inflated SmartTemperature to its history.
+func appendTempRecord(deviceTempHistory map[string][]measurements.SmartTemperature, values map[string]interface{}, owners historyOwners) {
+	key, ok := owners.deviceFor(values)
 	if !ok {
 		return
 	}
@@ -182,12 +195,13 @@ func appendTempRecord(deviceTempHistory map[string][]measurements.SmartTemperatu
 	deviceTempHistory[key] = append(deviceTempHistory[key], smartTemp)
 }
 
-// temperatureSelectionPredicate selects temperature points tagged with one of deviceIDs, and
-// untagged legacy points carrying one of legacyWWNs.
-func temperatureSelectionPredicate(deviceIDs []string, legacyWWNs []string) string {
+// temperatureSelectionPredicate selects temperature points tagged with one of deviceIDs, and any
+// point carrying one of uniqueWWNs, the WWNs that selected devices hold alone (see
+// deviceHistoryPredicate).
+func temperatureSelectionPredicate(deviceIDs []string, uniqueWWNs []string) string {
 	predicate := fmt.Sprintf(`(exists r["device_id"] and contains(value: r["device_id"], set: [%s]))`, quotedFluxSet(deviceIDs))
-	if len(legacyWWNs) > 0 {
-		predicate += fmt.Sprintf(` or (not exists r["device_id"] and contains(value: r["device_wwn"], set: [%s]))`, quotedFluxSet(legacyWWNs))
+	if len(uniqueWWNs) > 0 {
+		predicate += fmt.Sprintf(` or (exists r["device_wwn"] and contains(value: r["device_wwn"], set: [%s]))`, quotedFluxSet(uniqueWWNs))
 	}
 	return predicate
 }

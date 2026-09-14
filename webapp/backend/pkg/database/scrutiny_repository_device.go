@@ -433,7 +433,7 @@ func (sr *scrutinyRepository) DeleteDevice(ctx context.Context, deviceID string)
 		return err
 	}
 
-	return sr.deleteDeviceInfluxHistory(ctx, device, wwnUnique)
+	return sr.deleteDeviceInfluxHistory(ctx, &device, wwnUnique)
 }
 
 func (sr *scrutinyRepository) attachDeviceEnduranceOverrides(ctx context.Context, devices []models.Device) error {

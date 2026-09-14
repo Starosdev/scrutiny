@@ -447,7 +447,7 @@ func (sr *scrutinyRepository) getSummary(ctx context.Context, includeTemperature
 	for _, device := range devices {
 		summaries[device.DeviceID] = &models.DeviceSummary{Device: device}
 	}
-	wwnToDeviceID := uniqueWWNDeviceIDs(devices)
+	owners := newHistoryOwners(devices)
 
 	result, err := sr.influxQueryApi.Query(ctx, summaryFluxQuery(sr.appConfig.GetString(cfgInfluxDBBucket)))
 	if err != nil {
@@ -456,7 +456,7 @@ func (sr *scrutinyRepository) getSummary(ctx context.Context, includeTemperature
 	defer result.Close()
 	// Use Next() to iterate over query result lines
 	for result.Next() {
-		sr.applySummaryRecord(summaries, wwnToDeviceID, result.Record().Values())
+		sr.applySummaryRecord(summaries, owners, result.Record().Values())
 	}
 	if result.Err() != nil {
 		sr.logger.Errorf("Query error: %s", result.Err().Error())
@@ -536,10 +536,8 @@ func summaryFluxQuery(bucketBaseName string) string {
 }
 
 // applySummaryRecord parses a single summary query record and populates the matching device summary.
-// wwnToDeviceID must hold only WWNs that a single device holds (uniqueWWNDeviceIDs); it attributes
-// records from points written before they carried a device_id tag.
-func (sr *scrutinyRepository) applySummaryRecord(summaries map[string]*models.DeviceSummary, wwnToDeviceID map[string]string, values map[string]interface{}) {
-	devID, ok := historyRecordDeviceID(values, wwnToDeviceID)
+func (sr *scrutinyRepository) applySummaryRecord(summaries map[string]*models.DeviceSummary, owners historyOwners, values map[string]interface{}) {
+	devID, ok := owners.deviceFor(values)
 	if !ok {
 		return
 	}
@@ -658,7 +656,7 @@ func (sr *scrutinyRepository) GetDevicesLastSeenTimes(ctx context.Context) (map[
 	if err != nil {
 		return nil, fmt.Errorf("failed to get devices for last seen times: %w", err)
 	}
-	wwnToDeviceID := uniqueWWNDeviceIDs(devices)
+	owners := newHistoryOwners(devices)
 
 	result, err := sr.influxQueryApi.Query(ctx, lastSeenFluxQuery(sr.appConfig.GetString(cfgInfluxDBBucket)))
 	if err != nil {
@@ -668,7 +666,7 @@ func (sr *scrutinyRepository) GetDevicesLastSeenTimes(ctx context.Context) (map[
 
 	lastSeenTimes := map[string]time.Time{}
 	for result.Next() {
-		applyLastSeenRecord(lastSeenTimes, wwnToDeviceID, result.Record().Values())
+		applyLastSeenRecord(lastSeenTimes, owners, result.Record().Values())
 	}
 
 	if result.Err() != nil {
@@ -722,11 +720,11 @@ union(tables: [dailyData, weeklyData, monthlyData, yearlyData])
 	`, bucketBaseName)
 }
 
-// applyLastSeenRecord attributes a last-seen query record to a device (see historyRecordDeviceID)
+// applyLastSeenRecord attributes a last-seen query record to a device (see historyOwners.deviceFor)
 // and keeps the most recent timestamp seen for that device. Records that cannot be attributed are
 // dropped; keying them by WWN would put WWNs into a map callers read by device_id.
-func applyLastSeenRecord(lastSeenTimes map[string]time.Time, wwnToDeviceID map[string]string, values map[string]interface{}) {
-	key, ok := historyRecordDeviceID(values, wwnToDeviceID)
+func applyLastSeenRecord(lastSeenTimes map[string]time.Time, owners historyOwners, values map[string]interface{}) {
+	key, ok := owners.deviceFor(values)
 	if !ok {
 		return
 	}
