@@ -26,6 +26,9 @@ type Detect struct {
 	Logger *logrus.Entry
 	Config config.Interface
 	Shell  shell.Interface
+
+	// blockWWNFallback replaces the platform wwnFallback in tests; nil uses wwnFallback.
+	blockWWNFallback func(*models.Device)
 }
 
 // stripDevicePrefix removes the platform-specific device prefix from a device path.
@@ -68,23 +71,6 @@ func DeviceFullPath(deviceName string) string {
 func isStandardDeviceType(deviceType string) bool {
 	switch strings.ToLower(strings.TrimSpace(deviceType)) {
 	case "", "ata", "scsi", "nvme":
-		return true
-	default:
-		return false
-	}
-}
-
-// isControllerPassthroughType reports whether a device type addresses one of several
-// physical drives behind a RAID/HBA controller (cciss,N, megaraid,N, 3ware,N, ...).
-// Those drives share a single block device, so its WWN identifies the controller
-// volume rather than the drive and must not be used as the drive's identity (#850).
-func isControllerPassthroughType(deviceType string) bool {
-	family, _, hasIndex := strings.Cut(strings.ToLower(strings.TrimSpace(deviceType)), ",")
-	if !hasIndex {
-		return false
-	}
-	switch family {
-	case "3ware", "aacraid", "areca", "cciss", "hpt", "jmb39x", "jmb39x-q", "jmb39x-q2", "jms56x", "megaraid", "sssraid":
 		return true
 	default:
 		return false
@@ -264,12 +250,15 @@ func (d *Detect) SmartCtlInfo(device *models.Device) error {
 		}
 		device.WWN = strings.ToLower(wwn.ToString())
 		d.Logger.Debugf("NAA: %d OUI: %d Id: %d => WWN: %s", wwn.Naa, wwn.Oui, wwn.Id, device.WWN)
-	} else if isControllerPassthroughType(device.DeviceType) {
-		// Skip the block device lookup: every drive behind the controller would get the
-		// same WWN. The serial number is what wwnFallback already yields for controller
-		// paths with no block device (megaraid on /dev/bus/N), so those IDs do not change.
-		d.Logger.Info("Using serial number as WWN for controller passthrough device")
+	} else if device.SharedDeviceFile {
+		// Several drives are addressed through this one device file (cciss,N, megaraid,N
+		// on /dev/sdX, ...). Its block device WWN belongs to the controller volume, so
+		// every drive would get the same WWN (#850). Use the serial, which is also what
+		// wwnFallback yields for controller paths with no block device (/dev/bus/N).
+		d.Logger.Info("Device file is shared by several drives; using serial number as WWN")
 		device.WWN = strings.ToLower(device.SerialNumber)
+	} else if d.blockWWNFallback != nil {
+		d.blockWWNFallback(device)
 	} else {
 		d.Logger.Info("Using WWN Fallback")
 		d.wwnFallback(device)
@@ -290,9 +279,13 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 	// now that we've "grouped" all the devices, lets override any groups specified in the config file.
 	d.applyDeviceOverrides(groupedDevices)
 
-	// flatten map
+	// flatten map. A group with several entries is one device file addressed with several
+	// device types (cciss,0..N on /dev/sda), so no entry may take that file's block WWN.
 	detectedDevices := []models.Device{}
 	for _, group := range groupedDevices {
+		for i := range group {
+			group[i].SharedDeviceFile = len(group) > 1
+		}
 		detectedDevices = append(detectedDevices, group...)
 	}
 

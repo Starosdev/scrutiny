@@ -79,8 +79,8 @@ func TestDetect_SmartctlScan_Megaraid(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 2, len(scannedDevices))
 	require.Equal(t, []models.Device{
-		{DeviceName: "bus/0", DeviceType: "megaraid,0", CollectorVersion: version.VERSION},
-		{DeviceName: "bus/0", DeviceType: "megaraid,1", CollectorVersion: version.VERSION},
+		{DeviceName: "bus/0", DeviceType: "megaraid,0", CollectorVersion: version.VERSION, SharedDeviceFile: true},
+		{DeviceName: "bus/0", DeviceType: "megaraid,1", CollectorVersion: version.VERSION, SharedDeviceFile: true},
 	}, scannedDevices)
 }
 
@@ -639,24 +639,60 @@ func TestDetect_SmartCtlInfo(t *testing.T) {
 	// fixes #850: drives behind an HP Smart Array share /dev/sda. The block device WWN
 	// belongs to the controller volume, so every drive registered with the same WWN and
 	// all but one failed the devices.wwn unique constraint. Fixtures are real output
-	// from the reporter's P400i; neither carries a wwn block.
+	// from the reporter's P400i; neither carries a wwn block. The block lookup is
+	// stubbed with the reporter's shared WWN so the result does not depend on the host.
+	const sharedControllerWWN = "0x600508b1001039343720202020200016"
 	for _, testCase := range []struct {
-		deviceType, fixture, expectedWWN string
+		deviceType, fixture, serialWWN string
 	}{
 		{"cciss,1", "testdata/smartctl_info_cciss_sas.json", "ppkja1zb"},
 		{"cciss,0", "testdata/smartctl_info_cciss_sata.json", "ibntmc211225609752"},
 	} {
-		t.Run("should use the serial number as WWN for "+testCase.deviceType, func(t *testing.T) {
+		t.Run("should use the serial number as WWN for a shared device file with "+testCase.deviceType, func(t *testing.T) {
 			fakeShell, fakeConfig, someLogger := setupSmartCtlInfoMocks(t, "sda", testCase.deviceType, testCase.fixture, nil)
 
 			d := detect.Detect{Logger: someLogger, Shell: fakeShell, Config: fakeConfig}
-			someDevice := &models.Device{DeviceName: "sda", DeviceType: testCase.deviceType}
+			d.SetBlockWWNFallback(func(*models.Device) { t.Fatal("block device WWN lookup must not run for a shared device file") })
+			someDevice := &models.Device{DeviceName: "sda", DeviceType: testCase.deviceType, SharedDeviceFile: true}
 
 			require.NoError(t, d.SmartCtlInfo(someDevice))
 
-			assert.Equal(t, testCase.expectedWWN, someDevice.WWN)
+			assert.Equal(t, testCase.serialWWN, someDevice.WWN)
 		})
 	}
+
+	// the reviewer case for #850: megaraid in JBOD/HBA mode addresses one drive per
+	// /dev/sdX, whose block device WWN is that drive's own. It must keep that WWN, or
+	// the drive gets a new device_id and loses its history.
+	t.Run("should keep the block device WWN for a device file addressed once", func(t *testing.T) {
+		fakeShell, fakeConfig, someLogger := setupSmartCtlInfoMocks(t, "sda", "cciss,1", "testdata/smartctl_info_cciss_sas.json", nil)
+
+		d := detect.Detect{Logger: someLogger, Shell: fakeShell, Config: fakeConfig}
+		d.SetBlockWWNFallback(func(device *models.Device) { device.WWN = sharedControllerWWN })
+		someDevice := &models.Device{DeviceName: "sda", DeviceType: "cciss,1"}
+
+		require.NoError(t, d.SmartCtlInfo(someDevice))
+
+		assert.Equal(t, sharedControllerWWN, someDevice.WWN)
+	})
+
+	// a wwn block from smartctl identifies the drive itself, so it wins over the serial
+	// even when the device file is shared (QNAP TR-004 bays behind jmb39x-q).
+	t.Run("should prefer the smartctl wwn block for a shared device file", func(t *testing.T) {
+		fakeShell, fakeConfig, someLogger := setupSmartCtlInfoMocks(t, "sda", "jmb39x-q,0",
+			"testdata/smartctl_info_jmb39x_exit4.json", exitErrorWithCode(t, 4))
+
+		d := detect.Detect{Logger: someLogger, Shell: fakeShell, Config: fakeConfig}
+		d.SetBlockWWNFallback(func(*models.Device) {
+			t.Fatal("block device WWN lookup must not run when smartctl reports a wwn block")
+		})
+		someDevice := &models.Device{DeviceName: "sda", DeviceType: "jmb39x-q,0", SharedDeviceFile: true}
+
+		require.NoError(t, d.SmartCtlInfo(someDevice))
+
+		require.NotEmpty(t, someDevice.WWN)
+		assert.NotEqual(t, strings.ToLower(someDevice.SerialNumber), someDevice.WWN)
+	})
 
 	// fixes #664: "scsi" and "ata" are suppressed only because `smartctl --scan`
 	// mislabels ATA drives as scsi in docker. A type the user wrote down is an
@@ -735,29 +771,44 @@ func TestDetect_AppendDeviceTypeArgs(t *testing.T) {
 	}
 }
 
-// The SmartCtlInfo cciss tests cannot prove the block device lookup is skipped on a
-// host with no disk named sda, because wwnFallback also ends at the serial number there.
-// This pins the decision itself. A false positive re-identifies single-drive devices
-// (sat, usb bridges, nvme namespaces), so those cases matter as much as the true ones.
-func TestDetect_IsControllerPassthroughType(t *testing.T) {
-	for deviceType, expected := range map[string]bool{
-		"cciss,0":      true,
-		"megaraid,14":  true,
-		"3ware,2":      true,
-		"MEGARAID,1":   true,
-		" areca,1/1 ":  true,
-		"jmb39x-q,0":   true,
-		"":             false,
-		"scsi":         false,
-		"sat":          false,
-		"sat,12":       false,
-		"sat,auto":     false,
-		"nvme,0x1":     false,
-		"usbjmicron,0": false,
-		"megaraid":     false,
-	} {
-		assert.Equal(t, expected, detect.IsControllerPassthroughType(deviceType), deviceType)
+// fixes #850: only a device file addressed with several device types is shared. A
+// false positive gives a single drive a new device_id (megaraid JBOD on /dev/sdb, a
+// sat+megaraid override), so the single-entry cases matter as much as the shared one.
+func TestDetect_TransformDetectedDevices_SharedDeviceFile(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetString("host.id").AnyTimes().Return("")
+	fakeConfig.EXPECT().IsAllowlistedDevice(gomock.Any()).AnyTimes().Return(true)
+	fakeConfig.EXPECT().GetDeviceOverrides().AnyTimes().Return([]models.ScanOverride{
+		{Device: "/dev/sda", DeviceType: []string{"cciss,0", "cciss,1"}},
+		{Device: "/dev/sdb", DeviceType: []string{"megaraid,1"}},
+		{Device: "/dev/sdc", DeviceType: []string{"sat+megaraid,2"}},
+	})
+	detectedDevices := models.Scan{
+		Devices: []models.ScanDevice{
+			{Name: "/dev/sdd", InfoName: "/dev/sdd", Protocol: "ATA", Type: "sat"},
+			{Name: "/dev/bus/0", InfoName: "/dev/bus/0 [megaraid_disk_00]", Protocol: "SCSI", Type: "megaraid,0"},
+			{Name: "/dev/bus/0", InfoName: "/dev/bus/0 [megaraid_disk_01]", Protocol: "SCSI", Type: "megaraid,1"},
+		},
 	}
+
+	d := detect.Detect{Config: fakeConfig}
+
+	shared := map[string]bool{}
+	for _, transformedDevice := range d.TransformDetectedDevices(detectedDevices) {
+		shared[transformedDevice.DeviceName+" "+transformedDevice.DeviceType] = transformedDevice.SharedDeviceFile
+	}
+
+	require.Equal(t, map[string]bool{
+		"sda cciss,0":        true,
+		"sda cciss,1":        true,
+		"bus/0 megaraid,0":   true,
+		"bus/0 megaraid,1":   true,
+		"sdb megaraid,1":     false,
+		"sdc sat+megaraid,2": false,
+		"sdd sat":            false,
+	}, shared)
 }
 
 // setupSmartCtlInfoArgvMocks wires a shell that only answers the exact argv given,
