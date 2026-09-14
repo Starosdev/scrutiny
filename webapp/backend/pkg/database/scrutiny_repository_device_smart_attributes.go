@@ -16,7 +16,7 @@ import (
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // SMART
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, deviceID string, collectorSmartData collector.SmartInfo) (measurements.Smart, error) {
+func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, deviceID string, collectorSmartData *collector.SmartInfo) (measurements.Smart, error) {
 	// Resolve the device by device_id, never by WWN: several devices can share a WWN
 	// (#851), and the device_id tag written here is what keeps their history apart.
 	// Looking the device up first also lets device-scoped overrides apply to the
@@ -30,7 +30,7 @@ func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, deviceID 
 	// Get merged overrides (config + database) for SMART attribute processing
 	mergedOverrides := sr.GetMergedOverrides(ctx)
 
-	err = deviceSmartData.FromCollectorSmartInfoWithOverrides(sr.appConfig, device.WWN, collectorSmartData, mergedOverrides)
+	err = deviceSmartData.FromCollectorSmartInfoWithOverrides(sr.appConfig, device.WWN, *collectorSmartData, mergedOverrides)
 	if err != nil {
 		sr.logger.Errorln("Could not process SMART metrics", err)
 		return measurements.Smart{}, err
@@ -57,7 +57,7 @@ func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, deviceID 
 
 	tags, fields := deviceSmartData.Flatten()
 
-	if err := sr.syncDeviceSelfTests(ctx, &device, &collectorSmartData, selfTestPowerOnHours(&deviceSmartData, previousSmart)); err != nil {
+	if err := sr.syncDeviceSelfTests(ctx, &device, collectorSmartData, selfTestPowerOnHours(&deviceSmartData, previousSmart)); err != nil {
 		return measurements.Smart{}, err
 	}
 

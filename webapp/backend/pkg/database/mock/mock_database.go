@@ -334,21 +334,6 @@ func (mr *MockDeviceRepoMockRecorder) GetDeviceSelfTests(ctx, deviceID interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeviceSelfTests", reflect.TypeOf((*MockDeviceRepo)(nil).GetDeviceSelfTests), ctx, deviceID)
 }
 
-// GetLatestDeviceSelfTest mocks base method.
-func (m *MockDeviceRepo) GetLatestDeviceSelfTest(ctx context.Context, deviceID string) (*models.DeviceSelfTest, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLatestDeviceSelfTest", ctx, deviceID)
-	ret0, _ := ret[0].(*models.DeviceSelfTest)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetLatestDeviceSelfTest indicates an expected call of GetLatestDeviceSelfTest.
-func (mr *MockDeviceRepoMockRecorder) GetLatestDeviceSelfTest(ctx, deviceID interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestDeviceSelfTest", reflect.TypeOf((*MockDeviceRepo)(nil).GetLatestDeviceSelfTest), ctx, deviceID)
-}
-
 // GetDevices mocks base method.
 func (m *MockDeviceRepo) GetDevices(ctx context.Context) ([]models.Device, error) {
 	m.ctrl.T.Helper()
@@ -410,6 +395,21 @@ func (mr *MockDeviceRepoMockRecorder) GetHosts(ctx interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHosts", reflect.TypeOf((*MockDeviceRepo)(nil).GetHosts), ctx)
 }
 
+// GetLatestDeviceSelfTest mocks base method.
+func (m *MockDeviceRepo) GetLatestDeviceSelfTest(ctx context.Context, deviceID string) (*models.DeviceSelfTest, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLatestDeviceSelfTest", ctx, deviceID)
+	ret0, _ := ret[0].(*models.DeviceSelfTest)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLatestDeviceSelfTest indicates an expected call of GetLatestDeviceSelfTest.
+func (mr *MockDeviceRepoMockRecorder) GetLatestDeviceSelfTest(ctx, deviceID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestDeviceSelfTest", reflect.TypeOf((*MockDeviceRepo)(nil).GetLatestDeviceSelfTest), ctx, deviceID)
+}
+
 // GetLatestMdadmMetrics mocks base method.
 func (m *MockDeviceRepo) GetLatestMdadmMetrics(ctx context.Context, uuid string) (*measurements.MDADMMetrics, error) {
 	m.ctrl.T.Helper()
@@ -426,18 +426,18 @@ func (mr *MockDeviceRepoMockRecorder) GetLatestMdadmMetrics(ctx, uuid interface{
 }
 
 // GetLatestSmartSubmission mocks base method.
-func (m *MockDeviceRepo) GetLatestSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error) {
+func (m *MockDeviceRepo) GetLatestSmartSubmission(ctx context.Context, deviceID string) ([]measurements.Smart, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLatestSmartSubmission", ctx, wwn)
+	ret := m.ctrl.Call(m, "GetLatestSmartSubmission", ctx, deviceID)
 	ret0, _ := ret[0].([]measurements.Smart)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetLatestSmartSubmission indicates an expected call of GetLatestSmartSubmission.
-func (mr *MockDeviceRepoMockRecorder) GetLatestSmartSubmission(ctx, wwn interface{}) *gomock.Call {
+func (mr *MockDeviceRepoMockRecorder) GetLatestSmartSubmission(ctx, deviceID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestSmartSubmission", reflect.TypeOf((*MockDeviceRepo)(nil).GetLatestSmartSubmission), ctx, wwn)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestSmartSubmission", reflect.TypeOf((*MockDeviceRepo)(nil).GetLatestSmartSubmission), ctx, deviceID)
 }
 
 // GetMdadmArrayDetails mocks base method.
@@ -530,48 +530,48 @@ func (mr *MockDeviceRepoMockRecorder) GetNotifyUrls(ctx interface{}) *gomock.Cal
 }
 
 // GetPerformanceBaseline mocks base method.
-func (m *MockDeviceRepo) GetPerformanceBaseline(ctx context.Context, wwn string, count int) (*measurements.PerformanceBaseline, error) {
+func (m *MockDeviceRepo) GetPerformanceBaseline(ctx context.Context, deviceID string, count int) (*measurements.PerformanceBaseline, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPerformanceBaseline", ctx, wwn, count)
+	ret := m.ctrl.Call(m, "GetPerformanceBaseline", ctx, deviceID, count)
 	ret0, _ := ret[0].(*measurements.PerformanceBaseline)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPerformanceBaseline indicates an expected call of GetPerformanceBaseline.
-func (mr *MockDeviceRepoMockRecorder) GetPerformanceBaseline(ctx, wwn, count interface{}) *gomock.Call {
+func (mr *MockDeviceRepoMockRecorder) GetPerformanceBaseline(ctx, deviceID, count interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPerformanceBaseline", reflect.TypeOf((*MockDeviceRepo)(nil).GetPerformanceBaseline), ctx, wwn, count)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPerformanceBaseline", reflect.TypeOf((*MockDeviceRepo)(nil).GetPerformanceBaseline), ctx, deviceID, count)
 }
 
 // GetPerformanceHistory mocks base method.
-func (m *MockDeviceRepo) GetPerformanceHistory(ctx context.Context, wwn, durationKey string) ([]measurements.Performance, error) {
+func (m *MockDeviceRepo) GetPerformanceHistory(ctx context.Context, deviceID, durationKey string) ([]measurements.Performance, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPerformanceHistory", ctx, wwn, durationKey)
+	ret := m.ctrl.Call(m, "GetPerformanceHistory", ctx, deviceID, durationKey)
 	ret0, _ := ret[0].([]measurements.Performance)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPerformanceHistory indicates an expected call of GetPerformanceHistory.
-func (mr *MockDeviceRepoMockRecorder) GetPerformanceHistory(ctx, wwn, durationKey interface{}) *gomock.Call {
+func (mr *MockDeviceRepoMockRecorder) GetPerformanceHistory(ctx, deviceID, durationKey interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPerformanceHistory", reflect.TypeOf((*MockDeviceRepo)(nil).GetPerformanceHistory), ctx, wwn, durationKey)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPerformanceHistory", reflect.TypeOf((*MockDeviceRepo)(nil).GetPerformanceHistory), ctx, deviceID, durationKey)
 }
 
 // GetPreviousSmartSubmission mocks base method.
-func (m *MockDeviceRepo) GetPreviousSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error) {
+func (m *MockDeviceRepo) GetPreviousSmartSubmission(ctx context.Context, deviceID string) ([]measurements.Smart, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPreviousSmartSubmission", ctx, wwn)
+	ret := m.ctrl.Call(m, "GetPreviousSmartSubmission", ctx, deviceID)
 	ret0, _ := ret[0].([]measurements.Smart)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPreviousSmartSubmission indicates an expected call of GetPreviousSmartSubmission.
-func (mr *MockDeviceRepoMockRecorder) GetPreviousSmartSubmission(ctx, wwn interface{}) *gomock.Call {
+func (mr *MockDeviceRepoMockRecorder) GetPreviousSmartSubmission(ctx, deviceID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPreviousSmartSubmission", reflect.TypeOf((*MockDeviceRepo)(nil).GetPreviousSmartSubmission), ctx, wwn)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPreviousSmartSubmission", reflect.TypeOf((*MockDeviceRepo)(nil).GetPreviousSmartSubmission), ctx, deviceID)
 }
 
 // GetSettingValue mocks base method.
@@ -590,18 +590,18 @@ func (mr *MockDeviceRepoMockRecorder) GetSettingValue(ctx, key interface{}) *gom
 }
 
 // GetSmartAttributeHistory mocks base method.
-func (m *MockDeviceRepo) GetSmartAttributeHistory(ctx context.Context, wwn, durationKey string, selectEntries, selectEntriesOffset int, attributes []string) ([]measurements.Smart, error) {
+func (m *MockDeviceRepo) GetSmartAttributeHistory(ctx context.Context, deviceID, durationKey string, selectEntries, selectEntriesOffset int, attributes []string) ([]measurements.Smart, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSmartAttributeHistory", ctx, wwn, durationKey, selectEntries, selectEntriesOffset, attributes)
+	ret := m.ctrl.Call(m, "GetSmartAttributeHistory", ctx, deviceID, durationKey, selectEntries, selectEntriesOffset, attributes)
 	ret0, _ := ret[0].([]measurements.Smart)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSmartAttributeHistory indicates an expected call of GetSmartAttributeHistory.
-func (mr *MockDeviceRepoMockRecorder) GetSmartAttributeHistory(ctx, wwn, durationKey, selectEntries, selectEntriesOffset, attributes interface{}) *gomock.Call {
+func (mr *MockDeviceRepoMockRecorder) GetSmartAttributeHistory(ctx, deviceID, durationKey, selectEntries, selectEntriesOffset, attributes interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSmartAttributeHistory", reflect.TypeOf((*MockDeviceRepo)(nil).GetSmartAttributeHistory), ctx, wwn, durationKey, selectEntries, selectEntriesOffset, attributes)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSmartAttributeHistory", reflect.TypeOf((*MockDeviceRepo)(nil).GetSmartAttributeHistory), ctx, deviceID, durationKey, selectEntries, selectEntriesOffset, attributes)
 }
 
 // GetSmartTemperatureHistory mocks base method.
@@ -983,17 +983,17 @@ func (mr *MockDeviceRepoMockRecorder) SaveNotifyUrl(ctx, notifyUrl interface{}) 
 }
 
 // SavePerformanceResults mocks base method.
-func (m *MockDeviceRepo) SavePerformanceResults(ctx context.Context, wwn string, perfData *measurements.Performance) error {
+func (m *MockDeviceRepo) SavePerformanceResults(ctx context.Context, deviceID string, perfData *measurements.Performance) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SavePerformanceResults", ctx, wwn, perfData)
+	ret := m.ctrl.Call(m, "SavePerformanceResults", ctx, deviceID, perfData)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SavePerformanceResults indicates an expected call of SavePerformanceResults.
-func (mr *MockDeviceRepoMockRecorder) SavePerformanceResults(ctx, wwn, perfData interface{}) *gomock.Call {
+func (mr *MockDeviceRepoMockRecorder) SavePerformanceResults(ctx, deviceID, perfData interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SavePerformanceResults", reflect.TypeOf((*MockDeviceRepo)(nil).SavePerformanceResults), ctx, wwn, perfData)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SavePerformanceResults", reflect.TypeOf((*MockDeviceRepo)(nil).SavePerformanceResults), ctx, deviceID, perfData)
 }
 
 // SaveSettings mocks base method.
@@ -1011,18 +1011,18 @@ func (mr *MockDeviceRepoMockRecorder) SaveSettings(ctx, settings interface{}) *g
 }
 
 // SaveSmartAttributes mocks base method.
-func (m *MockDeviceRepo) SaveSmartAttributes(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo) (measurements.Smart, error) {
+func (m *MockDeviceRepo) SaveSmartAttributes(ctx context.Context, deviceID string, collectorSmartData *collector.SmartInfo) (measurements.Smart, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveSmartAttributes", ctx, wwn, collectorSmartData)
+	ret := m.ctrl.Call(m, "SaveSmartAttributes", ctx, deviceID, collectorSmartData)
 	ret0, _ := ret[0].(measurements.Smart)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SaveSmartAttributes indicates an expected call of SaveSmartAttributes.
-func (mr *MockDeviceRepoMockRecorder) SaveSmartAttributes(ctx, wwn, collectorSmartData interface{}) *gomock.Call {
+func (mr *MockDeviceRepoMockRecorder) SaveSmartAttributes(ctx, deviceID, collectorSmartData interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveSmartAttributes", reflect.TypeOf((*MockDeviceRepo)(nil).SaveSmartAttributes), ctx, wwn, collectorSmartData)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveSmartAttributes", reflect.TypeOf((*MockDeviceRepo)(nil).SaveSmartAttributes), ctx, deviceID, collectorSmartData)
 }
 
 // SaveSmartTemperature mocks base method.

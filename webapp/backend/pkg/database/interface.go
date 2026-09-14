@@ -58,7 +58,7 @@ type DeviceRepo interface {
 	RecalculateDeviceStatusFromHistory(ctx context.Context, deviceID string) error
 
 	// SMART history methods take a device_id. A WWN is not an identity: several devices can share one.
-	SaveSmartAttributes(ctx context.Context, deviceID string, collectorSmartData collector.SmartInfo) (measurements.Smart, error)
+	SaveSmartAttributes(ctx context.Context, deviceID string, collectorSmartData *collector.SmartInfo) (measurements.Smart, error)
 	GetSmartAttributeHistory(ctx context.Context, deviceID string, durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) ([]measurements.Smart, error)
 	GetDeviceSelfTests(ctx context.Context, deviceID string) ([]models.DeviceSelfTest, error)
 	GetLatestDeviceSelfTest(ctx context.Context, deviceID string) (*models.DeviceSelfTest, error)

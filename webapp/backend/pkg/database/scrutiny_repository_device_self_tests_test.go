@@ -107,7 +107,7 @@ func TestSaveSmartAttributesPersistsAtaSelfTests(t *testing.T) {
 
 	smartInfo := loadSmartInfoFixture(t, filepath.Join("..", "web", "testdata", "upload-device-metrics-req.json"))
 
-	_, err := repo.SaveSmartAttributes(ctx, device.DeviceID, smartInfo)
+	_, err := repo.SaveSmartAttributes(ctx, device.DeviceID, &smartInfo)
 	require.NoError(t, err)
 
 	var selfTests []models.DeviceSelfTest
@@ -436,7 +436,7 @@ func TestSaveSmartAttributesResolvesSelfTestRollover(t *testing.T) {
 			attribute.Raw.String = "68000"
 		}
 	}
-	_, err := repo.SaveSmartAttributes(ctx, device.DeviceID, payload)
+	_, err := repo.SaveSmartAttributes(ctx, device.DeviceID, &payload)
 	require.NoError(t, err)
 	rows, err := repo.GetDeviceSelfTests(ctx, device.DeviceID)
 	require.NoError(t, err)
