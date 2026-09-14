@@ -270,6 +270,27 @@ CREATE TABLE devices (
 	require.Equal(t, int64(42), missedPingTimeoutOverride)
 }
 
+// fixes #851: m20260508000000 rebuilt the devices table and recreated idx_devices_wwn
+// as UNIQUE, so two drives sharing a WWN failed registration. This runs every
+// migration from before that rebuild and pins the final index definition.
+func TestMigrateLeavesDevicesWWNIndexNonUnique(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+	require.NoError(t, repo.Migrate(context.Background()))
+
+	var indexSQL string
+	require.NoError(t, repo.gormClient.Raw(
+		`SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'idx_devices_wwn'`,
+	).Scan(&indexSQL).Error)
+	require.Equal(t, "CREATE INDEX idx_devices_wwn ON devices(wwn)", indexSQL)
+
+	for _, serial := range []string{"PPKJA1ZB", "PPK4ZTUB"} {
+		require.NoError(t, repo.gormClient.Exec(
+			`INSERT INTO devices (device_id, wwn, model_name, serial_number) VALUES (?, ?, ?, ?)`,
+			"device-"+serial, "0x600508b1001039343720202020200016", "HITACHI HUC106060CSS600", serial,
+		).Error)
+	}
+}
+
 func TestAttributeOverridesSchemaSurvivesLaterAutoMigrate(t *testing.T) {
 	repo := createMigrationTestRepositoryWithAppliedMigrations(t, []string{
 		"20201107210306",
