@@ -690,8 +690,8 @@ func TestDetect_SmartCtlInfo(t *testing.T) {
 
 		require.NoError(t, d.SmartCtlInfo(someDevice))
 
-		require.NotEmpty(t, someDevice.WWN)
-		assert.NotEqual(t, strings.ToLower(someDevice.SerialNumber), someDevice.WWN)
+		// naa 5, oui 3274, id 6606201856 from the fixture's wwn block
+		assert.Equal(t, "0x5000cca189c2a400", someDevice.WWN)
 	})
 
 	// fixes #664: "scsi" and "ata" are suppressed only because `smartctl --scan`

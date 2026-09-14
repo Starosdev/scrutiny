@@ -257,11 +257,13 @@ func (d *Detect) SmartCtlInfo(device *models.Device) error {
 		// wwnFallback yields for controller paths with no block device (/dev/bus/N).
 		d.Logger.Info("Device file is shared by several drives; using serial number as WWN")
 		device.WWN = strings.ToLower(device.SerialNumber)
-	} else if d.blockWWNFallback != nil {
-		d.blockWWNFallback(device)
 	} else {
 		d.Logger.Info("Using WWN Fallback")
-		d.wwnFallback(device)
+		if d.blockWWNFallback != nil {
+			d.blockWWNFallback(device)
+		} else {
+			d.wwnFallback(device)
+		}
 	}
 	if len(device.WWN) == 0 {
 		d.Logger.Warnf("no WWN populated for device: %s. Device will be registered using model+serial as identifier.", device.DeviceName)
