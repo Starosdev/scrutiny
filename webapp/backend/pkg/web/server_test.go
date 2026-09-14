@@ -98,22 +98,25 @@ func helperReadSmartDataFileFixTimestamp(t *testing.T, smartDataFilepath string)
 // returns the current testing context
 type ServerTestSuite struct {
 	suite.Suite
-	Basepath string
+	Basepath   string
+	InfluxHost string
 }
 
-// SetupSuite checks if InfluxDB is available before running integration tests.
-// If InfluxDB is not reachable, the entire test suite is skipped with a helpful message.
+// SetupSuite picks a reachable InfluxDB host before running integration tests, or skips the suite.
+// The CI "Test Backend" job runs on the runner rather than in a job container, so its influxdb
+// service is published on localhost:8086; the "influxdb" host name resolves only from inside a job
+// container. Choosing "influxdb" whenever GITHUB_ACTIONS was set made this suite skip in CI.
 func (suite *ServerTestSuite) SetupSuite() {
-	influxHost := "localhost"
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		influxHost = "influxdb"
-	}
-
 	client := &http.Client{Timeout: 2 * time.Second}
-	_, err := client.Get(fmt.Sprintf("http://%s:8086/api/v2/setup", influxHost))
-	if err != nil {
-		suite.T().Skip("Skipping integration tests: InfluxDB not available at " + influxHost + ":8086. See CLAUDE.md for setup instructions.")
+	for _, host := range []string{"localhost", "influxdb"} {
+		response, err := client.Get(fmt.Sprintf("http://%s:8086/api/v2/setup", host))
+		if err == nil {
+			_ = response.Body.Close()
+			suite.InfluxHost = host
+			return
+		}
 	}
+	suite.T().Skip("Skipping integration tests: InfluxDB not available at localhost:8086 or influxdb:8086. See CLAUDE.md for setup instructions.")
 }
 
 func TestServerTestSuite_WithEmptyBasePath(t *testing.T) {
@@ -165,12 +168,7 @@ func (suite *ServerTestSuite) TestHealthRoute() {
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		// when running test suite in github actions, we run an influxdb service as a sidecar.
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{
 		Config: fakeConfig,
@@ -233,12 +231,7 @@ func (suite *ServerTestSuite) TestHealthRoute_MissingFrontend() {
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		// when running test suite in github actions, we run an influxdb service as a sidecar.
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{
 		Config: fakeConfig,
@@ -303,11 +296,7 @@ func (suite *ServerTestSuite) TestAPIDocsRoutes() {
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{
 		Config: fakeConfig,
@@ -362,12 +351,7 @@ func (suite *ServerTestSuite) TestRegisterDevicesRoute() {
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		// when running test suite in github actions, we run an influxdb service as a sidecar.
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{
 		Config: fakeConfig,
@@ -428,11 +412,7 @@ func (suite *ServerTestSuite) TestRegisterDevicesRoute_LegacySmartSupportBool() 
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{
 		Config: fakeConfig,
@@ -491,11 +471,7 @@ func (suite *ServerTestSuite) TestRegisterDevicesRoute_LegacySmartSupportString(
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{
 		Config: fakeConfig,
@@ -556,12 +532,7 @@ func (suite *ServerTestSuite) TestUploadDeviceMetricsRoute() {
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		// when running test suite in github actions, we run an influxdb service as a sidecar.
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.notify_level", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsNotifyLevelFail))
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_filter_attributes", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusFilterAttributesAll))
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_threshold", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusThresholdBoth))
@@ -631,12 +602,7 @@ func (suite *ServerTestSuite) TestPopulateMultiple() {
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		// when running test suite in github actions, we run an influxdb service as a sidecar.
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{
 		Config: fakeConfig,
@@ -750,12 +716,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_WebhookFailure() {
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_filter_attributes", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusFilterAttributesAll))
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_threshold", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusThresholdBoth))
 
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		// when running test suite in github actions, we run an influxdb service as a sidecar.
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{
 		Config: fakeConfig,
@@ -811,12 +772,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_ScriptFailure() {
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_filter_attributes", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusFilterAttributesAll))
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_threshold", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusThresholdBoth))
 
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		// when running test suite in github actions, we run an influxdb service as a sidecar.
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{
 		Config: fakeConfig,
@@ -872,12 +828,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_ScriptSuccess() {
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_filter_attributes", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusFilterAttributesAll))
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_threshold", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusThresholdBoth))
 
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		// when running test suite in github actions, we run an influxdb service as a sidecar.
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{
 		Config: fakeConfig,
@@ -933,12 +884,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_ShoutrrrFailure() {
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_filter_attributes", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusFilterAttributesAll))
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_threshold", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusThresholdBoth))
 
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		// when running test suite in github actions, we run an influxdb service as a sidecar.
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 	ae := web.AppEngine{
 		Config: fakeConfig,
 	}
@@ -999,11 +945,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_AppriseSuccess() {
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_filter_attributes", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusFilterAttributesAll))
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_threshold", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusThresholdBoth))
 
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{Config: fakeConfig}
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
@@ -1061,11 +1003,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_AppriseFailure() {
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_filter_attributes", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusFilterAttributesAll))
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_threshold", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusThresholdBoth))
 
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{Config: fakeConfig}
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
@@ -1119,12 +1057,7 @@ func (suite *ServerTestSuite) TestGetDevicesSummaryRoute_Nvme() {
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_filter_attributes", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusFilterAttributesAll))
 	fakeConfig.EXPECT().GetInt(fmt.Sprintf("%s.metrics.status_threshold", config.DB_USER_SETTINGS_SUBKEY)).AnyTimes().Return(int(pkg.MetricsStatusThresholdBoth))
 
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		// when running test suite in github actions, we run an influxdb service as a sidecar.
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{
 		Config: fakeConfig,
@@ -1222,11 +1155,7 @@ func (suite *ServerTestSuite) TestStaticFileMimeTypes() {
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{
 		Config: fakeConfig,
@@ -1311,11 +1240,7 @@ func (suite *ServerTestSuite) TestBrowserSubdirectoryDetection() {
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{
 		Config: fakeConfig,
@@ -1385,11 +1310,7 @@ func (suite *ServerTestSuite) TestBrowserSubdirectoryDetection_NoBrowserDir() {
 	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
 	fakeConfig.EXPECT().GetStringSlice("failures.ignored.devstat").Return([]string{}).AnyTimes()
 	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("influxdb").AnyTimes()
-	} else {
-		fakeConfig.EXPECT().GetString("web.influxdb.host").Return("localhost").AnyTimes()
-	}
+	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{
 		Config: fakeConfig,
