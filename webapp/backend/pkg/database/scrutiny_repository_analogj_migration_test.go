@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -241,16 +240,7 @@ func TestPrepareAnalogJDeviceRepairUsesCollectorDiscoveredWWN(t *testing.T) {
 func TestAnalogJMigrationIntegration(t *testing.T) {
 	ResetMigrationGuardForTests()
 
-	influxHost := "localhost"
-	if _, isGitHubActions := os.LookupEnv("GITHUB_ACTIONS"); isGitHubActions {
-		influxHost = "influxdb"
-	}
-	client := &http.Client{Timeout: 2 * time.Second}
-	response, err := client.Get(fmt.Sprintf("http://%s:8086/api/v2/setup", influxHost))
-	if err != nil {
-		t.Skip("Skipping integration test: InfluxDB not available at " + influxHost + ":8086")
-	}
-	require.NoError(t, response.Body.Close())
+	influxHost := integrationInfluxHost(t)
 
 	mockCtrl := gomock.NewController(t)
 	t.Cleanup(mockCtrl.Finish)
