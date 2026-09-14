@@ -109,9 +109,10 @@ func TestSharedWWNHistory_Integration(t *testing.T) {
 	require.ElementsMatch(t, []int64{40}, temperatureTemps(selected[sharedA.DeviceID]))
 	require.NotContains(t, selected, sharedB.DeviceID)
 
-	// deleting one of the devices that share a WWN keeps the other device's points and the unowned one
+	// deleting one of the devices that share a WWN deletes only its device_id-tagged points. The other
+	// device keeps its points and now holds the WWN alone, so the untagged point is attributed to it.
 	require.NoError(t, repo.DeleteDevice(ctx, sharedA.DeviceID))
-	require.ElementsMatch(t, []int64{50}, smartTemps(sharedB.DeviceID))
+	require.ElementsMatch(t, []int64{50, 60}, smartTemps(sharedB.DeviceID))
 	require.Equal(t, int64(2), countSmartTempPoints(t, repo, sharedWWN))
 
 	// deleting the device that alone holds its WWN also removes its untagged and stale-tagged points
