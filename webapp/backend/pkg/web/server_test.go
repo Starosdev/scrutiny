@@ -117,6 +117,9 @@ func (suite *ServerTestSuite) SetupSuite() {
 			return
 		}
 	}
+	if os.Getenv("SCRUTINY_REQUIRE_INFLUXDB") != "" {
+		suite.T().Fatal("InfluxDB not available at localhost:8086 or influxdb:8086, and SCRUTINY_REQUIRE_INFLUXDB is set")
+	}
 	suite.T().Skip("Skipping integration tests: InfluxDB not available at localhost:8086 or influxdb:8086. See CLAUDE.md for setup instructions.")
 }
 

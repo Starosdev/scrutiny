@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -193,6 +194,9 @@ func integrationInfluxHost(t *testing.T) string {
 			_ = response.Body.Close()
 			return host
 		}
+	}
+	if os.Getenv("SCRUTINY_REQUIRE_INFLUXDB") != "" {
+		t.Fatal("InfluxDB not available at localhost:8086 or influxdb:8086, and SCRUTINY_REQUIRE_INFLUXDB is set")
 	}
 	t.Skip("Skipping integration test: InfluxDB not available at localhost:8086 or influxdb:8086")
 	return ""
