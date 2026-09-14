@@ -161,15 +161,14 @@ func (mc *Collector) LoadInitialData(deviceRepo database.DeviceRepo, ctx context
 	var mapMu sync.Mutex
 
 	for _, deviceSummary := range summary {
-		wwn := deviceSummary.Device.WWN
 		wg.Add(1)
 		deviceID := deviceSummary.Device.DeviceID
-		go func(deviceID, w string) {
+		go func(deviceID string) {
 			defer wg.Done()
-			smarts, historyErr := deviceRepo.GetSmartAttributeHistory(ctx, w, "forever", 1, 0, nil)
+			smarts, historyErr := deviceRepo.GetSmartAttributeHistory(ctx, deviceID, "forever", 1, 0, nil)
 			if historyErr == nil && len(smarts) > 0 {
 				mapMu.Lock()
-				smartDataMap[w] = smarts
+				smartDataMap[deviceID] = smarts
 				mapMu.Unlock()
 			}
 			if deviceSummary.Device.IsAta() {
@@ -180,7 +179,7 @@ func (mc *Collector) LoadInitialData(deviceRepo database.DeviceRepo, ctx context
 					mapMu.Unlock()
 				}
 			}
-		}(deviceID, wwn)
+		}(deviceID)
 	}
 
 	wg.Wait()
@@ -188,7 +187,7 @@ func (mc *Collector) LoadInitialData(deviceRepo database.DeviceRepo, ctx context
 	nextDevices := make(map[string]*metricsModels.DeviceMetricsData)
 	for _, deviceSummary := range summary {
 		device := deviceSummary.Device
-		if smartResults, ok := smartDataMap[device.WWN]; ok && len(smartResults) > 0 {
+		if smartResults, ok := smartDataMap[device.DeviceID]; ok && len(smartResults) > 0 {
 			nextDevices[device.DeviceID] = &metricsModels.DeviceMetricsData{
 				Device:         device,
 				SmartData:      smartResults[0],

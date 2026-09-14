@@ -26,6 +26,9 @@ type Detect struct {
 	Logger *logrus.Entry
 	Config config.Interface
 	Shell  shell.Interface
+
+	// blockWWNFallback replaces the platform wwnFallback in tests; nil uses wwnFallback.
+	blockWWNFallback func(*models.Device)
 }
 
 // stripDevicePrefix removes the platform-specific device prefix from a device path.
@@ -247,9 +250,20 @@ func (d *Detect) SmartCtlInfo(device *models.Device) error {
 		}
 		device.WWN = strings.ToLower(wwn.ToString())
 		d.Logger.Debugf("NAA: %d OUI: %d Id: %d => WWN: %s", wwn.Naa, wwn.Oui, wwn.Id, device.WWN)
+	} else if device.SharedDeviceFile {
+		// Several drives are addressed through this one device file (cciss,N, megaraid,N
+		// on /dev/sdX, ...). Its block device WWN belongs to the controller volume, so
+		// every drive would get the same WWN (#850). Use the serial, which is also what
+		// wwnFallback yields for controller paths with no block device (/dev/bus/N).
+		d.Logger.Info("Device file is shared by several drives; using serial number as WWN")
+		device.WWN = strings.ToLower(device.SerialNumber)
 	} else {
 		d.Logger.Info("Using WWN Fallback")
-		d.wwnFallback(device)
+		if d.blockWWNFallback != nil {
+			d.blockWWNFallback(device)
+		} else {
+			d.wwnFallback(device)
+		}
 	}
 	if len(device.WWN) == 0 {
 		d.Logger.Warnf("no WWN populated for device: %s. Device will be registered using model+serial as identifier.", device.DeviceName)
@@ -267,9 +281,13 @@ func (d *Detect) TransformDetectedDevices(detectedDeviceConns models.Scan) []mod
 	// now that we've "grouped" all the devices, lets override any groups specified in the config file.
 	d.applyDeviceOverrides(groupedDevices)
 
-	// flatten map
+	// flatten map. A group with several entries is one device file addressed with several
+	// device types (cciss,0..N on /dev/sda), so no entry may take that file's block WWN.
 	detectedDevices := []models.Device{}
 	for _, group := range groupedDevices {
+		for i := range group {
+			group[i].SharedDeviceFile = len(group) > 1
+		}
 		detectedDevices = append(detectedDevices, group...)
 	}
 

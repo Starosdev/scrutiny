@@ -156,7 +156,7 @@ func collectFailingAttributes(device *models.Device, smartAttrs *measurements.Sm
 }
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
-func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *measurements.Smart, notifyLevel pkg.MetricsNotifyLevel, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, wwn string, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
+func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *measurements.Smart, notifyLevel pkg.MetricsNotifyLevel, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, deviceID string, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
 	// 1. check if the device is healthy
 	// For warn level, a device with only warning attributes still has DeviceStatusPassed,
 	// so we must continue to the attribute-level check.
@@ -190,7 +190,7 @@ func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *
 	var lastPoints []measurements.Smart
 	var err error
 	if !repeatNotifications {
-		lastPoints, err = deviceRepo.GetPreviousSmartSubmission(c, wwn)
+		lastPoints, err = deviceRepo.GetPreviousSmartSubmission(c, deviceID)
 		if err != nil || len(lastPoints) < 1 {
 			logger.Debugln("Could not get the previous submission from the database. This is expected for the first or second submission of data for the device.")
 		}

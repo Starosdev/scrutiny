@@ -1,0 +1,53 @@
+{
+  "json_format_version": [
+    1,
+    0
+  ],
+  "smartctl": {
+    "version": [
+      7,
+      5
+    ],
+    "pre_release": false,
+    "svn_revision": "5714",
+    "platform_info": "x86_64-linux-6.12.107+deb13-amd64",
+    "build_info": "(local build)",
+    "argv": [
+      "smartctl",
+      "--info",
+      "--json",
+      "--device",
+      "cciss,0",
+      "/dev/sda"
+    ],
+    "drive_database_version": {
+      "string": "7.5/5706"
+    },
+    "exit_status": 0
+  },
+  "device": {
+    "name": "/dev/sda",
+    "info_name": "/dev/sda [cciss_disk_00] [SAT]",
+    "type": "sat",
+    "protocol": "ATA"
+  },
+  "model_name": "Inland SATA SSD",
+  "serial_number": "IBNTMC211225609752",
+  "firmware_version": "U1013A0",
+  "user_capacity": {
+    "blocks": 500118192,
+    "bytes": 256060514304
+  },
+  "logical_block_size": 512,
+  "physical_block_size": 512,
+  "rotation_rate": 0,
+  "form_factor": {
+    "ata_value": 3,
+    "name": "2.5 inches"
+  },
+  "in_smartctl_database": false,
+  "smart_support": {
+    "available": true,
+    "enabled": true
+  }
+}

@@ -270,6 +270,27 @@ CREATE TABLE devices (
 	require.Equal(t, int64(42), missedPingTimeoutOverride)
 }
 
+// fixes #851: m20260508000000 rebuilt the devices table and recreated idx_devices_wwn
+// as UNIQUE, so two drives sharing a WWN failed registration. This runs every
+// migration from before that rebuild and pins the final index definition.
+func TestMigrateLeavesDevicesWWNIndexNonUnique(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+	require.NoError(t, repo.Migrate(context.Background()))
+
+	var indexSQL string
+	require.NoError(t, repo.gormClient.Raw(
+		`SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'idx_devices_wwn'`,
+	).Scan(&indexSQL).Error)
+	require.Equal(t, "CREATE INDEX idx_devices_wwn ON devices(wwn)", indexSQL)
+
+	for _, serial := range []string{"PPKJA1ZB", "PPK4ZTUB"} {
+		require.NoError(t, repo.gormClient.Exec(
+			`INSERT INTO devices (device_id, wwn, model_name, serial_number) VALUES (?, ?, ?, ?)`,
+			"device-"+serial, "0x600508b1001039343720202020200016", "HITACHI HUC106060CSS600", serial,
+		).Error)
+	}
+}
+
 func TestAttributeOverridesSchemaSurvivesLaterAutoMigrate(t *testing.T) {
 	repo := createMigrationTestRepositoryWithAppliedMigrations(t, []string{
 		"20201107210306",
@@ -767,6 +788,8 @@ func TestMigrateSelfTestChronologyPreservesLegacyHistory(t *testing.T) {
 	require.Equal(t, 2464, row.LifetimeHours)
 	require.Nil(t, row.EffectiveLifetimeHours)
 	require.Zero(t, row.ObservedAt)
+	// m20260914000001 re-keys history written under the WWN identity to its device_id (#851).
+	require.Equal(t, "device-1", row.DeviceIdentity)
 	require.False(t, repo.gormClient.Migrator().HasIndex(&models.DeviceSelfTest{}, "idx_device_self_tests_identity"))
 	require.NoError(t, repo.gormClient.Exec(`INSERT INTO device_self_tests(device_identity,type_value,lifetime_hours,effective_lifetime_hours) VALUES ('wwn-1',1,2464,68000)`).Error)
 }

@@ -3,9 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
-	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"gorm.io/gorm"
@@ -43,10 +41,9 @@ func (sr *scrutinyRepository) UpdateHostArchived(ctx context.Context, hostID str
 }
 
 func (sr *scrutinyRepository) PurgeHosts(ctx context.Context, hostIDs []string) ([]models.HostActionResult, error) {
+	// Load every device, host-less ones included, to know which WWNs are held outside the selection.
 	var devices []models.Device
-	if err := sr.gormClient.WithContext(ctx).
-		Where("TRIM(host_id) <> ''").
-		Find(&devices).Error; err != nil {
+	if err := sr.gormClient.WithContext(ctx).Find(&devices).Error; err != nil {
 		return nil, fmt.Errorf("could not load SMART hosts for purge: %w", err)
 	}
 
@@ -56,12 +53,15 @@ func (sr *scrutinyRepository) PurgeHosts(ctx context.Context, hostIDs []string) 
 		selectedHosts[hostID] = struct{}{}
 	}
 	for i := range devices {
+		if strings.TrimSpace(devices[i].HostId) == "" {
+			continue
+		}
 		if _, selected := selectedHosts[devices[i].HostId]; selected {
 			devicesByHost[devices[i].HostId] = append(devicesByHost[devices[i].HostId], devices[i])
 		}
 	}
 
-	blockedHosts := findHostsWithExternallySharedWWNs(devices, selectedHosts)
+	deletableWWNs := wwnsHeldOnlyBySelectedHosts(devices, selectedHosts)
 	results := make([]models.HostActionResult, 0, len(hostIDs))
 	for _, hostID := range hostIDs {
 		hostDevices := devicesByHost[hostID]
@@ -74,16 +74,7 @@ func (sr *scrutinyRepository) PurgeHosts(ctx context.Context, hostIDs []string) 
 			results = append(results, result)
 			continue
 		}
-		if sharedWWNs := blockedHosts[hostID]; len(sharedWWNs) > 0 {
-			result.Error = fmt.Sprintf(
-				"history deletion blocked because WWN %q is also used outside selected hosts",
-				sharedWWNs[0],
-			)
-			results = append(results, result)
-			continue
-		}
-
-		if err := sr.deleteHostInfluxHistory(ctx, hostID, hostDevices); err != nil {
+		if err := sr.deleteHostInfluxHistory(ctx, hostDevices, deletableWWNs); err != nil {
 			result.Error = err.Error()
 			results = append(results, result)
 			continue
@@ -102,73 +93,38 @@ func (sr *scrutinyRepository) PurgeHosts(ctx context.Context, hostIDs []string) 
 	return results, nil
 }
 
-func findHostsWithExternallySharedWWNs(devices []models.Device, selectedHosts map[string]struct{}) map[string][]string {
-	hostsByWWN := make(map[string]map[string]struct{})
+// wwnsHeldOnlyBySelectedHosts returns the WWNs whose every holder belongs to a selected host. Purging
+// the selection may delete points by such a WWN, which also reaches untagged legacy points. A WWN held
+// by any other device, host-less ones included, is purged only through each device's device_id.
+func wwnsHeldOnlyBySelectedHosts(devices []models.Device, selectedHosts map[string]struct{}) map[string]struct{} {
+	heldOutside := map[string]bool{}
 	for i := range devices {
 		wwn := devices[i].WWN
 		if strings.TrimSpace(wwn) == "" {
 			continue
 		}
-		if hostsByWWN[wwn] == nil {
-			hostsByWWN[wwn] = make(map[string]struct{})
-		}
-		hostsByWWN[wwn][devices[i].HostId] = struct{}{}
+		_, selected := selectedHosts[devices[i].HostId]
+		outside := strings.TrimSpace(devices[i].HostId) == "" || !selected
+		heldOutside[wwn] = heldOutside[wwn] || outside
 	}
 
-	blocked := make(map[string][]string)
-	for wwn, hosts := range hostsByWWN {
-		hasOutsideHost := false
-		for hostID := range hosts {
-			if _, selected := selectedHosts[hostID]; !selected {
-				hasOutsideHost = true
-				break
-			}
-		}
-		if !hasOutsideHost {
-			continue
-		}
-		for hostID := range hosts {
-			if _, selected := selectedHosts[hostID]; selected {
-				blocked[hostID] = append(blocked[hostID], wwn)
-			}
+	deletable := map[string]struct{}{}
+	for wwn, outside := range heldOutside {
+		if !outside {
+			deletable[wwn] = struct{}{}
 		}
 	}
-	for hostID := range blocked {
-		sort.Strings(blocked[hostID])
-	}
-	return blocked
+	return deletable
 }
 
-func (sr *scrutinyRepository) deleteHostInfluxHistory(ctx context.Context, hostID string, devices []models.Device) error {
-	wwns := make(map[string]struct{}, len(devices))
+// deleteHostInfluxHistory deletes the history of a purged host's devices. History used to be deleted
+// by WWN, so a WWN shared with another host blocked the purge; it is now deleted by device_id, and by
+// WWN only for WWNs no device outside the selection holds.
+func (sr *scrutinyRepository) deleteHostInfluxHistory(ctx context.Context, devices []models.Device, deletableWWNs map[string]struct{}) error {
 	for i := range devices {
-		if wwn := devices[i].WWN; strings.TrimSpace(wwn) != "" {
-			wwns[wwn] = struct{}{}
-		}
-	}
-	if len(wwns) == 0 {
-		return nil
-	}
-
-	buckets := []string{
-		sr.appConfig.GetString(cfgInfluxDBBucket),
-		fmt.Sprintf("%s_weekly", sr.appConfig.GetString(cfgInfluxDBBucket)),
-		fmt.Sprintf("%s_monthly", sr.appConfig.GetString(cfgInfluxDBBucket)),
-		fmt.Sprintf("%s_yearly", sr.appConfig.GetString(cfgInfluxDBBucket)),
-	}
-	for wwn := range wwns {
-		for _, bucket := range buckets {
-			sr.logger.Infof("Purging SMART host %s history for WWN %s in bucket %s", hostID, wwn, bucket)
-			if err := sr.influxClient.DeleteAPI().DeleteWithName(
-				ctx,
-				sr.appConfig.GetString(cfgInfluxDBOrg),
-				bucket,
-				time.Now().AddDate(-10, 0, 0),
-				time.Now(),
-				fmt.Sprintf("device_wwn=%q", wwn),
-			); err != nil {
-				return fmt.Errorf("could not delete history for WWN %q from bucket %q: %w", wwn, bucket, err)
-			}
+		_, deleteByWWN := deletableWWNs[devices[i].WWN]
+		if err := sr.deleteDeviceInfluxHistory(ctx, &devices[i], deleteByWWN); err != nil {
+			return err
 		}
 	}
 	return nil

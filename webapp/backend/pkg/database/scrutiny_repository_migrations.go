@@ -483,6 +483,8 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 		// non-empty WWN (e.g. multiple disks reporting 0x0000000000000000).
 		// Since device_id is now the primary key, wwn uniqueness is no longer needed.
 		// Fixes: https://github.com/Staros-Labs/scrutiny/issues/314
+		// m20260508000000 later rebuilt the devices table and recreated the index as
+		// UNIQUE; m20260914000000 restores the plain index (#851).
 		{
 			ID: "m20260402000000",
 			Migrate: func(tx *gorm.DB) error {
@@ -683,6 +685,24 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 		{ID: "m20260908000000", Migrate: migrateTemperatureStorageKey},
 		{ID: "m20260908000001", Migrate: migrateTemperatureNotificationSettings},
 		{ID: "m20260910000000", Migrate: m20260910000000.Migrate},
+		// m20260508000000 recreated idx_devices_wwn as UNIQUE while rebuilding the devices
+		// table, undoing m20260402000000. device_id is the identity, and drives behind one
+		// controller or with vendor-default WWNs can share a WWN (#851), so restore the
+		// plain index with the same statements m20260402000000 used.
+		{ID: "m20260914000000", Migrate: func(tx *gorm.DB) error {
+			return sr.migrateM20260402000000(tx)
+		}},
+		// Self-test history was keyed by WWN whenever a device had one, so drives sharing a
+		// WWN shared one history (#851). Re-key existing rows by the device_id they were
+		// written for; deviceSelfTestIdentity now returns device_id.
+		{ID: "m20260914000001", Migrate: func(tx *gorm.DB) error {
+			if !tx.Migrator().HasTable(&models.DeviceSelfTest{}) {
+				return nil
+			}
+			return tx.Model(&models.DeviceSelfTest{}).
+				Where("device_id <> ''").
+				Update("device_identity", gorm.Expr("device_id")).Error
+		}},
 	})
 
 	if err := m.Migrate(); err != nil {

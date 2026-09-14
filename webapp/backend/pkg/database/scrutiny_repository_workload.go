@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 	"time"
 
@@ -41,29 +42,30 @@ func (sr *scrutinyRepository) GetWorkloadInsights(ctx context.Context, durationK
 			DeviceUUID:     devices[i].DeviceUUID,
 			Intensity:      "unknown",
 		}
-		deviceProtocols[devices[i].WWN] = devices[i].DeviceProtocol
+		deviceProtocols[devices[i].DeviceID] = devices[i].DeviceProtocol
 	}
 
 	if len(insights) == 0 {
 		return insights, nil
 	}
 
+	owners := newHistoryOwners(devices)
+
 	// Query 1: first and last data points for rate computation
-	firstPoints, lastPoints, err := sr.queryWorkloadFirstLast(ctx, durationKey)
+	firstPoints, lastPoints, err := sr.queryWorkloadFirstLast(ctx, durationKey, owners)
 	if err != nil {
 		sr.logger.Errorf("Error querying workload first/last points: %v", err)
 		return insights, nil
 	}
 
 	// Query 2: recent points for spike detection (raw bucket only)
-	recentPoints, err := sr.queryWorkloadRecent(ctx)
+	recentPoints, err := sr.queryWorkloadRecent(ctx, owners)
 	if err != nil {
 		sr.logger.Errorf("Error querying workload recent points: %v", err)
 		// Non-fatal: continue without spike detection
 	}
 
-	// Compute insights per device.
-	// InfluxDB results are keyed by WWN, so we look up by WWN.
+	// Compute insights per device. Query results are keyed by device_id.
 	for _, insight := range insights {
 		sr.populateWorkloadInsight(insight, devices, deviceProtocols, firstPoints, lastPoints, recentPoints)
 	}
@@ -80,19 +82,19 @@ func (sr *scrutinyRepository) populateWorkloadInsight(
 	firstPoints, lastPoints map[string]*workloadSnapshot,
 	recentPoints map[string][]*workloadSnapshot,
 ) {
-	wwn := insight.DeviceWWN
+	deviceID := insight.DeviceID
 
-	first, hasFirst := firstPoints[wwn]
-	last, hasLast := lastPoints[wwn]
+	first, hasFirst := firstPoints[deviceID]
+	last, hasLast := lastPoints[deviceID]
 	if !hasFirst || !hasLast {
 		return
 	}
 
-	sr.computeWorkloadInsight(insight, first, last, deviceProtocols[wwn], maxTBWForDevice(devices, insight.DeviceID))
+	sr.computeWorkloadInsight(insight, first, last, deviceProtocols[deviceID], maxTBWForDevice(devices, deviceID))
 
 	// Spike detection
-	if recent, ok := recentPoints[wwn]; ok && len(recent) >= 2 {
-		spike := sr.detectSpike(recent, insight.DailyWriteBytes, deviceProtocols[wwn])
+	if recent, ok := recentPoints[deviceID]; ok && len(recent) >= 2 {
+		spike := sr.detectSpike(recent, insight.DailyWriteBytes, deviceProtocols[deviceID])
 		if spike != nil {
 			insight.Spike = spike
 		}
@@ -195,7 +197,7 @@ func parseWorkloadSnapshot(values map[string]interface{}) *workloadSnapshot {
 	return snap
 }
 
-func (sr *scrutinyRepository) queryWorkloadFirstLast(ctx context.Context, durationKey string) (
+func (sr *scrutinyRepository) queryWorkloadFirstLast(ctx context.Context, durationKey string, owners historyOwners) (
 	firstPoints map[string]*workloadSnapshot,
 	lastPoints map[string]*workloadSnapshot,
 	err error,
@@ -214,23 +216,18 @@ func (sr *scrutinyRepository) queryWorkloadFirstLast(ctx context.Context, durati
 
 	for result.Next() {
 		values := result.Record().Values()
-		deviceWWN, ok := values["device_wwn"]
-		if !ok || deviceWWN == nil {
+		deviceID, ok := owners.deviceFor(values)
+		if !ok {
 			continue
 		}
-		wwn := deviceWWN.(string)
 
 		snap := parseWorkloadSnapshot(values)
 
-		// Determine if this is a "first" or "last" result based on the yield name
-		resultName := result.TableMetadata().Column(0).Name()
 		if result.Record().Result() == "first" {
-			firstPoints[wwn] = snap
+			recordWorkloadSnapshot(firstPoints, deviceID, snap, true)
 		} else {
-			// "last" result or default
-			lastPoints[wwn] = snap
+			recordWorkloadSnapshot(lastPoints, deviceID, snap, false)
 		}
-		_ = resultName
 	}
 	if result.Err() != nil {
 		return nil, nil, fmt.Errorf("query iteration error: %w", result.Err())
@@ -304,7 +301,7 @@ func (sr *scrutinyRepository) buildWorkloadFirstLastQuery(durationKey string) st
 		`    (exists r["attr.data_units_written.value"] and r["attr.data_units_written.value"] > 0) or`,
 		`    (exists r["attr.data_units_read.value"] and r["attr.data_units_read.value"] > 0)`,
 		`)`,
-		`|> group(columns: ["device_wwn"])`,
+		`|> group(columns: ["device_id", "device_wwn"])`,
 		``,
 		`combined`,
 		`|> sort(columns: ["_time"], desc: false)`,
@@ -321,7 +318,7 @@ func (sr *scrutinyRepository) buildWorkloadFirstLastQuery(durationKey string) st
 	return strings.Join(partialQueryStr, "\n")
 }
 
-func (sr *scrutinyRepository) queryWorkloadRecent(ctx context.Context) (map[string][]*workloadSnapshot, error) {
+func (sr *scrutinyRepository) queryWorkloadRecent(ctx context.Context, owners historyOwners) (map[string][]*workloadSnapshot, error) {
 	recentPoints := map[string][]*workloadSnapshot{}
 
 	queryStr := sr.buildWorkloadRecentQuery()
@@ -335,19 +332,44 @@ func (sr *scrutinyRepository) queryWorkloadRecent(ctx context.Context) (map[stri
 
 	for result.Next() {
 		values := result.Record().Values()
-		deviceWWN, ok := values["device_wwn"]
-		if !ok || deviceWWN == nil {
+		deviceID, ok := owners.deviceFor(values)
+		if !ok {
 			continue
 		}
-		wwn := deviceWWN.(string)
-		snap := parseWorkloadSnapshot(values)
-		recentPoints[wwn] = append(recentPoints[wwn], snap)
+		recentPoints[deviceID] = append(recentPoints[deviceID], parseWorkloadSnapshot(values))
 	}
 	if result.Err() != nil {
 		return nil, fmt.Errorf("query iteration error: %w", result.Err())
 	}
 
+	for deviceID, points := range recentPoints {
+		recentPoints[deviceID] = newestWorkloadSnapshots(points)
+	}
+
 	return recentPoints, nil
+}
+
+// workloadRecentPointLimit is how many recent raw points spike detection compares per device.
+const workloadRecentPointLimit = 3
+
+// recordWorkloadSnapshot stores snap as the device's first (keepEarliest) or last snapshot unless the
+// map already holds an earlier or later one. A device can return one group of device_id-tagged points
+// and one of older untagged points, so the query yields a first and a last snapshot per group.
+func recordWorkloadSnapshot(points map[string]*workloadSnapshot, deviceID string, snap *workloadSnapshot, keepEarliest bool) {
+	existing, seen := points[deviceID]
+	if !seen || (keepEarliest && snap.Time.Before(existing.Time)) || (!keepEarliest && snap.Time.After(existing.Time)) {
+		points[deviceID] = snap
+	}
+}
+
+// newestWorkloadSnapshots merges a device's recent snapshots from its tagged and untagged groups,
+// newest first, and keeps the newest workloadRecentPointLimit of them.
+func newestWorkloadSnapshots(points []*workloadSnapshot) []*workloadSnapshot {
+	sort.Slice(points, func(i, j int) bool { return points[i].Time.After(points[j].Time) })
+	if len(points) > workloadRecentPointLimit {
+		points = points[:workloadRecentPointLimit]
+	}
+	return points
 }
 
 func (sr *scrutinyRepository) buildWorkloadRecentQuery() string {
@@ -371,9 +393,9 @@ func (sr *scrutinyRepository) buildWorkloadRecentQuery() string {
 		`|> filter(fn: (r) => r["_measurement"] == "smart")`,
 		`|> filter(fn: workloadFields)`,
 		`|> schema.fieldsAsCols()`,
-		`|> group(columns: ["device_wwn"])`,
+		`|> group(columns: ["device_id", "device_wwn"])`,
 		`|> sort(columns: ["_time"], desc: true)`,
-		`|> limit(n: 3)`,
+		fmt.Sprintf(`|> limit(n: %d)`, workloadRecentPointLimit),
 	}, "\n")
 }
 
