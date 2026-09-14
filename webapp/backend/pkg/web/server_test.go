@@ -120,10 +120,13 @@ func (suite *ServerTestSuite) SetupSuite() {
 	suite.T().Skip("Skipping integration tests: InfluxDB not available at localhost:8086 or influxdb:8086. See CLAUDE.md for setup instructions.")
 }
 
-// SetupTest lets each test migrate its own temporary database. Migrations run once per process, so
-// without the reset only the first database created in the package is migrated.
-func (suite *ServerTestSuite) SetupTest() {
+// migrateDatabase migrates the test database the way AppEngine.Start does before it calls Setup. Setup
+// opens repositories without migrating, and migrations run once per process, so the guard is reset.
+func (suite *ServerTestSuite) migrateDatabase(appConfig config.Interface) {
 	database.ResetMigrationGuardForTests()
+	repo, err := database.NewScrutinyRepository(appConfig, logrus.WithField("test", suite.T().Name()))
+	suite.Require().NoError(err)
+	suite.Require().NoError(repo.Close())
 }
 
 func TestServerTestSuite_WithEmptyBasePath(t *testing.T) {
@@ -181,6 +184,7 @@ func (suite *ServerTestSuite) TestHealthRoute() {
 		Config: fakeConfig,
 	}
 
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 
 	//test
@@ -244,6 +248,7 @@ func (suite *ServerTestSuite) TestHealthRoute_MissingFrontend() {
 		Config: fakeConfig,
 	}
 
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 
 	//test
@@ -308,6 +313,7 @@ func (suite *ServerTestSuite) TestAPIDocsRoutes() {
 	ae := web.AppEngine{
 		Config: fakeConfig,
 	}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 
 	swaggerResp := httptest.NewRecorder()
@@ -363,6 +369,7 @@ func (suite *ServerTestSuite) TestRegisterDevicesRoute() {
 	ae := web.AppEngine{
 		Config: fakeConfig,
 	}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 	file, err := os.Open("testdata/register-devices-req.json")
 	require.NoError(suite.T(), err)
@@ -424,6 +431,7 @@ func (suite *ServerTestSuite) TestRegisterDevicesRoute_LegacySmartSupportBool() 
 	ae := web.AppEngine{
 		Config: fakeConfig,
 	}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 	file, err := os.Open("testdata/register-devices-req-legacy-smart-support.json")
 	require.NoError(suite.T(), err)
@@ -483,6 +491,7 @@ func (suite *ServerTestSuite) TestRegisterDevicesRoute_LegacySmartSupportString(
 	ae := web.AppEngine{
 		Config: fakeConfig,
 	}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 
 	body := `{"data":[{"device_id":"legacy-device-id-2","wwn":"legacy-wwn-2","device_name":"sdb","manufacturer":"LegacyCorp","model_name":"Legacy Disk","interface_type":"SATA","interface_speed":"6.0 Gb/s","serial_number":"LEGACY456","firmware":"1.0","rotational_speed":7200,"capacity":1000000,"form_factor":"3.5 inches","smart_support":"true","device_protocol":"ATA","device_type":"sat","host_id":"legacy-host","collector_version":"1.52.0"}]}`
@@ -547,6 +556,7 @@ func (suite *ServerTestSuite) TestUploadDeviceMetricsRoute() {
 	ae := web.AppEngine{
 		Config: fakeConfig,
 	}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 	devicesfile, err := os.Open("testdata/register-devices-single-req.json")
 	require.NoError(suite.T(), err)
@@ -614,6 +624,7 @@ func (suite *ServerTestSuite) TestPopulateMultiple() {
 	ae := web.AppEngine{
 		Config: fakeConfig,
 	}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 	devicesfile, err := os.Open("testdata/register-devices-req.json")
 	require.NoError(suite.T(), err)
@@ -728,6 +739,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_WebhookFailure() {
 	ae := web.AppEngine{
 		Config: fakeConfig,
 	}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 
 	//test
@@ -784,6 +796,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_ScriptFailure() {
 	ae := web.AppEngine{
 		Config: fakeConfig,
 	}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 
 	//test
@@ -840,6 +853,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_ScriptSuccess() {
 	ae := web.AppEngine{
 		Config: fakeConfig,
 	}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 
 	//test
@@ -895,6 +909,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_ShoutrrrFailure() {
 	ae := web.AppEngine{
 		Config: fakeConfig,
 	}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 
 	//test
@@ -955,6 +970,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_AppriseSuccess() {
 	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{Config: fakeConfig}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 
 	wr := httptest.NewRecorder()
@@ -1013,6 +1029,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_AppriseFailure() {
 	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(suite.InfluxHost).AnyTimes()
 
 	ae := web.AppEngine{Config: fakeConfig}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 
 	wr := httptest.NewRecorder()
@@ -1069,6 +1086,7 @@ func (suite *ServerTestSuite) TestGetDevicesSummaryRoute_Nvme() {
 	ae := web.AppEngine{
 		Config: fakeConfig,
 	}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 	devicesfile, err := os.Open("testdata/register-devices-req-2.json")
 	require.NoError(suite.T(), err)
@@ -1167,6 +1185,7 @@ func (suite *ServerTestSuite) TestStaticFileMimeTypes() {
 	ae := web.AppEngine{
 		Config: fakeConfig,
 	}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 
 	// Expected MIME types based on registered types
@@ -1252,6 +1271,7 @@ func (suite *ServerTestSuite) TestBrowserSubdirectoryDetection() {
 	ae := web.AppEngine{
 		Config: fakeConfig,
 	}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 
 	//test - verify index.html is served from browser subdirectory
@@ -1322,6 +1342,7 @@ func (suite *ServerTestSuite) TestBrowserSubdirectoryDetection_NoBrowserDir() {
 	ae := web.AppEngine{
 		Config: fakeConfig,
 	}
+	suite.migrateDatabase(ae.Config)
 	router := ae.Setup(logrus.WithField("test", suite.T().Name()))
 
 	//test - verify index.html is served from parent path (no browser subdirectory)
