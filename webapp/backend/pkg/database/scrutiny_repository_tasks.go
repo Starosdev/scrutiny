@@ -80,13 +80,17 @@ func (sr *scrutinyRepository) DownsampleScript(aggregationType string, name stri
 		aggWindow = "1y"
 	}
 
+	// Aggregates group by device_id as well as device_wwn. Grouping by WWN alone dropped the
+	// device_id tag from every downsampled point and merged devices that share a WWN (#851).
+	// ensureDownsampleTask replaces existing task scripts when this text changes.
+	//
 	// TODO: using "last" function for aggregation. This should eventually be replaced with a more accurate represenation
 	/*
 	  import "types"
 	  smart_data = from(bucket: sourceBucket)
 	  |> range(start: rangeStart, stop: rangeEnd)
 	  |> filter(fn: (r) => r["_measurement"] == "smart" )
-	  |> group(columns: ["device_wwn", "_field"])
+	  |> group(columns: ["device_id", "device_wwn", "_field"])
 
 	  non_numeric_smart_data = smart_data
 	    |> filter(fn: (r) => types.isType(v: r._value, type: "string") or types.isType(v: r._value, type: "bool"))
@@ -117,14 +121,14 @@ destOrg = "%s"
 from(bucket: sourceBucket)
 |> range(start: rangeStart, stop: rangeEnd)
 |> filter(fn: (r) => r["_measurement"] == "smart" )
-|> group(columns: ["device_wwn", "_field"])
+|> group(columns: ["device_id", "device_wwn", "_field"])
 |> aggregateWindow(every: aggWindow, fn: last, createEmpty: false)
 |> to(bucket: destBucket, org: destOrg)
 
 from(bucket: sourceBucket)
 |> range(start: rangeStart, stop: rangeEnd)
 |> filter(fn: (r) => r["_measurement"] == "temp")
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> toInt()
 |> aggregateWindow(fn: mean, every: aggWindow, createEmpty: false)
 |> set(key: "_measurement", value: "temp")

@@ -23,7 +23,7 @@ func TestDeviceHistoryQueriesUseDeviceIdentityInsteadOfHostID(t *testing.T) {
 	require.Contains(t, smartQuery, `r["device_id"] == "device-1"`)
 	require.NotContains(t, smartQuery, "host_id")
 
-	temperatureQuery := deviceRepo.aggregateTempQuery(DURATION_KEY_FOREVER, "wwn-1")
+	temperatureQuery := deviceRepo.aggregateTempQuery(DURATION_KEY_FOREVER, []string{"device-1"}, []string{"wwn-1"})
 	require.Contains(t, temperatureQuery, `r["device_wwn"]`)
 	require.NotContains(t, temperatureQuery, "host_id")
 }
@@ -35,7 +35,7 @@ func TestDeviceHistoryPredicate(t *testing.T) {
 	t.Parallel()
 
 	require.Equal(t,
-		`r["device_id"] == "device-1" or (not exists r["device_id"] and r["device_wwn"] == "wwn-1")`,
+		`(exists r["device_id"] and r["device_id"] == "device-1") or (not exists r["device_id"] and r["device_wwn"] == "wwn-1")`,
 		deviceHistoryPredicate("device-1", "wwn-1", true))
-	require.Equal(t, `r["device_id"] == "device-1"`, deviceHistoryPredicate("device-1", "wwn-1", false))
+	require.Equal(t, `(exists r["device_id"] and r["device_id"] == "device-1")`, deviceHistoryPredicate("device-1", "wwn-1", false))
 }

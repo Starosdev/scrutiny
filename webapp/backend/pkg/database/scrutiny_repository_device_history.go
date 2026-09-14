@@ -46,11 +46,45 @@ func (sr *scrutinyRepository) wwnIsUnique(ctx context.Context, wwn string) (bool
 // and every downsampled point aggregated before the downsample tasks kept device_id,
 // carry only device_wwn. Those can only be attributed while no other device holds the
 // same WWN, because nothing in the point tells two such devices apart, so a shared
-// WWN leaves them out rather than guessing.
+// WWN leaves them out rather than guessing. Comparisons are guarded with exists, as in
+// GetTemperatureNotificationHistory, rather than comparing a column a point may lack.
 func deviceHistoryPredicate(deviceID, wwn string, wwnUnique bool) string {
-	predicate := fmt.Sprintf(`r["device_id"] == %s`, strconv.Quote(deviceID))
+	predicate := fmt.Sprintf(`(exists r["device_id"] and r["device_id"] == %s)`, strconv.Quote(deviceID))
 	if wwnUnique {
 		predicate += fmt.Sprintf(` or (not exists r["device_id"] and r["device_wwn"] == %s)`, strconv.Quote(wwn))
 	}
 	return predicate
+}
+
+// uniqueWWNDeviceIDs maps each WWN held by exactly one device to that device's ID. A WWN
+// shared by several devices is left out: an untagged point with that WWN cannot be
+// attributed to any one of them.
+func uniqueWWNDeviceIDs(devices []models.Device) map[string]string {
+	holders := map[string]int{}
+	for i := range devices {
+		if strings.TrimSpace(devices[i].WWN) != "" {
+			holders[devices[i].WWN]++
+		}
+	}
+	uniqueWWNs := map[string]string{}
+	for i := range devices {
+		if holders[devices[i].WWN] == 1 {
+			uniqueWWNs[devices[i].WWN] = devices[i].DeviceID
+		}
+	}
+	return uniqueWWNs
+}
+
+// historyRecordDeviceID returns the device an aggregated InfluxDB record belongs to: its
+// device_id tag, or, for a record without one, the device that alone holds its device_wwn.
+func historyRecordDeviceID(values map[string]interface{}, uniqueWWNs map[string]string) (string, bool) {
+	if deviceID, ok := values["device_id"].(string); ok && deviceID != "" {
+		return deviceID, true
+	}
+	deviceWWN, ok := values["device_wwn"].(string)
+	if !ok {
+		return "", false
+	}
+	deviceID, ok := uniqueWWNs[deviceWWN]
+	return deviceID, ok
 }

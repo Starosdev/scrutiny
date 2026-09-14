@@ -57,7 +57,9 @@ func TestSaveSmartTemperatureStoresCurrentPointWhenHistoryStorageEnabled(t *test
 	require.Equal(t, 1, writeAPI.points)
 }
 
-func TestAggregateTempQueryFiltersSelectedWWNs(t *testing.T) {
+// fixes #851: selected devices are matched on device_id; untagged legacy points are reached only
+// through WWNs the caller has already established that one selected device holds alone.
+func TestAggregateTempQueryFiltersSelectedDevices(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -66,10 +68,14 @@ func TestAggregateTempQueryFiltersSelectedWWNs(t *testing.T) {
 	fakeConfig.EXPECT().GetString("web.influxdb.bucket").Return("metrics").AnyTimes()
 
 	deviceRepo := scrutinyRepository{appConfig: fakeConfig}
-	influxDBScript := deviceRepo.aggregateTempQuery(DURATION_KEY_WEEK, "wwn-1", `wwn-"2`)
+	influxDBScript := deviceRepo.aggregateTempQuery(DURATION_KEY_WEEK, []string{"device-1", `device-"2`}, []string{"wwn-1"})
 
-	require.Contains(t, influxDBScript, `contains(value: r["device_wwn"], set: ["wwn-1", "wwn-\"2"])`)
-	require.Equal(t, 1, strings.Count(influxDBScript, `contains(value: r["device_wwn"]`))
+	require.Contains(t, influxDBScript,
+		`|> filter(fn: (r) => (exists r["device_id"] and contains(value: r["device_id"], set: ["device-1", "device-\"2"])) or (not exists r["device_id"] and contains(value: r["device_wwn"], set: ["wwn-1"])))`)
+	require.Equal(t, 1, strings.Count(influxDBScript, `contains(value: r["device_id"]`))
+
+	withoutLegacy := deviceRepo.aggregateTempQuery(DURATION_KEY_WEEK, []string{"device-1"}, nil)
+	require.NotContains(t, withoutLegacy, `r["device_wwn"], set`)
 }
 
 func Test_aggregateTempQuery_Day(t *testing.T) {
@@ -89,14 +95,14 @@ func Test_aggregateTempQuery_Day(t *testing.T) {
 	aggregationType := DURATION_KEY_DAY
 
 	//test
-	influxDbScript := deviceRepo.aggregateTempQuery(aggregationType)
+	influxDbScript := deviceRepo.aggregateTempQuery(aggregationType, nil, nil)
 
 	//assert
 	require.Equal(t, `import "influxdata/influxdb/schema"
 dayData = from(bucket: "metrics")
 |> range(start: -1d, stop: now())
 |> filter(fn: (r) => r["_measurement"] == "temp" )
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> toInt()
 
 dayData
@@ -121,7 +127,7 @@ func Test_aggregateTempQuery_Week(t *testing.T) {
 	aggregationType := DURATION_KEY_WEEK
 
 	//test
-	influxDbScript := deviceRepo.aggregateTempQuery(aggregationType)
+	influxDbScript := deviceRepo.aggregateTempQuery(aggregationType, nil, nil)
 
 	//assert
 	require.Equal(t, `import "influxdata/influxdb/schema"
@@ -129,7 +135,7 @@ weekData = from(bucket: "metrics")
 |> range(start: -1w, stop: now())
 |> filter(fn: (r) => r["_measurement"] == "temp" )
 |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> toInt()
 
 weekData
@@ -154,7 +160,7 @@ func Test_aggregateTempQuery_Month(t *testing.T) {
 	aggregationType := DURATION_KEY_MONTH
 
 	//test
-	influxDbScript := deviceRepo.aggregateTempQuery(aggregationType)
+	influxDbScript := deviceRepo.aggregateTempQuery(aggregationType, nil, nil)
 
 	//assert
 	require.Equal(t, `import "influxdata/influxdb/schema"
@@ -162,18 +168,18 @@ weekData = from(bucket: "metrics")
 |> range(start: -1w, stop: now())
 |> filter(fn: (r) => r["_measurement"] == "temp" )
 |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> toInt()
 
 monthData = from(bucket: "metrics_weekly")
 |> range(start: -1mo, stop: -1w)
 |> filter(fn: (r) => r["_measurement"] == "temp" )
 |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> toInt()
 
 union(tables: [weekData, monthData])
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> sort(columns: ["_time"], desc: false)
 |> schema.fieldsAsCols()`, influxDbScript)
 }
@@ -195,7 +201,7 @@ func Test_aggregateTempQuery_Year(t *testing.T) {
 	aggregationType := DURATION_KEY_YEAR
 
 	//test
-	influxDbScript := deviceRepo.aggregateTempQuery(aggregationType)
+	influxDbScript := deviceRepo.aggregateTempQuery(aggregationType, nil, nil)
 
 	//assert
 	require.Equal(t, `import "influxdata/influxdb/schema"
@@ -203,25 +209,25 @@ weekData = from(bucket: "metrics")
 |> range(start: -1w, stop: now())
 |> filter(fn: (r) => r["_measurement"] == "temp" )
 |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> toInt()
 
 monthData = from(bucket: "metrics_weekly")
 |> range(start: -1mo, stop: -1w)
 |> filter(fn: (r) => r["_measurement"] == "temp" )
 |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> toInt()
 
 yearData = from(bucket: "metrics_monthly")
 |> range(start: -1y, stop: -1mo)
 |> filter(fn: (r) => r["_measurement"] == "temp" )
 |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> toInt()
 
 union(tables: [weekData, monthData, yearData])
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> sort(columns: ["_time"], desc: false)
 |> schema.fieldsAsCols()`, influxDbScript)
 }
@@ -243,7 +249,7 @@ func Test_aggregateTempQuery_Forever(t *testing.T) {
 	aggregationType := DURATION_KEY_FOREVER
 
 	//test
-	influxDbScript := deviceRepo.aggregateTempQuery(aggregationType)
+	influxDbScript := deviceRepo.aggregateTempQuery(aggregationType, nil, nil)
 
 	//assert
 	require.Equal(t, `import "influxdata/influxdb/schema"
@@ -251,32 +257,32 @@ weekData = from(bucket: "metrics")
 |> range(start: -1w, stop: now())
 |> filter(fn: (r) => r["_measurement"] == "temp" )
 |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> toInt()
 
 monthData = from(bucket: "metrics_weekly")
 |> range(start: -1mo, stop: -1w)
 |> filter(fn: (r) => r["_measurement"] == "temp" )
 |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> toInt()
 
 yearData = from(bucket: "metrics_monthly")
 |> range(start: -1y, stop: -1mo)
 |> filter(fn: (r) => r["_measurement"] == "temp" )
 |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> toInt()
 
 foreverData = from(bucket: "metrics_yearly")
 |> range(start: -10y, stop: -1y)
 |> filter(fn: (r) => r["_measurement"] == "temp" )
 |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> toInt()
 
 union(tables: [weekData, monthData, yearData, foreverData])
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> sort(columns: ["_time"], desc: false)
 |> schema.fieldsAsCols()`, influxDbScript)
 }
