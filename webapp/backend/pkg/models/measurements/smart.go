@@ -251,6 +251,11 @@ func NewSmartFromInfluxDB(attrs map[string]interface{}, logger logrus.FieldLogge
 	}
 
 	for key, val := range attrs {
+		// A history row pivoted from several series carries null columns for fields or attributes the
+		// point did not have (for example another protocol's attributes). Null means absent.
+		if val == nil {
+			continue
+		}
 		switch key {
 		case "temp":
 			if intVal, ok := parseInt64Field(val, "temp", logger); ok {

@@ -270,6 +270,31 @@ func TestNewSmartFromInfluxDB_MissingProtocol(t *testing.T) {
 	}, smart)
 }
 
+// A merged history row has null columns for attributes the point did not carry; they must not become
+// empty attributes of the wrong type.
+func TestNewSmartFromInfluxDB_NullColumnsAreAbsent(t *testing.T) {
+	timeNow := time.Now()
+	attrs := map[string]interface{}{
+		"_time":                              timeNow,
+		"device_wwn":                         "test-wwn",
+		"device_protocol":                    pkg.DeviceProtocolAta,
+		"attr.1.attribute_id":                "1",
+		"attr.1.value":                       int64(135),
+		"attr.critical_warning.value":        nil,
+		"attr.critical_warning.attribute_id": nil,
+		"temp":                               int64(50),
+		"power_on_hours":                     nil,
+	}
+
+	smart, err := measurements.NewSmartFromInfluxDB(attrs, logrus.New())
+
+	require.NoError(t, err)
+	require.Len(t, smart.Attributes, 1)
+	require.Contains(t, smart.Attributes, "1")
+	require.Equal(t, int64(50), smart.Temp)
+	require.Zero(t, smart.PowerOnHours)
+}
+
 func TestNewSmartFromInfluxDB_MissingTime(t *testing.T) {
 	_, err := measurements.NewSmartFromInfluxDB(map[string]interface{}{"device_wwn": "test-wwn"}, logrus.New())
 	require.Error(t, err)
