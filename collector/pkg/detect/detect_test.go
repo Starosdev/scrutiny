@@ -636,6 +636,28 @@ func TestDetect_SmartCtlInfo(t *testing.T) {
 		// real disk happens to sit at /dev/sda.
 	})
 
+	// fixes #850: drives behind an HP Smart Array share /dev/sda. The block device WWN
+	// belongs to the controller volume, so every drive registered with the same WWN and
+	// all but one failed the devices.wwn unique constraint. Fixtures are real output
+	// from the reporter's P400i; neither carries a wwn block.
+	for _, testCase := range []struct {
+		deviceType, fixture, expectedWWN string
+	}{
+		{"cciss,1", "testdata/smartctl_info_cciss_sas.json", "ppkja1zb"},
+		{"cciss,0", "testdata/smartctl_info_cciss_sata.json", "ibntmc211225609752"},
+	} {
+		t.Run("should use the serial number as WWN for "+testCase.deviceType, func(t *testing.T) {
+			fakeShell, fakeConfig, someLogger := setupSmartCtlInfoMocks(t, "sda", testCase.deviceType, testCase.fixture, nil)
+
+			d := detect.Detect{Logger: someLogger, Shell: fakeShell, Config: fakeConfig}
+			someDevice := &models.Device{DeviceName: "sda", DeviceType: testCase.deviceType}
+
+			require.NoError(t, d.SmartCtlInfo(someDevice))
+
+			assert.Equal(t, testCase.expectedWWN, someDevice.WWN)
+		})
+	}
+
 	// fixes #664: "scsi" and "ata" are suppressed only because `smartctl --scan`
 	// mislabels ATA drives as scsi in docker. A type the user wrote down is an
 	// instruction, not a guess, and must be passed even when it is one of those two.
@@ -710,6 +732,31 @@ func TestDetect_AppendDeviceTypeArgs(t *testing.T) {
 			assert.Equal(t, testCase.expected,
 				detect.AppendDeviceTypeArgs([]string{"--info"}, someOverrides, testCase.fullDeviceName, testCase.deviceType))
 		})
+	}
+}
+
+// The SmartCtlInfo cciss tests cannot prove the block device lookup is skipped on a
+// host with no disk named sda, because wwnFallback also ends at the serial number there.
+// This pins the decision itself. A false positive re-identifies single-drive devices
+// (sat, usb bridges, nvme namespaces), so those cases matter as much as the true ones.
+func TestDetect_IsControllerPassthroughType(t *testing.T) {
+	for deviceType, expected := range map[string]bool{
+		"cciss,0":      true,
+		"megaraid,14":  true,
+		"3ware,2":      true,
+		"MEGARAID,1":   true,
+		" areca,1/1 ":  true,
+		"jmb39x-q,0":   true,
+		"":             false,
+		"scsi":         false,
+		"sat":          false,
+		"sat,12":       false,
+		"sat,auto":     false,
+		"nvme,0x1":     false,
+		"usbjmicron,0": false,
+		"megaraid":     false,
+	} {
+		assert.Equal(t, expected, detect.IsControllerPassthroughType(deviceType), deviceType)
 	}
 }
 

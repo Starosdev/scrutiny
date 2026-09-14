@@ -74,6 +74,23 @@ func isStandardDeviceType(deviceType string) bool {
 	}
 }
 
+// isControllerPassthroughType reports whether a device type addresses one of several
+// physical drives behind a RAID/HBA controller (cciss,N, megaraid,N, 3ware,N, ...).
+// Those drives share a single block device, so its WWN identifies the controller
+// volume rather than the drive and must not be used as the drive's identity (#850).
+func isControllerPassthroughType(deviceType string) bool {
+	family, _, hasIndex := strings.Cut(strings.ToLower(strings.TrimSpace(deviceType)), ",")
+	if !hasIndex {
+		return false
+	}
+	switch family {
+	case "3ware", "aacraid", "areca", "cciss", "hpt", "jmb39x", "jmb39x-q", "jmb39x-q2", "jms56x", "megaraid", "sssraid":
+		return true
+	default:
+		return false
+	}
+}
+
 func normalizeDeviceName(deviceName string) string {
 	return strings.TrimSpace(stripDevicePrefix(deviceName))
 }
@@ -247,6 +264,12 @@ func (d *Detect) SmartCtlInfo(device *models.Device) error {
 		}
 		device.WWN = strings.ToLower(wwn.ToString())
 		d.Logger.Debugf("NAA: %d OUI: %d Id: %d => WWN: %s", wwn.Naa, wwn.Oui, wwn.Id, device.WWN)
+	} else if isControllerPassthroughType(device.DeviceType) {
+		// Skip the block device lookup: every drive behind the controller would get the
+		// same WWN. The serial number is what wwnFallback already yields for controller
+		// paths with no block device (megaraid on /dev/bus/N), so those IDs do not change.
+		d.Logger.Info("Using serial number as WWN for controller passthrough device")
+		device.WWN = strings.ToLower(device.SerialNumber)
 	} else {
 		d.Logger.Info("Using WWN Fallback")
 		d.wwnFallback(device)
