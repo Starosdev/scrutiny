@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeviceHistoryQueriesUseStableWWNInsteadOfHostID(t *testing.T) {
+func TestDeviceHistoryQueriesUseDeviceIdentityInsteadOfHostID(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -18,11 +18,24 @@ func TestDeviceHistoryQueriesUseStableWWNInsteadOfHostID(t *testing.T) {
 
 	deviceRepo := scrutinyRepository{appConfig: fakeConfig}
 
-	smartQuery := deviceRepo.aggregateSmartAttributesQuery("wwn-1", DURATION_KEY_FOREVER, 1, 0, nil)
-	require.Contains(t, smartQuery, `r["device_wwn"] == "wwn-1"`)
+	historyFilter := deviceHistoryPredicate("device-1", "wwn-1", true)
+	smartQuery := deviceRepo.aggregateSmartAttributesQuery(historyFilter, DURATION_KEY_FOREVER, 1, 0, nil)
+	require.Contains(t, smartQuery, `r["device_id"] == "device-1"`)
 	require.NotContains(t, smartQuery, "host_id")
 
 	temperatureQuery := deviceRepo.aggregateTempQuery(DURATION_KEY_FOREVER, "wwn-1")
 	require.Contains(t, temperatureQuery, `r["device_wwn"]`)
 	require.NotContains(t, temperatureQuery, "host_id")
+}
+
+// fixes #851: points match on device_id. Points without a device_id tag fall back to
+// device_wwn only while a single device holds that WWN; a shared WWN must not pull in
+// another device's untagged history.
+func TestDeviceHistoryPredicate(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t,
+		`r["device_id"] == "device-1" or (not exists r["device_id"] and r["device_wwn"] == "wwn-1")`,
+		deviceHistoryPredicate("device-1", "wwn-1", true))
+	require.Equal(t, `r["device_id"] == "device-1"`, deviceHistoryPredicate("device-1", "wwn-1", false))
 }

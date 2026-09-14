@@ -692,6 +692,17 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 		{ID: "m20260914000000", Migrate: func(tx *gorm.DB) error {
 			return sr.migrateM20260402000000(tx)
 		}},
+		// Self-test history was keyed by WWN whenever a device had one, so drives sharing a
+		// WWN shared one history (#851). Re-key existing rows by the device_id they were
+		// written for; deviceSelfTestIdentity now returns device_id.
+		{ID: "m20260914000001", Migrate: func(tx *gorm.DB) error {
+			if !tx.Migrator().HasTable(&models.DeviceSelfTest{}) {
+				return nil
+			}
+			return tx.Model(&models.DeviceSelfTest{}).
+				Where("device_id <> ''").
+				Update("device_identity", gorm.Expr("device_id")).Error
+		}},
 	})
 
 	if err := m.Migrate(); err != nil {

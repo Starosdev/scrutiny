@@ -46,8 +46,8 @@ func UploadDeviceMetrics(c *gin.Context) {
 		return
 	}
 
-	// insert smart info (InfluxDB - uses WWN)
-	smartData, err := deviceRepo.SaveSmartAttributes(c, device.WWN, collectorSmartData)
+	// insert smart info (InfluxDB, tagged with device_id and device_wwn)
+	smartData, err := deviceRepo.SaveSmartAttributes(c, device.DeviceID, collectorSmartData)
 	if err != nil {
 		logger.Errorln("An error occurred while saving smartctl metrics", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
@@ -91,7 +91,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 		pkg.MetricsStatusThreshold(appConfig.GetInt(fmt.Sprintf("%s.metrics.status_threshold", config.DB_USER_SETTINGS_SUBKEY))),
 		pkg.MetricsStatusFilterAttributes(appConfig.GetInt(fmt.Sprintf("%s.metrics.status_filter_attributes", config.DB_USER_SETTINGS_SUBKEY))),
 		appConfig.GetBool(fmt.Sprintf("%s.metrics.repeat_notifications", config.DB_USER_SETTINGS_SUBKEY)),
-		device.WWN,
+		device.DeviceID,
 		c,
 		deviceRepo,
 		appConfig,

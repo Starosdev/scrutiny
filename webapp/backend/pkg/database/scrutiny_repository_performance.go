@@ -12,14 +12,15 @@ import (
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // SavePerformanceResults saves performance benchmark results to InfluxDB
-func (sr *scrutinyRepository) SavePerformanceResults(ctx context.Context, wwn string, perfData *measurements.Performance) error {
-	perfData.DeviceWWN = wwn
-
-	// Look up DeviceID for dual-tagging in InfluxDB
-	device, devErr := sr.GetDeviceDetails(ctx, wwn)
-	if devErr == nil {
-		perfData.DeviceID = device.DeviceID
+func (sr *scrutinyRepository) SavePerformanceResults(ctx context.Context, deviceID string, perfData *measurements.Performance) error {
+	// Tag points with both identifiers. This used to look the device up by passing the
+	// WWN as a device_id, which never matched, so performance points carried no device_id.
+	device, err := sr.GetDeviceDetails(ctx, deviceID)
+	if err != nil {
+		return fmt.Errorf("could not find device %s: %w", deviceID, err)
 	}
+	perfData.DeviceID = device.DeviceID
+	perfData.DeviceWWN = device.WWN
 
 	tags, fields := perfData.Flatten()
 
@@ -34,7 +35,11 @@ func (sr *scrutinyRepository) SavePerformanceResults(ctx context.Context, wwn st
 }
 
 // GetPerformanceHistory retrieves historical performance metrics for a device
-func (sr *scrutinyRepository) GetPerformanceHistory(ctx context.Context, wwn string, durationKey string) ([]measurements.Performance, error) {
+func (sr *scrutinyRepository) GetPerformanceHistory(ctx context.Context, deviceID string, durationKey string) ([]measurements.Performance, error) {
+	_, historyFilter, err := sr.deviceHistoryFilter(ctx, deviceID)
+	if err != nil {
+		return nil, err
+	}
 	bucketName := sr.lookupBucketName(durationKey)
 	duration := sr.lookupDuration(durationKey)
 
@@ -42,11 +47,11 @@ func (sr *scrutinyRepository) GetPerformanceHistory(ctx context.Context, wwn str
 		from(bucket: "%s")
 		|> range(start: %s, stop: %s)
 		|> filter(fn: (r) => r["_measurement"] == "performance")
-		|> filter(fn: (r) => r["device_wwn"] == "%s")
+		|> filter(fn: (r) => %s)
 		|> aggregateWindow(every: 1h, fn: last, createEmpty: false)
 		|> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
 		|> sort(columns: ["_time"], desc: false)
-	`, bucketName, duration[0], duration[1], wwn)
+	`, bucketName, duration[0], duration[1], historyFilter)
 
 	result, err := sr.influxQueryApi.Query(ctx, queryStr)
 	if err != nil {
@@ -76,18 +81,22 @@ func (sr *scrutinyRepository) GetPerformanceHistory(ctx context.Context, wwn str
 }
 
 // GetPerformanceBaseline calculates a baseline from the last N performance results
-func (sr *scrutinyRepository) GetPerformanceBaseline(ctx context.Context, wwn string, count int) (*measurements.PerformanceBaseline, error) {
+func (sr *scrutinyRepository) GetPerformanceBaseline(ctx context.Context, deviceID string, count int) (*measurements.PerformanceBaseline, error) {
+	_, historyFilter, err := sr.deviceHistoryFilter(ctx, deviceID)
+	if err != nil {
+		return nil, err
+	}
 	bucketName := sr.appConfig.GetString(cfgInfluxDBBucket)
 
 	queryStr := fmt.Sprintf(`
 		from(bucket: "%s")
 		|> range(start: -30d)
 		|> filter(fn: (r) => r["_measurement"] == "performance")
-		|> filter(fn: (r) => r["device_wwn"] == "%s")
+		|> filter(fn: (r) => %s)
 		|> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
 		|> sort(columns: ["_time"], desc: true)
 		|> limit(n: %d)
-	`, bucketName, wwn, count)
+	`, bucketName, historyFilter, count)
 
 	result, err := sr.influxQueryApi.Query(ctx, queryStr)
 	if err != nil {

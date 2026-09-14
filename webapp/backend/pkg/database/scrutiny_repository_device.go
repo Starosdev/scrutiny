@@ -108,6 +108,13 @@ func matchLegacyDeviceCandidates(sameWWN []models.Device, incoming *models.Devic
 // canonical row exists the legacy row is deleted (preserving the earlier created_at), otherwise the
 // legacy row is re-keyed to the incoming DeviceID.
 func (sr *scrutinyRepository) mergeLegacyDevice(tx *gorm.DB, canonical, legacy, incoming *models.Device) error {
+	// Self-test history is keyed by device_id, so carry it to the surviving identity.
+	if err := tx.Model(&models.DeviceSelfTest{}).
+		Where("device_id = ?", legacy.DeviceID).
+		Updates(map[string]interface{}{"device_id": incoming.DeviceID, "device_identity": incoming.DeviceID}).Error; err != nil {
+		return fmt.Errorf("could not move self-test history to the reconciled device: %w", err)
+	}
+
 	if canonical != nil {
 		if legacy.CreatedAt.Before(canonical.CreatedAt) {
 			if err := tx.Model(&models.Device{}).
@@ -214,8 +221,8 @@ func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Con
 		return fmt.Errorf("could not get device: %w", err)
 	}
 
-	// 2. Get latest SMART entry from InfluxDB (uses WWN for InfluxDB query)
-	smartHistory, err := sr.GetSmartAttributeHistory(ctx, device.WWN, "week", 1, 0, nil)
+	// 2. Get latest SMART entry from InfluxDB
+	smartHistory, err := sr.GetSmartAttributeHistory(ctx, device.DeviceID, "week", 1, 0, nil)
 	if err != nil {
 		return fmt.Errorf("could not get SMART history: %w", err)
 	}
@@ -317,12 +324,21 @@ func (sr *scrutinyRepository) GetDeviceByID(ctx context.Context, deviceID string
 	return sr.GetDeviceDetails(ctx, deviceID)
 }
 
+// GetDeviceByWWN returns the one device holding a WWN. It returns ErrAmbiguousWWN when
+// several devices share the WWN, instead of picking one of them.
 func (sr *scrutinyRepository) GetDeviceByWWN(ctx context.Context, wwn string) (models.Device, error) {
-	var device models.Device
-	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).First(&device).Error; err != nil {
+	var devices []models.Device
+	if err := sr.gormClient.WithContext(ctx).Where("wwn = ?", wwn).Limit(2).Find(&devices).Error; err != nil {
 		return models.Device{}, fmt.Errorf("could not find device by wwn: %w", err)
 	}
-	return device, nil
+	switch len(devices) {
+	case 0:
+		return models.Device{}, fmt.Errorf("could not find device by wwn: %w", gorm.ErrRecordNotFound)
+	case 1:
+		return devices[0], nil
+	default:
+		return models.Device{}, fmt.Errorf("%w: %s", ErrAmbiguousWWN, wwn)
+	}
 }
 
 // Update Device Archived State

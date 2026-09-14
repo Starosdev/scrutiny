@@ -788,6 +788,8 @@ func TestMigrateSelfTestChronologyPreservesLegacyHistory(t *testing.T) {
 	require.Equal(t, 2464, row.LifetimeHours)
 	require.Nil(t, row.EffectiveLifetimeHours)
 	require.Zero(t, row.ObservedAt)
+	// m20260914000001 re-keys history written under the WWN identity to its device_id (#851).
+	require.Equal(t, "device-1", row.DeviceIdentity)
 	require.False(t, repo.gormClient.Migrator().HasIndex(&models.DeviceSelfTest{}, "idx_device_self_tests_identity"))
 	require.NoError(t, repo.gormClient.Exec(`INSERT INTO device_self_tests(device_identity,type_value,lifetime_hours,effective_lifetime_hours) VALUES ('wwn-1',1,2464,68000)`).Error)
 }
