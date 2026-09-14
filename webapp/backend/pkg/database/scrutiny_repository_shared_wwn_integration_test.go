@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -25,16 +24,7 @@ import (
 func TestSharedWWNHistory_Integration(t *testing.T) {
 	ResetMigrationGuardForTests()
 
-	influxHost := "localhost"
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		influxHost = "influxdb"
-	}
-	client := &http.Client{Timeout: 2 * time.Second}
-	if _, err := client.Get(fmt.Sprintf("http://%s:8086/api/v2/setup", influxHost)); err != nil {
-		t.Skip("Skipping integration test: InfluxDB not available at " + influxHost + ":8086")
-	}
-
-	repo := newSharedWWNIntegrationRepository(t, influxHost)
+	repo := newSharedWWNIntegrationRepository(t, integrationInfluxHost(t))
 	ctx := context.Background()
 
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
@@ -187,4 +177,22 @@ func newSharedWWNIntegrationRepository(t *testing.T, influxHost string) *scrutin
 		_ = repoIface.Close()
 	})
 	return repoIface.(*scrutinyRepository)
+}
+
+// integrationInfluxHost returns a reachable InfluxDB host, or skips the test. The CI "Test Backend"
+// job runs on the runner rather than in a job container, so its influxdb service is published on
+// localhost:8086; the "influxdb" host name resolves only from inside a job container. Choosing
+// "influxdb" whenever GITHUB_ACTIONS was set made every integration test skip in CI.
+func integrationInfluxHost(t *testing.T) string {
+	t.Helper()
+	client := &http.Client{Timeout: 2 * time.Second}
+	for _, host := range []string{"localhost", "influxdb"} {
+		response, err := client.Get(fmt.Sprintf("http://%s:8086/api/v2/setup", host))
+		if err == nil {
+			_ = response.Body.Close()
+			return host
+		}
+	}
+	t.Skip("Skipping integration test: InfluxDB not available at localhost:8086 or influxdb:8086")
+	return ""
 }

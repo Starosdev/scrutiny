@@ -2,9 +2,6 @@ package database
 
 import (
 	"context"
-	"fmt"
-	"net/http"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -21,16 +18,7 @@ import (
 func TestMergeDevices_Integration(t *testing.T) {
 	ResetMigrationGuardForTests()
 
-	influxHost := "localhost"
-	if _, isGithubActions := os.LookupEnv("GITHUB_ACTIONS"); isGithubActions {
-		influxHost = "influxdb"
-	}
-
-	client := &http.Client{Timeout: 2 * time.Second}
-	_, err := client.Get(fmt.Sprintf("http://%s:8086/api/v2/setup", influxHost))
-	if err != nil {
-		t.Skip("Skipping integration test: InfluxDB not available at " + influxHost + ":8086")
-	}
+	influxHost := integrationInfluxHost(t)
 
 	mockCtrl := gomock.NewController(t)
 	t.Cleanup(mockCtrl.Finish)
