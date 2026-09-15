@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -108,34 +109,37 @@ func (sr *scrutinyRepository) GetTemperatureNotificationHistory(ctx context.Cont
 func (sr *scrutinyRepository) getSmartTemperatureHistory(ctx context.Context, durationKey string, deviceIDs []string) (map[string][]measurements.SmartTemperature, error) {
 	//we can get temp history for "week", "month", DURATION_KEY_YEAR, "forever"
 
-	// Build WWN-to-DeviceID map for re-keying InfluxDB results
 	devices, devErr := sr.GetDevices(ctx)
 	if devErr != nil && len(deviceIDs) > 0 {
 		return nil, fmt.Errorf("failed to resolve selected temperature devices: %w", devErr)
 	}
-	wwnToDeviceID := map[string]string{}
-	selectedIDs := map[string]struct{}{}
-	for _, deviceID := range deviceIDs {
-		selectedIDs[deviceID] = struct{}{}
-	}
-	selectedWWNs := make([]string, 0, len(selectedIDs))
-	if devErr == nil {
+	owners := newHistoryOwners(devices)
+
+	// With a selection, filter on the selected device_ids, plus the WWNs that selected devices
+	// hold alone, which reach their untagged points and points tagged with an earlier device_id.
+	var selectedIDs, legacyWWNs []string
+	if len(deviceIDs) > 0 {
+		wanted := map[string]struct{}{}
+		for _, deviceID := range deviceIDs {
+			wanted[deviceID] = struct{}{}
+		}
 		for i := range devices {
-			if len(selectedIDs) == 0 {
-				wwnToDeviceID[devices[i].WWN] = devices[i].DeviceID
-			} else if _, selected := selectedIDs[devices[i].DeviceID]; selected {
-				wwnToDeviceID[devices[i].WWN] = devices[i].DeviceID
-				selectedWWNs = append(selectedWWNs, devices[i].WWN)
+			if _, selected := wanted[devices[i].DeviceID]; !selected {
+				continue
+			}
+			selectedIDs = append(selectedIDs, devices[i].DeviceID)
+			if owners.uniqueWWNs[devices[i].WWN] == devices[i].DeviceID {
+				legacyWWNs = append(legacyWWNs, devices[i].WWN)
 			}
 		}
 	}
 
 	deviceTempHistory := map[string][]measurements.SmartTemperature{}
-	if len(deviceIDs) > 0 && len(selectedWWNs) == 0 {
+	if len(deviceIDs) > 0 && len(selectedIDs) == 0 {
 		return deviceTempHistory, nil
 	}
 
-	queryStr := sr.aggregateTempQuery(durationKey, selectedWWNs...)
+	queryStr := sr.aggregateTempQuery(durationKey, selectedIDs, legacyWWNs)
 
 	result, err := sr.influxQueryApi.Query(ctx, queryStr)
 	if err != nil {
@@ -145,46 +149,79 @@ func (sr *scrutinyRepository) getSmartTemperatureHistory(ctx context.Context, du
 
 	// Use Next() to iterate over query result lines
 	for result.Next() {
-		appendTempRecord(deviceTempHistory, result.Record().Values(), wwnToDeviceID)
+		appendTempRecord(deviceTempHistory, result.Record().Values(), owners)
 	}
 	if result.Err() != nil {
 		return nil, fmt.Errorf("temperature history query failed: %w", result.Err())
 	}
+	for deviceID, history := range deviceTempHistory {
+		deviceTempHistory[deviceID] = mergeTemperatureSeries(history)
+	}
 	return deviceTempHistory, nil
 }
 
-// appendTempRecord re-keys a single InfluxDB temperature record from WWN to
-// DeviceID and appends the inflated SmartTemperature to the history map.
-func appendTempRecord(deviceTempHistory map[string][]measurements.SmartTemperature, values map[string]interface{}, wwnToDeviceID map[string]string) {
-	deviceWWN, ok := values["device_wwn"]
+// mergeTemperatureSeries orders a device's temperature points in time and keeps one point per
+// timestamp. A device can return several series (tagged with its device_id, untagged, or tagged
+// with an earlier device_id) whose aggregate windows produce the same timestamps.
+func mergeTemperatureSeries(history []measurements.SmartTemperature) []measurements.SmartTemperature {
+	sort.SliceStable(history, func(i, j int) bool { return history[i].Date.Before(history[j].Date) })
+	merged := history[:0]
+	for i := range history {
+		if len(merged) > 0 && merged[len(merged)-1].Date.Equal(history[i].Date) {
+			continue
+		}
+		merged = append(merged, history[i])
+	}
+	return merged
+}
+
+// appendTempRecord attributes a single InfluxDB temperature record to a device (see
+// historyOwners.deviceFor) and appends the inflated SmartTemperature to its history.
+func appendTempRecord(deviceTempHistory map[string][]measurements.SmartTemperature, values map[string]interface{}, owners historyOwners) {
+	key, ok := owners.deviceFor(values)
 	if !ok {
 		return
 	}
-	wwn := deviceWWN.(string)
-	// Re-key from WWN to DeviceID
-	key := wwn
-	if devID, hasDevID := wwnToDeviceID[wwn]; hasDevID {
-		key = devID
-	}
-
-	// check if key has been seen and initialized already
-	if _, ok := deviceTempHistory[key]; !ok {
-		deviceTempHistory[key] = []measurements.SmartTemperature{}
+	date, ok := values["_time"].(time.Time)
+	if !ok {
+		return
 	}
 
 	smartTemp := measurements.SmartTemperature{}
 	for k, val := range values {
 		smartTemp.Inflate(k, val)
 	}
-	smartTemp.Date = values["_time"].(time.Time)
+	smartTemp.Date = date
 	deviceTempHistory[key] = append(deviceTempHistory[key], smartTemp)
+}
+
+// temperatureSelectionPredicate selects temperature points tagged with one of deviceIDs, and any
+// point carrying one of uniqueWWNs, the WWNs that selected devices hold alone (see
+// deviceHistoryPredicate).
+func temperatureSelectionPredicate(deviceIDs []string, uniqueWWNs []string) string {
+	predicate := fmt.Sprintf(`(exists r["device_id"] and contains(value: r["device_id"], set: [%s]))`, quotedFluxSet(deviceIDs))
+	if len(uniqueWWNs) > 0 {
+		predicate += fmt.Sprintf(` or (exists r["device_wwn"] and contains(value: r["device_wwn"], set: [%s]))`, quotedFluxSet(uniqueWWNs))
+	}
+	return predicate
+}
+
+func quotedFluxSet(values []string) string {
+	quoted := make([]string, 0, len(values))
+	for _, value := range values {
+		quoted = append(quoted, strconv.Quote(value))
+	}
+	return strings.Join(quoted, ", ")
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Helper Methods
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func (sr *scrutinyRepository) aggregateTempQuery(durationKey string, deviceWWNs ...string) string {
+// aggregateTempQuery builds the temperature history query. deviceIDs restricts it to those
+// devices, and legacyWWNs adds their untagged points (see temperatureSelectionPredicate); with no
+// deviceIDs every device is queried.
+func (sr *scrutinyRepository) aggregateTempQuery(durationKey string, deviceIDs []string, legacyWWNs []string) string {
 
 	/*
 		import "influxdata/influxdb/schema"
@@ -192,18 +229,18 @@ func (sr *scrutinyRepository) aggregateTempQuery(durationKey string, deviceWWNs 
 		  |> range(start: -1w, stop: now())
 		  |> filter(fn: (r) => r["_measurement"] == "temp" )
 		  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
-		  |> group(columns: ["device_wwn"])
+		  |> group(columns: ["device_id", "device_wwn"])
 		  |> toInt()
 
 		monthData = from(bucket: "metrics_weekly")
 		  |> range(start: -1mo, stop: now())
 		  |> filter(fn: (r) => r["_measurement"] == "temp" )
 		  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
-		  |> group(columns: ["device_wwn"])
+		  |> group(columns: ["device_id", "device_wwn"])
 		  |> toInt()
 
 		union(tables: [weekData, monthData])
-		  |> group(columns: ["device_wwn"])
+		  |> group(columns: ["device_id", "device_wwn"])
 		  |> sort(columns: ["_time"], desc: false)
 		  |> schema.fieldsAsCols()
 
@@ -227,18 +264,14 @@ func (sr *scrutinyRepository) aggregateTempQuery(durationKey string, deviceWWNs 
 			fmt.Sprintf(`|> range(start: %s, stop: %s)`, durationRange[0], durationRange[1]),
 			`|> filter(fn: (r) => r["_measurement"] == "temp" )`,
 		}
-		if len(deviceWWNs) > 0 {
-			quotedWWNs := make([]string, 0, len(deviceWWNs))
-			for _, wwn := range deviceWWNs {
-				quotedWWNs = append(quotedWWNs, strconv.Quote(wwn))
-			}
-			subQuery = append(subQuery, fmt.Sprintf(`|> filter(fn: (r) => contains(value: r["device_wwn"], set: [%s]))`, strings.Join(quotedWWNs, ", ")))
+		if len(deviceIDs) > 0 {
+			subQuery = append(subQuery, fmt.Sprintf(`|> filter(fn: (r) => %s)`, temperatureSelectionPredicate(deviceIDs, legacyWWNs)))
 		}
 		if durationResolution != "" {
 			subQuery = append(subQuery,
 				fmt.Sprintf(`|> aggregateWindow(every: %s, fn: mean, createEmpty: false)`, durationResolution))
 		}
-		subQuery = append(subQuery, `|> group(columns: ["device_wwn"])`, `|> toInt()`, "")
+		subQuery = append(subQuery, `|> group(columns: ["device_id", "device_wwn"])`, `|> toInt()`, "")
 		partialQueryStr = append(partialQueryStr, subQuery...)
 	}
 
@@ -252,7 +285,7 @@ func (sr *scrutinyRepository) aggregateTempQuery(durationKey string, deviceWWNs 
 	} else {
 		partialQueryStr = append(partialQueryStr, []string{
 			fmt.Sprintf("union(tables: [%s])", strings.Join(subQueryNames, ", ")),
-			`|> group(columns: ["device_wwn"])`,
+			`|> group(columns: ["device_id", "device_wwn"])`,
 			`|> sort(columns: ["_time"], desc: false)`,
 			"|> schema.fieldsAsCols()",
 		}...)

@@ -44,7 +44,7 @@ func GetDeviceReplacementRisk(c *gin.Context) {
 	}
 
 	// Latest SMART snapshot for static attribute scoring.
-	latestResults, err := deviceRepo.GetLatestSmartSubmission(c, device.WWN)
+	latestResults, err := deviceRepo.GetLatestSmartSubmission(c, device.DeviceID)
 	if err != nil {
 		logger.Errorln("An error occurred retrieving latest SMART submission for replacement risk", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
@@ -59,7 +59,7 @@ func GetDeviceReplacementRisk(c *gin.Context) {
 	// Historical snapshots over the trend window for rate-of-change analysis.
 	// We request all entries so we can compare oldest vs. newest within the window.
 	durationKey := trendWindowToDurationKey(trendWindow)
-	history, err := deviceRepo.GetSmartAttributeHistory(c, device.WWN, durationKey, 0, 0, nil)
+	history, err := deviceRepo.GetSmartAttributeHistory(c, device.DeviceID, durationKey, 0, 0, nil)
 	if err != nil {
 		// Non-fatal: trend analysis is best-effort; proceed with static score only.
 		logger.Warnf("Could not retrieve SMART history for trend analysis: %v", err)

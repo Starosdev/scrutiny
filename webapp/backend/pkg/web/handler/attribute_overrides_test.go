@@ -445,7 +445,7 @@ func TestSaveAttributeOverride_AcknowledgeResolvesPinnedValueFromLatestSubmissio
 		DeviceID: acknowledgeDeviceID,
 		WWN:      "nvme-serial",
 	}, nil)
-	mockRepo.EXPECT().GetLatestSmartSubmission(gomock.Any(), "nvme-serial").Return([]measurements.Smart{{
+	mockRepo.EXPECT().GetLatestSmartSubmission(gomock.Any(), acknowledgeDeviceID).Return([]measurements.Smart{{
 		Attributes: map[string]measurements.SmartAttribute{
 			"media_errors": &measurements.SmartNvmeAttribute{AttributeId: "media_errors", Value: 7},
 		},
@@ -471,7 +471,7 @@ func TestSaveAttributeOverride_AcknowledgeRejectsAttributeAbsentFromLatestSubmis
 		DeviceID: acknowledgeDeviceID,
 		WWN:      "nvme-serial",
 	}, nil)
-	mockRepo.EXPECT().GetLatestSmartSubmission(gomock.Any(), "nvme-serial").Return([]measurements.Smart{{
+	mockRepo.EXPECT().GetLatestSmartSubmission(gomock.Any(), acknowledgeDeviceID).Return([]measurements.Smart{{
 		Attributes: map[string]measurements.SmartAttribute{},
 	}}, nil)
 

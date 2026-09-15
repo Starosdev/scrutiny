@@ -38,6 +38,7 @@ func RegisterDevices(c *gin.Context) {
 
 	errs := []error{}
 	detectedStorageDevices := collectorDeviceWrapper.Data
+	registeredDevices := make([]models.Device, 0, len(detectedStorageDevices))
 	for i := range detectedStorageDevices {
 		// Compute DeviceID before registration so it is present in the response.
 		// RegisterDevice performs the same computation internally; doing it here
@@ -65,23 +66,32 @@ func RegisterDevices(c *gin.Context) {
 				"smart_support":     detectedStorageDevices[i].SmartSupport,
 			}).Error("Failed to register detected device")
 			errs = append(errs, err)
+			continue
 		}
+		registeredDevices = append(registeredDevices, detectedStorageDevices[i])
 	}
 
-	if len(errs) > 0 {
+	// The collector abandons its whole run when success is false, so one device that
+	// cannot register must not stop SMART collection for the rest (#851). Fail the
+	// request only when nothing registered; otherwise return only the devices that did.
+	if len(errs) > 0 && len(registeredDevices) == 0 {
 		logger.Errorln("An error occurred while registering devices", errs)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 		})
 		return
 	}
+	if len(errs) > 0 {
+		logger.Warnf("Registered %d of %d detected devices; devices that failed to register are omitted from the response: %v",
+			len(registeredDevices), len(detectedStorageDevices), errs)
+	}
 
 	// Publish MQTT discovery for registered devices (if enabled)
-	publishMqttDiscovery(c, deviceRepo, detectedStorageDevices)
+	publishMqttDiscovery(c, deviceRepo, registeredDevices)
 
 	c.JSON(http.StatusOK, models.DeviceWrapper{
 		Success: true,
-		Data:    detectedStorageDevices,
+		Data:    registeredDevices,
 	})
 }
 

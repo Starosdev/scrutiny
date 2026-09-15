@@ -51,8 +51,8 @@ func (g *Generator) Generate(ctx context.Context, periodType string, start, end 
 
 		deviceReport := buildDeviceReport(summary, tempHistory[devID])
 
-		// Populate active failures from latest SMART attribute data (uses WWN for InfluxDB query)
-		g.populateAlerts(ctx, &deviceReport, summary.Device.WWN, durationKey)
+		// Populate active failures from latest SMART attribute data
+		g.populateAlerts(ctx, &deviceReport, summary.Device.DeviceID, durationKey)
 
 		report.Devices = append(report.Devices, deviceReport)
 
@@ -76,8 +76,8 @@ func (g *Generator) Generate(ctx context.Context, periodType string, start, end 
 	return report, nil
 }
 
-func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, wwn string, durationKey string) {
-	smartHistory, err := g.repo.GetSmartAttributeHistory(ctx, wwn, durationKey, 1, 0, nil)
+func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, deviceID string, durationKey string) {
+	smartHistory, err := g.repo.GetSmartAttributeHistory(ctx, deviceID, durationKey, 1, 0, nil)
 	if err != nil || len(smartHistory) == 0 {
 		return
 	}
