@@ -20,6 +20,8 @@ import (
 type influxDeleteRecorder struct {
 	mu       sync.Mutex
 	requests []string
+	// failStatus, when set, is returned for every delete request instead of success.
+	failStatus int
 }
 
 func (r *influxDeleteRecorder) all() []string {
@@ -32,6 +34,12 @@ func (r *influxDeleteRecorder) reset() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.requests = nil
+}
+
+func (r *influxDeleteRecorder) failWith(status int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.failStatus = status
 }
 
 // withInfluxDeleteRecorder points repo's InfluxDB client at a server that records delete requests
@@ -49,7 +57,12 @@ func withInfluxDeleteRecorder(t *testing.T, repo *scrutinyRepository) *influxDel
 		}
 		recorder.mu.Lock()
 		recorder.requests = append(recorder.requests, request.URL.Query().Get("bucket")+" "+body.Predicate)
+		failStatus := recorder.failStatus
 		recorder.mu.Unlock()
+		if failStatus != 0 {
+			http.Error(writer, "delete failed", failStatus)
+			return
+		}
 		writer.WriteHeader(http.StatusNoContent)
 	}))
 	t.Cleanup(server.Close)
@@ -101,6 +114,25 @@ func TestDeleteDeviceWithoutWWNDeletesByDeviceID(t *testing.T) {
 	require.NoError(t, repo.DeleteDevice(ctx, "device-no-wwn"))
 
 	require.ElementsMatch(t, bucketPredicates(`device_id="device-no-wwn"`), recorder.all())
+}
+
+// fixes #861: a failed history delete must keep the device row, so the leftover history still belongs
+// to the device and the delete can be retried.
+func TestDeleteDeviceKeepsRowWhenHistoryDeleteFails(t *testing.T) {
+	repo := createDeviceRegisterTestRepository(t)
+	recorder := withInfluxDeleteRecorder(t, repo)
+	ctx := context.Background()
+	createSharedWWNDevices(t, repo)
+
+	recorder.failWith(http.StatusInternalServerError)
+	require.Error(t, repo.DeleteDevice(ctx, "device-unique"))
+	require.NoError(t, repo.gormClient.Where(queryDeviceID, "device-unique").First(&models.Device{}).Error)
+
+	recorder.failWith(0)
+	recorder.reset()
+	require.NoError(t, repo.DeleteDevice(ctx, "device-unique"))
+	require.ElementsMatch(t, bucketPredicates(`device_id="device-unique"`, `device_wwn="wwn-unique"`), recorder.all())
+	require.Error(t, repo.gormClient.Where(queryDeviceID, "device-unique").First(&models.Device{}).Error)
 }
 
 // Merging devices that share a WWN copies the source's points to the destination, which keeps that
