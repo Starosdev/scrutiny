@@ -20,7 +20,9 @@ func createDeviceRegisterTestRepository(t *testing.T) *scrutinyRepository {
 
 	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.Device{}))
+	// Legacy identity reconciliation moves self-test rows, and device lookups attach
+	// endurance overrides, so both tables are part of the registration schema.
+	require.NoError(t, db.AutoMigrate(&models.Device{}, &models.DeviceSelfTest{}, &models.DeviceEnduranceOverride{}))
 
 	return &scrutinyRepository{
 		gormClient: db,

@@ -1,0 +1,65 @@
+{
+  "json_format_version": [
+    1,
+    0
+  ],
+  "smartctl": {
+    "version": [
+      7,
+      5
+    ],
+    "pre_release": false,
+    "svn_revision": "5714",
+    "platform_info": "x86_64-linux-6.12.107+deb13-amd64",
+    "build_info": "(local build)",
+    "argv": [
+      "smartctl",
+      "--info",
+      "--json",
+      "--device",
+      "cciss,1",
+      "/dev/sda"
+    ],
+    "exit_status": 0
+  },
+  "device": {
+    "name": "/dev/sda",
+    "info_name": "/dev/sda [cciss_disk_01] [SCSI]",
+    "type": "cciss",
+    "protocol": "SCSI"
+  },
+  "scsi_vendor": "HITACHI",
+  "scsi_product": "HUC106060CSS600",
+  "model_name": "HITACHI HUC106060CSS600",
+  "scsi_model_name": "HITACHI HUC106060CSS600",
+  "scsi_revision": "A202",
+  "scsi_version": "SPC-4",
+  "user_capacity": {
+    "blocks": 1172123568,
+    "bytes": 600127266816
+  },
+  "logical_block_size": 512,
+  "rotation_rate": 10020,
+  "form_factor": {
+    "scsi_value": 3,
+    "name": "2.5 inches"
+  },
+  "logical_unit_id": "0x5000cca012c6c8e8",
+  "serial_number": "PPKJA1ZB",
+  "device_type": {
+    "scsi_terminology": "Peripheral Device Type [PDT]",
+    "scsi_value": 0,
+    "name": "disk"
+  },
+  "scsi_transport_protocol": {
+    "name": "SAS (SPL-4)",
+    "value": 6
+  },
+  "smart_support": {
+    "available": true,
+    "enabled": true
+  },
+  "temperature_warning": {
+    "enabled": true
+  }
+}

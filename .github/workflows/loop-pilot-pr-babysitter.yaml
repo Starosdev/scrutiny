@@ -34,7 +34,7 @@ jobs:
             --output out/loop-pilot-pr-babysitter.md
 
       - name: Upload PR babysitter artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: scrutiny-loop-pilot-pr-babysitter-${{ github.run_id }}
           path: out/loop-pilot-pr-babysitter.md

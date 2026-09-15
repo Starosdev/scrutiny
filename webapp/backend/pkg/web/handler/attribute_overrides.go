@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -182,10 +183,13 @@ func resolvePinnedValue(c *gin.Context, deviceRepo database.DeviceRepo, override
 		device, err = deviceRepo.GetDeviceByWWN(c, override.WWN)
 	}
 	if err != nil {
+		if errors.Is(err, database.ErrAmbiguousWWN) {
+			return "WWN is shared by more than one device; acknowledge by device_id"
+		}
 		return "Device not found for acknowledge override"
 	}
 
-	submissions, err := deviceRepo.GetLatestSmartSubmission(c, device.WWN)
+	submissions, err := deviceRepo.GetLatestSmartSubmission(c, device.DeviceID)
 	if err != nil || len(submissions) == 0 {
 		return "No SMART data available to acknowledge for this device"
 	}

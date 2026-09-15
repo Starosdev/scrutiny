@@ -39,6 +39,7 @@ type DeviceRepo interface {
 	// GetDeviceByID is an alias for GetDeviceDetails (kept for backward compatibility).
 	GetDeviceByID(ctx context.Context, deviceID string) (models.Device, error)
 	// GetDeviceByWWN looks up a device by its WWN. Used for backward-compatible device resolution.
+	// It returns ErrAmbiguousWWN when more than one device holds the WWN.
 	GetDeviceByWWN(ctx context.Context, wwn string) (models.Device, error)
 	UpdateDeviceArchived(ctx context.Context, deviceID string, archived bool) error
 	UpdateDeviceMuted(ctx context.Context, deviceID string, muted bool) error
@@ -56,16 +57,17 @@ type DeviceRepo interface {
 	// with current overrides applied. Used when overrides are added/modified/deleted.
 	RecalculateDeviceStatusFromHistory(ctx context.Context, deviceID string) error
 
-	SaveSmartAttributes(ctx context.Context, wwn string, collectorSmartData collector.SmartInfo) (measurements.Smart, error)
-	GetSmartAttributeHistory(ctx context.Context, wwn string, durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) ([]measurements.Smart, error)
+	// SMART history methods take a device_id. A WWN is not an identity: several devices can share one.
+	SaveSmartAttributes(ctx context.Context, deviceID string, collectorSmartData *collector.SmartInfo) (measurements.Smart, error)
+	GetSmartAttributeHistory(ctx context.Context, deviceID string, durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) ([]measurements.Smart, error)
 	GetDeviceSelfTests(ctx context.Context, deviceID string) ([]models.DeviceSelfTest, error)
 	GetLatestDeviceSelfTest(ctx context.Context, deviceID string) (*models.DeviceSelfTest, error)
 	// GetPreviousSmartSubmission returns the previous raw SMART submission (without daily aggregation)
 	// for use in repeat notification detection. Returns the submission before the most recent one.
-	GetPreviousSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error)
+	GetPreviousSmartSubmission(ctx context.Context, deviceID string) ([]measurements.Smart, error)
 	// GetLatestSmartSubmission returns the most recent raw SMART submission (without daily aggregation)
 	// for use in delta evaluation before writing a new submission.
-	GetLatestSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error)
+	GetLatestSmartSubmission(ctx context.Context, deviceID string) ([]measurements.Smart, error)
 
 	SaveSmartTemperature(ctx context.Context, wwn string, deviceID string, collectorSmartData *collector.SmartInfo, retrieveSCTTemperatureHistory bool, storeTemperatureHistory bool) error
 
@@ -88,7 +90,7 @@ type DeviceRepo interface {
 	SaveBtrfsMetrics(ctx context.Context, filesystem *models.BtrfsFilesystem) error
 	GetBtrfsMetricsHistory(ctx context.Context, uuid string, durationKey string) ([]measurements.BtrfsMetrics, error)
 
-	// GetDevicesLastSeenTimes returns a map of device WWN to the timestamp of their last SMART submission.
+	// GetDevicesLastSeenTimes returns a map of device_id to the timestamp of the device's last SMART submission.
 	// This is used for missed collector ping detection.
 	GetDevicesLastSeenTimes(ctx context.Context) (map[string]time.Time, error)
 
@@ -154,9 +156,9 @@ type DeviceRepo interface {
 	GetMergedOverrides(ctx context.Context) []overrides.AttributeOverride
 
 	// Performance benchmark operations
-	SavePerformanceResults(ctx context.Context, wwn string, perfData *measurements.Performance) error
-	GetPerformanceHistory(ctx context.Context, wwn string, durationKey string) ([]measurements.Performance, error)
-	GetPerformanceBaseline(ctx context.Context, wwn string, count int) (*measurements.PerformanceBaseline, error)
+	SavePerformanceResults(ctx context.Context, deviceID string, perfData *measurements.Performance) error
+	GetPerformanceHistory(ctx context.Context, deviceID string, durationKey string) ([]measurements.Performance, error)
+	GetPerformanceBaseline(ctx context.Context, deviceID string, count int) (*measurements.PerformanceBaseline, error)
 
 	// Notify URL operations (UI-configurable notification endpoints)
 	GetNotifyUrls(ctx context.Context) ([]models.NotifyUrl, error)

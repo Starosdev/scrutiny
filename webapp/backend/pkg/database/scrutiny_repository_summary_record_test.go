@@ -24,12 +24,13 @@ func summaryRecordRepository() *scrutinyRepository {
 	return &scrutinyRepository{logger: logger}
 }
 
-func summaryRecordFixture() (map[string]*models.DeviceSummary, map[string]string) {
+func summaryRecordFixture() (map[string]*models.DeviceSummary, historyOwners) {
+	device := models.Device{DeviceID: "dev-1", WWN: "wwn-1"}
 	summaries := map[string]*models.DeviceSummary{
-		"dev-1": {Device: models.Device{DeviceID: "dev-1", WWN: "wwn-1"}},
+		"dev-1": {Device: device},
 	}
 
-	return summaries, map[string]string{"wwn-1": "dev-1"}
+	return summaries, newHistoryOwners([]models.Device{device})
 }
 
 // A record missing temp or power_on_hours used to panic with
