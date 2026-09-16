@@ -327,6 +327,19 @@ func resolveAPIDocsPath(baseDir string) string {
 	return ""
 }
 
+// MigrateDatabase runs the database migrations. Setup opens repositories without migrating, so Start
+// calls this before Setup, and tests that call Setup directly must call it first as well.
+func (ae *AppEngine) MigrateDatabase(logger logrus.FieldLogger) error {
+	migrationRepo, err := database.NewScrutinyRepository(ae.Config, logger)
+	if err != nil {
+		return err
+	}
+	if err := migrationRepo.Close(); err != nil {
+		logger.Warnf("Failed to close migration repository: %v", err)
+	}
+	return nil
+}
+
 func (ae *AppEngine) Start() error {
 	//set the gin mode
 	gin.SetMode(gin.ReleaseMode)
@@ -341,12 +354,8 @@ func (ae *AppEngine) Start() error {
 			filepath.Dir(ae.Config.GetString("web.database.location"))))
 	}
 
-	migrationRepo, err := database.NewScrutinyRepository(ae.Config, ae.Logger)
-	if err != nil {
+	if err := ae.MigrateDatabase(ae.Logger); err != nil {
 		return err
-	}
-	if err := migrationRepo.Close(); err != nil {
-		ae.Logger.Warnf("Failed to close migration repository: %v", err)
 	}
 
 	// Create notification gate and monitors BEFORE Setup() so middleware can register them in gin context
