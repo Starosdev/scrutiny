@@ -429,11 +429,14 @@ func (sr *scrutinyRepository) DeleteDevice(ctx context.Context, deviceID string)
 		return err
 	}
 
-	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).Delete(&models.Device{}).Error; err != nil {
+	// Delete the history first and keep the row until that succeeds. With the row gone, history left by
+	// a failed delete would belong to no device, or to whichever device later holds the WWN alone, and
+	// the delete could not be retried.
+	if err := sr.deleteDeviceInfluxHistory(ctx, &device, wwnUnique); err != nil {
 		return err
 	}
 
-	return sr.deleteDeviceInfluxHistory(ctx, &device, wwnUnique)
+	return sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).Delete(&models.Device{}).Error
 }
 
 func (sr *scrutinyRepository) attachDeviceEnduranceOverrides(ctx context.Context, devices []models.Device) error {
