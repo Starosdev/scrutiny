@@ -34,6 +34,28 @@ func TestSmartInfo_Capacity(t *testing.T) {
 	})
 }
 
+func TestSmartInfo_Firmware(t *testing.T) {
+	t.Run("should report firmware_version when present (ATA/NVMe)", func(t *testing.T) {
+		smartInfo := SmartInfo{
+			FirmwareVersion: "0004",
+			ScsiRevision:    "HPD5",
+		}
+		assert.Equal(t, "0004", smartInfo.Firmware())
+	})
+
+	t.Run("should fall back to scsi_revision when firmware_version is empty (SCSI/SAS)", func(t *testing.T) {
+		smartInfo := SmartInfo{
+			ScsiRevision: "HPD5",
+		}
+		assert.Equal(t, "HPD5", smartInfo.Firmware())
+	})
+
+	t.Run("should report empty string when neither field is present", func(t *testing.T) {
+		var smartInfo SmartInfo
+		assert.Equal(t, "", smartInfo.Firmware())
+	})
+}
+
 func TestSmartInfo_LargeLBAValues(t *testing.T) {
 	// Test for GitHub issue #24 / upstream issue #800
 	// LBA values can be large unsigned 64-bit integers that overflow signed int
@@ -170,5 +192,118 @@ func TestSmartInfo_AtaSmartSelfTestLogEntries(t *testing.T) {
 		require.Len(t, smartInfo.AtaSmartSelfTestLog.Entries(), 1)
 		assert.Equal(t, 2, smartInfo.AtaSmartSelfTestLog.Entries()[0].Type.Value)
 		assert.Equal(t, 200, smartInfo.AtaSmartSelfTestLog.Entries()[0].LifetimeHours)
+	})
+}
+
+func TestSmartInfo_ScsiSelfTestEntries(t *testing.T) {
+	t.Run("should parse numbered scsi_self_test_N keys in ascending order", func(t *testing.T) {
+		jsonData := `{
+			"device": { "protocol": "SCSI" },
+			"scsi_self_test_0": {
+				"code": { "value": 1, "string": "Background short" },
+				"result": { "value": 0, "string": "Completed" },
+				"power_on_time": { "hours": 48239 }
+			},
+			"scsi_self_test_1": {
+				"code": { "value": 2, "string": "Background long" },
+				"result": { "value": 0, "string": "Completed" },
+				"power_on_time": { "hours": 48234 }
+			},
+			"scsi_self_test_10": {
+				"code": { "value": 1, "string": "Background short" },
+				"result": { "value": 3, "string": "Aborted by host" },
+				"power_on_time": { "hours": 100 }
+			}
+		}`
+
+		var smartInfo SmartInfo
+		err := json.Unmarshal([]byte(jsonData), &smartInfo)
+		require.NoError(t, err)
+		require.Len(t, smartInfo.ScsiSelfTests, 3)
+		// numeric sort, not lexicographic ("scsi_self_test_10" must sort after "_1", not before it)
+		assert.Equal(t, 1, smartInfo.ScsiSelfTests[0].Code.Value)
+		assert.Equal(t, 48239, smartInfo.ScsiSelfTests[0].PowerOnTime.Hours)
+		assert.Equal(t, 2, smartInfo.ScsiSelfTests[1].Code.Value)
+		assert.Equal(t, 48234, smartInfo.ScsiSelfTests[1].PowerOnTime.Hours)
+		assert.Equal(t, 100, smartInfo.ScsiSelfTests[2].PowerOnTime.Hours)
+	})
+
+	t.Run("should not confuse scsi_background_scan or other keys with self-test entries", func(t *testing.T) {
+		jsonData := `{
+			"device": { "protocol": "SCSI" },
+			"scsi_background_scan": {
+				"status": { "value": 1, "string": "scan is active" }
+			}
+		}`
+
+		var smartInfo SmartInfo
+		err := json.Unmarshal([]byte(jsonData), &smartInfo)
+		require.NoError(t, err)
+		require.Empty(t, smartInfo.ScsiSelfTests)
+		require.NotNil(t, smartInfo.ScsiBackgroundScan)
+		assert.Equal(t, "scan is active", smartInfo.ScsiBackgroundScan.Status.String)
+	})
+}
+
+func TestSmartInfo_SelfTestEntries(t *testing.T) {
+	t.Run("should return ATA entries as-is when present", func(t *testing.T) {
+		jsonData := `{
+			"device": { "protocol": "ATA" },
+			"ata_smart_self_test_log": {
+				"standard": {
+					"revision": 1,
+					"table": [
+						{
+							"type": { "value": 1, "string": "Short offline" },
+							"status": { "value": 0, "string": "Completed without error", "passed": true },
+							"lifetime_hours": 100
+						}
+					]
+				}
+			}
+		}`
+		var smartInfo SmartInfo
+		require.NoError(t, json.Unmarshal([]byte(jsonData), &smartInfo))
+
+		entries := smartInfo.SelfTestEntries()
+		require.Len(t, entries, 1)
+		assert.Equal(t, 100, entries[0].LifetimeHours)
+		assert.True(t, entries[0].Status.Passed)
+	})
+
+	t.Run("should normalize scsi self-test entries", func(t *testing.T) {
+		jsonData := `{
+			"device": { "protocol": "SCSI" },
+			"scsi_self_test_0": {
+				"code": { "value": 1, "string": "Background short" },
+				"result": { "value": 0, "string": "Completed" },
+				"power_on_time": { "hours": 48239 }
+			},
+			"scsi_self_test_1": {
+				"code": { "value": 1, "string": "Background short" },
+				"result": { "value": 3, "string": "Aborted by host" },
+				"power_on_time": { "hours": 100 }
+			}
+		}`
+		var smartInfo SmartInfo
+		require.NoError(t, json.Unmarshal([]byte(jsonData), &smartInfo))
+
+		entries := smartInfo.SelfTestEntries()
+		require.Len(t, entries, 2)
+
+		assert.Equal(t, 1, entries[0].Type.Value)
+		assert.Equal(t, "Background short", entries[0].Type.String)
+		assert.Equal(t, 0, entries[0].Status.Value)
+		assert.True(t, entries[0].Status.Passed)
+		assert.Equal(t, 48239, entries[0].LifetimeHours)
+
+		assert.Equal(t, 3, entries[1].Status.Value)
+		assert.False(t, entries[1].Status.Passed)
+		assert.Equal(t, 100, entries[1].LifetimeHours)
+	})
+
+	t.Run("should return nil when no self-test data is present", func(t *testing.T) {
+		var smartInfo SmartInfo
+		assert.Nil(t, smartInfo.SelfTestEntries())
 	})
 }

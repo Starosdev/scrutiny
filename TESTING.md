@@ -421,6 +421,7 @@ curl -X POST -H "Content-Type: application/json" \
 | `smart-scsi2.json` | SCSI | SCSI drive (variant) |
 | `smart-scsi-failed.json` | SCSI | SCSI drive with failures |
 | `smart-scsi-sas-env-temp.json` | SCSI | SCSI SAS drive with environment temp |
+| `smart-scsi-sas-ssd.json` | SCSI | SAS SSD with `endurance_used` and `gigabytes_processed` |
 | `smart-megaraid0.json` | ATA | MegaRAID virtual disk |
 | `smart-sat.json` | ATA | SAT (SCSI-to-ATA Translation) device |
 
