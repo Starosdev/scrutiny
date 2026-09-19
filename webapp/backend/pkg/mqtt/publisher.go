@@ -22,6 +22,7 @@ type Publisher struct {
 	config      config.Interface
 	topicPrefix string
 	retain      bool
+	syncMu      sync.Mutex
 	mu          sync.RWMutex
 }
 
@@ -139,8 +140,15 @@ func (p *Publisher) RemoveDevice(device *models.Device) {
 // discovery + state for all active devices. Returns counts of devices published
 // and legacy topics cleaned.
 func (p *Publisher) SyncAllDevices(deviceRepo database.DeviceRepo, ctx context.Context) (int, int, error) {
+	// Serialize manual and reconnect syncs without dropping a reconnect request.
+	p.syncMu.Lock()
+	defer p.syncMu.Unlock()
+
+	if err := ctx.Err(); err != nil {
+		return 0, 0, err
+	}
 	if !p.client.IsConnected() {
-		return 0, 0, fmt.Errorf("MQTT client is not connected")
+		return 0, 0, ErrNotConnected
 	}
 
 	summary, err := deviceRepo.GetSummary(ctx)

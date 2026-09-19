@@ -9,7 +9,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -36,16 +35,15 @@ const openAPIFile = "openapi.yaml"
 const apiSummaryPath = "/summary"
 
 type AppEngine struct {
-	Config             config.Interface
-	Logger             *logrus.Entry
-	MetricsCollector   *metrics.Collector
-	MqttPublisher      *mqtt.Publisher
-	NotificationGate   *notify.NotificationGate
-	MissedPingMonitor  *MissedPingMonitor
-	HeartbeatMonitor   *HeartbeatMonitor
-	UptimeKumaMonitor  *UptimeKumaMonitor
-	ReportScheduler    *reports.Scheduler
-	mqttSyncInProgress atomic.Bool
+	Config            config.Interface
+	Logger            *logrus.Entry
+	MetricsCollector  *metrics.Collector
+	MqttPublisher     *mqtt.Publisher
+	NotificationGate  *notify.NotificationGate
+	MissedPingMonitor *MissedPingMonitor
+	HeartbeatMonitor  *HeartbeatMonitor
+	UptimeKumaMonitor *UptimeKumaMonitor
+	ReportScheduler   *reports.Scheduler
 }
 
 func registerZFSPoolRoutes(zfs *gin.RouterGroup, allowPoolModifications bool) {
@@ -466,12 +464,7 @@ func (ae *AppEngine) loadInitialMqttData() {
 	if !ae.Config.GetBool(configKeyMqttEnabled) || ae.MqttPublisher == nil {
 		return
 	}
-	if !ae.mqttSyncInProgress.CompareAndSwap(false, true) {
-		return
-	}
 	go func() {
-		defer ae.mqttSyncInProgress.Store(false)
-
 		deviceRepo, err := database.NewScrutinyRepositoryWithoutMigration(ae.Config, ae.Logger)
 		if err != nil {
 			ae.Logger.Errorln("Failed to create repository for loading MQTT data:", err)
