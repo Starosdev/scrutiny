@@ -629,6 +629,28 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/summary
 
 ### MQTT / Home Assistant
 
+MQTT connection retries continue when the broker is unavailable at startup. The
+publisher stays registered and syncs discovery and state after each connection.
+Manual and reconnect syncs run one at a time. A reconnect that occurs during a
+sync waits for that sync to finish.
+
+Paho `IsConnected()` also returns true during the initial connection retry.
+Use `IsConnectionOpen()` before publishing. Otherwise, each publish can wait for
+the timeout without an open connection. The sync endpoint returns HTTP 503 when
+the publisher exists but the connection is closed. Disabled MQTT returns HTTP 400.
+
+Run the regression tests without a broker:
+
+```bash
+go test -race ./webapp/backend/pkg/mqtt ./webapp/backend/pkg/web/handler -run 'Test(Client|Disconnect|Reconnect|Sync|MqttSync)'
+```
+
+For an outage test, run the following Docker commands on the Zeus test host.
+Start Scrutiny while the test broker is stopped. Make sure that device registration
+still responds and the sync endpoint returns HTTP 503. Start the broker and make
+sure that discovery returns without a Scrutiny restart. Repeat after a broker
+restart to test automatic reconnect.
+
 ```bash
 # Start a test MQTT broker
 docker run -d --name mosquitto -p 1883:1883 eclipse-mosquitto:2 \
