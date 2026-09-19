@@ -1,7 +1,9 @@
 package mqtt
 
 import (
+	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
@@ -18,11 +20,16 @@ const (
 	defaultKeepAlive      = 60 * time.Second
 )
 
+// ErrNotConnected indicates that no MQTT connection is currently open.
+var ErrNotConnected = errors.New("MQTT client is not connected")
+
 // Client wraps the paho MQTT client with Scrutiny-specific configuration.
 type Client struct {
-	client pahomqtt.Client
-	logger *logrus.Entry
-	qos    byte
+	client      pahomqtt.Client
+	logger      *logrus.Entry
+	onReconnect func()
+	callbackMu  sync.RWMutex
+	qos         byte
 }
 
 // ClientConfig holds MQTT connection parameters.
@@ -63,13 +70,7 @@ func NewClient(cfg *ClientConfig, logger *logrus.Entry) *Client {
 	// Last Will and Testament: publish "offline" if we disconnect unexpectedly
 	opts.SetWill(availabilityTopic, availabilityOffline, byte(cfg.QoS), true)
 
-	opts.SetOnConnectHandler(func(_ pahomqtt.Client) {
-		logger.Info("MQTT connected to broker")
-		// Publish online status on every (re)connect
-		if err := c.publish(availabilityTopic, availabilityOnline, true); err != nil {
-			logger.Warnf("MQTT: failed to publish online status: %v", err)
-		}
-	})
+	opts.SetOnConnectHandler(c.onConnect)
 
 	opts.SetConnectionLostHandler(func(_ pahomqtt.Client, err error) {
 		logger.Warnf("MQTT connection lost: %v", err)
@@ -81,6 +82,19 @@ func NewClient(cfg *ClientConfig, logger *logrus.Entry) *Client {
 
 	c.client = pahomqtt.NewClient(opts)
 	return c
+}
+
+func (c *Client) onConnect(_ pahomqtt.Client) {
+	c.logger.Info("MQTT connected to broker")
+	if err := c.publish(availabilityTopic, availabilityOnline, true); err != nil {
+		c.logger.Warnf("MQTT: failed to publish online status: %v", err)
+	}
+	c.callbackMu.RLock()
+	onReconnect := c.onReconnect
+	c.callbackMu.RUnlock()
+	if onReconnect != nil {
+		onReconnect()
+	}
 }
 
 // Connect establishes the connection to the MQTT broker.
@@ -97,14 +111,18 @@ func (c *Client) Connect() error {
 
 // Disconnect cleanly disconnects from the MQTT broker.
 func (c *Client) Disconnect() {
-	if c.client != nil && c.client.IsConnected() {
+	if c.client == nil {
+		return
+	}
+	if c.IsConnected() {
 		// Publish offline before disconnecting
 		if err := c.publish(availabilityTopic, availabilityOffline, true); err != nil {
 			c.logger.Warnf("MQTT: failed to publish offline status: %v", err)
 		}
-		c.client.Disconnect(1000) // 1 second grace period
-		c.logger.Info("MQTT disconnected from broker")
 	}
+	// Stop connection retries even when the initial connection never succeeded.
+	c.client.Disconnect(1000) // 1 second grace period
+	c.logger.Info("MQTT disconnected from broker")
 }
 
 // Publish sends a message to the given topic.
@@ -114,10 +132,22 @@ func (c *Client) Publish(topic string, payload string, retained bool) error {
 
 // IsConnected returns whether the client is currently connected.
 func (c *Client) IsConnected() bool {
-	return c.client != nil && c.client.IsConnected()
+	// IsConnected also reports true during the initial ConnectRetry backoff.
+	return c.client != nil && c.client.IsConnectionOpen()
+}
+
+// SetOnReconnect registers a callback invoked every time the connection is
+// (re)established, including after an automatic reconnect succeeds.
+func (c *Client) SetOnReconnect(fn func()) {
+	c.callbackMu.Lock()
+	defer c.callbackMu.Unlock()
+	c.onReconnect = fn
 }
 
 func (c *Client) publish(topic string, payload string, retained bool) error {
+	if !c.IsConnected() {
+		return ErrNotConnected
+	}
 	token := c.client.Publish(topic, c.qos, retained, payload)
 	if !token.WaitTimeout(defaultPublishTimeout) {
 		return fmt.Errorf("MQTT publish to %s timed out", topic)

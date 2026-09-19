@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
@@ -28,6 +29,10 @@ func MqttSync(c *gin.Context) {
 	}
 
 	published, cleaned, err := pub.SyncAllDevices(deviceRepo, c)
+	if errors.Is(err, mqtt.ErrNotConnected) {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"success": false, "error": err.Error()})
+		return
+	}
 	if err != nil {
 		logger.Errorf("MQTT sync failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
