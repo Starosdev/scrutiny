@@ -2,7 +2,7 @@
     <div class="flex flex-wrap w-full">
         <div class="flex items-center justify-between w-full my-4 px-4 xs:pr-0">
             <!-- Back button (mobile) -->
-            <button class="hidden xs:flex mr-2 -ml-2" mat-icon-button (click)="goBack()">
+            <button class="hidden xs:flex mr-2 -ml-2" mat-icon-button aria-label="Back to dashboard" (click)="goBack()">
                 <mat-icon [svgIcon]="'arrow_back'"></mat-icon>
             </button>
 
@@ -40,7 +40,7 @@
 
                 <!-- Actions menu (mobile / xs) -->
                 <div class="hidden xs:flex">
-                    <button mat-icon-button [matMenuTriggerFor]="actionsMenu">
+                    <button mat-icon-button [matMenuTriggerFor]="actionsMenu" aria-label="Open device actions">
                         <mat-icon [svgIcon]="'more_vert'"></mat-icon>
                     </button>
 
@@ -678,11 +678,17 @@
                             <th class="bg-cool-gray-50 dark:bg-cool-gray-700 border-t" mat-header-cell *matHeaderCellDef style="width: 48px; min-width: 48px; max-width: 48px"></th>
                             <td mat-cell *matCellDef="let attribute" style="width: 48px; min-width: 48px; max-width: 48px; padding: 0" (click)="$event.stopPropagation()">
                                 @if (getOverrideForAttribute(attribute.attribute_id)) {
-                                <button mat-icon-button [matMenuTriggerFor]="overrideMenu" matTooltip="Override active" class="override-active-btn">
+                                <button
+                                    mat-icon-button
+                                    [matMenuTriggerFor]="overrideMenu"
+                                    matTooltip="Override active"
+                                    aria-label="Open attribute override actions"
+                                    class="override-active-btn"
+                                >
                                     <mat-icon class="icon-size-20" [svgIcon]="'tune'" style="color: #667eea"></mat-icon>
                                 </button>
                                 } @else if (getAttributeStatusName(attribute.status) !== 'passed') {
-                                <button mat-icon-button [matMenuTriggerFor]="overrideMenu" matTooltip="Attribute actions">
+                                <button mat-icon-button [matMenuTriggerFor]="overrideMenu" matTooltip="Attribute actions" aria-label="Open attribute actions">
                                     <mat-icon class="icon-size-20" [svgIcon]="'more_vert'"></mat-icon>
                                 </button>
                                 }

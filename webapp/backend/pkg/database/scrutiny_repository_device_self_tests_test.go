@@ -107,7 +107,7 @@ func TestSaveSmartAttributesPersistsAtaSelfTests(t *testing.T) {
 
 	smartInfo := loadSmartInfoFixture(t, filepath.Join("..", "web", "testdata", "upload-device-metrics-req.json"))
 
-	_, err := repo.SaveSmartAttributes(ctx, device.WWN, smartInfo)
+	_, err := repo.SaveSmartAttributes(ctx, device.DeviceID, &smartInfo)
 	require.NoError(t, err)
 
 	var selfTests []models.DeviceSelfTest
@@ -139,7 +139,7 @@ func TestSaveSmartAttributesPersistsScsiSelfTests(t *testing.T) {
 	smartInfo := loadSmartInfoFixture(t, filepath.Join("..", "models", "testdata", "smart-scsi-selftest.json"))
 	require.Len(t, smartInfo.ScsiSelfTests, 3)
 
-	_, err := repo.SaveSmartAttributes(ctx, device.WWN, smartInfo)
+	_, err := repo.SaveSmartAttributes(ctx, device.DeviceID, &smartInfo)
 	require.NoError(t, err)
 
 	var selfTests []models.DeviceSelfTest
@@ -191,7 +191,10 @@ func TestSyncDeviceSelfTestsScsiAbsoluteHoursAboveAtaLimit(t *testing.T) {
 	require.Equal(t, int64(70000), *rows[0].EffectiveLifetimeHours)
 }
 
-func TestSyncDeviceSelfTestsDedupesByDeviceIdentity(t *testing.T) {
+// fixes #851: self-test history used to be keyed by WWN, so two drives sharing a WWN
+// overwrote each other's entries. Each device keeps its own history, and repeated syncs
+// of one device still dedupe onto that device's rows.
+func TestSyncDeviceSelfTestsKeepsSharedWWNDevicesSeparate(t *testing.T) {
 	repo := createDeviceSelfTestRepository(t)
 	ctx := context.Background()
 
@@ -235,13 +238,29 @@ func TestSyncDeviceSelfTestsDedupesByDeviceIdentity(t *testing.T) {
 	require.NoError(t, repo.syncDeviceSelfTests(ctx, &initialDevice, &initialPayload, 100))
 	require.NoError(t, repo.syncDeviceSelfTests(ctx, &replacementDevice, &updatedPayload, 100))
 
-	var selfTests []models.DeviceSelfTest
-	require.NoError(t, repo.gormClient.WithContext(ctx).Find(&selfTests).Error)
-	require.Len(t, selfTests, 1)
-	require.Equal(t, "device-2", selfTests[0].DeviceID)
-	require.Equal(t, "wwn-1", selfTests[0].DeviceWWN)
-	require.Equal(t, "Completed without error", selfTests[0].StatusString)
-	require.True(t, selfTests[0].StatusPassed)
+	statusByDevice := func() map[string]string {
+		var selfTests []models.DeviceSelfTest
+		require.NoError(t, repo.gormClient.WithContext(ctx).Find(&selfTests).Error)
+		statuses := map[string]string{}
+		for _, selfTest := range selfTests {
+			require.Equal(t, selfTest.DeviceID, selfTest.DeviceIdentity)
+			require.Equal(t, "wwn-1", selfTest.DeviceWWN)
+			statuses[selfTest.DeviceID] = selfTest.StatusString
+		}
+		require.Len(t, selfTests, len(statuses), "one row per device")
+		return statuses
+	}
+
+	require.Equal(t, map[string]string{
+		"device-1": "Aborted by host",
+		"device-2": "Completed without error",
+	}, statusByDevice())
+
+	require.NoError(t, repo.syncDeviceSelfTests(ctx, &initialDevice, &updatedPayload, 100))
+	require.Equal(t, map[string]string{
+		"device-1": "Completed without error",
+		"device-2": "Completed without error",
+	}, statusByDevice())
 }
 
 func TestSyncDeviceSelfTestsPrunesOldEntries(t *testing.T) {
@@ -433,11 +452,11 @@ func TestGetLatestDeviceSelfTestUsesObservedOrder(t *testing.T) {
 	device := models.Device{DeviceID: "device-1", WWN: "wwn-1", DeviceProtocol: "ATA"}
 	require.NoError(t, repo.gormClient.Create(&device).Error)
 	require.NoError(t, repo.gormClient.Create(&models.DeviceSelfTest{
-		DeviceID: device.DeviceID, DeviceWWN: device.WWN, DeviceIdentity: device.WWN,
+		DeviceID: device.DeviceID, DeviceWWN: device.WWN, DeviceIdentity: device.DeviceID,
 		StatusPassed: true, ObservedAt: 100, LogIndex: 0,
 	}).Error)
 	require.NoError(t, repo.gormClient.Create(&models.DeviceSelfTest{
-		DeviceID: device.DeviceID, DeviceWWN: device.WWN, DeviceIdentity: device.WWN,
+		DeviceID: device.DeviceID, DeviceWWN: device.WWN, DeviceIdentity: device.DeviceID,
 		StatusPassed: false, ObservedAt: 200, LogIndex: 0,
 	}).Error)
 
@@ -483,7 +502,7 @@ func TestSaveSmartAttributesResolvesSelfTestRollover(t *testing.T) {
 			attribute.Raw.String = "68000"
 		}
 	}
-	_, err := repo.SaveSmartAttributes(ctx, device.WWN, payload)
+	_, err := repo.SaveSmartAttributes(ctx, device.DeviceID, &payload)
 	require.NoError(t, err)
 	rows, err := repo.GetDeviceSelfTests(ctx, device.DeviceID)
 	require.NoError(t, err)

@@ -7,6 +7,9 @@ type Device struct {
 	DeviceID string `json:"device_id"`
 
 	ResolvedDeviceName string `json:"-"`
+	// SharedDeviceFile is set when the scan addresses several drives through this device
+	// file (cciss,0..N on /dev/sda), so its block device WWN cannot identify this drive.
+	SharedDeviceFile bool `json:"-"`
 
 	DeviceName     string `json:"device_name"`
 	DeviceUUID     string `json:"device_uuid"`

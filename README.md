@@ -519,7 +519,7 @@ Use the duration selector to view day, week, month, or year ranges.
 
 ## Workload Insights
 
-Scrutiny computes drive workload statistics from existing S.M.A.R.T attribute history. No additional collector configuration is required -- once at least two data points exist for a device, workload insights are available.
+Scrutiny computes drive workload statistics from existing S.M.A.R.T attribute and device-log history. No additional collector configuration is required -- once at least two data points exist for a device, workload insights are available.
 
 ### What's Computed
 
@@ -534,7 +534,7 @@ Scrutiny computes drive workload statistics from existing S.M.A.R.T attribute hi
 
 ### Computation Details
 
-1. Scrutiny queries cumulative SMART counters (Total LBAs Written/Read for ATA, Data Units Written/Read for NVMe) from InfluxDB
+1. Scrutiny queries cumulative read/write counters from InfluxDB: Total LBAs Written/Read for ATA, Data Units Written/Read for NVMe, and gigabytes-processed fields from SCSI/SAS Read/Write Error Counter log pages
 2. The delta between the first and last data points in the selected time range is used to compute daily rates
 3. Intensity is classified by total daily I/O: idle (<1 GB/day), light (1-20 GB), medium (20-100 GB), heavy (>100 GB)
 4. SSD endurance is estimated from wear-leveling or percentage-used SMART attributes combined with power-on hours

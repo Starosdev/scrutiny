@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
@@ -15,10 +14,9 @@ import (
 
 const maxDeviceSelfTestsPerDevice = 21
 
+// deviceSelfTestIdentity keys self-test history by device_id. It used to prefer the
+// WWN, which gave drives sharing a WWN one combined history (#851).
 func deviceSelfTestIdentity(device *models.Device) string {
-	if strings.TrimSpace(device.WWN) != "" {
-		return strings.TrimSpace(device.WWN)
-	}
 	return device.DeviceID
 }
 

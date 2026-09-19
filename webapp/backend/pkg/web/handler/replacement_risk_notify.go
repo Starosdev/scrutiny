@@ -35,7 +35,7 @@ func maybeNotifyReplacementRisk(
 	}
 
 	// Retrieve oldest snapshot over the 30-day trend window (best-effort).
-	history, err := deviceRepo.GetSmartAttributeHistory(c, device.WWN, "month", 0, 0, nil)
+	history, err := deviceRepo.GetSmartAttributeHistory(c, device.DeviceID, "month", 0, 0, nil)
 	if err != nil {
 		logger.Warnf("Could not retrieve SMART history for replacement risk notification: %v", err)
 	}

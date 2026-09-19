@@ -28,9 +28,9 @@ func (m *mockSummaryProvider) GetSmartTemperatureHistory(ctx context.Context, du
 	return m.tempHistory, nil
 }
 
-func (m *mockSummaryProvider) GetSmartAttributeHistory(ctx context.Context, wwn string, durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) ([]measurements.Smart, error) {
+func (m *mockSummaryProvider) GetSmartAttributeHistory(ctx context.Context, deviceID string, durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) ([]measurements.Smart, error) {
 	if m.smartHistory != nil {
-		if h, ok := m.smartHistory[wwn]; ok {
+		if h, ok := m.smartHistory[deviceID]; ok {
 			return h, nil
 		}
 	}

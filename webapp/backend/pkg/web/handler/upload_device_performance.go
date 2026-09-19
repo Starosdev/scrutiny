@@ -72,14 +72,14 @@ func UploadDevicePerformance(c *gin.Context) {
 		TestDurationSec:   req.TestDurationSec,
 	}
 
-	if saveErr := deviceRepo.SavePerformanceResults(c, device.WWN, &perfData); saveErr != nil {
+	if saveErr := deviceRepo.SavePerformanceResults(c, device.DeviceID, &perfData); saveErr != nil {
 		logger.Errorln("An error occurred while saving performance results", saveErr)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
 	}
 
 	// Calculate degradation against baseline
-	baseline, err := deviceRepo.GetPerformanceBaseline(c, device.WWN, 5)
+	baseline, err := deviceRepo.GetPerformanceBaseline(c, device.DeviceID, 5)
 	if err != nil {
 		logger.Warnf("Could not retrieve performance baseline for %s: %v", device.WWN, err)
 		c.JSON(http.StatusOK, gin.H{"success": true})
