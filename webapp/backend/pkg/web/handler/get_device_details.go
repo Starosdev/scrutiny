@@ -24,11 +24,15 @@ func GetDeviceDetails(c *gin.Context) {
 		durationKey = "forever"
 	}
 
-	smartResults, err := deviceRepo.GetSmartAttributeHistory(c, device.WWN, durationKey, 0, 0, nil)
+	smartResults, err := deviceRepo.GetSmartAttributeHistory(c, device.DeviceID, durationKey, 0, 0, nil)
 	if err != nil {
 		logger.Errorln("An error occurred while retrieving device smart results", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
+	}
+	mergedOverrides := deviceRepo.GetMergedOverrides(c)
+	for i := range smartResults {
+		smartResults[i].ApplyOverrides(mergedOverrides, device.DeviceID)
 	}
 
 	var deviceMetadata interface{}

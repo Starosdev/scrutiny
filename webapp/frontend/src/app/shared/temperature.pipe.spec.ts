@@ -1,6 +1,11 @@
 import { TemperaturePipe } from './temperature.pipe';
 
 describe('TemperaturePipe', () => {
+    it('converts Fahrenheit back to Celsius', () => {
+        for (const celsius of [-40, 0, 1, 55, 150]) {
+            expect(TemperaturePipe.fahrenheitToCelsius(TemperaturePipe.celsiusToFahrenheit(celsius))).toBeCloseTo(celsius);
+        }
+    });
     it('create an instance', () => {
         const pipe = new TemperaturePipe();
         expect(pipe).toBeTruthy();

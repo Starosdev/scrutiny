@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { Component, ElementRef, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed, fakeAsync, flush } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -24,11 +24,12 @@ const SCROLLER_TEMPLATE = `
 @Component({
     selector: 'app-patched-menu-host',
     template: SCROLLER_TEMPLATE,
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [MatButtonModule, MatMenuModule, MenuTriggerRestoreFocusDirective],
 })
 class PatchedMenuHostComponent {
-    @ViewChild('scroller', { static: true }) scroller: ElementRef<HTMLElement>;
-    @ViewChild(MatMenuTrigger, { static: true }) trigger: MatMenuTrigger;
+    @ViewChild('scroller', { static: true }) scroller!: ElementRef<HTMLElement>;
+    @ViewChild(MatMenuTrigger, { static: true }) trigger!: MatMenuTrigger;
 }
 
 // Control host: identical, but without the directive. Proves the specs above can actually detect the
@@ -37,11 +38,12 @@ class PatchedMenuHostComponent {
 @Component({
     selector: 'app-unpatched-menu-host',
     template: SCROLLER_TEMPLATE,
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [MatButtonModule, MatMenuModule],
 })
 class UnpatchedMenuHostComponent {
-    @ViewChild('scroller', { static: true }) scroller: ElementRef<HTMLElement>;
-    @ViewChild(MatMenuTrigger, { static: true }) trigger: MatMenuTrigger;
+    @ViewChild('scroller', { static: true }) scroller!: ElementRef<HTMLElement>;
+    @ViewChild(MatMenuTrigger, { static: true }) trigger!: MatMenuTrigger;
 }
 
 @Component({
@@ -52,10 +54,11 @@ class UnpatchedMenuHostComponent {
             <button mat-menu-item>Item</button>
         </mat-menu>
     `,
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [MatButtonModule, MatMenuModule, MenuTriggerRestoreFocusDirective],
 })
 class OptedOutMenuHostComponent {
-    @ViewChild(MatMenuTrigger, { static: true }) trigger: MatMenuTrigger;
+    @ViewChild(MatMenuTrigger, { static: true }) trigger!: MatMenuTrigger;
 }
 
 @Component({
@@ -69,6 +72,7 @@ class OptedOutMenuHostComponent {
             <button mat-menu-item>Leaf</button>
         </mat-menu>
     `,
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [MatButtonModule, MatMenuModule, MenuTriggerRestoreFocusDirective],
 })
 class SubmenuHostComponent {}
@@ -207,11 +211,11 @@ describe('MenuTriggerRestoreFocusDirective', () => {
 
             expect(subTrigger).toBeDefined();
 
-            subTrigger.openMenu();
+            subTrigger!.openMenu();
             fixture.detectChanges();
             flush();
 
-            expect(subTrigger.restoreFocus).toBeTrue();
+            expect(subTrigger!.restoreFocus).toBeTrue();
 
             rootTrigger.closeMenu();
             fixture.detectChanges();

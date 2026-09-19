@@ -1,7 +1,12 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import {
     AppConfig,
+    DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS,
+    DEFAULT_TEMPERATURE_DURATION_MINUTES,
+    MIN_TEMPERATURE_THRESHOLD_CELSIUS,
+    MAX_TEMPERATURE_THRESHOLD_CELSIUS,
+    MAX_TEMPERATURE_DURATION_MINUTES,
     DashboardColumns,
     DashboardDensity,
     DashboardHostPageSize,
@@ -23,6 +28,8 @@ import {
 } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { AttributeOverrideService } from 'app/core/config/attribute-override.service';
+import { DashboardService } from 'app/modules/dashboard/dashboard.service';
+import { DeviceModel } from 'app/core/models/device-model';
 import { NotifyUrlService } from 'app/core/config/notify-url.service';
 import { getBasePath } from 'app/app.routing';
 import { Subject } from 'rxjs';
@@ -41,11 +48,13 @@ import { MatTable, MatColumnDef, MatHeaderCellDef, MatHeaderCell, MatCellDef, Ma
 import { MatTooltip } from '@angular/material/tooltip';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { HelpLinkIconComponent } from 'app/layout/common/help-link-icon/help-link-icon.component';
+import { TemperaturePipe } from 'app/shared/temperature.pipe';
 
 @Component({
     selector: 'app-dashboard-settings',
     templateUrl: './dashboard-settings.component.html',
     styleUrls: ['./dashboard-settings.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [
         MatDialogTitle,
         CdkScrollable,
@@ -85,6 +94,7 @@ import { HelpLinkIconComponent } from 'app/layout/common/help-link-icon/help-lin
 export class DashboardSettingsComponent implements OnInit {
     private readonly _configService = inject(ScrutinyConfigService);
     private readonly _overrideService = inject(AttributeOverrideService);
+    private readonly _dashboardService = inject(DashboardService);
     private readonly _notifyUrlService = inject(NotifyUrlService);
     private readonly _httpClient = inject(HttpClient);
 
@@ -108,6 +118,67 @@ export class DashboardSettingsComponent implements OnInit {
 
     // Collector error settings
     notifyOnCollectorError: boolean;
+
+    notifyOnTemperature = false;
+    temperatureThresholdDisplay: number | null = DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS;
+    temperatureDurationMinutes: number | null = DEFAULT_TEMPERATURE_DURATION_MINUTES;
+    readonly maxTemperatureDurationMinutes = MAX_TEMPERATURE_DURATION_MINUTES;
+
+    get temperatureThresholdCelsius(): number | null {
+        const value = this.temperatureThresholdDisplay;
+        if (value == null || !Number.isFinite(value)) {
+            return null;
+        }
+        return Math.round(this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.fahrenheitToCelsius(value) : value);
+    }
+
+    set temperatureThresholdCelsius(value: number | null) {
+        this.temperatureThresholdDisplay = value == null ? null : this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.celsiusToFahrenheit(value) : value;
+    }
+
+    setTemperatureUnit(unit: string): void {
+        const value = this.temperatureThresholdDisplay;
+        let celsius = value == null ? null : this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.fahrenheitToCelsius(value) : value;
+        if (celsius != null && !this.temperatureThresholdInvalid) {
+            // Keep valid boundary values in range despite floating-point conversion error.
+            celsius = Math.min(MAX_TEMPERATURE_THRESHOLD_CELSIUS, Math.max(MIN_TEMPERATURE_THRESHOLD_CELSIUS, celsius));
+        }
+        this.temperatureUnit = unit;
+        this.temperatureThresholdCelsius = celsius;
+    }
+
+    normalizeTemperatureThreshold(): void {
+        if (!this.temperatureThresholdInvalid) {
+            const celsius = this.temperatureThresholdCelsius;
+            this.temperatureThresholdCelsius = celsius;
+        }
+    }
+
+    get temperatureThresholdMin(): number {
+        return this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.celsiusToFahrenheit(MIN_TEMPERATURE_THRESHOLD_CELSIUS) : MIN_TEMPERATURE_THRESHOLD_CELSIUS;
+    }
+
+    get temperatureThresholdMax(): number {
+        return this.temperatureUnit === 'fahrenheit' ? TemperaturePipe.celsiusToFahrenheit(MAX_TEMPERATURE_THRESHOLD_CELSIUS) : MAX_TEMPERATURE_THRESHOLD_CELSIUS;
+    }
+
+    get temperatureThresholdInvalid(): boolean {
+        const value = this.temperatureThresholdDisplay;
+        return value == null || !Number.isFinite(value) || value < this.temperatureThresholdMin || value > this.temperatureThresholdMax;
+    }
+
+    get temperatureDurationInvalid(): boolean {
+        return (
+            this.temperatureDurationMinutes == null ||
+            !Number.isInteger(this.temperatureDurationMinutes) ||
+            this.temperatureDurationMinutes < 0 ||
+            this.temperatureDurationMinutes > MAX_TEMPERATURE_DURATION_MINUTES
+        );
+    }
+
+    get temperatureSettingsInvalid(): boolean {
+        return this.notifyOnTemperature && (this.temperatureThresholdInvalid || this.temperatureDurationInvalid);
+    }
 
     // Missed ping settings
     notifyOnMissedPing: boolean;
@@ -156,11 +227,14 @@ export class DashboardSettingsComponent implements OnInit {
 
     // Attribute overrides
     overrides: AttributeOverride[] = [];
-    displayedColumns: string[] = ['protocol', 'attribute_id', 'action', 'source', 'actions'];
+    overrideDevices: DeviceModel[] = [];
+    overrideError: string | null = null;
+    displayedColumns: string[] = ['protocol', 'attribute_id', 'device', 'action', 'source', 'actions'];
     protocols: OverrideProtocol[] = ['ATA', 'NVMe', 'SCSI'];
     actions: { value: OverrideAction; label: string }[] = [
         { value: 'ignore', label: 'Ignore' },
         { value: 'force_status', label: 'Force Status' },
+        { value: 'acknowledge', label: 'Acknowledge Current Value' },
         { value: '', label: 'Custom Threshold' },
     ];
     statuses: OverrideStatus[] = ['passed', 'warn', 'failed'];
@@ -235,6 +309,10 @@ export class DashboardSettingsComponent implements OnInit {
             // Collector error settings
             this.notifyOnCollectorError = config.metrics.notify_on_collector_error ?? true;
 
+            this.notifyOnTemperature = config.metrics.notify_on_temperature ?? false;
+            this.temperatureThresholdCelsius = config.metrics.temperature_threshold_celsius ?? DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS;
+            this.temperatureDurationMinutes = config.metrics.temperature_duration_minutes ?? DEFAULT_TEMPERATURE_DURATION_MINUTES;
+
             // Missed ping settings
             this.notifyOnMissedPing = config.metrics.notify_on_missed_ping ?? false;
             this.missedPingTimeoutMinutes = config.metrics.missed_ping_timeout_minutes ?? 60;
@@ -281,6 +359,7 @@ export class DashboardSettingsComponent implements OnInit {
 
         // Load attribute overrides
         this.loadOverrides();
+        this.loadOverrideDevices();
 
         // Load notification URLs
         this.loadNotifyUrls();
@@ -295,8 +374,19 @@ export class DashboardSettingsComponent implements OnInit {
             });
     }
 
+    loadOverrideDevices(): void {
+        this._dashboardService
+            .getSummaryData()
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe((summary) => {
+                this.overrideDevices = Object.values(summary).map((entry) => entry.device);
+            });
+    }
+
     addOverride(): void {
+        this.overrideError = null;
         if (!this.newOverride.protocol || !this.newOverride.attribute_id) {
+            this.overrideError = 'Choose a protocol and attribute ID.';
             return;
         }
         if (this.newOverride.action === '' && this.newOverride.warn_above == null && this.newOverride.fail_above == null) {
@@ -311,6 +401,7 @@ export class DashboardSettingsComponent implements OnInit {
             this.newOverride.fail_above != null &&
             this.newOverride.warn_above >= this.newOverride.fail_above
         ) {
+            this.overrideError = 'Fail Above must be greater than Warn Above. Use only Fail Above for a fail-only threshold.';
             return;
         }
 
@@ -318,7 +409,7 @@ export class DashboardSettingsComponent implements OnInit {
             protocol: this.newOverride.protocol as OverrideProtocol,
             attribute_id: this.newOverride.attribute_id,
             action: this.newOverride.action as OverrideAction,
-            wwn: this.newOverride.wwn || '',
+            device_id: this.newOverride.device_id || '',
             status: this.newOverride.status as OverrideStatus,
             warn_above: this.newOverride.warn_above,
             fail_above: this.newOverride.fail_above,
@@ -327,15 +418,23 @@ export class DashboardSettingsComponent implements OnInit {
         this._overrideService
             .saveOverride(override)
             .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((saved) => {
-                this.overrides = [...this.overrides, saved];
-                // Reset form
-                this.newOverride = {
-                    protocol: 'ATA',
-                    attribute_id: '',
-                    action: 'ignore',
-                };
+            .subscribe({
+                next: (saved) => {
+                    this.overrides = [...this.overrides, saved];
+                    this.newOverride = { protocol: 'ATA', attribute_id: '', action: 'ignore' };
+                },
+                error: (error) => {
+                    this.overrideError = error?.error?.error || 'Could not save override.';
+                },
             });
+    }
+
+    overrideDeviceLabel(override: AttributeOverride): string {
+        const device = this.overrideDevices.find((entry) => entry.device_id === override.device_id);
+        if (device) {
+            return `${device.model_name} (${device.serial_number || device.device_name || device.device_id})`;
+        }
+        return override.wwn ? `Legacy WWN: ${override.wwn}` : 'All devices';
     }
 
     removeOverride(override: AttributeOverride): void {
@@ -531,6 +630,10 @@ export class DashboardSettingsComponent implements OnInit {
     }
 
     saveSettings(): void {
+        if (this.temperatureSettingsInvalid) {
+            return;
+        }
+        this.normalizeTemperatureThreshold();
         const newSettings: AppConfig = {
             navigation: {
                 show_zfs_pools: this.showZFSPools,
@@ -559,6 +662,9 @@ export class DashboardSettingsComponent implements OnInit {
                 status_threshold: this.statusThreshold as MetricsStatusThreshold,
                 repeat_notifications: this.repeatNotifications,
                 notify_on_collector_error: this.notifyOnCollectorError,
+                notify_on_temperature: this.notifyOnTemperature,
+                temperature_threshold_celsius: this.temperatureThresholdInvalid ? DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS : this.temperatureThresholdCelsius,
+                temperature_duration_minutes: this.temperatureDurationInvalid ? DEFAULT_TEMPERATURE_DURATION_MINUTES : this.temperatureDurationMinutes,
                 notify_on_missed_ping: this.notifyOnMissedPing,
                 missed_ping_timeout_minutes: this.missedPingTimeoutMinutes,
                 missed_ping_check_interval_mins: this.missedPingCheckIntervalMins,

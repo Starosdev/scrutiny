@@ -150,7 +150,7 @@ func writeDeviceTable(pdf *fpdf.Fpdf, report *ReportData) {
 		pdf.CellFormat(colWidths[0], 6, name, "1", 0, "L", false, 0, "")
 		pdf.CellFormat(colWidths[1], 6, d.StatusString(), "1", 0, "C", false, 0, "")
 		pdf.SetTextColor(33, 37, 41)
-		pdf.CellFormat(colWidths[2], 6, fmt.Sprintf("%d", d.TempCurrent), "1", 0, "C", false, 0, "")
+		pdf.CellFormat(colWidths[2], 6, formatTemp(d.TempCurrent), "1", 0, "C", false, 0, "")
 		pdf.CellFormat(colWidths[3], 6, fmt.Sprintf("%d", d.TempMin), "1", 0, "C", false, 0, "")
 		pdf.CellFormat(colWidths[4], 6, fmt.Sprintf("%d", d.TempMax), "1", 0, "C", false, 0, "")
 		pdf.CellFormat(colWidths[5], 6, fmt.Sprintf("%d", d.PowerOnHours), "1", 0, "C", false, 0, "")
@@ -177,13 +177,17 @@ func writeZFSSection(pdf *fpdf.Fpdf, report *ReportData) {
 
 	pdf.SetFont("Helvetica", "", 8)
 	for _, pool := range report.ZFSPools {
-		if pool.Health != "ONLINE" {
+		displayHealth := pool.DisplayHealth()
+		switch {
+		case displayHealth == "UNKNOWN":
+			pdf.SetTextColor(255, 193, 7)
+		case displayHealth != "ONLINE":
 			pdf.SetTextColor(220, 53, 69)
-		} else {
+		default:
 			pdf.SetTextColor(33, 37, 41)
 		}
 		pdf.CellFormat(colWidths[0], 6, pool.Name, "1", 0, "L", false, 0, "")
-		pdf.CellFormat(colWidths[1], 6, pool.Health, "1", 0, "C", false, 0, "")
+		pdf.CellFormat(colWidths[1], 6, displayHealth, "1", 0, "C", false, 0, "")
 		pdf.SetTextColor(33, 37, 41)
 		pdf.CellFormat(colWidths[2], 6, fmt.Sprintf("%.1f", pool.Capacity), "1", 0, "C", false, 0, "")
 		pdf.CellFormat(colWidths[3], 6, fmt.Sprintf("%d", pool.ErrorsRead), "1", 0, "C", false, 0, "")
@@ -201,8 +205,8 @@ func writeDeviceDetail(pdf *fpdf.Fpdf, device *DeviceReport) {
 
 	pdf.SetFont("Helvetica", "", 9)
 	pdf.CellFormat(0, 5, fmt.Sprintf("Model: %s | Serial: %s | Protocol: %s", device.Model, device.Serial, device.Protocol), "", 1, "L", false, 0, "")
-	pdf.CellFormat(0, 5, fmt.Sprintf("Status: %s | Power-On Hours: %d | Temperature: %dC (min: %d, max: %d, avg: %.0f)",
-		device.StatusString(), device.PowerOnHours, device.TempCurrent, device.TempMin, device.TempMax, device.TempAvg), "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, 5, fmt.Sprintf("Status: %s | Power-On Hours: %d | Temperature: %sC (min: %d, max: %d, avg: %.0f)",
+		device.StatusString(), device.PowerOnHours, formatTemp(device.TempCurrent), device.TempMin, device.TempMax, device.TempAvg), "", 1, "L", false, 0, "")
 
 	if device.HostID != "" {
 		pdf.CellFormat(0, 5, fmt.Sprintf("Host: %s", device.HostID), "", 1, "L", false, 0, "")

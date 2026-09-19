@@ -11,6 +11,7 @@ import (
 	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -150,10 +151,10 @@ func TestSmart_Flatten_SCSI(t *testing.T) {
 		"attr.read_errors_corrected_by_eccfast.thresh":            int64(0),
 		"attr.read_errors_corrected_by_eccfast.transformed_value": int64(0),
 		"attr.read_errors_corrected_by_eccfast.value":             int64(300357663),
-		"logical_block_size":                                      int64(512),
-		"power_cycle_count":                                       int64(10),
-		"power_on_hours":                                          int64(10),
-		"temp":                                                    int64(50)},
+		"logical_block_size": int64(512),
+		"power_cycle_count":  int64(10),
+		"power_on_hours":     int64(10),
+		"temp":               int64(50)},
 		fields)
 }
 
@@ -242,6 +243,61 @@ func TestNewSmartFromInfluxDB_ATA(t *testing.T) {
 				WhenFailed:  "",
 			},
 		}, Status: 0}, smart)
+}
+
+// A point written without a device_protocol tag keeps its plain fields and skips its attributes,
+// instead of panicking or failing the whole history query.
+func TestNewSmartFromInfluxDB_MissingProtocol(t *testing.T) {
+	timeNow := time.Now()
+	attrs := map[string]interface{}{
+		"_time":               timeNow,
+		"device_wwn":          "test-wwn",
+		"attr.1.attribute_id": "1",
+		"attr.1.value":        int64(135),
+		"power_on_hours":      int64(10),
+		"temp":                int64(50),
+	}
+
+	smart, err := measurements.NewSmartFromInfluxDB(attrs, logrus.New())
+
+	require.NoError(t, err)
+	require.Equal(t, &measurements.Smart{
+		Date:         timeNow,
+		DeviceWWN:    "test-wwn",
+		Temp:         50,
+		PowerOnHours: 10,
+		Attributes:   map[string]measurements.SmartAttribute{},
+	}, smart)
+}
+
+// A merged history row has null columns for attributes the point did not carry; they must not become
+// empty attributes of the wrong type.
+func TestNewSmartFromInfluxDB_NullColumnsAreAbsent(t *testing.T) {
+	timeNow := time.Now()
+	attrs := map[string]interface{}{
+		"_time":                              timeNow,
+		"device_wwn":                         "test-wwn",
+		"device_protocol":                    pkg.DeviceProtocolAta,
+		"attr.1.attribute_id":                "1",
+		"attr.1.value":                       int64(135),
+		"attr.critical_warning.value":        nil,
+		"attr.critical_warning.attribute_id": nil,
+		"temp":                               int64(50),
+		"power_on_hours":                     nil,
+	}
+
+	smart, err := measurements.NewSmartFromInfluxDB(attrs, logrus.New())
+
+	require.NoError(t, err)
+	require.Len(t, smart.Attributes, 1)
+	require.Contains(t, smart.Attributes, "1")
+	require.Equal(t, int64(50), smart.Temp)
+	require.Zero(t, smart.PowerOnHours)
+}
+
+func TestNewSmartFromInfluxDB_MissingTime(t *testing.T) {
+	_, err := measurements.NewSmartFromInfluxDB(map[string]interface{}{"device_wwn": "test-wwn"}, logrus.New())
+	require.Error(t, err)
 }
 
 func TestNewSmartFromInfluxDB_NVMe(t *testing.T) {
@@ -1750,4 +1806,101 @@ func TestNewSmartFromInfluxDB_WithFarmAttributes(t *testing.T) {
 	require.True(t, ok, "farm_poh should be SmartFarmAttribute type")
 	require.Equal(t, "farm_poh", farmAttr.AttributeId)
 	require.Equal(t, int64(2344), farmAttr.Value)
+}
+
+func TestSmartApplyOverridesProjectsStableDeviceOverride(t *testing.T) {
+	smart := measurements.Smart{
+		DeviceWWN:      "nvme-serial",
+		DeviceProtocol: pkg.DeviceProtocolNvme,
+		Attributes: map[string]measurements.SmartAttribute{
+			"media_errors": &measurements.SmartNvmeAttribute{
+				AttributeId: "media_errors",
+				Value:       3,
+				Status:      pkg.AttributeStatusFailedScrutiny,
+			},
+		},
+	}
+
+	smart.ApplyOverrides([]overrides.AttributeOverride{{
+		Protocol:    pkg.DeviceProtocolNvme,
+		AttributeId: "media_errors",
+		DeviceID:    "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e",
+		Action:      overrides.AttributeOverrideActionForceStatus,
+		Status:      "passed",
+	}}, "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e")
+
+	attribute := smart.Attributes["media_errors"].(*measurements.SmartNvmeAttribute)
+	require.Equal(t, pkg.AttributeStatusPassed, attribute.Status)
+	require.Equal(t, "Status forced by user configuration", attribute.StatusReason)
+}
+
+// acknowledgeOverride builds a device-scoped acknowledge override pinned to value.
+func acknowledgeOverride(deviceID string, value int64) []overrides.AttributeOverride {
+	return []overrides.AttributeOverride{{
+		Protocol:    pkg.DeviceProtocolNvme,
+		AttributeId: "media_errors",
+		DeviceID:    deviceID,
+		Action:      overrides.AttributeOverrideActionAcknowledge,
+		PinnedValue: &value,
+	}}
+}
+
+// nvmeSmartWithMediaErrors builds a failing NVMe result carrying one media_errors attribute.
+func nvmeSmartWithMediaErrors(value int64, status pkg.AttributeStatus) measurements.Smart {
+	return measurements.Smart{
+		DeviceWWN:      "nvme-serial",
+		DeviceProtocol: pkg.DeviceProtocolNvme,
+		Attributes: map[string]measurements.SmartAttribute{
+			"media_errors": &measurements.SmartNvmeAttribute{
+				AttributeId: "media_errors",
+				Value:       value,
+				Status:      status,
+			},
+		},
+	}
+}
+
+func TestSmartApplyOverridesAcknowledgePassesAtPinnedValue(t *testing.T) {
+	deviceID := "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e"
+	smart := nvmeSmartWithMediaErrors(3, pkg.AttributeStatusFailedScrutiny)
+
+	smart.ApplyOverrides(acknowledgeOverride(deviceID, 3), deviceID)
+
+	attribute := smart.Attributes["media_errors"].(*measurements.SmartNvmeAttribute)
+	require.Equal(t, pkg.AttributeStatusPassed, attribute.Status)
+	require.Equal(t, "Acknowledged at value 3", attribute.StatusReason)
+}
+
+func TestSmartApplyOverridesAcknowledgeRefailsWhenValueChanges(t *testing.T) {
+	deviceID := "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e"
+	smart := nvmeSmartWithMediaErrors(4, pkg.AttributeStatusFailedScrutiny)
+
+	// The acknowledgement was pinned to 3; the drive has since reported 4.
+	smart.ApplyOverrides(acknowledgeOverride(deviceID, 3), deviceID)
+
+	attribute := smart.Attributes["media_errors"].(*measurements.SmartNvmeAttribute)
+	require.Equal(t, pkg.AttributeStatusFailedScrutiny, attribute.Status)
+	require.Equal(t, "Acknowledgement no longer applies: value changed from 3 to 4", attribute.StatusReason)
+}
+
+func TestSmartApplyOverridesAcknowledgeNeverMasksSmartFailure(t *testing.T) {
+	deviceID := "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e"
+	smart := nvmeSmartWithMediaErrors(3, pkg.AttributeStatusFailedSmart)
+
+	smart.ApplyOverrides(acknowledgeOverride(deviceID, 3), deviceID)
+
+	attribute := smart.Attributes["media_errors"].(*measurements.SmartNvmeAttribute)
+	require.Equal(t, pkg.AttributeStatusFailedSmart, attribute.Status)
+}
+
+func TestAttributeThresholdValueMatchesEvaluatedField(t *testing.T) {
+	// ATA is evaluated on the raw value; every other protocol on the normalized one.
+	// The acknowledge handler pins whatever this returns, so the two must not diverge.
+	ataValue, ok := measurements.AttributeThresholdValue(&measurements.SmartAtaAttribute{RawValue: 42, Value: 7})
+	require.True(t, ok)
+	require.Equal(t, int64(42), ataValue)
+
+	nvmeValue, ok := measurements.AttributeThresholdValue(&measurements.SmartNvmeAttribute{Value: 9})
+	require.True(t, ok)
+	require.Equal(t, int64(9), nvmeValue)
 }

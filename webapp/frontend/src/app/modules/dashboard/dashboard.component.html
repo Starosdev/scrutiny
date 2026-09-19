@@ -145,7 +145,10 @@
                             @if (filesystemStatusForHost(hostId)?.updated_at) {
                             <div class="text-sm text-hint">
                                 Updated
-                                {{ filesystemStatusForHost(hostId)?.updated_at | date : (config?.time_format === '12' ? 'MMMM dd, yyyy - h:mm a' : 'MMMM dd, yyyy - HH:mm') }}
+                                {{
+                                    $safeNavigationMigration(filesystemStatusForHost(hostId)?.updated_at)
+                                        | date : (config?.time_format === '12' ? 'MMMM dd, yyyy - h:mm a' : 'MMMM dd, yyyy - HH:mm')
+                                }}
                             </div>
                             }
                         </div>
@@ -154,7 +157,7 @@
                             [class.bg-gray-500]="filesystemStatusForHost(hostId)?.status === 'available'"
                             [class.bg-yellow-600]="filesystemStatusForHost(hostId)?.status === 'unavailable'"
                         >
-                            {{ filesystemStatusForHost(hostId)?.status | titlecase }}
+                            {{ $safeNavigationMigration(filesystemStatusForHost(hostId)?.status) | titlecase }}
                         </div>
                     </div>
 
@@ -176,7 +179,7 @@
                                     </div>
                                     <div class="text-right">
                                         <div class="font-semibold text-lg">
-                                            {{ filesystem.available_bytes | fileSize : config?.file_size_si_units }}
+                                            {{ filesystem.available_bytes | fileSize : $safeNavigationMigration(config?.file_size_si_units) }}
                                         </div>
                                         <div class="text-sm text-hint">free</div>
                                     </div>
@@ -185,7 +188,7 @@
                                 <div class="mt-4">
                                     <div class="flex justify-between text-sm mb-1">
                                         <span>{{ filesystem.used_percent | number : '1.0-1' }}% used</span>
-                                        <span>{{ filesystem.total_bytes | fileSize : config?.file_size_si_units }} total</span>
+                                        <span>{{ filesystem.total_bytes | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} total</span>
                                     </div>
                                     <div class="h-2 w-full bg-gray-200 rounded overflow-hidden">
                                         <div class="h-full" [ngClass]="filesystemUsageClass(filesystem)" [style.width.%]="filesystem.used_percent"></div>

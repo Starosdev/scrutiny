@@ -74,7 +74,7 @@ describe('DeviceTitlePipe', () => {
         testCases.forEach((test, index) => {
             it(`should correctly format device title ${JSON.stringify(test.device)}. (testcase: ${index + 1})`, () => {
                 // test
-                const formatted = DeviceTitlePipe.deviceTitleForType(test.device as DeviceModel, test.titleType);
+                const formatted = DeviceTitlePipe.deviceTitleForType(test.device as unknown as DeviceModel, test.titleType);
                 expect(formatted).toEqual(test.result);
             });
         });
@@ -159,7 +159,7 @@ describe('DeviceTitlePipe', () => {
         testCases.forEach((test, index) => {
             it(`should correctly format device title ${JSON.stringify(test.device)}. (testcase: ${index + 1})`, () => {
                 // test
-                const formatted = DeviceTitlePipe.deviceTitleWithFallback(test.device as DeviceModel, test.titleType);
+                const formatted = DeviceTitlePipe.deviceTitleWithFallback(test.device as unknown as DeviceModel, test.titleType);
                 expect(formatted).toEqual(test.result);
             });
         });

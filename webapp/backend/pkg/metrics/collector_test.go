@@ -178,6 +178,37 @@ func TestCollectorIncludesZFSAndWorkloadMetrics(t *testing.T) {
 	})
 }
 
+func TestCollectorExportsLatestSelfTestStatus(t *testing.T) {
+	collector := NewCollector(logrus.New().WithField("test", t.Name()))
+	collector.devices["dev-1"] = &metricsModels.DeviceMetricsData{
+		Device: models.Device{
+			DeviceID:       "dev-1",
+			WWN:            "wwn-1",
+			DeviceName:     "/dev/sda",
+			ModelName:      "TestDrive",
+			DeviceProtocol: "ATA",
+			HostId:         "host-a",
+		},
+		SelfTestHealth: models.DeviceSelfTestHealth{
+			Status:    models.DeviceSelfTestStatusPassed,
+			HasResult: true,
+		},
+	}
+
+	families := gatherMetricFamilies(t, collector)
+	assertMetricValue(t, families, "scrutiny_device_self_test_last_passed", 1, map[string]string{
+		"device_id": "dev-1",
+		"wwn":       "wwn-1",
+	})
+
+	collector.devices["dev-1"].SelfTestHealth.Status = models.DeviceSelfTestStatusFailed
+	families = gatherMetricFamilies(t, collector)
+	assertMetricValue(t, families, "scrutiny_device_self_test_last_passed", 0, map[string]string{
+		"device_id": "dev-1",
+		"wwn":       "wwn-1",
+	})
+}
+
 func TestCollectorOmitsOptionalWorkloadMetricsAndHandlesUnknownStates(t *testing.T) {
 	collector := NewCollector(logrus.New().WithField("test", "collector"))
 	collector.zfsPools["pool-guid"] = &metricsModels.ZFSPoolMetricsData{
@@ -256,6 +287,29 @@ func TestCollectorOmitsOptionalWorkloadMetricsAndHandlesUnknownStates(t *testing
 		"protocol":    "scsi",
 		"host_id":     "",
 	}))
+}
+
+func TestCollectorDoesNotExposeHistoricalOnlineAsCurrentWhenPoolIsMissing(t *testing.T) {
+	collector := NewCollector(logrus.New().WithField("test", t.Name()))
+	collector.zfsPools["pool-guid"] = &metricsModels.ZFSPoolMetricsData{
+		Pool: models.ZFSPool{
+			GUID:     "pool-guid",
+			Name:     "tank",
+			HostID:   "host-a",
+			Status:   models.ZFSPoolStatusOnline,
+			Presence: models.ZFSPoolPresenceMissing,
+		},
+	}
+
+	families := gatherMetricFamilies(t, collector)
+	labels := map[string]string{"guid": "pool-guid", "pool_name": "tank", "host_id": "host-a"}
+	statusLabels := map[string]string{"guid": "pool-guid", "pool_name": "tank", "host_id": "host-a", "status": "ONLINE"}
+	presenceLabels := map[string]string{"guid": "pool-guid", "pool_name": "tank", "host_id": "host-a", "presence": "missing"}
+
+	assertMetricValue(t, families, "scrutiny_zfs_pool_status", 0, statusLabels)
+	assertMetricValue(t, families, "scrutiny_zfs_pool_status", 1, map[string]string{"guid": "pool-guid", "pool_name": "tank", "host_id": "host-a", "status": "unknown"})
+	assertMetricValue(t, families, "scrutiny_zfs_pool_presence_code", 2, labels)
+	assertMetricValue(t, families, "scrutiny_zfs_pool_presence", 1, presenceLabels)
 }
 
 func gatherMetricFamilies(t *testing.T, collector *Collector) map[string]*dto.MetricFamily {

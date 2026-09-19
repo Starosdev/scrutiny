@@ -39,14 +39,14 @@ main repository.
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Go | 1.25+ | Backend compilation and tests |
+| Go | 1.26.8+ | Backend compilation and tests |
 | Node.js | 22+ (LTS) | Frontend build and tests |
 | Docker | 20+ | Container builds and full-stack testing |
 | Docker Compose | v2+ | Multi-container orchestration |
 | smartmontools | any | Required inside collector containers |
 | curl | any | API testing |
 
-> **Note**: The Go module is `go 1.25.0` and the Dockerfiles use `golang:1.26-trixie`.
+> **Note**: The Go module requires `go 1.26.8` and the Dockerfiles use `golang:1.26-trixie`.
 > The frontend uses Angular 21 with TypeScript ~5.9.
 
 ---
@@ -744,6 +744,7 @@ Before submitting a pull request, ensure all of the following pass:
 - [ ] Migration is registered in `scrutiny_repository_migrations.go`
 - [ ] Tested with a fresh database (delete `scrutiny.db` and restart)
 - [ ] Tested with an existing database (migration runs without errors on upgrade)
+- [ ] For SQLite single-column additions, prefer explicit `ALTER TABLE ... ADD COLUMN` over `AutoMigrate`; SQLite `AutoMigrate` can rebuild legacy tables and copy an incomplete column set
 
 ### If You Added a New API Endpoint
 
@@ -827,8 +828,9 @@ Common issues:
 
 - Ensure you passed `--device=/dev/sdX` to the Docker container
 - Ensure `--cap-add SYS_RAWIO` (and `SYS_ADMIN` for NVMe) are set
-- On AppArmor systems (Ubuntu, Debian, TrueNAS SCALE): either load the custom
-  profile from `docker/apparmor-profile` or use `--security-opt apparmor=unconfined`
+- On AppArmor systems (Ubuntu, Debian, TrueNAS SCALE): apply the custom
+  profile only after confirming a policy denial in host audit logs. See
+  [AppArmor troubleshooting and regression checks](docs/TROUBLESHOOTING_APPARMOR.md).
 - Check collector logs: `docker logs <collector_container>`
 
 ### Test Data Timestamps Too Old

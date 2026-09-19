@@ -1,5 +1,5 @@
 import humanizeDuration from 'humanize-duration';
-import { AfterViewInit, Component, LOCALE_ID, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
+import { AfterViewInit, Component, LOCALE_ID, OnDestroy, OnInit, ViewChild, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Location, formatDate, NgClass, UpperCasePipe, DecimalPipe, PercentPipe } from '@angular/common';
 import { ApexOptions, ChartComponent } from 'ng-apexcharts';
 import { AppConfig } from 'app/core/config/app.config';
@@ -75,6 +75,7 @@ const AttributeStatusFailedScrutiny = 4;
             transition('expanded <=> collapsed', animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)')),
         ]),
     ],
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [
         MatIconButton,
         MatIcon,
@@ -742,6 +743,37 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             });
     }
 
+    acknowledgeAttribute(attr: SmartAttributeModel): void {
+        // No pinned_value is sent: the server reads the device's latest SMART submission and
+        // pins the same field its own evaluation compares, which differs by protocol.
+        const override: AttributeOverride = {
+            protocol: this.device.device_protocol as OverrideProtocol,
+            attribute_id: String(attr.attribute_id),
+            wwn: this.device.wwn,
+            action: 'acknowledge',
+        };
+        this._overrideService
+            .saveOverride(override)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe({
+                next: () => this._refreshAfterOverrideChange(),
+                error: (err) => console.error('Failed to save override:', err),
+            });
+    }
+
+    overrideDescription(override: AttributeOverride): string {
+        switch (override.action) {
+            case 'ignore':
+                return 'Ignored';
+            case 'acknowledge':
+                return `Acknowledged at ${override.pinned_value}`;
+            case 'force_status':
+                return `Forced ${override.status}`;
+            default:
+                return 'Custom threshold';
+        }
+    }
+
     removeOverride(attr: SmartAttributeModel): void {
         const override = this.getOverrideForAttribute(attr.attribute_id);
         if (override?.id) {
@@ -803,6 +835,14 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             'bg-orange': category === 'plan_replacement',
             'bg-red': category === 'replace_soon',
         };
+    }
+
+    selfTestAgeTooltip(selfTest: DeviceSelfTestModel): string {
+        const raw = `Controller lifetime: ${selfTest.lifetime_hours} hours.`;
+        if (selfTest.effective_lifetime_hours == null) {
+            return `${raw} Absolute power-on age is unknown because the lifetime counter may have wrapped or power-on context is unavailable.`;
+        }
+        return `${raw} Resolved power-on age: ${selfTest.effective_lifetime_hours} hours.`;
     }
 
     selfTestStatusLabel(selfTest: DeviceSelfTestModel): string {

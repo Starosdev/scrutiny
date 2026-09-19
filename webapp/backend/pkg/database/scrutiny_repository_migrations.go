@@ -34,6 +34,8 @@ import (
 	m20260608000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260608000000"
 	m20260610000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260610000000"
 	m20260616000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260616000000"
+	m20260907000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260907000000"
+	m20260910000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260910000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -481,6 +483,8 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 		// non-empty WWN (e.g. multiple disks reporting 0x0000000000000000).
 		// Since device_id is now the primary key, wwn uniqueness is no longer needed.
 		// Fixes: https://github.com/Staros-Labs/scrutiny/issues/314
+		// m20260508000000 later rebuilt the devices table and recreated the index as
+		// UNIQUE; m20260914000000 restores the plain index (#851).
 		{
 			ID: "m20260402000000",
 			Migrate: func(tx *gorm.DB) error {
@@ -652,6 +656,53 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				}).Error
 			},
 		},
+		{
+			ID: "m20260823000000", // add stable device selector to attribute overrides (#755)
+			Migrate: func(tx *gorm.DB) error {
+				if err := tx.Exec("ALTER TABLE attribute_overrides ADD COLUMN device_id TEXT NOT NULL DEFAULT ''").Error; err != nil {
+					return fmt.Errorf("failed to add attribute override device_id: %w", err)
+				}
+				if err := tx.Exec("DROP INDEX IF EXISTS idx_override_lookup").Error; err != nil {
+					return fmt.Errorf("failed to replace attribute override index: %w", err)
+				}
+				return tx.Exec("CREATE UNIQUE INDEX idx_override_lookup ON attribute_overrides (protocol, attribute_id, device_id, wwn)").Error
+			},
+		},
+		{ID: "m20260905000000", Migrate: migrateSelfTestChronology},
+		{
+			ID: "m20260906000000", // add pinned_value to attribute overrides for acknowledge action (#775)
+			Migrate: func(tx *gorm.DB) error {
+				if err := tx.Exec("ALTER TABLE attribute_overrides ADD COLUMN pinned_value INTEGER").Error; err != nil {
+					return fmt.Errorf("failed to add attribute override pinned_value: %w", err)
+				}
+				return nil
+			},
+		},
+		{
+			ID:      "m20260907000000", // add usable capacity columns to zfs_pools table (#754)
+			Migrate: m20260907000000.Migrate,
+		},
+		{ID: "m20260908000000", Migrate: migrateTemperatureStorageKey},
+		{ID: "m20260908000001", Migrate: migrateTemperatureNotificationSettings},
+		{ID: "m20260910000000", Migrate: m20260910000000.Migrate},
+		// m20260508000000 recreated idx_devices_wwn as UNIQUE while rebuilding the devices
+		// table, undoing m20260402000000. device_id is the identity, and drives behind one
+		// controller or with vendor-default WWNs can share a WWN (#851), so restore the
+		// plain index with the same statements m20260402000000 used.
+		{ID: "m20260914000000", Migrate: func(tx *gorm.DB) error {
+			return sr.migrateM20260402000000(tx)
+		}},
+		// Self-test history was keyed by WWN whenever a device had one, so drives sharing a
+		// WWN shared one history (#851). Re-key existing rows by the device_id they were
+		// written for; deviceSelfTestIdentity now returns device_id.
+		{ID: "m20260914000001", Migrate: func(tx *gorm.DB) error {
+			if !tx.Migrator().HasTable(&models.DeviceSelfTest{}) {
+				return nil
+			}
+			return tx.Model(&models.DeviceSelfTest{}).
+				Where("device_id <> ''").
+				Update("device_identity", gorm.Expr("device_id")).Error
+		}},
 	})
 
 	if err := m.Migrate(); err != nil {
@@ -1601,4 +1652,44 @@ func (sr *scrutinyRepository) migrateM20260701000000(tx *gorm.DB) error {
 		SettingValueString:    "",
 	}
 	return tx.Create(&defaultSetting).Error
+}
+
+// Existing rows have no reliable epoch or controller position. Preserve their
+// raw values and IDs; the next collection can supply chronology for matching rows.
+func migrateSelfTestChronology(tx *gorm.DB) error {
+	if err := tx.Exec("DROP INDEX IF EXISTS idx_device_self_tests_identity").Error; err != nil {
+		return err
+	}
+	if err := tx.Exec("DROP INDEX IF EXISTS idx_device_self_tests_history").Error; err != nil {
+		return err
+	}
+	return tx.AutoMigrate(&models.DeviceSelfTest{})
+}
+
+// Keep an existing canonical value if an installation already repaired the key.
+func migrateTemperatureStorageKey(tx *gorm.DB) error {
+	const legacyKey = "store_temperature_history"
+	const canonicalKey = "collector.store_temperature_history"
+	var count int64
+	if err := tx.Model(&models.SettingEntry{}).Where("setting_key_name = ?", canonicalKey).Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return tx.Unscoped().Where("setting_key_name = ?", legacyKey).Delete(&models.SettingEntry{}).Error
+	}
+	return tx.Model(&models.SettingEntry{}).Where("setting_key_name = ?", legacyKey).Update("setting_key_name", canonicalKey).Error
+}
+
+func migrateTemperatureNotificationSettings(tx *gorm.DB) error {
+	entries := []models.SettingEntry{
+		{SettingKeyName: "metrics.notify_on_temperature", SettingKeyDescription: "Notify when drive temperature stays at or above the threshold", SettingDataType: "bool", SettingValueBool: false},
+		{SettingKeyName: "metrics.temperature_threshold_celsius", SettingKeyDescription: "Temperature notification threshold in Celsius", SettingDataType: "numeric", SettingValueNumeric: models.DefaultTemperatureThresholdCelsius},
+		{SettingKeyName: "metrics.temperature_duration_minutes", SettingKeyDescription: "Sustained hot duration in minutes (0 = immediate)", SettingDataType: "numeric", SettingValueNumeric: models.DefaultTemperatureDurationMinutes},
+	}
+	for _, entry := range entries {
+		if err := tx.Where("setting_key_name = ?", entry.SettingKeyName).FirstOrCreate(&entry).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -55,11 +55,11 @@
                 <!-- Theme Toggle -->
                 <theme-toggle class="mr-4"></theme-toggle>
 
+                @if (config.server_version) {
                 <a class="version-link" href="https://github.com/Staros-Labs/scrutiny" target="_blank" rel="noopener noreferrer">
-                    <code>{{ appVersion }}</code>
+                    <code>{{ config.server_version }}</code>
                 </a>
-
-                @if (authEnabled) {
+                } @if (authEnabled) {
                 <button mat-icon-button (click)="logout()" matTooltip="Logout" class="ml-2">
                     <mat-icon svgIcon="heroicons_outline:logout"></mat-icon>
                 </button>

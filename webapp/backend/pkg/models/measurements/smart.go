@@ -17,6 +17,8 @@ import (
 // Custom threshold status reason strings (S1192: deduplicated string literals)
 const statusReasonWithinThreshold = "Within custom threshold"
 const statusReasonThresholdExceeded = "Custom threshold exceeded"
+const statusReasonAcknowledged = "Acknowledged at value %d"
+const statusReasonAcknowledgementStale = "Acknowledgement no longer applies: value changed from %d to %d"
 
 // applyOverrideResult applies a parsed override Result to an attribute's status fields.
 // thresholdValue is the value compared against custom WarnAbove/FailAbove thresholds.
@@ -31,6 +33,8 @@ func applyOverrideResult(result *overrides.Result, thresholdValue int64, status 
 		*status = pkg.AttributeStatusPassed
 		*statusReason = result.StatusReason
 		return true, false
+	case result.AcknowledgedValue != nil:
+		applyAcknowledgement(*result.AcknowledgedValue, thresholdValue, status, statusReason)
 	case result.Status != nil:
 		*status = *result.Status
 		*statusReason = result.StatusReason
@@ -46,6 +50,71 @@ func applyOverrideResult(result *overrides.Result, thresholdValue int64, status 
 		}
 	}
 	return false, false
+}
+
+// applyAcknowledgement passes an attribute only while its value still equals the value the
+// user acknowledged. Any change restores the underlying evaluation, which is the difference
+// between this and force_status. A manufacturer SMART failure is never masked, matching
+// ApplyDeltaEvaluation: the drive itself reporting failure is not a Scrutiny verdict the
+// user can acknowledge away.
+func applyAcknowledgement(pinnedValue, currentValue int64, status *pkg.AttributeStatus, statusReason *string) {
+	if currentValue != pinnedValue {
+		*statusReason = fmt.Sprintf(statusReasonAcknowledgementStale, pinnedValue, currentValue)
+		return
+	}
+	if pkg.AttributeStatusHas(*status, pkg.AttributeStatusFailedSmart) {
+		return
+	}
+	*status = pkg.AttributeStatusPassed
+	*statusReason = fmt.Sprintf(statusReasonAcknowledged, pinnedValue)
+}
+
+// AttributeThresholdValue returns the value an attribute is evaluated against by
+// applyOverrideResult. It is the single source of truth for which field each protocol
+// compares, so callers that need to pin or threshold a value never restate the rule.
+func AttributeThresholdValue(attribute SmartAttribute) (int64, bool) {
+	switch attr := attribute.(type) {
+	case *SmartAtaAttribute:
+		return attr.RawValue, true
+	case *SmartAtaDeviceStatAttribute:
+		return attr.Value, true
+	case *SmartFarmAttribute:
+		return attr.Value, true
+	case *SmartNvmeAttribute:
+		return attr.Value, true
+	case *SmartScsiAttribute:
+		return attr.Value, true
+	default:
+		return 0, false
+	}
+}
+
+// ApplyOverrideToAttribute applies an override to one in-memory attribute.
+// It is used for ingestion and read-time projection without rewriting history.
+func ApplyOverrideToAttribute(attribute SmartAttribute, result *overrides.Result) (ignored bool, forcedFailure bool) {
+	switch attr := attribute.(type) {
+	case *SmartAtaAttribute:
+		return applyOverrideResult(result, attr.RawValue, &attr.Status, &attr.StatusReason)
+	case *SmartAtaDeviceStatAttribute:
+		return applyOverrideResult(result, attr.Value, &attr.Status, &attr.StatusReason)
+	case *SmartFarmAttribute:
+		return applyOverrideResult(result, attr.Value, &attr.Status, &attr.StatusReason)
+	case *SmartNvmeAttribute:
+		return applyOverrideResult(result, attr.Value, &attr.Status, &attr.StatusReason)
+	case *SmartScsiAttribute:
+		return applyOverrideResult(result, attr.Value, &attr.Status, &attr.StatusReason)
+	default:
+		return false, false
+	}
+}
+
+// ApplyOverrides projects current override rules over a stored SMART result.
+// It changes only response data; raw InfluxDB history is retained.
+func (sm *Smart) ApplyOverrides(overrideList []overrides.AttributeOverride, deviceID string) {
+	for attributeID, attribute := range sm.Attributes {
+		result := overrides.ApplyWithOverrides(overrideList, sm.DeviceProtocol, attributeID, deviceID, sm.DeviceWWN)
+		ApplyOverrideToAttribute(attribute, result)
+	}
 }
 
 type Smart struct {
@@ -162,16 +231,31 @@ func newAttributeForProtocol(protocol, attributeId string) (SmartAttribute, erro
 func NewSmartFromInfluxDB(attrs map[string]interface{}, logger logrus.FieldLogger) (*Smart, error) {
 	//go though the massive map returned from influxdb. If a key is associated with the Smart struct, assign it. If it starts with "attr.*" group it by attributeId, and pass to attribute inflate.
 
+	date, ok := attrs["_time"].(time.Time)
+	if !ok {
+		return nil, fmt.Errorf("smart record has no _time")
+	}
+	// Tags are missing on points written without them; a missing tag must not abort a history query.
+	deviceWWN, _ := attrs["device_wwn"].(string)
+	deviceProtocol, _ := attrs["device_protocol"].(string)
+
 	sm := Smart{
-		//required fields
-		Date:           attrs["_time"].(time.Time),
-		DeviceWWN:      attrs["device_wwn"].(string),
-		DeviceProtocol: attrs["device_protocol"].(string),
+		Date:           date,
+		DeviceWWN:      deviceWWN,
+		DeviceProtocol: deviceProtocol,
 
 		Attributes: map[string]SmartAttribute{},
 	}
+	if deviceProtocol == "" {
+		logger.Warnf("SMART record for device (%s) at %s has no device_protocol tag; skipping its attributes", deviceWWN, date)
+	}
 
 	for key, val := range attrs {
+		// A history row pivoted from several series carries null columns for fields or attributes the
+		// point did not have (for example another protocol's attributes). Null means absent.
+		if val == nil {
+			continue
+		}
 		switch key {
 		case "temp":
 			if intVal, ok := parseInt64Field(val, "temp", logger); ok {
@@ -188,7 +272,11 @@ func NewSmartFromInfluxDB(attrs map[string]interface{}, logger logrus.FieldLogge
 		case "logical_block_size":
 			sm.LogicalBlockSize = coerceInt64(val, sm.LogicalBlockSize)
 		default:
-			// this key is unknown; group "attr.*" keys into their SmartAttribute siblings.
+			// this key is unknown; group "attr.*" keys into their SmartAttribute siblings. Without a
+			// protocol the attribute type is unknown, so the attributes are skipped.
+			if deviceProtocol == "" {
+				continue
+			}
 			if err := sm.inflateInfluxAttribute(key, val); err != nil {
 				return nil, err
 			}
@@ -500,7 +588,7 @@ func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, modelFam
 		attrIdStr := strconv.Itoa(collectorAttr.ID)
 
 		// Apply merged overrides (config + database)
-		result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrIdStr, sm.DeviceWWN)
+		result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrIdStr, sm.DeviceID, sm.DeviceWWN)
 		ignored, forcedFailure := applyOverrideResult(result, attrModel.RawValue, &attrModel.Status, &attrModel.StatusReason)
 		if forcedFailure {
 			sm.HasForcedFailure = true
@@ -564,7 +652,7 @@ func (sm *Smart) processAtaDeviceStatisticsWithOverrides(cfg config.Interface, d
 			attrModel.PopulateAttributeStatus()
 
 			// Apply merged overrides (config + database)
-			result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrId, sm.DeviceWWN)
+			result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrId, sm.DeviceID, sm.DeviceWWN)
 			ignored, forcedFailure := applyOverrideResult(result, attrModel.Value, &attrModel.Status, &attrModel.StatusReason)
 			if forcedFailure {
 				sm.HasForcedFailure = true
@@ -630,7 +718,7 @@ func (sm *Smart) processFarmDataWithOverrides(cfg config.Interface, farmLog *col
 		attrModel.PopulateAttributeStatus()
 
 		// Apply merged overrides (config + database)
-		result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrId, sm.DeviceWWN)
+		result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolAta, attrId, sm.DeviceID, sm.DeviceWWN)
 		ignored, forcedFailure := applyOverrideResult(result, attrModel.Value, &attrModel.Status, &attrModel.StatusReason)
 		if forcedFailure {
 			sm.HasForcedFailure = true
@@ -670,7 +758,7 @@ func (sm *Smart) processNvmeSmartInfoWithOverrides(cfg config.Interface, nvmeSma
 		nvmeAttr := val.(*SmartNvmeAttribute)
 
 		// Apply merged overrides (config + database)
-		result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolNvme, attrId, sm.DeviceWWN)
+		result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolNvme, attrId, sm.DeviceID, sm.DeviceWWN)
 		ignored, forcedFailure := applyOverrideResult(result, nvmeAttr.Value, &nvmeAttr.Status, &nvmeAttr.StatusReason)
 		if forcedFailure {
 			sm.HasForcedFailure = true
@@ -934,7 +1022,7 @@ func (sm *Smart) processScsiSmartInfoWithOverrides(cfg config.Interface, defectG
 
 		if scsiAttr, ok := val.(*SmartScsiAttribute); ok {
 			// Apply merged overrides (config + database)
-			result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolScsi, attrId, sm.DeviceWWN)
+			result := overrides.ApplyWithOverrides(mergedOverrides, pkg.DeviceProtocolScsi, attrId, sm.DeviceID, sm.DeviceWWN)
 			var forcedFailure bool
 			ignored, forcedFailure = applyOverrideResult(result, scsiAttr.Value, &scsiAttr.Status, &scsiAttr.StatusReason)
 			if forcedFailure {

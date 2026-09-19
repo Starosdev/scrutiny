@@ -2,6 +2,8 @@ package database
 
 import (
 	"context"
+	"fmt"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"path/filepath"
 	"testing"
 
@@ -22,6 +24,9 @@ func createMigrationTestRepositoryWithAppliedMigrations(t *testing.T, appliedMig
 	dbPath := filepath.Join(tempDir, "scrutiny.db")
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	require.NoError(t, err)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
 
 	require.NoError(t, db.AutoMigrate(
 		&m20260301000000.Device{},
@@ -95,6 +100,19 @@ func TestMigrateBackfillsDistinctDeviceIDsForLegacyDevicesWithMissingWWN(t *test
 	var nullWWNCount int64
 	require.NoError(t, repo.gormClient.Raw(`SELECT COUNT(*) FROM devices WHERE wwn IS NULL`).Scan(&nullWWNCount).Error)
 	require.Equal(t, int64(2), nullWWNCount)
+}
+
+func TestMigrateAttributeOverridesSupportsDistinctDeviceSelectors(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+	require.NoError(t, repo.Migrate(context.Background()))
+
+	first := models.AttributeOverride{Protocol: "NVMe", AttributeId: "media_errors", DeviceID: "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e", Action: "ignore"}
+	second := models.AttributeOverride{Protocol: "NVMe", AttributeId: "media_errors", DeviceID: "c4ac4ff4-1a4d-52aa-9724-40fbc47dd306", Action: "ignore"}
+	require.NoError(t, repo.gormClient.Create(&first).Error)
+	require.NoError(t, repo.gormClient.Create(&second).Error)
+
+	duplicate := models.AttributeOverride{Protocol: "NVMe", AttributeId: "media_errors", DeviceID: first.DeviceID, Action: "force_status", Status: "passed"}
+	require.Error(t, repo.gormClient.Create(&duplicate).Error)
 }
 
 func TestMigratePreservesDeviceColumnsAcrossSQLiteTableRebuilds(t *testing.T) {
@@ -252,6 +270,27 @@ CREATE TABLE devices (
 	require.Equal(t, int64(42), missedPingTimeoutOverride)
 }
 
+// fixes #851: m20260508000000 rebuilt the devices table and recreated idx_devices_wwn
+// as UNIQUE, so two drives sharing a WWN failed registration. This runs every
+// migration from before that rebuild and pins the final index definition.
+func TestMigrateLeavesDevicesWWNIndexNonUnique(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+	require.NoError(t, repo.Migrate(context.Background()))
+
+	var indexSQL string
+	require.NoError(t, repo.gormClient.Raw(
+		`SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'idx_devices_wwn'`,
+	).Scan(&indexSQL).Error)
+	require.Equal(t, "CREATE INDEX idx_devices_wwn ON devices(wwn)", indexSQL)
+
+	for _, serial := range []string{"PPKJA1ZB", "PPK4ZTUB"} {
+		require.NoError(t, repo.gormClient.Exec(
+			`INSERT INTO devices (device_id, wwn, model_name, serial_number) VALUES (?, ?, ?, ?)`,
+			"device-"+serial, "0x600508b1001039343720202020200016", "HITACHI HUC106060CSS600", serial,
+		).Error)
+	}
+}
+
 func TestAttributeOverridesSchemaSurvivesLaterAutoMigrate(t *testing.T) {
 	repo := createMigrationTestRepositoryWithAppliedMigrations(t, []string{
 		"20201107210306",
@@ -344,6 +383,110 @@ CREATE TABLE attribute_overrides (
 	require.Equal(t, int64(10), warnAbove)
 	require.Equal(t, int64(20), failAbove)
 	require.Equal(t, "ui", source)
+}
+
+func TestMigrateAttributeOverridesWithLegacySQLiteSchema(t *testing.T) {
+	repo := createMigrationTestRepositoryWithAppliedMigrations(t, []string{
+		"20201107210306",
+		"20220503113100",
+		"20220503120000",
+		"m20220509170100",
+		"m20220709181300",
+		"m20220716214900",
+		"m20221115214900",
+		"g20220802211500",
+		"m20231123123300",
+		"m20240722082740",
+		"m20250221084400",
+		"m20250609210800",
+		"m20251108044508",
+		"m20260108000000",
+		"m20260122000000",
+		"m20260124000000",
+		"m20260129000000",
+		"m20260131000000",
+		"m20260202000000",
+		"m20260207000000",
+		"m20260217000000",
+		"m20260219000000",
+		"m20260225000000",
+		"m20260226000000",
+		"m20260301000000",
+		"m20260315000000",
+		"m20260401000000",
+		"m20260402000000",
+		"m20260410000000",
+		"m20260411000000",
+		"m20260413000000",
+		"m20260414000000",
+		"m20260421000000",
+		"m20260508000000",
+		"m20260510000000",
+		"m20260514000000",
+		"m20260516000000",
+		"m20260523000000",
+		"m20260524000000",
+		"m20260528000000",
+		"m20260608000000",
+		"m20260609000000",
+		"m20260610000000",
+		"m20260616000000",
+		"m20260617000000",
+		"m20260701000000",
+		"m20260728000000",
+		"m20260729000000",
+		"m20260803000000",
+		"m20260809000000",
+		"m20260823000000",
+		"m20260905000000",
+	})
+
+	require.NoError(t, repo.gormClient.Exec("DROP TABLE attribute_overrides").Error)
+	require.NoError(t, repo.gormClient.Exec(`
+CREATE TABLE attribute_overrides (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	created_at DATETIME,
+	updated_at DATETIME,
+	protocol TEXT NOT NULL,
+	attribute_id TEXT NOT NULL,
+	wwn TEXT DEFAULT '',
+	action TEXT DEFAULT '',
+	status TEXT DEFAULT '',
+	warn_above INTEGER,
+	fail_above INTEGER,
+	source TEXT DEFAULT 'ui',
+	device_id TEXT NOT NULL DEFAULT ''
+)`).Error)
+	require.NoError(t, repo.gormClient.Exec(`
+	CREATE UNIQUE INDEX idx_override_lookup
+	ON attribute_overrides (protocol, attribute_id, device_id, wwn)
+	`).Error)
+	require.NoError(t, repo.gormClient.Exec(`
+	INSERT INTO attribute_overrides (
+		id, protocol, attribute_id, wwn, action, source
+	) VALUES (1, 'ATA', '188', '0x5000c500d575cbfc', 'ignore', 'ui')
+	`).Error)
+
+	require.NoError(t, repo.Migrate(context.Background()))
+
+	var pinnedColumnCount int64
+	require.NoError(t, repo.gormClient.Raw(`
+		SELECT COUNT(*)
+		FROM pragma_table_info('attribute_overrides')
+		WHERE name = 'pinned_value'
+	`).Scan(&pinnedColumnCount).Error)
+	require.Equal(t, int64(1), pinnedColumnCount)
+
+	var protocol, attributeID, wwn, action string
+	require.NoError(t, repo.gormClient.Raw(`
+		SELECT protocol, attribute_id, wwn, action
+		FROM attribute_overrides
+		WHERE id = 1
+	`).Row().Scan(&protocol, &attributeID, &wwn, &action))
+	require.Equal(t, "ATA", protocol)
+	require.Equal(t, "188", attributeID)
+	require.Equal(t, "0x5000c500d575cbfc", wwn)
+	require.Equal(t, "ignore", action)
 }
 
 func TestMigrateSelfHealsDriftedDeviceSchemaWhenMigrationWasRecorded(t *testing.T) {
@@ -546,7 +689,138 @@ func TestMigrateEnablesTemperatureHistoryStorage(t *testing.T) {
 	require.NoError(t, repo.Migrate(context.Background()))
 
 	var setting models.SettingEntry
-	require.NoError(t, repo.gormClient.Where("setting_key_name = ?", "store_temperature_history").First(&setting).Error)
+	require.NoError(t, repo.gormClient.Where("setting_key_name = ?", "collector.store_temperature_history").First(&setting).Error)
 	require.Equal(t, "bool", setting.SettingDataType)
 	require.True(t, setting.SettingValueBool)
+}
+
+func TestTemperatureSettingsPersistAcrossConfigReload(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+	require.NoError(t, repo.Migrate(context.Background()))
+	var err error
+	repo.appConfig, err = config.Create()
+	require.NoError(t, err)
+	settings, err := repo.LoadSettings(context.Background())
+	require.NoError(t, err)
+	require.True(t, settings.Collector.StoreTempHistory)
+	require.False(t, settings.Metrics.NotifyOnTemperature)
+	require.Equal(t, models.DefaultTemperatureThresholdCelsius, settings.Metrics.TemperatureThresholdCelsius)
+	require.Equal(t, models.DefaultTemperatureDurationMinutes, settings.Metrics.TemperatureDurationMinutes)
+	for _, store := range []bool{false, true} {
+		settings.Collector.StoreTempHistory = store
+		settings.Metrics.NotifyOnTemperature = true
+		settings.Metrics.TemperatureThresholdCelsius = 65
+		settings.Metrics.TemperatureDurationMinutes = 0
+		require.NoError(t, repo.SaveSettings(context.Background(), *settings))
+		repo.appConfig, err = config.Create()
+		require.NoError(t, err)
+		settings, err = repo.LoadSettings(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, store, settings.Collector.StoreTempHistory)
+		require.Equal(t, store, repo.appConfig.GetBool("user.collector.store_temperature_history"))
+		require.True(t, settings.Metrics.NotifyOnTemperature)
+		require.Equal(t, 65, settings.Metrics.TemperatureThresholdCelsius)
+		require.Zero(t, settings.Metrics.TemperatureDurationMinutes)
+	}
+}
+
+func TestTemperatureStorageMigrationPreservesValues(t *testing.T) {
+	for _, value := range []bool{false, true} {
+		t.Run(fmt.Sprint(value), func(t *testing.T) {
+			repo := createMigrationTestRepository(t)
+			legacy := models.SettingEntry{SettingKeyName: "store_temperature_history", SettingDataType: "bool", SettingValueBool: value}
+			require.NoError(t, repo.gormClient.Create(&legacy).Error)
+			require.NoError(t, migrateTemperatureStorageKey(repo.gormClient))
+			require.NoError(t, migrateTemperatureStorageKey(repo.gormClient))
+			var saved models.SettingEntry
+			require.NoError(t, repo.gormClient.First(&saved, legacy.ID).Error)
+			require.Equal(t, "collector.store_temperature_history", saved.SettingKeyName)
+			require.Equal(t, value, saved.SettingValueBool)
+		})
+	}
+}
+
+func TestTemperatureMigrationsPreserveExistingCanonicalSettings(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+	entries := []models.SettingEntry{
+		{SettingKeyName: "store_temperature_history", SettingDataType: "bool", SettingValueBool: true},
+		{SettingKeyName: "collector.store_temperature_history", SettingDataType: "bool", SettingValueBool: false},
+		{SettingKeyName: "metrics.temperature_duration_minutes", SettingDataType: "numeric", SettingValueNumeric: 0},
+		{SettingKeyName: "metrics.notify_on_temperature", SettingDataType: "bool", SettingValueBool: true},
+		{SettingKeyName: "metrics.temperature_threshold_celsius", SettingDataType: "numeric", SettingValueNumeric: 65},
+	}
+	require.NoError(t, repo.gormClient.Create(&entries).Error)
+	for range 2 {
+		require.NoError(t, migrateTemperatureStorageKey(repo.gormClient))
+		require.NoError(t, migrateTemperatureNotificationSettings(repo.gormClient))
+	}
+	var saved models.SettingEntry
+	require.NoError(t, repo.gormClient.First(&saved, entries[1].ID).Error)
+	require.False(t, saved.SettingValueBool)
+	var duration models.SettingEntry
+	require.NoError(t, repo.gormClient.First(&duration, entries[2].ID).Error)
+	require.Zero(t, duration.SettingValueNumeric)
+	var enabled, threshold models.SettingEntry
+	require.NoError(t, repo.gormClient.First(&enabled, entries[3].ID).Error)
+	require.True(t, enabled.SettingValueBool)
+	require.NoError(t, repo.gormClient.First(&threshold, entries[4].ID).Error)
+	require.Equal(t, 65, threshold.SettingValueNumeric)
+	var count int64
+	require.NoError(t, repo.gormClient.Model(&models.SettingEntry{}).Count(&count).Error)
+	require.EqualValues(t, 4, count)
+}
+
+func TestMigrateSelfTestChronologyPreservesLegacyHistory(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+	require.NoError(t, repo.gormClient.Exec(`CREATE TABLE device_self_tests (
+        id INTEGER PRIMARY KEY, created_at DATETIME, updated_at DATETIME, deleted_at DATETIME,
+        device_identity TEXT, device_id TEXT, device_wwn TEXT, type_value INTEGER,
+        type_string TEXT, status_value INTEGER, status_string TEXT, status_passed NUMERIC, lifetime_hours INTEGER
+    )`).Error)
+	require.NoError(t, repo.gormClient.Exec(`CREATE UNIQUE INDEX idx_device_self_tests_identity ON device_self_tests(device_identity,type_value,lifetime_hours)`).Error)
+	require.NoError(t, repo.gormClient.Exec(`CREATE INDEX idx_device_self_tests_history ON device_self_tests(device_identity,lifetime_hours)`).Error)
+	require.NoError(t, repo.gormClient.Exec(`INSERT INTO device_self_tests(id,device_identity,device_id,device_wwn,type_value,lifetime_hours) VALUES (42,'wwn-1','device-1','wwn-1',1,2464)`).Error)
+	require.NoError(t, repo.gormClient.Exec(`INSERT INTO migrations(id) VALUES ('m20260616000000')`).Error)
+	require.NoError(t, repo.Migrate(context.Background()))
+	require.NoError(t, repo.Migrate(context.Background()))
+	var row models.DeviceSelfTest
+	require.NoError(t, repo.gormClient.First(&row, 42).Error)
+	require.Equal(t, 2464, row.LifetimeHours)
+	require.Nil(t, row.EffectiveLifetimeHours)
+	require.Zero(t, row.ObservedAt)
+	// m20260914000001 re-keys history written under the WWN identity to its device_id (#851).
+	require.Equal(t, "device-1", row.DeviceIdentity)
+	require.False(t, repo.gormClient.Migrator().HasIndex(&models.DeviceSelfTest{}, "idx_device_self_tests_identity"))
+	require.NoError(t, repo.gormClient.Exec(`INSERT INTO device_self_tests(device_identity,type_value,lifetime_hours,effective_lifetime_hours) VALUES ('wwn-1',1,2464,68000)`).Error)
+}
+
+// A pre-existing override must survive the pinned_value migration with the column
+// NULL rather than 0: zero is a legitimate acknowledged value, so a defaulted column
+// would read as "acknowledged at 0" for every override created before the feature.
+func TestMigrateAttributeOverridesAddsNullablePinnedValue(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+	ctx := context.Background()
+	require.NoError(t, repo.Migrate(ctx))
+
+	existing := models.AttributeOverride{Protocol: "NVMe", AttributeId: "media_errors", DeviceID: "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e", Action: "ignore"}
+	require.NoError(t, repo.gormClient.Create(&existing).Error)
+
+	var stored models.AttributeOverride
+	require.NoError(t, repo.gormClient.First(&stored, existing.ID).Error)
+	require.Nil(t, stored.PinnedValue)
+
+	pinned := int64(0)
+	acknowledged := models.AttributeOverride{
+		Protocol:    "NVMe",
+		AttributeId: "media_errors",
+		DeviceID:    "c4ac4ff4-1a4d-52aa-9724-40fbc47dd306",
+		Action:      "acknowledge",
+		PinnedValue: &pinned,
+	}
+	require.NoError(t, repo.gormClient.Create(&acknowledged).Error)
+
+	var readBack models.AttributeOverride
+	require.NoError(t, repo.gormClient.First(&readBack, acknowledged.ID).Error)
+	require.NotNil(t, readBack.PinnedValue)
+	require.Equal(t, int64(0), *readBack.PinnedValue)
 }

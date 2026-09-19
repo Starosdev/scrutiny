@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogActions, MatDialogClose, MatDialogContent, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
 import { MatButton } from '@angular/material/button';
@@ -8,6 +8,7 @@ import { MatInput } from '@angular/material/input';
 @Component({
     selector: 'host-purge-dialog',
     templateUrl: './host-purge-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [FormsModule, MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose, MatButton, MatFormField, MatLabel, MatInput],
 })
 export class HostPurgeDialogComponent {

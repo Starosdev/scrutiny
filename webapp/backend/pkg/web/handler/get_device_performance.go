@@ -20,14 +20,14 @@ func GetDevicePerformance(c *gin.Context) {
 
 	durationKey := c.DefaultQuery("duration", "week")
 
-	history, err := deviceRepo.GetPerformanceHistory(c, device.WWN, durationKey)
+	history, err := deviceRepo.GetPerformanceHistory(c, device.DeviceID, durationKey)
 	if err != nil {
 		logger.Errorln("An error occurred while retrieving performance history", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
 	}
 
-	baseline, err := deviceRepo.GetPerformanceBaseline(c, device.WWN, 5)
+	baseline, err := deviceRepo.GetPerformanceBaseline(c, device.DeviceID, 5)
 	if err != nil {
 		logger.Warnf("Could not retrieve performance baseline for %s: %v", device.WWN, err)
 	}

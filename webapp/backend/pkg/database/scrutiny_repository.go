@@ -444,12 +444,10 @@ func (sr *scrutinyRepository) getSummary(ctx context.Context, includeTemperature
 	}
 
 	summaries := map[string]*models.DeviceSummary{}
-	wwnToDeviceID := map[string]string{}
-
 	for _, device := range devices {
 		summaries[device.DeviceID] = &models.DeviceSummary{Device: device}
-		wwnToDeviceID[device.WWN] = device.DeviceID
 	}
+	owners := newHistoryOwners(devices)
 
 	result, err := sr.influxQueryApi.Query(ctx, summaryFluxQuery(sr.appConfig.GetString(cfgInfluxDBBucket)))
 	if err != nil {
@@ -458,7 +456,7 @@ func (sr *scrutinyRepository) getSummary(ctx context.Context, includeTemperature
 	defer result.Close()
 	// Use Next() to iterate over query result lines
 	for result.Next() {
-		sr.applySummaryRecord(summaries, wwnToDeviceID, result.Record().Values())
+		sr.applySummaryRecord(summaries, owners, result.Record().Values())
 	}
 	if result.Err() != nil {
 		sr.logger.Errorf("Query error: %s", result.Err().Error())
@@ -501,7 +499,7 @@ func summaryFluxQuery(bucketBaseName string) string {
 	|> filter(fn: summaryFields)
 	|> last()
 	|> schema.fieldsAsCols()
-	|> group(columns: ["device_wwn"])
+	|> group(columns: ["device_id", "device_wwn"])
 
 	weeklyData = from(bucket: bucketBaseName + "_weekly")
 	|> range(start: -10y, stop: now())
@@ -509,7 +507,7 @@ func summaryFluxQuery(bucketBaseName string) string {
 	|> filter(fn: summaryFields)
 	|> last()
 	|> schema.fieldsAsCols()
-	|> group(columns: ["device_wwn"])
+	|> group(columns: ["device_id", "device_wwn"])
 
 	monthlyData = from(bucket: bucketBaseName + "_monthly")
 	|> range(start: -10y, stop: now())
@@ -517,7 +515,7 @@ func summaryFluxQuery(bucketBaseName string) string {
 	|> filter(fn: summaryFields)
 	|> last()
 	|> schema.fieldsAsCols()
-	|> group(columns: ["device_wwn"])
+	|> group(columns: ["device_id", "device_wwn"])
 
 	yearlyData = from(bucket: bucketBaseName + "_yearly")
 	|> range(start: -10y, stop: now())
@@ -525,11 +523,11 @@ func summaryFluxQuery(bucketBaseName string) string {
 	|> filter(fn: summaryFields)
 	|> last()
 	|> schema.fieldsAsCols()
-	|> group(columns: ["device_wwn"])
+	|> group(columns: ["device_id", "device_wwn"])
 
 	union(tables: [dailyData, weeklyData, monthlyData, yearlyData])
 	|> sort(columns: ["_time"], desc: false)
-	|> group(columns: ["device_wwn"])
+	|> group(columns: ["device_id", "device_wwn"])
 	|> tail(n: 1)
 	|> yield(name: "last")
 		`,
@@ -538,25 +536,43 @@ func summaryFluxQuery(bucketBaseName string) string {
 }
 
 // applySummaryRecord parses a single summary query record and populates the matching device summary.
-func (sr *scrutinyRepository) applySummaryRecord(summaries map[string]*models.DeviceSummary, wwnToDeviceID map[string]string, values map[string]interface{}) {
-	deviceWWN, ok := values["device_wwn"]
+func (sr *scrutinyRepository) applySummaryRecord(summaries map[string]*models.DeviceSummary, owners historyOwners, values map[string]interface{}) {
+	devID, ok := owners.deviceFor(values)
 	if !ok {
 		return
 	}
-	devID, hasDevID := wwnToDeviceID[deviceWWN.(string)]
-	if !hasDevID {
+	if _, exists := summaries[devID]; !exists {
+		// history left behind by a device that is no longer registered
+		return
+	}
+	deviceWWN, _ := values["device_wwn"].(string)
+
+	// Every field here is optional. summaryFluxQuery unions the daily, weekly,
+	// monthly and yearly buckets and pivots with schema.fieldsAsCols(), so a
+	// device whose winning row never had one of these fields written yields a
+	// map with that key absent. An unchecked assertion on a nil value panics,
+	// and because this runs in the goroutine started by loadInitialMetrics it
+	// takes down the whole web process before it finishes binding.
+	temp, hasTemp := values["temp"].(int64)
+	powerOnHours, hasPowerOnHours := values["power_on_hours"].(int64)
+	collectorDate, hasCollectorDate := values["_time"].(time.Time)
+
+	// A device can produce two rows: one from device_id-tagged points and one from older
+	// untagged points attributed through its WWN. Keep the newest.
+	if existing := summaries[devID].SmartResults; existing != nil && (!hasCollectorDate || existing.CollectorDate.After(collectorDate)) {
 		return
 	}
 
-	// ensure summaries is initialized for this device_id
-	if _, exists := summaries[devID]; !exists {
-		summaries[devID] = &models.DeviceSummary{}
+	if missing := missingSummaryFields(hasTemp, hasPowerOnHours, hasCollectorDate); len(missing) > 0 {
+		sr.logger.Debugf("summary record for device %s is missing %s; using zero values", deviceWWN, strings.Join(missing, ", "))
 	}
 
 	smartSummary := &models.SmartSummary{
-		Temp:          values["temp"].(int64),
-		PowerOnHours:  values["power_on_hours"].(int64),
-		CollectorDate: values["_time"].(time.Time),
+		PowerOnHours:  powerOnHours,
+		CollectorDate: collectorDate,
+	}
+	if hasTemp {
+		smartSummary.Temp = &temp
 	}
 	smartSummary.PercentageUsed = extractPercentageUsed(values)
 	smartSummary.WearoutValue = extractWearoutValue(values)
@@ -568,6 +584,22 @@ func (sr *scrutinyRepository) applySummaryRecord(summaries map[string]*models.De
 	smartSummary.RiskCategory = string(riskCategory)
 
 	summaries[devID].SmartResults = smartSummary
+}
+
+// missingSummaryFields names the summary fields that were absent from a record,
+// for the diagnostic log in applySummaryRecord.
+func missingSummaryFields(hasTemp, hasPowerOnHours, hasCollectorDate bool) []string {
+	missing := []string{}
+	if !hasTemp {
+		missing = append(missing, "temp")
+	}
+	if !hasPowerOnHours {
+		missing = append(missing, "power_on_hours")
+	}
+	if !hasCollectorDate {
+		missing = append(missing, "_time")
+	}
+	return missing
 }
 
 // extractPercentageUsed returns the "percentage used" wear metric from NVMe (percentage_used) or
@@ -616,19 +648,15 @@ func (sr *scrutinyRepository) attachTemperatureHistory(ctx context.Context, summ
 	}
 }
 
-// GetDevicesLastSeenTimes returns a map of device WWN to the timestamp of their last SMART submission.
+// GetDevicesLastSeenTimes returns a map of device_id to the timestamp of the device's last SMART submission.
 // This queries InfluxDB for the most recent submission time for each device, which is more efficient
 // than calling GetSummary when only timestamps are needed.
 func (sr *scrutinyRepository) GetDevicesLastSeenTimes(ctx context.Context) (map[string]time.Time, error) {
-	// Build WWN-to-DeviceID map for re-keying InfluxDB results
 	devices, err := sr.GetDevices(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get devices for last seen times: %w", err)
 	}
-	wwnToDeviceID := map[string]string{}
-	for i := range devices {
-		wwnToDeviceID[devices[i].WWN] = devices[i].DeviceID
-	}
+	owners := newHistoryOwners(devices)
 
 	result, err := sr.influxQueryApi.Query(ctx, lastSeenFluxQuery(sr.appConfig.GetString(cfgInfluxDBBucket)))
 	if err != nil {
@@ -638,7 +666,7 @@ func (sr *scrutinyRepository) GetDevicesLastSeenTimes(ctx context.Context) (map[
 
 	lastSeenTimes := map[string]time.Time{}
 	for result.Next() {
-		applyLastSeenRecord(lastSeenTimes, wwnToDeviceID, result.Record().Values())
+		applyLastSeenRecord(lastSeenTimes, owners, result.Record().Values())
 	}
 
 	if result.Err() != nil {
@@ -661,53 +689,48 @@ dailyData = from(bucket: bucketBaseName)
 |> filter(fn: (r) => r["_measurement"] == "smart")
 |> filter(fn: (r) => r["_field"] == "temp")
 |> last()
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 
 weeklyData = from(bucket: bucketBaseName + "_weekly")
 |> range(start: -10y, stop: now())
 |> filter(fn: (r) => r["_measurement"] == "smart")
 |> filter(fn: (r) => r["_field"] == "temp")
 |> last()
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 
 monthlyData = from(bucket: bucketBaseName + "_monthly")
 |> range(start: -10y, stop: now())
 |> filter(fn: (r) => r["_measurement"] == "smart")
 |> filter(fn: (r) => r["_field"] == "temp")
 |> last()
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 
 yearlyData = from(bucket: bucketBaseName + "_yearly")
 |> range(start: -10y, stop: now())
 |> filter(fn: (r) => r["_measurement"] == "smart")
 |> filter(fn: (r) => r["_field"] == "temp")
 |> last()
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 
 union(tables: [dailyData, weeklyData, monthlyData, yearlyData])
-|> group(columns: ["device_wwn"])
+|> group(columns: ["device_id", "device_wwn"])
 |> sort(columns: ["_time"], desc: false)
 |> last()
 |> yield(name: "last_seen")
 	`, bucketBaseName)
 }
 
-// applyLastSeenRecord re-keys a last-seen query record from WWN to DeviceID and keeps the most
-// recent timestamp seen for that device.
-func applyLastSeenRecord(lastSeenTimes map[string]time.Time, wwnToDeviceID map[string]string, values map[string]interface{}) {
-	deviceWWN, ok := values["device_wwn"].(string)
+// applyLastSeenRecord attributes a last-seen query record to a device (see historyOwners.deviceFor)
+// and keeps the most recent timestamp seen for that device. Records that cannot be attributed are
+// dropped; keying them by WWN would put WWNs into a map callers read by device_id.
+func applyLastSeenRecord(lastSeenTimes map[string]time.Time, owners historyOwners, values map[string]interface{}) {
+	key, ok := owners.deviceFor(values)
 	if !ok {
 		return
 	}
 	lastTime, ok := values["_time"].(time.Time)
 	if !ok {
 		return
-	}
-
-	// Re-key from WWN to DeviceID
-	key := deviceWWN
-	if devID, hasDevID := wwnToDeviceID[deviceWWN]; hasDevID {
-		key = devID
 	}
 
 	// Keep the most recent time if we've seen this device before

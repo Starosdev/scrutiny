@@ -6,7 +6,7 @@ import { ZFSPoolDetailService } from 'app/modules/zfs-pool-detail/zfs-pool-detai
 import { AppConfig } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { Router } from '@angular/router';
-import { ZFSPoolModel, ZFSPoolStatus, ZFSVdevModel } from 'app/core/models/zfs-pool-model';
+import { ZFSPoolModel, ZFSPoolStatus, ZFSVdevModel, zfsUsableSize } from 'app/core/models/zfs-pool-model';
 import { ZFSPoolMetricsHistoryModel } from 'app/core/models/zfs-pool-summary-model';
 import { apexShortDateTime } from 'app/shared/time-format.utils';
 import { MatIconButton, MatButton } from '@angular/material/button';
@@ -145,6 +145,8 @@ export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
         return this.pool?.name || 'Unknown Pool';
     }
 
+    usableSize = zfsUsableSize;
+
     getStatusColorClass(status: ZFSPoolStatus): string {
         switch (status) {
             case 'ONLINE':
@@ -159,6 +161,46 @@ export class ZFSPoolDetailComponent implements OnInit, OnDestroy {
             default:
                 return '';
         }
+    }
+
+    getPresenceLabel(): string {
+        switch (this.pool?.presence) {
+            case 'missing':
+                return 'Missing from last inventory';
+            case 'stale':
+                return 'Collector stale';
+            case 'unknown':
+                return 'Inventory unavailable';
+            default:
+                return '';
+        }
+    }
+
+    getPresenceColorClass(): string {
+        return this.pool?.presence === 'unknown' ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400';
+    }
+
+    getStatusDisplay(): string {
+        switch (this.pool?.presence) {
+            case 'missing':
+                return 'MISSING';
+            case 'stale':
+                return 'STALE';
+            case 'unknown':
+                return 'UNKNOWN';
+            default:
+                return this.pool?.status || 'UNKNOWN';
+        }
+    }
+
+    getStatusDisplayColorClass(): string {
+        if (this.pool?.presence === 'missing' || this.pool?.presence === 'stale') {
+            return 'text-red-600 dark:text-red-400';
+        }
+        if (this.pool?.presence === 'unknown') {
+            return 'text-yellow-600 dark:text-yellow-400';
+        }
+        return this.pool ? this.getStatusColorClass(this.pool.status) : '';
     }
 
     getVdevIcon(type: string): string {

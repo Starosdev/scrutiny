@@ -64,12 +64,12 @@
                         <div class="flex flex-col space-y-1">
                             <div class="flex items-center justify-between text-secondary">
                                 <div class="font-semibold text-xs uppercase tracking-wider">Size</div>
-                                <div class="font-medium text-lg leading-none">{{ array.array_size | fileSize : config?.file_size_si_units }}</div>
+                                <div class="font-medium text-lg leading-none">{{ array.array_size | fileSize : $safeNavigationMigration(config?.file_size_si_units) }}</div>
                             </div>
                             @if (array.used_bytes !== undefined && array.used_bytes !== null) {
                             <div class="flex items-center justify-between text-secondary">
                                 <div class="text-xs">Used</div>
-                                <div class="text-xs font-medium">{{ array.used_bytes | fileSize : config?.file_size_si_units }}</div>
+                                <div class="text-xs font-medium">{{ array.used_bytes | fileSize : $safeNavigationMigration(config?.file_size_si_units) }}</div>
                             </div>
                             }
                         </div>

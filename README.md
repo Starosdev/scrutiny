@@ -76,7 +76,8 @@ This repository also owns the testing and production deployment definitions for 
 
 - Testing images publish from the `develop` branch through [`Deploy Testing Stack`](./.github/workflows/deploy-testing.yml)
 - Beta images publish from the `beta` branch through [`Publish Beta Image`](./.github/workflows/deploy-beta.yml)
-- Production deploys from the `master` branch through [`Automated Release and Deploy`](./.github/workflows/release-and-deploy.yml)
+- Production images publish from release tags through [`Docker`](./.github/workflows/docker-build.yaml)
+- Release tags are created by [`Release`](./.github/workflows/release.yaml) after semantic versioning completes
 - `beta` is an optional pre-release channel for features that need validation before going to `master`
 - Zeus currently runs separate develop, beta, and production host appdata trees:
   - develop: `/mnt/user/appdata/scrutiny-develop`
@@ -272,7 +273,7 @@ Branch channel tags follow the same pattern across images:
 
 - `develop-*` from the `develop` branch
 - `beta-*` from the `beta` branch
-- `latest-*` and semver tags from `master` and release tags
+- `latest-*` and semver tags from release tags
 
 Default CI image publishing currently builds:
 
@@ -566,7 +567,10 @@ Scrutiny now retains ATA SMART self-test log entries that are already present in
 
 - Data is read from normal SMART uploads; no separate self-test collector is required
 - Only ATA devices show this section today
-- Scrutiny keeps the most recent 21 recorded entries per physical ATA device identity
+- Scrutiny keeps the most recent 21 entries per physical ATA device identity using collection time and controller log position, including when lifetime hours wrap
+- Raw controller hours remain available. Absolute power-on ages are shown only when the current Power-On Hours and log order identify one rollover epoch; otherwise the UI shows "Unknown (may be wrapped)"
+- Existing history remains intact during upgrade. Ages stay unknown until a new collection provides enough context; already pruned or overwritten records cannot be recovered
+- Rolling back to a web release that uses the old raw-lifetime uniqueness key requires restoring a pre-upgrade database backup
 - The API route `GET /api/device/{id}/selftest` returns the same history used by the device detail page
 - This feature records and displays history only; it does not trigger or schedule drive self-tests from the web UI
 
@@ -579,7 +583,7 @@ Scrutiny allows you to customize how individual SMART attributes are evaluated. 
 1. Click on a drive to open its detail page
 2. Find the attribute in the SMART table
 3. Click the three-dot menu in the **Actions** column (appears on failed/warning attributes)
-4. Select **Ignore attribute** to suppress it, or **Force passed** to override its status
+4. Select **Ignore attribute** to suppress it, **Force passed** to override its status, or **Acknowledge current value** to accept the value as it stands today
 
 These quick actions create device-specific overrides. To remove an override, click the purple tune icon and select **Remove override**.
 
@@ -590,7 +594,8 @@ These quick actions create device-specific overrides. To remove an override, cli
 3. Fill in the override form:
    - **Protocol**: ATA, NVMe, or SCSI
    - **Attribute ID**: The attribute identifier (e.g., `199` for UltraDMA CRC Error Count, `media_errors` for NVMe)
-   - **Action**: Ignore, Force Status, or Custom Threshold
+   - **Action**: Ignore, Force Status, Acknowledge Current Value, or Custom Threshold
+   - **Device**: required for Acknowledge, since it pins the pass to one device's current value
    - **Device WWN** (optional): Leave empty to apply globally, or specify a WWN for a single device
 4. Click **Add Override**
 
@@ -604,6 +609,7 @@ Add overrides to `scrutiny.yaml` under `smart.attribute_overrides`. See [example
 | ------ | -------- |
 | Ignore | Attribute marked as passed; excluded from device failure status and notifications |
 | Force Status | Overrides computed status to passed, warn, or failed |
+| Acknowledge Current Value | Attribute passes while its value stays where it is now. Any change restores the normal verdict, so a one-off event stops alerting without hiding the next one. Requires a device. A manufacturer SMART failure is never masked |
 | Custom Threshold | Replaces default thresholds with user-defined warn_above/fail_above values |
 
 Overrides apply at the next SMART data collection. Device status is recalculated immediately when overrides are added or removed via the UI.
@@ -644,6 +650,18 @@ Common examples:
 Check the `notify.urls` section of [example.scrutiny.yaml](example.scrutiny.yaml) for more examples.
 
 For more information and troubleshooting, see the [TROUBLESHOOTING_NOTIFICATIONS.md](./docs/TROUBLESHOOTING_NOTIFICATIONS.md) file
+
+Quiet-hours digests are delivered on the next background check after quiet hours end, even when missed-ping alerts are disabled. Failed or rate-limited digests remain queued for retry. The check uses **Missed Ping Check Interval** (default: 5 minutes).
+
+### Drive Temperature Notifications
+
+Enable **Temperature Notifications** in **Display & Notifications** to alert when any unmuted drive stays at or above a global threshold (default: **55°C for 30 minutes**). The UI uses your selected Celsius/Fahrenheit unit; the backend stores whole degrees Celsius. A duration of **0** alerts on the first hot reading. Each excursion alerts once and re-arms after a valid reading below the threshold. Unknown readings (0 or lower) are ignored.
+
+Checks run on collector uploads, so delivery can be delayed until the next upload. After a server restart, Scrutiny can seed the timer from up to 24 hours of raw temperature history when storage is enabled and the history includes the current upload. Otherwise timing starts with that upload. Longer durations may need additional time after restarting, and an ongoing excursion may notify again after each restart. Quiet hours and rate limits apply.
+
+Changing the threshold/duration or receiving an upload while notifications are disabled or the device is muted resets its timer. On resuming, the next hot reading starts a new timer. See [temperature notification troubleshooting](docs/TROUBLESHOOTING_NOTIFICATIONS.md#drive-temperature-notifications) for details.
+
+Temperature alerts ignore **Repeat Notifications**: each sustained hot excursion sends one alert, and cooling below the threshold re-arms silently. There is no recovery notification or hysteresis margin.
 
 ### Heartbeat Notifications
 

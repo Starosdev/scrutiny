@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogTitle, MatDialogContent, MatDialogActions } from '@angular/material/dialog';
 import { ApexOptions, ChartComponent } from 'ng-apexcharts';
 import { CdkScrollable } from '@angular/cdk/scrolling';
@@ -18,6 +18,7 @@ export interface AttributeHistoryData {
     selector: 'attribute-history-dialog',
     templateUrl: './attribute-history-dialog.component.html',
     styleUrls: ['./attribute-history-dialog.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [MatDialogTitle, CdkScrollable, MatDialogContent, ChartComponent, NgClass, MatDialogActions, MatButton],
 })
 export class AttributeHistoryDialogComponent implements OnInit {

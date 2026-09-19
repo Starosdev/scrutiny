@@ -14,6 +14,10 @@ type AttributeOverrideAction string
 const (
 	AttributeOverrideActionIgnore      AttributeOverrideAction = "ignore"
 	AttributeOverrideActionForceStatus AttributeOverrideAction = "force_status"
+	// AttributeOverrideActionAcknowledge passes an attribute only while its value stays
+	// at PinnedValue. Any change re-exposes the underlying evaluation, unlike
+	// force_status which masks the attribute permanently.
+	AttributeOverrideActionAcknowledge AttributeOverrideAction = "acknowledge"
 )
 
 // AttributeOverride defines a user-configured override for SMART attribute evaluation
@@ -31,6 +35,9 @@ type AttributeOverride struct {
 	// Optional: Limit override to specific device by WWN
 	WWN string `json:"wwn,omitempty" mapstructure:"wwn"`
 
+	// Optional: Limit override to one stable Scrutiny device identifier.
+	DeviceID string `json:"device_id,omitempty" mapstructure:"device_id"`
+
 	// Optional: Action to take (ignore or force_status)
 	// If not set, custom thresholds are applied
 	Action AttributeOverrideAction `json:"action,omitempty" mapstructure:"action"`
@@ -44,17 +51,24 @@ type AttributeOverride struct {
 
 	// Custom threshold: fail when value exceeds this (takes precedence over warn)
 	FailAbove *int64 `json:"fail_above,omitempty" mapstructure:"fail_above"`
+
+	// For acknowledge action: the value the acknowledgement is pinned to.
+	// The attribute passes only while its current value equals this.
+	PinnedValue *int64 `json:"pinned_value,omitempty" mapstructure:"pinned_value"`
 }
 
 // Matches checks if this override applies to the given attribute
-func (ao *AttributeOverride) Matches(protocol, attributeId, wwn string) bool {
+func (ao *AttributeOverride) Matches(protocol, attributeId, deviceID, wwn string) bool {
 	if ao.Protocol != protocol {
 		return false
 	}
 	if ao.AttributeId != attributeId {
 		return false
 	}
-	// WWN is optional - if not set, matches all devices
+	if ao.DeviceID != "" {
+		return ao.DeviceID == deviceID
+	}
+	// WWN is optional legacy selector - if not set, matches all devices.
 	if ao.WWN != "" && ao.WWN != wwn {
 		return false
 	}
@@ -76,13 +90,27 @@ func (ao *AttributeOverride) GetForcedStatus() pkg.AttributeStatus {
 }
 
 // FindOverride searches the override list for a matching override
-func FindOverride(overrides []AttributeOverride, protocol, attributeId, wwn string) *AttributeOverride {
+func FindOverride(overrides []AttributeOverride, protocol, attributeId, deviceID, wwn string) *AttributeOverride {
+	var selected *AttributeOverride
+	selectedPriority := -1
 	for i := range overrides {
-		if overrides[i].Matches(protocol, attributeId, wwn) {
-			return &overrides[i]
+		override := &overrides[i]
+		if !override.Matches(protocol, attributeId, deviceID, wwn) {
+			continue
+		}
+		priority := 0
+		if override.WWN != "" {
+			priority = 1
+		}
+		if override.DeviceID != "" {
+			priority = 2
+		}
+		if priority > selectedPriority {
+			selected = override
+			selectedPriority = priority
 		}
 	}
-	return nil
+	return selected
 }
 
 // Result contains the outcome of applying an override
@@ -97,6 +125,10 @@ type Result struct {
 	WarnAbove *int64
 	// FailAbove is the custom failure threshold
 	FailAbove *int64
+	// AcknowledgedValue is the value an acknowledgement is pinned to. The attribute
+	// passes only while its current value equals this; any change restores the
+	// underlying evaluation.
+	AcknowledgedValue *int64
 }
 
 // ParseOverrides converts raw config data to typed AttributeOverride slice
@@ -122,7 +154,7 @@ func ParseOverrides(cfg config.Interface) []AttributeOverride {
 // Returns nil if no override matches.
 func Apply(cfg config.Interface, protocol, attributeId, wwn string) *Result {
 	overrideList := ParseOverrides(cfg)
-	override := FindOverride(overrideList, protocol, attributeId, wwn)
+	override := FindOverride(overrideList, protocol, attributeId, "", wwn)
 
 	if override == nil {
 		return nil
@@ -139,6 +171,10 @@ func Apply(cfg config.Interface, protocol, attributeId, wwn string) *Result {
 		status := override.GetForcedStatus()
 		result.Status = &status
 		result.StatusReason = "Status forced by user configuration"
+
+	case AttributeOverrideActionAcknowledge:
+		result.AcknowledgedValue = override.PinnedValue
+
 	}
 
 	// Custom thresholds are only evaluated when action is empty (see smart.go).
@@ -190,13 +226,13 @@ func MergeOverrides(configOverrides, dbOverrides []AttributeOverride) []Attribut
 
 	// Add config overrides first (lower priority)
 	for _, o := range configOverrides {
-		key := fmt.Sprintf("%s|%s|%s", o.Protocol, o.AttributeId, o.WWN)
+		key := fmt.Sprintf("%s|%s|%s|%s", o.Protocol, o.AttributeId, o.DeviceID, o.WWN)
 		merged[key] = o
 	}
 
 	// Add/override with database overrides (higher priority)
 	for _, o := range dbOverrides {
-		key := fmt.Sprintf("%s|%s|%s", o.Protocol, o.AttributeId, o.WWN)
+		key := fmt.Sprintf("%s|%s|%s|%s", o.Protocol, o.AttributeId, o.DeviceID, o.WWN)
 		merged[key] = o
 	}
 
@@ -210,8 +246,8 @@ func MergeOverrides(configOverrides, dbOverrides []AttributeOverride) []Attribut
 // ApplyWithOverrides checks if an override exists in the provided list and returns the result.
 // This is used when the caller has already merged config and database overrides.
 // Returns nil if no override matches.
-func ApplyWithOverrides(overrideList []AttributeOverride, protocol, attributeId, wwn string) *Result {
-	override := FindOverride(overrideList, protocol, attributeId, wwn)
+func ApplyWithOverrides(overrideList []AttributeOverride, protocol, attributeId, deviceID, wwn string) *Result {
+	override := FindOverride(overrideList, protocol, attributeId, deviceID, wwn)
 
 	if override == nil {
 		return nil
@@ -228,6 +264,10 @@ func ApplyWithOverrides(overrideList []AttributeOverride, protocol, attributeId,
 		status := override.GetForcedStatus()
 		result.Status = &status
 		result.StatusReason = "Status forced by user configuration"
+
+	case AttributeOverrideActionAcknowledge:
+		result.AcknowledgedValue = override.PinnedValue
+
 	}
 
 	// Custom thresholds are only evaluated when action is empty (see smart.go).

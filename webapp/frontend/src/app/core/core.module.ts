@@ -1,12 +1,12 @@
 import { NgModule, inject } from '@angular/core';
-import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi, withXhr } from '@angular/common/http';
 import { DomSanitizer } from '@angular/platform-browser';
 import { MatIconRegistry } from '@angular/material/icon';
 import { AuthInterceptor } from 'app/core/auth/auth.interceptor';
 
 @NgModule({
     imports: [],
-    providers: [provideHttpClient(withInterceptorsFromDi()), { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true }],
+    providers: [provideHttpClient(withXhr(), withInterceptorsFromDi()), { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true }],
 })
 export class CoreModule {
     private readonly _domSanitizer = inject(DomSanitizer);

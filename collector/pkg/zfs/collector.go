@@ -67,17 +67,15 @@ func (c *Collector) Run() error {
 		return err
 	}
 
-	if len(pools) == 0 {
-		c.logger.Infoln("No ZFS pools found")
-		return nil
-	}
-
 	c.logger.Infof("Found %d ZFS pool(s)", len(pools))
 
 	// Filter pools with empty GUID
 	validPools := lo.Filter[models.ZFSPool](pools, func(pool models.ZFSPool, _ int) bool {
 		return len(pool.GUID) > 0
 	})
+	if validPools == nil {
+		validPools = []models.ZFSPool{}
+	}
 
 	// Register pools with API
 	poolWrapper, err := c.RegisterPools(validPools)
@@ -109,8 +107,11 @@ func (c *Collector) RegisterPools(pools []models.ZFSPool) (*models.ZFSPoolWrappe
 	apiEndpoint, _ := url.Parse(c.apiEndpoint.String())
 	apiEndpoint, _ = apiEndpoint.Parse("api/zfs/pools/register")
 
+	hostID := c.hostID()
 	wrapper := models.ZFSPoolWrapper{
-		Data: pools,
+		HostID:   hostID,
+		Complete: hostID != "",
+		Data:     pools,
 	}
 
 	jsonData, err := json.Marshal(wrapper)
@@ -137,6 +138,13 @@ func (c *Collector) RegisterPools(pools []models.ZFSPool) (*models.ZFSPoolWrappe
 	}
 
 	return &responseWrapper, nil
+}
+
+func (c *Collector) hostID() string {
+	if c.config == nil {
+		return ""
+	}
+	return strings.TrimSpace(c.config.GetString("host.id"))
 }
 
 // UploadMetrics uploads metrics for a specific pool

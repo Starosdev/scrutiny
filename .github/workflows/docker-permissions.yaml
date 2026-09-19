@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'docker/**'
+      - 'rootfs/**'
       - 'webapp/frontend/**'
       - 'Makefile'
       - 'go.mod'
@@ -11,12 +12,78 @@ on:
       - '.github/workflows/docker-permissions.yaml'
 
 jobs:
+  image_matrix:
+    name: Validate Docker image matrix
+    runs-on: ubuntu-latest
+    outputs:
+      pr_build: ${{ steps.matrix.outputs.pr_build }}
+      apparmor: ${{ steps.matrix.outputs.apparmor }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Test Docker image matrix
+        run: bash docker/tests/image-matrix_test.sh
+      - name: Export Docker image matrix
+        id: matrix
+        run: |
+          {
+            echo "pr_build=$(jq -c '[.[] | select(.pr_build == true)]' docker/image-matrix.json)"
+            echo "apparmor=$(jq -c '[.[] | select(.apparmor_kind != null)]' docker/image-matrix.json)"
+          } >> "$GITHUB_OUTPUT"
+
   frontend-permissions:
     name: Test Docker frontend permissions
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
       - name: Test Docker frontend permissions
         run: bash docker/tests/frontend-permissions_test.sh
+
+  build-images:
+    name: Build (${{ matrix.image }})
+    needs: image_matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.image_matrix.outputs.pr_build) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Populate frontend version information
+        if: matrix.frontend == true
+        run: cd webapp/frontend && ./git.version.sh
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: false
+          tags: scrutiny-pr-${{ matrix.image }}
+          cache-from: type=gha,scope=prbuild-${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=prbuild-${{ matrix.image }}
+
+  apparmor:
+    name: AppArmor (${{ matrix.image }})
+    needs: image_matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.image_matrix.outputs.apparmor) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Install AppArmor tools
+        run: sudo apt-get update && sudo apt-get install -y apparmor
+      - name: Build image
+        run: docker build -f "${{ matrix.dockerfile }}" -t scrutiny-apparmor-test .
+      - name: Test enforcing AppArmor profile
+        run: bash docker/tests/apparmor_test.sh scrutiny-apparmor-test "${{ matrix.apparmor_kind }}"

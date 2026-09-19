@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef as MatDialogRef, MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose } from '@angular/material/dialog';
 import { DashboardDeviceDeleteDialogService } from 'app/layout/common/dashboard-device-delete-dialog/dashboard-device-delete-dialog.service';
 import { CdkScrollable } from '@angular/cdk/scrolling';
@@ -9,6 +9,7 @@ import { MatIcon } from '@angular/material/icon';
     selector: 'app-dashboard-device-delete-dialog',
     templateUrl: './dashboard-device-delete-dialog.component.html',
     styleUrls: ['./dashboard-device-delete-dialog.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [MatDialogTitle, CdkScrollable, MatDialogContent, MatDialogActions, MatButton, MatDialogClose, MatIcon],
 })
 export class DashboardDeviceDeleteDialogComponent {

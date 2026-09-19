@@ -1,67 +1,82 @@
 # AppArmor Troubleshooting
 
-## Problem
+## Identify the denial first
 
-On systems with AppArmor enforced (TrueNAS SCALE, Ubuntu, Debian), the Scrutiny collector may fail to read SMART data from drives even when the container is started with `--cap-add SYS_RAWIO --cap-add SYS_ADMIN` and devices are passed through with `--device`.
-
-Symptoms include:
-
-- `smartctl` returns "Permission denied" or fails to open devices
-- The collector logs errors like `smartctl could not open device /dev/sdX`
-- The collector logs a warning: `AppArmor: the container is using the default Docker/containerd profile which blocks raw device I/O`
-- Adding `--cap-add` flags alone does not resolve the issue
-- The same configuration works on systems without AppArmor (e.g., Unraid)
-
-## Root Cause
-
-AppArmor's default Docker profile (`docker-default`) restricts raw device I/O operations regardless of Linux capabilities. The `SYS_RAWIO` capability grants kernel-level permission, but AppArmor applies an additional Mandatory Access Control (MAC) layer that independently blocks the SCSI/ATA/NVMe ioctl calls that `smartctl` requires.
-
-## Affected Platforms
-
-| Platform | AppArmor Status | Impact |
-|----------|----------------|--------|
-| TrueNAS SCALE | Enforced by default | Primary affected platform |
-| Ubuntu / Debian | Enforced by default | Affected with default Docker profile |
-| Unraid | Not used | Not affected |
-| Proxmox LXC | Varies | Potentially affected |
-
-## Solutions
-
-### Option 1: Custom AppArmor Profile (Recommended)
-
-Scrutiny ships a minimal AppArmor profile that grants only the specific access `smartctl` needs while keeping the rest of Docker's confinement in place.
-
-**Step 1: Copy the profile to the host**
-
-The profile is included in the Docker image at `/opt/scrutiny/apparmor-profile`. Copy it to the host's AppArmor profile directory:
+AppArmor is a separate access-control layer from Docker capabilities, device
+mappings and seccomp. A permission error alone does not identify which layer
+blocked an operation. On the Docker host, inspect the kernel audit log:
 
 ```bash
-# From the Docker image:
-docker cp <container_name>:/opt/scrutiny/apparmor-profile /etc/apparmor.d/scrutiny-collector
-
-# Or from the repository:
-sudo cp docker/apparmor-profile /etc/apparmor.d/scrutiny-collector
+sudo journalctl -k --since '10 minutes ago' | grep 'apparmor="DENIED"'
+docker inspect --format '{{.AppArmorProfile}}' <container_name>
 ```
 
-**Step 2: Load the profile**
+Record the image tag/digest, Compose configuration and the denial's `profile`,
+`operation`, `name` and `denied_mask`. Redact credentials before sharing logs.
+If the journal is unavailable, inspect `sudo dmesg` instead.
+
+Docker normally uses `docker-default`. It does not universally block SMART
+collection: host policy, capabilities and device mappings also matter. Check
+`SYS_RAWIO`, `SYS_ADMIN` for devices that require it, and the required `devices`
+mappings before changing confinement. See [Docker's AppArmor documentation](https://docs.docker.com/engine/security/apparmor/).
+
+## Omnibus fails before the collector starts
+
+An older `scrutiny-collector` profile allowed a small set of collector commands
+but omitted s6-overlay and the omnibus services. Errors such as
+`s6-overlay-suexec: Permission denied`, `s6-mkdir: Permission denied`,
+`eltest: Permission denied`, or `/run/s6/basedir/bin/init: Permission denied`
+match that missing execution permission. The collector's diagnostic logging
+cannot run until container initialization succeeds.
+
+The profile must cover the whole startup sequence: `/init`, s6's versioned
+packages and generated `/run` scripts, cron, Scrutiny, InfluxDB and their helper
+programs. Adding only the first denied executable exposes the next missing
+permission. Replace and reload the complete profile, then recreate the container.
+Do not treat successful profile parsing as proof that the services can start.
+
+## Install the custom profile
+
+`docker/apparmor-profile` supports the normal writable-root startup of the
+`omnibus`, `collector`, `collector-omnibus` and `collector-performance` images.
+It is shipped inside those images at `/opt/scrutiny/apparmor-profile` and loaded
+on the **Docker host**, not inside the container.
+
+Copy it from an existing container, which may be stopped:
 
 ```bash
-sudo apparmor_parser -r /etc/apparmor.d/scrutiny-collector
+docker cp <container_name>:/opt/scrutiny/apparmor-profile /tmp/scrutiny-collector
+sudo install -m 0644 /tmp/scrutiny-collector /etc/apparmor.d/scrutiny-collector
 ```
 
-**Step 3: Configure the container to use the profile**
-
-Docker run:
+If no container exists, create one from the image version you intend to run.
+This does not start its entrypoint or require a working AppArmor profile:
 
 ```bash
-docker run \
-  --cap-add SYS_RAWIO --cap-add SYS_ADMIN \
-  --security-opt apparmor=scrutiny-collector \
-  --device=/dev/sda --device=/dev/sdb \
-  ghcr.io/starosdev/scrutiny:latest-collector
+image=ghcr.io/starosdev/scrutiny:latest-omnibus
+docker pull "$image"
+container_id=$(docker create "$image")
+docker cp "$container_id":/opt/scrutiny/apparmor-profile /tmp/scrutiny-collector
+docker rm -v "$container_id"
+sudo install -m 0644 /tmp/scrutiny-collector /etc/apparmor.d/scrutiny-collector
 ```
 
-Docker Compose:
+An older image still contains its older profile. Use a release containing the
+fix or copy `docker/apparmor-profile` from the matching fixed source checkout:
+
+```bash
+sudo install -m 0644 docker/apparmor-profile /etc/apparmor.d/scrutiny-collector
+```
+
+Load the profile and confirm it is present:
+
+```bash
+sudo apparmor_parser -r -W /etc/apparmor.d/scrutiny-collector
+sudo aa-status
+```
+
+Then add the profile to your existing Compose service. Keep its existing ports,
+volumes, environment and device mappings:
 
 ```yaml
 services:
@@ -73,105 +88,75 @@ services:
     security_opt:
       - apparmor=scrutiny-collector
     devices:
-      - "/dev/sda"
-      - "/dev/sdb"
+      - /dev/sda
+      - /dev/sdb
 ```
 
-**Step 4: Verify the profile is loaded (optional)**
+Recreate the service and check startup, collection and new audit denials:
 
 ```bash
-sudo aa-status | grep scrutiny
+docker compose up -d --force-recreate scrutiny
+docker inspect --format '{{.AppArmorProfile}}' scrutiny
+docker logs scrutiny
+sudo journalctl -k --since '5 minutes ago' | grep 'apparmor="DENIED"'
 ```
 
-The profile persists across reboots because AppArmor automatically loads profiles from `/etc/apparmor.d/` at boot.
+Use your actual service and container names. For omnibus, also verify the API
+and dashboard become ready. For collectors, verify a collection completes and
+reaches the configured hub; a running cron process alone is insufficient.
 
-### Option 2: Disable AppArmor for the Container
+## Confinement boundaries
 
-This is simpler but provides less security because the container runs without any AppArmor confinement.
+This custom profile **replaces** `docker-default`; Docker does not merge the two.
+It explicitly includes Docker 28.3-style `/proc` and `/sys` deny rules. It allows
+execution with profile inheritance in installed system-tool, Scrutiny and s6
+runtime paths, including scripts generated by s6 under `/run`.
 
-Docker run:
+This is a container runtime policy, not a per-command minimum-permission policy.
+It grants broad filesystem read/write access except for explicit denials. It
+permits network access and selected capabilities; Docker must separately grant
+any capability or device access a process needs. Keep host mounts narrow.
+
+The profile denies mounting filesystems and file writes through `/dev/sd*`,
+`/dev/hd*`, `/dev/nvme*`, `/dev/sg*` and `/dev/bsg/**`. These path rules are not a
+guarantee against all destructive device operations: they do not make raw I/O
+capabilities or every ioctl read-only, and other device names need separate
+review. Do not use them as a safety boundary for raw-device write benchmarks.
+Filesystem benchmarks can still write temporary files on writable volume mounts.
+
+Read-only-root configurations need a separately provisioned writable, executable
+`/run`. s6 may otherwise attempt a mount that this profile intentionally denies.
+Do not remove `deny mount` to work around initialization without reviewing that
+configuration.
+
+`apparmor=unconfined` removes this AppArmor layer; Docker's other controls remain.
+It can help isolate a policy problem, but is not equivalent to a corrected
+profile. `--privileged` grants much broader access and is not required by this fix.
+
+## TrueNAS SCALE and Dockhand
+
+Install and load the profile on the TrueNAS Docker host, then add `security_opt`
+to the Dockhand stack's Compose service. If an app UI cannot express that field,
+use a deployment method that accepts Compose security options. Changing the
+value to `unconfined` still requires access to the same field.
+
+Verify that the profile is loaded after host reboots and upgrades. Profile
+persistence depends on the appliance's configuration management; merely copying
+a file does not prove that TrueNAS will preserve and reload it.
+
+## Regression checks
+
+On a Linux Docker host with AppArmor, `apparmor_parser`, and passwordless `sudo`,
+build the current image and run:
 
 ```bash
-docker run \
-  --cap-add SYS_RAWIO --cap-add SYS_ADMIN \
-  --security-opt apparmor=unconfined \
-  --device=/dev/sda --device=/dev/sdb \
-  ghcr.io/starosdev/scrutiny:latest-collector
+docker build -f docker/Dockerfile -t scrutiny-apparmor-test .
+bash docker/tests/apparmor_test.sh scrutiny-apparmor-test omnibus
 ```
 
-Docker Compose:
-
-```yaml
-services:
-  scrutiny:
-    image: ghcr.io/starosdev/scrutiny:latest-omnibus
-    cap_add:
-      - SYS_RAWIO
-      - SYS_ADMIN
-    security_opt:
-      - apparmor=unconfined
-    devices:
-      - "/dev/sda"
-      - "/dev/sdb"
-```
-
-### Option 3: Privileged Mode (Not Recommended)
-
-Running with `--privileged` disables all security restrictions. This works but is not recommended for production.
-
-```bash
-docker run --privileged --device=/dev/sda ghcr.io/starosdev/scrutiny:latest-collector
-```
-
-## Security Comparison
-
-| Approach | AppArmor | Capabilities | Device Write | Risk Level |
-|----------|----------|-------------|-------------|------------|
-| Custom profile | Enforced (minimal) | SYS_RAWIO + SYS_ADMIN | Denied | Low |
-| `apparmor=unconfined` | Disabled | SYS_RAWIO + SYS_ADMIN | Depends on caps | Medium |
-| `--privileged` | Disabled | All | Allowed | High |
-
-The custom profile explicitly denies writes to block devices, restricts mount operations, and only allows the specific capabilities and device access that `smartctl` requires.
-
-## TrueNAS SCALE
-
-TrueNAS SCALE manages Docker containers through its app system and enforces AppArmor by default. To use the custom profile:
-
-1. SSH into the TrueNAS host
-2. Copy the AppArmor profile as described in Option 1
-3. Load the profile with `apparmor_parser`
-4. In the TrueNAS app configuration, add the security option `apparmor=scrutiny-collector`
-
-If the TrueNAS app UI does not expose `security_opt`, use Option 2 (`apparmor=unconfined`) or deploy via `docker-compose` directly.
-
-## Diagnostic Logging
-
-The collector automatically detects AppArmor confinement at startup and logs warnings when a restrictive profile is detected. Look for log lines starting with `AppArmor:` in the collector output.
-
-When a device open failure occurs (smartctl exit code 0x02), the collector will additionally log a hint if AppArmor confinement is detected.
-
-To enable verbose logging for troubleshooting:
-
-```bash
-docker run -e COLLECTOR_DEBUG=true ... ghcr.io/starosdev/scrutiny:latest-collector
-```
-
-## Verifying AppArmor Status
-
-Check if AppArmor is active on the host:
-
-```bash
-sudo aa-status
-```
-
-Check which profile a running container is using:
-
-```bash
-docker inspect <container_id> | grep -i apparmor
-```
-
-Check the profile from inside the container:
-
-```bash
-cat /proc/self/attr/apparmor/current
-```
+Use `collector` as the second argument for the collector variants. The Docker
+Permissions workflow tests all four image variants with the enforcing profile.
+The test uses a unique temporary profile, isolated containers and disposable
+data. It checks startup, executable access, mount/device-file denial, and
+shutdown without exposing real host disks. Real SMART collection and
+TrueNAS-specific acceptance still require testing on the affected host.

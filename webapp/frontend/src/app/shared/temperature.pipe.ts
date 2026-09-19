@@ -3,6 +3,11 @@ import { formatNumber } from '@angular/common';
 
 @Pipe({ name: 'temperature' })
 export class TemperaturePipe implements PipeTransform {
+    static fahrenheitToCelsius(fahrenheitTemp: number): number {
+        const fahrenheitOffset = 32;
+        const celsiusScale = 5 / 9;
+        return (fahrenheitTemp - fahrenheitOffset) * celsiusScale;
+    }
     static celsiusToFahrenheit(celsiusTemp: number): number {
         return (celsiusTemp * 9) / 5 + 32;
     }

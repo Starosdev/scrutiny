@@ -8,6 +8,7 @@ import (
 // HTML report color constants (S1192: deduplicated string literals)
 const colorGreen = "#28a745"
 const colorRed = "#dc3545"
+const colorYellow = "#ffc107"
 
 // FormatHTMLReport generates an HTML email body for the report.
 func FormatHTMLReport(report *ReportData) string {
@@ -151,10 +152,10 @@ func writeDeviceHTMLTable(b *strings.Builder, report *ReportData) {
 		fmt.Fprintf(b, `<tr>
 <td style="padding:5px 6px;border:1px solid #dee2e6;color:%s;">%s</td>
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;color:%s;">%s</td>
-<td align="center" style="padding:5px 6px;border:1px solid #dee2e6;">%dC</td>
+<td align="center" style="padding:5px 6px;border:1px solid #dee2e6;">%sC</td>
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;">%d</td>
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;">%d</td>
-</tr>`, rowColor, escapeHTML(name), rowColor, d.StatusString(), d.TempCurrent, d.PowerOnHours, alertCount)
+</tr>`, rowColor, escapeHTML(name), rowColor, d.StatusString(), formatTemp(d.TempCurrent), d.PowerOnHours, alertCount)
 	}
 
 	b.WriteString(`</table></td></tr>`)
@@ -173,12 +174,12 @@ func writeTempHTMLSummary(b *strings.Builder, devices []DeviceReport) {
 <h3 style="margin:0 0 8px;color:#212529;font-size:14px;">Temperature Summary</h3>
 <table cellpadding="3" cellspacing="0" style="font-size:12px;">`)
 
-	fmt.Fprintf(b, `<tr><td style="color:#6c757d;">Highest:</td><td><strong>%s</strong> at %dC (avg %.0fC)</td></tr>`,
-		escapeHTML(hottest.DisplayName()), hottest.TempCurrent, hottest.TempAvg)
+	fmt.Fprintf(b, `<tr><td style="color:#6c757d;">Highest:</td><td><strong>%s</strong> at %sC (avg %.0fC)</td></tr>`,
+		escapeHTML(hottest.DisplayName()), formatTemp(hottest.TempCurrent), hottest.TempAvg)
 
-	if coldest != nil && coldest.TempCurrent != hottest.TempCurrent {
-		fmt.Fprintf(b, `<tr><td style="color:#6c757d;">Lowest:</td><td><strong>%s</strong> at %dC (avg %.0fC)</td></tr>`,
-			escapeHTML(coldest.DisplayName()), coldest.TempCurrent, coldest.TempAvg)
+	if coldest != nil && coldest != hottest {
+		fmt.Fprintf(b, `<tr><td style="color:#6c757d;">Lowest:</td><td><strong>%s</strong> at %sC (avg %.0fC)</td></tr>`,
+			escapeHTML(coldest.DisplayName()), formatTemp(coldest.TempCurrent), coldest.TempAvg)
 	}
 
 	b.WriteString(`</table></td></tr>`)
@@ -196,8 +197,11 @@ func writeZFSHTMLSection(b *strings.Builder, pools []ZFSPoolReport) {
 </tr>`)
 
 	for _, pool := range pools {
+		displayHealth := pool.DisplayHealth()
 		healthColor := colorGreen
-		if pool.Health != "ONLINE" {
+		if displayHealth == "UNKNOWN" {
+			healthColor = colorYellow
+		} else if displayHealth != "ONLINE" {
 			healthColor = colorRed
 		}
 
@@ -213,7 +217,7 @@ func writeZFSHTMLSection(b *strings.Builder, pools []ZFSPoolReport) {
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;color:%s;">%s</td>
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;">%.1f%%</td>
 <td align="center" style="padding:5px 6px;border:1px solid #dee2e6;">%s</td>
-</tr>`, escapeHTML(pool.Name), healthColor, pool.Health, pool.Capacity, errors)
+</tr>`, escapeHTML(pool.Name), healthColor, displayHealth, pool.Capacity, errors)
 	}
 
 	b.WriteString(`</table></td></tr>`)

@@ -36,8 +36,18 @@ updates:
         patterns:
           - "@angular/*"
           - "@angular-devkit/*"
+          - "@angular-eslint/*"
+      # The dependency-type match claims every devDependency, and it wins over
+      # the angular group above, so without these exclusions the Angular build
+      # tooling is capped at minor and patch while the runtime packages take
+      # the major. That split is what left @angular/build on 21 against Angular
+      # 22 and broke the frontend test job.
       dev-dependencies:
         dependency-type: "development"
+        exclude-patterns:
+          - "@angular/*"
+          - "@angular-devkit/*"
+          - "@angular-eslint/*"
         update-types:
           - "minor"
           - "patch"

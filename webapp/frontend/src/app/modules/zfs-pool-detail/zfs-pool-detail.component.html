@@ -27,9 +27,12 @@
         <!-- Status Card -->
         <treo-card class="flex-col p-6">
             <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Status</div>
-            <div [ngClass]="getStatusColorClass(pool.status)" class="font-bold text-3xl">
-                {{ pool.status }}
+            <div [ngClass]="getStatusDisplayColorClass()" class="font-bold text-3xl">
+                {{ getStatusDisplay() }}
             </div>
+            @if (getPresenceLabel()) {
+            <div [ngClass]="getPresenceColorClass()" class="mt-2 text-sm">{{ getPresenceLabel() }}</div>
+            }
         </treo-card>
 
         <!-- Capacity Card -->
@@ -47,7 +50,21 @@
                     [style.width.%]="pool.capacity_percent"
                 ></div>
             </div>
-            <div class="text-sm text-hint mt-2">{{ pool.allocated | fileSize : config?.file_size_si_units }} / {{ pool.size | fileSize : config?.file_size_si_units }}</div>
+            @if (usableSize(pool) > 0) {
+            <div class="text-sm text-secondary mt-2">
+                {{ pool.usable_used | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} /
+                {{ usableSize(pool) | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} usable
+            </div>
+            <div class="text-xs text-secondary mt-1">
+                {{ pool.allocated | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} /
+                {{ pool.size | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} raw
+            </div>
+            } @else {
+            <div class="text-sm text-hint mt-2">
+                {{ pool.allocated | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} /
+                {{ pool.size | fileSize : $safeNavigationMigration(config?.file_size_si_units) }}
+            </div>
+            }
         </treo-card>
 
         <!-- Fragmentation Card -->
@@ -70,7 +87,9 @@
             @if (pool.scrub_errors_count > 0) {
             <div class="text-sm text-red-600 dark:text-red-400 mt-1">{{ pool.scrub_errors_count }} errors found</div>
             } @if (pool.scrub_issued_bytes > 0) {
-            <div class="text-sm text-yellow-600 dark:text-yellow-400 mt-1">{{ pool.scrub_issued_bytes | fileSize : config?.file_size_si_units }} repaired</div>
+            <div class="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
+                {{ pool.scrub_issued_bytes | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} repaired
+            </div>
             } } @case ('canceled') {
             <div class="font-bold text-3xl text-yellow-600 dark:text-yellow-400">Canceled</div>
             } }

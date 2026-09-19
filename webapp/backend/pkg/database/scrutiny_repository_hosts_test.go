@@ -64,23 +64,28 @@ func TestUpdateHostArchivedUpdatesEveryDeviceInHost(t *testing.T) {
 	require.Zero(t, activeAlpha)
 }
 
-func TestFindHostsWithExternallySharedWWNsUsesWholeSelection(t *testing.T) {
+// A WWN may be deleted by predicate only when every holder is being purged; host-less devices count
+// as outside the selection.
+func TestWWNsHeldOnlyBySelectedHosts(t *testing.T) {
 	devices := []models.Device{
 		{DeviceID: "a", HostId: "alpha", WWN: "shared-selected"},
 		{DeviceID: "b", HostId: "beta", WWN: "shared-selected"},
-		{DeviceID: "a-unsafe", HostId: "alpha", WWN: "shared-outside"},
+		{DeviceID: "a-outside", HostId: "alpha", WWN: "shared-outside"},
 		{DeviceID: "c", HostId: "gamma", WWN: "shared-outside"},
+		{DeviceID: "a-hostless", HostId: "alpha", WWN: "shared-hostless"},
+		{DeviceID: "hostless", HostId: "", WWN: "shared-hostless"},
+		{DeviceID: "a-no-wwn", HostId: "alpha"},
 	}
 	selected := map[string]struct{}{"alpha": {}, "beta": {}}
 
-	blocked := findHostsWithExternallySharedWWNs(devices, selected)
-
-	require.Equal(t, []string{"shared-outside"}, blocked["alpha"])
-	require.NotContains(t, blocked, "beta")
+	require.Equal(t, map[string]struct{}{"shared-selected": {}}, wwnsHeldOnlyBySelectedHosts(devices, selected))
 }
 
-func TestPurgeHostsBlocksWWNSharedOutsideSelectedHosts(t *testing.T) {
+// fixes #851: history is deleted by device_id, so a WWN shared with a device on another host no longer
+// blocks the purge. Deleting by that WWN would remove the other device's points, so it is skipped.
+func TestPurgeHostsDeletesByDeviceIDWhenWWNSharedOutsideSelection(t *testing.T) {
 	repo := newHostManagementTestRepository(t)
+	recorder := withInfluxDeleteRecorder(t, repo)
 	ctx := context.Background()
 	require.NoError(t, repo.gormClient.Create(&[]models.Device{
 		{DeviceID: "a", HostId: "alpha", WWN: "shared"},
@@ -91,15 +96,17 @@ func TestPurgeHostsBlocksWWNSharedOutsideSelectedHosts(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, results, 1)
-	require.False(t, results[0].Success)
-	require.Contains(t, results[0].Error, "outside selected hosts")
-	var count int64
-	require.NoError(t, repo.gormClient.Model(&models.Device{}).Count(&count).Error)
-	require.Equal(t, int64(2), count)
+	require.True(t, results[0].Success, results[0].Error)
+	require.ElementsMatch(t, bucketPredicates(`device_id="a"`), recorder.all())
+	var remaining []models.Device
+	require.NoError(t, repo.gormClient.Find(&remaining).Error)
+	require.Len(t, remaining, 1)
+	require.Equal(t, "b", remaining[0].DeviceID)
 }
 
 func TestPurgeHostsWithoutWWNIsRetrySafe(t *testing.T) {
 	repo := newHostManagementTestRepository(t)
+	recorder := withInfluxDeleteRecorder(t, repo)
 	ctx := context.Background()
 	require.NoError(t, repo.gormClient.Create(&models.Device{DeviceID: "a", HostId: "alpha"}).Error)
 
@@ -107,6 +114,7 @@ func TestPurgeHostsWithoutWWNIsRetrySafe(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, first[0].Success)
 	require.Equal(t, int64(1), first[0].DeviceCount)
+	require.ElementsMatch(t, bucketPredicates(`device_id="a"`), recorder.all())
 
 	second, err := repo.PurgeHosts(ctx, []string{"alpha"})
 	require.NoError(t, err)

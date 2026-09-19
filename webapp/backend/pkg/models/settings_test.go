@@ -29,6 +29,9 @@ func TestApplyDefaults_AllZeroValues(t *testing.T) {
 	require.Equal(t, 60, s.Metrics.MissedPingTimeoutMinutes)
 	require.Equal(t, 5, s.Metrics.MissedPingCheckIntervalMins)
 	require.Equal(t, 24, s.Metrics.HeartbeatIntervalHours)
+	require.Equal(t, DefaultTemperatureThresholdCelsius, s.Metrics.TemperatureThresholdCelsius)
+	require.Zero(t, s.Metrics.TemperatureDurationMinutes)
+	require.False(t, s.Metrics.NotifyOnTemperature)
 
 	// Metrics scheduled report defaults
 	require.Equal(t, "08:00", s.Metrics.ReportDailyTime)
@@ -71,6 +74,8 @@ func TestApplyDefaults_PreservesExistingValues(t *testing.T) {
 	s.Metrics.MissedPingTimeoutMinutes = 30
 	s.Metrics.MissedPingCheckIntervalMins = 10
 	s.Metrics.HeartbeatIntervalHours = 12
+	s.Metrics.TemperatureThresholdCelsius = 65
+	s.Metrics.TemperatureDurationMinutes = 0
 	s.Metrics.ReportDailyTime = "03:00"
 	s.Metrics.ReportWeeklyDay = 5
 	s.Metrics.ReportWeeklyTime = "09:00"
@@ -95,6 +100,8 @@ func TestApplyDefaults_PreservesExistingValues(t *testing.T) {
 	require.Equal(t, 30, s.Metrics.MissedPingTimeoutMinutes)
 	require.Equal(t, 10, s.Metrics.MissedPingCheckIntervalMins)
 	require.Equal(t, 12, s.Metrics.HeartbeatIntervalHours)
+	require.Equal(t, 65, s.Metrics.TemperatureThresholdCelsius)
+	require.Zero(t, s.Metrics.TemperatureDurationMinutes)
 	require.Equal(t, "03:00", s.Metrics.ReportDailyTime)
 	require.Equal(t, 5, s.Metrics.ReportWeeklyDay)
 	require.Equal(t, "09:00", s.Metrics.ReportWeeklyTime)

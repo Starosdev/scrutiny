@@ -75,6 +75,7 @@ coverage.txt
 .angular
 web.log
 CLAUDE.md
+AGENTS.md
 PLANNING.md
 
 # macOS
@@ -85,6 +86,9 @@ PLANNING.md
 .codex/
 # Local builder skill files
 .codex/skills/
+
+# Local MCP configuration
+.mcp.json
 
 # Local compiled binaries
 collector-dev
@@ -116,16 +120,11 @@ test_flux.go
 CONTEXT.md
 docs/adr/
 
-# Local agent session surfaces are intentionally local-only.
+# Local agent guidance is intentionally local-only.
 CLAUDE.md
 .agents/
 .claude/
 .codex/
-.agent-session
-.codex-session-*
 docs/agents/invariants.md
 docs/agents/danger-zones.md
 docs/agents/review-checklist.md
-.codex-session-linear
-.codex-session-active
-.git-only-rollout-session

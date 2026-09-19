@@ -80,6 +80,10 @@ Optional collector prefixes are `COLLECTOR_ZFS`, `COLLECTOR_MDADM`,
 schedule or a true startup override enables that collector unless its
 `*_ENABLED` variable explicitly disables it.
 
+A schedule override is trimmed before it is applied, so a whitespace value
+clears the YAML schedule. See "Windows PowerShell schedule overrides" below for
+why that matters on Windows.
+
 Use `COLLECTOR_OMNIBUS_CONFIG` instead of `--config` when a service definition
 provides configuration through its environment.
 `COLLECTOR_OMNIBUS_BINARY_DIR` overrides `binary_dir`.
@@ -88,3 +92,58 @@ Collector API, host, logging, and device settings remain in their existing
 collector YAML files and environment variables. The manager removes scheduling
 variables from child processes so each scheduled child performs exactly one
 collection and exits.
+
+## Windows PowerShell schedule overrides
+
+PowerShell deletes an environment variable when it is assigned an empty string.
+`$env:COLLECTOR_CRON_SCHEDULE = ""` removes the variable instead of passing an
+empty value, so the manager finds no override and the YAML schedule stays
+active:
+
+```powershell
+# Does not clear the schedule. The manager logs "collector scheduled".
+$env:COLLECTOR_CRON_SCHEDULE = ""
+.\bin\scrutiny-collector-omnibus.exe run --config .\config\collector-omnibus.yaml
+```
+
+For persistent configuration, clear the schedule in YAML and enable the startup
+run. This is the preferred form because it does not depend on shell quoting:
+
+```yaml
+collectors:
+  metrics:
+    enabled: true
+    schedule: ""
+    run_on_startup: true
+    config: collector.yaml
+```
+
+For a temporary override in one PowerShell session, assign a whitespace value.
+The variable survives, and the manager trims the override to an empty schedule:
+
+```powershell
+$env:COLLECTOR_CRON_SCHEDULE = " "
+$env:COLLECTOR_RUN_STARTUP = "true"
+.\bin\scrutiny-collector-omnibus.exe run --config .\config\collector-omnibus.yaml
+```
+
+With no collector holding a schedule, the manager runs each startup collector
+once and exits.
+
+An enabled collector needs either a schedule or a startup run. Clearing the
+schedule while `run_on_startup` is false fails validation with
+`collector "metrics" is enabled but has no schedule or startup run`. Set
+`run_on_startup: true`, or the matching `*_RUN_STARTUP` variable, alongside the
+cleared schedule.
+
+The same rules apply to every optional collector schedule variable:
+`COLLECTOR_ZFS_CRON_SCHEDULE`, `COLLECTOR_MDADM_CRON_SCHEDULE`,
+`COLLECTOR_BTRFS_CRON_SCHEDULE`, `COLLECTOR_FILESYSTEM_CRON_SCHEDULE`, and
+`COLLECTOR_PERF_CRON_SCHEDULE`. Each pairs with its own `*_RUN_STARTUP`
+variable.
+
+`cmd.exe` behaves the same way: `set COLLECTOR_CRON_SCHEDULE=` removes the
+variable, and `set COLLECTOR_CRON_SCHEDULE= ` assigns a whitespace value that
+the manager trims. Unix shells pass an empty value directly, so
+`COLLECTOR_CRON_SCHEDULE="" ./bin/scrutiny-collector-omnibus run` needs no
+workaround.

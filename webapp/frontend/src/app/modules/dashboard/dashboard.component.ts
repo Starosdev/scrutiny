@@ -178,6 +178,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe((devices) => {
                 this.temperatureDevices = devices;
+                this.temperatureSelection.restore(devices.map((device) => device.device_id));
                 if (this.temperatureSelection.ids.length > 0) {
                     this.loadSelectedTemperatureHistory();
                 }

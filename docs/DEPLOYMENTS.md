@@ -8,9 +8,9 @@ For release-version verification details, see [RELEASE_VERSION_VERIFICATION.md](
 
 | Environment | Branch | Workflow | Published Image | Notes |
 | --- | --- | --- | --- | --- |
-| Testing | `develop` | `.github/workflows/deploy-testing.yml` | `ghcr.io/staros-labs/scrutiny:develop` and `develop-omnibus` | External hosts pull these tags when they want the latest testing build |
+| Testing | `develop` | `.github/workflows/deploy-testing.yml` | `ghcr.io/starosdev/scrutiny:develop` and `develop-omnibus` | External hosts pull these tags when they want the latest testing build |
 | Beta | `beta` | `.github/workflows/deploy-beta.yml` | `ghcr.io/starosdev/scrutiny:beta` and `beta-omnibus` | External hosts pull these tags when they want a pre-release candidate ahead of stable |
-| Production | `master` | `.github/workflows/release-and-deploy.yml` | `ghcr.io/starosdev/scrutiny:latest` and `latest-omnibus` | External hosts pull these tags when they want the latest production build |
+| Production | release tag | `.github/workflows/docker-build.yaml` | `ghcr.io/starosdev/scrutiny:latest` and `latest-omnibus` | External hosts pull these tags when they want the latest production build |
 
 ## Published Channel Tags
 
@@ -47,15 +47,20 @@ it is not a GitHub Actions runner.
 
 Production releases are created manually through `.github/workflows/release.yaml` via `workflow_dispatch`.
 
+Before semantic-release creates a release tag, that workflow validates every
+published Dockerfile for its production platforms with Buildx and QEMU. The
+validation does not push images; the release tag then triggers
+`.github/workflows/docker-build.yaml` to publish them.
+
 The release job installs exact versions from the root package-lock.json with
 npm ci, then runs .github/scripts/run-semantic-release.mjs. Update
 package.json and package-lock.json together when changing release tooling.
 
 - Semantic versioning still comes from conventional commits and `semantic-release`.
-- Raw release notes are generated deterministically from merged pull requests between the previous tag and the new tag.
-- The generator uses merged PR metadata as the source of truth, renders note content from each PR's `## Summary` block plus linked issues, and preserves authored release-promotion sections through `## Test plan`.
+- Raw release notes are generated deterministically from `master` PR merge commits reachable between the previous tag and the new tag.
+- The generator uses merged PR metadata as the source of truth. Master promotion PRs must contain `## Product changes` followed by `## Summary`. Only non-`None.` summaries are user-facing; their linked issues supply release-note content.
 - Validation checks that extracted summary content survives note formatting before it emits notes.
-- OpenAI polishing is optional and wording-only. If the polish step changes the entry structure or drops sub-bullets, the workflow falls back to the raw deterministic notes.
+- If note generation fails, the release workflow fails for manual repair instead of silently completing with semantic-release defaults.
 
 ## Loop Pilot Workflows
 
@@ -81,7 +86,7 @@ Environment rollout is outside GitHub Actions.
 
 If Zeus should move to a new image, do that from the host by pulling the published tags and restarting the compose project there. The current Zeus mapping is:
 
-- develop image path: `ghcr.io/staros-labs/scrutiny:develop-omnibus`
+- develop image path: `ghcr.io/starosdev/scrutiny:develop-omnibus`
 - beta image path: `ghcr.io/starosdev/scrutiny:beta-omnibus`
 - production image path: `ghcr.io/starosdev/scrutiny:latest`
 - develop compose project: `scrutiny-develop`
@@ -116,7 +121,7 @@ This repo now treats `beta` as an optional pre-release channel for changes that 
 
 - `develop` is the integration branch and testing image source
 - `beta` is the optional pre-release branch and beta image source
-- `master` is the stable branch and latest image source
+- `master` is the stable branch; release tags are the latest image source
 
 That distinction matters for both manual host rollouts and the helper scripts in `ops/`:
 
@@ -166,6 +171,8 @@ For an existing Docker Compose installation:
 2. Back up the complete host directory mounted at `/opt/scrutiny/influxdb`. With the example Compose file, copy `./influxdb` to storage outside the active mount.
 3. Set `SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED=true` in the environment or `.env` file.
 4. Start Scrutiny and confirm InfluxDB and the Scrutiny health endpoint are healthy.
+
+In Compose list syntax, use `- SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED=true`. A colon does not assign this variable and leaves the backup acknowledgement disabled.
 
 For Unraid, stop the container and back up the complete Database path shown in the template. Then change **InfluxDB 2.9 Backup Confirmed** to `true` before starting the updated container.
 

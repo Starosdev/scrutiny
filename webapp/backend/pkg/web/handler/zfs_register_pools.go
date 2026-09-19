@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
@@ -28,6 +29,33 @@ func RegisterZFSPools(c *gin.Context) {
 	detectedPools := lo.Filter[models.ZFSPool](poolWrapper.Data, func(pool models.ZFSPool, _ int) bool {
 		return len(pool.GUID) > 0
 	})
+
+	if poolWrapper.Complete {
+		hostID := strings.TrimSpace(poolWrapper.HostID)
+		if hostID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "complete ZFS inventory requires host_id"})
+			return
+		}
+		for i := range detectedPools {
+			if detectedPools[i].HostID != "" && strings.TrimSpace(detectedPools[i].HostID) != hostID {
+				c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "pool host_id does not match inventory host_id"})
+				return
+			}
+			detectedPools[i].HostID = hostID
+		}
+		if err := deviceRepo.RegisterZFSPoolInventory(c, hostID, detectedPools); err != nil {
+			logger.Errorln("An error occurred while recording ZFS pool inventory", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false})
+			return
+		}
+		c.JSON(http.StatusOK, models.ZFSPoolWrapper{
+			Success:  true,
+			HostID:   hostID,
+			Complete: true,
+			Data:     detectedPools,
+		})
+		return
+	}
 
 	errs := []error{}
 	for _, pool := range detectedPools {

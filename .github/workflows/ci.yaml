@@ -8,9 +8,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
       - name: Guard menu triggers
@@ -31,6 +31,12 @@ jobs:
       - name: Test Frontend
         run: |
           make binary-frontend-test-coverage
+      - name: Guard Material theme tokens
+        # The Treo theme adapter must merge into the Angular Material theme map.
+        # Rebuilding it drops '_mat-system' and the theme silently emits no color
+        # tokens, which is how overlay backgrounds went transparent in #541.
+        # Runs after Test Frontend because that target installs node_modules.
+        run: npm --prefix webapp/frontend run test:theme
   test-backend:
     name: Test Backend
     runs-on: ubuntu-latest
@@ -50,28 +56,31 @@ jobs:
           - 8086:8086
     env:
       STATIC: true
+      # InfluxDB integration tests fail instead of skipping when the service is unreachable.
+      SCRUTINY_REQUIRE_INFLUXDB: "true"
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
       - name: Test Omnibus InfluxDB upgrade preflight
         run: bash docker/tests/influxdb-upgrade-preflight_test.sh
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Test Backend
         run: |
+          bash scripts/tests/generate-release-notes_test.sh
           make binary-clean binary-test-coverage
   lint-backend:
     name: Lint Backend (Go)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Sync vendor
@@ -108,9 +117,9 @@ jobs:
           - { on: windows-latest, goos: windows,    goarch: arm64 }
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Build Binaries
@@ -119,7 +128,7 @@ jobs:
       - name: Package Collector Omnibus
         run: make package-collector-omnibus
       - name: Archive
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: binaries-${{ matrix.cfg.on }}-${{ matrix.cfg.goos }}-${{ matrix.cfg.goarch }}-${{ matrix.cfg.goarm || 'na' }}
           path: |

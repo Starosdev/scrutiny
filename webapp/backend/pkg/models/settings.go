@@ -1,5 +1,18 @@
 package models
 
+import (
+	"math"
+	"time"
+)
+
+const (
+	DefaultTemperatureThresholdCelsius = 55
+	DefaultTemperatureDurationMinutes  = 30
+	MinTemperatureThresholdCelsius     = 1
+	MaxTemperatureThresholdCelsius     = 150
+	MaxTemperatureDurationMinutes      = int(math.MaxInt64 / int64(time.Minute))
+)
+
 // Settings is made up of parsed SettingEntry objects retrieved from the database
 //type Settings struct {
 //	MetricsNotifyLevel            pkg.MetricsNotifyLevel            `json:"metrics.notify.level" mapstructure:"metrics.notify.level"`
@@ -9,6 +22,9 @@ package models
 
 type Settings struct {
 	Metrics struct {
+		NotifyOnTemperature           bool   `json:"notify_on_temperature" mapstructure:"notify_on_temperature"`
+		TemperatureThresholdCelsius   int    `json:"temperature_threshold_celsius" mapstructure:"temperature_threshold_celsius"`
+		TemperatureDurationMinutes    int    `json:"temperature_duration_minutes" mapstructure:"temperature_duration_minutes"`
 		NotificationQuietStart        string `json:"notification_quiet_start" mapstructure:"notification_quiet_start"`
 		ReportPDFPath                 string `json:"report_pdf_path" mapstructure:"report_pdf_path"`
 		ReportMonthlyTime             string `json:"report_monthly_time" mapstructure:"report_monthly_time"`
@@ -110,6 +126,7 @@ func (s *Settings) ApplyDefaults() {
 	defaultInt(&s.DashboardHostPageSize, 10)
 
 	// Metrics: numeric fields where 0 is not a valid value.
+	defaultInt(&s.Metrics.TemperatureThresholdCelsius, DefaultTemperatureThresholdCelsius)
 	// Note: StatusFilterAttributes defaults to 0 (All), which is the zero value, so no check needed.
 	defaultInt(&s.Metrics.NotifyLevel, 2)     // MetricsNotifyLevelFail
 	defaultInt(&s.Metrics.StatusThreshold, 3) // MetricsStatusThresholdBoth

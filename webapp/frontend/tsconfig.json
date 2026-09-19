@@ -2,6 +2,11 @@
     "compileOnSave": false,
     "compilerOptions": {
       "baseUrl": "./src",
+      // TypeScript 6.0, required by Angular 22, defaults "strict" to true and
+      // deprecates "baseUrl". Both are pinned to their pre-6.0 behavior here so
+      // the framework upgrade does not also become a strict-mode migration.
+      "strict": false,
+      "ignoreDeprecations": "6.0",
       "outDir": "./dist/out-tsc",
       "sourceMap": true,
       "esModuleInterop": true,

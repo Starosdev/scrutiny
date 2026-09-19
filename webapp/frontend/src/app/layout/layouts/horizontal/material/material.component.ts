@@ -1,11 +1,10 @@
-import { Component, HostBinding, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
+import { Component, HostBinding, OnDestroy, OnInit, ViewEncapsulation, inject, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute, Data, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { TreoMediaWatcherService } from '@treo/services/media-watcher';
 import { TreoNavigationService } from '@treo/components/navigation';
 import { AuthService } from 'app/core/auth/auth.service';
-import { versionInfo } from 'environments/versions';
 import { AppConfig } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { TreoVerticalNavigationComponent } from '../../../../../@treo/components/navigation/vertical/vertical.component';
@@ -20,6 +19,7 @@ import { MaterialLayoutModule } from './material.module';
     templateUrl: './material.component.html',
     styleUrls: ['./material.component.scss'],
     encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [TreoVerticalNavigationComponent, RouterLink, RouterLinkActive, ThemeToggleComponent, MatIconButton, MatTooltip, MatIcon, RouterOutlet, MaterialLayoutModule],
 })
 export class MaterialLayoutComponent implements OnInit, OnDestroy {
@@ -30,7 +30,6 @@ export class MaterialLayoutComponent implements OnInit, OnDestroy {
     private readonly _treoNavigationService = inject(TreoNavigationService);
     private readonly _router = inject(Router);
 
-    appVersion: string;
     authEnabled: boolean = false;
     config: AppConfig = {};
     data: any;
@@ -60,8 +59,6 @@ export class MaterialLayoutComponent implements OnInit, OnDestroy {
         // Set the defaults
         this.fixedHeader = false;
         this.fixedFooter = false;
-
-        this.appVersion = versionInfo.version;
     }
 
     // -----------------------------------------------------------------------------------------------------

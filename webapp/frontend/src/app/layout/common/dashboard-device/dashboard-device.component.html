@@ -113,7 +113,7 @@
 
             @if (deviceSummary.smart?.collector_date) {
             <div class="dashboard-device-metric-value mt-2 font-medium text-3xl leading-none">
-                {{ deviceSummary.smart?.temp | temperature : config.temperature_unit : true }}
+                {{ $safeNavigationMigration(deviceSummary.smart?.temp) | temperature : config.temperature_unit : true }}
             </div>
             } @else {
             <div class="dashboard-device-metric-value mt-2 font-medium text-3xl leading-none">--</div>
@@ -135,7 +135,7 @@
             @if (deviceSummary.smart?.power_on_hours) {
             <div class="dashboard-device-metric-value mt-2 font-medium text-3xl leading-none">
                 {{
-                    deviceSummary.smart?.power_on_hours
+                    $safeNavigationMigration(deviceSummary.smart?.power_on_hours)
                         | deviceHours
                             : config.powered_on_hours_unit
                             : {

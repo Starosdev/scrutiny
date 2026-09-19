@@ -207,16 +207,15 @@ func (p *Publisher) fetchLatestSmartData(deviceRepo database.DeviceRepo, ctx con
 	for _, deviceSummary := range summary {
 		device := deviceSummary.Device
 		wg.Add(1)
-		go func(wwn, deviceID string) {
+		go func(deviceID string) {
 			defer wg.Done()
-			// InfluxDB queries use WWN
-			smarts, err := deviceRepo.GetSmartAttributeHistory(ctx, wwn, "forever", 1, 0, nil)
+			smarts, err := deviceRepo.GetSmartAttributeHistory(ctx, deviceID, "forever", 1, 0, nil)
 			if err == nil && len(smarts) > 0 {
 				mu.Lock()
 				smartDataMap[deviceID] = smarts
 				mu.Unlock()
 			}
-		}(device.WWN, device.DeviceID)
+		}(device.DeviceID)
 	}
 	wg.Wait()
 	return smartDataMap

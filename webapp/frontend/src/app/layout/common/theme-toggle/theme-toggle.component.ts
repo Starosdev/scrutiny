@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewEncapsulation, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
@@ -12,6 +12,7 @@ import { MatIcon } from '@angular/material/icon';
     templateUrl: './theme-toggle.component.html',
     styleUrls: ['./theme-toggle.component.scss'],
     encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [MatIconButton, MatTooltip, MatIcon],
 })
 export class ThemeToggleComponent implements OnInit, OnDestroy {

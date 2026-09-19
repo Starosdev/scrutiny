@@ -158,9 +158,9 @@ func (mc *MetricsCollector) checkAppArmor() {
 	mc.logger.Infof("AppArmor: running under profile %q", profile)
 
 	if profile == "docker-default" || profile == "cri-containerd.apparmor.d" {
-		mc.logger.Warnln("AppArmor: the container is using the default Docker/containerd profile which blocks raw device I/O required by smartctl.")
-		mc.logger.Warnln("AppArmor: if you see permission errors, apply the custom scrutiny-collector profile or run with --security-opt apparmor=unconfined.")
-		mc.logger.Warnln("AppArmor: see https://github.com/Staros-Labs/scrutiny/blob/master/docs/TROUBLESHOOTING_APPARMOR.md for details.")
+		mc.logger.Warnln("AppArmor: the container is using the default Docker/containerd profile. If smartctl reports permission errors, check host audit logs, device mappings, and capabilities.")
+		mc.logger.Warnln("AppArmor: apply the custom scrutiny-collector profile only after confirming a policy denial.")
+		mc.logger.Warnln("AppArmor: see https://github.com/Starosdev/scrutiny/blob/master/docs/TROUBLESHOOTING_APPARMOR.md for details.")
 	}
 }
 
@@ -178,7 +178,7 @@ func (mc *MetricsCollector) hintAppArmorOnDeviceOpenFailure(deviceName string) {
 	profile := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(string(data)), "(enforce)"))
 	if profile != "" && profile != "unconfined" {
 		mc.logger.Warnf("AppArmor: device open failure for %s may be caused by AppArmor profile %q blocking raw device I/O", deviceName, profile)
-		mc.logger.Warnln("AppArmor: see https://github.com/Staros-Labs/scrutiny/blob/master/docs/TROUBLESHOOTING_APPARMOR.md")
+		mc.logger.Warnln("AppArmor: see https://github.com/Starosdev/scrutiny/blob/master/docs/TROUBLESHOOTING_APPARMOR.md")
 	}
 }
 

@@ -12,9 +12,11 @@
         <span class="ml-2">SMART Host Management</span>
     </a>
 
+    @if (config$ | async; as config) { @if (config.server_version; as serverVersion) {
     <div class="mt-6">
         <a class="version-link text-secondary" href="https://github.com/Staros-Labs/scrutiny" target="_blank" rel="noopener noreferrer">
-            <code>{{ appVersion }}</code>
+            <code>{{ serverVersion }}</code>
         </a>
     </div>
+    } }
 </div>

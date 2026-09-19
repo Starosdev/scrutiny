@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"fmt"
+	"net/http"
+
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
-	"net/http"
 )
 
 func SaveSettings(c *gin.Context) {
@@ -14,10 +16,17 @@ func SaveSettings(c *gin.Context) {
 	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 
 	var settings models.Settings
+	// Defaults precede decoding so omitted values differ from explicit zeroes.
+	settings.Metrics.TemperatureThresholdCelsius = models.DefaultTemperatureThresholdCelsius
+	settings.Metrics.TemperatureDurationMinutes = models.DefaultTemperatureDurationMinutes
 	err := c.BindJSON(&settings)
 	if err != nil {
 		logger.Errorln("Cannot parse updated settings", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
+		return
+	}
+	if !validTemperatureNotifySettings(&settings) {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": fmt.Sprintf("temperature_threshold_celsius must be %d..%d and temperature_duration_minutes must be 0..%d", models.MinTemperatureThresholdCelsius, models.MaxTemperatureThresholdCelsius, models.MaxTemperatureDurationMinutes)})
 		return
 	}
 	settings.ApplyDefaults()
@@ -44,4 +53,11 @@ func SaveSettings(c *gin.Context) {
 		"collector_trigger_enabled":      collectorTriggerEnabled(),
 		"zfs_pool_modifications_allowed": zfsPoolModificationsAllowed(c),
 	})
+}
+
+func validTemperatureNotifySettings(settings *models.Settings) bool {
+	return settings.Metrics.TemperatureThresholdCelsius >= models.MinTemperatureThresholdCelsius &&
+		settings.Metrics.TemperatureThresholdCelsius <= models.MaxTemperatureThresholdCelsius &&
+		settings.Metrics.TemperatureDurationMinutes >= 0 &&
+		settings.Metrics.TemperatureDurationMinutes <= models.MaxTemperatureDurationMinutes
 }

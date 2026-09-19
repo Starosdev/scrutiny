@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, ViewEncapsulation, DOCUMENT, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewEncapsulation, DOCUMENT, inject, ChangeDetectionStrategy } from '@angular/core';
 
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { MatSlideToggleChange as MatSlideToggleChange } from '@angular/material/slide-toggle';
@@ -18,6 +18,7 @@ import { MobileLayoutComponent } from './layouts/mobile/mobile-layout.component'
     templateUrl: './layout.component.html',
     styleUrls: ['./layout.component.scss'],
     encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [EmptyLayoutComponent, MaterialLayoutComponent, MobileLayoutComponent],
 })
 export class LayoutComponent implements OnInit, OnDestroy {

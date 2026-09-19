@@ -1,4 +1,4 @@
-import { Component, OnDestroy, ViewEncapsulation } from '@angular/core';
+import { Component, OnDestroy, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { Subject } from 'rxjs';
 import { RouterOutlet } from '@angular/router';
 
@@ -7,6 +7,7 @@ import { RouterOutlet } from '@angular/router';
     templateUrl: './empty.component.html',
     styleUrls: ['./empty.component.scss'],
     encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [RouterOutlet],
 })
 export class EmptyLayoutComponent implements OnDestroy {

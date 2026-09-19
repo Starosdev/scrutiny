@@ -4,9 +4,10 @@ Thank you for your interest in contributing to Scrutiny! This is an actively mai
 
 ## Before You Start
 
-- Check [GitHub Issues](https://github.com/Staros-Labs/scrutiny/issues) for existing issues and planned work
+- Check [GitHub Issues](https://github.com/Starosdev/scrutiny/issues) for existing issues and planned work
 - For bug reports or feature requests, please open a GitHub issue first
 - For large changes, please discuss your approach in an issue before starting work
+- Scrutiny does not participate in Linear startup or Agent Coordination workflow. Use this repository's GitHub issue, branch, and pull-request flow.
 
 ## Branch Workflow
 
@@ -64,9 +65,9 @@ unless the task specifically requires host-level device access from Zeus.
 
 # Modifying the Scrutiny Backend Server (API)
 
-1. install the [Go runtime](https://go.dev/doc/install) (v1.25+)
+1. install the [Go runtime](https://go.dev/doc/install) (v1.26.8+)
 2. download the `scrutiny-web-frontend.tar.gz` for
-   the [latest release](https://github.com/Staros-Labs/scrutiny/releases/latest). Extract to a folder named `dist`
+   the [latest release](https://github.com/Starosdev/scrutiny/releases/latest). Extract to a folder named `dist`
 3. create a `scrutiny.yaml` config file
     ```yaml
     # config file for local development. store as scrutiny.yaml
@@ -100,6 +101,14 @@ unless the task specifically requires host-level device access from Zeus.
     go run webapp/backend/cmd/scrutiny/scrutiny.go start --config ./scrutiny.yaml
     ```
 6. open your browser to [http://localhost:8080/web](http://localhost:8080/web)
+
+## ATA self-test chronology
+
+ATA self-test lifetime hours wrap independently of the device's reported Power-On Hours. Keep the raw value unchanged and resolve an absolute age only when the controller's newest-first log order and a trustworthy current Power-On Hours value allow one epoch. A lone value such as 100 at device age 68,000 could mean either 100 or 65,636 hours; choosing the latest possible epoch would invent certainty.
+
+Retention uses collection time and controller log position. Repeated raw values can describe separate occurrences, so matching must consider resolved ages and the power-on context of earlier observations. If a later collection allows a new epoch but cannot identify the occurrence, retaining an ambiguous row alongside the earlier record is safer than overwriting history. This can retain a possible duplicate until the 21-row retention limit removes it. Without a collection timestamp, arrival time is the fallback and stale replay detection is unavailable.
+
+Migration preserves legacy raw values and IDs. Do not backfill absolute ages from raw sorting or database insertion order; only a fresh collection can supply the missing context. Regression checks must cover rollover ordering, repeated uploads, cross-epoch collisions, legacy migration, and ambiguous ages in both layouts.
 
 # Modifying the Scrutiny Frontend Angular SPA
 
@@ -136,7 +145,7 @@ This avoids startup races where layout or theme code reads `config.layout` befor
 If you're developing a feature that requires changes to the backend and the frontend, or a frontend feature that requires real data,
 you'll need to follow the steps below:
 
-1. install the [Go runtime](https://go.dev/doc/install) (v1.25+)
+1. install the [Go runtime](https://go.dev/doc/install) (v1.26.8+)
 2. install [NodeJS](https://nodejs.org/en/download/)
 3. create a `scrutiny.yaml` config file
     ```yaml

@@ -49,12 +49,12 @@
                     } @if (latestMetrics?.array_size) {
                     <div class="flex justify-between border-b pb-2">
                         <span class="text-secondary">Array Size</span>
-                        <span class="font-medium">{{ latestMetrics?.array_size | fileSize : config?.file_size_si_units }}</span>
+                        <span class="font-medium">{{ $safeNavigationMigration(latestMetrics?.array_size) | fileSize : $safeNavigationMigration(config?.file_size_si_units) }}</span>
                     </div>
-                    } @if (latestMetrics?.used_bytes !== undefined && latestMetrics?.used_bytes !== null) {
+                    } @if ($safeNavigationMigration(latestMetrics?.used_bytes) !== undefined && $safeNavigationMigration(latestMetrics?.used_bytes) !== null) {
                     <div class="flex justify-between border-b pb-2">
                         <span class="text-secondary">Used</span>
-                        <span class="font-medium">{{ latestMetrics?.used_bytes | fileSize : config?.file_size_si_units }}</span>
+                        <span class="font-medium">{{ $safeNavigationMigration(latestMetrics?.used_bytes) | fileSize : $safeNavigationMigration(config?.file_size_si_units) }}</span>
                     </div>
                     }
                 </div>

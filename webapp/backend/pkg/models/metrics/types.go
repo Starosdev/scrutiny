@@ -9,9 +9,10 @@ import (
 
 // DeviceMetricsData stores metrics data for a single device
 type DeviceMetricsData struct {
-	UpdatedAt time.Time          `json:"updated_at"`
-	SmartData measurements.Smart `json:"smart_data"`
-	Device    models.Device      `json:"device"`
+	UpdatedAt      time.Time                   `json:"updated_at"`
+	SmartData      measurements.Smart          `json:"smart_data"`
+	Device         models.Device               `json:"device"`
+	SelfTestHealth models.DeviceSelfTestHealth `json:"self_test_health"`
 }
 
 // ZFSPoolMetricsData stores metrics data for a single ZFS pool.

@@ -51,8 +51,8 @@ func (g *Generator) Generate(ctx context.Context, periodType string, start, end 
 
 		deviceReport := buildDeviceReport(summary, tempHistory[devID])
 
-		// Populate active failures from latest SMART attribute data (uses WWN for InfluxDB query)
-		g.populateAlerts(ctx, &deviceReport, summary.Device.WWN, durationKey)
+		// Populate active failures from latest SMART attribute data
+		g.populateAlerts(ctx, &deviceReport, summary.Device.DeviceID, durationKey)
 
 		report.Devices = append(report.Devices, deviceReport)
 
@@ -76,8 +76,8 @@ func (g *Generator) Generate(ctx context.Context, periodType string, start, end 
 	return report, nil
 }
 
-func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, wwn string, durationKey string) {
-	smartHistory, err := g.repo.GetSmartAttributeHistory(ctx, wwn, durationKey, 1, 0, nil)
+func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, deviceID string, durationKey string) {
+	smartHistory, err := g.repo.GetSmartAttributeHistory(ctx, deviceID, durationKey, 1, 0, nil)
 	if err != nil || len(smartHistory) == 0 {
 		return
 	}
@@ -126,6 +126,7 @@ func (g *Generator) populateZFSPools(ctx context.Context, report *ReportData) {
 			Name:           pool.Name,
 			GUID:           pool.GUID,
 			Health:         pool.Health,
+			Presence:       string(pool.Presence),
 			Capacity:       pool.CapacityPercent,
 			ErrorsRead:     pool.TotalReadErrors,
 			ErrorsWrite:    pool.TotalWriteErrors,
@@ -160,7 +161,10 @@ func buildDeviceReport(summary *models.DeviceSummary, temps []measurements.Smart
 	}
 
 	if summary.SmartResults != nil {
-		dr.TempCurrent = summary.SmartResults.Temp
+		if summary.SmartResults.Temp != nil {
+			val := *summary.SmartResults.Temp
+			dr.TempCurrent = &val
+		}
 		dr.PowerOnHours = summary.SmartResults.PowerOnHours
 
 		if summary.SmartResults.PercentageUsed != nil {
@@ -175,10 +179,10 @@ func buildDeviceReport(summary *models.DeviceSummary, temps []measurements.Smart
 
 	if len(temps) > 0 {
 		dr.TempMin, dr.TempMax, dr.TempAvg = aggregateTemps(temps)
-	} else {
-		dr.TempMin = dr.TempCurrent
-		dr.TempMax = dr.TempCurrent
-		dr.TempAvg = float64(dr.TempCurrent)
+	} else if dr.TempCurrent != nil {
+		dr.TempMin = *dr.TempCurrent
+		dr.TempMax = *dr.TempCurrent
+		dr.TempAvg = float64(*dr.TempCurrent)
 	}
 
 	return dr

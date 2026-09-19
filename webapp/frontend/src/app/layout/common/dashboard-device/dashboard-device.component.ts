@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, inject, ChangeDetectionStrategy } from '@angular/core';
 import dayjs from 'dayjs';
 import { takeUntil } from 'rxjs/operators';
 import { AppConfig } from 'app/core/config/app.config';
@@ -25,6 +25,7 @@ import { DeviceHoursPipe } from '../../../shared/device-hours.pipe';
     selector: 'app-dashboard-device',
     templateUrl: './dashboard-device.component.html',
     styleUrls: ['./dashboard-device.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [
         NgClass,
         MatIcon,

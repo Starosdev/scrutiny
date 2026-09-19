@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef as MatDialogRef, MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose } from '@angular/material/dialog';
 import { DashboardDeviceArchiveDialogService } from 'app/layout/common/dashboard-device-archive-dialog/dashboard-device-archive-dialog.service';
 import { CdkScrollable } from '@angular/cdk/scrolling';
@@ -9,6 +9,7 @@ import { MatIcon } from '@angular/material/icon';
     selector: 'app-dashboard-device-archive-dialog',
     templateUrl: './dashboard-device-archive-dialog.component.html',
     styleUrls: ['./dashboard-device-archive-dialog.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [MatDialogTitle, CdkScrollable, MatDialogContent, MatDialogActions, MatButton, MatDialogClose, MatIcon],
 })
 export class DashboardDeviceArchiveDialogComponent {

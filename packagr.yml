@@ -1,6 +1,0 @@
----
-engine_enable_code_mutation: true
-mgr_keep_lock_file: true
-engine_version_metadata_path: 'webapp/backend/pkg/version/version.go'
-engine_golang_package_path: 'github.com/analogj/scrutiny'
-

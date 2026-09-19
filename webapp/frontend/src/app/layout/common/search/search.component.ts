@@ -1,4 +1,4 @@
-import { Component, ElementRef, Input, OnDestroy, OnInit, Renderer2, ViewChild, ViewEncapsulation, inject } from '@angular/core';
+import { Component, ElementRef, Input, OnDestroy, OnInit, Renderer2, ViewChild, ViewEncapsulation, inject, ChangeDetectionStrategy } from '@angular/core';
 import { UntypedFormControl, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { MatFormField as MatFormField, MatPrefix } from '@angular/material/form-field';
@@ -19,6 +19,7 @@ import { RouterLink } from '@angular/router';
     encapsulation: ViewEncapsulation.None,
     exportAs: 'treoSearch',
     animations: TreoAnimations,
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [MatIconButton, MatIcon, MatFormField, MatPrefix, MatInput, ReactiveFormsModule, MatAutocompleteTrigger, MatAutocomplete, MatOption, RouterLink],
 })
 export class SearchComponent implements OnInit, OnDestroy {

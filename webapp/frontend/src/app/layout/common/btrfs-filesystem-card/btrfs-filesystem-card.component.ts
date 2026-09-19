@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, ChangeDetectionStrategy } from '@angular/core';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { MatDialog } from '@angular/material/dialog';
@@ -18,6 +18,7 @@ dayjs.extend(relativeTime);
     selector: 'app-btrfs-filesystem-card',
     templateUrl: './btrfs-filesystem-card.component.html',
     styleUrls: ['./btrfs-filesystem-card.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [NgClass, RouterLink, MatIcon, MatIconButton, MatMenuTrigger, MenuTriggerRestoreFocusDirective, MatMenu, MatMenuItem, DatePipe],
 })
 export class BtrfsFilesystemCardComponent {

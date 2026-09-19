@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Generate triage markdown
         env:
@@ -30,7 +30,7 @@ jobs:
           python3 ops/loop_pilot.py triage --output out/loop-pilot-triage.md
 
       - name: Upload triage artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: scrutiny-loop-pilot-triage-${{ github.run_id }}
           path: out/loop-pilot-triage.md

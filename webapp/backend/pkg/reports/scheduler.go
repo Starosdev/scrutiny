@@ -27,12 +27,12 @@ const (
 
 // Scheduler runs report generation on configured schedules
 type Scheduler struct {
-	appConfig  config.Interface
-	logger     logrus.FieldLogger
-	deviceRepo database.DeviceRepo
-	ctx        context.Context
-	cancel     context.CancelFunc
-	stopCh     chan struct{}
+	appConfig   config.Interface
+	logger      logrus.FieldLogger
+	deviceRepo  database.DeviceRepo
+	ctx         context.Context
+	cancel      context.CancelFunc
+	stopCh      chan struct{}
 	repoFactory func() (database.DeviceRepo, error)
 
 	lastDailyRun   time.Time

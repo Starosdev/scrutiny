@@ -9,7 +9,7 @@ import { TREO_APP_CONFIG } from '@treo/services/config/config.constants';
 import { DeviceSummaryModel } from 'app/core/models/device-summary-model';
 import dayjs from 'dayjs';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { HttpClient, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { HttpClient, provideHttpClient, withInterceptorsFromDi, withXhr } from '@angular/common/http';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { of } from 'rxjs';
 import { MetricsStatusThreshold } from 'app/core/config/app.config';
@@ -36,7 +36,7 @@ describe('DashboardDeviceComponent', () => {
                 { provide: TREO_APP_CONFIG, useValue: { dashboard_display: 'name', metrics: { status_threshold: 3 } } },
                 { provide: HttpClient, useValue: httpClientSpy },
                 provideRouter([]),
-                provideHttpClient(withInterceptorsFromDi()),
+                provideHttpClient(withXhr(), withInterceptorsFromDi()),
                 provideHttpClientTesting(),
             ],
         }).compileComponents();

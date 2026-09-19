@@ -43,7 +43,7 @@
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
                 <mat-label>Temperature</mat-label>
-                <mat-select [(ngModel)]="temperatureUnit">
+                <mat-select [ngModel]="temperatureUnit" (ngModelChange)="setTemperatureUnit($event)">
                     <mat-option value="celsius">Celsius</mat-option>
                     <mat-option value="fahrenheit">Fahrenheit</mat-option>
                 </mat-select>
@@ -263,6 +263,45 @@
             </mat-form-field>
         </div>
         }
+
+        <!-- Temperature Notifications -->
+        <div class="flex flex-col mt-5 gt-md:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Temperature Notifications</mat-label>
+                <mat-select [(ngModel)]="notifyOnTemperature">
+                    <mat-option [value]="true">Enabled</mat-option>
+                    <mat-option [value]="false">Disabled</mat-option>
+                </mat-select>
+                <mat-hint>Alert once when a drive stays hot</mat-hint>
+            </mat-form-field>
+        </div>
+        @if (notifyOnTemperature) {
+        <div class="flex flex-col mt-5 gt-md:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Temperature Threshold ({{ temperatureUnit === 'fahrenheit' ? '°F' : '°C' }})</mat-label>
+                <input
+                    matInput
+                    type="number"
+                    [(ngModel)]="temperatureThresholdDisplay"
+                    (blur)="normalizeTemperatureThreshold()"
+                    [min]="temperatureThresholdMin"
+                    [max]="temperatureThresholdMax"
+                    step="any"
+                    required
+                />
+                <mat-hint>Stored to the nearest whole degree Celsius</mat-hint>
+            </mat-form-field>
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">
+                <mat-label>Sustained Duration (minutes)</mat-label>
+                <input matInput type="number" [(ngModel)]="temperatureDurationMinutes" min="0" [max]="maxTemperatureDurationMinutes" step="1" required />
+                <mat-hint>0 = notify on the first reading at or above the threshold</mat-hint>
+            </mat-form-field>
+        </div>
+        @if (temperatureSettingsInvalid) {
+        <p role="alert" class="mt-5">
+            Enter a threshold between {{ temperatureThresholdMin }} and {{ temperatureThresholdMax }} and a whole-minute duration between 0 and {{ maxTemperatureDurationMinutes }}.
+        </p>
+        } }
 
         <!-- Notification Rate Limiting -->
         <div class="flex flex-col mt-5 gt-md:flex-row">
@@ -492,6 +531,11 @@
                         <td mat-cell *matCellDef="let override">{{ override.attribute_id }}</td>
                     </ng-container>
 
+                    <ng-container matColumnDef="device">
+                        <th mat-header-cell *matHeaderCellDef>Device</th>
+                        <td mat-cell *matCellDef="let override">{{ overrideDeviceLabel(override) }}</td>
+                    </ng-container>
+
                     <ng-container matColumnDef="action">
                         <th mat-header-cell *matHeaderCellDef>Action</th>
                         <td mat-cell *matCellDef="let override">{{ getActionLabel(override.action) }}</td>
@@ -577,23 +621,39 @@
                         }
 
                         <mat-form-field class="flex-1 min-w-[200px]">
-                            <mat-label>Device WWN (optional)</mat-label>
-                            <input matInput [(ngModel)]="newOverride.wwn" placeholder="Leave empty for all devices" />
+                            <mat-label>Device (optional)</mat-label>
+                            <mat-select [(ngModel)]="newOverride.device_id">
+                                <mat-option value="">All devices</mat-option>
+                                @for (device of overrideDevices; track device.device_id) {
+                                <mat-option [value]="device.device_id">{{ device.model_name }} ({{ device.serial_number || device.device_name || device.device_id }})</mat-option>
+                                }
+                            </mat-select>
+                            <mat-hint>Uses stable Scrutiny device identity.</mat-hint>
                         </mat-form-field>
                     </div>
+
+                    @if (overrideError) {
+                    <p class="text-red-600 mt-2" role="alert" aria-live="assertive">{{ overrideError }}</p>
+                    }
+                    <p id="override-form-hint" class="text-gray-500 mt-2">
+                        Choose a protocol and attribute ID. Custom thresholds need at least one value. Acknowledge needs a device: it pins the pass to that device's current value
+                        and fails again if the value changes.
+                    </p>
 
                     <button
                         mat-raised-button
                         color="primary"
                         class="mt-4"
                         (click)="addOverride()"
+                        aria-describedby="override-form-hint"
                         [disabled]="
                             !newOverride.protocol ||
                             !newOverride.attribute_id ||
                             (newOverride.action === '' &&
                                 (newOverride.warn_above === null || newOverride.warn_above === undefined) &&
                                 (newOverride.fail_above === null || newOverride.fail_above === undefined)) ||
-                            (newOverride.action === 'force_status' && !newOverride.status)
+                            (newOverride.action === 'force_status' && !newOverride.status) ||
+                            (newOverride.action === 'acknowledge' && !newOverride.device_id)
                         "
                     >
                         Add Override
@@ -867,5 +927,5 @@
 </mat-dialog-content>
 <mat-dialog-actions align="end">
     <button mat-button mat-dialog-close>Cancel</button>
-    <button mat-button mat-dialog-close (click)="saveSettings()" cdkFocusInitial>Save</button>
+    <button mat-button mat-dialog-close (click)="saveSettings()" [disabled]="temperatureSettingsInvalid" cdkFocusInitial>Save</button>
 </mat-dialog-actions>

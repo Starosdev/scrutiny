@@ -27,8 +27,8 @@
         </treo-card>
         <treo-card class="flex-col p-6">
             <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Usage</div>
-            <div class="font-bold text-3xl">{{ filesystem.used | fileSize : config?.file_size_si_units }}</div>
-            <div class="text-sm text-hint mt-2">{{ filesystem.device_size | fileSize : config?.file_size_si_units }} total</div>
+            <div class="font-bold text-3xl">{{ filesystem.used | fileSize : $safeNavigationMigration(config?.file_size_si_units) }}</div>
+            <div class="text-sm text-hint mt-2">{{ filesystem.device_size | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} total</div>
         </treo-card>
         <treo-card class="flex-col p-6">
             <div class="font-semibold text-xs text-hint uppercase tracking-wider mb-2">Profiles</div>
@@ -52,7 +52,7 @@
             <div class="flex items-center justify-between py-3 px-4 rounded hover:bg-hover">
                 <div>
                     <div class="font-medium">{{ device.path || 'devid ' + device.id }}</div>
-                    <div class="text-xs text-hint">Device {{ device.id }} · {{ device.size | fileSize : config?.file_size_si_units }}</div>
+                    <div class="text-xs text-hint">Device {{ device.id }} · {{ device.size | fileSize : $safeNavigationMigration(config?.file_size_si_units) }}</div>
                 </div>
                 <div class="text-right">
                     @if (device.missing) {

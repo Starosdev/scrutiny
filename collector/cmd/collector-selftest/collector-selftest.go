@@ -9,11 +9,11 @@ import (
 
 	_ "go.uber.org/automaxprocs"
 
-	utils "github.com/analogj/go-util/utils"
 	"github.com/analogj/scrutiny/collector/pkg/collector"
+	"github.com/analogj/scrutiny/pkg/utils"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
-	"github.com/sirupsen/logrus"
 	"github.com/fatih/color"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 

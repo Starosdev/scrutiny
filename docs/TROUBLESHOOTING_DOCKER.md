@@ -4,11 +4,13 @@
 
 The CI script used to orchestrate the Docker image builds lives in `.github/workflows/docker-build.yaml`.
 
-Scrutiny now uses three branch-backed image channels:
+Scrutiny uses two branch-backed image channels and one release-backed stable channel:
 
 - `develop` branch -> `develop` and `develop-omnibus`
 - `beta` branch -> `beta` and `beta-omnibus`
-- `master` branch -> `latest` and `latest-omnibus`
+- release tag -> `latest` and `latest-omnibus`
+
+Direct pushes to `master` do not publish stable images. Release tags are the only source for `latest` tags.
 
 Typical flow is `develop -> master`, with optional `develop -> beta -> master` promotion when a feature needs pre-release validation.
 

@@ -19,6 +19,8 @@ import (
 	shoutrrrsmtp "github.com/nicholas-fedor/shoutrrr/pkg/services/email/smtp"
 )
 
+const smtpDefaultTimeout = 10 * time.Second
+
 func (n *Notify) SendSMTPNotification(rawURL string) error {
 	serviceURL, err := url.Parse(rawURL)
 	if err != nil {
@@ -69,10 +71,13 @@ func (n *Notify) buildSMTPConfig(serviceURL *url.URL) (*shoutrrrsmtp.Config, err
 		UseHTML:     n.Payload.HTMLMessage != "",
 		Encryption:  shoutrrrsmtp.EncMethods.Auto,
 		ClientHost:  "localhost",
-		Timeout:     10 * time.Second,
+		Timeout:     smtpDefaultTimeout,
 	}
 	if err := config.SetURL(serviceURL); err != nil {
 		return nil, fmt.Errorf("failed to parse smtp config: %w", err)
+	}
+	if config.Timeout <= 0 {
+		return nil, fmt.Errorf("smtp timeout must be greater than zero")
 	}
 	if config.Auth == shoutrrrsmtp.AuthTypes.Unknown {
 		if config.Username != "" {
@@ -165,6 +170,14 @@ func openSMTPClient(ctx context.Context, config *shoutrrrsmtp.Config) (*smtp.Cli
 		return nil, fmt.Errorf("smtp connect failed: %w", err)
 	}
 
+	// The caller supplies one timeout for the entire conversation, including
+	// the greeting read by NewClient and any subsequent STARTTLS handshake.
+	if deadline, ok := ctx.Deadline(); ok {
+		if err = conn.SetDeadline(deadline); err != nil {
+			_ = conn.Close()
+			return nil, fmt.Errorf("smtp deadline failed: %w", err)
+		}
+	}
 	client, err := smtp.NewClient(conn, config.Host)
 	if err != nil {
 		_ = conn.Close()

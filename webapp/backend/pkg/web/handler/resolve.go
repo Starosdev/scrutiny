@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -34,6 +35,11 @@ func ResolveDevice(c *gin.Context, logger *logrus.Entry, deviceRepo database.Dev
 	if wwnErr == nil {
 		logger.Warnf("DEPRECATED: Device lookup by WWN (%s). Use device_id (%s) instead.", id, device.DeviceID)
 		return device, nil
+	}
+	if errors.Is(wwnErr, database.ErrAmbiguousWWN) {
+		logger.Warnf("Device lookup by WWN (%s) matches more than one device; a device_id is required", id)
+		c.JSON(http.StatusConflict, gin.H{"success": false, "error": "wwn is shared by more than one device; use the device_id"})
+		return models.Device{}, wwnErr
 	}
 
 	logger.Warnf("Device not found for identifier: %s", id)

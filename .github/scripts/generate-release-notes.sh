@@ -1,11 +1,11 @@
 #!/bin/bash
-# Generate release notes from merged PRs between two tags.
+# Generate release notes from PRs represented by commits between two tags.
 # Usage: ./generate-release-notes.sh <previous-tag> <new-tag>
 #
 # This script is deterministic:
-# - merged PR metadata is the source of truth
+# - merged PR commits in the tagged range determine included PRs
 # - PR ## Summary blocks provide normal note content
-# - Release promotion PRs preserve authored sections through ## Test plan
+# - user-facing PRs opt in through a ## Product changes section
 # - linked issues come from PR bodies
 # - completeness is validated before notes are emitted
 
@@ -15,9 +15,6 @@ PREV_TAG="${1:-$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")}"
 NEW_TAG="${2:-$(git describe --tags --abbrev=0 HEAD 2>/dev/null || echo "HEAD")}"
 REPO="${GITHUB_REPOSITORY:-Starosdev/scrutiny}"
 MAX_SUMMARY_BULLETS=8
-# Operational-only PRs excluded from user-facing release notes.
-EXCLUDED_PRS_REGEX='^(701|719|724|726)$'
-
 if [ -z "$PREV_TAG" ]; then
     echo "Error: Could not determine previous tag" >&2
     exit 1
@@ -25,68 +22,60 @@ fi
 
 echo "Generating release notes for $PREV_TAG..$NEW_TAG" >&2
 
-PREV_DATE=$(git log -1 --format=%aI "$PREV_TAG" 2>/dev/null || echo "1970-01-01T00:00:00Z")
-NEW_DATE=$(git log -1 --format=%aI "$NEW_TAG" 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)
 RELEASE_DATE=$(git log -1 --format=%as "$NEW_TAG" 2>/dev/null || date +%Y-%m-%d)
 
-DEVELOP_JSON=$(mktemp)
-MASTER_JSON=$(mktemp)
-INTEGRATION_JSON=$(mktemp)
-DEVELOP_FILTERED_FILE=$(mktemp)
+PRS_JSON=$(mktemp)
 OUTPUT_FILE=$(mktemp)
 EXPECTED_FILE=$(mktemp)
-trap 'rm -f "$DEVELOP_JSON" "$MASTER_JSON" "$INTEGRATION_JSON" "$DEVELOP_FILTERED_FILE" "$OUTPUT_FILE" "$EXPECTED_FILE"' EXIT
+RANGE_COMMITS_FILE=$(mktemp)
+trap 'rm -f "$PRS_JSON" "$OUTPUT_FILE" "$EXPECTED_FILE" "$RANGE_COMMITS_FILE"' EXIT
 
-gh pr list --repo "$REPO" --state merged --base develop --limit 200 \
-    --json number,title,mergedAt,body,headRefName \
-    --jq "[.[] | select(.mergedAt > \"$PREV_DATE\" and .mergedAt <= \"$NEW_DATE\")]" \
-    > "$DEVELOP_JSON" 2>/dev/null || echo "[]" > "$DEVELOP_JSON"
+git rev-list "$PREV_TAG..$NEW_TAG" > "$RANGE_COMMITS_FILE"
 
-gh pr list --repo "$REPO" --state merged --base master --limit 200 \
-    --json number,title,mergedAt,body,headRefName \
-    --jq "[.[] | select(.mergedAt > \"$PREV_DATE\" and .mergedAt <= \"$NEW_DATE\") | select(.headRefName != \"develop\")]" \
-    > "$MASTER_JSON" 2>/dev/null || echo "[]" > "$MASTER_JSON"
+while IFS= read -r commit; do
+    [ -z "$commit" ] && continue
+    gh api --paginate "repos/$REPO/commits/$commit/pulls" \
+        | jq '[.[] | select(.base.ref == "master" and .merged_at != null) | {
+            number,
+            title,
+            mergedAt: .merged_at,
+            mergeCommitSha: .merge_commit_sha,
+            body,
+            baseRefName: .base.ref,
+            headRefName: .head.ref
+        }]' >> "$PRS_JSON"
+done < <(git rev-list "$PREV_TAG..$NEW_TAG")
 
-gh pr list --repo "$REPO" --state merged --base master --limit 200 \
-    --json number,title,mergedAt,body,headRefName \
-    --jq "[.[] | select(.mergedAt > \"$PREV_DATE\" and .mergedAt <= \"$NEW_DATE\") | select(.headRefName == \"develop\")]" \
-    > "$INTEGRATION_JSON" 2>/dev/null || echo "[]" > "$INTEGRATION_JSON"
-
-COVERED_PRS=$(
-    jq -r '.[].body // "", .[].title // ""' "$INTEGRATION_JSON" 2>/dev/null \
-        | { grep -oE '(Closes|Fixes|Resolves) #[0-9]+|\(#[0-9]+\)' || true; } \
-        | { grep -oE '[0-9]+' || true; } \
-        | sort -u \
-        | paste -sd '|' - 2>/dev/null || echo ""
-)
-
-if [ -n "$COVERED_PRS" ]; then
-    DEVELOP_FILTERED=$(jq "[.[] | select(.number | tostring | test(\"^($COVERED_PRS)$\") | not)]" "$DEVELOP_JSON")
-else
-    DEVELOP_FILTERED=$(cat "$DEVELOP_JSON")
-fi
-
-echo "$DEVELOP_FILTERED" > "$DEVELOP_FILTERED_FILE"
-MERGED_JSON=$(jq -s \
-    --slurpfile master "$MASTER_JSON" \
-    --slurpfile integration "$INTEGRATION_JSON" \
-    '.[0] + $master[0] + $integration[0] | unique_by(.number) | sort_by(.mergedAt, .number)' \
-    "$DEVELOP_FILTERED_FILE")
+MERGED_JSON=$(jq -s --rawfile range_commits "$RANGE_COMMITS_FILE" '
+    flatten
+    | unique_by(.number)
+    | map(select(
+        .baseRefName == "master"
+        and (.mergeCommitSha as $merge_commit
+          | $merge_commit != null
+          | ($range_commits | split("\n") | index($merge_commit)) != null)
+    ))
+    | sort_by(.mergedAt, .number)
+' "$PRS_JSON")
 
 get_summary_block() {
     local body="$1"
     [ -z "$body" ] && return
 
-    if echo "$body" | grep -q '^## Product changes$'; then
-        echo "$body" | awk '
-            /^## Summary$/ { in_release=1 }
-            /^## Test plan$/ { in_release=0 }
-            in_release { print }
-        '
-        return
-    fi
+    echo "$body" | awk '
+        /^## Product changes$/ { product_changes=1; next }
+        product_changes && /^## Summary$/ { in_summary=1; next }
+        in_summary && /^## / { exit }
+        in_summary { print }
+    '
+}
 
-    echo "$body" | tr -d '\r' | sed -n '/^## Summary/,/^## /{/^## /d; p;}'
+has_product_changes() {
+    local body="$1"
+    local summary
+    summary=$(get_summary_block "$body")
+
+    [ -n "$summary" ] && ! printf '%s\n' "$summary" | tr -d '\r' | sed '/^[[:space:]]*$/d' | grep -qx 'None\.'
 }
 
 clean_text() {
@@ -100,12 +89,28 @@ extract_summary_items() {
     [ -z "$summary_block" ] && return
 
     local prose_lines bullet_lines
+    # Join wrapped prose into one item per paragraph. A summary written as
+    # hard-wrapped paragraphs used to emit one bullet per physical line, which
+    # split sentences mid-way in the published notes. Blank lines separate
+    # paragraphs; bullets are collected separately below and are unaffected.
     prose_lines=$(
         echo "$summary_block" \
-            | grep -v '^[[:space:]]*$' \
             | grep -v '^[[:space:]]*[-*] ' \
             | grep -v '^#' \
             | grep -vE '^(Closes|Fixes|Resolves) #[0-9]+$' \
+            | awk '
+                /^[[:space:]]*$/ {
+                    if (para != "") { print para; para = "" }
+                    next
+                }
+                {
+                    line = $0
+                    gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+                    if (line == "") next
+                    para = (para == "") ? line : para " " line
+                }
+                END { if (para != "") print para }
+            ' \
             | clean_text || true
     )
     bullet_lines=$(
@@ -203,11 +208,7 @@ for ((i = 0; i < PR_COUNT; i++)); do
 
     [ -z "$pr_num" ] && continue
 
-    if [[ "$pr_num" =~ $EXCLUDED_PRS_REGEX ]]; then
-        continue
-    fi
-
-    if [[ "$pr_title" =~ ^Release:|^chore\(release\) ]]; then
+    if ! has_product_changes "$pr_body"; then
         continue
     fi
 

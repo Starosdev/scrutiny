@@ -13,5 +13,9 @@
     "@semantic-release/release-notes-generator": "14.1.1",
     "conventional-changelog-conventionalcommits": "10.0.0",
     "semantic-release": "25.0.9"
+  },
+  "overrides": {
+    "js-yaml": "^4.3.2",
+    "npm": "^11.19.1"
   }
 }

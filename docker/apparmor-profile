@@ -1,8 +1,9 @@
-# AppArmor profile for Scrutiny collector containers.
+# AppArmor profile for Scrutiny collector and omnibus containers.
 #
-# This profile grants the minimum permissions that smartctl needs to read
-# SMART data from passed-through block devices, while keeping the rest of
-# the default Docker confinement in place.
+# This replaces docker-default; it is not layered on top of it. Executables
+# in the image runtime paths inherit this profile. The deny rules below
+# retain Docker-style proc/sys restrictions and block device-file writes.
+# Docker capabilities, device mappings, and seccomp still apply separately.
 #
 # INSTALL (run on the Docker *host*, not inside the container):
 #   sudo cp apparmor-profile /etc/apparmor.d/scrutiny-collector
@@ -26,18 +27,24 @@ profile scrutiny-collector flags=(attach_disconnected,mediate_deleted) {
   / r,
   /** rwlk,
 
-  # Binaries needed by entrypoint (su for privilege drop, smartctl, collector)
-  /usr/bin/su ix,
-  /usr/bin/sed ix,
-  /usr/bin/sleep ix,
-  /usr/sbin/smartctl ix,
-  /opt/scrutiny/bin/scrutiny-collector-metrics ix,
-  /bin/sh ix,
-  /bin/bash ix,
-  /usr/bin/sh ix,
-  /usr/bin/bash ix,
-  /usr/sbin/cron ix,
-  /usr/sbin/crond ix,
+  # System tools used by cron, startup scripts, smartctl, InfluxDB and Apprise.
+  # Debian merged-/usr symlinks resolve to the /usr paths.
+  /{usr/,}{bin,sbin}/* mrix,
+  /opt/scrutiny/bin/* mrix,
+  /opt/scrutiny/apprise-venv/bin/* mrix,
+  /entrypoint-collector{,-performance}.sh rix,
+
+  # s6 uses symlinks in /command and versioned packages, then generates
+  # executable scripts under /run. Allow both links and resolved paths.
+  /init rix,
+  /command/* mrix,
+  /package/admin/{s6*,execline-*}/** mrix,
+  /etc/cont-init.d/* rix,
+  /etc/services.d/*/{run,finish} rix,
+  /usr/local/bin/scrutiny-influxdb-upgrade-preflight rix,
+  /run/s6/** mrix,
+  /run/s6-rc*/** mrix,
+  /run/service/** rix,
 
   # Auth/user resolution required for su privilege drop
   /etc/passwd r,
@@ -50,9 +57,8 @@ profile scrutiny-collector flags=(attach_disconnected,mediate_deleted) {
   /var/log/btmp rw,
   /var/log/wtmp rw,
   /var/log/lastlog rw,
-  /usr/sbin/unix_chkpwd ix,
 
-  # Block device nodes passed via --device (read-only)
+  # Read access to mapped devices; explicit write denials follow below.
   /dev/sd*  r,
   /dev/hd*  r,
   /dev/nvme* r,
@@ -101,17 +107,40 @@ profile scrutiny-collector flags=(attach_disconnected,mediate_deleted) {
 
   network,
 
+  # s6 unmounts its container filesystems during shutdown.
+  umount,
+
   signal (receive) peer=unconfined,
   signal (send,receive) peer=scrutiny-collector,
   signal (receive) peer=runc,
+  signal (receive) peer=crun,
 
   # ---------- deny rules ----------
 
-  # Prevent writes to block devices (collector only reads SMART data)
+  # Deny file writes through these device paths; this does not make all
+  # raw-device ioctls read-only.
   deny /dev/sd* w,
   deny /dev/hd* w,
   deny /dev/nvme* w,
   deny /dev/sg* w,
+  deny /dev/bsg/** w,
+
+  # Keep Docker 28.3 proc/sys restrictions: a custom profile replaces the
+  # default profile, so these protections must be present here explicitly.
+  deny @{PROC}/* w,
+  deny @{PROC}/{[^1-9],[^1-9][^0-9],[^1-9s][^0-9y][^0-9s],[^1-9][^0-9][^0-9][^0-9/]*}/** w,
+  deny @{PROC}/sys/[^k]** w,
+  deny @{PROC}/sys/kernel/{?,??,[^s][^h][^m]**} w,
+  deny @{PROC}/sysrq-trigger rwklx,
+  deny @{PROC}/kcore rwklx,
+  deny /sys/[^f]*/** wklx,
+  deny /sys/f[^s]*/** wklx,
+  deny /sys/fs/[^c]*/** wklx,
+  deny /sys/fs/c[^g]*/** wklx,
+  deny /sys/fs/cg[^r]*/** wklx,
+  deny /sys/firmware/** rwklx,
+  deny /sys/devices/virtual/powercap/** rwklx,
+  deny /sys/kernel/security/** rwklx,
 
   # Prevent mounting filesystems
   deny mount,

@@ -13,5 +13,8 @@
     ],
     "exclude": [
         "src/tailwind/**"
-    ]
+    ],
+    "angularCompilerOptions": {
+        "strictTemplates": false
+    }
 }

@@ -31,9 +31,11 @@
 
             @if (poolSummary.updated_at) {
             <div [ngClass]="classPoolLastUpdatedOn(poolSummary)" class="font-medium text-sm">
-                Last Updated on
-                {{ poolSummary.updated_at | date : (config?.time_format === '12' ? 'MMMM dd, yyyy - h:mm a' : 'MMMM dd, yyyy - HH:mm') }}
+                Last Observed on
+                {{ getLastObservedAt(poolSummary) | date : (config?.time_format === '12' ? 'MMMM dd, yyyy - h:mm a' : 'MMMM dd, yyyy - HH:mm') }}
             </div>
+            } @if (getPresenceLabel(poolSummary)) {
+            <div [ngClass]="getPresenceColorClass(poolSummary)" class="font-medium text-sm">{{ getPresenceLabel(poolSummary) }}</div>
             }
         </div>
 
@@ -82,8 +84,8 @@
         <!-- Status -->
         <div class="flex flex-col mx-6 my-3 xs:w-full">
             <div class="font-semibold text-xs text-hint uppercase tracking-wider">Status</div>
-            <div [ngClass]="getStatusColorClass(poolSummary.status)" class="mt-2 font-medium text-3xl leading-none">
-                {{ poolSummary.status }}
+            <div [ngClass]="getStatusDisplayColorClass(poolSummary)" class="mt-2 font-medium text-3xl leading-none">
+                {{ getStatusDisplay(poolSummary) }}
             </div>
         </div>
 
@@ -99,9 +101,16 @@
         <!-- Size -->
         <div class="flex flex-col mx-6 my-3 xs:w-full">
             <div class="font-semibold text-xs text-hint uppercase tracking-wider">Size</div>
+            @if (usableSize(poolSummary) > 0) {
             <div class="mt-2 font-medium text-3xl leading-none">
-                {{ poolSummary.size | fileSize : config?.file_size_si_units }}
+                {{ usableSize(poolSummary) | fileSize : $safeNavigationMigration(config?.file_size_si_units) }}
             </div>
+            <div class="mt-1 text-sm text-secondary">{{ poolSummary.size | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} raw</div>
+            } @else {
+            <div class="mt-2 font-medium text-3xl leading-none">
+                {{ poolSummary.size | fileSize : $safeNavigationMigration(config?.file_size_si_units) }}
+            </div>
+            }
         </div>
 
         <!-- Last Scrub -->
@@ -111,7 +120,9 @@
                 {{ getScrubStatusText(poolSummary) }}
             </div>
             @if (poolSummary.scrub_state === 'finished' && poolSummary.scrub_issued_bytes > 0) {
-            <div class="mt-1 text-xs text-yellow-600 dark:text-yellow-400">{{ poolSummary.scrub_issued_bytes | fileSize : config?.file_size_si_units }} repaired</div>
+            <div class="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
+                {{ poolSummary.scrub_issued_bytes | fileSize : $safeNavigationMigration(config?.file_size_si_units) }} repaired
+            </div>
             }
         </div>
 

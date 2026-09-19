@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"strings"
 	"time"
 )
 
@@ -69,7 +70,7 @@ type DeviceReport struct {
 	ActiveFailures []AlertEntry `json:"active_failures"`
 
 	TempAvg         float64 `json:"temp_avg"`
-	TempCurrent     int64   `json:"temp_current"`
+	TempCurrent     *int64  `json:"temp_current,omitempty"`
 	TempMin         int64   `json:"temp_min"`
 	TempMax         int64   `json:"temp_max"`
 	PowerOnHours    int64   `json:"power_on_hours"`
@@ -124,9 +125,17 @@ type ZFSPoolReport struct {
 	Name           string     `json:"name"`
 	GUID           string     `json:"guid"`
 	Health         string     `json:"health"`
+	Presence       string     `json:"presence,omitempty"`
 	ScrubStatus    string     `json:"scrub_status"`
 	Capacity       float64    `json:"capacity"`
 	ErrorsRead     int64      `json:"errors_read"`
 	ErrorsWrite    int64      `json:"errors_write"`
 	ErrorsChecksum int64      `json:"errors_checksum"`
+}
+
+func (p *ZFSPoolReport) DisplayHealth() string {
+	if p.Presence != "" && p.Presence != "present" {
+		return strings.ToUpper(p.Presence)
+	}
+	return p.Health
 }

@@ -1,4 +1,4 @@
-import { Component, ElementRef, Input, Renderer2, ViewEncapsulation, inject } from '@angular/core';
+import { Component, ElementRef, Input, Renderer2, ViewEncapsulation, inject, ChangeDetectionStrategy } from '@angular/core';
 import { TreoAnimations } from '@treo/animations';
 
 @Component({
@@ -7,6 +7,7 @@ import { TreoAnimations } from '@treo/animations';
     styleUrls: ['./card.component.scss'],
     encapsulation: ViewEncapsulation.None,
     animations: TreoAnimations,
+    changeDetection: ChangeDetectionStrategy.Eager,
     exportAs: 'treoCard',
 })
 export class TreoCardComponent {

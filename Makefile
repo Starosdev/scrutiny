@@ -214,7 +214,7 @@ binary-frontend: export NPM_CONFIG_LOGLEVEL = warn
 binary-frontend: export NG_CLI_ANALYTICS = false
 binary-frontend:
 	cd webapp/frontend
-	npm install -g @angular/cli@^21
+	npm install -g @angular/cli@^22
 	npm ci
 	npm run build:prod
 

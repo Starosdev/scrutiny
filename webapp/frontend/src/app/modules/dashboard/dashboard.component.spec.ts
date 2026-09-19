@@ -22,7 +22,11 @@ describe('DashboardComponent temperature chart', () => {
             theme: 'light',
             time_format: '24',
         };
-        const temperatureSelection = new TemperatureSelection();
+        const temperatureSelection = new TemperatureSelection({
+            getItem: () => null,
+            setItem: () => undefined,
+        });
+        spyOn(temperatureSelection, 'restore').and.callThrough();
 
         dashboardService = jasmine.createSpyObj('DashboardService', ['getSummaryPage', 'getTemperatureDeviceOptions', 'getSummaryTempData', 'getFilesystemSummaryData'], {
             pageData$: of({
@@ -100,6 +104,10 @@ describe('DashboardComponent temperature chart', () => {
 
         expect(driveFilterButton?.textContent).toContain('Drives (0/19)');
         expect(driveFilterButton?.textContent).not.toContain(`/${component.temperatureSelection.maxSelected})`);
+    });
+
+    it('restores selection against active temperature devices', () => {
+        expect(component.temperatureSelection.restore).toHaveBeenCalledWith(jasmine.arrayContaining(['drive-1']));
     });
 
     it('binds loaded temperature data before the lazy chart instance exists', () => {

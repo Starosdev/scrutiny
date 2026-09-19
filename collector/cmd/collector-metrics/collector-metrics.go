@@ -11,11 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	utils "github.com/analogj/go-util/utils"
 	"github.com/analogj/scrutiny/collector/pkg/collector"
 	"github.com/analogj/scrutiny/collector/pkg/config"
 	"github.com/analogj/scrutiny/collector/pkg/errors"
 	"github.com/analogj/scrutiny/pkg/startup"
+	"github.com/analogj/scrutiny/pkg/utils"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
 	"github.com/fatih/color"
 	"github.com/robfig/cron/v3"

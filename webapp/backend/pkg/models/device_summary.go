@@ -57,6 +57,10 @@ type SmartSummary struct {
 	WearoutValue   *int64    `json:"wearout_value,omitempty"`
 	RiskScore      *int      `json:"risk_score,omitempty"`
 	RiskCategory   string    `json:"risk_category,omitempty"`
-	Temp           int64     `json:"temp"`
-	PowerOnHours   int64     `json:"power_on_hours,omitempty"`
+	// Temp is a pointer because a device with no temperature reading and one
+	// reading 0C are different facts, same as PercentageUsed and WearoutValue
+	// above. omitempty on a pointer omits only nil, so a genuine 0 still
+	// serializes and the frontend renders it rather than "--".
+	Temp         *int64 `json:"temp,omitempty"`
+	PowerOnHours int64  `json:"power_on_hours,omitempty"`
 }

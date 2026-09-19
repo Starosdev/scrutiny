@@ -102,6 +102,8 @@ paths:
           $ref: "#/components/responses/SuccessResponse"
         "500":
           $ref: "#/components/responses/ErrorResponse"
+        "400":
+          description: Invalid complete inventory envelope
   /api/health/missed-ping-status:
     get:
       tags: [Health]
@@ -487,7 +489,7 @@ paths:
     get:
       tags: [Devices]
       summary: Get ATA SMART self-test history for a device
-      description: Returns the ATA SMART self-test entries already recorded from normal SMART uploads for the resolved device identity.
+      description: Returns up to 21 ATA SMART self-test entries in newest observed log order. Absolute power-on ages are null when rollover cannot be resolved from the collection.
       parameters:
         - $ref: "#/components/parameters/DeviceId"
       responses:
@@ -1086,7 +1088,7 @@ paths:
   /api/zfs/pools/register:
     post:
       tags: [ZFS]
-      summary: Register ZFS pools discovered by the collector
+      summary: Register ZFS pools or submit a complete host inventory
       requestBody:
         required: true
         content:
@@ -1102,6 +1104,8 @@ paths:
                 $ref: "#/components/schemas/ZFSPoolWrapper"
         "500":
           $ref: "#/components/responses/ErrorResponse"
+        "400":
+          description: Complete inventory is missing host_id
   /api/zfs/summary:
     get:
       tags: [ZFS]
@@ -1963,6 +1967,12 @@ components:
           type: boolean
         lifetime_hours:
           type: integer
+          description: Raw controller lifetime counter, preserved without adjustment.
+        effective_lifetime_hours:
+          type: integer
+          format: int64
+          nullable: true
+          description: Absolute power-on age resolved from controller log order and current Power-On Hours, or null when context is missing, unreliable, or allows multiple rollover epochs.
       required:
         - id
         - device_id
@@ -1973,6 +1983,7 @@ components:
         - status_string
         - status_passed
         - lifetime_hours
+        - effective_lifetime_hours
     DeviceSelfTestsResponse:
       type: object
       properties:
@@ -1985,8 +1996,25 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/DeviceSelfTest"
-          required: [self_tests]
+            health:
+              $ref: "#/components/schemas/DeviceSelfTestHealth"
+          required: [self_tests, health]
       required: [success, data]
+    DeviceSelfTestHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [unknown, passed, failed]
+        has_result:
+          type: boolean
+        latest_observed_at:
+          type: integer
+          format: int64
+          nullable: true
+        has_failures:
+          type: boolean
+      required: [status, has_result, latest_observed_at, has_failures]
     PerformanceUploadRequest:
       type: object
       properties:
@@ -2116,6 +2144,22 @@ components:
               type: boolean
             notify_on_missed_ping:
               type: boolean
+            notify_on_temperature:
+              type: boolean
+              default: false
+              description: Notify once per sustained hot excursion, evaluated on collector uploads. Muted devices are skipped. Ignores repeat_notifications; cooling re-arms silently without a recovery notification.
+            temperature_threshold_celsius:
+              type: integer
+              minimum: 1
+              maximum: 150
+              default: 55
+              description: Inclusive Celsius threshold; defaults to 55 when omitted. Range is validated even when temperature notifications are disabled; explicit zero is rejected.
+            temperature_duration_minutes:
+              type: integer
+              minimum: 0
+              maximum: 153722867
+              default: 30
+              description: Sustained hot duration in whole minutes; defaults to 30 when omitted. Explicit 0 alerts on the first hot reading. Range is validated even when notifications are disabled. Restart history seeding is limited to 24 hours.
             notify_on_replacement_risk:
               type: boolean
             replacement_risk_notify_category:
@@ -2208,9 +2252,11 @@ components:
           type: string
         wwn:
           type: string
+        device_id:
+          type: string
         action:
           type: string
-          enum: ["", ignore, force_status]
+          enum: ["", ignore, force_status, acknowledge]
         status:
           type: string
           enum: [passed, warn, failed]
@@ -2220,6 +2266,14 @@ components:
         fail_above:
           type: integer
           format: int64
+        pinned_value:
+          type: integer
+          format: int64
+          description: >-
+            Set by the server for acknowledge overrides, read from the device's latest SMART
+            submission. The attribute passes only while its value equals this; any change
+            restores the underlying evaluation. Acknowledge requires device_id or wwn, and
+            sending pinned_value with any other action is rejected.
         source:
           type: string
         created_at:
@@ -2355,6 +2409,18 @@ components:
           type: string
         host_id:
           type: string
+        last_seen_at:
+          type: string
+          format: date-time
+          description: Last time an authoritative host inventory reported this pool.
+        last_inventory_at:
+          type: string
+          format: date-time
+          description: Last successful authoritative inventory received from this pool's host.
+        presence:
+          type: string
+          enum: [present, missing, stale, unknown]
+          description: Current presence derived from host inventory; health remains the last observed pool health.
         name:
           type: string
         label:
@@ -2374,6 +2440,18 @@ components:
           format: int64
         capacity_percent:
           type: number
+        usable_used:
+          type: integer
+          format: int64
+          description: >-
+            Bytes used in the pool's root dataset, excluding parity. 0 when the
+            pool was last reported by a collector that predates this field.
+        usable_free:
+          type: integer
+          format: int64
+          description: >-
+            Bytes available in the pool's root dataset, excluding parity. 0 when
+            the pool was last reported by a collector that predates this field.
         fragmentation:
           type: integer
         total_read_errors:
@@ -2403,6 +2481,12 @@ components:
           type: array
           items:
             type: string
+        host_id:
+          type: string
+          description: Host identity for an authoritative inventory report.
+        complete:
+          type: boolean
+          description: When true, data is the complete pool inventory for host_id, including an empty inventory.
         data:
           type: array
           items:

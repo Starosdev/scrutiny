@@ -10,4 +10,5 @@ export interface DeviceSelfTestModel {
     status_string: string;
     status_passed: boolean;
     lifetime_hours: number;
+    effective_lifetime_hours?: number | null;
 }

@@ -1,4 +1,18 @@
-import { Component, ElementRef, EventEmitter, HostBinding, HostListener, Input, OnDestroy, OnInit, Output, Renderer2, ViewEncapsulation, inject } from '@angular/core';
+import {
+    Component,
+    ElementRef,
+    EventEmitter,
+    HostBinding,
+    HostListener,
+    Input,
+    OnDestroy,
+    OnInit,
+    Output,
+    Renderer2,
+    ViewEncapsulation,
+    inject,
+    ChangeDetectionStrategy,
+} from '@angular/core';
 import { animate, AnimationBuilder, AnimationPlayer, style } from '@angular/animations';
 import { TreoDrawerMode, TreoDrawerPosition } from '@treo/components/drawer/drawer.types';
 import { TreoDrawerService } from '@treo/components/drawer/drawer.service';
@@ -10,6 +24,7 @@ import { TreoDrawerModule } from './drawer.module';
     styleUrls: ['./drawer.component.scss'],
     encapsulation: ViewEncapsulation.None,
     exportAs: 'treoDrawer',
+    changeDetection: ChangeDetectionStrategy.Eager,
     imports: [TreoDrawerModule],
 })
 export class TreoDrawerComponent implements OnInit, OnDestroy {
