@@ -612,15 +612,20 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         }
     }
 
-    // Builds the sparkline datapoints (oldest-first) for a single attribute across all results.
+    // Builds the sparkline datapoints for a single attribute across all results.
+    // History is sparse: a sample only carries the attributes the drive reported that time, so samples without this attribute are skipped.
     private _buildAttributeChartHistory(attrId: string, smartResults: SmartModel[]): any[] {
         const attrHistory = [];
         for (const smartResult of smartResults) {
+            const attr = smartResult.attrs?.[attrId];
+            if (!attr) {
+                continue;
+            }
             const chartDatapoint = {
                 x: formatDate(smartResult.date, angularLongDateTime(this.config.time_format), this.locale),
-                y: this.getAttributeValue(smartResult.attrs[attrId]),
+                y: this.getAttributeValue(attr),
             };
-            const attributeStatusName = this.getAttributeStatusName(smartResult.attrs[attrId].status);
+            const attributeStatusName = this.getAttributeStatusName(attr.status);
             if (attributeStatusName === 'failed') {
                 chartDatapoint['strokeColor'] = '#F05252';
                 chartDatapoint['fillColor'] = '#F05252';
