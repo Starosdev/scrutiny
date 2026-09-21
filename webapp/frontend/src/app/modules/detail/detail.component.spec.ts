@@ -678,6 +678,34 @@ describe('DetailComponent', () => {
         });
     });
 
+    describe('SMART attribute history with missing samples (#871)', () => {
+        const sample = (date: string, attrs: { [id: string]: Partial<SmartAttributeModel> }): SmartModel => ({ date, attrs } as unknown as SmartModel);
+
+        beforeEach(() => {
+            component.config = { time_format: '24' } as AppConfig;
+            component.metadata = {};
+            component.onlyCritical = false;
+        });
+
+        it('builds the table when an older sample lacks an attribute the latest sample has', () => {
+            const results = [
+                sample('2026-09-20T00:00:00Z', {
+                    '5': { attribute_id: 5, value: 100, thresh: 10, status: 0 },
+                    devstat_7_8: { attribute_id: 'devstat_7_8', value: 98, thresh: -1, status: 0 },
+                }),
+                sample('2026-09-19T00:00:00Z', { '5': { attribute_id: 5, value: 100, thresh: 10, status: 0 } }),
+                sample('2026-09-18T00:00:00Z', {}),
+            ];
+
+            const rows = component['_generateSmartAttributeTableDataSource'](results);
+
+            expect(rows.length).toBe(2);
+            const history = (id: string) => rows.find((r) => `${r.attribute_id}` === id).chartData[0].data;
+            expect(history('5').length).toBe(2);
+            expect(history('devstat_7_8').length).toBe(1);
+        });
+    });
+
     describe('overrideDescription', () => {
         it('names the pinned value for an acknowledge override', () => {
             expect(component.overrideDescription({ protocol: 'NVMe', attribute_id: 'media_errors', action: 'acknowledge', pinned_value: 3 })).toBe('Acknowledged at 3');
