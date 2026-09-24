@@ -74,6 +74,8 @@ jobs:
       # PostgreSQL backend tests (#880) run against the postgres service and fail, rather than
       # skip, if it is missing. Each test works in its own schema.
       SCRUTINY_TEST_POSTGRES_DSN: postgres://scrutiny:scrutiny@localhost:5432/scrutiny_test?sslmode=disable
+      # pgbouncer in transaction pooling mode, started by a step below.
+      SCRUTINY_TEST_PGBOUNCER_DSN: postgres://scrutiny:scrutiny@127.0.0.1:16432/scrutiny_test?sslmode=disable
       SCRUTINY_REQUIRE_POSTGRES: "true"
     steps:
       - name: Checkout
@@ -84,6 +86,11 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      - name: Start pgbouncer
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q pgbouncer
+          bash scripts/tests/start-pgbouncer.sh "$RUNNER_TEMP/pgbouncer" 16432 127.0.0.1 5432 scrutiny_test scrutiny scrutiny
       - name: Test Backend
         run: |
           bash scripts/tests/generate-release-notes_test.sh

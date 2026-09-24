@@ -111,9 +111,66 @@ func TestPostgres_ConcurrentMigrate(t *testing.T) {
 // TestPostgres_RepositorySmoke runs the statements most likely to differ between dialects:
 // upserts, conditional updates, and settings round trips.
 func TestPostgres_RepositorySmoke(t *testing.T) {
-	ctx := context.Background()
 	repo := newPostgresTestRepository(t, newPostgresTestConfig(t))
-	require.NoError(t, repo.Migrate(ctx))
+	require.NoError(t, repo.Migrate(context.Background()))
+	runRepositorySmoke(t, repo)
+}
+
+// TestPgbouncer_TransactionPooling migrates from two replicas at once and runs the smoke checks
+// through pgbouncer in transaction pooling mode, where prepared statements and session locks
+// break. It uses the public schema of the database named by SCRUTINY_TEST_PGBOUNCER_DSN, whose
+// name must contain "test", and drops the Scrutiny tables before and after.
+func TestPgbouncer_TransactionPooling(t *testing.T) {
+	dsn := os.Getenv("SCRUTINY_TEST_PGBOUNCER_DSN")
+	if dsn == "" {
+		if os.Getenv("SCRUTINY_REQUIRE_POSTGRES") != "" {
+			t.Fatal("SCRUTINY_REQUIRE_POSTGRES is set but SCRUTINY_TEST_PGBOUNCER_DSN is empty")
+		}
+		t.Skip("SCRUTINY_TEST_PGBOUNCER_DSN not set")
+	}
+	u, err := url.Parse(dsn)
+	require.NoError(t, err)
+	require.Contains(t, u.Path, "test", "refusing to drop tables in a database whose name lacks \"test\"")
+
+	cfg, err := config.Create()
+	require.NoError(t, err)
+	cfg.Set("web.database.type", "postgres")
+	cfg.Set("web.database.dsn", dsn)
+	repos := []*scrutinyRepository{newPostgresTestRepository(t, cfg), newPostgresTestRepository(t, cfg)}
+
+	dropTables := func() {
+		require.NoError(t, repos[0].gormClient.Migrator().DropTable(append(schemaModels(), "migrations")...))
+	}
+	dropTables()
+	t.Cleanup(dropTables)
+
+	var wg sync.WaitGroup
+	errs := make([]error, len(repos))
+	for i, repo := range repos {
+		wg.Add(1)
+		go func(i int, repo *scrutinyRepository) {
+			defer wg.Done()
+			errs[i] = repo.Migrate(context.Background())
+		}(i, repo)
+	}
+	wg.Wait()
+	require.NoError(t, errs[0])
+	require.NoError(t, errs[1])
+
+	// Both clients share pgbouncer's one server connection, so the same statement from each
+	// would collide if the driver prepared statements.
+	for range 3 {
+		for _, repo := range repos {
+			_, err := repo.LoadSettings(context.Background())
+			require.NoError(t, err)
+		}
+	}
+	runRepositorySmoke(t, repos[1])
+}
+
+func runRepositorySmoke(t *testing.T, repo *scrutinyRepository) {
+	t.Helper()
+	ctx := context.Background()
 
 	settings, err := repo.LoadSettings(ctx)
 	require.NoError(t, err)
