@@ -224,6 +224,8 @@ explicitly points you at the live Zeus appdata compose files.
 
 For a component-level overview of how Omnibus and Hub/Spoke fit together, see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
+Scrutiny stores its relational data in SQLite by default. To use PostgreSQL instead, for example to run several web instances, see [docs/POSTGRESQL.md](./docs/POSTGRESQL.md).
+
 > See [docker/example.omnibus.docker-compose.yml](docker/example.omnibus.docker-compose.yml) for a docker-compose file.
 
 > **Existing Omnibus installations upgrading to InfluxDB 2.9.1:** Stop Scrutiny and back up the complete host directory mounted at `/opt/scrutiny/influxdb` before starting the new image. Then set `SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED=true`. The container blocks InfluxDB startup until this acknowledgement is provided. Fresh installations do not require it. See [Omnibus InfluxDB 2.9 upgrade preflight](docs/DEPLOYMENTS.md#omnibus-influxdb-29-upgrade-preflight).
