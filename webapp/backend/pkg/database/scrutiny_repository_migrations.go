@@ -37,6 +37,7 @@ import (
 	m20260907000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260907000000"
 	m20260910000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260910000000"
 	m20260924000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260924000000"
+	m20260925000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260925000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -705,6 +706,7 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 				Update("device_identity", gorm.Expr("device_id")).Error
 		}},
 		{ID: "m20260924000000", Migrate: m20260924000000.Migrate}, // add scheduler_leases table (#880)
+		{ID: "m20260925000000", Migrate: m20260925000000.Migrate}, // add notification_outbox table (#880)
 	})
 
 	if err := m.Migrate(); err != nil {

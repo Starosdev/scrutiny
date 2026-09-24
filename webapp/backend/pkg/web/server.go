@@ -50,6 +50,9 @@ type AppEngine struct {
 	// Nil means this process always runs them.
 	Leader     *leader.Elector
 	leaderRepo database.DeviceRepo
+
+	// OutboxWorker delivers notifications recorded by any replica, on the leader only.
+	OutboxWorker *NotificationOutboxWorker
 }
 
 // isLeader reports whether this replica should run background jobs.
@@ -384,6 +387,9 @@ func (ae *AppEngine) Start() error {
 
 	// Create notification gate and monitors BEFORE Setup() so middleware can register them in gin context
 	ae.NotificationGate = notify.NewNotificationGate(ae.Logger)
+	ae.NotificationGate.UseOutbox(leaderRepo)
+	ae.OutboxWorker = NewNotificationOutboxWorker(ae, leaderRepo)
+	ae.OutboxWorker.Start()
 
 	missedPingMonitor := NewMissedPingMonitor(ae)
 	ae.MissedPingMonitor = missedPingMonitor
@@ -514,6 +520,9 @@ func (ae *AppEngine) stopBackgroundMonitors() {
 	}
 	if ae.ReportScheduler != nil {
 		ae.ReportScheduler.Stop()
+	}
+	if ae.OutboxWorker != nil {
+		ae.OutboxWorker.Stop()
 	}
 	// Release the lease only after every job has stopped, so no two replicas run jobs at once.
 	if ae.Leader != nil {

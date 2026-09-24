@@ -34,6 +34,13 @@ type DeviceRepo interface {
 	TryAcquireLease(ctx context.Context, name string, holder string, ttl time.Duration) (bool, error)
 	ReleaseLease(ctx context.Context, name string, holder string) error
 
+	// Notification outbox: any replica enqueues, the leader delivers. See notify.NotificationGate.
+	EnqueueNotification(ctx context.Context, row *models.NotificationOutbox) error
+	ListNotifications(ctx context.Context, state string, limit int) ([]models.NotificationOutbox, error)
+	TransitionNotification(ctx context.Context, id uint, from string, to string) (bool, error)
+	DeleteNotifications(ctx context.Context, ids []uint) error
+	DeleteStaleNotifications(ctx context.Context, states []string, createdBeforeUnixMs int64) (int64, error)
+
 	RegisterDevice(ctx context.Context, dev models.Device) error
 	GetDevices(ctx context.Context) ([]models.Device, error)
 	UpdateDevice(ctx context.Context, deviceID string, collectorSmartData *collector.SmartInfo) (models.Device, error)
@@ -115,6 +122,8 @@ type DeviceRepo interface {
 	// SetSettingValue sets a single setting value by key name.
 	// Creates the entry if it doesn't exist, updates it if it does.
 	SetSettingValue(ctx context.Context, key string, value string) error
+	// CompareAndSetSettingValue sets a string setting only if it still holds expected.
+	CompareAndSetSettingValue(ctx context.Context, key string, expected string, value string) (bool, error)
 
 	// ZFS Pool operations
 	RegisterZFSPool(ctx context.Context, pool models.ZFSPool) error
