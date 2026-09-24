@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/analogj/scrutiny/pkg/startup"
 	"github.com/analogj/scrutiny/pkg/utils"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/errors"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/version"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/web"
@@ -157,6 +159,52 @@ func newCLIApp(cfg config.Interface, bootstrapLogger *logrus.Entry) *cli.App {
 						Name:    "debug",
 						Usage:   "Enable debug logging",
 						EnvVars: []string{"SCRUTINY_DEBUG", "DEBUG"},
+					},
+				},
+			},
+			{
+				Name:  "db",
+				Usage: "Database maintenance",
+				Subcommands: []*cli.Command{
+					{
+						Name:      "import-sqlite",
+						Usage:     "Copy an existing SQLite database into the configured PostgreSQL database",
+						UsageText: "scrutiny db import-sqlite --from /opt/scrutiny/config/scrutiny.db [--config scrutiny.yaml]",
+						Description: "Stop Scrutiny before importing. The SQLite database must have been run by this version of " +
+							"Scrutiny, and the PostgreSQL database must be new or empty. InfluxDB data is not copied; " +
+							"keep using the same InfluxDB.",
+						Action: func(c *cli.Context) error {
+							if c.IsSet("config") {
+								if err := cfg.ReadConfig(c.String("config"), bootstrapLogger); err != nil {
+									return err
+								}
+							}
+							summary, err := database.ImportSQLite(c.Context, cfg, c.String("from"), bootstrapLogger)
+							if err != nil {
+								return err
+							}
+							tables := make([]string, 0, len(summary))
+							for table := range summary {
+								tables = append(tables, table)
+							}
+							sort.Strings(tables)
+							for _, table := range tables {
+								fmt.Fprintf(c.App.Writer, "%-28s %d rows\n", table, summary[table])
+							}
+							fmt.Fprintln(c.App.Writer, "Import complete. Start Scrutiny with web.database.type set to postgres.")
+							return nil
+						},
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "from",
+								Usage:    "Path to the SQLite database to import",
+								Required: true,
+							},
+							&cli.StringFlag{
+								Name:  "config",
+								Usage: "Specify the path to the config file",
+							},
+						},
 					},
 				},
 			},
