@@ -98,7 +98,9 @@ func (m *HeartbeatMonitor) run() {
 		case <-m.stopCh:
 			return
 		case <-ticker.C:
-			m.checkAndSendHeartbeat()
+			if m.appEngine.isLeader() {
+				m.checkAndSendHeartbeat()
+			}
 
 			// Update ticker interval in case settings changed
 			newInterval := m.getHeartbeatInterval()

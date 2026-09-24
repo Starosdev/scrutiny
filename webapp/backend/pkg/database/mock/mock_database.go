@@ -897,6 +897,20 @@ func (mr *MockDeviceRepoMockRecorder) RegisterZFSPoolInventory(ctx, hostID, pool
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterZFSPoolInventory", reflect.TypeOf((*MockDeviceRepo)(nil).RegisterZFSPoolInventory), ctx, hostID, pools)
 }
 
+// ReleaseLease mocks base method.
+func (m *MockDeviceRepo) ReleaseLease(ctx context.Context, name, holder string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReleaseLease", ctx, name, holder)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReleaseLease indicates an expected call of ReleaseLease.
+func (mr *MockDeviceRepoMockRecorder) ReleaseLease(ctx, name, holder interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseLease", reflect.TypeOf((*MockDeviceRepo)(nil).ReleaseLease), ctx, name, holder)
+}
+
 // ResetDeviceStatus mocks base method.
 func (m *MockDeviceRepo) ResetDeviceStatus(ctx context.Context, deviceID string) (models.Device, error) {
 	m.ctrl.T.Helper()
@@ -1065,6 +1079,21 @@ func (m *MockDeviceRepo) SetSettingValue(ctx context.Context, key, value string)
 func (mr *MockDeviceRepoMockRecorder) SetSettingValue(ctx, key, value interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSettingValue", reflect.TypeOf((*MockDeviceRepo)(nil).SetSettingValue), ctx, key, value)
+}
+
+// TryAcquireLease mocks base method.
+func (m *MockDeviceRepo) TryAcquireLease(ctx context.Context, name, holder string, ttl time.Duration) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TryAcquireLease", ctx, name, holder, ttl)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TryAcquireLease indicates an expected call of TryAcquireLease.
+func (mr *MockDeviceRepoMockRecorder) TryAcquireLease(ctx, name, holder, ttl interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryAcquireLease", reflect.TypeOf((*MockDeviceRepo)(nil).TryAcquireLease), ctx, name, holder, ttl)
 }
 
 // UpdateBtrfsFilesystemArchived mocks base method.

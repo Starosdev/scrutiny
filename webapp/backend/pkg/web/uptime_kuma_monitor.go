@@ -100,7 +100,9 @@ func (m *UptimeKumaMonitor) run() {
 		case <-m.stopCh:
 			return
 		case <-ticker.C:
-			m.checkAndPush()
+			if m.appEngine.isLeader() {
+				m.checkAndPush()
+			}
 
 			// Update ticker interval in case settings changed
 			newInterval := m.getInterval()

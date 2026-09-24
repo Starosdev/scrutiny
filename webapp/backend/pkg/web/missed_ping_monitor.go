@@ -105,7 +105,9 @@ func (m *MissedPingMonitor) run() {
 		case <-m.stopCh:
 			return
 		case <-ticker.C:
-			m.checkMissedPings()
+			if m.appEngine.isLeader() {
+				m.checkMissedPings()
+			}
 
 			// Update ticker interval in case settings changed
 			newInterval := m.getCheckInterval()
