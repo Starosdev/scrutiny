@@ -28,6 +28,7 @@ func TestMergeDevices_Integration(t *testing.T) {
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
 	fakeConfig.EXPECT().GetString("web.database.location").Return(dbPath).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.database.journal_mode").Return("WAL").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.database.type").Return("sqlite").AnyTimes()
 	fakeConfig.EXPECT().GetString("log.level").Return("INFO").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.influxdb.scheme").Return("http").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(influxHost).AnyTimes()

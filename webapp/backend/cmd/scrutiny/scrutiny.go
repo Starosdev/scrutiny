@@ -133,7 +133,7 @@ func newCLIApp(cfg config.Interface, bootstrapLogger *logrus.Entry) *cli.App {
 
 					webLogger.Info(c.Command.Usage)
 
-					settingsData, err := json.Marshal(cfg.AllSettings())
+					settingsData, err := json.Marshal(redactSecrets(cfg.AllSettings()))
 					webLogger.Debug(string(settingsData), err)
 
 					webServer := web.AppEngine{Config: cfg, Logger: webLogger}
@@ -203,4 +203,33 @@ func CreateLogger(appConfig config.Interface) (*logrus.Entry, *os.File, error) {
 		logger.Logger.SetOutput(io.MultiWriter(os.Stderr, logFile))
 	}
 	return logger, logFile, nil
+}
+
+// secretSettingPaths are config keys whose values must never reach a log.
+var secretSettingPaths = [][]string{
+	{"web", "database", "dsn"},
+	{"web", "auth", "token"},
+	{"web", "influxdb", "token"},
+	{"web", "influxdb", "init_password"},
+}
+
+// redactSecrets replaces secret values in a settings tree from Viper's AllSettings.
+func redactSecrets(settings map[string]interface{}) map[string]interface{} {
+	for _, path := range secretSettingPaths {
+		node := settings
+		for i, key := range path {
+			if i == len(path)-1 {
+				if value, ok := node[key]; ok && value != "" {
+					node[key] = "REDACTED"
+				}
+				break
+			}
+			child, ok := node[key].(map[string]interface{})
+			if !ok {
+				break
+			}
+			node = child
+		}
+	}
+	return settings
 }

@@ -46,6 +46,10 @@ func (c *configuration) Init() error {
 	c.SetDefault("web.src.frontend.path", "/opt/scrutiny/web")
 	c.SetDefault("web.database.location", "/opt/scrutiny/config/scrutiny.db")
 	c.SetDefault("web.database.journal_mode", "WAL")
+	c.SetDefault("web.database.type", "sqlite")
+	c.SetDefault("web.database.dsn", "")
+	c.SetDefault("web.database.max_open_conns", 10)
+	c.SetDefault("web.database.max_idle_conns", 5)
 	c.SetDefault(WebZFSAllowPoolModificationsKey, true)
 	c.SetDefault(WebZFSPoolStaleAfterMinutesKey, 60)
 
@@ -193,6 +197,16 @@ func (c *configuration) ValidateConfig() error {
 	}
 	if c.IsSet("notify.level") {
 		return errors.ConfigValidationError("`notify.level` configuration option is deprecated. Replaced by option in Dashboard Settings page")
+	}
+
+	switch c.GetString("web.database.type") {
+	case "sqlite":
+	case "postgres":
+		if c.GetString("web.database.dsn") == "" {
+			return errors.ConfigValidationError("`web.database.dsn` is required when `web.database.type` is postgres. Set it in scrutiny.yaml or via SCRUTINY_WEB_DATABASE_DSN env var.")
+		}
+	default:
+		return errors.ConfigValidationError("`web.database.type` must be sqlite or postgres")
 	}
 
 	// When authentication is enabled, a master API token must be provided.
