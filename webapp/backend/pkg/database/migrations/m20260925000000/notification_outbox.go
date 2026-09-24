@@ -4,12 +4,12 @@ import "gorm.io/gorm"
 
 // NotificationOutbox is frozen at the schema this migration creates.
 type NotificationOutbox struct {
-	ID               uint   `gorm:"primaryKey"`
-	CreatedAtUnixMs  int64  `gorm:"not null;index"`
-	State            string `gorm:"not null;index"`
 	Body             string `gorm:"not null"`
-	BypassQuietHours bool   `gorm:"not null;default:false"`
+	State            string `gorm:"not null;index"`
 	DedupeKey        string
+	ID               uint  `gorm:"primaryKey"`
+	CreatedAtUnixMs  int64 `gorm:"not null;index"`
+	BypassQuietHours bool  `gorm:"not null;default:false"`
 }
 
 func (NotificationOutbox) TableName() string {

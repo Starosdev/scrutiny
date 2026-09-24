@@ -49,19 +49,18 @@ const (
 // All notification dispatch should pass through Gate.TrySend() instead of
 // directly calling Notify.Send().
 type NotificationGate struct {
-	logger            logrus.FieldLogger
-	sentTimestamps    []time.Time          // sliding window for rate limiting
-	quietQueue        []QueuedNotification // queued during quiet hours
-	collectorError    map[string]time.Time // dedupe map for collector-side errors
-	mu                sync.Mutex
-	temperature       *TemperatureTracker
-	flushMu           sync.Mutex // Serializes digest flushes without blocking notification enqueue.
-	noEndpointsWarned bool       // Reset after successful delivery; retries remain enabled.
-
+	logger logrus.FieldLogger
 	// outbox, when set, makes TrySend record notifications for the leader replica instead of
 	// sending them. wake signals the local outbox worker that a row was added.
-	outbox OutboxStore
-	wake   chan struct{}
+	outbox            OutboxStore
+	collectorError    map[string]time.Time // dedupe map for collector-side errors
+	temperature       *TemperatureTracker
+	wake              chan struct{}
+	sentTimestamps    []time.Time          // sliding window for rate limiting
+	quietQueue        []QueuedNotification // queued during quiet hours
+	mu                sync.Mutex
+	flushMu           sync.Mutex // Serializes digest flushes without blocking notification enqueue.
+	noEndpointsWarned bool       // Reset after successful delivery; retries remain enabled.
 }
 
 // QueuedNotification holds a notification that was deferred during quiet hours.

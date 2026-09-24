@@ -16,14 +16,14 @@ const (
 // Any replica can write a row; only the replica holding the scheduler lease reads and sends,
 // so rate limits, quiet hours, and duplicate suppression apply once for the whole deployment.
 type NotificationOutbox struct {
-	ID              uint   `gorm:"primaryKey"`
-	CreatedAtUnixMs int64  `gorm:"not null;index"`
-	State           string `gorm:"not null;index"`
 	// Body is the JSON-encoded notification (payload, HTML body, and database URLs).
-	Body             string `gorm:"not null"`
-	BypassQuietHours bool   `gorm:"not null;default:false"`
+	Body  string `gorm:"not null"`
+	State string `gorm:"not null;index"`
 	// DedupeKey is set for collector errors, which are sent once per identity, type, and message.
-	DedupeKey string
+	DedupeKey        string
+	ID               uint  `gorm:"primaryKey"`
+	CreatedAtUnixMs  int64 `gorm:"not null;index"`
+	BypassQuietHours bool  `gorm:"not null;default:false"`
 }
 
 func (NotificationOutbox) TableName() string {
