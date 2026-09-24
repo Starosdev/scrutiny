@@ -161,6 +161,7 @@ func setupInfluxClient(ctx context.Context, appConfig config.Interface, globalLo
 	globalLogger.Debugf("Determine Influxdb setup status...")
 	influxSetupComplete, err := InfluxSetupComplete(influxdbUrl, tlsConfig)
 	if err != nil {
+		client.Close()
 		return nil, fmt.Errorf("failed to check influxdb setup status - %w", err)
 	}
 
@@ -182,24 +183,37 @@ func setupInfluxClient(ctx context.Context, appConfig config.Interface, globalLo
 			appConfig.GetString("web.influxdb.token"),
 		)
 		if err != nil {
+			client.Close()
 			return nil, err
 		}
 	}
 	return client, nil
 }
 
-func newScrutinyRepository(appConfig config.Interface, globalLogger logrus.FieldLogger, runMigrations bool) (DeviceRepo, error) {
+func newScrutinyRepository(appConfig config.Interface, globalLogger logrus.FieldLogger, runMigrations bool) (_ DeviceRepo, err error) {
 	backgroundContext := context.Background()
 
 	database, err := openGormDatabase(appConfig, globalLogger)
 	if err != nil {
 		return nil, err
 	}
+	deviceRepo := scrutinyRepository{
+		appConfig:  appConfig,
+		logger:     globalLogger,
+		gormClient: database,
+	}
+	// Release the SQL pool (and the influx client, once set) on any failed setup step.
+	defer func() {
+		if err != nil {
+			_ = deviceRepo.Close()
+		}
+	}()
 
 	client, err := setupInfluxClient(backgroundContext, appConfig, globalLogger)
 	if err != nil {
 		return nil, err
 	}
+	deviceRepo.influxClient = client
 
 	// Use blocking write client for writes to desired bucket
 	writeAPI := client.WriteAPIBlocking(appConfig.GetString(cfgInfluxDBOrg), appConfig.GetString(cfgInfluxDBBucket))
@@ -214,15 +228,9 @@ func newScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 		return nil, fmt.Errorf("Failed to connect to influxdb!")
 	}
 
-	deviceRepo := scrutinyRepository{
-		appConfig:      appConfig,
-		logger:         globalLogger,
-		influxClient:   client,
-		influxWriteApi: writeAPI,
-		influxQueryApi: queryAPI,
-		influxTaskApi:  taskAPI,
-		gormClient:     database,
-	}
+	deviceRepo.influxWriteApi = writeAPI
+	deviceRepo.influxQueryApi = queryAPI
+	deviceRepo.influxTaskApi = taskAPI
 
 	orgInfo, err := client.OrganizationsAPI().FindOrganizationByName(backgroundContext, appConfig.GetString(cfgInfluxDBOrg))
 	if err != nil {
@@ -268,9 +276,20 @@ type scrutinyRepository struct {
 	gormClient *gorm.DB
 }
 
+// Close releases the InfluxDB client and the SQL connection pool. Every repository opens its
+// own pool, so skipping the SQL close leaks connections and file handles per repository.
 func (sr *scrutinyRepository) Close() error {
-	sr.influxClient.Close()
-	return nil
+	if sr.influxClient != nil {
+		sr.influxClient.Close()
+	}
+	if sr.gormClient == nil {
+		return nil
+	}
+	sqlDB, err := sr.gormClient.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.Close()
 }
 
 func (sr *scrutinyRepository) HealthCheck(ctx context.Context) (*HealthCheckResult, error) {
