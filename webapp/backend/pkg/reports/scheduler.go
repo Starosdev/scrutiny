@@ -34,6 +34,7 @@ type Scheduler struct {
 	cancel      context.CancelFunc
 	stopCh      chan struct{}
 	repoFactory func() (database.DeviceRepo, error)
+	isLeader    func() bool
 
 	lastDailyRun   time.Time
 	lastWeeklyRun  time.Time
@@ -59,6 +60,12 @@ func NewScheduler(appConfig config.Interface, logger logrus.FieldLogger, repoFac
 		cancel:      cancel,
 		repoFactory: repoFactory,
 	}
+}
+
+// SetLeaderCheck makes the scheduler run reports only while isLeader returns true, so one replica
+// sends each report when several share a database. Call it before Start.
+func (s *Scheduler) SetLeaderCheck(isLeader func() bool) {
+	s.isLeader = isLeader
 }
 
 // Start begins the scheduler goroutine
@@ -102,6 +109,10 @@ func (s *Scheduler) run() {
 	defer s.wg.Done()
 
 	s.loadLastRunTimestamps()
+	s.runMu.RLock()
+	s.logger.Infof("Report scheduler loaded last-run timestamps: daily=%v, weekly=%v, monthly=%v",
+		s.lastDailyRun, s.lastWeeklyRun, s.lastMonthlyRun)
+	s.runMu.RUnlock()
 
 	ticker := time.NewTicker(DefaultReportCheckInterval)
 	defer ticker.Stop()
@@ -119,6 +130,10 @@ func (s *Scheduler) run() {
 }
 
 func (s *Scheduler) checkAndRun() {
+	if s.isLeader != nil && !s.isLeader() {
+		return
+	}
+
 	// Load settings fresh to check if reports are enabled
 	repo, err := s.getRepo()
 	if err != nil {
@@ -134,6 +149,10 @@ func (s *Scheduler) checkAndRun() {
 	if settings == nil || !settings.Metrics.ReportEnabled {
 		return
 	}
+
+	// Another replica may have run a report while this one was not leader, so read the
+	// last-run times from the database rather than trusting the copy loaded at startup.
+	s.loadLastRunTimestamps()
 
 	now := time.Now()
 
@@ -257,9 +276,6 @@ func (s *Scheduler) loadLastRunTimestamps() {
 	s.lastWeeklyRun = load(settingLastWeeklyRun)
 	s.lastMonthlyRun = load(settingLastMonthlyRun)
 	s.runMu.Unlock()
-
-	s.logger.Infof("Report scheduler loaded last-run timestamps: daily=%v, weekly=%v, monthly=%v",
-		s.lastDailyRun, s.lastWeeklyRun, s.lastMonthlyRun)
 }
 
 func (s *Scheduler) saveLastRunTimestamp(key string, t time.Time) {

@@ -16,6 +16,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/errors"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/leader"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/metrics"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/mqtt"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/notify"
@@ -44,6 +45,16 @@ type AppEngine struct {
 	HeartbeatMonitor  *HeartbeatMonitor
 	UptimeKumaMonitor *UptimeKumaMonitor
 	ReportScheduler   *reports.Scheduler
+
+	// Leader elects the one replica that runs the monitors and the report scheduler (#880).
+	// Nil means this process always runs them.
+	Leader     *leader.Elector
+	leaderRepo database.DeviceRepo
+}
+
+// isLeader reports whether this replica should run background jobs.
+func (ae *AppEngine) isLeader() bool {
+	return ae.Leader == nil || ae.Leader.Held()
 }
 
 func registerZFSPoolRoutes(zfs *gin.RouterGroup, allowPoolModifications bool) {
@@ -362,6 +373,15 @@ func (ae *AppEngine) Start() error {
 		return err
 	}
 
+	// Elect the replica that runs background jobs before any of them start ticking.
+	leaderRepo, err := database.NewScrutinyRepositoryWithoutMigration(ae.Config, ae.Logger)
+	if err != nil {
+		return err
+	}
+	ae.leaderRepo = leaderRepo
+	ae.Leader = leader.New(leaderRepo, ae.Logger, leader.SchedulerLeaseName, leader.DefaultTTL)
+	ae.Leader.Start()
+
 	// Create notification gate and monitors BEFORE Setup() so middleware can register them in gin context
 	ae.NotificationGate = notify.NewNotificationGate(ae.Logger)
 
@@ -371,6 +391,7 @@ func (ae *AppEngine) Start() error {
 	reportScheduler := reports.NewScheduler(ae.Config, ae.Logger, func() (database.DeviceRepo, error) {
 		return database.NewScrutinyRepositoryWithoutMigration(ae.Config, ae.Logger)
 	})
+	reportScheduler.SetLeaderCheck(ae.isLeader)
 	ae.ReportScheduler = reportScheduler
 
 	r := ae.Setup(ae.Logger)
@@ -493,5 +514,12 @@ func (ae *AppEngine) stopBackgroundMonitors() {
 	}
 	if ae.ReportScheduler != nil {
 		ae.ReportScheduler.Stop()
+	}
+	// Release the lease only after every job has stopped, so no two replicas run jobs at once.
+	if ae.Leader != nil {
+		ae.Leader.Stop()
+	}
+	if ae.leaderRepo != nil {
+		_ = ae.leaderRepo.Close()
 	}
 }
