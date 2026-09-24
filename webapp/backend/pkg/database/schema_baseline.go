@@ -92,12 +92,13 @@ func migratedReferenceDatabase(ctx context.Context, logger logrus.FieldLogger) (
 // SQLite rows in their default order and each later row overrides the earlier one.
 func uniqueSettings(entries []models.SettingEntry) []models.SettingEntry {
 	last := make(map[string]int, len(entries))
-	for i, e := range entries {
-		last[e.SettingKeyName] = i
+	for i := range entries {
+		last[entries[i].SettingKeyName] = i
 	}
 	out := make([]models.SettingEntry, 0, len(last))
-	for i, e := range entries {
-		if last[e.SettingKeyName] == i {
+	for i := range entries {
+		if last[entries[i].SettingKeyName] == i {
+			e := entries[i]
 			e.ID = 0
 			out = append(out, e)
 		}
