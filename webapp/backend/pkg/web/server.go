@@ -365,7 +365,7 @@ func (ae *AppEngine) Start() error {
 		gin.SetMode(gin.DebugMode)
 	}
 
-	//check if the SQLite database parent directory exists, fail here rather than in a handler.
+	// check if the SQLite database parent directory exists, fail here rather than in a handler.
 	if ae.Config.GetString("web.database.type") != "postgres" && !utils.FileExists(filepath.Dir(ae.Config.GetString("web.database.location"))) {
 		return errors.ConfigValidationError(fmt.Sprintf(
 			"Database parent directory does not exist. Please check path (%s)",
