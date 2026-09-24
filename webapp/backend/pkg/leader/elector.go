@@ -37,13 +37,12 @@ type Store interface {
 type Elector struct {
 	store  Store
 	logger logrus.FieldLogger
+	cancel context.CancelFunc
 	name   string
 	holder string
 	ttl    time.Duration
-
-	held   atomic.Bool
-	cancel context.CancelFunc
 	wg     sync.WaitGroup
+	held   atomic.Bool
 }
 
 // New returns an elector for the named lease. Call Start to begin campaigning.
