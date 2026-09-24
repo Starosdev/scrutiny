@@ -30,6 +30,10 @@ type DeviceRepo interface {
 	Close() error
 	HealthCheck(ctx context.Context) (*HealthCheckResult, error)
 
+	// Leases elect one replica to run background jobs. See pkg/leader.
+	TryAcquireLease(ctx context.Context, name string, holder string, ttl time.Duration) (bool, error)
+	ReleaseLease(ctx context.Context, name string, holder string) error
+
 	RegisterDevice(ctx context.Context, dev models.Device) error
 	GetDevices(ctx context.Context) ([]models.Device, error)
 	UpdateDevice(ctx context.Context, deviceID string, collectorSmartData *collector.SmartInfo) (models.Device, error)
