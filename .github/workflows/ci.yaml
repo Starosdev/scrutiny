@@ -54,10 +54,27 @@ jobs:
           INFLUXD_USE_HASHED_TOKENS: "false"
         ports:
           - 8086:8086
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: scrutiny
+          POSTGRES_PASSWORD: scrutiny
+          POSTGRES_DB: scrutiny_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scrutiny -d scrutiny_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       STATIC: true
       # InfluxDB integration tests fail instead of skipping when the service is unreachable.
       SCRUTINY_REQUIRE_INFLUXDB: "true"
+      # PostgreSQL backend tests (#880) run against the postgres service and fail, rather than
+      # skip, if it is missing. Each test works in its own schema.
+      SCRUTINY_TEST_POSTGRES_DSN: postgres://scrutiny:scrutiny@localhost:5432/scrutiny_test?sslmode=disable
+      SCRUTINY_REQUIRE_POSTGRES: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
