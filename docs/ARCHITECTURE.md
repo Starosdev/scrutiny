@@ -68,7 +68,7 @@ flowchart LR
 - `Collector`: discovers devices, runs `smartctl`, and submits results to the API.
 - `Web/API server`: accepts collector uploads, serves the frontend, and provides the API consumed by the UI.
 - `InfluxDB`: stores historical SMART and other time-series measurements.
-- `SQLite`: stores application metadata and configuration state, including persisted drive identity fields and user-managed settings such as `metrics.consumer_drive_profiles_enabled`.
+- `SQLite` or `PostgreSQL`: stores application metadata and configuration state, including persisted drive identity fields and user-managed settings such as `metrics.consumer_drive_profiles_enabled`. SQLite is the default; PostgreSQL is optional and allows several web/API replicas. See [POSTGRESQL.md](./POSTGRESQL.md).
 - `Frontend / Browser`: renders the dashboard and calls the API exposed by the web/API server.
 
 See [CONSUMER_DRIVE_PROFILES.md](./CONSUMER_DRIVE_PROFILES.md) for the ATA consumer-drive profile feature and fallback behavior.
