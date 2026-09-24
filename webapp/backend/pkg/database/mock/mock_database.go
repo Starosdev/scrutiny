@@ -55,6 +55,21 @@ func (mr *MockDeviceRepoMockRecorder) Close() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockDeviceRepo)(nil).Close))
 }
 
+// CompareAndSetSettingValue mocks base method.
+func (m *MockDeviceRepo) CompareAndSetSettingValue(ctx context.Context, key, expected, value string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CompareAndSetSettingValue", ctx, key, expected, value)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CompareAndSetSettingValue indicates an expected call of CompareAndSetSettingValue.
+func (mr *MockDeviceRepoMockRecorder) CompareAndSetSettingValue(ctx, key, expected, value interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompareAndSetSettingValue", reflect.TypeOf((*MockDeviceRepo)(nil).CompareAndSetSettingValue), ctx, key, expected, value)
+}
+
 // DeleteAttributeOverride mocks base method.
 func (m *MockDeviceRepo) DeleteAttributeOverride(ctx context.Context, id uint) error {
 	m.ctrl.T.Helper()

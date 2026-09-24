@@ -122,6 +122,8 @@ type DeviceRepo interface {
 	// SetSettingValue sets a single setting value by key name.
 	// Creates the entry if it doesn't exist, updates it if it does.
 	SetSettingValue(ctx context.Context, key string, value string) error
+	// CompareAndSetSettingValue sets a string setting only if it still holds expected.
+	CompareAndSetSettingValue(ctx context.Context, key string, expected string, value string) (bool, error)
 
 	// ZFS Pool operations
 	RegisterZFSPool(ctx context.Context, pool models.ZFSPool) error

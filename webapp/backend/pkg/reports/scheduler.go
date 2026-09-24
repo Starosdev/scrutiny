@@ -36,14 +36,9 @@ type Scheduler struct {
 	repoFactory func() (database.DeviceRepo, error)
 	isLeader    func() bool
 
-	lastDailyRun   time.Time
-	lastWeeklyRun  time.Time
-	lastMonthlyRun time.Time
-
 	repoMu sync.Mutex
 	wg     sync.WaitGroup
-	mu     sync.Mutex   // guards started/stopped flags
-	runMu  sync.RWMutex // guards last run timestamps
+	mu     sync.Mutex // guards started/stopped flags
 
 	started bool
 	stopped bool
@@ -108,12 +103,6 @@ func (s *Scheduler) Stop() {
 func (s *Scheduler) run() {
 	defer s.wg.Done()
 
-	s.loadLastRunTimestamps()
-	s.runMu.RLock()
-	s.logger.Infof("Report scheduler loaded last-run timestamps: daily=%v, weekly=%v, monthly=%v",
-		s.lastDailyRun, s.lastWeeklyRun, s.lastMonthlyRun)
-	s.runMu.RUnlock()
-
 	ticker := time.NewTicker(DefaultReportCheckInterval)
 	defer ticker.Stop()
 
@@ -150,47 +139,56 @@ func (s *Scheduler) checkAndRun() {
 		return
 	}
 
-	// Another replica may have run a report while this one was not leader, so read the
-	// last-run times from the database rather than trusting the copy loaded at startup.
-	s.loadLastRunTimestamps()
-
 	now := time.Now()
+	pdfEnabled, pdfPath := settings.Metrics.ReportPDFEnabled, settings.Metrics.ReportPDFPath
 
-	s.runMu.RLock()
-	lastDaily := s.lastDailyRun
-	lastWeekly := s.lastWeeklyRun
-	lastMonthly := s.lastMonthlyRun
-	s.runMu.RUnlock()
-
-	if settings.Metrics.ReportDailyEnabled {
-		if isDailyDue(now, lastDaily, settings.Metrics.ReportDailyTime) {
-			s.runReport("daily", now, settings.Metrics.ReportPDFEnabled, settings.Metrics.ReportPDFPath)
-			s.runMu.Lock()
-			s.lastDailyRun = now
-			s.runMu.Unlock()
-			s.saveLastRunTimestamp(settingLastDailyRun, now)
-		}
+	if settings.Metrics.ReportDailyEnabled && s.claimRun(repo, settingLastDailyRun, now, func(last time.Time) bool {
+		return isDailyDue(now, last, settings.Metrics.ReportDailyTime)
+	}) {
+		s.runReport("daily", now, pdfEnabled, pdfPath)
 	}
 
-	if settings.Metrics.ReportWeeklyEnabled {
-		if isWeeklyDue(now, lastWeekly, settings.Metrics.ReportWeeklyDay, settings.Metrics.ReportWeeklyTime) {
-			s.runReport("weekly", now, settings.Metrics.ReportPDFEnabled, settings.Metrics.ReportPDFPath)
-			s.runMu.Lock()
-			s.lastWeeklyRun = now
-			s.runMu.Unlock()
-			s.saveLastRunTimestamp(settingLastWeeklyRun, now)
-		}
+	if settings.Metrics.ReportWeeklyEnabled && s.claimRun(repo, settingLastWeeklyRun, now, func(last time.Time) bool {
+		return isWeeklyDue(now, last, settings.Metrics.ReportWeeklyDay, settings.Metrics.ReportWeeklyTime)
+	}) {
+		s.runReport("weekly", now, pdfEnabled, pdfPath)
 	}
 
-	if settings.Metrics.ReportMonthlyEnabled {
-		if isMonthlyDue(now, lastMonthly, settings.Metrics.ReportMonthlyDay, settings.Metrics.ReportMonthlyTime) {
-			s.runReport("monthly", now, settings.Metrics.ReportPDFEnabled, settings.Metrics.ReportPDFPath)
-			s.runMu.Lock()
-			s.lastMonthlyRun = now
-			s.runMu.Unlock()
-			s.saveLastRunTimestamp(settingLastMonthlyRun, now)
+	if settings.Metrics.ReportMonthlyEnabled && s.claimRun(repo, settingLastMonthlyRun, now, func(last time.Time) bool {
+		return isMonthlyDue(now, last, settings.Metrics.ReportMonthlyDay, settings.Metrics.ReportMonthlyTime)
+	}) {
+		s.runReport("monthly", now, pdfEnabled, pdfPath)
+	}
+}
+
+// claimRun reads the stored last-run time for key and, when due reports the report as due,
+// records now as the new last run. The write only succeeds if the stored value is unchanged,
+// so when two replicas both find the same report due, exactly one of them runs it. The claim
+// happens before the report runs, so a crash mid-report does not resend it.
+func (s *Scheduler) claimRun(repo database.DeviceRepo, key string, now time.Time, due func(last time.Time) bool) bool {
+	stored, err := repo.GetSettingValue(s.ctx, key)
+	if err != nil {
+		stored = ""
+	}
+	var last time.Time
+	if stored != "" {
+		if last, err = time.Parse(time.RFC3339, stored); err != nil {
+			s.logger.Warnf("Report scheduler: invalid timestamp for %s: %q", key, stored)
+			last = time.Time{}
 		}
 	}
+	if !due(last) {
+		return false
+	}
+	claimed, err := repo.CompareAndSetSettingValue(s.ctx, key, stored, now.Format(time.RFC3339))
+	if err != nil {
+		s.logger.Errorf("Report scheduler: failed to claim %s: %v", key, err)
+		return false
+	}
+	if !claimed {
+		s.logger.Infof("Report scheduler: %s was claimed by another replica", key)
+	}
+	return claimed
 }
 
 func (s *Scheduler) runReport(periodType string, now time.Time, pdfEnabled bool, pdfPath string) {
@@ -248,44 +246,6 @@ func (s *Scheduler) sendNotification(subject, message, htmlMessage string) {
 	}
 	if err := reportNotify.Send(); err != nil {
 		s.logger.Errorf("Failed to send report notification: %v", err)
-	}
-}
-
-func (s *Scheduler) loadLastRunTimestamps() {
-	repo, err := s.getRepo()
-	if err != nil {
-		s.logger.Warnf("Report scheduler: could not load last-run timestamps: %v", err)
-		return
-	}
-
-	load := func(key string) time.Time {
-		val, err := repo.GetSettingValue(s.ctx, key)
-		if err != nil || val == "" {
-			return time.Time{}
-		}
-		t, err := time.Parse(time.RFC3339, val)
-		if err != nil {
-			s.logger.Warnf("Report scheduler: invalid timestamp for %s: %q", key, val)
-			return time.Time{}
-		}
-		return t
-	}
-
-	s.runMu.Lock()
-	s.lastDailyRun = load(settingLastDailyRun)
-	s.lastWeeklyRun = load(settingLastWeeklyRun)
-	s.lastMonthlyRun = load(settingLastMonthlyRun)
-	s.runMu.Unlock()
-}
-
-func (s *Scheduler) saveLastRunTimestamp(key string, t time.Time) {
-	repo, err := s.getRepo()
-	if err != nil {
-		s.logger.Errorf("Report scheduler: could not save last-run timestamp: %v", err)
-		return
-	}
-	if err := repo.SetSettingValue(s.ctx, key, t.Format(time.RFC3339)); err != nil {
-		s.logger.Errorf("Report scheduler: failed to persist %s: %v", key, err)
 	}
 }
 
