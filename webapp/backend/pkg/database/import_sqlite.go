@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260924000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/glebarez/sqlite"
 	"github.com/sirupsen/logrus"
@@ -46,7 +49,7 @@ func ImportSQLite(ctx context.Context, appConfig config.Interface, sourcePath st
 		}
 	}()
 	if schemaErr := requireCurrentSchema(ctx, source); schemaErr != nil {
-		return nil, schemaErr
+		return nil, explainSQLiteOpenError(schemaErr, sourcePath)
 	}
 
 	target, err := openGormDatabase(appConfig, logger)
@@ -92,10 +95,7 @@ func copyAllTables(ctx context.Context, source *gorm.DB, tx *gorm.DB) (ImportSum
 	}
 	summary["settings"] = len(settings)
 
-	for _, model := range schemaModels() {
-		if _, ok := model.(*models.SettingEntry); ok {
-			continue
-		}
+	for _, model := range importedModels() {
 		table, count, err := copyTable(ctx, source, tx, model)
 		if err != nil {
 			return nil, fmt.Errorf("copy %s: %w", table, err)
@@ -106,6 +106,34 @@ func copyAllTables(ctx context.Context, source *gorm.DB, tx *gorm.DB) (ImportSum
 		}
 	}
 	return summary, nil
+}
+
+// importedModels lists the tables copied row by row. Settings are copied separately, and the
+// leader lease and the notification outbox are left out: they are runtime state of the source
+// install, and a copied lease would name a holder that no longer runs.
+func importedModels() []interface{} {
+	var out []interface{}
+	for _, model := range schemaModels() {
+		switch model.(type) {
+		case *models.SettingEntry, *models.NotificationOutbox, *m20260924000000.SchedulerLease:
+			continue
+		}
+		out = append(out, model)
+	}
+	return out
+}
+
+// explainSQLiteOpenError adds the likely fix to SQLite's bare open errors. A database in WAL
+// mode, which is Scrutiny's default, needs its -shm file even when opened read-only, and SQLite
+// cannot create it in a read-only directory such as a :ro volume.
+func explainSQLiteOpenError(err error, sourcePath string) error {
+	msg := err.Error()
+	if !strings.Contains(msg, "unable to open database file") && !strings.Contains(msg, "readonly database") {
+		return err
+	}
+	return fmt.Errorf("%w\n\nThe directory must be writable: SQLite needs to create %s-shm next to the database, "+
+		"even though the import only reads it. Mount the directory read-write, or copy %s and any "+
+		"%s-wal file to a writable directory and import from there", err, filepath.Base(sourcePath), filepath.Base(sourcePath), filepath.Base(sourcePath))
 }
 
 // requireCurrentSchema refuses a source that has not run every migration this version knows,
@@ -130,10 +158,7 @@ func requireCurrentSchema(ctx context.Context, source *gorm.DB) error {
 // requireEmptyTarget refuses a target that already holds data other than the default settings,
 // so an import never merges into or overwrites a live database.
 func requireEmptyTarget(ctx context.Context, target *gorm.DB) error {
-	for _, model := range schemaModels() {
-		if _, ok := model.(*models.SettingEntry); ok {
-			continue
-		}
+	for _, model := range importedModels() {
 		var count int64
 		if err := target.WithContext(ctx).Unscoped().Model(model).Count(&count).Error; err != nil {
 			return err

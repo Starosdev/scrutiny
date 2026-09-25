@@ -106,6 +106,10 @@ If several replicas start at the same time, one of them sets up the database and
 
 The import prints the rows it copied for each table. It opens the SQLite file read-only and does not change it, so keep the file as a backup. The import runs in one transaction: if it fails, PostgreSQL is left empty and you can run it again.
 
+The directory that holds the SQLite file must be writable. Scrutiny keeps SQLite in WAL mode, and SQLite creates a `scrutiny.db-shm` file next to the database even when it only reads it. If the directory is mounted read-only, mount it read-write for the import, or copy `scrutiny.db` and any `scrutiny.db-wal` file to a writable directory first.
+
+The leader lease and any undelivered notifications of the old install are not imported. They are runtime state, and the new install starts with neither.
+
 The import refuses to run when:
 
 - the SQLite database is missing a migration that this version knows, or
