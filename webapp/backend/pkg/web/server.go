@@ -387,7 +387,7 @@ func (ae *AppEngine) Start() error {
 
 	// Create notification gate and monitors BEFORE Setup() so middleware can register them in gin context
 	ae.NotificationGate = notify.NewNotificationGate(ae.Logger)
-	ae.NotificationGate.UseOutbox(leaderRepo)
+	ae.NotificationGate.UseOutbox(leaderRepo, ae.isLeader)
 	ae.OutboxWorker = NewNotificationOutboxWorker(ae, leaderRepo)
 	ae.OutboxWorker.Start()
 
