@@ -16,9 +16,13 @@ func HealthCheck(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 	appConfig := c.MustGet("CONFIG").(config.Interface)
-	logger.Infof("Checking Influxdb & Sqlite health")
+	dbType := appConfig.GetString("web.database.type")
+	if dbType == "" {
+		dbType = "sqlite"
+	}
+	logger.Infof("Checking InfluxDB & %s health", dbType)
 
-	// Check sqlite and influxdb health with detailed status
+	// Check relational database and influxdb health with detailed status
 	healthResult, err := deviceRepo.HealthCheck(c)
 
 	// Check if the /web folder is populated with expected frontend files

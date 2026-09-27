@@ -359,24 +359,24 @@ func (sr *scrutinyRepository) HealthCheck(ctx context.Context) (*HealthCheckResu
 		}
 	}
 
-	// Check SQLite health with actual query execution (not just ping)
-	sqliteStart := time.Now()
+	// Check the relational database (SQLite or PostgreSQL) with a real query, not just a ping
+	dbStart := time.Now()
 	// Execute a simple query to verify database is responsive
 	var count int64
 	err = sr.gormClient.WithContext(ctx).Table("settings").Count(&count).Error
-	sqliteLatency := time.Since(sqliteStart).Milliseconds()
+	dbLatency := time.Since(dbStart).Milliseconds()
 
 	if err != nil {
 		result.Status = "unhealthy"
 		result.Checks[sr.gormClient.Name()] = HealthCheckStatus{
 			Status:    "error",
-			LatencyMs: sqliteLatency,
+			LatencyMs: dbLatency,
 			Error:     err.Error(),
 		}
 	} else {
 		result.Checks[sr.gormClient.Name()] = HealthCheckStatus{
 			Status:    "ok",
-			LatencyMs: sqliteLatency,
+			LatencyMs: dbLatency,
 		}
 	}
 
