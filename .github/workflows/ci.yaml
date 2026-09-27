@@ -111,7 +111,7 @@ jobs:
         run: go mod vendor
       - name: Install golangci-lint
         run: |
-          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.4.0
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
       - name: Lint Backend
         run: |
           "$(go env GOPATH)/bin/golangci-lint" run \

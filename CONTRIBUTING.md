@@ -44,7 +44,7 @@ This repo also has read-only and draft-only loop pilot workflows on `master`.
 - No emojis in code, commits, comments, or documentation
 - Follow existing code patterns and formatting
 - Run linting before submitting: `npm run lint` (frontend)
-- Backend CI installs `golangci-lint` v2.4.0 directly through the Go toolchain because the organization Actions policy restricts third-party wrappers. Keep the pinned version in `.github/workflows/ci.yaml` unless that policy changes.
+- Backend CI installs `golangci-lint` v2.14.0 directly through the Go toolchain because the organization Actions policy restricts third-party wrappers. Keep the pinned version in `.github/workflows/ci.yaml` unless that policy changes.
 
 ## Project Structure
 
