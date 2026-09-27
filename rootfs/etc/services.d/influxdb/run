@@ -4,7 +4,12 @@ log_info() {
     printf 'time="%s" level=info msg="%s" type=influxdb\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$1"
 }
 
-/usr/local/bin/scrutiny-influxdb-upgrade-preflight
+if ! /usr/local/bin/scrutiny-influxdb-upgrade-preflight; then
+    # Keep influxd from migrating unconfirmed data. Sleeping instead of exiting stops s6 from
+    # restarting this service and repeating the preflight error every second.
+    log_info "influxdb not started: the upgrade preflight blocked it; restart the container after confirming the backup"
+    exec sleep infinity
+fi
 
 mkdir -p /opt/scrutiny/influxdb/
 

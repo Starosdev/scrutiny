@@ -485,7 +485,9 @@ InfluxDB 2.9 upgrade blocked: existing Omnibus data detected
 
 Stop Scrutiny, back up the complete host directory mounted at `/opt/scrutiny/influxdb`, then set `SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED=true` and restart. Compose and Unraid examples expose this setting. Do not set it before taking the backup.
 
-Fresh installations do not require confirmation. A successful fresh start or confirmed upgrade writes a persistent marker into the InfluxDB data directory, so the check is not repeated on later restarts.
+Fresh installations do not require confirmation, and neither does data that InfluxDB 2.9 already upgraded: the preflight accepts the `influxd.bolt.pre-v2.9.1-upgrade.backup` file that InfluxDB writes before it migrates existing data. A successful fresh start, an upgraded store, or a confirmed upgrade writes a persistent marker into the InfluxDB data directory, so the check is not repeated on later restarts.
+
+Releases up to v1.76.0 logged the blocked message and started InfluxDB anyway. Later releases keep the database stopped while the preflight blocks, and the web service waits for it.
 
 **InfluxDB v2.9 introduced token hashing by default.** Scrutiny keeps this **disabled by default**, so most users can downgrade safely.
 
