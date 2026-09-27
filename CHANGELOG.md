@@ -2,6 +2,8 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.76.0](https://github.com/Starosdev/scrutiny/compare/v1.75.1...v1.76.0) (2026-09-27)
+
 ## [1.75.1](https://github.com/Starosdev/scrutiny/compare/v1.75.0...v1.75.1) (2026-09-21)
 
 ## [1.75.0](https://github.com/Starosdev/scrutiny/compare/v1.74.3...v1.75.0) (2026-09-19)
