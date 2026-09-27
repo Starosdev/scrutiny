@@ -21,6 +21,7 @@ import (
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/influxdata/influxdb-client-go/v2/domain"
 	"github.com/sirupsen/logrus"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	gormLogger "gorm.io/gorm/logger"
 )
@@ -68,9 +69,67 @@ func ResetMigrationGuardForTests() {
 	migrationOnceErr = nil
 }
 
-// openGormDatabase opens the SQLite database with the configured journal mode and pragmas,
-// returning a descriptive error for the common read-only/cap_drop Docker failure mode.
+// openGormDatabase opens the configured relational database: SQLite (the default) or PostgreSQL.
 func openGormDatabase(appConfig config.Interface, globalLogger logrus.FieldLogger) (*gorm.DB, error) {
+	if appConfig.GetString(cfgDatabaseType) == dialectPostgres {
+		return openPostgresDatabase(appConfig, globalLogger)
+	}
+	return openSQLiteDatabase(appConfig, globalLogger)
+}
+
+// newGormConfig returns the GORM settings shared by both databases. In debug mode every SQL
+// statement is logged; otherwise GORM logging is off.
+func newGormConfig(appConfig config.Interface, globalLogger logrus.FieldLogger) *gorm.Config {
+	var dbLogLevel gormLogger.LogLevel
+	if strings.ToLower(appConfig.GetString("log.level")) == "debug" {
+		dbLogLevel = gormLogger.Info
+		globalLogger.Debug("GORM database query logging enabled")
+	} else {
+		dbLogLevel = gormLogger.Silent
+	}
+	return &gorm.Config{
+		Logger: gormLogger.New(
+			log.New(os.Stdout, "\r\n", log.LstdFlags),
+			gormLogger.Config{
+				SlowThreshold:             time.Second,
+				LogLevel:                  dbLogLevel,
+				IgnoreRecordNotFoundError: true,
+				Colorful:                  true,
+			},
+		),
+		DisableForeignKeyConstraintWhenMigrating: true,
+	}
+}
+
+// openPostgresDatabase connects to PostgreSQL. The simple query protocol and no prepared statement
+// cache keep it working behind pgbouncer in transaction pooling mode, where a statement prepared on
+// one server connection is missing on the next.
+func openPostgresDatabase(appConfig config.Interface, globalLogger logrus.FieldLogger) (*gorm.DB, error) {
+	globalLogger.Infoln("Trying to connect to scrutiny postgres db")
+	database, err := gorm.Open(postgres.New(postgres.Config{
+		DSN:                  appConfig.GetString(cfgDatabaseDSN),
+		PreferSimpleProtocol: true,
+	}), newGormConfig(appConfig, globalLogger))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to postgres database: %w", err)
+	}
+	sqlDB, err := database.DB()
+	if err != nil {
+		return nil, err
+	}
+	sqlDB.SetMaxOpenConns(appConfig.GetInt(cfgDatabaseMaxOpenConns))
+	sqlDB.SetMaxIdleConns(appConfig.GetInt(cfgDatabaseMaxIdleConns))
+	if err := sqlDB.Ping(); err != nil {
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("failed to connect to postgres database: %w", err)
+	}
+	globalLogger.Infoln("Successfully connected to scrutiny postgres db")
+	return database, nil
+}
+
+// openSQLiteDatabase opens the SQLite database with the configured journal mode and pragmas,
+// returning a descriptive error for the common read-only/cap_drop Docker failure mode.
+func openSQLiteDatabase(appConfig config.Interface, globalLogger logrus.FieldLogger) (*gorm.DB, error) {
 	globalLogger.Infof("Trying to connect to scrutiny sqlite db: %s\n", appConfig.GetString(cfgDatabaseLocation))
 
 	// When a transaction cannot lock the database, because it is already locked by another one,
@@ -99,31 +158,7 @@ func openGormDatabase(appConfig config.Interface, globalLogger logrus.FieldLogge
 		"synchronous":  "NORMAL",
 	})
 
-	// Configure GORM logger based on debug mode
-	// In production (non-debug), use Silent mode for no performance impact
-	// In debug mode, log all SQL queries to help with debugging
-	var dbLogLevel gormLogger.LogLevel
-	if strings.ToLower(appConfig.GetString("log.level")) == "debug" {
-		dbLogLevel = gormLogger.Info // Log all SQL queries
-		globalLogger.Debug("GORM database query logging enabled")
-	} else {
-		dbLogLevel = gormLogger.Silent // No logging in production
-	}
-
-	gormLoggerConfig := gormLogger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
-		gormLogger.Config{
-			SlowThreshold:             time.Second, // Slow SQL threshold
-			LogLevel:                  dbLogLevel,  // Log level
-			IgnoreRecordNotFoundError: true,        // Ignore ErrRecordNotFound error
-			Colorful:                  true,        // Enable color output
-		},
-	)
-
-	database, err := gorm.Open(sqlite.Open(appConfig.GetString(cfgDatabaseLocation)+pragmaStr), &gorm.Config{
-		Logger:                                   gormLoggerConfig,
-		DisableForeignKeyConstraintWhenMigrating: true,
-	})
+	database, err := gorm.Open(sqlite.Open(appConfig.GetString(cfgDatabaseLocation)+pragmaStr), newGormConfig(appConfig, globalLogger))
 	if err != nil {
 		if strings.Contains(err.Error(), "readonly database") ||
 			strings.Contains(err.Error(), "attempt to write") {
@@ -161,6 +196,7 @@ func setupInfluxClient(ctx context.Context, appConfig config.Interface, globalLo
 	globalLogger.Debugf("Determine Influxdb setup status...")
 	influxSetupComplete, err := InfluxSetupComplete(influxdbUrl, tlsConfig)
 	if err != nil {
+		client.Close()
 		return nil, fmt.Errorf("failed to check influxdb setup status - %w", err)
 	}
 
@@ -182,24 +218,37 @@ func setupInfluxClient(ctx context.Context, appConfig config.Interface, globalLo
 			appConfig.GetString("web.influxdb.token"),
 		)
 		if err != nil {
+			client.Close()
 			return nil, err
 		}
 	}
 	return client, nil
 }
 
-func newScrutinyRepository(appConfig config.Interface, globalLogger logrus.FieldLogger, runMigrations bool) (DeviceRepo, error) {
+func newScrutinyRepository(appConfig config.Interface, globalLogger logrus.FieldLogger, runMigrations bool) (_ DeviceRepo, err error) {
 	backgroundContext := context.Background()
 
 	database, err := openGormDatabase(appConfig, globalLogger)
 	if err != nil {
 		return nil, err
 	}
+	deviceRepo := scrutinyRepository{
+		appConfig:  appConfig,
+		logger:     globalLogger,
+		gormClient: database,
+	}
+	// Release the SQL pool (and the influx client, once set) on any failed setup step.
+	defer func() {
+		if err != nil {
+			_ = deviceRepo.Close()
+		}
+	}()
 
 	client, err := setupInfluxClient(backgroundContext, appConfig, globalLogger)
 	if err != nil {
 		return nil, err
 	}
+	deviceRepo.influxClient = client
 
 	// Use blocking write client for writes to desired bucket
 	writeAPI := client.WriteAPIBlocking(appConfig.GetString(cfgInfluxDBOrg), appConfig.GetString(cfgInfluxDBBucket))
@@ -214,15 +263,9 @@ func newScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 		return nil, fmt.Errorf("Failed to connect to influxdb!")
 	}
 
-	deviceRepo := scrutinyRepository{
-		appConfig:      appConfig,
-		logger:         globalLogger,
-		influxClient:   client,
-		influxWriteApi: writeAPI,
-		influxQueryApi: queryAPI,
-		influxTaskApi:  taskAPI,
-		gormClient:     database,
-	}
+	deviceRepo.influxWriteApi = writeAPI
+	deviceRepo.influxQueryApi = queryAPI
+	deviceRepo.influxTaskApi = taskAPI
 
 	orgInfo, err := client.OrganizationsAPI().FindOrganizationByName(backgroundContext, appConfig.GetString(cfgInfluxDBOrg))
 	if err != nil {
@@ -268,9 +311,20 @@ type scrutinyRepository struct {
 	gormClient *gorm.DB
 }
 
+// Close releases the InfluxDB client and the SQL connection pool. Every repository opens its
+// own pool, so skipping the SQL close leaks connections and file handles per repository.
 func (sr *scrutinyRepository) Close() error {
-	sr.influxClient.Close()
-	return nil
+	if sr.influxClient != nil {
+		sr.influxClient.Close()
+	}
+	if sr.gormClient == nil {
+		return nil
+	}
+	sqlDB, err := sr.gormClient.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.Close()
 }
 
 func (sr *scrutinyRepository) HealthCheck(ctx context.Context) (*HealthCheckResult, error) {
@@ -305,24 +359,24 @@ func (sr *scrutinyRepository) HealthCheck(ctx context.Context) (*HealthCheckResu
 		}
 	}
 
-	// Check SQLite health with actual query execution (not just ping)
-	sqliteStart := time.Now()
+	// Check the relational database (SQLite or PostgreSQL) with a real query, not just a ping
+	dbStart := time.Now()
 	// Execute a simple query to verify database is responsive
 	var count int64
 	err = sr.gormClient.WithContext(ctx).Table("settings").Count(&count).Error
-	sqliteLatency := time.Since(sqliteStart).Milliseconds()
+	dbLatency := time.Since(dbStart).Milliseconds()
 
 	if err != nil {
 		result.Status = "unhealthy"
-		result.Checks["sqlite"] = HealthCheckStatus{
+		result.Checks[sr.gormClient.Name()] = HealthCheckStatus{
 			Status:    "error",
-			LatencyMs: sqliteLatency,
+			LatencyMs: dbLatency,
 			Error:     err.Error(),
 		}
 	} else {
-		result.Checks["sqlite"] = HealthCheckStatus{
+		result.Checks[sr.gormClient.Name()] = HealthCheckStatus{
 			Status:    "ok",
-			LatencyMs: sqliteLatency,
+			LatencyMs: dbLatency,
 		}
 	}
 

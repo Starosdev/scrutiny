@@ -22,6 +22,8 @@
 #   web.listen.basepath                   -> SCRUTINY_WEB_LISTEN_BASEPATH
 #   web.database.location                 -> SCRUTINY_WEB_DATABASE_LOCATION
 #   web.database.journal_mode             -> SCRUTINY_WEB_DATABASE_JOURNAL_MODE
+#   web.database.type                     -> SCRUTINY_WEB_DATABASE_TYPE
+#   web.database.dsn                      -> SCRUTINY_WEB_DATABASE_DSN
 #   web.src.frontend.path                 -> SCRUTINY_WEB_SRC_FRONTEND_PATH
 #   web.zfs.allow_pool_modifications      -> SCRUTINY_WEB_ZFS_ALLOW_POOL_MODIFICATIONS
 #   web.influxdb.scheme                   -> SCRUTINY_WEB_INFLUXDB_SCHEME
@@ -84,6 +86,16 @@ web:
     # WAL mode is recommended for Docker containers with restricted capabilities (cap_drop: [ALL])
     # If you experience database issues with WAL mode on network filesystems (NFS), try DELETE mode
     # journal_mode: WAL
+
+    # Relational database backend: sqlite (default) or postgres. InfluxDB is required either way.
+    # location and journal_mode apply to SQLite only. See docs/POSTGRESQL.md.
+    # type: sqlite
+    # PostgreSQL connection string, required when type is postgres. Contains the password;
+    # prefer the SCRUTINY_WEB_DATABASE_DSN environment variable.
+    # dsn: postgres://scrutiny:PASSWORD@localhost:5432/scrutiny?sslmode=disable
+    # PostgreSQL connection pool size per Scrutiny process.
+    # max_open_conns: 10
+    # max_idle_conns: 5
   src:
     # the location on the filesystem where scrutiny javascript + css is located
     frontend:

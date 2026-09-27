@@ -89,6 +89,34 @@ func (sr *scrutinyRepository) SetSettingValue(ctx context.Context, key string, v
 	return sr.gormClient.WithContext(ctx).Model(&entry).Update("setting_value_string", value).Error
 }
 
+// CompareAndSetSettingValue sets a string setting to value only if it currently holds expected,
+// and reports whether it did. A missing setting counts as holding "".
+func (sr *scrutinyRepository) CompareAndSetSettingValue(ctx context.Context, key string, expected string, value string) (bool, error) {
+	result := sr.gormClient.WithContext(ctx).
+		Model(&models.SettingEntry{}).
+		Where("setting_key_name = ? AND setting_value_string = ?", key, expected).
+		Update("setting_value_string", value)
+	if result.Error != nil || result.RowsAffected == 1 {
+		return result.RowsAffected == 1, result.Error
+	}
+	if expected != "" {
+		return false, nil
+	}
+	var count int64
+	if err := sr.gormClient.WithContext(ctx).Model(&models.SettingEntry{}).Where("setting_key_name = ?", key).Count(&count).Error; err != nil {
+		return false, err
+	}
+	if count > 0 {
+		return false, nil
+	}
+	// The unique key makes a concurrent create fail, so only one caller can win this either.
+	entry := models.SettingEntry{SettingKeyName: key, SettingDataType: "string", SettingValueString: value}
+	if err := sr.gormClient.WithContext(ctx).Create(&entry).Error; err != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
 // testing
 // curl -d '{"metrics": { "notify_level": 5, "status_filter_attributes": 5, "status_threshold": 5 }}' -H "Content-Type: application/json" -X POST http://localhost:9090/api/settings
 // SaveSettings will update settings in AppConfig object, then save the settings to the database.
