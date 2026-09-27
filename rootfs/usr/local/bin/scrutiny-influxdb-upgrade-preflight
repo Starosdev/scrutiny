@@ -32,6 +32,18 @@ if [[ "$existing_data" == "false" ]]; then
     exit 0
 fi
 
+# influxd writes influxd.bolt.pre-<version>-upgrade.backup before it migrates an existing store,
+# so this file proves InfluxDB 2.9 already upgraded the data. Installs upgraded before the guard
+# worked have it but no marker, and must not be blocked (#900).
+shopt -s nullglob
+upgrade_backups=("${data_dir}"/influxd.bolt.pre-v2.9*-upgrade.backup)
+shopt -u nullglob
+if (( ${#upgrade_backups[@]} > 0 )); then
+    touch "$marker_file"
+    log info "InfluxDB data was already upgraded to 2.9 (found ${upgrade_backups[0]##*/}); preflight complete"
+    exit 0
+fi
+
 if [[ "$backup_confirmed" == "true" ]]; then
     touch "$marker_file"
     log info "InfluxDB 2.9 backup confirmation accepted; preflight complete"
