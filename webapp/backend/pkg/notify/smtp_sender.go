@@ -87,7 +87,6 @@ func (n *Notify) buildSMTPConfig(serviceURL *url.URL) (*shoutrrrsmtp.Config, err
 		}
 	}
 	config.Subject = n.Payload.Subject
-	config.FixEmailTags()
 	return config, nil
 }
 
@@ -206,7 +205,7 @@ func smtpAuthForConfig(config *shoutrrrsmtp.Config) (smtp.Auth, error) {
 	case shoutrrrsmtp.AuthTypes.CRAMMD5:
 		return smtp.CRAMMD5Auth(config.Username, config.Password), nil
 	case shoutrrrsmtp.AuthTypes.OAuth2:
-		return shoutrrrsmtp.OAuth2Auth(config.Username, config.Password), nil
+		return newXOAUTH2Auth(config.Username, config.Password, config.Host), nil
 	default:
 		return nil, fmt.Errorf("unsupported smtp auth type: %s", config.Auth.String())
 	}
