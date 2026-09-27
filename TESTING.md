@@ -39,15 +39,15 @@ main repository.
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Go | 1.26.8+ | Backend compilation and tests |
+| Go | 1.27+ | Backend compilation and tests |
 | Node.js | 22+ (LTS) | Frontend build and tests |
 | Docker | 20+ | Container builds and full-stack testing |
 | Docker Compose | v2+ | Multi-container orchestration |
 | smartmontools | any | Required inside collector containers |
 | curl | any | API testing |
 
-> **Note**: The Go module requires `go 1.26.8` and the Dockerfiles use `golang:1.26-trixie`.
-> The frontend uses Angular 21 with TypeScript ~5.9.
+> **Note**: The Go module requires `go 1.27` and the Dockerfiles use `golang:1.27-trixie`.
+> The frontend uses Angular 22 with TypeScript ~6.0.
 
 ---
 
