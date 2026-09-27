@@ -20,9 +20,15 @@ If you are troubleshooting an Apprise target, use the Apprise documentation: htt
 
 # Quiet Hours
 
-Queued alerts are sent as a digest after quiet hours end. The background check runs at **Missed Ping Check Interval** (default: 5 minutes), even when missed-ping alerts are disabled. Failed or rate-limited digests stay queued for the next check. The queue is held in memory and is lost on server restart. Partial delivery failures can repeat a digest to targets that already succeeded.
+Queued alerts are sent as a digest after quiet hours end. The background check runs at **Missed Ping Check Interval** (default: 5 minutes), even when missed-ping alerts are disabled. Failed or rate-limited digests stay queued for the next check. Queued alerts are stored in the database, so they survive a server restart and, with several web replicas, a change of leader. Partial delivery failures can repeat a digest to targets that already succeeded.
 
 Quiet-hours digests combine alert categories and retain the legacy failure type `MissedPing` in scripts and webhooks, including digests containing temperature alerts. The subject and message identify the queued alerts.
+
+# Delivery
+
+The web server sends notifications itself, so a rate limit or a failed delivery is known immediately and callers that retry (such as temperature alerts) keep working.
+
+With several web replicas sharing a PostgreSQL database, only one replica, the leader, sends notifications. A replica that is not the leader stores the notification in the database, and the leader sends it within about 5 seconds, applying rate limits, quiet hours, and duplicate suppression once for all replicas. A notification that waits more than one hour for a leader is discarded, and the leader logs `Discarded N notification(s) that waited more than 1h0m0s for delivery`. See [POSTGRESQL.md](./POSTGRESQL.md#running-more-than-one-replica).
 
 # Drive Temperature Notifications
 
@@ -33,7 +39,7 @@ Enable this feature in **Display & Notifications**. The global defaults are 55°
 - After restarting the server, seeding uses up to 24 hours of raw history tagged with the exact device ID and requires **Store Temperature History** to be enabled and the current upload to appear in the query. History from another device sharing a WWN cannot seed an alert. Empty, stale, or failed queries fall back to timing from the current upload. Keep collector clocks synchronized with the server.
 - Missing readings do not prove continuous heat; elapsed time spans gaps between valid observations. Durations longer than 24 hours may need additional time after a restart. Notification state is held in memory, so an ongoing excursion can notify once again after each restart.
 - An upload while muted/disabled resets that device's timer. Changes to the threshold or duration reset it on the next evaluated upload. Resuming starts a fresh timer without reusing old history.
-- Quiet hours queue one alert for the digest described above. Rate-limited or failed direct dispatches retry on the next hot upload. As with other notifications, partial delivery failures can repeat a message to targets that already succeeded.
+- Quiet hours queue one alert for the digest described above. Rate-limited or failed direct dispatches retry on the next hot upload. With several web replicas, this retry applies to uploads received by the leader; an alert handed to the leader by another replica is not retried if the leader then drops it. As with other notifications, partial delivery failures can repeat a message to targets that already succeeded.
 - If no targets are configured, alerts remain eligible for retry so adding a target can deliver an ongoing excursion. The notification gate logs the missing-target warning once across devices and digest retries, until a delivery succeeds or the server restarts. Target settings are still checked on each retry.
 - **Repeat Notifications** does not apply to temperature alerts. A sustained hot excursion sends one alert; cooling below the threshold re-arms silently, without a recovery notification or hysteresis margin.
 - History seeding queries time out after 10 seconds. Debug logging explains when seeding is skipped because the upload timestamp is missing/ahead of the server or the current point is not yet visible in InfluxDB. The timer then starts with the current upload.

@@ -145,7 +145,7 @@ func TestOutbox_TrySendRecordsInsteadOfSending(t *testing.T) {
 	url, calls := countingEndpoint(t, http.StatusNoContent)
 	store := newFakeOutbox()
 	gate := NewNotificationGate(logrus.New())
-	gate.UseOutbox(store)
+	gate.UseOutbox(store, nil)
 
 	require.True(t, gate.TrySend(outboxNotify(cfg, url, "Drive failed"), &models.Settings{}, false))
 	require.Zero(t, calls.Load(), "the receiving replica must not send")
@@ -168,7 +168,7 @@ func TestOutbox_DrainDeliversOnce(t *testing.T) {
 	url, calls := countingEndpoint(t, http.StatusNoContent)
 	store := newFakeOutbox()
 	receiver := NewNotificationGate(logrus.New())
-	receiver.UseOutbox(store)
+	receiver.UseOutbox(store, nil)
 	require.True(t, receiver.TrySend(outboxNotify(cfg, url, "Drive failed"), &models.Settings{}, false))
 
 	// Two gates stand in for two replicas that both believe they lead during a lease handover.
@@ -178,7 +178,7 @@ func TestOutbox_DrainDeliversOnce(t *testing.T) {
 	store.listBarrier.Add(len(leaders))
 	var wg sync.WaitGroup
 	for _, leader := range leaders {
-		leader.UseOutbox(store)
+		leader.UseOutbox(store, nil)
 		wg.Add(1)
 		go func(g *NotificationGate) {
 			defer wg.Done()
@@ -196,19 +196,19 @@ func TestOutbox_QuietHoursDigestSurvivesLeaderChange(t *testing.T) {
 	url, calls := countingEndpoint(t, http.StatusNoContent)
 	store := newFakeOutbox()
 	receiver := NewNotificationGate(logrus.New())
-	receiver.UseOutbox(store)
+	receiver.UseOutbox(store, nil)
 	require.True(t, receiver.TrySend(outboxNotify(cfg, url, "Hot drive"), &models.Settings{}, false))
 	require.True(t, receiver.TrySend(outboxNotify(cfg, url, "Failed drive"), &models.Settings{}, false))
 
 	oldLeader := NewNotificationGate(logrus.New())
-	oldLeader.UseOutbox(store)
+	oldLeader.UseOutbox(store, nil)
 	require.NoError(t, oldLeader.DrainOutbox(context.Background(), cfg, activeQuietSettings()))
 	require.Zero(t, calls.Load())
 	require.Equal(t, map[string]int{models.NotificationQueued: 2}, store.states())
 
 	// A different replica takes over after quiet hours and still sends the digest.
 	newLeader := NewNotificationGate(logrus.New())
-	newLeader.UseOutbox(store)
+	newLeader.UseOutbox(store, nil)
 	require.Equal(t, 2, newLeader.QueueLength())
 	newLeader.FlushQuietQueue(outboxNotify(cfg, url, ""), &models.Settings{})
 	require.Equal(t, int32(1), calls.Load(), "one digest for both notifications")
@@ -220,7 +220,7 @@ func TestOutbox_FailedDigestStaysQueued(t *testing.T) {
 	url, calls := countingEndpoint(t, http.StatusInternalServerError)
 	store := newFakeOutbox()
 	gate := NewNotificationGate(logrus.New())
-	gate.UseOutbox(store)
+	gate.UseOutbox(store, nil)
 	require.True(t, gate.TrySend(outboxNotify(cfg, url, "Hot drive"), &models.Settings{}, false))
 	require.NoError(t, gate.DrainOutbox(context.Background(), cfg, activeQuietSettings()))
 
@@ -234,7 +234,7 @@ func TestOutbox_DiscardsStaleNotifications(t *testing.T) {
 	url, calls := countingEndpoint(t, http.StatusNoContent)
 	store := newFakeOutbox()
 	gate := NewNotificationGate(logrus.New())
-	gate.UseOutbox(store)
+	gate.UseOutbox(store, nil)
 	require.True(t, gate.TrySend(outboxNotify(cfg, url, "Old alert"), &models.Settings{}, false))
 	store.rows[1].CreatedAtUnixMs = time.Now().Add(-2 * OutboxMaxAge).UnixMilli()
 
@@ -250,12 +250,12 @@ func TestOutbox_CollectorErrorsDeduplicatedByLeader(t *testing.T) {
 	// Two receiving replicas record the same collector error.
 	for range 2 {
 		receiver := NewNotificationGate(logrus.New())
-		receiver.UseOutbox(store)
+		receiver.UseOutbox(store, nil)
 		require.True(t, receiver.TrySendCollectorError("device:abc", "smartctl", "exit 2", outboxNotify(cfg, url, "Collector error"), &models.Settings{}))
 	}
 
 	leader := NewNotificationGate(logrus.New())
-	leader.UseOutbox(store)
+	leader.UseOutbox(store, nil)
 	require.NoError(t, leader.DrainOutbox(context.Background(), cfg, &models.Settings{}))
 	require.Equal(t, int32(1), calls.Load())
 	require.Empty(t, store.states())
@@ -267,8 +267,82 @@ func TestOutbox_EnqueueFailureSendsDirectly(t *testing.T) {
 	store := newFakeOutbox()
 	store.enqueueErr = errors.New("database is locked")
 	gate := NewNotificationGate(logrus.New())
-	gate.UseOutbox(store)
+	gate.UseOutbox(store, nil)
 
 	require.True(t, gate.TrySend(outboxNotify(cfg, url, "Drive failed"), &models.Settings{}, false))
 	require.Equal(t, int32(1), calls.Load(), "a notification is not lost when the outbox is unavailable")
+}
+
+func leaderGate(store *fakeOutbox) *NotificationGate {
+	gate := NewNotificationGate(logrus.New())
+	gate.UseOutbox(store, func() bool { return true })
+	return gate
+}
+
+// The leader delivers directly and reports the real outcome, so a failed or rate-limited
+// notification is reported as not sent and the caller can retry.
+func TestOutbox_LeaderDeliversDirectlyAndReportsFailures(t *testing.T) {
+	cfg := outboxTestConfig(t)
+
+	okURL, okCalls := countingEndpoint(t, http.StatusNoContent)
+	store := newFakeOutbox()
+	gate := leaderGate(store)
+	require.True(t, gate.TrySend(outboxNotify(cfg, okURL, "Drive failed"), &models.Settings{}, false))
+	require.Equal(t, int32(1), okCalls.Load())
+	require.Empty(t, store.states(), "the leader does not route its own notifications through the table")
+
+	badURL, _ := countingEndpoint(t, http.StatusInternalServerError)
+	require.False(t, gate.TrySend(outboxNotify(cfg, badURL, "Drive failed"), &models.Settings{}, false), "a failed send is reported")
+
+	limited := &models.Settings{}
+	limited.Metrics.NotificationRateLimit = 1
+	require.False(t, gate.TrySend(outboxNotify(cfg, okURL, "Drive failed"), limited, false), "a rate-limited send is reported")
+	require.Equal(t, int32(1), okCalls.Load())
+}
+
+// During quiet hours the leader stores the notification as a queued row, so the digest, which
+// reads the table, still includes it after a restart or a leader change.
+func TestOutbox_LeaderQuietHoursQueuesInTable(t *testing.T) {
+	cfg := outboxTestConfig(t)
+	url, calls := countingEndpoint(t, http.StatusNoContent)
+	store := newFakeOutbox()
+	gate := leaderGate(store)
+
+	require.True(t, gate.TrySend(outboxNotify(cfg, url, "Hot drive"), activeQuietSettings(), false))
+	require.Zero(t, calls.Load())
+	require.Equal(t, map[string]int{models.NotificationQueued: 1}, store.states())
+	select {
+	case <-gate.Wake():
+		t.Fatal("a queued row waits for the digest, not the drain")
+	default:
+	}
+
+	gate.FlushQuietQueue(outboxNotify(cfg, url, ""), &models.Settings{})
+	require.Equal(t, int32(1), calls.Load())
+	require.Empty(t, store.states())
+}
+
+// A temperature alert whose delivery fails is retried on the next hot upload. On the leader
+// that holds with an outbox, because TrySend reports the failed delivery.
+func TestOutbox_LeaderTemperatureAlertRetriesAfterFailure(t *testing.T) {
+	cfg := outboxTestConfig(t)
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if calls.Add(1) == 1 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(server.Close)
+	gate := leaderGate(newFakeOutbox())
+
+	send := func(time.Time) bool {
+		return gate.TrySend(outboxNotify(cfg, server.URL, "Hot drive"), &models.Settings{}, false)
+	}
+	now := time.Now()
+	gate.Temperature().Evaluate("dev", 60, 55, 0, now, nil, send)
+	gate.Temperature().Evaluate("dev", 60, 55, 0, now.Add(time.Minute), nil, send)
+	gate.Temperature().Evaluate("dev", 60, 55, 0, now.Add(2*time.Minute), nil, send)
+	require.Equal(t, int32(2), calls.Load(), "the failed first alert is retried once, then the excursion is notified")
 }

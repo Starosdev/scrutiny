@@ -50,9 +50,11 @@ const (
 // directly calling Notify.Send().
 type NotificationGate struct {
 	logger logrus.FieldLogger
-	// outbox, when set, makes TrySend record notifications for the leader replica instead of
-	// sending them. wake signals the local outbox worker that a row was added.
+	// outbox, when set, makes TrySend on a replica that does not lead record notifications for
+	// the leader instead of sending them. isLeader reports whether this process leads. wake
+	// signals the local outbox worker that a row was added.
 	outbox            OutboxStore
+	isLeader          func() bool
 	collectorError    map[string]time.Time // dedupe map for collector-side errors
 	temperature       *TemperatureTracker
 	wake              chan struct{}
@@ -81,11 +83,19 @@ func NewNotificationGate(logger logrus.FieldLogger) *NotificationGate {
 	}
 }
 
-// UseOutbox routes TrySend and TrySendCollectorError through the outbox, so the leader replica
-// applies rate limits, quiet hours, and duplicate suppression once for the whole deployment.
-// Call it before the gate is shared.
-func (g *NotificationGate) UseOutbox(store OutboxStore) {
+// UseOutbox routes TrySend and TrySendCollectorError through the outbox while this replica does
+// not lead, so the leader applies rate limits, quiet hours, and duplicate suppression once for
+// the whole deployment. While isLeader reports true, the gate delivers directly and returns the
+// real outcome, so callers that retry on failure (temperature alerts) keep working. A nil
+// isLeader means the process never leads. Call it before the gate is shared.
+func (g *NotificationGate) UseOutbox(store OutboxStore, isLeader func() bool) {
 	g.outbox = store
+	g.isLeader = isLeader
+}
+
+// routesToOutbox reports whether a new notification should be recorded for the leader.
+func (g *NotificationGate) routesToOutbox() bool {
+	return g.outbox != nil && (g.isLeader == nil || !g.isLeader())
 }
 
 // Wake receives a value whenever this process adds a row to the outbox.
@@ -101,21 +111,22 @@ func (g *NotificationGate) Temperature() *TemperatureTracker { return g.temperat
 // If bypassQuietHours is true, quiet hours are ignored (used for heartbeats).
 // Returns true if sent or queued, false if dropped.
 //
-// With an outbox, the notification is recorded for the leader replica and TrySend returns true
-// once it is stored; the leader applies the checks above when it delivers.
+// On a replica that does not lead, the notification is recorded for the leader and TrySend
+// returns true once it is stored; the leader applies the checks above when it delivers, and a
+// later drop there is not reported back.
 func (g *NotificationGate) TrySend(n *Notify, settings *models.Settings, bypassQuietHours bool) bool {
-	if g.outbox != nil && g.enqueue(n, bypassQuietHours, "") {
+	if g.routesToOutbox() && g.enqueue(n, bypassQuietHours, "", models.NotificationPending) {
 		return true
 	}
-	return g.settle(n, g.deliver(n, settings, bypassQuietHours))
+	return g.settle(n, g.deliver(n, settings, bypassQuietHours), bypassQuietHours, "")
 }
 
 func (g *NotificationGate) TrySendCollectorError(identity, errorType, errorMessage string, n *Notify, settings *models.Settings) bool {
 	key := collectorErrorKey(identity, errorType, errorMessage)
-	if g.outbox != nil && g.enqueue(n, false, key) {
+	if g.routesToOutbox() && g.enqueue(n, false, key, models.NotificationPending) {
 		return true
 	}
-	return g.settle(n, g.deliverCollectorError(key, n, settings))
+	return g.settle(n, g.deliverCollectorError(key, n, settings), false, key)
 }
 
 // deliver applies quiet hours and the rate limit, then sends. It never queues; the caller
@@ -164,8 +175,14 @@ func (g *NotificationGate) deliverCollectorError(key string, n *Notify, settings
 	return outcome
 }
 
-// settle holds a quiet-hours notification in memory and reports whether it was sent or queued.
-func (g *NotificationGate) settle(n *Notify, outcome deliveryOutcome) bool {
+// settle holds a quiet-hours notification for the digest and reports whether it was sent or
+// queued. With an outbox the notification is stored as a queued row, which survives a restart
+// and a leader change; otherwise, or if storing fails, it waits in memory.
+func (g *NotificationGate) settle(n *Notify, outcome deliveryOutcome, bypassQuietHours bool, dedupeKey string) bool {
+	if outcome == outcomeQueued && g.outbox != nil && g.enqueue(n, bypassQuietHours, dedupeKey, models.NotificationQueued) {
+		g.logger.Infof("Notification queued during quiet hours: %s", n.Payload.Subject)
+		return true
+	}
 	if outcome == outcomeQueued {
 		g.mu.Lock()
 		g.quietQueue = append(g.quietQueue, QueuedNotification{
@@ -179,9 +196,9 @@ func (g *NotificationGate) settle(n *Notify, outcome deliveryOutcome) bool {
 	return outcome != outcomeDropped
 }
 
-// enqueue records n in the outbox. It returns false when the row cannot be stored, and the
-// caller then delivers directly rather than losing the notification.
-func (g *NotificationGate) enqueue(n *Notify, bypassQuietHours bool, dedupeKey string) bool {
+// enqueue records n in the outbox in the given state. It returns false when the row cannot be
+// stored, and the caller then falls back rather than losing the notification.
+func (g *NotificationGate) enqueue(n *Notify, bypassQuietHours bool, dedupeKey string, state string) bool {
 	body, err := json.Marshal(outboxBody{
 		Payload:      n.Payload,
 		HTMLMessage:  n.Payload.HTMLMessage,
@@ -192,19 +209,21 @@ func (g *NotificationGate) enqueue(n *Notify, bypassQuietHours bool, dedupeKey s
 		defer cancel()
 		err = g.outbox.EnqueueNotification(ctx, &models.NotificationOutbox{
 			CreatedAtUnixMs:  time.Now().UnixMilli(),
-			State:            models.NotificationPending,
+			State:            state,
 			Body:             string(body),
 			BypassQuietHours: bypassQuietHours,
 			DedupeKey:        dedupeKey,
 		})
 	}
 	if err != nil {
-		g.logger.Warnf("Failed to store notification %q in the outbox, sending directly: %v", n.Payload.Subject, err)
+		g.logger.Warnf("Failed to store notification %q in the outbox: %v", n.Payload.Subject, err)
 		return false
 	}
-	select {
-	case g.wake <- struct{}{}:
-	default:
+	if state == models.NotificationPending {
+		select {
+		case g.wake <- struct{}{}:
+		default:
+		}
 	}
 	return true
 }
@@ -307,7 +326,7 @@ func (g *NotificationGate) FlushQuietQueue(n *Notify, settings *models.Settings)
 	}
 	if g.outbox != nil {
 		g.flushOutboxQueue(n, settings)
-		return
+		// Anything that could not be stored as a queued row waits in memory; flush it too.
 	}
 
 	g.mu.Lock()

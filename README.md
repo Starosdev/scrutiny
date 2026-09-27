@@ -807,6 +807,10 @@ Dots and dashes in key names become underscores.
 | `web.listen.idle_timeout_seconds` | `SCRUTINY_WEB_LISTEN_IDLE_TIMEOUT_SECONDS` | `60` |
 | `web.database.location` | `SCRUTINY_WEB_DATABASE_LOCATION` | `/opt/scrutiny/config/scrutiny.db` |
 | `web.database.journal_mode` | `SCRUTINY_WEB_DATABASE_JOURNAL_MODE` | `WAL` |
+| `web.database.type` | `SCRUTINY_WEB_DATABASE_TYPE` | `sqlite` (or `postgres`, see [PostgreSQL](docs/POSTGRESQL.md)) |
+| `web.database.dsn` | `SCRUTINY_WEB_DATABASE_DSN` | `` (required for `postgres`) |
+| `web.database.max_open_conns` | `SCRUTINY_WEB_DATABASE_MAX_OPEN_CONNS` | `10` (PostgreSQL only) |
+| `web.database.max_idle_conns` | `SCRUTINY_WEB_DATABASE_MAX_IDLE_CONNS` | `5` (PostgreSQL only) |
 | `web.src.frontend.path` | `SCRUTINY_WEB_SRC_FRONTEND_PATH` | `/opt/scrutiny/web` |
 | `web.zfs.allow_pool_modifications` | `SCRUTINY_WEB_ZFS_ALLOW_POOL_MODIFICATIONS` | `true` |
 | `web.influxdb.scheme` | `SCRUTINY_WEB_INFLUXDB_SCHEME` | `http` |
