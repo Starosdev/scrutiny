@@ -128,3 +128,8 @@ CLAUDE.md
 docs/agents/invariants.md
 docs/agents/danger-zones.md
 docs/agents/review-checklist.md
+
+# Local agent session markers, written by worktree tooling. Never commit.
+.codex-session-active
+.codex-session-linear
+.agent-session
