@@ -1741,6 +1741,7 @@ components:
           type: string
         checks:
           type: object
+          description: One entry per check. Keys are `influxdb`, `frontend`, and the relational database in use, `sqlite` or `postgres`.
           additionalProperties:
             $ref: "#/components/schemas/HealthCheckStatus"
       required: [success, status, checks]

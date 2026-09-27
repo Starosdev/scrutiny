@@ -55,6 +55,21 @@ func (mr *MockDeviceRepoMockRecorder) Close() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockDeviceRepo)(nil).Close))
 }
 
+// CompareAndSetSettingValue mocks base method.
+func (m *MockDeviceRepo) CompareAndSetSettingValue(ctx context.Context, key, expected, value string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CompareAndSetSettingValue", ctx, key, expected, value)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CompareAndSetSettingValue indicates an expected call of CompareAndSetSettingValue.
+func (mr *MockDeviceRepoMockRecorder) CompareAndSetSettingValue(ctx, key, expected, value interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompareAndSetSettingValue", reflect.TypeOf((*MockDeviceRepo)(nil).CompareAndSetSettingValue), ctx, key, expected, value)
+}
+
 // DeleteAttributeOverride mocks base method.
 func (m *MockDeviceRepo) DeleteAttributeOverride(ctx context.Context, id uint) error {
 	m.ctrl.T.Helper()
@@ -111,6 +126,20 @@ func (mr *MockDeviceRepoMockRecorder) DeleteMdadmArray(ctx, uuid interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMdadmArray", reflect.TypeOf((*MockDeviceRepo)(nil).DeleteMdadmArray), ctx, uuid)
 }
 
+// DeleteNotifications mocks base method.
+func (m *MockDeviceRepo) DeleteNotifications(ctx context.Context, ids []uint) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteNotifications", ctx, ids)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteNotifications indicates an expected call of DeleteNotifications.
+func (mr *MockDeviceRepoMockRecorder) DeleteNotifications(ctx, ids interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNotifications", reflect.TypeOf((*MockDeviceRepo)(nil).DeleteNotifications), ctx, ids)
+}
+
 // DeleteNotifyUrl mocks base method.
 func (m *MockDeviceRepo) DeleteNotifyUrl(ctx context.Context, id uint) error {
 	m.ctrl.T.Helper()
@@ -125,6 +154,21 @@ func (mr *MockDeviceRepoMockRecorder) DeleteNotifyUrl(ctx, id interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNotifyUrl", reflect.TypeOf((*MockDeviceRepo)(nil).DeleteNotifyUrl), ctx, id)
 }
 
+// DeleteStaleNotifications mocks base method.
+func (m *MockDeviceRepo) DeleteStaleNotifications(ctx context.Context, states []string, createdBeforeUnixMs int64) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteStaleNotifications", ctx, states, createdBeforeUnixMs)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteStaleNotifications indicates an expected call of DeleteStaleNotifications.
+func (mr *MockDeviceRepoMockRecorder) DeleteStaleNotifications(ctx, states, createdBeforeUnixMs interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteStaleNotifications", reflect.TypeOf((*MockDeviceRepo)(nil).DeleteStaleNotifications), ctx, states, createdBeforeUnixMs)
+}
+
 // DeleteZFSPool mocks base method.
 func (m *MockDeviceRepo) DeleteZFSPool(ctx context.Context, guid string) error {
 	m.ctrl.T.Helper()
@@ -137,6 +181,20 @@ func (m *MockDeviceRepo) DeleteZFSPool(ctx context.Context, guid string) error {
 func (mr *MockDeviceRepoMockRecorder) DeleteZFSPool(ctx, guid interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteZFSPool", reflect.TypeOf((*MockDeviceRepo)(nil).DeleteZFSPool), ctx, guid)
+}
+
+// EnqueueNotification mocks base method.
+func (m *MockDeviceRepo) EnqueueNotification(ctx context.Context, row *models.NotificationOutbox) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnqueueNotification", ctx, row)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EnqueueNotification indicates an expected call of EnqueueNotification.
+func (mr *MockDeviceRepoMockRecorder) EnqueueNotification(ctx, row interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueNotification", reflect.TypeOf((*MockDeviceRepo)(nil).EnqueueNotification), ctx, row)
 }
 
 // GetAllOverridesForDisplay mocks base method.
@@ -769,6 +827,21 @@ func (mr *MockDeviceRepoMockRecorder) HealthCheck(ctx interface{}) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HealthCheck", reflect.TypeOf((*MockDeviceRepo)(nil).HealthCheck), ctx)
 }
 
+// ListNotifications mocks base method.
+func (m *MockDeviceRepo) ListNotifications(ctx context.Context, state string, limit int) ([]models.NotificationOutbox, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListNotifications", ctx, state, limit)
+	ret0, _ := ret[0].([]models.NotificationOutbox)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListNotifications indicates an expected call of ListNotifications.
+func (mr *MockDeviceRepoMockRecorder) ListNotifications(ctx, state, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListNotifications", reflect.TypeOf((*MockDeviceRepo)(nil).ListNotifications), ctx, state, limit)
+}
+
 // LoadSettings mocks base method.
 func (m *MockDeviceRepo) LoadSettings(ctx context.Context) (*models.Settings, error) {
 	m.ctrl.T.Helper()
@@ -895,6 +968,20 @@ func (m *MockDeviceRepo) RegisterZFSPoolInventory(ctx context.Context, hostID st
 func (mr *MockDeviceRepoMockRecorder) RegisterZFSPoolInventory(ctx, hostID, pools interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterZFSPoolInventory", reflect.TypeOf((*MockDeviceRepo)(nil).RegisterZFSPoolInventory), ctx, hostID, pools)
+}
+
+// ReleaseLease mocks base method.
+func (m *MockDeviceRepo) ReleaseLease(ctx context.Context, name, holder string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReleaseLease", ctx, name, holder)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReleaseLease indicates an expected call of ReleaseLease.
+func (mr *MockDeviceRepoMockRecorder) ReleaseLease(ctx, name, holder interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseLease", reflect.TypeOf((*MockDeviceRepo)(nil).ReleaseLease), ctx, name, holder)
 }
 
 // ResetDeviceStatus mocks base method.
@@ -1065,6 +1152,36 @@ func (m *MockDeviceRepo) SetSettingValue(ctx context.Context, key, value string)
 func (mr *MockDeviceRepoMockRecorder) SetSettingValue(ctx, key, value interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSettingValue", reflect.TypeOf((*MockDeviceRepo)(nil).SetSettingValue), ctx, key, value)
+}
+
+// TransitionNotification mocks base method.
+func (m *MockDeviceRepo) TransitionNotification(ctx context.Context, id uint, from, to string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TransitionNotification", ctx, id, from, to)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TransitionNotification indicates an expected call of TransitionNotification.
+func (mr *MockDeviceRepoMockRecorder) TransitionNotification(ctx, id, from, to interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransitionNotification", reflect.TypeOf((*MockDeviceRepo)(nil).TransitionNotification), ctx, id, from, to)
+}
+
+// TryAcquireLease mocks base method.
+func (m *MockDeviceRepo) TryAcquireLease(ctx context.Context, name, holder string, ttl time.Duration) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TryAcquireLease", ctx, name, holder, ttl)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TryAcquireLease indicates an expected call of TryAcquireLease.
+func (mr *MockDeviceRepoMockRecorder) TryAcquireLease(ctx, name, holder, ttl interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryAcquireLease", reflect.TypeOf((*MockDeviceRepo)(nil).TryAcquireLease), ctx, name, holder, ttl)
 }
 
 // UpdateBtrfsFilesystemArchived mocks base method.

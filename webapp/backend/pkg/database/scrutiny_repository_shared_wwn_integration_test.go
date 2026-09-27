@@ -172,6 +172,7 @@ func newSharedWWNIntegrationRepository(t *testing.T, influxHost string) *scrutin
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
 	fakeConfig.EXPECT().GetString("web.database.location").Return(filepath.Join(t.TempDir(), "scrutiny_test.db")).AnyTimes()
 	fakeConfig.EXPECT().GetString("web.database.journal_mode").Return("WAL").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.database.type").Return("sqlite").AnyTimes()
 	fakeConfig.EXPECT().GetString("log.level").Return("INFO").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.influxdb.scheme").Return("http").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.influxdb.host").Return(influxHost).AnyTimes()

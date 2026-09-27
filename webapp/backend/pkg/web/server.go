@@ -16,6 +16,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/errors"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/leader"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/metrics"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/mqtt"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/notify"
@@ -44,6 +45,19 @@ type AppEngine struct {
 	HeartbeatMonitor  *HeartbeatMonitor
 	UptimeKumaMonitor *UptimeKumaMonitor
 	ReportScheduler   *reports.Scheduler
+
+	// Leader elects the one replica that runs the monitors and the report scheduler (#880).
+	// Nil means this process always runs them.
+	Leader     *leader.Elector
+	leaderRepo database.DeviceRepo
+
+	// OutboxWorker delivers notifications recorded by any replica, on the leader only.
+	OutboxWorker *NotificationOutboxWorker
+}
+
+// isLeader reports whether this replica should run background jobs.
+func (ae *AppEngine) isLeader() bool {
+	return ae.Leader == nil || ae.Leader.Held()
 }
 
 func registerZFSPoolRoutes(zfs *gin.RouterGroup, allowPoolModifications bool) {
@@ -351,8 +365,8 @@ func (ae *AppEngine) Start() error {
 		gin.SetMode(gin.DebugMode)
 	}
 
-	//check if the database parent directory exists, fail here rather than in a handler.
-	if !utils.FileExists(filepath.Dir(ae.Config.GetString("web.database.location"))) {
+	// check if the SQLite database parent directory exists, fail here rather than in a handler.
+	if ae.Config.GetString("web.database.type") != "postgres" && !utils.FileExists(filepath.Dir(ae.Config.GetString("web.database.location"))) {
 		return errors.ConfigValidationError(fmt.Sprintf(
 			"Database parent directory does not exist. Please check path (%s)",
 			filepath.Dir(ae.Config.GetString("web.database.location"))))
@@ -362,8 +376,20 @@ func (ae *AppEngine) Start() error {
 		return err
 	}
 
+	// Elect the replica that runs background jobs before any of them start ticking.
+	leaderRepo, err := database.NewScrutinyRepositoryWithoutMigration(ae.Config, ae.Logger)
+	if err != nil {
+		return err
+	}
+	ae.leaderRepo = leaderRepo
+	ae.Leader = leader.New(leaderRepo, ae.Logger, leader.SchedulerLeaseName, leader.DefaultTTL)
+	ae.Leader.Start()
+
 	// Create notification gate and monitors BEFORE Setup() so middleware can register them in gin context
 	ae.NotificationGate = notify.NewNotificationGate(ae.Logger)
+	ae.NotificationGate.UseOutbox(leaderRepo, ae.isLeader)
+	ae.OutboxWorker = NewNotificationOutboxWorker(ae, leaderRepo)
+	ae.OutboxWorker.Start()
 
 	missedPingMonitor := NewMissedPingMonitor(ae)
 	ae.MissedPingMonitor = missedPingMonitor
@@ -371,6 +397,7 @@ func (ae *AppEngine) Start() error {
 	reportScheduler := reports.NewScheduler(ae.Config, ae.Logger, func() (database.DeviceRepo, error) {
 		return database.NewScrutinyRepositoryWithoutMigration(ae.Config, ae.Logger)
 	})
+	reportScheduler.SetLeaderCheck(ae.isLeader)
 	ae.ReportScheduler = reportScheduler
 
 	r := ae.Setup(ae.Logger)
@@ -493,5 +520,15 @@ func (ae *AppEngine) stopBackgroundMonitors() {
 	}
 	if ae.ReportScheduler != nil {
 		ae.ReportScheduler.Stop()
+	}
+	if ae.OutboxWorker != nil {
+		ae.OutboxWorker.Stop()
+	}
+	// Release the lease only after every job has stopped, so no two replicas run jobs at once.
+	if ae.Leader != nil {
+		ae.Leader.Stop()
+	}
+	if ae.leaderRepo != nil {
+		_ = ae.leaderRepo.Close()
 	}
 }

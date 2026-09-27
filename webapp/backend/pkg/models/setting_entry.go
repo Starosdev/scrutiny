@@ -7,7 +7,7 @@ import (
 // SettingEntry matches a setting row in the database
 type SettingEntry struct {
 	gorm.Model
-	SettingKeyName        string `json:"setting_key_name" gorm:"unique;not null"`
+	SettingKeyName        string `json:"setting_key_name" gorm:"uniqueIndex:idx_settings_setting_key_name;not null"`
 	SettingKeyDescription string `json:"setting_key_description"`
 	SettingDataType       string `json:"setting_data_type"`
 	SettingValueString    string `json:"setting_value_string"`

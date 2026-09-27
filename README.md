@@ -224,6 +224,10 @@ explicitly points you at the live Zeus appdata compose files.
 
 For a component-level overview of how Omnibus and Hub/Spoke fit together, see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
+Scrutiny stores its relational data in SQLite by default. To use PostgreSQL instead, for example to run several web instances, see [docs/POSTGRESQL.md](./docs/POSTGRESQL.md).
+
+> **Upgrading an existing installation to the release that adds PostgreSQL support:** Back up `scrutiny.db` before starting the new version. SQLite stays the default and needs no configuration change, but the first start runs a one-time migration that makes each setting key unique and deletes duplicate settings rows, keeping the most recent value of each key. Also check the **Send heartbeat pings to this URL** toggle on each notification URL: earlier versions saved URLs added with the toggle off as on, so those URLs may receive heartbeat pings you did not choose ([#888](https://github.com/Starosdev/scrutiny/issues/888)).
+
 > See [docker/example.omnibus.docker-compose.yml](docker/example.omnibus.docker-compose.yml) for a docker-compose file.
 
 > **Existing Omnibus installations upgrading to InfluxDB 2.9.1:** Stop Scrutiny and back up the complete host directory mounted at `/opt/scrutiny/influxdb` before starting the new image. Then set `SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED=true`. The container blocks InfluxDB startup until this acknowledgement is provided. Fresh installations do not require it. See [Omnibus InfluxDB 2.9 upgrade preflight](docs/DEPLOYMENTS.md#omnibus-influxdb-29-upgrade-preflight).
@@ -805,6 +809,10 @@ Dots and dashes in key names become underscores.
 | `web.listen.idle_timeout_seconds` | `SCRUTINY_WEB_LISTEN_IDLE_TIMEOUT_SECONDS` | `60` |
 | `web.database.location` | `SCRUTINY_WEB_DATABASE_LOCATION` | `/opt/scrutiny/config/scrutiny.db` |
 | `web.database.journal_mode` | `SCRUTINY_WEB_DATABASE_JOURNAL_MODE` | `WAL` |
+| `web.database.type` | `SCRUTINY_WEB_DATABASE_TYPE` | `sqlite` (or `postgres`, see [PostgreSQL](docs/POSTGRESQL.md)) |
+| `web.database.dsn` | `SCRUTINY_WEB_DATABASE_DSN` | `` (required for `postgres`) |
+| `web.database.max_open_conns` | `SCRUTINY_WEB_DATABASE_MAX_OPEN_CONNS` | `10` (PostgreSQL only) |
+| `web.database.max_idle_conns` | `SCRUTINY_WEB_DATABASE_MAX_IDLE_CONNS` | `5` (PostgreSQL only) |
 | `web.src.frontend.path` | `SCRUTINY_WEB_SRC_FRONTEND_PATH` | `/opt/scrutiny/web` |
 | `web.zfs.allow_pool_modifications` | `SCRUTINY_WEB_ZFS_ALLOW_POOL_MODIFICATIONS` | `true` |
 | `web.influxdb.scheme` | `SCRUTINY_WEB_INFLUXDB_SCHEME` | `http` |

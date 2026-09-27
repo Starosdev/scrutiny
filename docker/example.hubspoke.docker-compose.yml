@@ -26,6 +26,9 @@ services:
       - './config:/opt/scrutiny/config'
     environment:
       SCRUTINY_WEB_INFLUXDB_HOST: 'influxdb'
+      # Optional PostgreSQL backend instead of SQLite (see docs/POSTGRESQL.md)
+      # SCRUTINY_WEB_DATABASE_TYPE: 'postgres'
+      # SCRUTINY_WEB_DATABASE_DSN: 'postgres://scrutiny:change-me@postgres:5432/scrutiny?sslmode=disable'
       # Monitoring-only ZFS UI/API. Blocks archive, mute, label, and delete actions.
       # SCRUTINY_WEB_ZFS_ALLOW_POOL_MODIFICATIONS: 'false'
       # Authentication (disabled by default, see docs/AUTH.md)
