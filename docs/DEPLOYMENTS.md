@@ -178,7 +178,9 @@ For Unraid, stop the container and back up the complete Database path shown in t
 
 Fresh installations start without acknowledgement because no existing InfluxDB data is present. After a fresh start or confirmed upgrade, Scrutiny writes a persistent preflight marker in the InfluxDB data directory, so later restarts do not require the variable.
 
-If startup is blocked, the container log identifies the mounted data path and the exact acknowledgement variable. Do not set the variable until the backup is complete.
+Data that InfluxDB 2.9 has already upgraded also needs no acknowledgement. InfluxDB writes `influxd.bolt.pre-v2.9.1-upgrade.backup` next to the data before it migrates an existing store, and the preflight treats that file as a completed upgrade. Releases up to v1.76.0 logged the blocked message but started InfluxDB anyway, so most installations that upgraded then have this file and no marker.
+
+If startup is blocked, the container log identifies the mounted data path and the exact acknowledgement variable, InfluxDB stays stopped, and the web service waits for it. Do not set the variable until the backup is complete, then restart the container.
 
 ## Zeus MDADM Testing Notes
 
