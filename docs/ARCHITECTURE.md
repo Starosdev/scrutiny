@@ -44,7 +44,7 @@ flowchart LR
     subgraph Hub["Hub services"]
         Web["Web/API server (`latest-web`)"]
         Influx["InfluxDB"]
-        SQLite["SQLite"]
+        SQLite["SQLite or PostgreSQL"]
     end
 
     CollectorA -->|"uploads SMART metrics over network"| Web
@@ -59,7 +59,7 @@ flowchart LR
 - The collector-omnibus spoke image bundles the non-web collector binaries and host tools, but still uses the same per-collector env vars and schedules to decide which optional collectors run.
 - The hub's web/API service aggregates data from all spokes and serves the frontend.
 - InfluxDB remains the time-series store for SMART history.
-- SQLite remains the metadata store for device records, settings, and other app state managed by the web/API layer.
+- SQLite remains the default metadata store for device records, settings, and other app state managed by the web/API layer. A hub can use PostgreSQL instead, which also allows several web/API replicas; see [POSTGRESQL.md](./POSTGRESQL.md).
 - That metadata includes drive identity fields used by ATA consumer-drive profile matching and the global opt-out setting for those overrides.
 - The same frontend config rule applies here: client code should render against bundled defaults first, then merge hub-provided settings when the API response arrives.
 

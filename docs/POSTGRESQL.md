@@ -122,13 +122,13 @@ InfluxDB is not copied. Point the PostgreSQL install at the same InfluxDB.
 With PostgreSQL, several Scrutiny web instances can serve the same data behind a load balancer. All replicas accept collector uploads and API requests. They share the work like this:
 
 - **Background jobs run on one replica.** One replica holds a leader lease in the database and is the only one that runs the missed-ping, heartbeat, and Uptime Kuma monitors and the report scheduler. If that replica stops, another one takes over within about 30 seconds.
-- **Notifications are sent by the leader.** A replica that receives an upload records the notification in the database. The leader sends it, so rate limits, quiet hours, and duplicate suppression apply once for all replicas. Notifications that wait more than one hour for a leader are discarded, and the discard is logged.
+- **Notifications are sent by the leader.** The leader sends the notifications it triggers itself. Another replica records its notifications in the database, and the leader sends them within about 5 seconds, so rate limits, quiet hours, and duplicate suppression apply once for all replicas. Notifications that wait more than one hour for a leader are discarded, and the discard is logged.
 - **Each scheduled report is sent once**, even during a leader change.
 
 Known limits:
 
 - **InfluxDB is still a single instance.** Scrutiny does not replicate it. If it is down, uploads and charts fail on every replica.
-- **Temperature alerts are decided on the replica that receives the upload.** The "hot for N minutes" timer lives in that replica's memory. If uploads from one device go to different replicas, the alert can be late. If the leader later drops that alert (for example, for the rate limit), it is not retried.
+- **Temperature alerts are decided on the replica that receives the upload.** The "hot for N minutes" timer lives in that replica's memory. If uploads from one device go to different replicas, the alert can be late. If an alert recorded by another replica is later dropped by the leader (for example, for the rate limit), it is not retried.
 - **Prometheus metrics are per replica.** Each replica reports the uploads it received. Scrape every replica, or route collectors to one.
 - **MQTT is published by every replica** that receives an upload. The messages carry the same state, so Home Assistant sees no difference.
 - **Replica clocks must agree** to well under 30 seconds. The leader lease uses each replica's own clock. Run NTP.
