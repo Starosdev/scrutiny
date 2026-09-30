@@ -176,14 +176,13 @@ func (d *Detect) inspectFilesystem(mount mountedFilesystem) (Filesystem, error) 
 
 	reconcileMountedSingleDevice(&fs, mount.source)
 
-	// Older btrfs-progs (e.g. Synology DSM) omit the "Free (statfs, df)" line. Fall back to statfs(2)
-	// so consumers can compute usage the same way df does.
-	if fs.FreeStatfs == 0 {
-		if stat, statErr := d.Statfs(mount.mountPoint); statErr != nil {
-			d.Logger.Warnf("statfs failed for %s: %v", mount.mountPoint, statErr)
-		} else {
-			fs.FreeStatfs = stat.Available
-		}
+	// statfs(2) gives df's used and available figures. Both count one copy of the data, so usage
+	// computed from them is right for every profile, unlike btrfs-progs' raw Used.
+	if stat, statErr := d.Statfs(mount.mountPoint); statErr != nil {
+		d.Logger.Warnf("statfs failed for %s: %v", mount.mountPoint, statErr)
+	} else {
+		fs.StatfsUsed = stat.Used
+		fs.StatfsAvailable = stat.Available
 	}
 
 	deviceStatsOutput, err := d.RunCommand("btrfs", "device", "stats", mount.mountPoint)

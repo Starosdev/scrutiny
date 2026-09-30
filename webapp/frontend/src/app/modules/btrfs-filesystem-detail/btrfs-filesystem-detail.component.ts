@@ -6,7 +6,7 @@ import { AppConfig } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { Router } from '@angular/router';
 import { apexShortDateTime } from 'app/shared/time-format.utils';
-import { BtrfsFilesystemModel, BtrfsDeviceModel, btrfsLogicalUsed, btrfsUsagePercent } from 'app/core/models/btrfs-filesystem-model';
+import { BtrfsFilesystemModel, BtrfsDeviceModel, btrfsCapacity, btrfsUsagePercent } from 'app/core/models/btrfs-filesystem-model';
 import { BtrfsMetricsHistoryModel } from 'app/core/models/btrfs-filesystem-summary-model';
 import { BtrfsFilesystemDetailService } from 'app/modules/btrfs-filesystem-detail/btrfs-filesystem-detail.service';
 import { MatIconButton, MatButton } from '@angular/material/button';
@@ -62,7 +62,7 @@ export class BtrfsFilesystemDetailComponent implements OnInit, OnDestroy {
         }
         const usageData = this.metricsHistory.map((m) => ({
             x: new Date(m.date),
-            y: btrfsUsagePercent(m.logical_used ?? 0, m.free_statfs, m.used, m.device_size),
+            y: btrfsUsagePercent(m),
         }));
         this.usageOptions = {
             chart: {
@@ -84,13 +84,13 @@ export class BtrfsFilesystemDetailComponent implements OnInit, OnDestroy {
         };
     }
 
-    // Match the usage percentage: one copy's worth of bytes against df-style capacity when known.
+    // Same figures the usage percentage is computed from.
     getUsedBytes(): number {
-        return this.filesystem.free_statfs > 0 ? btrfsLogicalUsed(this.filesystem) : this.filesystem.used;
+        return btrfsCapacity(this.filesystem).used;
     }
 
     getTotalBytes(): number {
-        return this.filesystem.free_statfs > 0 ? btrfsLogicalUsed(this.filesystem) + this.filesystem.free_statfs : this.filesystem.device_size;
+        return btrfsCapacity(this.filesystem).total;
     }
 
     getFilesystemTitle(): string {

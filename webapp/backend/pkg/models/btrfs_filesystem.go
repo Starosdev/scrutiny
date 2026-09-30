@@ -50,6 +50,8 @@ type BtrfsFilesystem struct {
 	FreeEstimated      int64                 `json:"free_estimated"`
 	FreeMin            int64                 `json:"free_min"`
 	FreeStatfs         int64                 `json:"free_statfs"`
+	StatfsUsed         int64                 `json:"statfs_used"`
+	StatfsAvailable    int64                 `json:"statfs_available"`
 	DataRatio          float64               `json:"data_ratio"`
 	MetadataRatio      float64               `json:"metadata_ratio"`
 	DataTotal          int64                 `json:"data_total"`

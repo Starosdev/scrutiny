@@ -561,7 +561,7 @@ func joinArgs(args []string) string {
 	return strings.Join(args, " ")
 }
 
-func TestDetectFallsBackToStatfsWhenUsageOmitsFreeStatfs(t *testing.T) {
+func TestDetectRecordsStatfsCapacity(t *testing.T) {
 	commandOutputs := map[string][]byte{
 		"btrfs filesystem show --raw /volume1": []byte(`Label: 'vol'  uuid: 11111111-2222-3333-4444-555555555555
 	Total devices 1 FS bytes used 100
@@ -602,13 +602,15 @@ func TestDetectFallsBackToStatfsWhenUsageOmitsFreeStatfs(t *testing.T) {
 	filesystems, err := detector.Start()
 	require.NoError(t, err)
 	require.Len(t, filesystems, 1)
-	require.Equal(t, int64(300), filesystems[0].FreeStatfs)
+	require.Equal(t, int64(100), filesystems[0].StatfsUsed)
+	require.Equal(t, int64(300), filesystems[0].StatfsAvailable)
 
 	detector = newDetector(func(string) (statfs.Result, error) { return statfs.Result{}, errors.New("boom") })
 	filesystems, err = detector.Start()
 	require.NoError(t, err)
 	require.Len(t, filesystems, 1)
-	require.Equal(t, int64(0), filesystems[0].FreeStatfs)
+	require.Equal(t, int64(0), filesystems[0].StatfsUsed)
+	require.Equal(t, int64(0), filesystems[0].StatfsAvailable)
 }
 
 // stubStatfs keeps Detect tests from calling statfs(2) on the host running them.

@@ -16,6 +16,8 @@ export interface BtrfsFilesystemModel {
     free_estimated: number;
     free_min: number;
     free_statfs: number;
+    statfs_used: number;
+    statfs_available: number;
     data_ratio: number;
     metadata_ratio: number;
     multiple_profiles: boolean;
@@ -64,23 +66,25 @@ export interface BtrfsDeviceModel {
     generation_errors: number;
 }
 
-/** One copy's worth of used bytes, in the same units as free_statfs (btrfs `used` counts every copy). */
-export function btrfsLogicalUsed(fs: Pick<BtrfsFilesystemModel, 'data_used' | 'metadata_used' | 'system_used'>): number {
-    return fs.data_used + fs.metadata_used + fs.system_used;
-}
+type BtrfsCapacityFields = Pick<BtrfsFilesystemModel, 'used' | 'device_size' | 'statfs_used' | 'statfs_available'>;
 
 /**
- * Usage percentage computed the way df and NAS UIs do: logical used / (logical used + free_statfs).
- * Both figures count one copy, so this is right for mirrored profiles too. Dividing raw `used` by
- * raw device size instead counts unallocated space btrfs can't fully hand out, and reads low.
- * Falls back to used / device_size when free_statfs is unknown (older collectors or history).
+ * Used and total bytes the way df and NAS UIs report them, from the collector's statfs(2) figures.
+ * Both count one copy of the data, so this is right for every profile (single, DUP, RAID1, mixed).
+ * btrfs `used` / `device_size` instead count raw space, which reads low because unallocated space
+ * can't all become file space. That is only the fallback, for data from collectors without statfs.
  */
-export function btrfsUsagePercent(logicalUsed: number, freeStatfs: number, used: number, deviceSize: number): number {
-    if (logicalUsed > 0 && freeStatfs > 0) {
-        return Number(((logicalUsed / (logicalUsed + freeStatfs)) * 100).toFixed(1));
+export function btrfsCapacity(fs: BtrfsCapacityFields): { used: number; total: number } {
+    if (fs.statfs_used + fs.statfs_available > 0) {
+        return { used: fs.statfs_used, total: fs.statfs_used + fs.statfs_available };
     }
-    if (deviceSize <= 0) {
+    return { used: fs.used, total: fs.device_size };
+}
+
+export function btrfsUsagePercent(fs: BtrfsCapacityFields): number {
+    const { used, total } = btrfsCapacity(fs);
+    if (total <= 0) {
         return 0;
     }
-    return Number(((used / deviceSize) * 100).toFixed(1));
+    return Number(((used / total) * 100).toFixed(1));
 }
