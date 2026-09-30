@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/analogj/scrutiny/collector/pkg/statfs"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 )
 
@@ -15,11 +16,6 @@ type mountEntry struct {
 	Source     string
 	MountPoint string
 	FSType     string
-}
-
-type statfsResult struct {
-	totalBytes     int64
-	availableBytes int64
 }
 
 var excludedFSTypes = map[string]struct{}{
@@ -68,10 +64,10 @@ func CollectLinuxSnapshots(hostID string, now time.Time) ([]models.FilesystemCap
 	}
 	defer file.Close()
 
-	return collectSnapshots(file, hostID, now, statfsForPath)
+	return collectSnapshots(file, hostID, now, statfs.Stat)
 }
 
-func collectSnapshots(reader io.Reader, hostID string, now time.Time, statfsFn func(string) (statfsResult, error)) ([]models.FilesystemCapacity, models.FilesystemHostStatus, error) {
+func collectSnapshots(reader io.Reader, hostID string, now time.Time, statfsFn func(string) (statfs.Result, error)) ([]models.FilesystemCapacity, models.FilesystemHostStatus, error) {
 	mounts, err := parseMounts(reader)
 	if err != nil {
 		return nil, models.FilesystemHostStatus{}, err
@@ -93,14 +89,14 @@ func collectSnapshots(reader io.Reader, hostID string, now time.Time, statfsFn f
 			continue
 		}
 
-		usedBytes := stats.totalBytes - stats.availableBytes
+		usedBytes := stats.Total - stats.Available
 		if usedBytes < 0 {
 			usedBytes = 0
 		}
 
 		usedPercent := 0.0
-		if stats.totalBytes > 0 {
-			usedPercent = (float64(usedBytes) / float64(stats.totalBytes)) * 100
+		if stats.Total > 0 {
+			usedPercent = (float64(usedBytes) / float64(stats.Total)) * 100
 		}
 
 		snapshots = append(snapshots, models.FilesystemCapacity{
@@ -108,9 +104,9 @@ func collectSnapshots(reader io.Reader, hostID string, now time.Time, statfsFn f
 			MountPoint:     mount.MountPoint,
 			SourceDevice:   mount.Source,
 			FilesystemType: mount.FSType,
-			TotalBytes:     stats.totalBytes,
+			TotalBytes:     stats.Total,
 			UsedBytes:      usedBytes,
-			AvailableBytes: stats.availableBytes,
+			AvailableBytes: stats.Available,
 			UsedPercent:    usedPercent,
 			UpdatedAt:      now,
 		})

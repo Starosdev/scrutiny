@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/analogj/scrutiny/collector/pkg/statfs"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/stretchr/testify/require"
 )
@@ -24,16 +25,16 @@ func TestCollectSnapshotsFiltersPseudoFilesystemsAndZFS(t *testing.T) {
 	now := time.Unix(100, 0).UTC()
 	reader := strings.NewReader(sampleMounts)
 
-	statfsFn := func(path string) (statfsResult, error) {
+	statfsFn := func(path string) (statfs.Result, error) {
 		switch path {
 		case "/":
-			return statfsResult{totalBytes: 1000, availableBytes: 250}, nil
+			return statfs.Result{Total: 1000, Available: 250}, nil
 		case "/data":
-			return statfsResult{totalBytes: 2000, availableBytes: 500}, nil
+			return statfs.Result{Total: 2000, Available: 500}, nil
 		case "/etc/hosts", "/opt/scrutiny/config":
-			return statfsResult{}, errors.New("excluded path should not be inspected")
+			return statfs.Result{}, errors.New("excluded path should not be inspected")
 		default:
-			return statfsResult{}, errors.New("unexpected path")
+			return statfs.Result{}, errors.New("unexpected path")
 		}
 	}
 
@@ -57,11 +58,11 @@ shfs /opt/scrutiny/influxdb fuse.shfs rw 0 0
 shfs /mnt/user fuse.shfs rw 0 0
 `)
 
-	snapshots, status, err := collectSnapshots(reader, "host-a", now, func(path string) (statfsResult, error) {
+	snapshots, status, err := collectSnapshots(reader, "host-a", now, func(path string) (statfs.Result, error) {
 		if path != "/mnt/user" {
-			return statfsResult{}, errors.New("excluded path should not be inspected")
+			return statfs.Result{}, errors.New("excluded path should not be inspected")
 		}
-		return statfsResult{totalBytes: 1000, availableBytes: 250}, nil
+		return statfs.Result{Total: 1000, Available: 250}, nil
 	})
 	require.NoError(t, err)
 	require.Len(t, snapshots, 1)
@@ -74,8 +75,8 @@ func TestCollectSnapshotsMarksUnavailableWhenEligibleMountsCannotBeRead(t *testi
 	now := time.Unix(100, 0).UTC()
 	reader := strings.NewReader("/dev/sda1 / ext4 rw 0 0\n")
 
-	snapshots, status, err := collectSnapshots(reader, "host-a", now, func(path string) (statfsResult, error) {
-		return statfsResult{}, errors.New("permission denied")
+	snapshots, status, err := collectSnapshots(reader, "host-a", now, func(path string) (statfs.Result, error) {
+		return statfs.Result{}, errors.New("permission denied")
 	})
 	require.NoError(t, err)
 	require.Len(t, snapshots, 0)
@@ -87,8 +88,8 @@ func TestCollectSnapshotsAllowsEmptyEligibleSet(t *testing.T) {
 	now := time.Unix(100, 0).UTC()
 	reader := strings.NewReader("tmpfs /run tmpfs rw 0 0\noverlay /overlay overlay rw 0 0\n")
 
-	snapshots, status, err := collectSnapshots(reader, "host-a", now, func(path string) (statfsResult, error) {
-		return statfsResult{}, nil
+	snapshots, status, err := collectSnapshots(reader, "host-a", now, func(path string) (statfs.Result, error) {
+		return statfs.Result{}, nil
 	})
 	require.NoError(t, err)
 	require.Len(t, snapshots, 0)

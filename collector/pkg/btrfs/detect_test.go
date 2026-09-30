@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/analogj/scrutiny/collector/pkg/statfs"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -256,6 +257,7 @@ Error summary:    no errors found
 		LookPath: func(string) (string, error) {
 			return "/usr/bin/btrfs", nil
 		},
+		Statfs: stubStatfs,
 		RunCommand: func(name string, args ...string) ([]byte, error) {
 			key := name + " " + joinArgs(args)
 			output, ok := commandOutputs[key]
@@ -317,6 +319,7 @@ Error summary:    no errors found
 		LookPath: func(string) (string, error) {
 			return "/usr/bin/btrfs", nil
 		},
+		Statfs: stubStatfs,
 		RunCommand: func(name string, args ...string) ([]byte, error) {
 			key := name + " " + joinArgs(args)
 			output, ok := commandOutputs[key]
@@ -378,6 +381,7 @@ Error summary:    no errors found
 		LookPath: func(string) (string, error) {
 			return "/usr/bin/btrfs", nil
 		},
+		Statfs: stubStatfs,
 		RunCommand: func(name string, args ...string) ([]byte, error) {
 			key := name + " " + joinArgs(args)
 			output, ok := commandOutputs[key]
@@ -469,6 +473,7 @@ System,DUP: Size:8388608, Used:16384
 		LookPath: func(string) (string, error) {
 			return "/usr/bin/btrfs", nil
 		},
+		Statfs: stubStatfs,
 		RunCommand: func(name string, args ...string) ([]byte, error) {
 			key := name + " " + joinArgs(args)
 			output, ok := commandOutputs[key]
@@ -524,6 +529,7 @@ System,DUP: Size:8388608, Used:16384
 		LookPath: func(string) (string, error) {
 			return "/usr/bin/btrfs", nil
 		},
+		Statfs: stubStatfs,
 		RunCommand: func(name string, args ...string) ([]byte, error) {
 			key := name + " " + joinArgs(args)
 			output, ok := commandOutputs[key]
@@ -553,4 +559,61 @@ func TestParseBtrfsTime(t *testing.T) {
 
 func joinArgs(args []string) string {
 	return strings.Join(args, " ")
+}
+
+func TestDetectRecordsStatfsCapacity(t *testing.T) {
+	commandOutputs := map[string][]byte{
+		"btrfs filesystem show --raw /volume1": []byte(`Label: 'vol'  uuid: 11111111-2222-3333-4444-555555555555
+	Total devices 1 FS bytes used 100
+	devid    1 size 1000 used 500 path /dev/mapper/cachedev_1
+`),
+		"btrfs filesystem usage --raw /volume1": []byte(`Overall:
+    Device size:                   1000
+    Device allocated:              500
+    Device unallocated:            500
+    Device missing:                0
+    Used:                          100
+    Free (estimated):              800      (min: 400)
+    Data ratio:                    1.00
+    Metadata ratio:                2.00
+`),
+	}
+
+	newDetector := func(statfsFn func(string) (statfs.Result, error)) Detect {
+		return Detect{
+			Logger:         logrus.NewEntry(logrus.New()),
+			ReadMountsFile: func(string) ([]byte, error) { return []byte("/dev/mapper/cachedev_1 /volume1 btrfs rw 0 0\n"), nil },
+			LookPath:       func(string) (string, error) { return "/usr/bin/btrfs", nil },
+			RunCommand: func(name string, args ...string) ([]byte, error) {
+				output, ok := commandOutputs[name+" "+joinArgs(args)]
+				if !ok {
+					return nil, errors.New("unexpected command")
+				}
+				return output, nil
+			},
+			Statfs: statfsFn,
+		}
+	}
+
+	detector := newDetector(func(path string) (statfs.Result, error) {
+		require.Equal(t, "/volume1", path)
+		return statfs.Result{Total: 1000, Used: 100, Available: 300}, nil
+	})
+	filesystems, err := detector.Start()
+	require.NoError(t, err)
+	require.Len(t, filesystems, 1)
+	require.Equal(t, int64(100), filesystems[0].StatfsUsed)
+	require.Equal(t, int64(300), filesystems[0].StatfsAvailable)
+
+	detector = newDetector(func(string) (statfs.Result, error) { return statfs.Result{}, errors.New("boom") })
+	filesystems, err = detector.Start()
+	require.NoError(t, err)
+	require.Len(t, filesystems, 1)
+	require.Equal(t, int64(0), filesystems[0].StatfsUsed)
+	require.Equal(t, int64(0), filesystems[0].StatfsAvailable)
+}
+
+// stubStatfs keeps Detect tests from calling statfs(2) on the host running them.
+func stubStatfs(string) (statfs.Result, error) {
+	return statfs.Result{}, errors.New("statfs not stubbed")
 }
