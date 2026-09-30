@@ -22,6 +22,7 @@ type Detect struct {
 	ReadMountsFile func(string) ([]byte, error)
 	LookPath       func(string) (string, error)
 	RunCommand     func(name string, args ...string) ([]byte, error)
+	StatfsFree     func(path string) (int64, error)
 }
 
 type mountedFilesystem struct {
@@ -50,6 +51,10 @@ func (d *Detect) Start() ([]Filesystem, error) {
 		d.RunCommand = func(name string, args ...string) ([]byte, error) {
 			return exec.Command(name, args...).Output()
 		}
+	}
+
+	if d.StatfsFree == nil {
+		d.StatfsFree = statfsFree
 	}
 
 	btrfsPath, err := d.LookPath("btrfs")
@@ -169,6 +174,16 @@ func (d *Detect) inspectFilesystem(mount mountedFilesystem) (Filesystem, error) 
 	}
 
 	reconcileMountedSingleDevice(&fs, mount.source)
+
+	// Older btrfs-progs (e.g. Synology DSM) omit the "Free (statfs, df)" line. Fall back to statfs(2)
+	// so consumers can compute usage the same way df does.
+	if fs.FreeStatfs == 0 {
+		if free, statErr := d.StatfsFree(mount.mountPoint); statErr != nil {
+			d.Logger.Debugf("statfs failed for %s: %v", mount.mountPoint, statErr)
+		} else {
+			fs.FreeStatfs = free
+		}
+	}
 
 	deviceStatsOutput, err := d.RunCommand("btrfs", "device", "stats", mount.mountPoint)
 	if err != nil {

@@ -554,3 +554,53 @@ func TestParseBtrfsTime(t *testing.T) {
 func joinArgs(args []string) string {
 	return strings.Join(args, " ")
 }
+
+func TestDetectFallsBackToStatfsWhenUsageOmitsFreeStatfs(t *testing.T) {
+	commandOutputs := map[string][]byte{
+		"btrfs filesystem show --raw /volume1": []byte(`Label: 'vol'  uuid: 11111111-2222-3333-4444-555555555555
+	Total devices 1 FS bytes used 100
+	devid    1 size 1000 used 500 path /dev/mapper/cachedev_1
+`),
+		"btrfs filesystem usage --raw /volume1": []byte(`Overall:
+    Device size:                   1000
+    Device allocated:              500
+    Device unallocated:            500
+    Device missing:                0
+    Used:                          100
+    Free (estimated):              800      (min: 400)
+    Data ratio:                    1.00
+    Metadata ratio:                2.00
+`),
+	}
+
+	newDetector := func(statfs func(string) (int64, error)) Detect {
+		return Detect{
+			Logger:         logrus.NewEntry(logrus.New()),
+			ReadMountsFile: func(string) ([]byte, error) { return []byte("/dev/mapper/cachedev_1 /volume1 btrfs rw 0 0\n"), nil },
+			LookPath:       func(string) (string, error) { return "/usr/bin/btrfs", nil },
+			RunCommand: func(name string, args ...string) ([]byte, error) {
+				output, ok := commandOutputs[name+" "+joinArgs(args)]
+				if !ok {
+					return nil, errors.New("unexpected command")
+				}
+				return output, nil
+			},
+			StatfsFree: statfs,
+		}
+	}
+
+	detector := newDetector(func(path string) (int64, error) {
+		require.Equal(t, "/volume1", path)
+		return 300, nil
+	})
+	filesystems, err := detector.Start()
+	require.NoError(t, err)
+	require.Len(t, filesystems, 1)
+	require.Equal(t, int64(300), filesystems[0].FreeStatfs)
+
+	detector = newDetector(func(string) (int64, error) { return 0, errors.New("boom") })
+	filesystems, err = detector.Start()
+	require.NoError(t, err)
+	require.Len(t, filesystems, 1)
+	require.Equal(t, int64(0), filesystems[0].FreeStatfs)
+}

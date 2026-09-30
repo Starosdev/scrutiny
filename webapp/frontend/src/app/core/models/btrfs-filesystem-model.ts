@@ -63,3 +63,18 @@ export interface BtrfsDeviceModel {
     corruption_errors: number;
     generation_errors: number;
 }
+
+/**
+ * Usage percentage computed the way df / NAS UIs do: used / (used + available).
+ * Dividing by raw device size instead counts unallocated space that Btrfs can't fully hand out
+ * (DUP metadata, reserves), which under-reports how full the filesystem is.
+ * Falls back to the conservative `free_min` estimate, then to device size, for older data.
+ */
+export function btrfsUsagePercent(fs: { used: number; device_size: number; free_statfs: number; free_min?: number }): number {
+    const free = fs.free_statfs > 0 ? fs.free_statfs : (fs.free_min ?? 0);
+    const total = free > 0 ? fs.used + free : fs.device_size;
+    if (total <= 0) {
+        return 0;
+    }
+    return Number(((fs.used / total) * 100).toFixed(1));
+}
