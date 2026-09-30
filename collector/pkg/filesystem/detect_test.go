@@ -2,11 +2,11 @@ package filesystem
 
 import (
 	"errors"
-	"github.com/analogj/scrutiny/collector/pkg/statfs"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/analogj/scrutiny/collector/pkg/statfs"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/stretchr/testify/require"
 )

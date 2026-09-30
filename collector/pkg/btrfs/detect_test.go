@@ -2,12 +2,12 @@ package btrfs
 
 import (
 	"errors"
-	"github.com/analogj/scrutiny/collector/pkg/statfs"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/analogj/scrutiny/collector/pkg/statfs"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
