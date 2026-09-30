@@ -3702,6 +3702,12 @@ components:
         free_statfs:
           type: integer
           format: int64
+        statfs_used:
+          type: integer
+          format: int64
+        statfs_available:
+          type: integer
+          format: int64
         scrub_read_errors:
           type: integer
           format: int64

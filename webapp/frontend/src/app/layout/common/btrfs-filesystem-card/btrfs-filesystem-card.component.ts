@@ -3,7 +3,7 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { MatDialog } from '@angular/material/dialog';
 import { AppConfig } from 'app/core/config/app.config';
-import { BtrfsFilesystemModel, BtrfsFilesystemStatus } from 'app/core/models/btrfs-filesystem-model';
+import { BtrfsFilesystemModel, BtrfsFilesystemStatus, btrfsUsagePercent } from 'app/core/models/btrfs-filesystem-model';
 import { BtrfsFilesystemsService } from 'app/modules/btrfs-filesystems/btrfs-filesystems.service';
 import { NgClass, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -47,10 +47,7 @@ export class BtrfsFilesystemCardComponent {
     }
 
     getUsagePercent(filesystem: BtrfsFilesystemModel): number {
-        if (filesystem.device_size <= 0) {
-            return 0;
-        }
-        return Number(((filesystem.used / filesystem.device_size) * 100).toFixed(1));
+        return btrfsUsagePercent(filesystem);
     }
 
     getUsageClass(percent: number): string {

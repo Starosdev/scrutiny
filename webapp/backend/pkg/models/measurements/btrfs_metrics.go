@@ -15,6 +15,8 @@ type BtrfsMetrics struct {
 	Used              int64     `json:"used"`
 	FreeEstimated     int64     `json:"free_estimated"`
 	FreeStatfs        int64     `json:"free_statfs"`
+	StatfsUsed        int64     `json:"statfs_used"`
+	StatfsAvailable   int64     `json:"statfs_available"`
 	ScrubReadErrors   int64     `json:"scrub_read_errors"`
 	ScrubCsumErrors   int64     `json:"scrub_csum_errors"`
 	ScrubVerifyErrors int64     `json:"scrub_verify_errors"`
@@ -38,6 +40,8 @@ func (m *BtrfsMetrics) Flatten() (map[string]string, map[string]interface{}) {
 			"used":                m.Used,
 			"free_estimated":      m.FreeEstimated,
 			"free_statfs":         m.FreeStatfs,
+			"statfs_used":         m.StatfsUsed,
+			"statfs_available":    m.StatfsAvailable,
 			"data_ratio":          m.DataRatio,
 			"metadata_ratio":      m.MetadataRatio,
 			"status":              m.Status,
@@ -62,6 +66,8 @@ func NewBtrfsMetricsFromInfluxDB(attrs map[string]interface{}) (*BtrfsMetrics, e
 		Used:              influxInt64(attrs, "used"),
 		FreeEstimated:     influxInt64(attrs, "free_estimated"),
 		FreeStatfs:        influxInt64(attrs, "free_statfs"),
+		StatfsUsed:        influxInt64(attrs, "statfs_used"),
+		StatfsAvailable:   influxInt64(attrs, "statfs_available"),
 		DataRatio:         influxFloat64(attrs, "data_ratio"),
 		MetadataRatio:     influxFloat64(attrs, "metadata_ratio"),
 		Status:            influxString(attrs, "status"),
