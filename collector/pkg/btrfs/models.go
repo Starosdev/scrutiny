@@ -46,7 +46,9 @@ type Filesystem struct {
 	Used               int64            `json:"used"`
 	FreeEstimated      int64            `json:"free_estimated"`
 	FreeMin            int64            `json:"free_min"`
-	FreeStatfs         int64            `json:"free_statfs"`
+	FreeStatfs         int64            `json:"free_statfs"` // btrfs-progs "Free (statfs, df)"; absent (0) on old btrfs-progs. UI uses Statfs*.
+	StatfsUsed         int64            `json:"statfs_used"`
+	StatfsAvailable    int64            `json:"statfs_available"` // statfs(2) Bavail read directly; equals FreeStatfs when both are set.
 	DataRatio          float64          `json:"data_ratio"`
 	MetadataRatio      float64          `json:"metadata_ratio"`
 	DataTotal          int64            `json:"data_total"`

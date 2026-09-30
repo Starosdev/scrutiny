@@ -38,6 +38,7 @@ import (
 	m20260910000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260910000000"
 	m20260924000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260924000000"
 	m20260925000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260925000000"
+	m20260930000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260930000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -1704,6 +1705,7 @@ func (sr *scrutinyRepository) schemaMigrations(ctx context.Context) []*gormigrat
 		{ID: "m20260924000000", Migrate: m20260924000000.Migrate},  // add scheduler_leases table (#880)
 		{ID: "m20260925000000", Migrate: m20260925000000.Migrate},  // add notification_outbox table (#880)
 		{ID: "m20260926000000", Migrate: migrateSettingsUniqueKey}, // one settings row per key, unique key (#889)
+		{ID: "m20260930000000", Migrate: m20260930000000.Migrate},  // add btrfs statfs used/available columns
 	}
 }
 
