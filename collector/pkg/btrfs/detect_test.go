@@ -431,7 +431,7 @@ Data,single: Size:223346688000, Used:58304311296
 Metadata,DUP: Size:8589934592, Used:994033664
 System,DUP: Size:8388608, Used:49152
 `),
-		"btrfs device stats /volume1": []byte(`[/dev/mapper/vg1-volume_1].write_io_errs   0`),
+		"btrfs device stats /volume1":     []byte(`[/dev/mapper/vg1-volume_1].write_io_errs   0`),
 		"btrfs scrub status --raw /volume1": []byte(`scrub status for 9e14872a-781a-44e8-8983-6d1699dac7bd
         no stats available
 `),
@@ -452,7 +452,7 @@ Data,single: Size:112751280128, Used:39467454464
 Metadata,DUP: Size:1073741824, Used:44695552
 System,DUP: Size:8388608, Used:16384
 `),
-		"btrfs device stats /volume2": []byte(`[/dev/mapper/vg2-volume_2].write_io_errs   0`),
+		"btrfs device stats /volume2":     []byte(`[/dev/mapper/vg2-volume_2].write_io_errs   0`),
 		"btrfs scrub status --raw /volume2": []byte(`scrub status for 8625a86f-fe31-4d6c-aa99-4e1c9b550fae
         no stats available
 `),
