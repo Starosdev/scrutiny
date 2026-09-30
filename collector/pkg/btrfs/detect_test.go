@@ -2,6 +2,7 @@ package btrfs
 
 import (
 	"errors"
+	"github.com/analogj/scrutiny/collector/pkg/statfs"
 	"os"
 	"strings"
 	"testing"
@@ -256,6 +257,7 @@ Error summary:    no errors found
 		LookPath: func(string) (string, error) {
 			return "/usr/bin/btrfs", nil
 		},
+		Statfs: stubStatfs,
 		RunCommand: func(name string, args ...string) ([]byte, error) {
 			key := name + " " + joinArgs(args)
 			output, ok := commandOutputs[key]
@@ -317,6 +319,7 @@ Error summary:    no errors found
 		LookPath: func(string) (string, error) {
 			return "/usr/bin/btrfs", nil
 		},
+		Statfs: stubStatfs,
 		RunCommand: func(name string, args ...string) ([]byte, error) {
 			key := name + " " + joinArgs(args)
 			output, ok := commandOutputs[key]
@@ -378,6 +381,7 @@ Error summary:    no errors found
 		LookPath: func(string) (string, error) {
 			return "/usr/bin/btrfs", nil
 		},
+		Statfs: stubStatfs,
 		RunCommand: func(name string, args ...string) ([]byte, error) {
 			key := name + " " + joinArgs(args)
 			output, ok := commandOutputs[key]
@@ -427,7 +431,7 @@ Data,single: Size:223346688000, Used:58304311296
 Metadata,DUP: Size:8589934592, Used:994033664
 System,DUP: Size:8388608, Used:49152
 `),
-		"btrfs device stats /volume1":     []byte(`[/dev/mapper/vg1-volume_1].write_io_errs   0`),
+		"btrfs device stats /volume1": []byte(`[/dev/mapper/vg1-volume_1].write_io_errs   0`),
 		"btrfs scrub status --raw /volume1": []byte(`scrub status for 9e14872a-781a-44e8-8983-6d1699dac7bd
         no stats available
 `),
@@ -448,7 +452,7 @@ Data,single: Size:112751280128, Used:39467454464
 Metadata,DUP: Size:1073741824, Used:44695552
 System,DUP: Size:8388608, Used:16384
 `),
-		"btrfs device stats /volume2":     []byte(`[/dev/mapper/vg2-volume_2].write_io_errs   0`),
+		"btrfs device stats /volume2": []byte(`[/dev/mapper/vg2-volume_2].write_io_errs   0`),
 		"btrfs scrub status --raw /volume2": []byte(`scrub status for 8625a86f-fe31-4d6c-aa99-4e1c9b550fae
         no stats available
 `),
@@ -469,6 +473,7 @@ System,DUP: Size:8388608, Used:16384
 		LookPath: func(string) (string, error) {
 			return "/usr/bin/btrfs", nil
 		},
+		Statfs: stubStatfs,
 		RunCommand: func(name string, args ...string) ([]byte, error) {
 			key := name + " " + joinArgs(args)
 			output, ok := commandOutputs[key]
@@ -524,6 +529,7 @@ System,DUP: Size:8388608, Used:16384
 		LookPath: func(string) (string, error) {
 			return "/usr/bin/btrfs", nil
 		},
+		Statfs: stubStatfs,
 		RunCommand: func(name string, args ...string) ([]byte, error) {
 			key := name + " " + joinArgs(args)
 			output, ok := commandOutputs[key]
@@ -573,7 +579,7 @@ func TestDetectFallsBackToStatfsWhenUsageOmitsFreeStatfs(t *testing.T) {
 `),
 	}
 
-	newDetector := func(statfs func(string) (int64, error)) Detect {
+	newDetector := func(statfsFn func(string) (statfs.Result, error)) Detect {
 		return Detect{
 			Logger:         logrus.NewEntry(logrus.New()),
 			ReadMountsFile: func(string) ([]byte, error) { return []byte("/dev/mapper/cachedev_1 /volume1 btrfs rw 0 0\n"), nil },
@@ -585,22 +591,27 @@ func TestDetectFallsBackToStatfsWhenUsageOmitsFreeStatfs(t *testing.T) {
 				}
 				return output, nil
 			},
-			StatfsFree: statfs,
+			Statfs: statfsFn,
 		}
 	}
 
-	detector := newDetector(func(path string) (int64, error) {
+	detector := newDetector(func(path string) (statfs.Result, error) {
 		require.Equal(t, "/volume1", path)
-		return 300, nil
+		return statfs.Result{Total: 1000, Used: 100, Available: 300}, nil
 	})
 	filesystems, err := detector.Start()
 	require.NoError(t, err)
 	require.Len(t, filesystems, 1)
 	require.Equal(t, int64(300), filesystems[0].FreeStatfs)
 
-	detector = newDetector(func(string) (int64, error) { return 0, errors.New("boom") })
+	detector = newDetector(func(string) (statfs.Result, error) { return statfs.Result{}, errors.New("boom") })
 	filesystems, err = detector.Start()
 	require.NoError(t, err)
 	require.Len(t, filesystems, 1)
 	require.Equal(t, int64(0), filesystems[0].FreeStatfs)
+}
+
+// stubStatfs keeps Detect tests from calling statfs(2) on the host running them.
+func stubStatfs(string) (statfs.Result, error) {
+	return statfs.Result{}, errors.New("statfs not stubbed")
 }

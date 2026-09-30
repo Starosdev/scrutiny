@@ -15,6 +15,7 @@ type BtrfsMetrics struct {
 	Used              int64     `json:"used"`
 	FreeEstimated     int64     `json:"free_estimated"`
 	FreeStatfs        int64     `json:"free_statfs"`
+	LogicalUsed       int64     `json:"logical_used"`
 	ScrubReadErrors   int64     `json:"scrub_read_errors"`
 	ScrubCsumErrors   int64     `json:"scrub_csum_errors"`
 	ScrubVerifyErrors int64     `json:"scrub_verify_errors"`
@@ -27,26 +28,27 @@ type BtrfsMetrics struct {
 
 func (m *BtrfsMetrics) Flatten() (map[string]string, map[string]interface{}) {
 	return map[string]string{
-			"filesystem_uuid": m.FilesystemUUID,
-			"host_id":         m.HostID,
-			"label":           m.Label,
-		}, map[string]interface{}{
-			"device_size":         m.DeviceSize,
-			"device_allocated":    m.DeviceAllocated,
-			"device_unallocated":  m.DeviceUnallocated,
-			"device_missing":      m.DeviceMissing,
-			"used":                m.Used,
-			"free_estimated":      m.FreeEstimated,
-			"free_statfs":         m.FreeStatfs,
-			"data_ratio":          m.DataRatio,
-			"metadata_ratio":      m.MetadataRatio,
-			"status":              m.Status,
-			"scrub_state":         m.ScrubState,
-			"scrub_read_errors":   m.ScrubReadErrors,
-			"scrub_csum_errors":   m.ScrubCsumErrors,
-			"scrub_verify_errors": m.ScrubVerifyErrors,
-			"scrub_super_errors":  m.ScrubSuperErrors,
-		}
+		"filesystem_uuid": m.FilesystemUUID,
+		"host_id":         m.HostID,
+		"label":           m.Label,
+	}, map[string]interface{}{
+		"device_size":         m.DeviceSize,
+		"device_allocated":    m.DeviceAllocated,
+		"device_unallocated":  m.DeviceUnallocated,
+		"device_missing":      m.DeviceMissing,
+		"used":                m.Used,
+		"free_estimated":      m.FreeEstimated,
+		"free_statfs":         m.FreeStatfs,
+		"logical_used":        m.LogicalUsed,
+		"data_ratio":          m.DataRatio,
+		"metadata_ratio":      m.MetadataRatio,
+		"status":              m.Status,
+		"scrub_state":         m.ScrubState,
+		"scrub_read_errors":   m.ScrubReadErrors,
+		"scrub_csum_errors":   m.ScrubCsumErrors,
+		"scrub_verify_errors": m.ScrubVerifyErrors,
+		"scrub_super_errors":  m.ScrubSuperErrors,
+	}
 }
 
 func NewBtrfsMetricsFromInfluxDB(attrs map[string]interface{}) (*BtrfsMetrics, error) {
@@ -62,6 +64,7 @@ func NewBtrfsMetricsFromInfluxDB(attrs map[string]interface{}) (*BtrfsMetrics, e
 		Used:              influxInt64(attrs, "used"),
 		FreeEstimated:     influxInt64(attrs, "free_estimated"),
 		FreeStatfs:        influxInt64(attrs, "free_statfs"),
+		LogicalUsed:       influxInt64(attrs, "logical_used"),
 		DataRatio:         influxFloat64(attrs, "data_ratio"),
 		MetadataRatio:     influxFloat64(attrs, "metadata_ratio"),
 		Status:            influxString(attrs, "status"),

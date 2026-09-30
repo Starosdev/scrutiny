@@ -64,17 +64,23 @@ export interface BtrfsDeviceModel {
     generation_errors: number;
 }
 
+/** One copy's worth of used bytes, in the same units as free_statfs (btrfs `used` counts every copy). */
+export function btrfsLogicalUsed(fs: Pick<BtrfsFilesystemModel, 'data_used' | 'metadata_used' | 'system_used'>): number {
+    return fs.data_used + fs.metadata_used + fs.system_used;
+}
+
 /**
- * Usage percentage computed the way df / NAS UIs do: used / (used + available).
- * Dividing by raw device size instead counts unallocated space that Btrfs can't fully hand out
- * (DUP metadata, reserves), which under-reports how full the filesystem is.
- * Falls back to the conservative `free_min` estimate, then to device size, for older data.
+ * Usage percentage computed the way df and NAS UIs do: logical used / (logical used + free_statfs).
+ * Both figures count one copy, so this is right for mirrored profiles too. Dividing raw `used` by
+ * raw device size instead counts unallocated space btrfs can't fully hand out, and reads low.
+ * Falls back to used / device_size when free_statfs is unknown (older collectors or history).
  */
-export function btrfsUsagePercent(fs: { used: number; device_size: number; free_statfs: number; free_min?: number }): number {
-    const free = fs.free_statfs > 0 ? fs.free_statfs : (fs.free_min ?? 0);
-    const total = free > 0 ? fs.used + free : fs.device_size;
-    if (total <= 0) {
+export function btrfsUsagePercent(logicalUsed: number, freeStatfs: number, used: number, deviceSize: number): number {
+    if (logicalUsed > 0 && freeStatfs > 0) {
+        return Number(((logicalUsed / (logicalUsed + freeStatfs)) * 100).toFixed(1));
+    }
+    if (deviceSize <= 0) {
         return 0;
     }
-    return Number(((fs.used / total) * 100).toFixed(1));
+    return Number(((used / deviceSize) * 100).toFixed(1));
 }

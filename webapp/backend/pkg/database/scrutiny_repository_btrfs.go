@@ -190,6 +190,8 @@ func (sr *scrutinyRepository) SaveBtrfsMetrics(ctx context.Context, filesystem *
 		Used:              filesystem.Used,
 		FreeEstimated:     filesystem.FreeEstimated,
 		FreeStatfs:        filesystem.FreeStatfs,
+		// One copy's worth of used bytes, the same units as FreeStatfs. Used counts every copy.
+		LogicalUsed:       filesystem.DataUsed + filesystem.MetadataUsed + filesystem.SystemUsed,
 		DataRatio:         filesystem.DataRatio,
 		MetadataRatio:     filesystem.MetadataRatio,
 		Status:            string(filesystem.Status),

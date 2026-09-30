@@ -24,6 +24,7 @@ export interface BtrfsMetricsHistoryModel {
     used: number;
     free_estimated: number;
     free_statfs: number;
+    logical_used?: number;
     data_ratio: number;
     metadata_ratio: number;
     status: string;

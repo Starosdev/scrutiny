@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/analogj/scrutiny/collector/pkg/config"
+	"github.com/analogj/scrutiny/collector/pkg/statfs"
 	"github.com/sirupsen/logrus"
 )
 
@@ -22,7 +23,7 @@ type Detect struct {
 	ReadMountsFile func(string) ([]byte, error)
 	LookPath       func(string) (string, error)
 	RunCommand     func(name string, args ...string) ([]byte, error)
-	StatfsFree     func(path string) (int64, error)
+	Statfs         func(path string) (statfs.Result, error)
 }
 
 type mountedFilesystem struct {
@@ -53,8 +54,8 @@ func (d *Detect) Start() ([]Filesystem, error) {
 		}
 	}
 
-	if d.StatfsFree == nil {
-		d.StatfsFree = statfsFree
+	if d.Statfs == nil {
+		d.Statfs = statfs.Stat
 	}
 
 	btrfsPath, err := d.LookPath("btrfs")
@@ -178,10 +179,10 @@ func (d *Detect) inspectFilesystem(mount mountedFilesystem) (Filesystem, error) 
 	// Older btrfs-progs (e.g. Synology DSM) omit the "Free (statfs, df)" line. Fall back to statfs(2)
 	// so consumers can compute usage the same way df does.
 	if fs.FreeStatfs == 0 {
-		if free, statErr := d.StatfsFree(mount.mountPoint); statErr != nil {
-			d.Logger.Debugf("statfs failed for %s: %v", mount.mountPoint, statErr)
+		if stat, statErr := d.Statfs(mount.mountPoint); statErr != nil {
+			d.Logger.Warnf("statfs failed for %s: %v", mount.mountPoint, statErr)
 		} else {
-			fs.FreeStatfs = free
+			fs.FreeStatfs = stat.Available
 		}
 	}
 
