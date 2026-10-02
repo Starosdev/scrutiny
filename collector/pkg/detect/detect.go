@@ -335,7 +335,7 @@ func (d *Detect) buildScannedDeviceGroups(scan *models.Scan) map[string][]models
 // applyDeviceOverrides mutates groupedDevices according to the config device overrides, either
 // removing ignored devices or replacing the scanned group with the configured one.
 func (d *Detect) applyDeviceOverrides(groupedDevices map[string][]models.Device) {
-	configuredDeviceFiles := map[string]bool{}
+	typedDeviceFiles := map[string]bool{}
 	for _, overrideDevice := range d.Config.GetDeviceOverrides() {
 		// Preserve case for the override device path — filesystem paths are case-sensitive.
 		// Map lookups use case-insensitive comparison to match scanned devices without mutating paths.
@@ -350,11 +350,17 @@ func (d *Detect) applyDeviceOverrides(groupedDevices map[string][]models.Device)
 		overrideDeviceGroup := d.buildOverrideDeviceGroup(&overrideDevice, groupedDevices)
 
 		// Remove any scanned entry stored under a different case or reached through a symlink
-		// to prevent duplicates. The group keeps the path the user configured. Groups from
-		// earlier overrides are kept: two aliases of one file may carry different device
-		// types (megaraid,0 on /dev/sda and megaraid,1 on its by-path link).
-		configuredDeviceFiles[overrideDeviceFile] = true
-		deleteGroupedDeviceFold(groupedDevices, overrideDeviceFile, configuredDeviceFiles)
+		// to prevent duplicates. The group keeps the path the user configured. When this and an
+		// earlier override both set device types, the earlier group is kept: two aliases of one
+		// file may address different drives (megaraid,0 on /dev/sda, megaraid,1 on its link).
+		keep := map[string]bool{overrideDeviceFile: true}
+		if overrideDevice.DeviceType != nil {
+			for typedDeviceFile := range typedDeviceFiles {
+				keep[typedDeviceFile] = true
+			}
+			typedDeviceFiles[overrideDeviceFile] = true
+		}
+		deleteGroupedDeviceFold(groupedDevices, overrideDeviceFile, keep)
 		groupedDevices[overrideDeviceFile] = overrideDeviceGroup
 	}
 }

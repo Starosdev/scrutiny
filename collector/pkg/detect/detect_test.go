@@ -1243,3 +1243,27 @@ func TestDetect_TransformDetectedDevices_SymlinkAliasesKeepTheirTypes(t *testing
 
 	require.ElementsMatch(t, []string{"megaraid,0", "megaraid,1"}, deviceTypes)
 }
+
+func TestDetect_TransformDetectedDevices_UntypedSymlinkAliasesCollectedOnce(t *testing.T) {
+	devicePath, symlinkPath := symlinkedDevice(t)
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetString("host.id").AnyTimes().Return("")
+	fakeConfig.EXPECT().GetDeviceOverrides().AnyTimes().Return([]models.ScanOverride{
+		{Device: devicePath, Label: "data"},
+		{Device: symlinkPath},
+	})
+	fakeConfig.EXPECT().IsAllowlistedDevice(gomock.Any()).AnyTimes().Return(true)
+
+	detectedDevices := models.Scan{
+		Devices: []models.ScanDevice{{Name: devicePath, InfoName: devicePath, Protocol: "scsi", Type: "sat"}},
+	}
+
+	d := detect.Detect{Config: fakeConfig}
+	transformedDevices := d.TransformDetectedDevices(detectedDevices)
+
+	require.Len(t, transformedDevices, 1)
+	require.Equal(t, symlinkPath, transformedDevices[0].DeviceName)
+}
