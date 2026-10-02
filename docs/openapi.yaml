@@ -3699,9 +3699,6 @@ components:
         free_estimated:
           type: integer
           format: int64
-        free_statfs:
-          type: integer
-          format: int64
         statfs_used:
           type: integer
           format: int64
