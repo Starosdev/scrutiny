@@ -335,13 +335,14 @@ func (d *Detect) buildScannedDeviceGroups(scan *models.Scan) map[string][]models
 // applyDeviceOverrides mutates groupedDevices according to the config device overrides, either
 // removing ignored devices or replacing the scanned group with the configured one.
 func (d *Detect) applyDeviceOverrides(groupedDevices map[string][]models.Device) {
+	configuredDeviceFiles := map[string]bool{}
 	for _, overrideDevice := range d.Config.GetDeviceOverrides() {
 		// Preserve case for the override device path — filesystem paths are case-sensitive.
 		// Map lookups use case-insensitive comparison to match scanned devices without mutating paths.
 		overrideDeviceFile := overrideDevice.Device
 
 		if overrideDevice.Ignore {
-			deleteGroupedDeviceFold(groupedDevices, overrideDeviceFile, true)
+			deleteGroupedDeviceFold(groupedDevices, overrideDeviceFile, nil)
 			continue
 		}
 
@@ -349,8 +350,11 @@ func (d *Detect) applyDeviceOverrides(groupedDevices map[string][]models.Device)
 		overrideDeviceGroup := d.buildOverrideDeviceGroup(&overrideDevice, groupedDevices)
 
 		// Remove any scanned entry stored under a different case or reached through a symlink
-		// to prevent duplicates. The group keeps the path the user configured.
-		deleteGroupedDeviceFold(groupedDevices, overrideDeviceFile, false)
+		// to prevent duplicates. The group keeps the path the user configured. Groups from
+		// earlier overrides are kept: two aliases of one file may carry different device
+		// types (megaraid,0 on /dev/sda and megaraid,1 on its by-path link).
+		configuredDeviceFiles[overrideDeviceFile] = true
+		deleteGroupedDeviceFold(groupedDevices, overrideDeviceFile, configuredDeviceFiles)
 		groupedDevices[overrideDeviceFile] = overrideDeviceGroup
 	}
 }
@@ -395,13 +399,10 @@ func scannedDeviceType(groupedDevices map[string][]models.Device, deviceFile str
 }
 
 // deleteGroupedDeviceFold deletes every map entry that addresses the same device file as
-// deviceFile (see sameDeviceFile). When includeExactCase is false, an exact match is preserved.
-func deleteGroupedDeviceFold(groupedDevices map[string][]models.Device, deviceFile string, includeExactCase bool) {
+// deviceFile (see sameDeviceFile), except the keys in keep.
+func deleteGroupedDeviceFold(groupedDevices map[string][]models.Device, deviceFile string, keep map[string]bool) {
 	for key := range groupedDevices {
-		if !sameDeviceFile(key, deviceFile) {
-			continue
-		}
-		if !includeExactCase && key == deviceFile {
+		if keep[key] || !sameDeviceFile(key, deviceFile) {
 			continue
 		}
 		delete(groupedDevices, key)

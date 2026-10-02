@@ -1196,7 +1196,7 @@ func TestDetect_TransformDetectedDevices_SymlinkOverrideCollectedOnce(t *testing
 
 	require.Len(t, transformedDevices, 1)
 	// The configured path is kept for smartctl, with the scanned device type.
-	require.True(t, strings.HasSuffix(symlinkPath, transformedDevices[0].DeviceName), transformedDevices[0].DeviceName)
+	require.Equal(t, symlinkPath, transformedDevices[0].DeviceName)
 	require.Equal(t, "sat", transformedDevices[0].DeviceType)
 }
 
@@ -1216,4 +1216,30 @@ func TestDetect_TransformDetectedDevices_SymlinkIgnore(t *testing.T) {
 
 	d := detect.Detect{Config: fakeConfig}
 	require.Equal(t, []models.Device{}, d.TransformDetectedDevices(detectedDevices))
+}
+
+func TestDetect_TransformDetectedDevices_SymlinkAliasesKeepTheirTypes(t *testing.T) {
+	devicePath, symlinkPath := symlinkedDevice(t)
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetString("host.id").AnyTimes().Return("")
+	fakeConfig.EXPECT().GetDeviceOverrides().AnyTimes().Return([]models.ScanOverride{
+		{Device: devicePath, DeviceType: []string{"megaraid,0"}},
+		{Device: symlinkPath, DeviceType: []string{"megaraid,1"}},
+	})
+	fakeConfig.EXPECT().IsAllowlistedDevice(gomock.Any()).AnyTimes().Return(true)
+
+	detectedDevices := models.Scan{
+		Devices: []models.ScanDevice{{Name: devicePath, InfoName: devicePath, Protocol: "scsi", Type: "scsi"}},
+	}
+
+	d := detect.Detect{Config: fakeConfig}
+	deviceTypes := []string{}
+	for _, device := range d.TransformDetectedDevices(detectedDevices) {
+		deviceTypes = append(deviceTypes, device.DeviceType)
+	}
+
+	require.ElementsMatch(t, []string{"megaraid,0", "megaraid,1"}, deviceTypes)
 }
