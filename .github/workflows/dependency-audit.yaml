@@ -40,8 +40,10 @@ jobs:
       - name: Install release tooling
         run: npm ci --ignore-scripts
 
+      # Allowlists advisories in npm's own bundled dependencies until a fixed npm
+      # release exists (issue 927). Every other finding still fails the step.
       - name: Audit release tooling
-        run: npm audit --audit-level=low
+        run: node .github/scripts/audit-release-tooling.mjs
 
       - name: Install frontend dependencies
         working-directory: webapp/frontend
