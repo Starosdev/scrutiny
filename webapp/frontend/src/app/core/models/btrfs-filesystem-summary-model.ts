@@ -23,7 +23,6 @@ export interface BtrfsMetricsHistoryModel {
     device_missing: number;
     used: number;
     free_estimated: number;
-    free_statfs: number;
     statfs_used: number;
     statfs_available: number;
     data_ratio: number;

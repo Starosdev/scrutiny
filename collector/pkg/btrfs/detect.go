@@ -295,8 +295,6 @@ func assignOverallUsage(fs *Filesystem, key, value string) {
 		fs.Used = parseLeadingInt(value)
 	case "Free (estimated)":
 		fs.FreeEstimated, fs.FreeMin = parseFreeEstimated(value)
-	case "Free (statfs, df)":
-		fs.FreeStatfs = parseLeadingInt(value)
 	case "Data ratio":
 		fs.DataRatio = parseLeadingFloat(value)
 	case "Metadata ratio":
