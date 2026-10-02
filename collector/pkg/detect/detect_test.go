@@ -1299,3 +1299,40 @@ func TestDetect_TransformDetectedDevices_UntypedSymlinkAliasesCollectedOnce(t *t
 	require.Equal(t, "", transformedDevices[0].Label)
 	require.False(t, transformedDevices[0].SharedDeviceFile)
 }
+
+func TestDetect_TransformDetectedDevices_RetypedPathNoLongerWinsOverAlias(t *testing.T) {
+	devicePath, symlinkPath := symlinkedDevice(t)
+
+	for name, overrides := range map[string][]models.ScanOverride{
+		"untyped again": {
+			{Device: devicePath, DeviceType: []string{"megaraid,0"}},
+			{Device: devicePath},
+			{Device: symlinkPath},
+		},
+		"ignored": {
+			{Device: devicePath, DeviceType: []string{"megaraid,0"}},
+			{Device: devicePath, Ignore: true},
+			{Device: symlinkPath},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+			fakeConfig := mock_config.NewMockInterface(mockCtrl)
+			fakeConfig.EXPECT().GetString("host.id").AnyTimes().Return("")
+			fakeConfig.EXPECT().GetDeviceOverrides().AnyTimes().Return(overrides)
+			fakeConfig.EXPECT().IsAllowlistedDevice(gomock.Any()).AnyTimes().Return(true)
+
+			detectedDevices := models.Scan{
+				Devices: []models.ScanDevice{{Name: devicePath, InfoName: devicePath, Protocol: "scsi", Type: "sat"}},
+			}
+
+			d := detect.Detect{Config: fakeConfig}
+			transformedDevices := d.TransformDetectedDevices(detectedDevices)
+
+			// The earlier typed entry no longer stands, so the untyped alias is the last word.
+			require.Len(t, transformedDevices, 1)
+			require.Equal(t, symlinkPath, transformedDevices[0].DeviceName)
+		})
+	}
+}
