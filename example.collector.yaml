@@ -144,6 +144,10 @@ devices:
 #  metrics_scan_args: '--scan --json' # used to detect devices
 #  metrics_info_args: '--info --json' # used to determine device unique ID & register device with Scrutiny
 #  metrics_smart_args: '--xall --json' # used to retrieve smart data for each device.
+#                                      # To avoid waking sleeping drives, add '-n standby':
+#                                      #   metrics_smart_args: '--xall --json -n standby'
+#                                      # A drive in standby is skipped (logged at INFO, no collector
+#                                      # error or notification) and keeps its last collected data.
 #  metrics_smartctl_wait: 0 # time to wait in seconds between each disk's check
 #  metrics_api_retry_count: 2 # number of retries for transient API publish failures after the first attempt
 #  metrics_api_retry_delay: 2 # initial delay in seconds before retrying a transient API publish failure; later retries back off exponentially

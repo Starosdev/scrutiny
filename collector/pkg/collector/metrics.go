@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
@@ -23,6 +24,12 @@ import (
 const configKeySmartctlBin = "commands.metrics_smartctl_bin"
 const configKeyMetricsAPIRetryCount = "commands.metrics_api_retry_count"
 const configKeyMetricsAPIRetryDelay = "commands.metrics_api_retry_delay"
+
+// lowPowerSkipPattern matches the message smartctl prints when `-n <mode>` makes it
+// skip a drive that is in a low-power state, for example
+// "Device is in STANDBY mode, exit(2)". The exit status is 2 by default and N with
+// `-n standby,N`, so the message, not the status, identifies the skip.
+var lowPowerSkipPattern = regexp.MustCompile(`Device is in (\S+) mode, exit\(\d+\)`)
 
 type MetricsCollector struct {
 	config config.Interface
@@ -202,6 +209,12 @@ func (mc *MetricsCollector) Collect(deviceID string, deviceName string, deviceTy
 	defer cancel()
 	result, err := mc.shell.CommandContext(ctx, mc.logger, mc.config.GetString(configKeySmartctlBin), args, "", os.Environ())
 	resultBytes := []byte(result)
+	// fixes #911: a drive skipped by `-n standby` is asleep, not failing. It keeps
+	// its last good data, so skip it without an error report.
+	if match := lowPowerSkipPattern.FindStringSubmatch(result); match != nil {
+		mc.logger.Infof("smartctl skipped %s because it is in %s mode (-n option); keeping its last collected data", deviceName, match[1])
+		return
+	}
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			exitCode := exitError.ExitCode()
