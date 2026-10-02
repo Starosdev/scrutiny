@@ -1239,6 +1239,35 @@ func TestDetect_TransformDetectedDevices_SymlinkAliasesKeepTheirTypes(t *testing
 	deviceTypes := []string{}
 	for _, device := range d.TransformDetectedDevices(detectedDevices) {
 		deviceTypes = append(deviceTypes, device.DeviceType)
+		// Both drives sit behind one device file, so neither may take its block WWN (#933).
+		require.True(t, device.SharedDeviceFile, device.DeviceType)
+	}
+
+	require.ElementsMatch(t, []string{"megaraid,0", "megaraid,1"}, deviceTypes)
+}
+
+func TestDetect_TransformDetectedDevices_TypedAliasWinsOverUntyped(t *testing.T) {
+	devicePath, symlinkPath := symlinkedDevice(t)
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetString("host.id").AnyTimes().Return("")
+	fakeConfig.EXPECT().GetDeviceOverrides().AnyTimes().Return([]models.ScanOverride{
+		{Device: devicePath, DeviceType: []string{"megaraid,0", "megaraid,1"}},
+		{Device: symlinkPath, Label: "data"},
+	})
+	fakeConfig.EXPECT().IsAllowlistedDevice(gomock.Any()).AnyTimes().Return(true)
+
+	detectedDevices := models.Scan{
+		Devices: []models.ScanDevice{{Name: devicePath, InfoName: devicePath, Protocol: "scsi", Type: "scsi"}},
+	}
+
+	d := detect.Detect{Config: fakeConfig}
+	deviceTypes := []string{}
+	for _, device := range d.TransformDetectedDevices(detectedDevices) {
+		require.Equal(t, devicePath, device.DeviceName)
+		deviceTypes = append(deviceTypes, device.DeviceType)
 	}
 
 	require.ElementsMatch(t, []string{"megaraid,0", "megaraid,1"}, deviceTypes)
@@ -1264,6 +1293,9 @@ func TestDetect_TransformDetectedDevices_UntypedSymlinkAliasesCollectedOnce(t *t
 	d := detect.Detect{Config: fakeConfig}
 	transformedDevices := d.TransformDetectedDevices(detectedDevices)
 
+	// The later untyped alias replaces the earlier one, label included.
 	require.Len(t, transformedDevices, 1)
 	require.Equal(t, symlinkPath, transformedDevices[0].DeviceName)
+	require.Equal(t, "", transformedDevices[0].Label)
+	require.False(t, transformedDevices[0].SharedDeviceFile)
 }
