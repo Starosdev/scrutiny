@@ -449,6 +449,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
         return 'bg-green-500';
     }
 
+    getReleaseUrl(version: string): string | null {
+        if (!/^\d+\.\d+\.\d+(?:-beta\.\d+)?$/.test(version)) {
+            return null;
+        }
+
+        return `https://github.com/Starosdev/scrutiny/releases/tag/v${version}`;
+    }
+
     /**
      * Get the collector version for a host group (from first device in group)
      */
