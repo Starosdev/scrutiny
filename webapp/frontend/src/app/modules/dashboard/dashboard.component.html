@@ -101,7 +101,7 @@
                 }
 
                 <div class="dashboard-device-grid" [class.dashboard-device-grid--compact]="isCompactDashboard()" [ngClass]="dashboardGridClass()">
-                    @for ( deviceSummary of ( deviceSummariesForHostGroup(hostId.value) | deviceSort:config.dashboard_sort:config.dashboard_display ); track deviceSummary ) { @if
+                    @for ( deviceSummary of ( deviceSummariesForHostGroup(hostId.value) | deviceSort:config.dashboard_sort:config.dashboard_display:config.metrics?.status_threshold ); track deviceSummary ) { @if
                     (showArchived ? $any(deviceSummary).device.archived : !$any(deviceSummary).device.archived) {
                     <app-dashboard-device
                         class="dashboard-device-grid__item"
