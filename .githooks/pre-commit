@@ -57,7 +57,10 @@ if [ -n "$STAGED_FE" ]; then
                 echo -e "${RED}[pre-commit]${NC} prettier failed: cd $FE && npx prettier --check ${FMT_FILES[*]}"
                 FAILED=1
             else
-                (cd "$FE" && git add -- "${FMT_FILES[@]}")
+                # Stage from the repository root. Git exports GIT_DIR to hooks, so a
+                # git add run from $FE treats $FE as the work tree root and stages
+                # the files again under a top-level src/ path.
+                git add -- "${FMT_FILES[@]/#/$FE/}"
             fi
         fi
         echo -e "${BLUE}[pre-commit]${NC} ng lint..."
