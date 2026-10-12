@@ -55,8 +55,9 @@ if [ -n "$STAGED_FE" ]; then
             if ! (cd "$FE" && npx --no-install prettier --write -- "${FMT_FILES[@]}" >/dev/null 2>&1); then
                 echo -e "${RED}[pre-commit]${NC} prettier failed: cd $FE && npx prettier --check ${FMT_FILES[*]}"
                 FAILED=1
+            else
+                (cd "$FE" && git add -- "${FMT_FILES[@]}")
             fi
-            (cd "$FE" && git add -- "${FMT_FILES[@]}")
         fi
         echo -e "${BLUE}[pre-commit]${NC} ng lint..."
         if ! (cd "$FE" && npm run lint >/dev/null 2>&1); then
