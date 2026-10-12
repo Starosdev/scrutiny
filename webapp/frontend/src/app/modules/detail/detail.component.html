@@ -31,7 +31,7 @@
                     <span class="ml-2">Settings</span>
                 </button>
 
-                @if (device?.device_status !== 0) {
+                @if (deviceStatusForModelWithThreshold(device, !!smart_results, config.metrics.status_threshold) === 'failed') {
                 <button class="ml-2 xs:hidden" mat-stroked-button (click)="resetDeviceStatus()" matTooltip="Reset device status to passed">
                     <mat-icon class="icon-size-20" [svgIcon]="'refresh'"></mat-icon>
                     <span class="ml-2">Reset Status</span>
@@ -55,7 +55,7 @@
                             <span class="ml-2">Settings</span>
                         </button>
 
-                        @if (device?.device_status !== 0) {
+                        @if (deviceStatusForModelWithThreshold(device, !!smart_results, config.metrics.status_threshold) === 'failed') {
                         <button mat-menu-item (click)="resetDeviceStatus()">
                             <mat-icon class="icon-size-20" [svgIcon]="'refresh'"></mat-icon>
                             <span class="ml-2">Reset Status</span>
@@ -77,10 +77,10 @@
                                 class="inline-flex items-center font-bold text-xs px-2 py-2px rounded-full tracking-wide uppercase"
                                 [ngClass]="{
                                     'red-200': deviceStatusForModelWithThreshold(device, !!smart_results, config.metrics.status_threshold) === 'failed',
-                                    'green-200': device?.device_status === 0
+                                    'green-200': deviceStatusForModelWithThreshold(device, !!smart_results, config.metrics.status_threshold) === 'passed'
                                 }"
                             >
-                                <span class="w-2 h-2 rounded-full mr-2" [ngClass]="{ 'bg-red': device?.device_status !== 0, 'bg-green': device?.device_status === 0 }"></span>
+                                <span class="w-2 h-2 rounded-full mr-2" [ngClass]="{ 'bg-red': deviceStatusForModelWithThreshold(device, !!smart_results, config.metrics.status_threshold) === 'failed', 'bg-green': deviceStatusForModelWithThreshold(device, !!smart_results, config.metrics.status_threshold) === 'passed' }"></span>
                                 <span class="pr-2px leading-relaxed whitespace-no-wrap">{{
                                     device | deviceStatus : !!smart_results : config.metrics.status_threshold : true
                                 }}</span>

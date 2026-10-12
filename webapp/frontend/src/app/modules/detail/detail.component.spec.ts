@@ -763,4 +763,38 @@ describe('DetailComponent', () => {
             expect(component.overrideDescription({ protocol: 'NVMe', attribute_id: 'media_errors', action: 'ignore' })).toBe('Ignored');
         });
     });
+
+    describe('status threshold rendering', () => {
+        const smartOnlyConfig: AppConfig = {
+            dashboard_display: 'name',
+            file_size_si_units: false,
+            powered_on_hours_unit: 'humanize',
+            temperature_unit: 'celsius',
+            metrics: { status_threshold: 1 },
+            theme: 'light',
+        };
+
+        const renderStatus = () => {
+            fixture.detectChanges();
+            return fixture.nativeElement.textContent;
+        };
+
+        it('hides the reset status button for a scrutiny-only failure when the threshold is SMART-only', () => {
+            Object.defineProperty(mockConfigService, 'config$', { writable: true, value: of(smartOnlyConfig) });
+            component.device = { device_protocol: 'ATA', device_status: 2, has_forced_failure: false } as DeviceModel;
+            component.smart_results = [{} as SmartModel];
+
+            const text = renderStatus();
+            expect(text).not.toContain('Reset Status');
+        });
+
+        it('shows the reset status button when a failure is forced, regardless of threshold', () => {
+            Object.defineProperty(mockConfigService, 'config$', { writable: true, value: of(smartOnlyConfig) });
+            component.device = { device_protocol: 'ATA', device_status: 0, has_forced_failure: true } as DeviceModel;
+            component.smart_results = [{} as SmartModel];
+
+            const text = renderStatus();
+            expect(text).toContain('Reset Status');
+        });
+    });
 });
