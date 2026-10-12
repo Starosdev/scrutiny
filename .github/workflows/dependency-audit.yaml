@@ -49,9 +49,11 @@ jobs:
         working-directory: webapp/frontend
         run: npm ci --ignore-scripts
 
+      # Same script and allowlist: only an advisory with no patched release
+      # (UNPATCHED_ADVISORIES) can pass here, since the frontend bundles no npm.
       - name: Audit frontend dependencies
         working-directory: webapp/frontend
-        run: npm audit --audit-level=low
+        run: node ../../.github/scripts/audit-release-tooling.mjs
 
   go-vulnerability:
     name: govulncheck
