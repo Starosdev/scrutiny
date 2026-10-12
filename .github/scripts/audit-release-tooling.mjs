@@ -11,6 +11,13 @@
 // Each entry is allowed only while every affected path is inside the bundled npm
 // tree, and only until ALLOWLIST_EXPIRES. After that date the step fails so the
 // allowlist is reviewed instead of silently living forever.
+//
+// UNPATCHED_ADVISORIES is the second, narrower exception: an advisory with no
+// patched release at all, so neither a lockfile update nor an override can fix it.
+// It is allowed at any path, with the same expiry, and each entry records why the
+// release tooling's use of the package is not exposed. A package that npm audit
+// flags only because a dependency is vulnerable (via names, no advisory of its
+// own) is allowed when every dependency it is flagged through is allowed.
 import { execFileSync } from 'node:child_process';
 
 const ALLOWLIST_EXPIRES = '2026-11-01';
@@ -29,6 +36,16 @@ const ALLOWED_ADVISORIES = new Set([
   'GHSA-3wwx-pv8p-q78v',
   'GHSA-r53p-7pc4-xj5r',
   'GHSA-rfgv-xxqx-mfg5',
+  // http-cache-semantics
+  'GHSA-ch52-4w7c-c8xp',
+  // postcss-selector-parser
+  'GHSA-rj75-hqrm-r3gf',
+]);
+const UNPATCHED_ADVISORIES = new Map([
+  // braces <= 3.0.3, the latest release: stack exhaustion from deeply nested brace
+  // patterns. semantic-release reaches it through micromatch, which only expands
+  // the globs in .releaserc.json and the plugins' own defaults, never untrusted input.
+  ['GHSA-vfj7-8cjw-p6xm', 'braces: no patched release; globs come only from the release config'],
 ]);
 
 if (new Date().toISOString().slice(0, 10) > ALLOWLIST_EXPIRES) {
@@ -49,13 +66,35 @@ if (report.error) {
   process.exit(1);
 }
 
-const blocking = [];
-for (const [name, vuln] of Object.entries(report.vulnerabilities ?? {})) {
+const vulnerabilities = report.vulnerabilities ?? {};
+const advisoriesOf = (vuln) => vuln.via.filter((via) => typeof via === 'object').map((via) => via.url.split('/').pop());
+const viaNamesOf = (vuln) => vuln.via.filter((via) => typeof via === 'string');
+
+// A package is blocked when one of its own advisories is not allowlisted, or when
+// it is flagged through a blocked dependency. Blocking is propagated to a fixed
+// point rather than by recursion, because semantic-release and its plugins flag
+// each other in a cycle.
+const ownAllowed = (vuln) => {
   const bundled = vuln.nodes.every((node) => node.startsWith(BUNDLED_NPM_PREFIX));
-  const advisories = vuln.via.filter((via) => typeof via === 'object').map((via) => via.url.split('/').pop());
-  const allowed = bundled && advisories.every((id) => ALLOWED_ADVISORIES.has(id));
+  return advisoriesOf(vuln).every((id) => UNPATCHED_ADVISORIES.has(id) || (bundled && ALLOWED_ADVISORIES.has(id)));
+};
+const blocked = new Set(Object.entries(vulnerabilities).filter(([, vuln]) => !ownAllowed(vuln)).map(([name]) => name));
+for (let changed = true; changed; ) {
+  changed = false;
+  for (const [name, vuln] of Object.entries(vulnerabilities)) {
+    if (!blocked.has(name) && viaNamesOf(vuln).some((via) => blocked.has(via) || !(via in vulnerabilities))) {
+      blocked.add(name);
+      changed = true;
+    }
+  }
+}
+const isAllowed = (name) => !blocked.has(name);
+
+const blocking = [];
+for (const [name, vuln] of Object.entries(vulnerabilities)) {
+  const advisories = advisoriesOf(vuln);
   const line = `${name} (${vuln.severity}) ${advisories.join(', ') || 'via ' + vuln.via.join(', ')} at ${vuln.nodes.join(', ')}`;
-  if (allowed) {
+  if (isAllowed(name)) {
     console.log(`allowed: ${line}`);
   } else {
     blocking.push(line);
