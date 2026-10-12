@@ -12,6 +12,7 @@
     "test": "ng test",
     "test:icons": "node scripts/check-icon-references.mjs",
     "test:theme": "node scripts/check-theme-tokens.mjs",
+    "test:tailwind": "node scripts/check-tailwind-classes.mjs",
     "lint": "ng lint",
     "lint:fix": "ng lint --fix",
     "format": "prettier --write \"src/**/*.{ts,html,json}\"",
@@ -102,10 +103,11 @@
     "minimatch@3": "3.1.5",
     "nanoid": "^3.3.18",
     "postcss": "^8.5.23",
-    "postcss-selector-parser@6": "^6.1.3",
+    "postcss-selector-parser": "^7.1.6",
     "qs": "^6.15.4",
     "engine.io": "6.6.11",
     "socket.io-parser": "^4.2.7",
-    "ws": "8.21.3"
+    "ws": "8.21.3",
+    "source-map-js": "^1.2.2"
   }
 }

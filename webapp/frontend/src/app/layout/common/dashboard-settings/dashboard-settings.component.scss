@@ -1,0 +1,21 @@
+// Form fields inside a 'flex flex-wrap' row. The flex basis is the narrowest
+// width at which a label stays readable; fields grow to share the row and
+// wrap onto the next one when the row runs out of room (#937).
+//
+// Tailwind arbitrary values such as 'min-w-[200px]' cannot be used for this:
+// src/styles/tailwind.scss is pre-generated, so they compile to nothing.
+.field-xs {
+    flex: 1 1 100px;
+}
+
+.field-sm {
+    flex: 1 1 120px;
+}
+
+.field-md {
+    flex: 1 1 150px;
+}
+
+.field-lg {
+    flex: 1 1 200px;
+}
