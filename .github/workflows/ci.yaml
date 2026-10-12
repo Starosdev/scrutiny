@@ -156,7 +156,7 @@ jobs:
       - name: Package Collector Omnibus
         run: make package-collector-omnibus
       - name: Archive
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: binaries-${{ matrix.cfg.on }}-${{ matrix.cfg.goos }}-${{ matrix.cfg.goarch }}-${{ matrix.cfg.goarm || 'na' }}
           path: |
