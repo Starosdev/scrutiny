@@ -232,6 +232,8 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             // Store the data
             // this.data = data;
             this.device = respWrapper.data.device;
+            // Which overrides apply depends on the device, so rebuild once it is known.
+            this._buildOverrideMap();
             this.smart_results = respWrapper.data.smart_results;
             this.metadata = respWrapper.metadata;
 
@@ -711,16 +713,32 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
     getOverrideForAttribute(attrId: string | number): AttributeOverride | null {
         const protocol = this.device?.device_protocol;
         const attrIdStr = String(attrId);
-        // Prefer device-specific override, fall back to global
-        return this._overrideMap.get(`${protocol}:${attrIdStr}:${this.device?.wwn}`) || this._overrideMap.get(`${protocol}:${attrIdStr}:`) || null;
+        return this._overrideMap.get(`${protocol}:${attrIdStr}`) || null;
     }
 
+    // Mirrors the backend's overrides.FindOverride: an override scoped by device_id applies
+    // only to that device and beats a legacy WWN-scoped one, which beats a global one.
     private _buildOverrideMap(): void {
         this._overrideMap.clear();
-        // Insert global overrides first, then device-specific so they take priority
+        const priorities = new Map<string, number>();
         for (const o of this.activeOverrides) {
-            const key = `${o.protocol}:${o.attribute_id}:${o.wwn || ''}`;
-            this._overrideMap.set(key, o);
+            let priority = 0;
+            if (o.device_id) {
+                if (o.device_id !== this.device?.device_id) {
+                    continue;
+                }
+                priority = 2;
+            } else if (o.wwn) {
+                if (o.wwn !== this.device?.wwn) {
+                    continue;
+                }
+                priority = 1;
+            }
+            const key = `${o.protocol}:${o.attribute_id}`;
+            if (priority > (priorities.get(key) ?? -1)) {
+                priorities.set(key, priority);
+                this._overrideMap.set(key, o);
+            }
         }
     }
 
@@ -728,7 +746,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         const override: AttributeOverride = {
             protocol: this.device.device_protocol as OverrideProtocol,
             attribute_id: String(attr.attribute_id),
-            wwn: this.device.wwn,
+            device_id: this.device.device_id,
             action: 'ignore',
         };
         this._overrideService
@@ -744,7 +762,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         const override: AttributeOverride = {
             protocol: this.device.device_protocol as OverrideProtocol,
             attribute_id: String(attr.attribute_id),
-            wwn: this.device.wwn,
+            device_id: this.device.device_id,
             action: 'force_status',
             status: 'passed',
         };
@@ -763,7 +781,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         const override: AttributeOverride = {
             protocol: this.device.device_protocol as OverrideProtocol,
             attribute_id: String(attr.attribute_id),
-            wwn: this.device.wwn,
+            device_id: this.device.device_id,
             action: 'acknowledge',
         };
         this._overrideService
