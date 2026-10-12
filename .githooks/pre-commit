@@ -44,8 +44,15 @@ if [ -n "$STAGED_FE" ]; then
     FE="webapp/frontend"
     if [ -d "$FE/node_modules" ] && command -v npm >/dev/null 2>&1; then
         echo -e "${BLUE}[pre-commit]${NC} prettier format..."
-        (cd "$FE" && npm run format >/dev/null 2>&1) || true
-        git add "$FE/src/" >/dev/null 2>&1 || true
+        # Format only the staged files. 'npm run format' rewrites all of src/,
+        # and adding that back pulled unrelated reformatting into commits (#947).
+        STAGED_FMT="$(echo "$STAGED_FE" | grep -E '^webapp/frontend/src/.*\.(ts|html|json)$' || true)"
+        if [ -n "$STAGED_FMT" ]; then
+            # shellcheck disable=SC2086
+            (cd "$FE" && npx prettier --write ${STAGED_FMT//webapp\/frontend\//} >/dev/null 2>&1) || true
+            # shellcheck disable=SC2086
+            git add $STAGED_FMT >/dev/null 2>&1 || true
+        fi
         echo -e "${BLUE}[pre-commit]${NC} ng lint..."
         if ! (cd "$FE" && npm run lint >/dev/null 2>&1); then
             echo -e "${RED}[pre-commit]${NC} ng lint errors: cd $FE && npm run lint"

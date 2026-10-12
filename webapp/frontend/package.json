@@ -12,6 +12,7 @@
     "test": "ng test",
     "test:icons": "node scripts/check-icon-references.mjs",
     "test:theme": "node scripts/check-theme-tokens.mjs",
+    "test:tailwind": "node scripts/check-tailwind-classes.mjs",
     "lint": "ng lint",
     "lint:fix": "ng lint --fix",
     "format": "prettier --write \"src/**/*.{ts,html,json}\"",
