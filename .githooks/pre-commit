@@ -43,9 +43,23 @@ fi
 if [ -n "$STAGED_FE" ]; then
     FE="webapp/frontend"
     if [ -d "$FE/node_modules" ] && command -v npm >/dev/null 2>&1; then
-        echo -e "${BLUE}[pre-commit]${NC} prettier format..."
-        (cd "$FE" && npm run format >/dev/null 2>&1) || true
-        git add "$FE/src/" >/dev/null 2>&1 || true
+        # Format and re-stage only the staged files that `npm run format` covers.
+        # Formatting all of src/ and staging it pulled unrelated files and
+        # unstaged edits into the commit (#947). Paths are read into an array so
+        # names with spaces survive, and a Prettier failure blocks the commit.
+        FMT_FILES=()
+        while IFS= read -r file; do
+            FMT_FILES+=("${file#"$FE"/}")
+        done < <(printf '%s\n' "$STAGED_FE" | grep -E "^$FE/src/.*\.(ts|html|json)$" || true)
+        if [ "${#FMT_FILES[@]}" -gt 0 ]; then
+            echo -e "${BLUE}[pre-commit]${NC} prettier format (staged files)..."
+            if ! (cd "$FE" && npx --no-install prettier --write -- "${FMT_FILES[@]}" >/dev/null 2>&1); then
+                echo -e "${RED}[pre-commit]${NC} prettier failed: cd $FE && npx prettier --check ${FMT_FILES[*]}"
+                FAILED=1
+            else
+                (cd "$FE" && git add -- "${FMT_FILES[@]}")
+            fi
+        fi
         echo -e "${BLUE}[pre-commit]${NC} ng lint..."
         if ! (cd "$FE" && npm run lint >/dev/null 2>&1); then
             echo -e "${RED}[pre-commit]${NC} ng lint errors: cd $FE && npm run lint"
