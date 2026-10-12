@@ -14,8 +14,8 @@
 //
 // UNPATCHED_ADVISORIES is the second, narrower exception: an advisory with no
 // patched release at all, so neither a lockfile update nor an override can fix it.
-// It is allowed at any path, with the same expiry, and each entry records why the
-// release tooling's use of the package is not exposed. A package that npm audit
+// Each entry names the one package it applies to, shares the same expiry, and
+// records why the release tooling's use of that package is not exposed. A package that npm audit
 // flags only because a dependency is vulnerable (via names, no advisory of its
 // own) is allowed when every dependency it is flagged through is allowed.
 import { execFileSync } from 'node:child_process';
@@ -45,7 +45,7 @@ const UNPATCHED_ADVISORIES = new Map([
   // braces <= 3.0.3, the latest release: stack exhaustion from deeply nested brace
   // patterns. semantic-release reaches it through micromatch, which only expands
   // the globs in .releaserc.json and the plugins' own defaults, never untrusted input.
-  ['GHSA-vfj7-8cjw-p6xm', 'braces: no patched release; globs come only from the release config'],
+  ['GHSA-vfj7-8cjw-p6xm', { pkg: 'braces', reason: 'no patched release; globs come only from the release config' }],
 ]);
 
 if (new Date().toISOString().slice(0, 10) > ALLOWLIST_EXPIRES) {
@@ -74,11 +74,13 @@ const viaNamesOf = (vuln) => vuln.via.filter((via) => typeof via === 'string');
 // it is flagged through a blocked dependency. Blocking is propagated to a fixed
 // point rather than by recursion, because semantic-release and its plugins flag
 // each other in a cycle.
-const ownAllowed = (vuln) => {
+const ownAllowed = (name, vuln) => {
+  // An entry that names neither an advisory nor a dependency carries no evidence either way; fail closed.
+  if (vuln.via.length === 0) return false;
   const bundled = vuln.nodes.every((node) => node.startsWith(BUNDLED_NPM_PREFIX));
-  return advisoriesOf(vuln).every((id) => UNPATCHED_ADVISORIES.has(id) || (bundled && ALLOWED_ADVISORIES.has(id)));
+  return advisoriesOf(vuln).every((id) => UNPATCHED_ADVISORIES.get(id)?.pkg === name || (bundled && ALLOWED_ADVISORIES.has(id)));
 };
-const blocked = new Set(Object.entries(vulnerabilities).filter(([, vuln]) => !ownAllowed(vuln)).map(([name]) => name));
+const blocked = new Set(Object.entries(vulnerabilities).filter(([name, vuln]) => !ownAllowed(name, vuln)).map(([name]) => name));
 for (let changed = true; changed; ) {
   changed = false;
   for (const [name, vuln] of Object.entries(vulnerabilities)) {
