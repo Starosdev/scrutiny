@@ -206,6 +206,44 @@ describe('DetailComponent', () => {
         }
     });
 
+    describe('displayedStatus', () => {
+        const withThreshold = (status_threshold: number): void => {
+            component.config = { ...component.config, metrics: { status_threshold } } as AppConfig;
+        };
+
+        beforeEach(() => {
+            component.config = { metrics: { status_threshold: 3 } } as AppConfig;
+            component.smart_results = [];
+        });
+
+        it('shows passed for a passing drive', () => {
+            component.device = { device_status: 0 } as DeviceModel;
+            expect(component.displayedStatus).toBe('passed');
+        });
+
+        it('shows failed for a failing drive with the both threshold', () => {
+            component.device = { device_status: 2 } as DeviceModel;
+            expect(component.displayedStatus).toBe('failed');
+        });
+
+        it('shows passed when the threshold hides the failure', () => {
+            component.device = { device_status: 2 } as DeviceModel;
+            withThreshold(1);
+            expect(component.displayedStatus).toBe('passed');
+        });
+
+        it('shows failed for a forced failure on a passing drive', () => {
+            component.device = { device_status: 0, has_forced_failure: true } as DeviceModel;
+            expect(component.displayedStatus).toBe('failed');
+        });
+
+        it('shows unknown without SMART results', () => {
+            component.device = { device_status: 1 } as DeviceModel;
+            component.smart_results = null as any;
+            expect(component.displayedStatus).toBe('unknown');
+        });
+    });
+
     describe('selfTestStatusLabel', () => {
         it('should return Passed for successful self-tests', () => {
             const selfTest = { status_passed: true } as DeviceSelfTestModel;
