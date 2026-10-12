@@ -4,6 +4,14 @@ on:
   issues:
     types: [opened, labeled]
 
+# One issue can fire 'opened' and 'labeled' together (issue templates apply
+# labels at creation). Run them one at a time per issue, so the second run
+# finds the project item the first one added instead of adding it again and
+# failing with "Content already exists in this project".
+concurrency:
+  group: project-router-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
 permissions:
   issues: read
   repository-projects: write
