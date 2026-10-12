@@ -1,23 +1,29 @@
 import { Pipe, PipeTransform } from '@angular/core';
+import { MetricsStatusThreshold } from 'app/core/config/app.config';
 import { DeviceTitlePipe } from 'app/shared/device-title.pipe';
 
 @Pipe({ name: 'deviceSort' })
 export class DeviceSortPipe implements PipeTransform {
-    statusCompareFn(a: any, b: any): number {
-        function deviceStatus(deviceSummary): number {
-            if (!deviceSummary.smart) {
-                return 0;
-            } else if (deviceSummary.device.device_status === 0) {
-                return 1;
-            } else {
-                return deviceSummary.device.device_status * -1; // will return range from -1, -2, -3
+    statusCompareFn(statusThreshold: MetricsStatusThreshold) {
+        // Severity rank, higher is worse, so status_desc ("Failed First") lists failing drives first.
+        // Like the dashboard badge, it applies the status threshold to device_status and treats a
+        // forced failure as failed regardless of the threshold.
+        // Mirrors summaryStatusValue in the backend summary page sort.
+        return function (a: any, b: any): number {
+            function severity(deviceSummary): number {
+                if (!deviceSummary.smart) {
+                    return 1; // unknown, matches the badge shown without SMART results
+                }
+                if (deviceSummary.device.has_forced_failure) {
+                    return 5;
+                }
+                // tslint:disable-next-line:no-bitwise
+                const status = deviceSummary.device.device_status & statusThreshold;
+                return status === 0 ? 0 : status + 1; // passed 0, failed smart 2, scrutiny 3, both 4
             }
-        }
 
-        const left = deviceStatus(a);
-        const right = deviceStatus(b);
-
-        return left - right;
+            return severity(a) - severity(b);
+        };
     }
 
     titleCompareFn(dashboardDisplay: string) {
@@ -55,7 +61,12 @@ export class DeviceSortPipe implements PipeTransform {
         return left - right;
     }
 
-    transform(deviceSummaries: Array<unknown>, sortBy = 'status', dashboardDisplay = 'name'): Array<unknown> {
+    transform(
+        deviceSummaries: Array<unknown>,
+        sortBy = 'status',
+        dashboardDisplay = 'name',
+        statusThreshold: MetricsStatusThreshold = MetricsStatusThreshold.Both
+    ): Array<unknown> {
         // Map legacy values to new format for backward compatibility
         const legacyMap: Record<string, string> = {
             status: 'status_desc',
@@ -73,7 +84,7 @@ export class DeviceSortPipe implements PipeTransform {
         let compareFn: (a: any, b: any) => number;
         switch (sortField) {
             case 'status':
-                compareFn = this.statusCompareFn;
+                compareFn = this.statusCompareFn(statusThreshold || MetricsStatusThreshold.Both);
                 break;
             case 'title':
                 compareFn = this.titleCompareFn(dashboardDisplay);
@@ -88,7 +99,7 @@ export class DeviceSortPipe implements PipeTransform {
                 compareFn = this.temperatureCompareFn;
                 break;
             default:
-                compareFn = this.statusCompareFn;
+                compareFn = this.statusCompareFn(statusThreshold || MetricsStatusThreshold.Both);
         }
 
         // Apply sort with direction
