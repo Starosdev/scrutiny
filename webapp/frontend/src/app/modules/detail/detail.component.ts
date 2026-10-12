@@ -199,7 +199,13 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     readonly humanizeDuration = humanizeDuration;
 
-    deviceStatusForModelWithThreshold = DeviceStatusPipe.deviceStatusForModelWithThreshold;
+    /**
+     * Status shown in the header badge: 'passed', 'failed' or 'unknown'. It applies the status
+     * threshold and forced failure overrides, so the badge colors match the dashboard.
+     */
+    get displayedStatus(): string {
+        return DeviceStatusPipe.deviceStatusForModelWithThreshold(this.device, !!this.smart_results, this.config?.metrics?.status_threshold);
+    }
     // -----------------------------------------------------------------------------------------------------
     // @ Lifecycle hooks
     // -----------------------------------------------------------------------------------------------------
