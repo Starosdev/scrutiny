@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Runs `npm audit` for the root release tooling and fails on any finding except
-// the allowlisted advisories below.
+// Runs `npm audit` in the current directory and fails on any finding except the
+// allowlisted advisories below. CI runs it for the root release tooling and for
+// webapp/frontend; any finding at any severity outside the allowlist fails.
 //
 // The allowlist covers dependencies bundled inside the `npm` package itself
 // (node_modules/npm/node_modules/...). semantic-release installs npm through
@@ -43,9 +44,11 @@ const ALLOWED_ADVISORIES = new Set([
 ]);
 const UNPATCHED_ADVISORIES = new Map([
   // braces <= 3.0.3, the latest release: stack exhaustion from deeply nested brace
-  // patterns. semantic-release reaches it through micromatch, which only expands
-  // the globs in .releaserc.json and the plugins' own defaults, never untrusted input.
-  ['GHSA-vfj7-8cjw-p6xm', { pkg: 'braces', reason: 'no patched release; globs come only from the release config' }],
+  // patterns. It is reached only through Node tooling that expands globs from
+  // checked-in config: micromatch in semantic-release (.releaserc.json), and
+  // chokidar, fast-glob and micromatch in the frontend build and test tooling
+  // (Angular devkit, Tailwind, Karma). None of it ships in the browser bundle.
+  ['GHSA-vfj7-8cjw-p6xm', { pkg: 'braces', reason: 'no patched release; globs come only from checked-in tooling config' }],
 ]);
 
 if (new Date().toISOString().slice(0, 10) > ALLOWLIST_EXPIRES) {
