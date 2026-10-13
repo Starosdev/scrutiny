@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/analogj/scrutiny/pkg/secrets"
 	"github.com/analogj/scrutiny/pkg/utils"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -11,6 +12,9 @@ import (
 )
 
 const DB_USER_SETTINGS_SUBKEY = "user"
+
+// DefaultMaxBodyBytes is the default web.listen.max_body_bytes (16 MiB).
+const DefaultMaxBodyBytes int64 = 16 << 20
 
 // WebZFSAllowPoolModificationsKey controls whether user-facing ZFS pool mutation endpoints are enabled.
 const WebZFSAllowPoolModificationsKey = "web.zfs.allow_pool_modifications"
@@ -43,6 +47,14 @@ func (c *configuration) Init() error {
 	c.SetDefault("web.listen.read_timeout_seconds", 10)
 	c.SetDefault("web.listen.write_timeout_seconds", 30)
 	c.SetDefault("web.listen.idle_timeout_seconds", 60)
+	// Reverse proxies whose X-Forwarded-For header is trusted for the client IP (login rate limiting, logs).
+	// Empty (default) trusts no proxy, so the TCP peer address is always used.
+	c.SetDefault("web.listen.trusted_proxies", []string{})
+	// Largest accepted request body, in bytes. The biggest realistic collector payload (a FARM-merged
+	// smartctl report) is a few hundred KiB; 16 MiB leaves two orders of magnitude of headroom.
+	c.SetDefault("web.listen.max_body_bytes", DefaultMaxBodyBytes)
+	// Directory for generated PDF reports. Not settable through the API.
+	c.SetDefault("web.reports.path", "/opt/scrutiny/reports")
 	c.SetDefault("web.src.frontend.path", "/opt/scrutiny/web")
 	c.SetDefault("web.database.location", "/opt/scrutiny/config/scrutiny.db")
 	c.SetDefault("web.database.journal_mode", "WAL")
@@ -102,10 +114,12 @@ func (c *configuration) Init() error {
 	c.SetDefault("web.mqtt.retain", true)
 
 	// Authentication settings
-	// Auth is disabled by default for backward compatibility with existing deployments.
-	// When enabled, all API endpoints (except /api/health and /api/auth/*) require
-	// a valid Bearer token in the Authorization header.
-	c.SetDefault("web.auth.enabled", false)
+	// Auth is enabled by default. When enabled, all API endpoints (except /api/health and /api/auth/*)
+	// require a valid Bearer token in the Authorization header. The omnibus image generates a token at
+	// first start; hub/spoke deployments must set web.auth.token. Set enabled to false to opt out.
+	c.SetDefault("web.auth.enabled", true)
+	// Directory where generated secrets (auth token, JWT secret) are persisted with mode 0600.
+	c.SetDefault("web.secrets.dir", secrets.DefaultDir)
 	c.SetDefault("web.auth.token", "")
 	c.SetDefault("web.auth.jwt_secret", "")
 	c.SetDefault("web.auth.jwt_expiry_hours", 24)
@@ -186,19 +200,6 @@ func (c *configuration) ReadConfig(configFilePath string, logger *logrus.Entry) 
 // This function ensures that the merged config works correctly.
 func (c *configuration) ValidateConfig() error {
 
-	//the following keys are deprecated, and no longer supported
-	/*
-		- notify.filter_attributes (replaced by metrics.status.filter_attributes SETTING)
-		- notify.level (replaced by metrics.notify.level and metrics.status.threshold SETTING)
-	*/
-	//TODO add docs and upgrade doc.
-	if c.IsSet("notify.filter_attributes") {
-		return errors.ConfigValidationError("`notify.filter_attributes` configuration option is deprecated. Replaced by option in Dashboard Settings page")
-	}
-	if c.IsSet("notify.level") {
-		return errors.ConfigValidationError("`notify.level` configuration option is deprecated. Replaced by option in Dashboard Settings page")
-	}
-
 	switch c.GetString("web.database.type") {
 	case "sqlite":
 	case "postgres":
@@ -207,12 +208,6 @@ func (c *configuration) ValidateConfig() error {
 		}
 	default:
 		return errors.ConfigValidationError("`web.database.type` must be sqlite or postgres")
-	}
-
-	// When authentication is enabled, a master API token must be provided.
-	// Without a token, there would be no way to authenticate.
-	if c.GetBool("web.auth.enabled") && c.GetString("web.auth.token") == "" {
-		return errors.ConfigValidationError("`web.auth.token` is required when `web.auth.enabled` is true. Set it in scrutiny.yaml or via SCRUTINY_WEB_AUTH_TOKEN env var.")
 	}
 
 	return nil

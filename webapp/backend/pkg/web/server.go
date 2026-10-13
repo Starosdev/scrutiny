@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/analogj/scrutiny/pkg/utils"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/auth"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/errors"
@@ -363,6 +364,11 @@ func (ae *AppEngine) Start() error {
 	gin.SetMode(gin.ReleaseMode)
 	if strings.ToLower(ae.Config.GetString("log.level")) == "debug" {
 		gin.SetMode(gin.DebugMode)
+	}
+
+	// Resolve auth secrets first: hub/spoke without a token must fail before anything else starts.
+	if err := auth.EnsureStartupAuth(ae.Config, ae.Logger, auth.HasLocalCollector()); err != nil {
+		return err
 	}
 
 	// check if the SQLite database parent directory exists, fail here rather than in a handler.

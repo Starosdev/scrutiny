@@ -129,7 +129,7 @@ func initJWTSecret(authEnabled bool, jwtSecret string, logger *logrus.Entry) str
 		logger.Warnf("Failed to generate JWT secret, JWT auth will not work: %v", err)
 		return ""
 	}
-	logger.Warn("No web.auth.jwt_secret configured -- generated a random secret. JWT tokens will not survive server restarts. Set web.auth.jwt_secret in scrutiny.yaml for persistent sessions.")
+	logger.Warn("No web.auth.jwt_secret configured and none could be persisted -- generated a per-process secret. JWT tokens will not survive server restarts. Set web.auth.jwt_secret in scrutiny.yaml or make web.secrets.dir writable.")
 	return generated
 }
 
@@ -138,7 +138,7 @@ func logAuthStatus(logger *logrus.Entry, ac *authContext) {
 	if ac.authEnabled {
 		logger.Info("API authentication is enabled")
 	} else {
-		logger.Info("API authentication is disabled (all endpoints are open)")
+		logger.Warn("API authentication is disabled (all endpoints are open)")
 	}
 	if ac.metricsToken != "" {
 		logger.Info("Metrics endpoint authentication is enabled (web.metrics.token)")
@@ -146,8 +146,8 @@ func logAuthStatus(logger *logrus.Entry, ac *authContext) {
 }
 
 // AuthMiddleware validates authentication tokens on protected routes.
-// When auth is disabled (web.auth.enabled=false), this middleware is a no-op
-// and all requests pass through -- preserving backward compatibility.
+// Authentication is enabled by default. When it is explicitly disabled
+// (web.auth.enabled=false), this middleware is a no-op and all requests pass through.
 //
 // When auth is enabled, it validates Bearer tokens from the Authorization header.
 // The token can be either:
