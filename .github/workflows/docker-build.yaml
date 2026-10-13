@@ -119,11 +119,11 @@ jobs:
             type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' && matrix.default_image == true }}
             # Version tags
             type=semver,pattern={{version}}-${{ matrix.image }}
-            type=semver,pattern={{major}}.{{minor}}-${{ matrix.image }}
-            type=semver,pattern={{major}}-${{ matrix.image }},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+            type=semver,pattern={{major}}.{{minor}}-${{ matrix.image }},enable=${{ !contains(github.ref, '-') }}
+            type=semver,pattern={{major}}-${{ matrix.image }},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') && !contains(github.ref, '-') }}
             type=semver,pattern={{version}},enable=${{ matrix.default_image == true }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ matrix.default_image == true }}
-            type=semver,pattern={{major}},enable=${{ matrix.default_image == true && !startsWith(github.ref, 'refs/tags/v0.') }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ matrix.default_image == true && !contains(github.ref, '-') }}
+            type=semver,pattern={{major}},enable=${{ matrix.default_image == true && !startsWith(github.ref, 'refs/tags/v0.') && !contains(github.ref, '-') }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
