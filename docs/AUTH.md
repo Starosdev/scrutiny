@@ -320,7 +320,7 @@ Only list proxies you control. A listed proxy can set any client IP.
 
 ## Request Size Limit
 
-Request bodies larger than `web.listen.max_body_bytes` (default 16 MiB) are rejected with HTTP 413. A smartctl `--xall --json` report is tens of KiB, and a report merged with FARM data is a few hundred KiB, so the default leaves a wide margin.
+Request bodies larger than `web.listen.max_body_bytes` (default 16 MiB) are rejected with HTTP 413. `/api/auth/login` accepts at most 64 KiB. A smartctl `--xall --json` report is tens of KiB, and a report merged with FARM data is a few hundred KiB, so the default leaves a wide margin.
 
 ## Docker Deployment
 
