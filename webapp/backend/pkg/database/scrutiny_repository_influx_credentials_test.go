@@ -95,7 +95,7 @@ func Test_setupInfluxClient_FreshInstallGeneratesCredentials(t *testing.T) {
 
 	// restart: InfluxDB is now onboarded, the saved token is used and no warning is logged.
 	hook.Reset()
-	token, err := resolveInfluxToken(cfg, logger, true)
+	token, _, err := resolveInfluxToken(cfg, logger, true)
 	require.NoError(t, err)
 	require.Equal(t, savedToken, token)
 	require.Empty(t, hook.AllEntries())
@@ -136,7 +136,7 @@ func Test_resolveInfluxToken_LegacyInstallKeepsDefaultToken(t *testing.T) {
 	defer srv.Close()
 	logger, hook := logrustest.NewNullLogger()
 
-	token, err := resolveInfluxToken(newInfluxCredentialConfig(t, srv, t.TempDir(), "", ""), logger, true)
+	token, _, err := resolveInfluxToken(newInfluxCredentialConfig(t, srv, t.TempDir(), "", ""), logger, true)
 	require.NoError(t, err)
 	require.Equal(t, LegacyInfluxToken, token)
 	require.Len(t, hook.AllEntries(), 1)
@@ -150,7 +150,7 @@ func Test_resolveInfluxToken_ExplicitLegacyTokenWarns(t *testing.T) {
 	defer srv.Close()
 	logger, hook := logrustest.NewNullLogger()
 
-	token, err := resolveInfluxToken(newInfluxCredentialConfig(t, srv, t.TempDir(), LegacyInfluxToken, ""), logger, true)
+	token, _, err := resolveInfluxToken(newInfluxCredentialConfig(t, srv, t.TempDir(), LegacyInfluxToken, ""), logger, true)
 	require.NoError(t, err)
 	require.Equal(t, LegacyInfluxToken, token)
 	require.Equal(t, logrus.WarnLevel, hook.LastEntry().Level)
@@ -161,7 +161,7 @@ func Test_resolveInfluxToken_ConfiguredTokenOnOnboardedInstance(t *testing.T) {
 	defer srv.Close()
 	logger, hook := logrustest.NewNullLogger()
 
-	token, err := resolveInfluxToken(newInfluxCredentialConfig(t, srv, t.TempDir(), "my-token", ""), logger, true)
+	token, _, err := resolveInfluxToken(newInfluxCredentialConfig(t, srv, t.TempDir(), "my-token", ""), logger, true)
 	require.NoError(t, err)
 	require.Equal(t, "my-token", token)
 	require.Empty(t, hook.AllEntries())
@@ -175,7 +175,35 @@ func Test_resolveInfluxToken_FreshInstallUnwritableDirFails(t *testing.T) {
 	blocker := filepath.Join(t.TempDir(), "blocker")
 	require.NoError(t, os.WriteFile(blocker, nil, 0o600))
 
-	_, err := resolveInfluxToken(newInfluxCredentialConfig(t, srv, filepath.Join(blocker, "config"), "", ""), logger, false)
+	_, _, err := resolveInfluxToken(newInfluxCredentialConfig(t, srv, filepath.Join(blocker, "config"), "", ""), logger, false)
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), "web.influxdb.token"))
+}
+
+func Test_setupInfluxClient_LogsTokenSourceOn401(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/v2/setup" {
+			_ = json.NewEncoder(w).Encode(map[string]bool{"allowed": false})
+			return
+		}
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"code":"unauthorized","message":"unauthorized access"}`))
+	}))
+	defer srv.Close()
+	logger, hook := logrustest.NewNullLogger()
+
+	client, err := setupInfluxClient(context.Background(), newInfluxCredentialConfig(t, srv, t.TempDir(), "", ""), logger)
+	require.NoError(t, err)
+	client.Close()
+
+	var found bool
+	for _, entry := range hook.AllEntries() {
+		if entry.Level == logrus.ErrorLevel {
+			found = true
+			require.Contains(t, entry.Message, "legacy default token")
+			require.NotContains(t, entry.Message, LegacyInfluxToken)
+		}
+	}
+	require.True(t, found, "expected an error naming the token source")
 }

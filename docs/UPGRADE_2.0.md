@@ -64,6 +64,7 @@ The well-known InfluxDB admin token (`scrutiny-default-admin-token`) and passwor
 | Existing install, InfluxDB already onboarded, `web.influxdb.token` set | Unchanged. | Nothing. If the value is the old default, a warning asks you to rotate it. |
 | Existing install onboarded with the old default (no token setting) | Scrutiny keeps using the legacy default token so nothing is lost. It logs a warning at every start. | Rotate the token (below). |
 | Fresh start of Scrutiny against an InfluxDB that already has data but no `.influxdb-token` | Same as the line above: the legacy token is tried. | If InfluxDB was onboarded with another token, set `SCRUTINY_WEB_INFLUXDB_TOKEN`. |
+| Old InfluxDB data restored next to a 2.0 `.influxdb-token` (or a config volume restored without the matching InfluxDB data) | The saved token does not match the data, InfluxDB answers 401, and Scrutiny logs an error that names the token source (`config`, `saved file`, or `legacy default`) and never the value. | Set `SCRUTINY_WEB_INFLUXDB_TOKEN` to a valid token for that InfluxDB, or delete `.influxdb-token` to try the legacy default. |
 
 Existing installs are not broken: the legacy token stays valid for as long as you keep the InfluxDB data, and no command or setting is required to upgrade. If first-time setup cannot write the config directory, Scrutiny stops with an error that names `web.influxdb.token`; make the directory writable or set the token yourself.
 
@@ -106,7 +107,7 @@ TODO (WP-F): regenerate `example.scrutiny.yaml` and `example.collector.yaml` fro
 | Default | Files under the config volume change owner to `1000:1000` on the host. Set `PUID` and `PGID` to pick another owner (Unraid: `99` and `100`, already set in the template). |
 | Keep running as root | Set `PUID=0`. |
 | `user:` set in Compose (or `runAsUser`) | The entrypoint changes nothing. Make the volume writable by that user before upgrading. |
-| `cap_drop: [ALL]` | The container cannot change ownership or drop privileges. It logs a warning and runs as root, as before. |
+| `cap_drop: [ALL]` | The container cannot change ownership or drop privileges. It logs a warning and runs as root, but root without `CAP_DAC_OVERRIDE` cannot read the 0600 secrets and files owned by `PUID` that an earlier start created, so the server fails. Set `user: PUID:PGID` (and make the volume writable by it), or add `cap_add: [CHOWN, SETUID, SETGID]`. |
 | Volume that refuses `chown` (NFS with root squash, read-only mount) | A warning is logged and ownership is left alone. Make the volume writable by `PUID:PGID`. |
 
 The collector images and the omnibus image still run as root. Collectors need raw device access for `smartctl`, `zpool`, `mdadm`, `btrfs`, and `fio`, and the omnibus image runs InfluxDB, the web server, cron, and the collectors under one s6 supervisor. See [DEPLOYMENTS.md](DEPLOYMENTS.md#container-users-and-privileges).

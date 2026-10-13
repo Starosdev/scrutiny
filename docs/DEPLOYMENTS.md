@@ -203,7 +203,7 @@ The `web` entrypoint starts as root, changes the owner of everything under `/opt
 - Set `PUID` and `PGID` to match the owner you want on the host files (for example `99` and `100` on Unraid). Both must be numbers.
 - `PUID=0` keeps the old behavior (run as root).
 - If the container already starts as a non-root user (`user:` in Compose, `runAsUser` in Kubernetes), the entrypoint changes nothing. The mounted directories must already be writable by that user.
-- With `cap_drop: [ALL]` the container cannot change ownership or drop privileges. The entrypoint logs a warning and runs as root, as before.
+- With `cap_drop: [ALL]` the container cannot change ownership or drop privileges. The entrypoint logs a warning and runs as root, but root without `CAP_DAC_OVERRIDE` cannot read the 0600 secrets and `PUID`-owned files that an earlier start created. Use `user: PUID:PGID` (with a volume writable by that user), or add `cap_add: [CHOWN, SETUID, SETGID]`.
 - An NFS or other mount that refuses `chown` logs a warning and keeps its current owner. Make it writable by `PUID:PGID`.
 
 ### InfluxDB admin port

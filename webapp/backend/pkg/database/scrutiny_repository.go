@@ -194,7 +194,7 @@ func setupInfluxClient(ctx context.Context, appConfig config.Interface, globalLo
 		return nil, fmt.Errorf("failed to check influxdb setup status - %w", err)
 	}
 
-	token, err := resolveInfluxToken(appConfig, globalLogger, influxSetupComplete)
+	token, tokenSource, err := resolveInfluxToken(appConfig, globalLogger, influxSetupComplete)
 	if err != nil {
 		return nil, err
 	}
@@ -228,6 +228,8 @@ func setupInfluxClient(ctx context.Context, appConfig config.Interface, globalLo
 			client.Close()
 			return nil, err
 		}
+	} else {
+		warnIfInfluxRejectsToken(ctx, client, appConfig.GetString(cfgInfluxDBOrg), tokenSource, globalLogger)
 	}
 	return client, nil
 }
