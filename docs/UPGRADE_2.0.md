@@ -74,6 +74,17 @@ Removed:
 
 TODO (WP-F): regenerate `example.scrutiny.yaml` and `example.collector.yaml` from `Init()` defaults with a drift test. This package updated the auth, listen, secrets, and reports entries by hand.
 
+## API contract and scoped tokens
+
+Added, with no breaking change:
+
+- `GET /api/version` is a new public endpoint. It returns the server version, `api_version` (`"2"`), and capability flags (`auth_required`, `scoped_tokens`, `collector_trigger_enabled`, `zfs_pool_modifications_allowed`, `metrics_enabled`, `mqtt_enabled`). `docs/openapi.yaml` `info.version` is now `2` instead of `1.0.0`. `server_version`, `collector_trigger_enabled`, and `zfs_pool_modifications_allowed` stay in the `GET`/`POST /api/settings` responses for existing clients.
+- Named API tokens with `read`, `collector`, and `admin` scopes: `POST`, `GET`, and `DELETE /api/settings/tokens`. See [AUTH.md](AUTH.md#named-api-tokens-and-scopes).
+- Routes are now grouped by minimum scope. The master token, session JWTs, and auth-disabled mode behave as before (full access), so no existing client changes. The only way to get a 403 for scope is to use a new named token above its scope.
+- A Go test now fails when a registered route and `docs/openapi.yaml` disagree.
+
+Follow-up outside this change: the settings page needs a token management UI, and the frontend can read the capability flags from `/api/version` instead of copying them from the settings response.
+
 ## Other operator-visible changes
 
 TODO (owning work packages): volume ownership changes for the `web` container, if any, and

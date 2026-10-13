@@ -1,11 +1,14 @@
 package middleware
 
 import (
+	"context"
+	"crypto/subtle"
 	"net/http"
 	"strings"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/auth"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -17,6 +20,7 @@ var publicPathSuffixes = []string{
 	"/api/health",
 	"/api/auth/status",
 	"/api/auth/login",
+	"/api/version",
 }
 
 // docsPathSuffixes lists the served documentation routes.
@@ -32,6 +36,15 @@ const metricsPathSuffix = "/api/metrics"
 
 // configKeyJWTSecret is the config key for the JWT signing secret.
 const configKeyJWTSecret = "web.auth.jwt_secret" //nolint:gosec
+
+// authScopeKey is the gin context key holding the scope of the authenticated caller.
+const authScopeKey = "AUTH_SCOPE"
+
+// apiTokenStore is the slice of the device repository the scoped-token path needs.
+type apiTokenStore interface {
+	GetActiveAPITokenByHash(ctx context.Context, tokenHash string) (*models.ApiToken, error)
+	TouchAPIToken(ctx context.Context, id uint) error
+}
 
 // authContext holds pre-computed auth configuration to avoid repeated config lookups.
 type authContext struct {
@@ -86,6 +99,7 @@ func (ac *authContext) validateGeneralAuth(c *gin.Context) bool {
 
 	if auth.ValidateAPIToken(tokenString, ac.configuredToken) {
 		c.Set("AUTH_TYPE", "api_token")
+		c.Set(authScopeKey, models.APITokenScopeAdmin)
 		return true
 	}
 
@@ -94,11 +108,41 @@ func (ac *authContext) validateGeneralAuth(c *gin.Context) bool {
 		if err == nil {
 			c.Set("AUTH_TYPE", "jwt")
 			c.Set("AUTH_CLAIMS", claims)
+			c.Set(authScopeKey, models.APITokenScopeAdmin)
 			return true
 		}
 	}
 
-	return false
+	return ac.validateScopedToken(c, tokenString)
+}
+
+// validateScopedToken accepts a named token created through /api/settings/tokens. Only the SHA-256
+// hash is stored, so the lookup key is the hash of the presented token. The stored hash is compared
+// in constant time again after the lookup. A failed lookup is a plain miss, never an error to the
+// client, so revoked, expired, and unknown tokens are indistinguishable.
+func (ac *authContext) validateScopedToken(c *gin.Context, tokenString string) bool {
+	repo, exists := c.Get("DEVICE_REPOSITORY")
+	if !exists {
+		return false
+	}
+	store, ok := repo.(apiTokenStore)
+	if !ok {
+		return false
+	}
+	hash := auth.HashToken(tokenString)
+	token, err := store.GetActiveAPITokenByHash(c, hash)
+	if err != nil || token == nil || subtle.ConstantTimeCompare([]byte(token.TokenHash), []byte(hash)) != 1 {
+		return false
+	}
+	if !models.IsValidAPITokenScope(token.Scope) {
+		return false
+	}
+	// last_used_at is an audit aid; failing to write it must not fail the request.
+	_ = store.TouchAPIToken(c, token.ID)
+	c.Set("AUTH_TYPE", "scoped_token")
+	c.Set(authScopeKey, token.Scope)
+	c.Set("AUTH_TOKEN_ID", token.ID)
+	return true
 }
 
 // rejectUnauthorized sends a 401 response with the given error message.
@@ -153,6 +197,7 @@ func logAuthStatus(logger *logrus.Entry, ac *authContext) {
 // The token can be either:
 //   - The master API token from config (web.auth.token) -- used by collectors
 //   - A valid JWT session token -- used by future web UI sessions
+//   - A named scoped token (read, collector, admin) created via /api/settings/tokens
 //   - A dedicated metrics token (web.metrics.token) -- only for /api/metrics
 //
 // The metrics endpoint supports an independent token (web.metrics.token) that
@@ -161,7 +206,9 @@ func logAuthStatus(logger *logrus.Entry, ac *authContext) {
 //
 // Context values set by this middleware:
 //   - "AUTH_ENABLED" (bool): whether auth is enabled
-//   - "AUTH_TYPE" (string): "api_token", "jwt", or "metrics_token" (only set on successful auth)
+//   - "AUTH_TYPE" (string): "api_token", "jwt", "scoped_token", or "metrics_token" (only set on successful auth)
+//   - "AUTH_SCOPE" (string): "admin" for the master token, JWTs, and auth-disabled mode; the token's
+//     scope for scoped tokens; "read" for the metrics token. Route groups enforce it with RequireScope.
 //   - "AUTH_CLAIMS" (*auth.Claims): JWT claims (only set for JWT auth)
 func AuthMiddleware(appConfig config.Interface, logger *logrus.Entry) gin.HandlerFunc {
 	jwtSecret := initJWTSecret(auth.IsAuthEnabled(appConfig), appConfig.GetString(configKeyJWTSecret), logger)
@@ -211,6 +258,7 @@ func (ac *authContext) authorize(c *gin.Context) {
 	// Dedicated metrics token: accepted as an alternative for /api/metrics.
 	if isMetricsPath(requestPath) && ac.validateMetricsToken(c) {
 		c.Set("AUTH_TYPE", "metrics_token")
+		c.Set(authScopeKey, models.APITokenScopeRead)
 		c.Next()
 		return
 	}
@@ -231,6 +279,8 @@ func (ac *authContext) handleAuthDisabled(c *gin.Context, requestPath string) {
 		rejectUnauthorized(c, "Metrics endpoint requires authentication. Provide a Bearer token.")
 		return
 	}
+	// Auth is off: every request is effectively admin, so scope checks pass.
+	c.Set(authScopeKey, models.APITokenScopeAdmin)
 	c.Next()
 }
 

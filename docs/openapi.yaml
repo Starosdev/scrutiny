@@ -1,11 +1,13 @@
 openapi: 3.0.3
 info:
   title: Scrutiny API
-  version: 1.0.0
+  version: "2"
   description: |
     Canonical API contract for the Starosdev Scrutiny fork.
 
     This spec tracks the routes currently registered in `webapp/backend/pkg/web/server.go`.
+    `info.version` is the API major version, the same value `GET /api/version` returns as `api_version`.
+    A Go test fails when a registered route and this spec disagree.
 servers:
   - url: /
 tags:
@@ -65,6 +67,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/version:
+    get:
+      tags: [Auth]
+      summary: Get server version, API version, and capability flags
+      description: Public so a client can check compatibility and whether to show a login form before it has a token. Returns the release version and booleans only.
+      security: []
+      responses:
+        "200":
+          description: Version information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponse"
   /api/health:
     get:
       tags: [Health]
@@ -1037,6 +1052,90 @@ paths:
           $ref: "#/components/responses/ErrorResponse"
         "500":
           $ref: "#/components/responses/ErrorResponse"
+  /api/settings/tokens:
+    get:
+      tags: [Settings]
+      summary: List named API tokens
+      description: Admin scope. Returns metadata only; the token secret and its hash are never returned.
+      responses:
+        "200":
+          description: Token list, newest first, revoked tokens included
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  tokens:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ApiToken"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      tags: [Settings]
+      summary: Create a named API token
+      description: Admin scope. The plaintext `token` is in this response only and cannot be retrieved later. Only its SHA-256 hash is stored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+                scope:
+                  type: string
+                  enum: [read, collector, admin]
+                expires_at:
+                  type: string
+                  format: date-time
+                  description: Optional; must be in the future. Omit for a token that does not expire.
+              required: [name, scope]
+      responses:
+        "201":
+          description: Token created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  token:
+                    type: string
+                    description: Plaintext token, shown once. Send it as `Authorization Bearer <token>`.
+                  api_token:
+                    $ref: "#/components/schemas/ApiToken"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/settings/tokens/{id}:
+    delete:
+      tags: [Settings]
+      summary: Revoke a named API token
+      description: Admin scope. The token stops authenticating at once. The record stays, with `revoked` true.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
   /api/reports/generate:
     get:
       tags: [Reports]
@@ -1507,7 +1606,11 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Master API token or JWT session token.
+      description: |
+        Master API token, JWT session token, or a named token from `POST /api/settings/tokens`.
+        Named tokens carry a scope. `read` allows GET endpoints that only read data, `collector` allows
+        collector uploads and registration, `admin` allows everything. The master token and session JWTs
+        are admin. A token without the needed scope gets HTTP 403.
     MetricsBearerAuth:
       type: http
       scheme: bearer
@@ -1572,7 +1675,7 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     Forbidden:
-      description: Operation disabled by server configuration
+      description: Operation disabled by server configuration, or the token lacks the required scope
       content:
         application/json:
           schema:
@@ -1678,6 +1781,60 @@ components:
               - type: object
                 additionalProperties: true
       required: [success]
+    VersionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        version:
+          type: string
+          description: Server release version
+        api_version:
+          type: string
+          description: API major version; matches `info.version` of this document
+        capabilities:
+          type: object
+          properties:
+            auth_required:
+              type: boolean
+            scoped_tokens:
+              type: boolean
+              description: The server supports named tokens with read, collector, and admin scopes
+            collector_trigger_enabled:
+              type: boolean
+            zfs_pool_modifications_allowed:
+              type: boolean
+            metrics_enabled:
+              type: boolean
+            mqtt_enabled:
+              type: boolean
+      required: [success, version, api_version, capabilities]
+    ApiToken:
+      type: object
+      description: Token metadata. The secret and its hash are never included.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        scope:
+          type: string
+          enum: [read, collector, admin]
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Updated at most once a minute
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        revoked:
+          type: boolean
+      required: [id, name, scope, created_at, revoked]
     AuthStatusResponse:
       type: object
       properties:

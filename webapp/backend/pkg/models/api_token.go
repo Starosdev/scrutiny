@@ -6,10 +6,25 @@ import (
 	"gorm.io/gorm"
 )
 
-// ApiToken represents a stored API token for authenticating programmatic access.
-// In Phase 1, the primary auth mechanism is the config-based master token;
-// this model provides the infrastructure for future multi-token management
-// (e.g., per-collector tokens, revocable tokens with expiry).
+// Token scopes. admin satisfies every requirement; read and collector satisfy only their own.
+const (
+	APITokenScopeRead      = "read"
+	APITokenScopeCollector = "collector"
+	APITokenScopeAdmin     = "admin"
+)
+
+// IsValidAPITokenScope reports whether scope is one a token can be issued with.
+func IsValidAPITokenScope(scope string) bool {
+	switch scope {
+	case APITokenScopeRead, APITokenScopeCollector, APITokenScopeAdmin:
+		return true
+	}
+	return false
+}
+
+// ApiToken represents a named, scoped API token for programmatic access (mobile clients, read-only
+// integrations, per-host collectors). The master token in config (web.auth.token) is separate and
+// always has admin scope.
 type ApiToken struct {
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
@@ -27,7 +42,8 @@ type ApiToken struct {
 	// TokenHash stores the SHA-256 hash of the plaintext token; never stored in plaintext
 	TokenHash string `json:"-" gorm:"uniqueIndex;not null"`
 
-	// Scope controls what the token can access (future use: "full", "collector", "read-only")
+	// Scope is one of the APITokenScope* values. The column default ('full') is a legacy value that
+	// is not a valid scope; every token created through the API sets its scope explicitly.
 	Scope string `json:"scope" gorm:"default:'full'"`
 
 	ID uint `json:"id" gorm:"primaryKey"`

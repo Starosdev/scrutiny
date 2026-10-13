@@ -20,6 +20,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/errors"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/leader"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/metrics"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/mqtt"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/notify"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/reports"
@@ -63,19 +64,144 @@ func (ae *AppEngine) isLeader() bool {
 	return ae.Leader == nil || ae.Leader.Held()
 }
 
-func registerZFSPoolRoutes(zfs *gin.RouterGroup, allowPoolModifications bool) {
-	zfs.POST("/pools/register", handler.RegisterZFSPools)         // used by ZFS Collector to register pools
-	zfs.GET(apiSummaryPath, handler.GetZFSPoolsSummary)           // used by ZFS Dashboard
-	zfs.POST("/pool/:guid/metrics", handler.UploadZFSPoolMetrics) // used by ZFS Collector to upload metrics
-	zfs.GET("/pool/:guid/details", handler.GetZFSPoolDetails)     // used by ZFS Pool Details view
+// routeGroups holds one gin group per minimum scope. A route is registered on the group that names
+// the least privilege it needs; admin callers (master token, JWT, admin tokens) pass every group.
+type routeGroups struct {
+	read      *gin.RouterGroup // GET endpoints that only read data
+	collector *gin.RouterGroup // uploads and registration performed by collectors
+	admin     *gin.RouterGroup // settings, destructive actions, anything that changes state from the UI
+}
 
-	zfsPoolMutations := zfs.Group("/pool/:guid", middleware.ZFSPoolModificationGuard(allowPoolModifications))
+func newRouteGroups(parent *gin.RouterGroup) routeGroups {
+	return routeGroups{
+		read:      parent.Group("", middleware.RequireScope(models.APITokenScopeRead)),
+		collector: parent.Group("", middleware.RequireScope(models.APITokenScopeCollector)),
+		admin:     parent.Group("", middleware.RequireScope(models.APITokenScopeAdmin)),
+	}
+}
+
+// sub returns the groups nested under a path prefix, keeping each group's scope check.
+func (g routeGroups) sub(path string) routeGroups {
+	return routeGroups{read: g.read.Group(path), collector: g.collector.Group(path), admin: g.admin.Group(path)}
+}
+
+func registerZFSPoolRoutes(zfs routeGroups, allowPoolModifications bool) {
+	zfs.collector.POST("/pools/register", handler.RegisterZFSPools)         // used by ZFS Collector to register pools
+	zfs.read.GET(apiSummaryPath, handler.GetZFSPoolsSummary)                // used by ZFS Dashboard
+	zfs.collector.POST("/pool/:guid/metrics", handler.UploadZFSPoolMetrics) // used by ZFS Collector to upload metrics
+	zfs.read.GET("/pool/:guid/details", handler.GetZFSPoolDetails)          // used by ZFS Pool Details view
+
+	zfsPoolMutations := zfs.admin.Group("/pool/:guid", middleware.ZFSPoolModificationGuard(allowPoolModifications))
 	zfsPoolMutations.POST("/archive", handler.ArchiveZFSPool)
 	zfsPoolMutations.POST("/unarchive", handler.UnarchiveZFSPool)
 	zfsPoolMutations.POST("/mute", handler.MuteZFSPool)
 	zfsPoolMutations.POST("/unmute", handler.UnmuteZFSPool)
 	zfsPoolMutations.POST("/label", handler.UpdateZFSPoolLabel)
 	zfsPoolMutations.DELETE("", handler.DeleteZFSPool)
+}
+
+// registerAPIRoutes registers every /api route. Public routes (auth, health, version) sit directly on
+// api; everything else goes through a scope group. metricsEnabled gates /api/metrics.
+func registerAPIRoutes(api *gin.RouterGroup, metricsEnabled bool, allowZFSPoolModifications bool) {
+	// Public routes. AuthMiddleware lets these through without a token; keep them in step with
+	// publicPathSuffixes in middleware/auth.go.
+	api.GET("/auth/status", handler.AuthStatus)
+	api.POST("/auth/login", handler.Login)
+	api.GET("/version", handler.GetVersion)
+	api.GET("/health", handler.HealthCheck)
+	api.HEAD("/health", handler.HealthCheck)
+
+	g := newRouteGroups(api)
+
+	g.admin.POST("/health/notify", handler.SendTestNotification)          // check if notifications are configured correctly
+	g.read.GET("/health/missed-ping-status", handler.GetMissedPingStatus) // get missed ping monitor diagnostic status
+	g.admin.POST("/health/uptime-kuma-test", handler.TestUptimeKumaPush)  // test Uptime Kuma push monitor
+	g.admin.POST("/health/mqtt-sync", handler.MqttSync)                   // re-sync all MQTT discovery entities with HA
+
+	g.collector.POST("/devices/register", handler.RegisterDevices)    // used by Collector to register new devices and retrieve filtered list
+	g.read.GET(apiSummaryPath, handler.GetDevicesSummary)             // used by Dashboard
+	g.read.GET("/summary/temp", handler.GetDevicesSummaryTempHistory) // used by Dashboard (Temperature history dropdown)
+	g.read.GET("/summary/temp/devices", handler.GetTemperatureDeviceOptions)
+	g.read.GET("/summary/workload", handler.GetWorkloadInsights) // used by Workload Insights page
+	g.read.GET("/hosts", handler.GetHosts)                       // used by SMART host management
+	g.admin.POST("/hosts/archive", handler.ArchiveHosts)
+	g.admin.POST("/hosts/unarchive", handler.UnarchiveHosts)
+	g.admin.POST("/hosts/purge", handler.PurgeHosts)
+	g.read.GET("/filesystems/summary", handler.GetFilesystemSummary)          // used by Dashboard filesystem capacity panel
+	g.collector.POST("/filesystems/summary", handler.UploadFilesystemSummary) // used by Filesystem Collector to upload data
+	g.admin.POST("/collectors/run", handler.TriggerCollectors)                // used by Dashboard to trigger local collectors in omnibus mode
+
+	// Prometheus metrics endpoint (only registered if enabled)
+	if metricsEnabled {
+		g.read.GET("/metrics", handler.GetMetrics)
+	}
+
+	g.collector.POST("/device/:id/smart", handler.UploadDeviceMetrics) // used by Collector to upload data
+	g.collector.POST("/device/:id/selftest", handler.UploadDeviceSelfTests)
+	g.read.GET("/device/:id/selftest", handler.GetDeviceSelfTests)                         // used by UI to view self-test history
+	g.read.GET("/device/:id/details", handler.GetDeviceDetails)                            // used by Details
+	g.admin.POST("/device/:id/archive", handler.ArchiveDevice)                             // used by UI to archive device
+	g.admin.POST("/device/:id/unarchive", handler.UnarchiveDevice)                         // used by UI to unarchive device
+	g.admin.POST("/device/:id/mute", handler.MuteDevice)                                   // used by UI to mute device
+	g.admin.POST("/device/:id/unmute", handler.UnmuteDevice)                               // used by UI to unmute device
+	g.admin.POST("/device/:id/reset-status", handler.ResetDeviceStatus)                    // used by UI to reset device failed status
+	g.admin.POST("/device/:id/label", handler.UpdateDeviceLabel)                           // used by UI to set device label
+	g.admin.POST("/device/:id/max-tbw", handler.UpdateDeviceMaxTBW)                        // used by UI to set per-device rated TBW
+	g.admin.POST("/device/:id/smart-display-mode", handler.UpdateDeviceSmartDisplayMode)   // used by UI to set SMART attribute display mode
+	g.admin.POST("/device/:id/missed-ping-timeout", handler.UpdateDeviceMissedPingTimeout) // used by UI to set per-device missed ping timeout override
+	g.admin.POST("/device/:id/merge_into", handler.MergeDeviceInto)                        // used by API/CLI to merge duplicate devices
+	g.admin.DELETE("/device/:id", handler.DeleteDevice)                                    // used by UI to delete device
+	g.collector.POST("/device/:id/performance", handler.UploadDevicePerformance)           // used by Collector to upload performance benchmarks
+	g.read.GET("/device/:id/performance", handler.GetDevicePerformance)                    // used by UI to view performance history
+	g.read.GET("/device/:id/replacement-risk", handler.GetDeviceReplacementRisk)           // used by UI to display drive replacement prediction
+	g.read.GET("/device/:id/drive-profile", handler.GetDeviceDriveProfile)                 // debug/inspection surface for consumer drive profile matching
+	g.collector.POST("/device/:id/collector-error", handler.UploadCollectorError)          // used by Collector to report smartctl errors
+	g.collector.POST("/collector/scan-error", handler.UploadCollectorScanError)            // used by Collector to report scan-level errors (no device context)
+
+	g.read.GET("/settings", handler.GetSettings)    // used to get settings
+	g.admin.POST("/settings", handler.SaveSettings) // used to save settings
+
+	// Attribute Override endpoints (UI-configurable SMART overrides)
+	g.admin.GET("/settings/overrides", handler.GetAttributeOverrides)
+	g.admin.POST("/settings/overrides", handler.SaveAttributeOverride)
+	g.admin.DELETE("/settings/overrides/:id", handler.DeleteAttributeOverride)
+
+	// Notification URL endpoints (UI-configurable notification channels)
+	g.admin.GET("/settings/notify-urls", handler.GetNotifyUrls)
+	g.admin.POST("/settings/notify-urls", handler.SaveNotifyUrl)
+	g.admin.DELETE("/settings/notify-urls/:id", handler.DeleteNotifyUrl)
+	g.admin.POST("/settings/notify-urls/:id/test", handler.TestNotifyUrl)
+	g.admin.PATCH("/settings/notify-urls/:id", handler.UpdateNotifyUrlHeartbeat)
+
+	// Named API token endpoints (admin only)
+	g.admin.GET("/settings/tokens", handler.ListAPITokens)
+	g.admin.POST("/settings/tokens", handler.CreateAPIToken)
+	g.admin.DELETE("/settings/tokens/:id", handler.RevokeAPIToken)
+
+	// Scheduled report endpoints
+	g.admin.GET("/reports/generate", handler.GenerateReport) // renders a report on demand, so not a plain read
+	g.read.GET("/reports/history", handler.ListReports)
+
+	registerZFSPoolRoutes(g.sub("/zfs"), allowZFSPoolModifications)
+
+	btrfs := g.sub("/btrfs")
+	btrfs.collector.POST("/filesystems/register", handler.RegisterBtrfsFilesystems)
+	btrfs.read.GET(apiSummaryPath, handler.GetBtrfsFilesystemsSummary)
+	btrfs.collector.POST("/filesystem/:uuid/metrics", handler.UploadBtrfsMetrics)
+	btrfs.read.GET("/filesystem/:uuid/details", handler.GetBtrfsFilesystemDetails)
+	btrfs.admin.POST("/filesystem/:uuid/archive", handler.ArchiveBtrfsFilesystem)
+	btrfs.admin.POST("/filesystem/:uuid/unarchive", handler.UnarchiveBtrfsFilesystem)
+	btrfs.admin.POST("/filesystem/:uuid/mute", handler.MuteBtrfsFilesystem)
+	btrfs.admin.POST("/filesystem/:uuid/unmute", handler.UnmuteBtrfsFilesystem)
+	btrfs.admin.POST("/filesystem/:uuid/label", handler.UpdateBtrfsFilesystemLabel)
+	btrfs.admin.DELETE("/filesystem/:uuid", handler.DeleteBtrfsFilesystem)
+
+	// MDADM Array API endpoints
+	mdadm := g.sub("/mdadm")
+	mdadm.collector.POST("/arrays/register", handler.RegisterMdadmArrays)    // used by Collector to register new arrays
+	mdadm.read.GET(apiSummaryPath, handler.GetMdadmSummary)                  // used by Dashboard
+	mdadm.collector.POST("/array/:uuid/metrics", handler.UploadMdadmMetrics) // used by Collector to upload metrics
+	mdadm.read.GET("/array/:uuid/details", handler.GetMdadmArrayDetails)     // used by Array Details view
 }
 
 func (ae *AppEngine) registerMiddleware(r *gin.Engine, logger *logrus.Entry) {
@@ -150,107 +276,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 
 	base := r.Group(basePath)
 	{
-		api := base.Group("/api")
-		{
-			// Auth endpoints (always public, checked by middleware)
-			api.GET("/auth/status", handler.AuthStatus)
-			api.POST("/auth/login", handler.Login)
-
-			api.GET("/health", handler.HealthCheck)
-			api.HEAD("/health", handler.HealthCheck)
-			api.POST("/health/notify", handler.SendTestNotification)           // check if notifications are configured correctly
-			api.GET("/health/missed-ping-status", handler.GetMissedPingStatus) // get missed ping monitor diagnostic status
-			api.POST("/health/uptime-kuma-test", handler.TestUptimeKumaPush)   // test Uptime Kuma push monitor
-			api.POST("/health/mqtt-sync", handler.MqttSync)                    // re-sync all MQTT discovery entities with HA
-
-			api.POST("/devices/register", handler.RegisterDevices)         // used by Collector to register new devices and retrieve filtered list
-			api.GET(apiSummaryPath, handler.GetDevicesSummary)             // used by Dashboard
-			api.GET("/summary/temp", handler.GetDevicesSummaryTempHistory) // used by Dashboard (Temperature history dropdown)
-			api.GET("/summary/temp/devices", handler.GetTemperatureDeviceOptions)
-			api.GET("/summary/workload", handler.GetWorkloadInsights) // used by Workload Insights page
-			api.GET("/hosts", handler.GetHosts)                       // used by SMART host management
-			api.POST("/hosts/archive", handler.ArchiveHosts)
-			api.POST("/hosts/unarchive", handler.UnarchiveHosts)
-			api.POST("/hosts/purge", handler.PurgeHosts)
-			api.GET("/filesystems/summary", handler.GetFilesystemSummary)     // used by Dashboard filesystem capacity panel
-			api.POST("/filesystems/summary", handler.UploadFilesystemSummary) // used by Filesystem Collector to upload data
-			api.POST("/collectors/run", handler.TriggerCollectors)            // used by Dashboard to trigger local collectors in omnibus mode
-
-			// Prometheus metrics endpoint (only registered if enabled)
-			if ae.Config.GetBool(configKeyMetricsEnabled) {
-				api.GET("/metrics", handler.GetMetrics)
-			}
-
-			api.POST("/device/:id/smart", handler.UploadDeviceMetrics) // used by Collector to upload data
-			api.POST("/device/:id/selftest", handler.UploadDeviceSelfTests)
-			api.GET("/device/:id/selftest", handler.GetDeviceSelfTests)                        // used by UI to view self-test history
-			api.GET("/device/:id/details", handler.GetDeviceDetails)                           // used by Details
-			api.POST("/device/:id/archive", handler.ArchiveDevice)                             // used by UI to archive device
-			api.POST("/device/:id/unarchive", handler.UnarchiveDevice)                         // used by UI to unarchive device
-			api.POST("/device/:id/mute", handler.MuteDevice)                                   // used by UI to mute device
-			api.POST("/device/:id/unmute", handler.UnmuteDevice)                               // used by UI to unmute device
-			api.POST("/device/:id/reset-status", handler.ResetDeviceStatus)                    // used by UI to reset device failed status
-			api.POST("/device/:id/label", handler.UpdateDeviceLabel)                           // used by UI to set device label
-			api.POST("/device/:id/max-tbw", handler.UpdateDeviceMaxTBW)                        // used by UI to set per-device rated TBW
-			api.POST("/device/:id/smart-display-mode", handler.UpdateDeviceSmartDisplayMode)   // used by UI to set SMART attribute display mode
-			api.POST("/device/:id/missed-ping-timeout", handler.UpdateDeviceMissedPingTimeout) // used by UI to set per-device missed ping timeout override
-			api.POST("/device/:id/merge_into", handler.MergeDeviceInto)                        // used by API/CLI to merge duplicate devices
-			api.DELETE("/device/:id", handler.DeleteDevice)                                    // used by UI to delete device
-			api.POST("/device/:id/performance", handler.UploadDevicePerformance)               // used by Collector to upload performance benchmarks
-			api.GET("/device/:id/performance", handler.GetDevicePerformance)                   // used by UI to view performance history
-			api.GET("/device/:id/replacement-risk", handler.GetDeviceReplacementRisk)          // used by UI to display drive replacement prediction
-			api.GET("/device/:id/drive-profile", handler.GetDeviceDriveProfile)                // debug/inspection surface for consumer drive profile matching
-			api.POST("/device/:id/collector-error", handler.UploadCollectorError)              // used by Collector to report smartctl errors
-			api.POST("/collector/scan-error", handler.UploadCollectorScanError)                // used by Collector to report scan-level errors (no device context)
-
-			api.GET("/settings", handler.GetSettings)   //used to get settings
-			api.POST("/settings", handler.SaveSettings) //used to save settings
-
-			// Attribute Override endpoints (UI-configurable SMART overrides)
-			api.GET("/settings/overrides", handler.GetAttributeOverrides)
-			api.POST("/settings/overrides", handler.SaveAttributeOverride)
-			api.DELETE("/settings/overrides/:id", handler.DeleteAttributeOverride)
-
-			// Notification URL endpoints (UI-configurable notification channels)
-			api.GET("/settings/notify-urls", handler.GetNotifyUrls)
-			api.POST("/settings/notify-urls", handler.SaveNotifyUrl)
-			api.DELETE("/settings/notify-urls/:id", handler.DeleteNotifyUrl)
-			api.POST("/settings/notify-urls/:id/test", handler.TestNotifyUrl)
-			api.PATCH("/settings/notify-urls/:id", handler.UpdateNotifyUrlHeartbeat)
-
-			// Scheduled report endpoints
-			api.GET("/reports/generate", handler.GenerateReport)
-			api.GET("/reports/history", handler.ListReports)
-
-			// ZFS Pool API endpoints
-			zfs := api.Group("/zfs")
-			{
-				registerZFSPoolRoutes(zfs, ae.Config.GetBool(config.WebZFSAllowPoolModificationsKey))
-			}
-
-			btrfs := api.Group("/btrfs")
-			{
-				btrfs.POST("/filesystems/register", handler.RegisterBtrfsFilesystems)
-				btrfs.GET(apiSummaryPath, handler.GetBtrfsFilesystemsSummary)
-				btrfs.POST("/filesystem/:uuid/metrics", handler.UploadBtrfsMetrics)
-				btrfs.GET("/filesystem/:uuid/details", handler.GetBtrfsFilesystemDetails)
-				btrfs.POST("/filesystem/:uuid/archive", handler.ArchiveBtrfsFilesystem)
-				btrfs.POST("/filesystem/:uuid/unarchive", handler.UnarchiveBtrfsFilesystem)
-				btrfs.POST("/filesystem/:uuid/mute", handler.MuteBtrfsFilesystem)
-				btrfs.POST("/filesystem/:uuid/unmute", handler.UnmuteBtrfsFilesystem)
-				btrfs.POST("/filesystem/:uuid/label", handler.UpdateBtrfsFilesystemLabel)
-				btrfs.DELETE("/filesystem/:uuid", handler.DeleteBtrfsFilesystem)
-			}
-
-			// MDADM Array API endpoints
-			mdadm := api.Group("/mdadm")
-			{
-				mdadm.POST("/arrays/register", handler.RegisterMdadmArrays)     // used by Collector to register new arrays
-				mdadm.GET(apiSummaryPath, handler.GetMdadmSummary)              // used by Dashboard
-				mdadm.POST("/array/:uuid/metrics", handler.UploadMdadmMetrics)  // used by Collector to upload metrics
-				mdadm.GET("/array/:uuid/details", handler.GetMdadmArrayDetails) // used by Array Details view
-			}
-		}
+		registerAPIRoutes(base.Group("/api"), ae.Config.GetBool(configKeyMetricsEnabled), ae.Config.GetBool(config.WebZFSAllowPoolModificationsKey))
 	}
 
 	docsPath := resolveAPIDocsPath(actualDocsBasePath(ae.Config.GetString("web.src.frontend.path")))

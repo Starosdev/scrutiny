@@ -178,4 +178,14 @@ type DeviceRepo interface {
 	SaveNotifyUrl(ctx context.Context, notifyUrl *models.NotifyUrl) error
 	DeleteNotifyUrl(ctx context.Context, id uint) error
 	UpdateNotifyUrlHeartbeat(ctx context.Context, id uint, enabled bool) error
+
+	// API token operations (named, scoped bearer tokens; only the hash is stored)
+	CreateAPIToken(ctx context.Context, token *models.ApiToken) error
+	ListAPITokens(ctx context.Context) ([]models.ApiToken, error)
+	// RevokeAPIToken marks the token revoked; it returns gorm.ErrRecordNotFound for an unknown id.
+	RevokeAPIToken(ctx context.Context, id uint) error
+	// GetActiveAPITokenByHash returns the token with this hash if it is neither revoked nor expired.
+	GetActiveAPITokenByHash(ctx context.Context, tokenHash string) (*models.ApiToken, error)
+	// TouchAPIToken records a use of the token, writing at most once per minute.
+	TouchAPIToken(ctx context.Context, id uint) error
 }
