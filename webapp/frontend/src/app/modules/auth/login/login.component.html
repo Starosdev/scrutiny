@@ -62,7 +62,13 @@
                                 placeholder="Enter your password"
                                 autocomplete="current-password"
                             />
-                            <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
+                            <button
+                                mat-icon-button
+                                matSuffix
+                                type="button"
+                                [attr.aria-label]="hidePassword ? 'Show password' : 'Hide password'"
+                                (click)="hidePassword = !hidePassword"
+                            >
                                 <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
                             </button>
                         </mat-form-field>

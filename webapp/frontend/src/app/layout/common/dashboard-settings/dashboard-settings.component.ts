@@ -474,6 +474,7 @@ export class DashboardSettingsComponent implements OnInit {
             .pipe(takeUntil(this._unsubscribeAll))
             .subscribe(() => {
                 this.notifyUrls = this.notifyUrls.filter((u) => u.id !== entry.id);
+                this.notifyUrlError = '';
             });
     }
 
@@ -622,6 +623,7 @@ export class DashboardSettingsComponent implements OnInit {
     }
 
     resetAddForm(): void {
+        this.notifyUrlError = '';
         this.selectedEngine = 'shoutrrr';
         this.selectedShoutrrrService = 'custom';
         this.selectedAppriseService = 'custom';
