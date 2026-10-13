@@ -17,6 +17,9 @@ import (
 
 const errInvalidIDFormat = "Invalid ID format"
 
+// errScriptUrlConfigOnly explains why script:// URLs cannot be saved or tested through the API.
+const errScriptUrlConfigOnly = "script:// notification URLs cannot be added through the UI or API. Configure script targets in the notify.urls setting of scrutiny.yaml."
+
 type notifyUrlResponse struct {
 	URL              string `json:"url"`
 	Label            string `json:"label,omitempty"`
@@ -86,6 +89,11 @@ func SaveNotifyUrl(c *gin.Context) {
 
 	if input.URL == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "URL is required"})
+		return
+	}
+
+	if notify.IsScriptURL(input.URL) {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": errScriptUrlConfigOnly})
 		return
 	}
 
@@ -199,6 +207,10 @@ func TestNotifyUrl(c *gin.Context) {
 
 	if targetUrl == "" {
 		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Notification URL not found"})
+		return
+	}
+	if notify.IsScriptURL(targetUrl) {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": errScriptUrlConfigOnly})
 		return
 	}
 

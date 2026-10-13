@@ -475,6 +475,27 @@ type Notify struct {
 	DatabaseUrls []string
 }
 
+// IsScriptURL reports whether rawURL is a script:// target, which runs a program on the host.
+// The scheme match is case-insensitive and ignores surrounding whitespace.
+func IsScriptURL(rawURL string) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(rawURL)), "script://")
+}
+
+// excludeScriptUrls drops script:// entries from urls that did not come from the config file. Script
+// targets execute programs, so they are accepted only from notify.urls; a script URL stored in the
+// database (added through the UI or API by an older release) is skipped with a warning and never runs.
+func (n *Notify) excludeScriptUrls(urls []string) []string {
+	kept := make([]string, 0, len(urls))
+	for _, u := range urls {
+		if IsScriptURL(u) {
+			n.Logger.Warn("Skipping a script:// notification URL stored in the database: script targets are only allowed in the notify.urls config setting. Move it to scrutiny.yaml and delete the stored entry.")
+			continue
+		}
+		kept = append(kept, u)
+	}
+	return kept
+}
+
 // LoadDatabaseUrls queries the repository for all UI-sourced notification URLs
 // and populates n.DatabaseUrls. Safe to call even if the repository returns an
 // error (degrades gracefully to config-only URLs).
@@ -485,7 +506,7 @@ func (n *Notify) LoadDatabaseUrls(ctx context.Context, repo database.DeviceRepo)
 		return
 	}
 	for _, u := range dbUrls {
-		n.DatabaseUrls = append(n.DatabaseUrls, u.URL)
+		n.DatabaseUrls = append(n.DatabaseUrls, n.excludeScriptUrls([]string{u.URL})...)
 	}
 }
 
@@ -500,7 +521,7 @@ func (n *Notify) LoadHeartbeatDatabaseUrls(ctx context.Context, repo database.De
 	}
 	for _, u := range dbUrls {
 		if u.HeartbeatEnabled {
-			n.DatabaseUrls = append(n.DatabaseUrls, u.URL)
+			n.DatabaseUrls = append(n.DatabaseUrls, n.excludeScriptUrls([]string{u.URL})...)
 		}
 	}
 }
@@ -517,7 +538,7 @@ func (n *Notify) Send() error {
 	}
 
 	// Merge with database URLs (additive: both sources contribute)
-	configUrls = append(configUrls, n.DatabaseUrls...)
+	configUrls = append(configUrls, n.excludeScriptUrls(n.DatabaseUrls)...)
 
 	// Deduplicate while preserving order
 	seen := make(map[string]bool, len(configUrls))
