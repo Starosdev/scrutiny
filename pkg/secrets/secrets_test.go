@@ -6,6 +6,7 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -117,4 +118,70 @@ func TestEnsureSecretOtherLinkErrorsFail(t *testing.T) {
 	require.Error(t, err)
 	entries, _ := os.ReadDir(dir)
 	require.Empty(t, entries)
+}
+
+func TestEnsureSecretFallbackConcurrentCallersConverge(t *testing.T) {
+	orig := linkFile
+	t.Cleanup(func() { linkFile = orig })
+	linkFile = func(string, string) error { return &os.LinkError{Op: "link", Err: syscall.EPERM} }
+
+	dir := t.TempDir()
+	const n = 16
+	results := make([]string, n)
+	errs := make([]error, n)
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			results[i], _, errs[i] = EnsureSecret(dir, AuthTokenFile)
+		}(i)
+	}
+	wg.Wait()
+	for i, v := range results {
+		require.NoError(t, errs[i])
+		require.Len(t, v, 64)
+		require.Equal(t, results[0], v)
+	}
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	require.Len(t, entries, 1, "no temp or lock files left behind")
+}
+
+func TestEnsureSecretReplacesEmptyFileNeverReturnsIt(t *testing.T) {
+	for _, linkBroken := range []bool{false, true} {
+		if linkBroken {
+			orig := linkFile
+			t.Cleanup(func() { linkFile = orig })
+			linkFile = func(string, string) error { return &os.LinkError{Op: "link", Err: syscall.EPERM} }
+		}
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, AuthTokenFile), nil, 0o600))
+
+		secret, created, err := EnsureSecret(dir, AuthTokenFile)
+		require.NoError(t, err)
+		require.True(t, created)
+		require.Len(t, secret, 64)
+		onDisk, err := Read(dir, AuthTokenFile)
+		require.NoError(t, err)
+		require.Equal(t, secret, onDisk)
+		entries, _ := os.ReadDir(dir)
+		require.Len(t, entries, 1)
+	}
+}
+
+func TestEnsureSecretStaleLockIsBroken(t *testing.T) {
+	orig := linkFile
+	t.Cleanup(func() { linkFile = orig })
+	linkFile = func(string, string) error { return &os.LinkError{Op: "link", Err: syscall.EPERM} }
+
+	dir := t.TempDir()
+	lock := filepath.Join(dir, AuthTokenFile+lockSuffix)
+	require.NoError(t, os.WriteFile(lock, nil, 0o600))
+	old := time.Now().Add(-time.Minute)
+	require.NoError(t, os.Chtimes(lock, old, old))
+
+	secret, _, err := EnsureSecret(dir, AuthTokenFile)
+	require.NoError(t, err)
+	require.Len(t, secret, 64)
 }

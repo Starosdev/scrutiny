@@ -19,7 +19,7 @@ const authBodyLimitBytes int64 = 64 << 10
 func BodyLimitMiddleware(maxBytes int64) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		limit := maxBytes
-		if limit > authBodyLimitBytes && strings.Contains(c.Request.URL.Path, "/api/auth/") {
+		if (limit <= 0 || limit > authBodyLimitBytes) && strings.Contains(c.Request.URL.Path, "/api/auth/") {
 			limit = authBodyLimitBytes
 		}
 		if limit <= 0 || c.Request.Body == nil {
