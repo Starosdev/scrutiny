@@ -2,6 +2,106 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [2.0.0-beta.1](https://github.com/Starosdev/scrutiny/compare/v1.76.5...v2.0.0-beta.1) (2026-10-13)
+
+### ⚠ BREAKING CHANGES
+
+* **database:** a SQLite database last migrated by a Scrutiny release
+older than 1.70.0 is refused at startup. Run the latest 1.76.x release on
+it once, then start 2.0. AnalogJ/scrutiny databases are not affected.
+* **server:** a second POST /api/collectors/run issued while a run is in progress now returns 409 instead of starting an overlapping run.
+* **docker:** example deployments no longer expose InfluxDB on port 8086.
+Existing deployments keep their current port mappings.
+* **docker:** the web image now runs the server as uid 1000 (PUID/PGID) and
+changes the owner of files in the config volume. Set PUID=0 to keep running as
+root; volumes that refuse chown must be made writable by PUID:PGID.
+* **reports:** the report_pdf_path setting is removed from the settings API
+and ignored if stored. Set web.reports.path (SCRUTINY_WEB_REPORTS_PATH) in the
+config file to change the PDF directory. GET /api/reports/history no longer
+returns a path field.
+* **notify:** script:// notification URLs can no longer be added through the
+UI or API, and ones already stored in the database are skipped with a warning
+instead of running. Move them to notify.urls in scrutiny.yaml and delete the
+stored entry.
+* **web:** the server no longer trusts X-Forwarded-For from any client.
+Behind a reverse proxy, set web.listen.trusted_proxies (SCRUTINY_WEB_LISTEN_TRUSTED_PROXIES,
+space-separated) to the proxy address or CIDR; until then logs and the login
+rate limiter see the proxy IP. Requests larger than 16 MiB are rejected unless
+web.listen.max_body_bytes is raised.
+* **auth:** API authentication is enabled by default. Hub/spoke web
+containers exit at startup unless SCRUTINY_WEB_AUTH_TOKEN (web.auth.token) is
+set, and every collector must send the same value as COLLECTOR_API_TOKEN. The
+omnibus image generates a token at first start and saves it to
+/opt/scrutiny/config/.auth-token; the config volume must be writable. Set
+SCRUTINY_WEB_AUTH_ENABLED=false to keep running without authentication, or stay
+on the :1 image tag. See docs/UPGRADE_2.0.md.
+* **auth:** notify.filter_attributes and notify.level no longer fail
+config validation. They are silently ignored; remove them from scrutiny.yaml.
+* **collector:** devices whose smartctl --info call fails are no longer
+registered; the failure is reported as a collector scan error instead. Disks
+whose model is QEMU HARDDISK, VBOX HARDDISK, Virtual Disk or Msft Virtual Disk
+are skipped by default unless listed explicitly under devices or
+allow_listed_devices, or exclude_virtual_disks is set to false.
+
+### Features
+
+* **api:** add scoped API tokens and GET /api/version ([a66f0fc](https://github.com/Starosdev/scrutiny/commit/a66f0fc085f8b0e500f2b42d4f70e141a8acff1d))
+* **auth:** enable API authentication by default ([3c48dd5](https://github.com/Starosdev/scrutiny/commit/3c48dd59dc1243f445315e97e91bbeafaeacb9ea))
+* **database:** create new SQLite databases from the baseline schema ([778c64e](https://github.com/Starosdev/scrutiny/commit/778c64e558894270853acd1dd9d36a72c6646779)), closes [#965](https://github.com/Starosdev/scrutiny/issues/965)
+* **database:** drop legacy token scope default and record auto-archived devices ([dc88952](https://github.com/Starosdev/scrutiny/commit/dc88952125aa19b4c9359a30ccc473d22575be11)), closes [#965](https://github.com/Starosdev/scrutiny/issues/965)
+* **docker:** add collector image HEALTHCHECK and run-state file ([72ffa6b](https://github.com/Starosdev/scrutiny/commit/72ffa6b1003d0979d25f39eb2c6d656bdcb66977))
+* **docker:** run the web image as an unprivileged user ([93578ad](https://github.com/Starosdev/scrutiny/commit/93578adea617bb1d13c0f1c847a64a526a48d5f5))
+* **influxdb:** generate admin credentials at first setup ([f205d29](https://github.com/Starosdev/scrutiny/commit/f205d29dabd78ee8915f709ab97e800f665deee8))
+* **secrets:** add helper to generate and persist secrets in the config dir ([2b0b892](https://github.com/Starosdev/scrutiny/commit/2b0b892a3a6802a67e433d6de2a25d59911fb49b))
+* **summary:** report last_seen and stale per device, optional auto-archive ([f8a1fc6](https://github.com/Starosdev/scrutiny/commit/f8a1fc68e309a2de620cadd1ce71c8353ff8a82b))
+
+### Bug Fixes
+
+* **api:** redact secret settings for non-admin scopes and harden token expiry ([9586713](https://github.com/Starosdev/scrutiny/commit/9586713089f5a75a80fa3cc8740cfa5347d8365b))
+* **auth:** satisfy gosec and gocritic lint on config key names ([1dd17cd](https://github.com/Starosdev/scrutiny/commit/1dd17cd6c35f521bd398aa4ed081b0c11262014e))
+* **ci:** do not publish latest image tags for prerelease versions ([2949ac3](https://github.com/Starosdev/scrutiny/commit/2949ac35564608ddaea9eaff7f7fe1bda21c79ec))
+* **ci:** keep major and minor image tags off prerelease versions ([9452e3b](https://github.com/Starosdev/scrutiny/commit/9452e3b44e69c2822e569cab3c2cf1d0ccff52b8))
+* **ci:** stop syncing develop after master merges ([#962](https://github.com/Starosdev/scrutiny/issues/962)) ([d1e2b87](https://github.com/Starosdev/scrutiny/commit/d1e2b87e2e58392d18d30ef74af5023c86e66498))
+* **collector:** fall back to SCRUTINY_WEB_AUTH_TOKEN for the API token ([df223cc](https://github.com/Starosdev/scrutiny/commit/df223cc5bd83600d6d35b400b0eb17e2748707e9))
+* **collector:** mark absolute udev path joins for gocritic ([9e99cde](https://github.com/Starosdev/scrutiny/commit/9e99cde917aaafac54ac8e60a3ef91ce9d77e439))
+* **collector:** report unidentified devices as scan errors and respect explicit devices ([c949e8d](https://github.com/Starosdev/scrutiny/commit/c949e8d33f95b5ec0c27d3cd2d2ec586e6b0f5ea))
+* **collector:** satisfy gocritic and fieldalignment lint ([f5ebee3](https://github.com/Starosdev/scrutiny/commit/f5ebee3cb68b038d0c7188429fd4aa4435c6afab))
+* **collector:** satisfy lint on udev path reads touched by ioutil removal ([81a5229](https://github.com/Starosdev/scrutiny/commit/81a52291d4d0ebb4b7b5a90cf98ff341fea7ce42))
+* **collector:** skip identity-less devices, add exclude list and bounded parallel collection ([f8d79b3](https://github.com/Starosdev/scrutiny/commit/f8d79b31c3c42dafd3eaf0f21fd6c92acd18254e)), closes [#663](https://github.com/Starosdev/scrutiny/issues/663)
+* **database:** avoid shadowing err in the SQLite precheck ([5c7a420](https://github.com/Starosdev/scrutiny/commit/5c7a420c7aff85e0ae7118f08a2dd90dbd1a36d7)), closes [#965](https://github.com/Starosdev/scrutiny/issues/965)
+* **database:** keep PostgreSQL schema stable and refuse old SQLite before writing ([f2b4cc7](https://github.com/Starosdev/scrutiny/commit/f2b4cc734bafeb5cc6324f38467f29c6042af47b)), closes [#965](https://github.com/Starosdev/scrutiny/issues/965)
+* **docker:** harden web entrypoint privilege drop ([9870c44](https://github.com/Starosdev/scrutiny/commit/9870c4499d2bcb829a941dd4e670f099a2c2fea3))
+* **docker:** make Unraid collector token optional and unpublish InfluxDB in README ([ea3420d](https://github.com/Starosdev/scrutiny/commit/ea3420d9a7f6d6a34fea797bdbfd91864db5dd6e))
+* **docker:** stop publishing InfluxDB and require the hub/spoke auth token in examples ([be000f7](https://github.com/Starosdev/scrutiny/commit/be000f702a93b09f95366eaf286c10cd9dbd1bc6))
+* **frontend:** add 2.0 login token guidance, drop report_pdf_path, surface notification URL errors ([b6ad7fc](https://github.com/Starosdev/scrutiny/commit/b6ad7fc3c3c0fd82558ac8ccfe12157ed93c1a47))
+* **frontend:** tidy notification error alert and password toggle label ([b356a81](https://github.com/Starosdev/scrutiny/commit/b356a811681cd16b235b174b6dcab3abca896c4b))
+* **influxdb:** name the token source when InfluxDB rejects it; document cap_drop behavior ([f6fa51d](https://github.com/Starosdev/scrutiny/commit/f6fa51d9155fc22a2469f931e5dccde62bcc46dd))
+* **influxdb:** raise default retention so a missed downsample run loses nothing ([54b3449](https://github.com/Starosdev/scrutiny/commit/54b3449b603194b168c8a8795c50b8504c4099c3))
+* **influxdb:** silence gosec false positives on credential file and key names ([77138f0](https://github.com/Starosdev/scrutiny/commit/77138f07a160a33a7da985afdbdf77724a409f17))
+* **notify:** block apprise option injection and trim test errors ([dc94937](https://github.com/Starosdev/scrutiny/commit/dc94937e12ba273ea3fb456b8b3992173bfe8305))
+* **notify:** restrict script:// notification URLs to the config file ([2ca6abb](https://github.com/Starosdev/scrutiny/commit/2ca6abbb3b8ef455df448b2745ea8374ab543343))
+* **nvme:** satisfy fieldalignment and comment lint ([f990c86](https://github.com/Starosdev/scrutiny/commit/f990c866eb256a3b02c9ce9d0dfc16e647e49dec))
+* **nvme:** treat critical_warning as a SMART failure and decode its bits ([3edc4f0](https://github.com/Starosdev/scrutiny/commit/3edc4f075bd62810b7ee30d472b923ef08cb2b3a))
+* **release:** pin conventionalcommits preset to 9.3.1 and backfill changelog ([34b87d4](https://github.com/Starosdev/scrutiny/commit/34b87d40f568955f3050550a732080252be633d8))
+* **reports:** make the PDF report directory config-only ([e873d59](https://github.com/Starosdev/scrutiny/commit/e873d5940be144d84c1e6adaa46e0b4f28519afc))
+* **secrets:** publish atomically under a lock when hard links are unavailable ([394400d](https://github.com/Starosdev/scrutiny/commit/394400d1631fc4f3b3ad4e8c2873ddb6e0cd2415))
+* **secrets:** publish generated secrets atomically without following symlinks ([7114854](https://github.com/Starosdev/scrutiny/commit/7114854375593f0a4c3c713b777461cb312504c6))
+* **secrets:** publish secrets atomically and honour SCRUTINY_WEB_SECRETS_DIR in collectors ([d452f89](https://github.com/Starosdev/scrutiny/commit/d452f8934d0924567d945f24e4102a59deb8d381))
+* **secrets:** satisfy shadow and nolintlint checks ([0fc0853](https://github.com/Starosdev/scrutiny/commit/0fc085309894277224b1d42b13d82ee7eac2b55f))
+* **server:** guard concurrent collector runs and run every bundled collector ([39bd9bc](https://github.com/Starosdev/scrutiny/commit/39bd9bcb879d225b106006bf48c1e36b6aec0c14))
+* **smart:** match smartctl when_failed values "now" and "past" ([e2e6ddd](https://github.com/Starosdev/scrutiny/commit/e2e6ddd81d6005abf110df3c20ab09f1af22aa98))
+* **status:** honor transient ATA attributes for manufacturer failures ([8d56761](https://github.com/Starosdev/scrutiny/commit/8d567619ea2c0aaa1f6970e83417e96d46551cc8))
+* **status:** keep manufacturer SMART failure through status recalculation ([a2b00be](https://github.com/Starosdev/scrutiny/commit/a2b00be1c98bf5ffda756374609577cf15edba7f))
+* **summary:** default stale timeout, notify on auto-archive, cache last-seen ([d25f6f1](https://github.com/Starosdev/scrutiny/commit/d25f6f1e10d5f0341f02da422715db824f1ccf4a))
+* **web:** cap /api/auth bodies at 64 KiB and warn on untrusted X-Forwarded-For ([8d90766](https://github.com/Starosdev/scrutiny/commit/8d90766b16b8a35412e619e6e70111ab71e865c5))
+* **web:** cap login bodies, warn on untrusted X-Forwarded-For, extend auth docs ([c1c48a3](https://github.com/Starosdev/scrutiny/commit/c1c48a3c05f88ee7ea11161c555df2522d0b75f5))
+* **web:** keep the /api/auth body cap when max_body_bytes is 0 ([7b07cda](https://github.com/Starosdev/scrutiny/commit/7b07cdab107d971cef6874149ad72d09b916835f))
+* **web:** limit request bodies and stop trusting spoofable client IPs ([6fe3ef1](https://github.com/Starosdev/scrutiny/commit/6fe3ef1cae250f689cdd5fa6c582444a99c9e868))
+
+### Documentation
+
+* **collector:** document skip causes, exclude semantics and per-worker wait ([0a452cd](https://github.com/Starosdev/scrutiny/commit/0a452cd91a00f81233212234f563076d2e52de4f))
+
 ## [1.76.5](https://github.com/Starosdev/scrutiny/compare/v1.76.4...v1.76.5) (2026-10-13)
 
 ### Bug Fixes
