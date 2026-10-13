@@ -17,8 +17,9 @@ const (
 	AttributeStatusInvalidValue    AttributeStatus = 8 // Value exceeds reasonable maximum, likely corrupted data
 )
 
-const AttributeWhenFailedFailingNow = "FAILING_NOW"
-const AttributeWhenFailedInThePast = "IN_THE_PAST"
+// smartctl JSON emits "now" and "past" for ata_smart_attributes.table[].when_failed.
+const AttributeWhenFailedFailingNow = "now"
+const AttributeWhenFailedInThePast = "past"
 
 func AttributeStatusSet(b, flag AttributeStatus) AttributeStatus    { return b | flag }
 func AttributeStatusClear(b, flag AttributeStatus) AttributeStatus  { return b &^ flag }
