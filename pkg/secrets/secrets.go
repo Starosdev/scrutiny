@@ -58,8 +58,8 @@ func EnsureSecret(dir, name string) (secret string, created bool, err error) {
 		}
 
 		buf := make([]byte, secretBytes)
-		if _, err := rand.Read(buf); err != nil {
-			return "", false, fmt.Errorf("generate secret: %w", err)
+		if _, randErr := rand.Read(buf); randErr != nil {
+			return "", false, fmt.Errorf("generate secret: %w", randErr)
 		}
 		candidate := hex.EncodeToString(buf)
 
@@ -119,7 +119,7 @@ func hardLinksUnsupported(err error) bool {
 // writeExclusive is the fallback for filesystems without hard links: create the final name with
 // O_EXCL (never following a symlink) and write directly.
 func writeExclusive(path, value string) (bool, error) {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600) //nolint:gosec // path is built from operator config
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return false, nil
@@ -145,7 +145,7 @@ func readRegular(path string) (string, error) {
 	if !info.Mode().IsRegular() {
 		return "", fmt.Errorf("secret file %s is not a regular file", path)
 	}
-	data, err := os.ReadFile(path) //nolint:gosec // path is built from operator config, not request input
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
 	}
