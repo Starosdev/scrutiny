@@ -19,9 +19,7 @@ func (d *Detect) Start() ([]models.Device, error) {
 	}
 
 	//inflate device info for detected devices.
-	for ndx, _ := range detectedDevices {
-		d.SmartCtlInfo(&detectedDevices[ndx]) //ignore errors.
-	}
+	detectedDevices = d.inflateDevices(detectedDevices, nil)
 
 	return FilterRedundantDevices(detectedDevices), nil
 }

@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/analogj/scrutiny/collector/pkg/common/shell"
@@ -22,6 +23,7 @@ import (
 )
 
 const configKeySmartctlBin = "commands.metrics_smartctl_bin"
+const configKeyMetricsParallelism = "commands.metrics_parallelism"
 const configKeyMetricsAPIRetryCount = "commands.metrics_api_retry_count"
 const configKeyMetricsAPIRetryDelay = "commands.metrics_api_retry_delay"
 
@@ -78,6 +80,10 @@ func (mc *MetricsCollector) Run() error {
 		return err
 	}
 
+	// Devices that could not be identified are not registered, but the failure must still
+	// raise a collector error every cycle.
+	mc.reportSkipped(deviceDetector.Skipped)
+
 	mc.logger.Infoln("Sending detected devices to API, for filtering & validation")
 	detectedStorageDevices := rawDetectedStorageDevices
 	jsonObj, _ := json.Marshal(detectedStorageDevices)
@@ -95,30 +101,51 @@ func (mc *MetricsCollector) Run() error {
 		return collectorerrors.ApiServerCommunicationError("An error occurred while retrieving filtered devices")
 	} else {
 		mc.logger.Debugln(deviceRespWrapper)
-		//var wg sync.WaitGroup
-		for _, device := range deviceRespWrapper.Data {
-			// Use device_id as the primary identifier for API calls.
-			// Fall back to WWN for compatibility with older backends that do not return device_id.
-			deviceIdentifier := device.DeviceID
-			if deviceIdentifier == "" {
-				deviceIdentifier = device.WWN
-			}
-			// execute collection in parallel go-routines
-			//wg.Add(1)
-			//go mc.Collect(&wg, deviceIdentifier, device.DeviceName, device.DeviceType)
-			mc.Collect(deviceIdentifier, device.DeviceName, device.DeviceType)
-
-			if mc.config.GetInt("commands.metrics_smartctl_wait") > 0 {
-				time.Sleep(time.Duration(mc.config.GetInt("commands.metrics_smartctl_wait")) * time.Second)
-			}
-		}
-
-		//mc.logger.Infoln("Main: Waiting for workers to finish")
-		//wg.Wait()
+		mc.collectAll(deviceRespWrapper.Data)
 		mc.logger.Infoln("Main: Completed")
 	}
 
 	return nil
+}
+
+// reportSkipped posts one scan error per device that could not be identified.
+func (mc *MetricsCollector) reportSkipped(skipped []detect.SkippedDevice) {
+	for _, s := range skipped {
+		mc.ReportScanError("info", s.Reason, s.DeviceName)
+	}
+}
+
+// collectAll collects every device through a bounded worker pool.
+func (mc *MetricsCollector) collectAll(devices []models.Device) {
+	// Bounded worker pool. The slot is taken before the goroutine starts, so with the
+	// default parallelism of 1 devices are collected one at a time in response order.
+	parallelism := mc.config.GetInt(configKeyMetricsParallelism)
+	if parallelism < 1 {
+		parallelism = 1
+	}
+	wait := time.Duration(mc.config.GetInt("commands.metrics_smartctl_wait")) * time.Second
+	slots := make(chan struct{}, parallelism)
+	var wg sync.WaitGroup
+	for ndx := range devices {
+		device := &devices[ndx]
+		// Use device_id as the primary identifier for API calls.
+		// Fall back to WWN for compatibility with older backends that do not return device_id.
+		deviceIdentifier := device.DeviceID
+		if deviceIdentifier == "" {
+			deviceIdentifier = device.WWN
+		}
+		slots <- struct{}{}
+		wg.Add(1)
+		go func(id, name, deviceType string) {
+			defer wg.Done()
+			defer func() { <-slots }()
+			mc.Collect(id, name, deviceType)
+			if wait > 0 {
+				time.Sleep(wait)
+			}
+		}(deviceIdentifier, device.DeviceName, device.DeviceType)
+	}
+	wg.Wait()
 }
 
 func (mc *MetricsCollector) Validate() error {
