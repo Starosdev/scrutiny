@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
@@ -26,6 +27,8 @@ func GetDevicesSummary(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
 	}
+
+	annotateStaleness(c, logger, deviceRepo, summary)
 
 	//this must match DeviceSummaryWrapper (webapp/backend/pkg/models/device_summary.go)
 	c.JSON(http.StatusOK, gin.H{
@@ -51,6 +54,8 @@ func getPaginatedDevicesSummary(c *gin.Context, logger *logrus.Entry, deviceRepo
 		return
 	}
 
+	annotateStaleness(c, logger, deviceRepo, result.Summary)
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
@@ -58,6 +63,32 @@ func getPaginatedDevicesSummary(c *gin.Context, logger *logrus.Entry, deviceRepo
 			"pagination": result.Pagination,
 		},
 	})
+}
+
+// annotateStaleness sets LastSeen and Stale on each summary using the same last-seen data and
+// timeout rules as the missed-ping monitor. A failure here is logged and leaves the fields unset:
+// staleness is advisory and must not break the dashboard.
+func annotateStaleness(c *gin.Context, logger *logrus.Entry, deviceRepo database.DeviceRepo, summaries map[string]*models.DeviceSummary) {
+	settings, err := deviceRepo.LoadSettings(c)
+	if err != nil || settings == nil {
+		logger.Warnln("Could not load settings for stale device detection", err)
+		return
+	}
+	lastSeenTimes, err := deviceRepo.GetDevicesLastSeenTimes(c)
+	if err != nil {
+		logger.Warnln("Could not load last seen times for stale device detection", err)
+		return
+	}
+
+	now := time.Now()
+	for id, summary := range summaries {
+		lastSeen, ok := lastSeenTimes[id]
+		if !ok {
+			continue
+		}
+		summary.LastSeen = &lastSeen
+		summary.Stale = summary.Device.IsStale(lastSeen, now, settings.Metrics.MissedPingTimeoutMinutes)
+	}
 }
 
 func parseSummaryPageOptions(c *gin.Context) (models.DeviceSummaryPageOptions, error) {

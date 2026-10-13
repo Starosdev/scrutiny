@@ -3174,6 +3174,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SmartTemperature"
+        last_seen:
+          type: string
+          format: date-time
+          description: Time of the device's last SMART submission. Omitted when the device never reported.
+        stale:
+          type: boolean
+          description: True when the device has been silent longer than its missed-ping timeout. Never true for archived devices.
     SmartSummary:
       type: object
       properties:

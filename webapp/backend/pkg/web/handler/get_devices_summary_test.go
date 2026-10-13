@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	mock_database "github.com/analogj/scrutiny/webapp/backend/pkg/database/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
@@ -37,6 +38,8 @@ func TestGetDevicesSummaryPreservesLegacyUnpaginatedRequest(t *testing.T) {
 		"device-1": {Device: models.Device{DeviceID: "device-1"}},
 	}
 	repo.EXPECT().GetSummary(gomock.Any()).Return(summary, nil)
+	repo.EXPECT().LoadSettings(gomock.Any()).Return(&models.Settings{}, nil).AnyTimes()
+	repo.EXPECT().GetDevicesLastSeenTimes(gomock.Any()).Return(map[string]time.Time{}, nil).AnyTimes()
 
 	response := httptest.NewRecorder()
 	request, _ := http.NewRequest(http.MethodGet, "/api/summary", nil)
@@ -72,6 +75,8 @@ func TestGetDevicesSummaryReturnsPaginatedResponse(t *testing.T) {
 		},
 	}
 	repo.EXPECT().GetSummaryPage(gomock.Any(), options).Return(page, nil)
+	repo.EXPECT().LoadSettings(gomock.Any()).Return(&models.Settings{}, nil).AnyTimes()
+	repo.EXPECT().GetDevicesLastSeenTimes(gomock.Any()).Return(map[string]time.Time{}, nil).AnyTimes()
 
 	response := httptest.NewRecorder()
 	request, _ := http.NewRequest(http.MethodGet, "/api/summary?page=2&page_size=10&group_by=host&archived=true&sort=title_asc&display=label&host=alpha", nil)
@@ -112,4 +117,50 @@ func TestGetDevicesSummaryRejectsInvalidPagination(t *testing.T) {
 			require.Contains(t, response.Body.String(), `"success":false`)
 		})
 	}
+}
+
+func TestGetDevicesSummaryFlagsStaleDevices(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	t.Cleanup(mockCtrl.Finish)
+	repo := mock_database.NewMockDeviceRepo(mockCtrl)
+
+	old := time.Now().Add(-48 * time.Hour)
+	recent := time.Now().Add(-5 * time.Minute)
+	summary := map[string]*models.DeviceSummary{
+		"silent":    {Device: models.Device{DeviceID: "silent"}},
+		"fresh":     {Device: models.Device{DeviceID: "fresh"}},
+		"override":  {Device: models.Device{DeviceID: "override", MissedPingTimeoutOverride: 4320}},
+		"archived":  {Device: models.Device{DeviceID: "archived", Archived: true}},
+		"neverseen": {Device: models.Device{DeviceID: "neverseen"}},
+	}
+	repo.EXPECT().GetSummary(gomock.Any()).Return(summary, nil)
+	settings := &models.Settings{}
+	settings.Metrics.MissedPingTimeoutMinutes = 60
+	repo.EXPECT().LoadSettings(gomock.Any()).Return(settings, nil)
+	repo.EXPECT().GetDevicesLastSeenTimes(gomock.Any()).Return(map[string]time.Time{
+		"silent": old, "fresh": recent, "override": old, "archived": old,
+	}, nil)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/summary", nil)
+	setupSummaryRouter(t, repo).ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var body struct {
+		Data struct {
+			Summary map[string]struct {
+				LastSeen *time.Time `json:"last_seen"`
+				Stale    bool       `json:"stale"`
+			} `json:"summary"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	got := body.Data.Summary
+	require.True(t, got["silent"].Stale)
+	require.NotNil(t, got["silent"].LastSeen)
+	require.False(t, got["fresh"].Stale)
+	require.False(t, got["override"].Stale, "per-device 3 day override must win over the 60 minute global")
+	require.False(t, got["archived"].Stale)
+	require.False(t, got["neverseen"].Stale)
+	require.Nil(t, got["neverseen"].LastSeen)
 }

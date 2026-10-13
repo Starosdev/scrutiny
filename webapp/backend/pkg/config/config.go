@@ -54,6 +54,7 @@ func (c *configuration) Init() error {
 	// smartctl report) is a few hundred KiB; 16 MiB leaves two orders of magnitude of headroom.
 	c.SetDefault("web.listen.max_body_bytes", DefaultMaxBodyBytes)
 	// Directory for generated PDF reports. Not settable through the API.
+	c.SetDefault("web.devices.auto_archive_stale_days", 0) // 0 = never auto-archive silent devices
 	c.SetDefault("web.reports.path", "/opt/scrutiny/reports")
 	c.SetDefault("web.src.frontend.path", "/opt/scrutiny/web")
 	c.SetDefault("web.database.location", "/opt/scrutiny/config/scrutiny.db")

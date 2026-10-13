@@ -50,9 +50,13 @@ type TemperatureDeviceOption struct {
 }
 
 type DeviceSummary struct {
+	// LastSeen is the time of the device's last SMART submission; nil when it never reported.
+	LastSeen     *time.Time                      `json:"last_seen,omitempty"`
 	SmartResults *SmartSummary                   `json:"smart,omitempty"`
 	TempHistory  []measurements.SmartTemperature `json:"temp_history,omitempty"`
 	Device       Device                          `json:"device"`
+	// Stale is true when the device has been silent longer than its missed-ping timeout.
+	Stale bool `json:"stale"`
 }
 type SmartSummary struct {
 	CollectorDate  time.Time `json:"collector_date,omitempty"`
