@@ -80,6 +80,10 @@ func (mc *MetricsCollector) Run() error {
 		return err
 	}
 
+	// Devices that could not be identified are not registered, but the failure must still
+	// raise a collector error every cycle.
+	mc.reportSkipped(deviceDetector.Skipped)
+
 	mc.logger.Infoln("Sending detected devices to API, for filtering & validation")
 	detectedStorageDevices := rawDetectedStorageDevices
 	jsonObj, _ := json.Marshal(detectedStorageDevices)
@@ -102,6 +106,13 @@ func (mc *MetricsCollector) Run() error {
 	}
 
 	return nil
+}
+
+// reportSkipped posts one scan error per device that could not be identified.
+func (mc *MetricsCollector) reportSkipped(skipped []detect.SkippedDevice) {
+	for _, s := range skipped {
+		mc.ReportScanError("info", s.Reason, s.DeviceName)
+	}
 }
 
 // collectAll collects every device through a bounded worker pool.

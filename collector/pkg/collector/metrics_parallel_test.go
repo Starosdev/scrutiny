@@ -1,12 +1,15 @@
 package collector
 
 import (
+	"io"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	mock_shell "github.com/analogj/scrutiny/collector/pkg/common/shell/mock"
+	"github.com/analogj/scrutiny/collector/pkg/detect"
 	"github.com/analogj/scrutiny/collector/pkg/models"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -19,6 +22,8 @@ func runCollectAll(t *testing.T, parallelism int) (int32, []string) {
 	ctrl := gomock.NewController(t)
 	var inFlight, peak int32
 	var mu sync.Mutex
+	var arrived int32
+	gate := make(chan struct{})
 	var order []string
 
 	fakeShell := mock_shell.NewMockInterface(ctrl)
@@ -35,7 +40,18 @@ func runCollectAll(t *testing.T, parallelism int) (int32, []string) {
 			mu.Lock()
 			order = append(order, args[len(args)-1])
 			mu.Unlock()
-			time.Sleep(20 * time.Millisecond)
+			// Hold the first `parallelism` callers until all of them are in flight, which
+			// proves they ran concurrently; later callers pass straight through.
+			if atomic.AddInt32(&arrived, 1) <= int32(parallelism) {
+				if atomic.LoadInt32(&arrived) == int32(parallelism) {
+					close(gate)
+				}
+				select {
+				case <-gate:
+				case <-time.After(5 * time.Second):
+					t.Error("timed out waiting for concurrent callers")
+				}
+			}
 			atomic.AddInt32(&inFlight, -1)
 			return someSmartPayload, nil
 		}).
@@ -61,6 +77,21 @@ func TestMetricsCollector_CollectAll_DefaultIsSequentialAndOrdered(t *testing.T)
 func TestMetricsCollector_CollectAll_BoundedParallelism(t *testing.T) {
 	peak, _ := runCollectAll(t, 3)
 	require.Equal(t, int32(3), peak)
+}
+
+func TestMetricsCollector_ReportSkipped_OneScanErrorPerDevice(t *testing.T) {
+	var posts int32
+	var body string
+	mc := newTestCollectCollector(t, nil, func(req *http.Request) {
+		atomic.AddInt32(&posts, 1)
+		b, _ := io.ReadAll(req.Body)
+		body = string(b)
+		require.Equal(t, "/api/collector/scan-error", req.URL.Path)
+	})
+	mc.reportSkipped([]detect.SkippedDevice{{DeviceName: "sdb", Reason: "smartctl --info failed for sdb: exit status 2"}})
+	require.Equal(t, int32(1), atomic.LoadInt32(&posts))
+	require.Contains(t, body, `"error_type":"info"`)
+	require.Contains(t, body, `"device_name":"sdb"`)
 }
 
 func TestMetricsCollector_CollectAll_InvalidParallelismFallsBackToOne(t *testing.T) {

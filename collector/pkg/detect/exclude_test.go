@@ -1,6 +1,7 @@
 package detect_test
 
 import (
+	"context"
 	"testing"
 
 	mock_shell "github.com/analogj/scrutiny/collector/pkg/common/shell/mock"
@@ -24,6 +25,11 @@ type infoResult struct {
 
 // inflate runs inflateDevices against a fake shell keyed by full device path.
 func inflate(t *testing.T, cfgSetup func(config.Interface), results map[string]infoResult, names ...string) []models.Device {
+	devs, _ := inflateWithSkipped(t, cfgSetup, results, names...)
+	return devs
+}
+
+func inflateWithSkipped(t *testing.T, cfgSetup func(config.Interface), results map[string]infoResult, names ...string) ([]models.Device, []detect.SkippedDevice) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
 	cfg, err := config.Create()
@@ -50,7 +56,8 @@ func inflate(t *testing.T, cfgSetup func(config.Interface), results map[string]i
 	for _, n := range names {
 		devices = append(devices, models.Device{DeviceName: n, DeviceType: "sat"})
 	}
-	return d.InflateDevices(devices)
+	got := d.InflateDevices(devices)
+	return got, d.Skipped
 }
 
 func names(devices []models.Device) []string {
@@ -102,4 +109,41 @@ func TestInflateDevices_ExcludeByDeviceType(t *testing.T) {
 	results := map[string]infoResult{"/dev/sda": {out: infoJSON("WDC", "a")}}
 	setup := func(c config.Interface) { c.Set("exclude", []string{`^sat$`}) }
 	require.Empty(t, inflate(t, setup, results, "sda"))
+}
+
+func TestInflateDevices_RecordsSkippedForReporting(t *testing.T) {
+	results := map[string]infoResult{
+		"/dev/sda": {out: infoJSON("WDC", "a")},
+		"/dev/sdb": {err: exitErrorWithCode(t, 2)},
+		"/dev/sdc": {err: context.DeadlineExceeded}, // timeout, not an ExitError
+		"/dev/sdd": {out: "  "},                     // empty output
+		"/dev/sde": {out: "{not json"},              // bad JSON
+	}
+	got, skipped := inflateWithSkipped(t, nil, results, "sda", "sdb", "sdc", "sdd", "sde")
+	require.Equal(t, []string{"sda"}, names(got))
+	require.Len(t, skipped, 4)
+	require.Equal(t, "sdb", skipped[0].DeviceName)
+	require.Contains(t, skipped[0].Reason, "exit status 2")
+}
+
+func TestInflateDevices_DefaultsDoNotOverrideExplicitDevices(t *testing.T) {
+	results := map[string]infoResult{
+		"/dev/sda": {out: infoJSON("QEMU HARDDISK", "q1")},
+		"/dev/sdb": {out: infoJSON("QEMU HARDDISK", "q2")},
+		"/dev/sdc": {out: infoJSON("QEMU HARDDISK", "q3")},
+	}
+	listed := func(c config.Interface) {
+		c.Set("devices", []map[string]interface{}{{"device": "/dev/sda", "label": "keep"}})
+	}
+	require.Equal(t, []string{"sda"}, names(inflate(t, listed, results, "sda", "sdb")))
+
+	allow := func(c config.Interface) { c.Set("allow_listed_devices", []string{"/dev/sdc"}) }
+	require.Equal(t, []string{"sdc"}, names(inflate(t, allow, results, "sdb", "sdc")))
+
+	// user exclude patterns still win over an explicit listing
+	both := func(c config.Interface) {
+		listed(c)
+		c.Set("exclude", []string{`QEMU`})
+	}
+	require.Empty(t, inflate(t, both, results, "sda"))
 }
