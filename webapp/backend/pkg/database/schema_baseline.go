@@ -2,7 +2,11 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"slices"
+	"strings"
+	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/glebarez/sqlite"
@@ -19,10 +23,80 @@ var baselineIndexes = []string{
 	"CREATE INDEX IF NOT EXISTS idx_devices_deleted_at ON devices (deleted_at)",
 }
 
-// createBaselineSchema builds the current schema directly from schemaModels, for a database that
-// starts empty and never ran the SQLite migration history.
+// The structs below create three tables whose migration history left column defaults or NULL
+// constraints that the runtime models must not carry. They are used only to create those tables
+// and are never written through, so their tags cannot change how GORM inserts rows. The schema
+// equivalence test fails if any of them drifts from the migration history.
+
+// baselineNotifyUrl gives heartbeat_enabled the database default of true that m20260608000000
+// added. models.NotifyUrl has no default tag, since GORM would turn a false value into true on
+// create (#888).
+type baselineNotifyUrl struct {
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	URL              string `gorm:"not null"`
+	Label            string
+	Source           string `gorm:"default:'ui'"`
+	HeartbeatEnabled bool   `gorm:"default:true"`
+	ID               uint   `gorm:"primaryKey"`
+}
+
+func (baselineNotifyUrl) TableName() string { return "notify_urls" }
+
+// baselineAttributeOverride carries the empty-string defaults and the NOT NULL device_id that
+// m20260122000000 and m20260823000000 created.
+type baselineAttributeOverride struct {
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	WarnAbove   *int64
+	FailAbove   *int64
+	PinnedValue *int64
+	Protocol    string `gorm:"not null;uniqueIndex:idx_override_lookup"`
+	AttributeId string `gorm:"not null;uniqueIndex:idx_override_lookup"`
+	DeviceID    string `gorm:"not null;default:'';uniqueIndex:idx_override_lookup"`
+	WWN         string `gorm:"default:'';uniqueIndex:idx_override_lookup"`
+	Action      string `gorm:"default:''"`
+	Status      string `gorm:"default:''"`
+	Source      string `gorm:"default:'ui'"`
+	ID          uint   `gorm:"primaryKey"`
+}
+
+func (baselineAttributeOverride) TableName() string { return "attribute_overrides" }
+
+// baselineSettingEntry leaves setting_key_name nullable, as m20220716214900 created it. The
+// unique index from m20260926000000 still rejects duplicate keys.
+type baselineSettingEntry struct {
+	gorm.Model
+	SettingKeyName        string `gorm:"uniqueIndex:idx_settings_setting_key_name"`
+	SettingKeyDescription string
+	SettingDataType       string
+	SettingValueString    string
+	SettingValueNumeric   int
+	SettingValueBool      bool
+}
+
+func (baselineSettingEntry) TableName() string { return "settings" }
+
+// baselineModels is schemaModels with the three tables above swapped for their baseline structs.
+func baselineModels() []interface{} {
+	out := schemaModels()
+	for i, model := range out {
+		switch model.(type) {
+		case *models.NotifyUrl:
+			out[i] = &baselineNotifyUrl{}
+		case *models.AttributeOverride:
+			out[i] = &baselineAttributeOverride{}
+		case *models.SettingEntry:
+			out[i] = &baselineSettingEntry{}
+		}
+	}
+	return out
+}
+
+// createBaselineSchema builds the current schema directly from baselineModels, for a database
+// that starts empty and never ran the migration history.
 func createBaselineSchema(db *gorm.DB) error {
-	if err := db.AutoMigrate(schemaModels()...); err != nil {
+	if err := db.AutoMigrate(baselineModels()...); err != nil {
 		return err
 	}
 	for _, stmt := range baselineIndexes {
@@ -79,7 +153,7 @@ func migratedReferenceDatabase(ctx context.Context, logger logrus.FieldLogger) (
 	sqlDB.SetMaxOpenConns(1)
 
 	reference := &scrutinyRepository{gormClient: db, logger: logger}
-	if err := reference.Migrate(ctx); err != nil {
+	if err := reference.migrateSQLite(ctx, false); err != nil {
 		_ = sqlDB.Close()
 		return nil, err
 	}
@@ -104,4 +178,88 @@ func uniqueSettings(entries []models.SettingEntry) []models.SettingEntry {
 		}
 	}
 	return out
+}
+
+// minimumUpgradeMigrationID is the last schema migration in Scrutiny 1.70.0 (and 1.69.2, which
+// carries the same migrations). A Scrutiny database without it is older than the minimum
+// upgrade-from version and is refused (docs/UPGRADE_2.0.md).
+const minimumUpgradeMigrationID = "m20260823000000"
+
+// upstreamMigrationIDs are the migrations AnalogJ/scrutiny (through 0.9.5) records. A database
+// whose history holds only these comes from AnalogJ/scrutiny, or from a Staros build that had not
+// yet diverged from it, and still runs the full history, which the AnalogJ import path needs
+// (migrateM20260803000000). m20260105083200 and m20260216155600 exist only upstream.
+var upstreamMigrationIDs = map[string]bool{
+	"20201107210306":  true,
+	"20220503113100":  true,
+	"20220503120000":  true,
+	"m20220509170100": true,
+	"m20220709181300": true,
+	"m20220716214900": true,
+	"m20221115214900": true,
+	"m20231123123300": true,
+	"m20240722082740": true,
+	"m20250221084400": true,
+	"m20260105083200": true,
+	"m20260216155600": true,
+	"g20220802211500": true,
+}
+
+// ErrDatabaseTooOld means a Scrutiny SQLite database predates the minimum upgrade-from version.
+var ErrDatabaseTooOld = errors.New("database is older than the minimum upgrade-from version")
+
+// classifySQLiteDatabase decides how a SQLite database is migrated, reading only. It reports
+// fresh for a database with no tables, which gets the baseline. Every other database runs the
+// migrations it is missing, except a Scrutiny database that has recorded Staros migrations but
+// not minimumUpgradeMigrationID, which returns ErrDatabaseTooOld.
+//
+// A database with tables but no recorded migrations predates gormigrate (AnalogJ/scrutiny before
+// 0.4.0) and keeps running the full history, as it did before the baseline existed.
+func classifySQLiteDatabase(db *gorm.DB) (fresh bool, err error) {
+	tables, err := db.Migrator().GetTables()
+	if err != nil {
+		return false, fmt.Errorf("list tables: %w", err)
+	}
+	userTables := 0
+	hasMigrations := false
+	for _, table := range tables {
+		switch {
+		case table == "migrations":
+			hasMigrations = true
+		case !strings.HasPrefix(table, "sqlite_"):
+			userTables++
+		}
+	}
+	var applied []string
+	if hasMigrations {
+		if err := db.Table("migrations").Pluck("id", &applied).Error; err != nil {
+			return false, fmt.Errorf("read migrations table: %w", err)
+		}
+	}
+	if len(applied) == 0 {
+		return userTables == 0, nil
+	}
+	if slices.Contains(applied, minimumUpgradeMigrationID) {
+		return false, nil
+	}
+	for _, id := range applied {
+		if !upstreamMigrationIDs[id] {
+			return false, fmt.Errorf("%w: this database was last migrated by a Scrutiny release older than 1.70.0 "+
+				"(it has migration %s but not %s). It has not been changed. Start the latest Scrutiny 1.76.x "+
+				"release on it once so it migrates, stop it, then start this version",
+				ErrDatabaseTooOld, latestAppliedID(applied), minimumUpgradeMigrationID)
+		}
+	}
+	return false, nil
+}
+
+// latestAppliedID returns the highest applied migration ID, for the refusal message.
+func latestAppliedID(applied []string) string {
+	latest := ""
+	for _, id := range applied {
+		if strings.TrimLeft(id, "mg") > strings.TrimLeft(latest, "mg") {
+			latest = id
+		}
+	}
+	return latest
 }

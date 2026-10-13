@@ -770,6 +770,7 @@ Before submitting a pull request, ensure all of the following pass:
 - [ ] Tested with a fresh database (delete `scrutiny.db` and restart)
 - [ ] Tested with an existing database (migration runs without errors on upgrade)
 - [ ] For SQLite single-column additions, prefer explicit `ALTER TABLE ... ADD COLUMN` over `AutoMigrate`; SQLite `AutoMigrate` can rebuild legacy tables and copy an incomplete column set
+- [ ] The baseline in `schema_baseline.go` and `schema_models.go` produces the same schema (a new table needs its model in `schemaModels`); `go test ./webapp/backend/pkg/database/ -run 'TestBaselineSchemaMatchesMigrationChainExactly|TestMigrateUpgradesMinimumVersionDatabase'` compares a fresh install, the full history, and an upgraded 1.70.0 database column by column
 
 ### If You Added a New API Endpoint
 

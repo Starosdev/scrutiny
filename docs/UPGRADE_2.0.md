@@ -13,9 +13,37 @@ cannot adopt 2.0 yet stay on the frozen `:1` tag.
 
 ## Minimum upgrade-from version
 
-TODO (database work package): the migration baseline squash (BRK-02) declares a minimum
-version that databases must already be on. Proposed: 1.70.0. Databases older than that must
-step through the latest 1.x release first. Confirm the number when the baseline lands.
+The minimum upgrade-from version is **1.70.0**. A SQLite database last migrated by an older
+Scrutiny release is refused at startup, before anything is written to it. The error names the
+newest migration the database has, and the server exits.
+
+To upgrade an older database:
+
+1. Run the latest 1.76.x release on the database once, until the log shows
+   `Database migration completed successfully`.
+2. Stop it.
+3. Start 2.0.
+
+The check uses migration IDs, not version strings: a database must hold `m20260823000000`, the
+last schema migration in 1.70.0. 1.69.2 carries the same migrations, so a 1.69.2 database is
+accepted too.
+
+Other cases:
+
+- A new installation creates the current schema directly and records every historical migration
+  as applied. It no longer runs the migration history.
+- A database from AnalogJ/scrutiny (any release up to 0.9.5) is not affected by the minimum. It
+  still runs the full migration history, including the 0.9.x identity repair.
+- PostgreSQL support started in 1.76.0, so every PostgreSQL database is already past the minimum.
+
+Two schema changes run on upgrade:
+
+- `api_tokens.scope` no longer has a default. The old default, `full`, was never a valid scope,
+  so a token holding it could not authenticate. Such tokens are left as they are, so no token
+  gains access it did not have. Delete them with `DELETE /api/settings/tokens/{id}` ([AUTH.md](AUTH.md)).
+- `devices.auto_archived` is new. It is `true` when the missed-ping monitor archived the device
+  (`web.devices.auto_archive_stale_days`) and `false` when a person did. Devices archived before
+  2.0 count as archived by a person.
 
 ## Authentication is enabled by default
 
