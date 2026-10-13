@@ -464,9 +464,20 @@ func (sm *Smart) ProcessNvmeSmartInfo(cfg config.Interface, nvmeSmartHealthInfor
 	for attrId, val := range sm.Attributes {
 		nvmeAttr := val.(*SmartNvmeAttribute)
 		ignored := applyNvmeOverrides(cfg, sm.DeviceWWN, attrId, nvmeAttr)
-		if pkg.AttributeStatusHas(nvmeAttr.GetStatus(), pkg.AttributeStatusFailedScrutiny) && !ignored {
-			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
+		if !ignored {
+			sm.setDeviceStatusFromNvmeAttribute(nvmeAttr.GetStatus())
 		}
+	}
+}
+
+// setDeviceStatusFromNvmeAttribute folds an NVMe attribute status into the device status,
+// keeping manufacturer (SMART) and Scrutiny failures separate.
+func (sm *Smart) setDeviceStatusFromNvmeAttribute(status pkg.AttributeStatus) {
+	if pkg.AttributeStatusHas(status, pkg.AttributeStatusFailedSmart) {
+		sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedSmart)
+	}
+	if pkg.AttributeStatusHas(status, pkg.AttributeStatusFailedScrutiny) {
+		sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 	}
 }
 
@@ -796,8 +807,8 @@ func (sm *Smart) processNvmeSmartInfoWithOverrides(cfg config.Interface, nvmeSma
 			sm.HasForcedFailure = true
 		}
 
-		if pkg.AttributeStatusHas(nvmeAttr.GetStatus(), pkg.AttributeStatusFailedScrutiny) && !ignored {
-			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
+		if !ignored {
+			sm.setDeviceStatusFromNvmeAttribute(nvmeAttr.GetStatus())
 		}
 	}
 }

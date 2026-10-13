@@ -17,6 +17,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	mock_database "github.com/analogj/scrutiny/webapp/backend/pkg/database/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -134,6 +135,18 @@ func TestShouldNotify_MetricsStatusFilterAttributesCritical_WithCriticalAttrs(t 
 
 	//assert
 	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil))
+}
+
+func TestShouldNotify_NvmeCriticalWarning_SmartThreshold(t *testing.T) {
+	t.Parallel()
+	smartAttrs := measurements.Smart{}
+	smartAttrs.ProcessNvmeSmartInfo(nil, collector.NvmeSmartHealthInformationLog{CriticalWarning: 1, AvailableSpare: 100, AvailableSpareThreshold: 10})
+	device := models.Device{DeviceStatus: smartAttrs.Status, DeviceProtocol: pkg.DeviceProtocolNvme}
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
+
+	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, pkg.MetricsStatusThresholdSmart, pkg.MetricsStatusFilterAttributesCritical, true, "", &gin.Context{}, fakeDatabase, nil))
 }
 
 func TestShouldNotify_MetricsStatusFilterAttributesCritical_WithMultipleCriticalAttrs(t *testing.T) {
