@@ -961,7 +961,7 @@ paths:
           application/json:
             schema:
               type: object
-              description: URL may be a Shoutrrr target, an explicit Apprise target prefixed with apprise+, a script:// target, or a raw http(s) webhook.
+              description: URL may be a Shoutrrr target, an explicit Apprise target prefixed with apprise+, or a raw http(s) webhook. script:// targets are rejected with HTTP 400; configure them in notify.urls in scrutiny.yaml.
               properties:
                 url:
                   type: string
@@ -2231,8 +2231,6 @@ components:
               type: string
             report_pdf_enabled:
               type: boolean
-            report_pdf_path:
-              type: string
     SettingsResponse:
       type: object
       properties:
@@ -2331,8 +2329,6 @@ components:
       type: object
       properties:
         name:
-          type: string
-        path:
           type: string
         mod_time:
           type: string

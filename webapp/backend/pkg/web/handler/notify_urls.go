@@ -17,6 +17,9 @@ import (
 
 const errInvalidIDFormat = "Invalid ID format"
 
+// errScriptUrlConfigOnly explains why script:// URLs cannot be saved or tested through the API.
+const errScriptUrlConfigOnly = "script:// notification URLs cannot be added through the UI or API. Configure script targets in the notify.urls setting of scrutiny.yaml."
+
 type notifyUrlResponse struct {
 	URL              string `json:"url"`
 	Label            string `json:"label,omitempty"`
@@ -86,6 +89,16 @@ func SaveNotifyUrl(c *gin.Context) {
 
 	if input.URL == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "URL is required"})
+		return
+	}
+
+	if notify.IsScriptURL(input.URL) {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": errScriptUrlConfigOnly})
+		return
+	}
+
+	if notify.IsUnsafeAppriseTarget(input.URL) {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid apprise+ URL: the target must not start with \"-\"."})
 		return
 	}
 
@@ -201,6 +214,10 @@ func TestNotifyUrl(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Notification URL not found"})
 		return
 	}
+	if notify.IsScriptURL(targetUrl) || notify.IsUnsafeAppriseTarget(targetUrl) {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": errScriptUrlConfigOnly})
+		return
+	}
 
 	testNotify := notify.New(
 		logger,
@@ -214,8 +231,9 @@ func TestNotifyUrl(c *gin.Context) {
 	)
 
 	if err := testNotify.SendToUrls([]string{targetUrl}); err != nil {
+		// The error can embed the target URL (with credentials) and raw apprise output; keep it in the server log.
 		logger.Errorln("Test notification failed:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "errors": []string{err.Error()}})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "errors": []string{"Test notification failed. See the server log for details."}})
 		return
 	}
 

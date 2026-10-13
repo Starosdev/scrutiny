@@ -32,6 +32,7 @@ func setupNotifyUrlsRouter(t *testing.T, mockRepo *mock_database.MockDeviceRepo,
 	r.GET("/api/settings/notify-urls", handler.GetNotifyUrls)
 	r.POST("/api/settings/notify-urls", handler.SaveNotifyUrl)
 	r.PATCH("/api/settings/notify-urls/:id", handler.UpdateNotifyUrlHeartbeat)
+	r.POST("/api/settings/notify-urls/:id/test", handler.TestNotifyUrl)
 	return r
 }
 
@@ -114,4 +115,71 @@ func TestUpdateNotifyUrlHeartbeat_Success(t *testing.T) {
 	var resp map[string]interface{}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	require.Equal(t, true, resp["success"])
+}
+
+func TestSaveNotifyUrl_RejectsScriptUrl(t *testing.T) {
+	for _, u := range []string{"script:///usr/bin/env", "SCRIPT:///usr/bin/env", " script:///usr/bin/env"} {
+		mockCtrl := gomock.NewController(t)
+		mockRepo := mock_database.NewMockDeviceRepo(mockCtrl) // no SaveNotifyUrl expectation: must not be reached
+		router := setupNotifyUrlsRouter(t, mockRepo, mock_config.NewMockInterface(mockCtrl))
+
+		body, _ := json.Marshal(map[string]interface{}{"url": u, "label": "x"})
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/settings/notify-urls", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code, u)
+		require.Contains(t, w.Body.String(), "scrutiny.yaml")
+		mockCtrl.Finish()
+	}
+}
+
+func TestTestNotifyUrl_RefusesStoredScriptUrl(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	t.Cleanup(mockCtrl.Finish)
+	mockRepo := mock_database.NewMockDeviceRepo(mockCtrl)
+	mockRepo.EXPECT().GetNotifyUrls(gomock.Any()).Return([]models.NotifyUrl{{ID: 7, URL: "script:///usr/bin/env"}}, nil)
+	router := setupNotifyUrlsRouter(t, mockRepo, mock_config.NewMockInterface(mockCtrl))
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/settings/notify-urls/7/test", nil)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestSaveNotifyUrl_RejectsOptionLikeAppriseTarget(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	t.Cleanup(mockCtrl.Finish)
+	router := setupNotifyUrlsRouter(t, mock_database.NewMockDeviceRepo(mockCtrl), mock_config.NewMockInterface(mockCtrl))
+
+	body, _ := json.Marshal(map[string]interface{}{"url": "apprise+--plugin-path=/tmp/evil"})
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/settings/notify-urls", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestTestNotifyUrl_FailureResponseIsGeneric(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	t.Cleanup(mockCtrl.Finish)
+	mockRepo := mock_database.NewMockDeviceRepo(mockCtrl)
+	mockRepo.EXPECT().GetNotifyUrls(gomock.Any()).Return([]models.NotifyUrl{{ID: 9, URL: "https://user:secret@127.0.0.1:1/hook"}}, nil)
+	mockCfg := mock_config.NewMockInterface(mockCtrl)
+	mockCfg.EXPECT().GetString(gomock.Any()).Return("").AnyTimes()
+	mockCfg.EXPECT().GetBool(gomock.Any()).Return(false).AnyTimes()
+	mockCfg.EXPECT().GetInt(gomock.Any()).Return(0).AnyTimes()
+	mockCfg.EXPECT().GetStringSlice(gomock.Any()).Return(nil).AnyTimes()
+	router := setupNotifyUrlsRouter(t, mockRepo, mockCfg)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/settings/notify-urls/9/test", nil)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusInternalServerError, w.Code)
+	require.NotContains(t, w.Body.String(), "secret")
+	require.NotContains(t, w.Body.String(), "127.0.0.1")
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/analogj/scrutiny/collector/pkg/errors"
 	"github.com/analogj/scrutiny/collector/pkg/models"
+	"github.com/analogj/scrutiny/pkg/secrets"
 	"github.com/analogj/scrutiny/pkg/utils"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/sirupsen/logrus"
@@ -53,7 +54,15 @@ func (c *configuration) Init() error {
 
 	c.SetDefault("api.endpoint", "http://localhost:8080")
 	c.SetDefault("api.timeout", 60)
-	c.SetDefault("api.token", "")
+	// Omnibus: the web server saves a token it generated at first start next to its config. Use it as the
+	// lowest-precedence default, so api.token in collector.yaml and COLLECTOR_API_TOKEN still win.
+	// The directory follows the web server's SCRUTINY_WEB_SECRETS_DIR when set in the container.
+	secretsDir := os.Getenv("SCRUTINY_WEB_SECRETS_DIR")
+	if secretsDir == "" {
+		secretsDir = secrets.DefaultDir
+	}
+	generatedToken, _ := secrets.Read(secretsDir, secrets.AuthTokenFile)
+	c.SetDefault("api.token", generatedToken)
 
 	c.SetDefault("commands.metrics_smartctl_bin", "smartctl")
 	c.SetDefault(configKeyMetricsScanArgs, "--scan --json")

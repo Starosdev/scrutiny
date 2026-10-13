@@ -1,21 +1,41 @@
 # Authentication
 
-Scrutiny supports opt-in API authentication to secure access to the dashboard and API endpoints. Authentication is **disabled by default**, so existing deployments are completely unaffected by this feature.
+Scrutiny secures the dashboard and API endpoints with token authentication. As of 2.0 authentication is **enabled by default**. Set `web.auth.enabled: false` to opt out (the server then logs a warning at every start).
 
-When enabled, all API endpoints except `/api/health` and `/api/auth/*` require a valid Bearer token in the `Authorization` header. The web UI provides a login page that issues JWT session tokens, and collectors authenticate using the master API token.
+All API endpoints except `/api/health` and `/api/auth/*` require a valid Bearer token in the `Authorization` header. The web UI provides a login page that issues JWT session tokens, and collectors authenticate using the master API token.
 
 ## Quick Start
 
-Add the following to your `scrutiny.yaml`:
+What you must do depends on the deployment:
 
-```yaml
-web:
-    auth:
-        enabled: true
-        token: 'your-secret-api-token-here'
-```
+- **Omnibus image** (web server and collectors in one container): nothing. If no token is configured, the server generates one at first start and saves it to `/opt/scrutiny/config/.auth-token` with file mode `0600`. The collectors in the same container read that file, so they authenticate automatically. The log names the file and never prints the token. Read it to sign in to the web UI:
 
-Then configure each collector with the same token. See [Collector Authentication](#collector-authentication) for details.
+    ```bash
+    docker exec scrutiny cat /opt/scrutiny/config/.auth-token
+    ```
+
+- **Hub/spoke** (separate `web` and `collector` containers): set a token on the web server, and the same value on every collector. The web server refuses to start without one and the error names the setting:
+
+    ```yaml
+    web:
+        auth:
+            token: 'your-secret-api-token-here'
+    ```
+
+    See [Collector Authentication](#collector-authentication) for the collector side.
+
+- **No authentication**: set `web.auth.enabled: false` (or `SCRUTINY_WEB_AUTH_ENABLED=false`). Every endpoint, including settings and device deletion, is then open to anyone who can reach the server. Only do this on a network you fully trust.
+
+If you cannot adopt this change yet, stay on the frozen `:1` image tag. See [UPGRADE_2.0.md](UPGRADE_2.0.md).
+
+### Where generated secrets are stored
+
+| File | Contents | Created when |
+|---|---|---|
+| `<web.secrets.dir>/.auth-token` | The generated API token | Omnibus only, when `web.auth.token` is empty |
+| `<web.secrets.dir>/.jwt-secret` | The generated JWT signing secret | When `web.auth.jwt_secret` is empty |
+
+`web.secrets.dir` defaults to `/opt/scrutiny/config`. Both files are created with mode `0600` and reused on later starts. A token set in `scrutiny.yaml` or `SCRUTINY_WEB_AUTH_TOKEN` always wins over the file. If you set `SCRUTINY_WEB_AUTH_TOKEN` on an omnibus container that already generated a token, also set `COLLECTOR_API_TOKEN` to the same value, because the collectors prefer their own configuration over the generated file. To rotate the generated token, stop the container, delete `.auth-token`, and start it again. Also delete `.jwt-secret` if you want existing browser sessions to end; sessions signed with the old secret stay valid until they expire.
 
 ## Configuration Reference
 
@@ -23,14 +43,17 @@ Then configure each collector with the same token. See [Collector Authentication
 
 | Config Key | Environment Variable | Default | Description |
 |---|---|---|---|
-| `web.auth.enabled` | `SCRUTINY_WEB_AUTH_ENABLED` | `false` | Enable API authentication |
-| `web.auth.token` | `SCRUTINY_WEB_AUTH_TOKEN` | (empty) | Master API token. Required when auth is enabled. Used by collectors and for token-based login. |
-| `web.auth.jwt_secret` | `SCRUTINY_WEB_AUTH_JWT_SECRET` | (empty) | Secret key for signing JWT session tokens. If empty, a random secret is generated at startup (sessions will not survive restarts). See [JWT Session Persistence](#jwt-session-persistence). |
+| `web.auth.enabled` | `SCRUTINY_WEB_AUTH_ENABLED` | `true` | API authentication. Set `false` to opt out. |
+| `web.auth.token` | `SCRUTINY_WEB_AUTH_TOKEN` | (empty) | Master API token. Required when auth is enabled, except in the omnibus image, which generates one. Used by collectors and for token-based login. |
+| `web.auth.jwt_secret` | `SCRUTINY_WEB_AUTH_JWT_SECRET` | (empty) | Secret key for signing JWT session tokens. If empty, a random secret is generated once and saved to `web.secrets.dir`, so sessions survive restarts. See [JWT Session Persistence](#jwt-session-persistence). |
+| `web.secrets.dir` | `SCRUTINY_WEB_SECRETS_DIR` | `/opt/scrutiny/config` | Directory where generated secrets are saved (mode `0600`). Must be writable for secret generation. In the omnibus image the collectors read `SCRUTINY_WEB_SECRETS_DIR` from the container environment as well. |
+| `web.listen.trusted_proxies` | `SCRUTINY_WEB_LISTEN_TRUSTED_PROXIES` | (empty) | IP addresses or CIDR ranges of reverse proxies whose `X-Forwarded-For` header is trusted. Space-separated in the environment variable. See [Reverse Proxies](#reverse-proxies-and-the-login-rate-limit). |
 | `web.auth.jwt_expiry_hours` | `SCRUTINY_WEB_AUTH_JWT_EXPIRY_HOURS` | `24` | JWT token expiry in hours |
 | `web.auth.admin_username` | `SCRUTINY_WEB_AUTH_ADMIN_USERNAME` | `admin` | Admin username for password-based login |
 | `web.auth.admin_password` | `SCRUTINY_WEB_AUTH_ADMIN_PASSWORD` | (empty) | Admin password. When set, enables the username/password login method in addition to token login. |
 | `web.docs.public` | `SCRUTINY_WEB_DOCS_PUBLIC` | `false` | Expose `/docs/api` and `/api/docs/openapi.yaml` without authentication. Leave `false` for production-facing deployments. |
 | `web.metrics.token` | `SCRUTINY_WEB_METRICS_TOKEN` | (empty) | Independent bearer token for the Prometheus `/api/metrics` endpoint. See [Prometheus Metrics Authentication](#prometheus-metrics-authentication). |
+| `web.listen.max_body_bytes` | `SCRUTINY_WEB_LISTEN_MAX_BODY_BYTES` | `16777216` (16 MiB) | Largest accepted request body. Larger requests get HTTP 413. `0` disables the limit. |
 
 ### Collector configuration files
 
@@ -49,7 +72,7 @@ The following endpoints never require authentication, even when auth is enabled:
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/health` | Health check for load balancers and monitoring tools |
+| GET, HEAD | `/api/health` | Health check for load balancers and monitoring tools |
 | GET | `/api/auth/status` | Returns whether auth is enabled and which login methods are available |
 | POST | `/api/auth/login` | Authenticate with token or username/password to obtain a JWT |
 
@@ -150,9 +173,13 @@ Configure the token using any of these methods (in order of precedence):
         token: 'your-secret-api-token-here'
     ```
 
-### Backward Compatibility
+### Omnibus and the generated token
 
-When authentication is disabled on the server (the default), collectors work without any token configuration. No changes are required to existing collector setups until you explicitly enable auth.
+In the omnibus image the collectors fall back to the token the web server saved in `/opt/scrutiny/config/.auth-token` when no other token is configured (the CLI flag, environment variable, or config file entry above all take precedence). Collectors in other containers cannot see that file and need the token set explicitly.
+
+### Disabled authentication
+
+When the server runs with `web.auth.enabled: false`, collectors work without any token configuration.
 
 ## Prometheus Metrics Authentication
 
@@ -260,9 +287,9 @@ Categorical values are exported in two forms:
 
 ## JWT Session Persistence
 
-When authentication is enabled, the server signs JWT session tokens using `web.auth.jwt_secret`. If this value is not set, the server generates a random secret at startup. This means that all existing JWT sessions are invalidated whenever the server restarts.
+When authentication is enabled, the server signs JWT session tokens using `web.auth.jwt_secret`. If this value is not set, the server generates a random secret once and saves it to `<web.secrets.dir>/.jwt-secret` (mode `0600`), so sessions survive restarts. If that directory is not writable the server falls back to a per-process secret and logs a warning, and sessions end at every restart.
 
-To preserve sessions across restarts, set a stable `jwt_secret`:
+To control the secret yourself, set a stable `jwt_secret`:
 
 ```yaml
 web:
@@ -277,6 +304,25 @@ Generate a suitable secret with:
 ```bash
 openssl rand -hex 32
 ```
+
+## Reverse Proxies and the Login Rate Limit
+
+The login rate limiter counts failed attempts per client IP (10 failures in 5 minutes). By default the server trusts no proxy and uses the TCP peer address, so a client cannot choose its own IP by sending `X-Forwarded-For`. Behind a reverse proxy, every request then appears to come from the proxy. Set `web.listen.trusted_proxies` to the proxy address so the real client IP is used:
+
+```yaml
+web:
+    listen:
+        trusted_proxies:
+            - 172.18.0.0/16
+```
+
+Only list proxies you control. A listed proxy can set any client IP.
+
+**Set this when you use a reverse proxy.** Without it, all users share the proxy's IP, so ten failed logins from one person lock everyone out for five minutes. The server logs a one-time warning, naming only the peer IP, the first time it sees `X-Forwarded-For` from a peer that is not trusted. The header is never used until the peer is listed.
+
+## Request Size Limit
+
+Request bodies larger than `web.listen.max_body_bytes` (default 16 MiB) are rejected with HTTP 413. Requests to `/api/auth/*` (including login) accept at most 64 KiB. A smartctl `--xall --json` report is tens of KiB, and a report merged with FARM data is a few hundred KiB, so the default leaves a wide margin.
 
 ## Docker Deployment
 
@@ -302,15 +348,13 @@ services:
             - /dev/sda
             - /dev/sdb
         environment:
-            SCRUTINY_WEB_AUTH_ENABLED: 'true'
-            SCRUTINY_WEB_AUTH_TOKEN: 'your-secret-api-token-here'
+            # Authentication is on by default. With no token set, the container generates one and saves it
+            # to ./scrutiny-config/.auth-token. To choose your own, set both of these to the same value:
+            # SCRUTINY_WEB_AUTH_TOKEN: 'your-secret-api-token-here'
+            # COLLECTOR_API_TOKEN: 'your-secret-api-token-here'
             SCRUTINY_WEB_AUTH_ADMIN_PASSWORD: 'your-admin-password-here'
-            # Optional: stable JWT secret for persistent sessions
-            SCRUTINY_WEB_AUTH_JWT_SECRET: 'a-stable-64-character-hex-string'
             # Optional: independent Prometheus metrics token
             SCRUTINY_WEB_METRICS_TOKEN: 'your-metrics-token-here'
-            # All embedded collectors read this automatically
-            COLLECTOR_API_TOKEN: 'your-secret-api-token-here'
 ```
 
 ### Hub/Spoke (separate containers)
@@ -342,7 +386,7 @@ services:
             - ./scrutiny-config:/opt/scrutiny/config
         environment:
             SCRUTINY_WEB_INFLUXDB_HOST: influxdb
-            SCRUTINY_WEB_AUTH_ENABLED: 'true'
+            # Required: the web container does not start without a token (or SCRUTINY_WEB_AUTH_ENABLED: 'false')
             SCRUTINY_WEB_AUTH_TOKEN: 'your-secret-api-token-here'
             SCRUTINY_WEB_AUTH_ADMIN_PASSWORD: 'your-admin-password-here'
             SCRUTINY_WEB_AUTH_JWT_SECRET: 'a-stable-64-character-hex-string'
@@ -367,24 +411,30 @@ services:
 
 ## Migration Guide
 
-For existing users who want to add authentication to a running Scrutiny deployment.
+### Upgrading to 2.0
 
-### Step 0: No Action Required
+Authentication is now on by default. See [UPGRADE_2.0.md](UPGRADE_2.0.md) for the full 2.0 checklist.
 
-Authentication is disabled by default. If you do not need auth, no changes are necessary. Your existing deployment continues to work as before.
+- **Omnibus**: no action. On first start the container saves a generated token to `/opt/scrutiny/config/.auth-token`. Read it with `docker exec <container> cat /opt/scrutiny/config/.auth-token` and use it on the login page. Make sure the config volume is writable.
+- **Hub/spoke**: set `SCRUTINY_WEB_AUTH_TOKEN` (or `web.auth.token`) on the web container and `COLLECTOR_API_TOKEN` on every collector. The web container exits at startup with an error naming `web.auth.token` until you do.
+- **Keep running without authentication**: set `SCRUTINY_WEB_AUTH_ENABLED=false`, or stay on the `:1` image tag.
+- **Behind a reverse proxy**: set `web.listen.trusted_proxies` so the login rate limiter sees real client IPs.
 
-### Step 1: Enable Server Authentication
+### Already using authentication
 
-Add `web.auth.enabled` and `web.auth.token` to your `scrutiny.yaml` or set the corresponding environment variables:
+Nothing changes if `web.auth.enabled` and `web.auth.token` are already set. A JWT secret you have not set is now saved instead of regenerated at every start.
+
+### Step 1: Set the server token
+
+Add `web.auth.token` to your `scrutiny.yaml` or set the corresponding environment variable:
 
 ```yaml
 web:
     auth:
-        enabled: true
         token: 'your-secret-api-token-here'
 ```
 
-Restart the Scrutiny web server. The web UI will now show a login page and API endpoints will require a Bearer token.
+Restart the Scrutiny web server. The web UI shows a login page and API endpoints require a Bearer token.
 
 ### Step 2: Configure Collectors
 
@@ -403,7 +453,6 @@ If you prefer a username/password form instead of pasting the API token, set `we
 ```yaml
 web:
     auth:
-        enabled: true
         token: 'your-secret-api-token-here'
         admin_password: 'your-admin-password-here'
 ```
@@ -441,9 +490,21 @@ Authentication failed (HTTP 401). Check that api.token in collector.yaml matches
 - If `web.metrics.token` is not set but `web.auth.enabled` is `true`, Prometheus must send the master API token (`web.auth.token`) as a Bearer token.
 - If both auth and metrics token are disabled, `/api/metrics` is open and no token is needed.
 
+### Web container exits with "`web.auth.token` is required"
+
+Authentication is on by default and a hub/spoke web container has no generated token. Set `SCRUTINY_WEB_AUTH_TOKEN`, or set `SCRUTINY_WEB_AUTH_ENABLED=false` to run without authentication.
+
+### Omnibus fails with "generated token could not be stored"
+
+The server could not write `/opt/scrutiny/config/.auth-token`. Make the config volume writable, or set `web.auth.token` and `COLLECTOR_API_TOKEN` yourself.
+
 ### Sessions lost on server restart
 
-The server generates a random JWT secret at startup when `web.auth.jwt_secret` is not configured. Set a stable value to preserve sessions across restarts. See [JWT Session Persistence](#jwt-session-persistence).
+The server could not persist its generated JWT secret (the log warns about it), usually because `web.secrets.dir` is read-only. Make it writable or set `web.auth.jwt_secret`. See [JWT Session Persistence](#jwt-session-persistence).
+
+### All logins appear to come from one IP behind a proxy
+
+Set `web.listen.trusted_proxies` to the proxy address. See [Reverse Proxies](#reverse-proxies-and-the-login-rate-limit).
 
 ### Health check returns 401
 

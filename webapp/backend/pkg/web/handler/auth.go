@@ -11,8 +11,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// loginRateLimiter tracks failed login attempts per IP to prevent brute-force attacks.
+// loginLimiter tracks failed login attempts per client IP to prevent brute-force attacks.
 // After maxFailures within the window, subsequent attempts are rejected until the window expires.
+// The client IP is the TCP peer unless the peer is listed in web.listen.trusted_proxies.
 var loginLimiter = &rateLimiter{
 	failures:    make(map[string]*failureRecord),
 	maxFailures: 10,
@@ -50,9 +51,18 @@ func (rl *rateLimiter) recordFailure(ip string) {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
+	// Drop expired records for every IP, not only the one being checked, so the map cannot grow
+	// without bound.
+	now := time.Now()
+	for k, r := range rl.failures {
+		if now.Sub(r.windowStart) > rl.window {
+			delete(rl.failures, k)
+		}
+	}
+
 	rec, ok := rl.failures[ip]
-	if !ok || time.Since(rec.windowStart) > rl.window {
-		rl.failures[ip] = &failureRecord{count: 1, windowStart: time.Now()}
+	if !ok {
+		rl.failures[ip] = &failureRecord{count: 1, windowStart: now}
 		return
 	}
 	rec.count++

@@ -39,7 +39,6 @@ func TestApplyDefaults_AllZeroValues(t *testing.T) {
 	require.Equal(t, "08:00", s.Metrics.ReportWeeklyTime)
 	require.Equal(t, 1, s.Metrics.ReportMonthlyDay)
 	require.Equal(t, "08:00", s.Metrics.ReportMonthlyTime)
-	require.Equal(t, "/opt/scrutiny/reports", s.Metrics.ReportPDFPath)
 
 	// Bool fields should remain false (valid default)
 	require.False(t, s.FileSizeSIUnits)
@@ -81,7 +80,6 @@ func TestApplyDefaults_PreservesExistingValues(t *testing.T) {
 	s.Metrics.ReportWeeklyTime = "09:00"
 	s.Metrics.ReportMonthlyDay = 15
 	s.Metrics.ReportMonthlyTime = "10:00"
-	s.Metrics.ReportPDFPath = "/custom/path"
 
 	s.ApplyDefaults()
 
@@ -107,7 +105,6 @@ func TestApplyDefaults_PreservesExistingValues(t *testing.T) {
 	require.Equal(t, "09:00", s.Metrics.ReportWeeklyTime)
 	require.Equal(t, 15, s.Metrics.ReportMonthlyDay)
 	require.Equal(t, "10:00", s.Metrics.ReportMonthlyTime)
-	require.Equal(t, "/custom/path", s.Metrics.ReportPDFPath)
 }
 
 func TestApplyDefaults_PartiallyPopulated(t *testing.T) {

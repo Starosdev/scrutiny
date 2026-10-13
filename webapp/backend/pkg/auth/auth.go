@@ -3,7 +3,7 @@
 //   - API tokens: simple bearer tokens for collector and programmatic access
 //   - JWT sessions: signed tokens for future web UI authentication
 //
-// Authentication is opt-in and disabled by default for backward compatibility.
+// Authentication is enabled by default and can be disabled with web.auth.enabled=false.
 package auth
 
 import (
@@ -50,7 +50,7 @@ func HashToken(token string) string {
 }
 
 // IsAuthEnabled returns true if authentication is enabled in the application config.
-// When false, all endpoints are accessible without authentication (default behavior).
+// When false (explicit opt-out), all endpoints are accessible without authentication.
 func IsAuthEnabled(appConfig config.Interface) bool {
 	return appConfig.GetBool("web.auth.enabled")
 }
