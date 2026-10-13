@@ -4,8 +4,8 @@ services:
   influxdb:
     restart: unless-stopped
     image: influxdb:2.9
-    ports:
-      - '8086:8086'
+    # Port 8086 is not published: only the web container needs it, over the compose network.
+    # Publish it only if you need direct access, and bind it to localhost: '127.0.0.1:8086:8086'.
     environment:
       INFLUXD_USE_HASHED_TOKENS: "false"
     volumes:
@@ -26,14 +26,20 @@ services:
       - './config:/opt/scrutiny/config'
     environment:
       SCRUTINY_WEB_INFLUXDB_HOST: 'influxdb'
+      # Required. The web server refuses to start without a token (authentication is on by default).
+      # Generate one with: openssl rand -hex 32. Use the same value as COLLECTOR_API_TOKEN below.
+      SCRUTINY_WEB_AUTH_TOKEN: '${SCRUTINY_AUTH_TOKEN:?set SCRUTINY_AUTH_TOKEN to a long random value}'
+      # InfluxDB credentials are generated at first start and saved in ./config
+      # (.influxdb-token, .influxdb-password). Keep the config volume with the influxdb volume.
+      # The web container starts as root, fixes the ownership of ./config, then runs as PUID:PGID.
+      # PUID: '1000'
+      # PGID: '1000'
       # Optional PostgreSQL backend instead of SQLite (see docs/POSTGRESQL.md)
       # SCRUTINY_WEB_DATABASE_TYPE: 'postgres'
       # SCRUTINY_WEB_DATABASE_DSN: 'postgres://scrutiny:change-me@postgres:5432/scrutiny?sslmode=disable'
       # Monitoring-only ZFS UI/API. Blocks archive, mute, label, and delete actions.
       # SCRUTINY_WEB_ZFS_ALLOW_POOL_MODIFICATIONS: 'false'
-      # Authentication (disabled by default, see docs/AUTH.md)
-      # SCRUTINY_WEB_AUTH_ENABLED: 'true'
-      # SCRUTINY_WEB_AUTH_TOKEN: 'your-secret-api-token'
+      # Authentication details: see docs/AUTH.md
       # SCRUTINY_WEB_AUTH_ADMIN_PASSWORD: 'your-admin-password'
       # SCRUTINY_WEB_METRICS_TOKEN: 'your-metrics-token'
       # Home Assistant MQTT Discovery (disabled by default)
@@ -100,8 +106,8 @@ services:
       # COLLECTOR_PERF_PROFILE: 'quick'
       # COLLECTOR_PERFORMANCE_MOUNT_POINTS_SDA: '/mnt/data'
       # COLLECTOR_PERFORMANCE_MOUNT_POINTS_SDB: '/mnt/backup'
-      # Required when server auth is enabled (must match SCRUTINY_WEB_AUTH_TOKEN)
-      # COLLECTOR_API_TOKEN: 'your-secret-api-token'
+      # Required: must match SCRUTINY_WEB_AUTH_TOKEN on the web container.
+      COLLECTOR_API_TOKEN: '${SCRUTINY_AUTH_TOKEN:?set SCRUTINY_AUTH_TOKEN to a long random value}'
     depends_on:
       web:
         condition: service_healthy
@@ -119,6 +125,7 @@ services:
   #   image: 'ghcr.io/starosdev/scrutiny:latest-collector-zfs'
   #   environment:
   #     COLLECTOR_ZFS_API_ENDPOINT: 'http://web:8080'
+  #     COLLECTOR_API_TOKEN: '${SCRUTINY_AUTH_TOKEN}'
   #     COLLECTOR_ZFS_HOST_ID: 'zfs-host'
   #     COLLECTOR_ZFS_RUN_STARTUP: 'true'
   #   depends_on:
@@ -137,6 +144,7 @@ services:
   #     - '/var/lib/btrfs:/var/lib/btrfs:ro'
   #   environment:
   #     COLLECTOR_BTRFS_API_ENDPOINT: 'http://web:8080'
+  #     COLLECTOR_API_TOKEN: '${SCRUTINY_AUTH_TOKEN}'
   #     COLLECTOR_BTRFS_HOST_ID: 'btrfs-host'
   #     COLLECTOR_BTRFS_RUN_STARTUP: 'true'
   #   depends_on:
@@ -160,6 +168,7 @@ services:
   #     - '/mnt/backup:/mnt/backup'    # Mount host filesystem for sdb benchmarks
   #   environment:
   #     COLLECTOR_PERF_API_ENDPOINT: 'http://web:8080'
+  #     COLLECTOR_API_TOKEN: '${SCRUTINY_AUTH_TOKEN}'
   #     COLLECTOR_PERF_HOST_ID: 'scrutiny-collector-hostname'
   #     COLLECTOR_PERF_CRON_SCHEDULE: '0 2 * * 0'  # Sunday at 2 AM
   #     COLLECTOR_PERF_RUN_STARTUP: 'false'
@@ -187,6 +196,7 @@ services:
   #     - '/proc/mdstat:/host/proc/mdstat:ro' # Required so the container can read host mdstat
   #   environment:
   #     COLLECTOR_MDADM_API_ENDPOINT: 'http://web:8080'
+  #     COLLECTOR_API_TOKEN: '${SCRUTINY_AUTH_TOKEN}'
   #     COLLECTOR_MDADM_HOST_ID: 'raid-host'
   #     COLLECTOR_MDADM_RUN_STARTUP: 'true'
   #   depends_on:

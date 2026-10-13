@@ -233,7 +233,7 @@ Scrutiny stores its relational data in SQLite by default. To use PostgreSQL inst
 > **Existing Omnibus installations upgrading to InfluxDB 2.9.1:** Stop Scrutiny and back up the complete host directory mounted at `/opt/scrutiny/influxdb` before starting the new image. Then set `SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED=true`. The container blocks InfluxDB startup until this acknowledgement is provided. Fresh installations do not require it. See [Omnibus InfluxDB 2.9 upgrade preflight](docs/DEPLOYMENTS.md#omnibus-influxdb-29-upgrade-preflight).
 
 ```bash
-docker run -p 8080:8080 -p 8086:8086 --restart unless-stopped \
+docker run -p 8080:8080 --restart unless-stopped \
   -v `pwd`/scrutiny:/opt/scrutiny/config \
   -v `pwd`/influxdb2:/opt/scrutiny/influxdb \
   -e SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED=false \
@@ -297,8 +297,11 @@ docker run -p 8086:8086 --restart unless-stopped \
   --name scrutiny-influxdb \
   influxdb:2.9
 
+# SCRUTINY_WEB_AUTH_TOKEN is required (generate one with: openssl rand -hex 32).
+# InfluxDB credentials are generated at first start and saved in the config volume.
 docker run -p 8080:8080 --restart unless-stopped \
   -v `pwd`/scrutiny:/opt/scrutiny/config \
+  -e SCRUTINY_WEB_AUTH_TOKEN=CHANGE_ME_TO_THE_GENERATED_TOKEN \
   --name scrutiny-web \
   ghcr.io/starosdev/scrutiny:latest-web
 
@@ -309,6 +312,7 @@ docker run --restart unless-stopped \
   --device=/dev/sda \
   --device=/dev/sdb \
   -e COLLECTOR_API_ENDPOINT=http://SCRUTINY_WEB_IPADDRESS:8080 \
+  -e COLLECTOR_API_TOKEN=CHANGE_ME_TO_THE_GENERATED_TOKEN \
   --name scrutiny-collector \
   ghcr.io/starosdev/scrutiny:latest-collector-omnibus
 ```
@@ -820,13 +824,13 @@ Dots and dashes in key names become underscores.
 | `web.influxdb.port` | `SCRUTINY_WEB_INFLUXDB_PORT` | `8086` |
 | `web.influxdb.org` | `SCRUTINY_WEB_INFLUXDB_ORG` | `scrutiny` |
 | `web.influxdb.bucket` | `SCRUTINY_WEB_INFLUXDB_BUCKET` | `metrics` |
-| `web.influxdb.token` | `SCRUTINY_WEB_INFLUXDB_TOKEN` | `scrutiny-default-admin-token` |
+| `web.influxdb.token` | `SCRUTINY_WEB_INFLUXDB_TOKEN` | (empty: generated at first InfluxDB setup and saved to `web.secrets.dir`) |
 | `web.influxdb.init_username` | `SCRUTINY_WEB_INFLUXDB_INIT_USERNAME` | `admin` |
-| `web.influxdb.init_password` | `SCRUTINY_WEB_INFLUXDB_INIT_PASSWORD` | `password12345` |
+| `web.influxdb.init_password` | `SCRUTINY_WEB_INFLUXDB_INIT_PASSWORD` | (empty: generated at first InfluxDB setup and saved to `web.secrets.dir`) |
 | `web.influxdb.tls.insecure_skip_verify` | `SCRUTINY_WEB_INFLUXDB_TLS_INSECURE_SKIP_VERIFY` | `false` |
 | `web.influxdb.retention_policy` | `SCRUTINY_WEB_INFLUXDB_RETENTION_POLICY` | `true` |
-| `web.influxdb.retention.daily` | `SCRUTINY_WEB_INFLUXDB_RETENTION_DAILY` | `1296000` (15 days) |
-| `web.influxdb.retention.weekly` | `SCRUTINY_WEB_INFLUXDB_RETENTION_WEEKLY` | `5443200` (9 weeks) |
+| `web.influxdb.retention.daily` | `SCRUTINY_WEB_INFLUXDB_RETENTION_DAILY` | `1814400` (21 days) |
+| `web.influxdb.retention.weekly` | `SCRUTINY_WEB_INFLUXDB_RETENTION_WEEKLY` | `7862400` (13 weeks) |
 | `web.influxdb.retention.monthly` | `SCRUTINY_WEB_INFLUXDB_RETENTION_MONTHLY` | `65318400` (25 months) |
 | `web.metrics.enabled` | `SCRUTINY_WEB_METRICS_ENABLED` | `true` |
 | `web.metrics.token` | `SCRUTINY_WEB_METRICS_TOKEN` | `` |
