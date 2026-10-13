@@ -36,6 +36,8 @@ type Scheduler struct {
 	repoFactory func() (database.DeviceRepo, error)
 	isLeader    func() bool
 
+	legacyPathOnce sync.Once
+
 	repoMu sync.Mutex
 	wg     sync.WaitGroup
 	mu     sync.Mutex // guards started/stopped flags
@@ -140,7 +142,8 @@ func (s *Scheduler) checkAndRun() {
 	}
 
 	now := time.Now()
-	pdfEnabled, pdfPath := settings.Metrics.ReportPDFEnabled, settings.Metrics.ReportPDFPath
+	pdfEnabled, pdfPath := settings.Metrics.ReportPDFEnabled, s.pdfDir()
+	s.warnLegacyPDFPath(pdfPath)
 
 	if settings.Metrics.ReportDailyEnabled && s.claimRun(repo, settingLastDailyRun, now, func(last time.Time) bool {
 		return isDailyDue(now, last, settings.Metrics.ReportDailyTime)
@@ -223,9 +226,6 @@ func (s *Scheduler) runReport(periodType string, now time.Time, pdfEnabled bool,
 
 	if pdfEnabled {
 		outputDir := pdfPath
-		if outputDir == "" {
-			outputDir = "/opt/scrutiny/reports"
-		}
 		filename := PDFFilename(periodType, now)
 		outputPath := filepath.Join(outputDir, filename)
 
@@ -318,6 +318,34 @@ func (s *Scheduler) GenerateOnDemandPDF(ctx context.Context, periodType string) 
 	}
 
 	return outputPath, nil
+}
+
+// DefaultPDFDir is the default for web.reports.path.
+const DefaultPDFDir = "/opt/scrutiny/reports"
+
+// pdfDir returns the directory for generated PDFs. It comes from web.reports.path only; the
+// report_pdf_path dashboard setting was removed because it let an API caller choose where the server writes.
+func (s *Scheduler) pdfDir() string {
+	if s.appConfig != nil {
+		if dir := s.appConfig.GetString("web.reports.path"); dir != "" {
+			return dir
+		}
+	}
+	return DefaultPDFDir
+}
+
+// warnLegacyPDFPath logs once when a 1.x database still holds a custom report_pdf_path that is now ignored.
+// LoadSettings has already copied the stored value into the "user" config namespace by the time this runs.
+func (s *Scheduler) warnLegacyPDFPath(current string) {
+	if s.appConfig == nil {
+		return
+	}
+	s.legacyPathOnce.Do(func() {
+		legacy := s.appConfig.GetString(config.DB_USER_SETTINGS_SUBKEY + ".metrics.report_pdf_path")
+		if legacy != "" && legacy != current {
+			s.logger.Warnf("The stored report_pdf_path setting %q is ignored. PDF reports are written to %q; set web.reports.path in scrutiny.yaml to change it.", legacy, current)
+		}
+	})
 }
 
 // Schedule checking functions

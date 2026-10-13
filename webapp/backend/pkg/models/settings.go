@@ -26,7 +26,6 @@ type Settings struct {
 		TemperatureThresholdCelsius   int    `json:"temperature_threshold_celsius" mapstructure:"temperature_threshold_celsius"`
 		TemperatureDurationMinutes    int    `json:"temperature_duration_minutes" mapstructure:"temperature_duration_minutes"`
 		NotificationQuietStart        string `json:"notification_quiet_start" mapstructure:"notification_quiet_start"`
-		ReportPDFPath                 string `json:"report_pdf_path" mapstructure:"report_pdf_path"`
 		ReportMonthlyTime             string `json:"report_monthly_time" mapstructure:"report_monthly_time"`
 		ReportWeeklyTime              string `json:"report_weekly_time" mapstructure:"report_weekly_time"`
 		ReportDailyTime               string `json:"report_daily_time" mapstructure:"report_daily_time"`
@@ -144,5 +143,4 @@ func (s *Settings) ApplyDefaults() {
 	defaultStr(&s.Metrics.ReportWeeklyTime, "08:00")
 	defaultInt(&s.Metrics.ReportMonthlyDay, 1) // 1st of the month
 	defaultStr(&s.Metrics.ReportMonthlyTime, "08:00")
-	defaultStr(&s.Metrics.ReportPDFPath, "/opt/scrutiny/reports")
 }

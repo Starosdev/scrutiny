@@ -3,31 +3,29 @@ package handler
 import (
 	"net/http"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
-	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/reports"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
 type reportFileEntry struct {
 	Name    string `json:"name"`
-	Path    string `json:"path"`
 	ModTime string `json:"mod_time"`
 	Size    int64  `json:"size"`
 }
 
 func ListReports(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
-	deviceRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
+	appConfig := c.MustGet("CONFIG").(config.Interface)
 
-	// Load settings from DB to get PDF path (consistent with scheduler)
-	pdfPath := "/opt/scrutiny/reports"
-	settings, err := deviceRepo.LoadSettings(c)
-	if err == nil && settings != nil && settings.Metrics.ReportPDFPath != "" {
-		pdfPath = settings.Metrics.ReportPDFPath
+	// The reports directory is fixed in config (web.reports.path); the API cannot choose it.
+	pdfPath := appConfig.GetString("web.reports.path")
+	if pdfPath == "" {
+		pdfPath = reports.DefaultPDFDir
 	}
 
 	entries, err := os.ReadDir(pdfPath)
@@ -37,7 +35,7 @@ func ListReports(c *gin.Context) {
 			return
 		}
 		logger.Errorf("Failed to list reports directory: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to list reports"})
 		return
 	}
 
@@ -52,7 +50,6 @@ func ListReports(c *gin.Context) {
 		}
 		files = append(files, reportFileEntry{
 			Name:    entry.Name(),
-			Path:    filepath.Join(pdfPath, entry.Name()),
 			Size:    info.Size(),
 			ModTime: info.ModTime().Format("2006-01-02T15:04:05Z07:00"),
 		})
