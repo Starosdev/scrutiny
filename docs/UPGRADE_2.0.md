@@ -55,9 +55,32 @@ The `report_pdf_path` dashboard setting is removed from the settings API. PDF re
 
 ## Generated InfluxDB credentials
 
-TODO (docker work package, SEC-03): the shipped well-known InfluxDB admin token and password
-are replaced by credentials generated at first setup, and port 8086 is no longer published in
-the examples. Describe how existing installs keep working and how to rotate.
+The well-known InfluxDB admin token (`scrutiny-default-admin-token`) and password (`password12345`) are no longer the defaults. `web.influxdb.token` and `web.influxdb.init_password` now default to empty.
+
+| Situation | What happens | What you do |
+| --- | --- | --- |
+| New install (InfluxDB has no data) | Scrutiny generates a token and an admin password, onboards InfluxDB with them, and saves them in `web.secrets.dir` (default `/opt/scrutiny/config`) as `.influxdb-token` and `.influxdb-password`, mode 0600. The log names the files and never prints the values. | Keep the config volume with the InfluxDB volume. The password is only needed to sign in to the InfluxDB UI. |
+| New install with `web.influxdb.token` or `web.influxdb.init_password` set | Your values are used for onboarding and nothing is written to disk for them. | Nothing. |
+| Existing install, InfluxDB already onboarded, `web.influxdb.token` set | Unchanged. | Nothing. If the value is the old default, a warning asks you to rotate it. |
+| Existing install onboarded with the old default (no token setting) | Scrutiny keeps using the legacy default token so nothing is lost. It logs a warning at every start. | Rotate the token (below). |
+| Fresh start of Scrutiny against an InfluxDB that already has data but no `.influxdb-token` | Same as the line above: the legacy token is tried. | If InfluxDB was onboarded with another token, set `SCRUTINY_WEB_INFLUXDB_TOKEN`. |
+
+Existing installs are not broken: the legacy token stays valid for as long as you keep the InfluxDB data, and no command or setting is required to upgrade. If first-time setup cannot write the config directory, Scrutiny stops with an error that names `web.influxdb.token`; make the directory writable or set the token yourself.
+
+Port 8086 is no longer published in `docker/example.omnibus.docker-compose.yml`, `docker/example.hubspoke.docker-compose.yml`, `docs/INSTALL_HUB_SPOKE.md`, the README omnibus command, or the Unraid omnibus template. Anyone who could reach that port with the old default token had full control of the time-series data. Existing deployments keep whatever port mapping they already have; remove it unless you need it, and bind it to loopback (`127.0.0.1:8086:8086`) if you do.
+
+### Rotate the legacy token
+
+1. Reach InfluxDB. For the omnibus image, publish 8086 on loopback for a few minutes (`-p 127.0.0.1:8086:8086`). For hub/spoke, use the InfluxDB container.
+2. Sign in as `admin` with the password you set (or `password12345` if you never changed it). Under Load Data, API Tokens, generate an All Access token. Hub/spoke alternative: `docker exec influxdb influx auth create --org scrutiny --all-access --token scrutiny-default-admin-token`.
+3. Set the new token in `SCRUTINY_WEB_INFLUXDB_TOKEN` (or `web.influxdb.token`) on the Scrutiny container, or write it to `/opt/scrutiny/config/.influxdb-token`. Restart Scrutiny and confirm the warning is gone from the log.
+4. In InfluxDB, delete the old token and change the admin password. Remove the temporary port mapping.
+
+Both InfluxDB images keep `INFLUXD_USE_HASHED_TOKENS=false`. Hashed tokens are not enabled for new installs in 2.0.
+
+## Retention defaults raised
+
+The default `web.influxdb.retention.daily` is now 21 days (was 15) and `web.influxdb.retention.weekly` is 13 weeks (was 9). Before this change a single missed weekly downsample run (container stopped on Sunday 01:00) lost a week of history, because the source bucket deleted the oldest points about a day after the task window ended. Now a missed run has 7 days to catch up. Scrutiny applies the new periods to the existing buckets at start; nothing needs to be done. If you set these values yourself, they are kept; see [DOWNSAMPLING.md](DOWNSAMPLING.md) for the margins to preserve. The cost is about six more days of raw points per device.
 
 ## Config schema cleanup
 
@@ -74,7 +97,22 @@ Removed:
 
 TODO (WP-F): regenerate `example.scrutiny.yaml` and `example.collector.yaml` from `Init()` defaults with a drift test. This package updated the auth, listen, secrets, and reports entries by hand.
 
+## The web image runs as an unprivileged user
+
+`latest-web` no longer runs the server as root. Its entrypoint starts as root only to change the owner of `/opt/scrutiny/config` and `/opt/scrutiny/reports` to `PUID:PGID` (default `1000:1000`), then drops to that user. A config volume that an earlier release created as root works after the upgrade without a manual `chown`.
+
+| Case | Behavior |
+| --- | --- |
+| Default | Files under the config volume change owner to `1000:1000` on the host. Set `PUID` and `PGID` to pick another owner (Unraid: `99` and `100`, already set in the template). |
+| Keep running as root | Set `PUID=0`. |
+| `user:` set in Compose (or `runAsUser`) | The entrypoint changes nothing. Make the volume writable by that user before upgrading. |
+| `cap_drop: [ALL]` | The container cannot change ownership or drop privileges. It logs a warning and runs as root, as before. |
+| Volume that refuses `chown` (NFS with root squash, read-only mount) | A warning is logged and ownership is left alone. Make the volume writable by `PUID:PGID`. |
+
+The collector images and the omnibus image still run as root. Collectors need raw device access for `smartctl`, `zpool`, `mdadm`, `btrfs`, and `fio`, and the omnibus image runs InfluxDB, the web server, cron, and the collectors under one s6 supervisor. See [DEPLOYMENTS.md](DEPLOYMENTS.md#container-users-and-privileges).
+
+The `collector` image also gained a `HEALTHCHECK` (cron running, optional age limit); see [DEPLOYMENTS.md](DEPLOYMENTS.md#collector-image-health).
+
 ## Other operator-visible changes
 
-TODO (owning work packages): volume ownership changes for the `web` container, if any, and
-anything else the 2.0 breaking-change list adds.
+TODO (owning work packages): anything else the 2.0 breaking-change list adds.

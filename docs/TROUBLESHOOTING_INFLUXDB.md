@@ -61,13 +61,13 @@ scrutiny    | panic: unauthorized: unauthorized access
 
 Unfortunately this may mean that your database is lost, and the previous Scrutiny data is unavailable. 
 You should fix the docker-compose/docker run command that you're using to ensure that your database folder is persisted correctly, 
-then delete the `web.influxdb.token` field in your `scrutiny.yaml` file, and then restart Scrutiny.
+then delete the `web.influxdb.token` field in your `scrutiny.yaml` file (and the saved `.influxdb-token` file in the config directory), and then restart Scrutiny.
 
 
 ## First Start
-The web/api service will trigger an InfluxDB onboarding process automatically when it first starts. After that, it will store the newly generated influxdb api token in the Scrutiny config file. 
+The web/api service will trigger an InfluxDB onboarding process automatically when it first starts. It generates an admin token and an admin password, and saves them in the Scrutiny config directory (`web.secrets.dir`, default `/opt/scrutiny/config`) as `.influxdb-token` and `.influxdb-password` (mode 0600). A `web.influxdb.token` or `web.influxdb.init_password` that you set yourself is used instead and is not written to disk.
 
-If this Credential is not correctly stored in the scrutiny config file, Scrutiny will fail to start (with an authentication error)
+If the config directory is not persisted, or you lose `.influxdb-token` while the InfluxDB data survives, Scrutiny cannot authenticate to InfluxDB. It then falls back to the legacy default token, which only works on an InfluxDB that was onboarded by a release before 2.0. On a newer install it fails to start (with an authentication error)
 
 ```
 scrutiny    | time="2022-05-12T22:52:55Z" level=info msg="Successfully connected to scrutiny sqlite db: /opt/scrutiny/config/scrutiny.db\n"
@@ -76,8 +76,8 @@ scrutiny    | ts=2022-05-12T22:52:55.235816Z lvl=error msg="api error encountere
 scrutiny    | panic: conflict: onboarding has already been completed
 ```
 
-You can fix this issue by authenticating to the InfluxDB admin portal (the default credentials are username: `admin`, password: `password12345`),
-then retrieving the API token, and writing it to your `scrutiny.yaml` config file under the `web.influxdb.token` field:
+You can fix this issue by restoring the config directory from a backup, or by authenticating to the InfluxDB admin portal (username `admin`; the password is in `.influxdb-password`, or `password12345` on an InfluxDB onboarded by a release before 2.0),
+then retrieving the API token, and writing it to your `scrutiny.yaml` config file under the `web.influxdb.token` field (or the `SCRUTINY_WEB_INFLUXDB_TOKEN` environment variable). The omnibus image does not publish port 8086; reach the portal with a temporary `-p 127.0.0.1:8086:8086` mapping:
 
 ![influx db admin token](./influxdb-admin-token.png)
 
