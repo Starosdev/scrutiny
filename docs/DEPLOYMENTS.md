@@ -61,6 +61,7 @@ package.json and package-lock.json together when changing release tooling.
 - The generator uses merged PR metadata as the source of truth. Master promotion PRs must contain `## Product changes` followed by `## Summary`. Only non-`None.` summaries are user-facing; their linked issues supply release-note content.
 - Validation checks that extracted summary content survives note formatting before it emits notes.
 - If note generation fails, the release workflow fails for manual repair instead of silently completing with semantic-release defaults.
+- Each release adds a `chore(release)` commit to `master` that `develop` does not have. `master` requires branches to be up to date, so a promotion PR first reports `BEHIND`. Run `gh pr update-branch <pr>` on the promotion PR to merge `master` into `develop`. Nothing syncs `develop` automatically: its ruleset requires a pull request, and a squash merge would not make `master` an ancestor of `develop`.
 
 ## Loop Pilot Workflows
 
