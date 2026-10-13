@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -18,6 +19,7 @@ import (
 
 func setupSummaryRouter(t *testing.T, repo *mock_database.MockDeviceRepo) *gin.Engine {
 	t.Helper()
+	handler.LastSeenCacheTTL = 0
 	gin.SetMode(gin.TestMode)
 	logger := logrus.WithField("test", t.Name())
 	router := gin.New()
@@ -150,17 +152,48 @@ func TestGetDevicesSummaryFlagsStaleDevices(t *testing.T) {
 		Data struct {
 			Summary map[string]struct {
 				LastSeen *time.Time `json:"last_seen"`
-				Stale    bool       `json:"stale"`
+				Stale    *bool      `json:"stale"`
 			} `json:"summary"`
 		} `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
 	got := body.Data.Summary
-	require.True(t, got["silent"].Stale)
+	require.NotNil(t, got["silent"].Stale)
+	require.True(t, *got["silent"].Stale)
 	require.NotNil(t, got["silent"].LastSeen)
-	require.False(t, got["fresh"].Stale)
-	require.False(t, got["override"].Stale, "per-device 3 day override must win over the 60 minute global")
-	require.False(t, got["archived"].Stale)
-	require.False(t, got["neverseen"].Stale)
+	require.False(t, *got["fresh"].Stale)
+	require.False(t, *got["override"].Stale, "per-device 3 day override must win over the 60 minute global")
+	require.False(t, *got["archived"].Stale)
+	require.Nil(t, got["neverseen"].Stale)
 	require.Nil(t, got["neverseen"].LastSeen)
+}
+
+func TestGetDevicesSummaryZeroGlobalTimeoutUsesDefault(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	t.Cleanup(mockCtrl.Finish)
+	repo := mock_database.NewMockDeviceRepo(mockCtrl)
+	summary := map[string]*models.DeviceSummary{"fresh": {Device: models.Device{DeviceID: "fresh"}}}
+	repo.EXPECT().GetSummary(gomock.Any()).Return(summary, nil)
+	repo.EXPECT().LoadSettings(gomock.Any()).Return(&models.Settings{}, nil) // MissedPingTimeoutMinutes == 0
+	repo.EXPECT().GetDevicesLastSeenTimes(gomock.Any()).Return(map[string]time.Time{"fresh": time.Now().Add(-time.Minute)}, nil)
+
+	w := httptest.NewRecorder()
+	setupSummaryRouter(t, repo).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/summary", nil))
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Contains(t, w.Body.String(), `"stale":false`)
+}
+
+func TestGetDevicesSummaryLastSeenFailureLeavesStaleUnset(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	t.Cleanup(mockCtrl.Finish)
+	repo := mock_database.NewMockDeviceRepo(mockCtrl)
+	summary := map[string]*models.DeviceSummary{"d": {Device: models.Device{DeviceID: "d"}}}
+	repo.EXPECT().GetSummary(gomock.Any()).Return(summary, nil)
+	repo.EXPECT().LoadSettings(gomock.Any()).Return(&models.Settings{}, nil)
+	repo.EXPECT().GetDevicesLastSeenTimes(gomock.Any()).Return(nil, errors.New("influx down"))
+
+	w := httptest.NewRecorder()
+	setupSummaryRouter(t, repo).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/summary", nil))
+	require.Equal(t, http.StatusOK, w.Code)
+	require.NotContains(t, w.Body.String(), `"stale"`)
 }

@@ -3180,7 +3180,11 @@ components:
           description: Time of the device's last SMART submission. Omitted when the device never reported.
         stale:
           type: boolean
-          description: True when the device has been silent longer than its missed-ping timeout. Never true for archived devices.
+          description: >-
+            True when the device has been silent longer than its missed-ping timeout (per-device override,
+            else the global timeout, default 60 minutes). False for archived devices. Muted devices are
+            reported like any other. Omitted when staleness could not be determined (last-seen query
+            failed) or the device never reported. Last-seen data is cached for 30 seconds.
     SmartSummary:
       type: object
       properties:

@@ -14,7 +14,7 @@ import (
 
 const (
 	// Default values for missed ping configuration
-	DefaultMissedPingTimeoutMinutes    = 60
+	DefaultMissedPingTimeoutMinutes    = models.DefaultMissedPingTimeoutMinutes
 	DefaultMissedPingCheckIntervalMins = 5
 )
 
@@ -46,6 +46,8 @@ type MissedPingMonitor struct {
 	lastError     error
 	lastErrorTime time.Time
 	statusMu      sync.RWMutex // Separate mutex for status fields
+
+	warnOnce sync.Once // auto-archive threshold warning
 }
 
 // NewMissedPingMonitor creates a new missed ping monitor
@@ -397,10 +399,26 @@ func (m *MissedPingMonitor) autoArchiveStaleDevices(now time.Time) {
 		return
 	}
 
-	cutoff := time.Duration(days) * 24 * time.Hour
+	settings, err := repo.LoadSettings(m.ctx)
+	if err != nil || settings == nil {
+		m.resetRepo()
+		m.logger.Errorf("Auto-archive: failed to load settings: %v", err)
+		return
+	}
+	globalMinutes := settings.Metrics.MissedPingTimeoutMinutes
+	daysCutoff := time.Duration(days) * 24 * time.Hour
+	m.warnOnce.Do(func() {
+		global := (&models.Device{}).MissedPingTimeout(globalMinutes)
+		if daysCutoff < global {
+			m.logger.Warnf("%s (%d days) is shorter than the missed ping timeout (%v); devices are archived only after their own timeout", configKeyAutoArchiveStaleDays, days, global)
+		}
+	})
+
+	var archived []notify.MissedPingDigestDevice
 	for i := range devices {
 		device := &devices[i]
 		lastSeen, ok := lastSeenTimes[device.DeviceID]
+		cutoff := max(daysCutoff, device.MissedPingTimeout(globalMinutes))
 		if device.Archived || !ok || now.Sub(lastSeen) <= cutoff {
 			continue
 		}
@@ -413,6 +431,25 @@ func (m *MissedPingMonitor) autoArchiveStaleDevices(now time.Time) {
 		if m.appEngine.MqttPublisher != nil {
 			m.appEngine.MqttPublisher.RemoveDevice(device)
 		}
+		archived = append(archived, notify.MissedPingDigestDevice{
+			DeviceID: device.DeviceID, WWN: device.WWN, DeviceName: device.DeviceName,
+			SerialNumber: device.SerialNumber, HostId: device.HostId, Label: device.Label, LastSeen: lastSeen,
+		})
+	}
+	if len(archived) > 0 {
+		m.sendAutoArchiveNotification(repo, archived, days, settings)
+	}
+}
+
+func (m *MissedPingMonitor) sendAutoArchiveNotification(repo database.DeviceRepo, devices []notify.MissedPingDigestDevice, days int, settings *models.Settings) {
+	notification := notify.NewAutoArchiveDigest(m.logger, m.appEngine.Config, devices, days)
+	notification.LoadDatabaseUrls(m.ctx, repo)
+	if gate := m.appEngine.NotificationGate; gate != nil {
+		gate.TrySend(&notification, settings, false)
+		return
+	}
+	if err := notification.Send(); err != nil {
+		m.logger.Warnf("Auto-archive notification not sent: %v", err)
 	}
 }
 

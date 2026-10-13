@@ -55,8 +55,9 @@ type DeviceSummary struct {
 	SmartResults *SmartSummary                   `json:"smart,omitempty"`
 	TempHistory  []measurements.SmartTemperature `json:"temp_history,omitempty"`
 	Device       Device                          `json:"device"`
-	// Stale is true when the device has been silent longer than its missed-ping timeout.
-	Stale bool `json:"stale"`
+	// Stale is true when the device has been silent longer than its missed-ping timeout. Nil means
+	// staleness could not be determined (last-seen query failed) or the device never reported.
+	Stale *bool `json:"stale,omitempty"`
 }
 type SmartSummary struct {
 	CollectorDate  time.Time `json:"collector_date,omitempty"`
