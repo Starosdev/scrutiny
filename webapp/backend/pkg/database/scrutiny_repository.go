@@ -176,7 +176,8 @@ func openSQLiteDatabase(appConfig config.Interface, globalLogger logrus.FieldLog
 }
 
 // setupInfluxClient creates the InfluxDB client and runs first-time setup when the server is
-// un-initialized.
+// un-initialized. Credentials come from resolveInfluxToken/resolveInfluxPassword: generated at first
+// setup, and the configured or legacy token for an InfluxDB that was already onboarded.
 func setupInfluxClient(ctx context.Context, appConfig config.Interface, globalLogger logrus.FieldLogger) (influxdb2.Client, error) {
 	// Create a new client using an InfluxDB server base URL and an authentication token
 	influxdbUrl := fmt.Sprintf("%s://%s:%s", appConfig.GetString("web.influxdb.scheme"), appConfig.GetString("web.influxdb.host"), appConfig.GetString("web.influxdb.port"))
@@ -187,35 +188,41 @@ func setupInfluxClient(ctx context.Context, appConfig config.Interface, globalLo
 	}
 	globalLogger.Infof("InfluxDB certificate verification: %t\n", !tlsConfig.InsecureSkipVerify)
 
-	client := influxdb2.NewClientWithOptions(
-		influxdbUrl,
-		appConfig.GetString("web.influxdb.token"),
-		influxdb2.DefaultOptions().SetTLSConfig(tlsConfig),
-	)
-
 	globalLogger.Debugf("Determine Influxdb setup status...")
 	influxSetupComplete, err := InfluxSetupComplete(influxdbUrl, tlsConfig)
 	if err != nil {
-		client.Close()
 		return nil, fmt.Errorf("failed to check influxdb setup status - %w", err)
 	}
+
+	token, err := resolveInfluxToken(appConfig, globalLogger, influxSetupComplete)
+	if err != nil {
+		return nil, err
+	}
+	client := influxdb2.NewClientWithOptions(
+		influxdbUrl,
+		token,
+		influxdb2.DefaultOptions().SetTLSConfig(tlsConfig),
+	)
 
 	if !influxSetupComplete {
 		globalLogger.Debugf("Influxdb un-initialized, running first-time setup...")
 
-		// if no token is provided, but we have a valid server, we're going to assume this is the first setup of our server.
-		// we will initialize with a predetermined username & password, that you should change.
+		password, err := resolveInfluxPassword(appConfig, globalLogger)
+		if err != nil {
+			client.Close()
+			return nil, err
+		}
 
-		// metrics bucket will have a retention period of 8 days (since it will be down-sampled once a week)
-		// in seconds (60seconds * 60minutes * 24hours * 15 days) = 1_296_000 (see EnsureBucket() function)
-		_, err := client.SetupWithToken(
+		// The metrics bucket is created with infinite retention here; EnsureBuckets applies the
+		// configured retention right after (see web.influxdb.retention.*).
+		_, err = client.SetupWithToken(
 			ctx,
 			appConfig.GetString("web.influxdb.init_username"),
-			appConfig.GetString("web.influxdb.init_password"),
+			password,
 			appConfig.GetString(cfgInfluxDBOrg),
 			appConfig.GetString(cfgInfluxDBBucket),
 			0,
-			appConfig.GetString("web.influxdb.token"),
+			token,
 		)
 		if err != nil {
 			client.Close()

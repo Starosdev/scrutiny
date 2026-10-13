@@ -76,8 +76,11 @@ func (c *configuration) Init() error {
 	c.SetDefault("web.influxdb.org", "scrutiny")
 	c.SetDefault("web.influxdb.bucket", "metrics")
 	c.SetDefault("web.influxdb.init_username", "admin")
-	c.SetDefault("web.influxdb.init_password", "password12345")
-	c.SetDefault("web.influxdb.token", "scrutiny-default-admin-token")
+	// Empty by default: at first InfluxDB setup Scrutiny generates both and saves them under
+	// web.secrets.dir. Installs initialized by 1.x/2.0-beta still authenticate with the legacy
+	// default token (see database.LegacyInfluxToken).
+	c.SetDefault("web.influxdb.init_password", "")
+	c.SetDefault("web.influxdb.token", "")
 	c.SetDefault("web.influxdb.tls.insecure_skip_verify", false)
 	c.SetDefault("web.influxdb.retention_policy", true)
 

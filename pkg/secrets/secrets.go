@@ -20,6 +20,10 @@ const (
 	AuthTokenFile = ".auth-token"
 	// JWTSecretFile holds the generated web.auth.jwt_secret.
 	JWTSecretFile = ".jwt-secret"
+	// InfluxTokenFile holds the generated web.influxdb.token (first-time InfluxDB setup only).
+	InfluxTokenFile = ".influxdb-token"
+	// InfluxPasswordFile holds the generated web.influxdb.init_password (first-time InfluxDB setup only).
+	InfluxPasswordFile = ".influxdb-password"
 
 	secretBytes = 32
 )
