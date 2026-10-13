@@ -70,15 +70,15 @@ func (sa *SmartNvmeAttribute) Inflate(key string, val interface{}) {
 // nvmeCriticalWarningBits lists the NVMe SMART / Health critical warning bits (NVMe base spec,
 // Get Log Page 02h, byte 0).
 var nvmeCriticalWarningBits = []struct {
-	mask   int64
 	reason string
+	mask   int64
 }{
-	{1 << 0, "available spare capacity is below the spare threshold"},
-	{1 << 1, "temperature is above or below a critical threshold"},
-	{1 << 2, "NVM subsystem reliability is degraded"},
-	{1 << 3, "media has been placed in read-only mode"},
-	{1 << 4, "volatile memory backup device has failed"},
-	{1 << 5, "persistent memory region has become read-only"},
+	{"available spare capacity is below the spare threshold", 1 << 0},
+	{"temperature is above or below a critical threshold", 1 << 1},
+	{"NVM subsystem reliability is degraded", 1 << 2},
+	{"media has been placed in read-only mode", 1 << 3},
+	{"volatile memory backup device has failed", 1 << 4},
+	{"persistent memory region has become read-only", 1 << 5},
 }
 
 // decodeNvmeCriticalWarning returns a human readable reason for every bit set in value.
@@ -116,7 +116,7 @@ func (sa *SmartNvmeAttribute) PopulateAttributeStatus() *SmartNvmeAttribute {
 
 	//-1 is a special number meaning no threshold.
 	if sa.Threshold != -1 {
-		//check what the ideal is. Ideal tells us if we our recorded value needs to be above, or below the threshold
+		// check what the ideal is. Ideal tells us if we our recorded value needs to be above, or below the threshold
 		if (smartMetadata.Ideal == "low" && sa.Value > sa.Threshold) ||
 			(smartMetadata.Ideal == "high" && sa.Value < sa.Threshold) {
 			sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusFailedScrutiny)
