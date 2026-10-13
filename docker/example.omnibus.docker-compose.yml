@@ -20,7 +20,8 @@ services:
     #   - apparmor=unconfined
     ports:
       - "8080:8080" # webapp
-      - "8086:8086" # influxDB admin
+      # InfluxDB (8086) is internal to the container and is not published. To inspect it, run
+      # `docker exec -it scrutiny sh` and call http://localhost:8086 from inside.
     volumes:
       - /run/udev:/run/udev:ro
       # Mounting devices individually with device tends to work better
@@ -61,11 +62,17 @@ services:
       # COLLECTOR_FILESYSTEM_RUN_STARTUP: "true"
       # Monitoring-only ZFS UI/API. Blocks archive, mute, label, and delete actions.
       # SCRUTINY_WEB_ZFS_ALLOW_POOL_MODIFICATIONS: 'false'
-      # Authentication (disabled by default, see docs/AUTH.md)
-      # SCRUTINY_WEB_AUTH_ENABLED: 'true'
+      # Authentication is enabled by default (see docs/AUTH.md). With no token set, the container
+      # generates one and saves it to ./config/.auth-token. Read it with:
+      #   docker exec scrutiny cat /opt/scrutiny/config/.auth-token
+      # To choose your own, set SCRUTINY_WEB_AUTH_TOKEN (the bundled collectors use it too).
+      # COLLECTOR_API_TOKEN is only needed if the collectors should use a different value:
       # SCRUTINY_WEB_AUTH_TOKEN: 'your-secret-api-token'
-      # SCRUTINY_WEB_AUTH_ADMIN_PASSWORD: 'your-admin-password'
       # COLLECTOR_API_TOKEN: 'your-secret-api-token'
+      # SCRUTINY_WEB_AUTH_ADMIN_PASSWORD: 'your-admin-password'
+      # To turn authentication off (not recommended): SCRUTINY_WEB_AUTH_ENABLED: 'false'
+      # InfluxDB credentials are generated at first start and saved in ./config
+      # (.influxdb-token, .influxdb-password). See docs/UPGRADE_2.0.md.
       # Home Assistant MQTT Discovery (disabled by default)
       # Drives auto-appear in HA when enabled. Requires an MQTT broker.
       # SCRUTINY_WEB_MQTT_ENABLED: 'true'

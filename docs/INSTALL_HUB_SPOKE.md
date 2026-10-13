@@ -62,8 +62,7 @@ services:
     restart: unless-stopped
     container_name: influxdb
     image: influxdb:2.9-alpine
-    ports:
-      - 8086:8086
+    # 8086 is not published: only the Scrutiny container needs it, over the compose network.
     volumes:
       - ${DIR_CONFIG}/influxdb2/db:/var/lib/influxdb2
       - ${DIR_CONFIG}/influxdb2/config:/etc/influxdb2
@@ -92,6 +91,9 @@ services:
       - SCRUTINY_WEB_INFLUXDB_TOKEN=your-very-secret-token
       - SCRUTINY_WEB_INFLUXDB_ORG=homelab
       - SCRUTINY_WEB_INFLUXDB_BUCKET=scrutiny
+      # Required: the web server refuses to start without an auth token. Collectors must send the
+      # same value in COLLECTOR_API_TOKEN. Generate one with: openssl rand -hex 32
+      - SCRUTINY_WEB_AUTH_TOKEN=${SCRUTINY_AUTH_TOKEN}
       # Optional: prevent dashboard users from changing ZFS pool records
       # - SCRUTINY_WEB_ZFS_ALLOW_POOL_MODIFICATIONS=false
       # Optional but highly recommended to notify you in case of a problem

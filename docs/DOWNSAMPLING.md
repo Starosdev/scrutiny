@@ -17,18 +17,24 @@ ensuring historical data is present for comparisons.
 
 | Bucket Name | Retention Period | Downsampling Range | Downsampling Aggregation Window | Downsampling Cron | Comments |
 | --- | --- | --- | --- | --- | --- |
-| `metrics` | 15 days | `-2w -1w` | `1w` | main bucket, weekly on Sunday at 1:00am |
-| `metrics_weekly` | 9 weeks | `-2mo -1mo` | `1mo` | monthly on first day of the month at 1:30am
+| `metrics` | 21 days | `-2w -1w` | `1w` | main bucket, weekly on Sunday at 1:00am |
+| `metrics_weekly` | 13 weeks | `-2mo -1mo` | `1mo` | monthly on first day of the month at 1:30am
 | `metrics_monthly` | 25 months | `-2y -1y` | `1y` | yearly on the first day of the year at 2:00am
 | `metrics_yearly` | forever | - | - | - | |
 
+
+### Retention margin
+
+Each task reads a window that ends well before the source bucket deletes its data. The weekly task reads data that is 7 to 14 days old, and the `metrics` bucket keeps 21 days, so the task can miss up to 7 days of runs (for example while the container is stopped) and still process every point. Before 2.0 the bucket kept 15 days, which left about one day: a single missed Sunday run lost a week of history, because InfluxDB deleted the oldest points before the next run read them. The monthly task reads weekly points up to about 9 weeks old against 13 weeks of retention in `metrics_weekly`, which leaves about 4 weeks. The yearly task has about one month against `metrics_monthly`.
+
+On start, Scrutiny applies `web.influxdb.retention.*` to the existing buckets (when `web.influxdb.retention_policy` is `true`), so installs on the defaults pick up the new periods without any action. Installs that set `retention.daily` or `retention.weekly` themselves keep their value; keep them at least 7 days above the window ends listed here.
 
 After 5 months, here's how may data points should exist in each bucket for one disk
 
 | Bucket Name | Datapoints | Comments |
 | --- | --- | --- |
-| `metrics` | 15 | 7 daily datapoints , up to 7 pending data, 1 buffer data point |
-| `metrics_weekly` | 9 | 4 aggregated weekly data points, 4 pending datapoints, 1 buffer data point |
+| `metrics` | 21 | daily datapoints; the days beyond 14 are the margin for a missed weekly run |
+| `metrics_weekly` | 13 | weekly datapoints; the weeks beyond 9 are the margin for a missed monthly run |
 | `metrics_monthly` | 3 | 3 aggregated monthly data points | 
 | `metrics_yearly` | 0 | |
 

@@ -76,16 +76,21 @@ func (c *configuration) Init() error {
 	c.SetDefault("web.influxdb.org", "scrutiny")
 	c.SetDefault("web.influxdb.bucket", "metrics")
 	c.SetDefault("web.influxdb.init_username", "admin")
-	c.SetDefault("web.influxdb.init_password", "password12345")
-	c.SetDefault("web.influxdb.token", "scrutiny-default-admin-token")
+	// Empty by default: at first InfluxDB setup Scrutiny generates both and saves them under
+	// web.secrets.dir. Installs initialized by 1.x/2.0-beta still authenticate with the legacy
+	// default token (see database.LegacyInfluxToken).
+	c.SetDefault("web.influxdb.init_password", "")
+	c.SetDefault("web.influxdb.token", "")
 	c.SetDefault("web.influxdb.tls.insecure_skip_verify", false)
 	c.SetDefault("web.influxdb.retention_policy", true)
 
 	// InfluxDB retention period settings (in seconds)
-	// daily bucket: 15 days = 60*60*24*15 = 1,296,000 seconds
-	c.SetDefault("web.influxdb.retention.daily", 1_296_000)
-	// weekly bucket: 9 weeks = 60*60*24*7*9 = 5,443,200 seconds
-	c.SetDefault("web.influxdb.retention.weekly", 5_443_200)
+	// daily bucket: 21 days = 60*60*24*21 = 1,814,400 seconds. The weekly downsample task reads
+	// days 7-14, so this leaves 7 days for a missed task run to catch up before data ages out.
+	c.SetDefault("web.influxdb.retention.daily", 1_814_400)
+	// weekly bucket: 13 weeks = 60*60*24*7*13 = 7,862,400 seconds. The monthly task reads up to
+	// 2 months back, so this leaves about a month of margin.
+	c.SetDefault("web.influxdb.retention.weekly", 7_862_400)
 	// monthly bucket: 25 months = 60*60*24*7*(52+52+4) = 65,318,400 seconds
 	c.SetDefault("web.influxdb.retention.monthly", 65_318_400)
 

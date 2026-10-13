@@ -188,6 +188,32 @@ Data that InfluxDB 2.9 has already upgraded also needs no acknowledgement. Influ
 
 If startup is blocked, the container log identifies the mounted data path and the exact acknowledgement variable, InfluxDB stays stopped, and the web service waits for it. Do not set the variable until the backup is complete, then restart the container.
 
+## Container Users And Privileges
+
+| Image | Runs as | Why |
+| --- | --- | --- |
+| `web` | root at start, then `PUID:PGID` (default `1000:1000`) | The server needs only `/opt/scrutiny/config` and `/opt/scrutiny/reports`. |
+| `collector`, `collector-zfs`, `collector-mdadm`, `collector-btrfs`, `collector-performance`, `collector-omnibus` | root | `smartctl`, `zpool`, `mdadm`, `btrfs`, and `fio` need raw device access, and the cron daemon starts as root. Grant `SYS_RAWIO` and `SYS_ADMIN` as the examples show, and use `cap_drop: [ALL]` for the rest. |
+| `omnibus` (`latest-omnibus`) | root | One container runs InfluxDB, the web server, cron, and the collectors under s6, and the collectors need the access listed above. Existing config and InfluxDB volumes are root-owned, so a privilege drop needs a tested ownership migration that is not part of 2.0. |
+
+### Web image volume ownership
+
+The `web` entrypoint starts as root, changes the owner of everything under `/opt/scrutiny/config` and `/opt/scrutiny/reports` to `PUID:PGID`, then runs the server through `setpriv`. A config volume that an earlier release created as root therefore works after the upgrade with no manual step.
+
+- Set `PUID` and `PGID` to match the owner you want on the host files (for example `99` and `100` on Unraid). Both must be numbers.
+- `PUID=0` keeps the old behavior (run as root).
+- If the container already starts as a non-root user (`user:` in Compose, `runAsUser` in Kubernetes), the entrypoint changes nothing. The mounted directories must already be writable by that user.
+- With `cap_drop: [ALL]` the container cannot change ownership or drop privileges. The entrypoint logs a warning and runs as root, but root without `CAP_DAC_OVERRIDE` cannot read the 0600 secrets and `PUID`-owned files that an earlier start created. Use `user: PUID:PGID` (with a volume writable by that user), or add `cap_add: [CHOWN, SETUID, SETGID]`.
+- An NFS or other mount that refuses `chown` logs a warning and keeps its current owner. Make it writable by `PUID:PGID`.
+
+### InfluxDB admin port
+
+No example publishes port 8086 any more. The web server reaches InfluxDB over the compose network, and the omnibus image runs InfluxDB inside the same container. To debug InfluxDB, run `docker exec -it <container> sh` and call `http://localhost:8086`, or temporarily publish the port on loopback (`127.0.0.1:8086:8086`).
+
+## Collector Image Health
+
+The `collector` image has a `HEALTHCHECK` that passes while the cron daemon runs. The cron job and the run-on-startup path touch `/tmp/scrutiny-collector-last-run` after a collection exits 0. Set `COLLECTOR_HEALTHCHECK_MAX_AGE_HOURS` to also report unhealthy when that file (or, before the first run, the container start) is older than that many hours. Use about twice your `COLLECTOR_CRON_SCHEDULE` interval, for example `48` for the daily default. The age check is off by default because the schedule is yours to choose. The other collector images do not have this check yet.
+
 ## Zeus MDADM Testing Notes
 
 For actual deployment and troubleshooting steps, see [MDADM_MONITORING.md](./MDADM_MONITORING.md).

@@ -54,15 +54,22 @@ func (c *configuration) Init() error {
 
 	c.SetDefault("api.endpoint", "http://localhost:8080")
 	c.SetDefault("api.timeout", 60)
-	// Omnibus: the web server saves a token it generated at first start next to its config. Use it as the
-	// lowest-precedence default, so api.token in collector.yaml and COLLECTOR_API_TOKEN still win.
+	// Omnibus: the web server saves a token it generated at first start next to its config. Use it as a
+	// low-precedence default, so api.token in collector.yaml and COLLECTOR_API_TOKEN still win.
 	// The directory follows the web server's SCRUTINY_WEB_SECRETS_DIR when set in the container.
 	secretsDir := os.Getenv("SCRUTINY_WEB_SECRETS_DIR")
 	if secretsDir == "" {
 		secretsDir = secrets.DefaultDir
 	}
-	generatedToken, _ := secrets.Read(secretsDir, secrets.AuthTokenFile)
-	c.SetDefault("api.token", generatedToken)
+	// In the omnibus container the web server and the collectors share one environment, so a token
+	// set through SCRUTINY_WEB_AUTH_TOKEN is the server's token and ranks above the generated file
+	// (the server does not write that file when a token is configured, so it could be stale).
+	// Precedence: collector config > COLLECTOR_API_TOKEN > SCRUTINY_WEB_AUTH_TOKEN > .auth-token.
+	defaultToken := os.Getenv("SCRUTINY_WEB_AUTH_TOKEN")
+	if defaultToken == "" {
+		defaultToken, _ = secrets.Read(secretsDir, secrets.AuthTokenFile)
+	}
+	c.SetDefault("api.token", defaultToken)
 
 	c.SetDefault("commands.metrics_smartctl_bin", "smartctl")
 	c.SetDefault(configKeyMetricsScanArgs, "--scan --json")

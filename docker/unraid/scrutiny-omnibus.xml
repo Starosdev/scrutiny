@@ -22,7 +22,6 @@
   <ExtraParams>--cap-add SYS_RAWIO --cap-add SYS_ADMIN</ExtraParams>
   <Shell>bash</Shell>
   <Config Name="WebUI Port" Target="8080" Default="8080" Mode="tcp" Description="Web dashboard port." Type="Port" Display="always" Required="true" Mask="false"/>
-  <Config Name="InfluxDB Port" Target="8086" Default="8086" Mode="tcp" Description="InfluxDB admin port. Only needed if you want direct access to InfluxDB." Type="Port" Display="advanced" Required="false" Mask="false"/>
   <Config Name="Config" Target="/opt/scrutiny/config" Default="/mnt/user/appdata/scrutiny/config" Mode="rw" Description="Scrutiny configuration and SQLite database." Type="Path" Display="always" Required="true" Mask="false"/>
   <Config Name="Database" Target="/opt/scrutiny/influxdb" Default="/mnt/user/appdata/scrutiny/influxdb" Mode="rw" Description="InfluxDB time-series data storage." Type="Path" Display="always" Required="true" Mask="false"/>
   <Config Name="InfluxDB 2.9 Backup Confirmed" Target="SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED" Default="false" Description="For an existing Omnibus install, stop Scrutiny and back up the complete Database path before changing this to true. Fresh installs can leave it false." Type="Variable" Display="always" Required="true" Mask="false"/>
@@ -32,6 +31,7 @@
   <Config Name="Run on Startup" Target="COLLECTOR_RUN_STARTUP" Default="false" Description="Run S.M.A.R.T data collection immediately on container startup." Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="Filesystem Cron Schedule" Target="COLLECTOR_FILESYSTEM_CRON_SCHEDULE" Default="" Description="Filesystem capacity collection schedule (cron format). Leave blank to disable. Requires host mount visibility." Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="Filesystem Run on Startup" Target="COLLECTOR_FILESYSTEM_RUN_STARTUP" Default="false" Description="Run filesystem capacity collection immediately on container startup." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Auth Token" Target="SCRUTINY_WEB_AUTH_TOKEN" Default="" Description="Optional. Leave blank to let the container generate a token and save it to the Config path (file .auth-token). Read it with: docker exec scrutiny cat /opt/scrutiny/config/.auth-token" Type="Variable" Display="advanced" Required="false" Mask="true"/>
   <Config Name="Timezone" Target="TZ" Default="" Description="Timezone (e.g. America/New_York). See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones" Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="MQTT Enabled" Target="SCRUTINY_WEB_MQTT_ENABLED" Default="false" Description="Enable Home Assistant MQTT Discovery. Drives will auto-appear in Home Assistant." Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="MQTT Broker" Target="SCRUTINY_WEB_MQTT_BROKER" Default="" Description="MQTT broker URL (e.g. tcp://mosquitto:1883). Required when MQTT is enabled." Type="Variable" Display="advanced" Required="false" Mask="false"/>
