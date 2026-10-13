@@ -112,7 +112,7 @@ New Go direct dependencies added:
 | github.com/go-pdf/fpdf | v0.9.0 | v0.9.0 | Current | - |
 | github.com/go-viper/mapstructure/v2 | v2.5.0 | v2.5.0 | Current | - |
 | github.com/golang-jwt/jwt/v5 | v5.3.1 | v5.3.1 | Current | - |
-| github.com/golang/mock | v1.6.0 | v1.6.0 | Current | - |
+| go.uber.org/mock | v0.6.0 | v0.6.0 | Current | - |
 | github.com/google/uuid | v1.3.0 | v1.6.0 | 3 minor | Low |
 | github.com/influxdata/influxdb-client-go/v2 | v2.9.0 | v2.14.0 | 5 minor | Medium |
 | github.com/jaypipes/ghw | v0.26.0 | v0.26.0 | Current | - |
