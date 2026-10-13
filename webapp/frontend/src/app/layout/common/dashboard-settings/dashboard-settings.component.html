@@ -503,14 +503,6 @@
                                 </mat-select>
                                 <mat-hint>Save PDF reports to disk</mat-hint>
                             </mat-form-field>
-
-                            @if (reportPDFEnabled) {
-                                <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pl-3">
-                                    <mat-label>PDF Save Directory</mat-label>
-                                    <input matInput [(ngModel)]="reportPDFPath" />
-                                    <mat-hint>Directory to save PDF reports</mat-hint>
-                                </mat-form-field>
-                            }
                         </div>
                     </div>
                 }
@@ -689,6 +681,8 @@
 
             <div class="flex flex-col p-4">
                 <!-- URL list table -->
+                <div class="mt-2 text-red-600 text-sm" role="alert">{{ notifyUrlError }}</div>
+
                 @if (notifyUrls.length > 0) {
                     <table mat-table [dataSource]="notifyUrls" class="w-full scrutiny-dark-table">
                         <ng-container matColumnDef="label">
