@@ -56,3 +56,18 @@ func TestBodyLimit_ZeroDisablesLimit(t *testing.T) {
 	bodyLimitRouter(0).ServeHTTP(w, req)
 	require.Equal(t, http.StatusOK, w.Code)
 }
+
+func TestBodyLimit_AuthRoutesHaveSmallerCap(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(BodyLimitMiddleware(16 << 20))
+	r.POST("/api/auth/login", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(strings.Repeat("a", 70<<10))))
+	require.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(strings.Repeat("a", 60<<10))))
+	require.Equal(t, http.StatusOK, w.Code)
+}

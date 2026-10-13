@@ -80,6 +80,7 @@ func registerZFSPoolRoutes(zfs *gin.RouterGroup, allowPoolModifications bool) {
 
 func (ae *AppEngine) registerMiddleware(r *gin.Engine, logger *logrus.Entry) {
 	r.Use(middleware.LoggerMiddleware(logger))
+	r.Use(middleware.ForwardedForWarningMiddleware(logger))
 	r.Use(middleware.BodyLimitMiddleware(ae.Config.GetInt64("web.listen.max_body_bytes")))
 	r.Use(middleware.RepositoryMiddleware(ae.Config, logger))
 	r.Use(middleware.ConfigMiddleware(ae.Config))
