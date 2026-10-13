@@ -99,9 +99,14 @@ func settingValues(entries []models.SettingEntry) []string {
 
 // sqliteSchemaDetail describes a SQLite schema at the level SQLite itself enforces: per table,
 // every column's declared type, NOT NULL, default, and primary key position; every index's
-// uniqueness, origin, partial flag, and ordered columns; and every foreign key. Column order and
-// DDL formatting are left out, since AutoMigrate and hand-written ALTER TABLE statements differ
-// in both without changing behaviour.
+// uniqueness, origin, partial flag, and ordered columns; every foreign key; whether the table DDL
+// uses AUTOINCREMENT, CHECK, COLLATE, or WITHOUT ROWID; and every trigger and view.
+//
+// Column order is left out on purpose. ALTER TABLE ADD COLUMN appends while AutoMigrate follows
+// struct order, so a new database and an upgraded one list columns differently, as do upgraded
+// databases from different starting versions. No SQL here reads or writes columns by position,
+// and migrations must keep naming columns explicitly (TESTING.md). Other DDL formatting differs
+// between AutoMigrate and hand-written statements without changing behaviour.
 func sqliteSchemaDetail(t *testing.T, db *gorm.DB) map[string][]string {
 	t.Helper()
 	var tables []string
@@ -153,9 +158,19 @@ func sqliteSchemaDetail(t *testing.T, db *gorm.DB) map[string][]string {
 			}
 			entries = append(entries, fmt.Sprintf("fk %s -> %s(%s)", fk.From, fk.Table, to))
 		}
+		var ddl string
+		require.NoError(t, db.Raw(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&ddl).Error)
+		upper := strings.ToUpper(ddl)
+		entries = append(entries,
+			fmt.Sprintf("table autoincrement=%t check=%d collate=%d without_rowid=%t",
+				strings.Contains(upper, "AUTOINCREMENT"), strings.Count(upper, "CHECK"),
+				strings.Count(upper, "COLLATE"), strings.Contains(upper, "WITHOUT ROWID")))
 		sort.Strings(entries)
 		out[table] = entries
 	}
+	var objects []string
+	require.NoError(t, db.Raw(`SELECT type || ' ' || name || ' on ' || tbl_name FROM sqlite_master WHERE type IN ('trigger', 'view') ORDER BY name`).Scan(&objects).Error)
+	out["<triggers and views>"] = objects
 	return out
 }
 
