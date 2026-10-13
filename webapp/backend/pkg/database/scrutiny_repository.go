@@ -240,8 +240,8 @@ func newScrutinyRepository(appConfig config.Interface, globalLogger logrus.Field
 	// Refuse a too-old SQLite database before the connection pragmas (journal_mode=WAL) or the
 	// InfluxDB setup touch anything.
 	if runMigrations && appConfig.GetString(cfgDatabaseType) != dialectPostgres {
-		if err := precheckSQLiteDatabase(appConfig.GetString(cfgDatabaseLocation), globalLogger); err != nil {
-			return nil, err
+		if precheckErr := precheckSQLiteDatabase(appConfig.GetString(cfgDatabaseLocation), globalLogger); precheckErr != nil {
+			return nil, precheckErr
 		}
 	}
 
