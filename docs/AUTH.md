@@ -75,6 +75,42 @@ The following endpoints never require authentication, even when auth is enabled:
 | GET, HEAD | `/api/health` | Health check for load balancers and monitoring tools |
 | GET | `/api/auth/status` | Returns whether auth is enabled and which login methods are available |
 | POST | `/api/auth/login` | Authenticate with token or username/password to obtain a JWT |
+| GET | `/api/version` | Server version, `api_version`, and `auth_required`, so a client can check compatibility and whether to show a login form before it has a token. The `capabilities` object is added only when the request carries a valid credential |
+
+## Named API Tokens and Scopes
+
+Besides the master token (`web.auth.token`), an admin can create named tokens for a mobile app, a read-only integration, or a single collector. Each token has one scope:
+
+| Scope | Allows |
+|---|---|
+| `read` | GET endpoints that only read data: summaries, device details and history, settings (`GET /api/settings`), reports history, `/api/metrics` |
+| `collector` | Collector uploads and registration: `POST /api/devices/register`, `POST /api/device/{id}/smart`, `selftest`, `performance`, `collector-error`, `POST /api/collector/scan-error`, and the ZFS, Btrfs, MDADM, and filesystem register and metrics uploads |
+| `admin` | Everything, including saving settings, archive, mute, label, delete, purge, report generation, collector trigger, and token management |
+
+`admin` includes every other scope. `read` and `collector` do not include each other: a collector token cannot read settings and a read token cannot upload metrics. The master token and session JWTs are admin. A token used on a route above its scope gets HTTP 403.
+
+Manage tokens with an admin credential:
+
+```bash
+# Create (the plaintext token is in this response only)
+curl -X POST https://scrutiny.example/api/settings/tokens \
+  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"name": "phone", "scope": "read", "expires_at": "2027-01-01T00:00:00Z"}'
+
+# List (metadata only; token material is never returned)
+curl -H "Authorization: Bearer $ADMIN_TOKEN" https://scrutiny.example/api/settings/tokens
+
+# Revoke
+curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" https://scrutiny.example/api/settings/tokens/3
+```
+
+- Copy the token when you create it. The server stores only its SHA-256 hash and cannot show it again. If it is lost, revoke it and create a new one.
+- `expires_at` is optional. An expired or revoked token gets HTTP 401. Revoked tokens stay in the list with `revoked: true`.
+- `last_used_at` is updated at most once a minute per token.
+- Tokens are checked after the master token and JWT. When `web.auth.enabled=false`, scopes are not enforced.
+- A `collector` token is not bound to a host: it can submit data for any device, and for any ZFS pool, Btrfs filesystem or MDADM array. Store it with the same care as the master token.
+- `GET /api/settings` is available to `read` tokens, with secret-bearing fields (the Uptime Kuma push URL, which contains its push token) blanked. Admin credentials see them.
+- Existing collectors keep working with the master token. Giving each collector its own `collector` token lets you revoke one host without rotating the rest.
 
 ## API Docs Access
 

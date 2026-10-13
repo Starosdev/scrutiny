@@ -76,6 +76,20 @@ func (mr *MockDeviceRepoMockRecorder) CompareAndSetSettingValue(ctx, key, expect
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompareAndSetSettingValue", reflect.TypeOf((*MockDeviceRepo)(nil).CompareAndSetSettingValue), ctx, key, expected, value)
 }
 
+// CreateAPIToken mocks base method.
+func (m *MockDeviceRepo) CreateAPIToken(ctx context.Context, token *models.ApiToken) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateAPIToken", ctx, token)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateAPIToken indicates an expected call of CreateAPIToken.
+func (mr *MockDeviceRepoMockRecorder) CreateAPIToken(ctx, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateAPIToken", reflect.TypeOf((*MockDeviceRepo)(nil).CreateAPIToken), ctx, token)
+}
+
 // DeleteAttributeOverride mocks base method.
 func (m *MockDeviceRepo) DeleteAttributeOverride(ctx context.Context, id uint) error {
 	m.ctrl.T.Helper()
@@ -201,6 +215,21 @@ func (m *MockDeviceRepo) EnqueueNotification(ctx context.Context, row *models.No
 func (mr *MockDeviceRepoMockRecorder) EnqueueNotification(ctx, row any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueNotification", reflect.TypeOf((*MockDeviceRepo)(nil).EnqueueNotification), ctx, row)
+}
+
+// GetActiveAPITokenByHash mocks base method.
+func (m *MockDeviceRepo) GetActiveAPITokenByHash(ctx context.Context, tokenHash string) (*models.ApiToken, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetActiveAPITokenByHash", ctx, tokenHash)
+	ret0, _ := ret[0].(*models.ApiToken)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetActiveAPITokenByHash indicates an expected call of GetActiveAPITokenByHash.
+func (mr *MockDeviceRepoMockRecorder) GetActiveAPITokenByHash(ctx, tokenHash any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActiveAPITokenByHash", reflect.TypeOf((*MockDeviceRepo)(nil).GetActiveAPITokenByHash), ctx, tokenHash)
 }
 
 // GetAllOverridesForDisplay mocks base method.
@@ -833,6 +862,21 @@ func (mr *MockDeviceRepoMockRecorder) HealthCheck(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HealthCheck", reflect.TypeOf((*MockDeviceRepo)(nil).HealthCheck), ctx)
 }
 
+// ListAPITokens mocks base method.
+func (m *MockDeviceRepo) ListAPITokens(ctx context.Context) ([]models.ApiToken, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAPITokens", ctx)
+	ret0, _ := ret[0].([]models.ApiToken)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAPITokens indicates an expected call of ListAPITokens.
+func (mr *MockDeviceRepoMockRecorder) ListAPITokens(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAPITokens", reflect.TypeOf((*MockDeviceRepo)(nil).ListAPITokens), ctx)
+}
+
 // ListNotifications mocks base method.
 func (m *MockDeviceRepo) ListNotifications(ctx context.Context, state string, limit int) ([]models.NotificationOutbox, error) {
 	m.ctrl.T.Helper()
@@ -1005,6 +1049,20 @@ func (mr *MockDeviceRepoMockRecorder) ResetDeviceStatus(ctx, deviceID any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetDeviceStatus", reflect.TypeOf((*MockDeviceRepo)(nil).ResetDeviceStatus), ctx, deviceID)
 }
 
+// RevokeAPIToken mocks base method.
+func (m *MockDeviceRepo) RevokeAPIToken(ctx context.Context, id uint) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RevokeAPIToken", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RevokeAPIToken indicates an expected call of RevokeAPIToken.
+func (mr *MockDeviceRepoMockRecorder) RevokeAPIToken(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevokeAPIToken", reflect.TypeOf((*MockDeviceRepo)(nil).RevokeAPIToken), ctx, id)
+}
+
 // SaveAttributeOverride mocks base method.
 func (m *MockDeviceRepo) SaveAttributeOverride(ctx context.Context, override *models.AttributeOverride) error {
 	m.ctrl.T.Helper()
@@ -1158,6 +1216,20 @@ func (m *MockDeviceRepo) SetSettingValue(ctx context.Context, key, value string)
 func (mr *MockDeviceRepoMockRecorder) SetSettingValue(ctx, key, value any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSettingValue", reflect.TypeOf((*MockDeviceRepo)(nil).SetSettingValue), ctx, key, value)
+}
+
+// TouchAPIToken mocks base method.
+func (m *MockDeviceRepo) TouchAPIToken(ctx context.Context, id uint) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TouchAPIToken", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// TouchAPIToken indicates an expected call of TouchAPIToken.
+func (mr *MockDeviceRepoMockRecorder) TouchAPIToken(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TouchAPIToken", reflect.TypeOf((*MockDeviceRepo)(nil).TouchAPIToken), ctx, id)
 }
 
 // TransitionNotification mocks base method.

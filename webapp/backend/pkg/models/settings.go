@@ -83,6 +83,15 @@ type Settings struct {
 	// Scheduled report settings
 }
 
+// Redacted returns a copy with every secret-bearing field cleared, for callers below admin scope.
+// The Uptime Kuma push URL carries its push token in the path, so it lets the holder forge heartbeats.
+// TestSettingsRedactedClearsEverythingNotAllowlisted forces a decision for each new string field.
+func (s *Settings) Redacted() Settings {
+	c := *s
+	c.Metrics.UptimeKumaPushURL = ""
+	return c
+}
+
 // defaultStr sets *p to def if *p is empty.
 func defaultStr(p *string, def string) {
 	if *p == "" {

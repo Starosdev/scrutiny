@@ -12,7 +12,8 @@ import (
 func TestRegisterZFSPoolRoutesDisablesEveryMutation(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	registerZFSPoolRoutes(router.Group("/api/zfs"), false)
+	router.Use(func(c *gin.Context) { c.Set("AUTH_SCOPE", "admin") })
+	registerZFSPoolRoutes(newRouteGroups(router.Group("")).sub("/api/zfs"), false)
 
 	tests := []struct {
 		name   string
