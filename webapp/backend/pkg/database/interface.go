@@ -53,6 +53,9 @@ type DeviceRepo interface {
 	// It returns ErrAmbiguousWWN when more than one device holds the WWN.
 	GetDeviceByWWN(ctx context.Context, wwn string) (models.Device, error)
 	UpdateDeviceArchived(ctx context.Context, deviceID string, archived bool) error
+	// AutoArchiveDevice archives a device on behalf of the missed-ping monitor and sets its
+	// auto_archived flag, which UpdateDeviceArchived clears.
+	AutoArchiveDevice(ctx context.Context, deviceID string) error
 	UpdateDeviceMuted(ctx context.Context, deviceID string, muted bool) error
 	UpdateDeviceLabel(ctx context.Context, deviceID string, label string) error
 	UpdateDeviceMaxTBW(ctx context.Context, deviceID string, maxTBW float64) error

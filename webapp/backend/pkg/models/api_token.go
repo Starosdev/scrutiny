@@ -42,9 +42,10 @@ type ApiToken struct {
 	// TokenHash stores the SHA-256 hash of the plaintext token; never stored in plaintext
 	TokenHash string `json:"-" gorm:"uniqueIndex;not null"`
 
-	// Scope is one of the APITokenScope* values. The column default ('full') is a legacy value that
-	// is not a valid scope; every token created through the API sets its scope explicitly.
-	Scope string `json:"scope" gorm:"default:'full'"`
+	// Scope is one of the APITokenScope* values. The column has no default, so a token created
+	// without a scope holds an empty, invalid one and cannot authenticate. Migration
+	// m20261013000000 dropped the legacy 'full' default.
+	Scope string `json:"scope"`
 
 	ID uint `json:"id" gorm:"primaryKey"`
 

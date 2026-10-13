@@ -371,8 +371,8 @@ func (m *MissedPingMonitor) checkMissedPings() {
 const configKeyAutoArchiveStaleDays = "web.devices.auto_archive_stale_days"
 
 // autoArchiveStaleDevices archives devices whose last SMART submission is older than
-// web.devices.auto_archive_stale_days. It reuses the device archive path (UpdateDeviceArchived)
-// and removes archived devices from MQTT, matching the archive endpoints. Devices that never
+// web.devices.auto_archive_stale_days. It archives through AutoArchiveDevice, which also marks the
+// device auto-archived, and removes archived devices from MQTT, matching the archive endpoints. Devices that never
 // reported are left alone. This includes devices dropped by a failed smartctl --info scan (#969),
 // which stop reporting and so age out like any other silent device.
 func (m *MissedPingMonitor) autoArchiveStaleDevices(now time.Time) {
@@ -422,7 +422,7 @@ func (m *MissedPingMonitor) autoArchiveStaleDevices(now time.Time) {
 		if device.Archived || !ok || now.Sub(lastSeen) <= cutoff {
 			continue
 		}
-		if err := repo.UpdateDeviceArchived(m.ctx, device.DeviceID, true); err != nil {
+		if err := repo.AutoArchiveDevice(m.ctx, device.DeviceID); err != nil {
 			m.logger.Errorf("Auto-archive: failed to archive device %s: %v", device.DeviceID, err)
 			continue
 		}

@@ -464,7 +464,7 @@ func TestMissedPingMonitor_AutoArchiveStaleDevices(t *testing.T) {
 		"old": now.Add(-8 * 24 * time.Hour), "recent": now.Add(-6 * 24 * time.Hour), "already": now.Add(-30 * 24 * time.Hour),
 	}, nil)
 	repo.EXPECT().LoadSettings(gomock.Any()).Return(&models.Settings{}, nil)
-	repo.EXPECT().UpdateDeviceArchived(gomock.Any(), "old", true).Return(nil).Times(1)
+	repo.EXPECT().AutoArchiveDevice(gomock.Any(), "old").Return(nil).Times(1)
 	repo.EXPECT().GetNotifyUrls(gomock.Any()).Return(nil, nil).AnyTimes()
 
 	monitor := NewMissedPingMonitor(ae)
