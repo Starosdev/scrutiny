@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
@@ -26,6 +28,8 @@ func GetDevicesSummary(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
 	}
+
+	annotateStaleness(c, logger, deviceRepo, summary)
 
 	//this must match DeviceSummaryWrapper (webapp/backend/pkg/models/device_summary.go)
 	c.JSON(http.StatusOK, gin.H{
@@ -51,6 +55,8 @@ func getPaginatedDevicesSummary(c *gin.Context, logger *logrus.Entry, deviceRepo
 		return
 	}
 
+	annotateStaleness(c, logger, deviceRepo, result.Summary)
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
@@ -58,6 +64,58 @@ func getPaginatedDevicesSummary(c *gin.Context, logger *logrus.Entry, deviceRepo
 			"pagination": result.Pagination,
 		},
 	})
+}
+
+// LastSeenCacheTTL bounds how often /api/summary runs the multi-bucket last-seen query.
+// Set to 0 to disable caching.
+var LastSeenCacheTTL = 30 * time.Second
+
+var lastSeenCache struct {
+	fetched time.Time
+	times   map[string]time.Time
+	mu      sync.Mutex
+}
+
+func cachedLastSeenTimes(c *gin.Context, deviceRepo database.DeviceRepo) (map[string]time.Time, error) {
+	lastSeenCache.mu.Lock()
+	defer lastSeenCache.mu.Unlock()
+	if LastSeenCacheTTL > 0 && lastSeenCache.times != nil && time.Since(lastSeenCache.fetched) < LastSeenCacheTTL {
+		return lastSeenCache.times, nil
+	}
+	times, err := deviceRepo.GetDevicesLastSeenTimes(c)
+	if err != nil {
+		return nil, err
+	}
+	lastSeenCache.times, lastSeenCache.fetched = times, time.Now()
+	return times, nil
+}
+
+// annotateStaleness sets LastSeen and Stale on each summary using the same last-seen data and
+// timeout rules as the missed-ping monitor. A failure here is logged and leaves the fields unset
+// (Stale nil, distinct from false): staleness is advisory and must not break the dashboard.
+// Muted devices are annotated like any other; mute only suppresses notifications.
+func annotateStaleness(c *gin.Context, logger *logrus.Entry, deviceRepo database.DeviceRepo, summaries map[string]*models.DeviceSummary) {
+	settings, err := deviceRepo.LoadSettings(c)
+	if err != nil || settings == nil {
+		logger.Warnln("Could not load settings for stale device detection", err)
+		return
+	}
+	lastSeenTimes, err := cachedLastSeenTimes(c, deviceRepo)
+	if err != nil {
+		logger.Warnln("Could not load last seen times for stale device detection", err)
+		return
+	}
+
+	now := time.Now()
+	for id, summary := range summaries {
+		lastSeen, ok := lastSeenTimes[id]
+		if !ok {
+			continue
+		}
+		stale := summary.Device.IsStale(lastSeen, now, settings.Metrics.MissedPingTimeoutMinutes)
+		summary.LastSeen = &lastSeen
+		summary.Stale = &stale
+	}
 }
 
 func parseSummaryPageOptions(c *gin.Context) (models.DeviceSummaryPageOptions, error) {

@@ -1483,3 +1483,33 @@ func NewCollectorError(logger logrus.FieldLogger, appconfig config.Interface, de
 		Payload: payload,
 	}
 }
+
+// NewAutoArchiveDigest builds the notification sent when devices are auto-archived for being silent.
+// It reuses the MissedPing failure type so existing scripts and webhook filters keep working.
+func NewAutoArchiveDigest(logger logrus.FieldLogger, appconfig config.Interface, devices []MissedPingDigestDevice, days int) Notify {
+	subject := fmt.Sprintf("Scrutiny: %d device(s) auto-archived", len(devices))
+	parts := []string{
+		fmt.Sprintf("These device(s) have not reported for more than %d day(s) and were archived. They stay archived until you unarchive them.", days),
+		"",
+	}
+	for _, d := range devices {
+		line := fmt.Sprintf("  - %s (serial: %s) - last seen %s", d.DeviceName, d.SerialNumber, d.LastSeen.Format(time.RFC3339))
+		if d.Label != "" {
+			line = fmt.Sprintf("  - %s [%s] (serial: %s) - last seen %s", d.Label, d.DeviceName, d.SerialNumber, d.LastSeen.Format(time.RFC3339))
+		}
+		if d.HostId != "" {
+			line += fmt.Sprintf(" [host: %s]", d.HostId)
+		}
+		parts = append(parts, line)
+	}
+	return Notify{
+		Logger: logger,
+		Config: appconfig,
+		Payload: Payload{
+			Date:        time.Now().Format(time.RFC3339),
+			FailureType: NotifyFailureTypeMissedPing,
+			Subject:     subject,
+			Message:     strings.Join(parts, "\n"),
+		},
+	}
+}

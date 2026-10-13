@@ -93,6 +93,14 @@ web:
     # Largest accepted request body in bytes (default 16 MiB). Larger requests get HTTP 413.
     # A smartctl report is tens of KiB; a FARM-merged report is a few hundred KiB. 0 disables the limit.
     # max_body_bytes: 16777216
+  devices:
+    # Archive a device automatically once it has not reported for this many days (default 0 = off).
+    # Archived devices drop out of the dashboard and missed-ping alerts and can be unarchived later.
+    # Devices that never reported are never archived. A device is archived only after the longer of
+    # this value and its own missed-ping timeout. A notification is sent when devices are archived.
+    # Auto-archived devices stay archived until you unarchive them manually; nothing unarchives them
+    # when they report again. Env: SCRUTINY_WEB_DEVICES_AUTO_ARCHIVE_STALE_DAYS
+    # auto_archive_stale_days: 0
   reports:
     # Directory for generated PDF reports. Not settable through the API.
     # path: /opt/scrutiny/reports
@@ -411,6 +419,11 @@ failures:
 #   metrics.notify_on_missed_ping: false          # Enable/disable feature
 #   metrics.missed_ping_timeout_minutes: 60       # Minutes before alerting
 #   metrics.missed_ping_check_interval_mins: 5    # How often to check
+#
+# Dashboard data: GET /api/summary reports last_seen and stale for each device. A device is stale
+# when its last SMART submission is older than its missed-ping timeout (per-device override, else
+# metrics.missed_ping_timeout_minutes), whether or not missed ping notifications are enabled.
+# Muted devices are reported stale like any other; mute only suppresses notifications.
 #
 # Example API call to enable missed ping notifications:
 #   curl -X POST http://localhost:8080/api/settings \

@@ -53,6 +53,7 @@ func (c *configuration) Init() error {
 	// Largest accepted request body, in bytes. The biggest realistic collector payload (a FARM-merged
 	// smartctl report) is a few hundred KiB; 16 MiB leaves two orders of magnitude of headroom.
 	c.SetDefault("web.listen.max_body_bytes", DefaultMaxBodyBytes)
+	c.SetDefault("web.devices.auto_archive_stale_days", 0) // 0 = never auto-archive silent devices
 	// Directory for generated PDF reports. Not settable through the API.
 	c.SetDefault("web.reports.path", "/opt/scrutiny/reports")
 	c.SetDefault("web.src.frontend.path", "/opt/scrutiny/web")

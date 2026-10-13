@@ -7,6 +7,7 @@ import (
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
+	mock_database "github.com/analogj/scrutiny/webapp/backend/pkg/database/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -445,4 +446,41 @@ func TestMissedPingMonitor_ResetRepo(t *testing.T) {
 
 	// Still nil
 	require.Nil(t, monitor.deviceRepo)
+}
+
+func TestMissedPingMonitor_AutoArchiveStaleDevices(t *testing.T) {
+	t.Parallel()
+
+	ae, mockCtrl := createTestAppEngine(t)
+	defer mockCtrl.Finish()
+	ae.Config.(*mock_config.MockInterface).EXPECT().GetInt(configKeyAutoArchiveStaleDays).Return(7).AnyTimes()
+
+	repo := mock_database.NewMockDeviceRepo(mockCtrl)
+	now := time.Now()
+	repo.EXPECT().GetDevices(gomock.Any()).Return([]models.Device{
+		{DeviceID: "old"}, {DeviceID: "recent"}, {DeviceID: "already", Archived: true}, {DeviceID: "never"},
+	}, nil)
+	repo.EXPECT().GetDevicesLastSeenTimes(gomock.Any()).Return(map[string]time.Time{
+		"old": now.Add(-8 * 24 * time.Hour), "recent": now.Add(-6 * 24 * time.Hour), "already": now.Add(-30 * 24 * time.Hour),
+	}, nil)
+	repo.EXPECT().LoadSettings(gomock.Any()).Return(&models.Settings{}, nil)
+	repo.EXPECT().UpdateDeviceArchived(gomock.Any(), "old", true).Return(nil).Times(1)
+	repo.EXPECT().GetNotifyUrls(gomock.Any()).Return(nil, nil).AnyTimes()
+
+	monitor := NewMissedPingMonitor(ae)
+	monitor.deviceRepo = repo
+	monitor.autoArchiveStaleDevices(now)
+}
+
+func TestMissedPingMonitor_AutoArchiveStaleDevices_DisabledByDefault(t *testing.T) {
+	t.Parallel()
+
+	ae, mockCtrl := createTestAppEngine(t)
+	defer mockCtrl.Finish()
+	ae.Config.(*mock_config.MockInterface).EXPECT().GetInt(configKeyAutoArchiveStaleDays).Return(0).AnyTimes()
+
+	// No repo expectations: any repository call would fail the test.
+	monitor := NewMissedPingMonitor(ae)
+	monitor.deviceRepo = mock_database.NewMockDeviceRepo(mockCtrl)
+	monitor.autoArchiveStaleDevices(time.Now())
 }
