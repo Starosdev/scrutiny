@@ -20,6 +20,10 @@
 #   web.listen.port                       -> SCRUTINY_WEB_LISTEN_PORT
 #   web.listen.host                       -> SCRUTINY_WEB_LISTEN_HOST
 #   web.listen.basepath                   -> SCRUTINY_WEB_LISTEN_BASEPATH
+#   web.listen.trusted_proxies            -> SCRUTINY_WEB_LISTEN_TRUSTED_PROXIES (space-separated)
+#   web.listen.max_body_bytes             -> SCRUTINY_WEB_LISTEN_MAX_BODY_BYTES
+#   web.reports.path                      -> SCRUTINY_WEB_REPORTS_PATH
+#   web.secrets.dir                       -> SCRUTINY_WEB_SECRETS_DIR
 #   web.database.location                 -> SCRUTINY_WEB_DATABASE_LOCATION
 #   web.database.journal_mode             -> SCRUTINY_WEB_DATABASE_JOURNAL_MODE
 #   web.database.type                     -> SCRUTINY_WEB_DATABASE_TYPE
@@ -79,6 +83,22 @@ web:
     # read_timeout_seconds: 10
     # write_timeout_seconds: 30
     # idle_timeout_seconds: 60
+
+    # Reverse proxies whose X-Forwarded-For header is trusted for the client IP (used by the login
+    # rate limiter and the logs). Default: none, so the TCP peer address is always used. Behind a
+    # reverse proxy, list its address or CIDR range, otherwise every client appears as the proxy.
+    # trusted_proxies:
+    #   - 172.18.0.0/16
+
+    # Largest accepted request body in bytes (default 16 MiB). Larger requests get HTTP 413.
+    # A smartctl report is tens of KiB; a FARM-merged report is a few hundred KiB. 0 disables the limit.
+    # max_body_bytes: 16777216
+  reports:
+    # Directory for generated PDF reports. Not settable through the API.
+    # path: /opt/scrutiny/reports
+  secrets:
+    # Directory where generated secrets (.auth-token, .jwt-secret) are saved with mode 0600.
+    # dir: /opt/scrutiny/config
   database:
     # can also set absolute path here
     location: /opt/scrutiny/config/scrutiny.db
@@ -130,9 +150,10 @@ web:
     #   # yearly bucket has infinite retention (not configurable)
 
   # Authentication settings
-  # When enabled, all API endpoints (except /api/health and /api/auth/*) require
-  # a valid Bearer token in the Authorization header. Disabled by default so
-  # existing deployments are unaffected.
+  # Enabled by default. All API endpoints (except /api/health and /api/auth/*) require a valid
+  # Bearer token in the Authorization header. The omnibus image generates a token at first start
+  # and saves it to /opt/scrutiny/config/.auth-token. Hub/spoke web containers must set token
+  # (or enabled: false), otherwise they refuse to start. See docs/AUTH.md.
   #
   # Environment variable overrides:
   #   web.auth.enabled          -> SCRUTINY_WEB_AUTH_ENABLED
@@ -143,17 +164,19 @@ web:
   #   web.auth.admin_password   -> SCRUTINY_WEB_AUTH_ADMIN_PASSWORD
   #   web.docs.public           -> SCRUTINY_WEB_DOCS_PUBLIC
   auth:
-    # Enable API authentication (default: false, all endpoints open)
-    # enabled: false
+    # API authentication (default: true). Set false to run with every endpoint open;
+    # the server logs a warning at every start.
+    # enabled: true
 
     # Master API token for collector and programmatic access.
-    # Required when auth is enabled. Collectors send this as:
+    # Required when auth is enabled, except in the omnibus image, which generates one.
+    # Collectors send this as:
     #   Authorization: Bearer <token>
     # token: 'your-secret-api-token-here'
 
     # Secret key for signing JWT session tokens (used for web UI sessions).
-    # If empty, a random secret is generated at startup -- tokens will not
-    # survive server restarts. Set a stable value for persistent sessions.
+    # If empty, a random secret is generated once and saved to
+    # <web.secrets.dir>/.jwt-secret, so sessions survive restarts.
     # jwt_secret: ''
 
     # JWT token expiry in hours (default: 24)
@@ -364,7 +387,7 @@ failures:
 #    - "hangouts://chat.googleapis.com/v1/spaces/FOO/messages?key=bar&token=baz"
 #    - "zulip://bot-mail:bot-key@zulip-domain/?stream=name-or-id&topic=name"
 #    - "join://shoutrrr:api-key@join/?devices=device1[,device2, ...][&icon=icon][&title=title]"
-#    - "script:///file/path/on/disk"
+#    - "script:///file/path/on/disk"   # config file only; script:// URLs cannot be added through the UI or API
 #    - "https://www.example.com/path"
 #    # Apprise targets must be explicit and prefixed with apprise+
 #    # This keeps existing Shoutrrr targets backward compatible while allowing
@@ -431,7 +454,8 @@ failures:
 #   metrics.report_monthly_day: 1             # Day of month (1-28)
 #   metrics.report_monthly_time: "03:00"      # Time to send
 #   metrics.report_pdf_enabled: false         # Also save PDF to disk
-#   metrics.report_pdf_path: "/opt/scrutiny/reports"  # PDF output directory
+#
+# The PDF output directory is not a setting. Use web.reports.path in this file.
 #
 # Example API call to enable daily reports at 7 AM:
 #   curl -X POST http://localhost:8080/api/settings \

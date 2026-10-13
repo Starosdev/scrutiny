@@ -637,7 +637,7 @@ Scrutiny supports multiple notification target types:
 
 - Shoutrrr targets using the existing `discord://`, `smtp://`, `telegram://`, `gotify://`, and similar URL formats
 - Apprise targets using an explicit `apprise+` prefix, for example `apprise+mailto://...`, `apprise+gotify://...`, or `apprise+https://discord.com/api/webhooks/...`
-- Custom `script://` targets that execute a local script with notification metadata in environment variables
+- Custom `script://` targets that execute a local script with notification metadata in environment variables. These are accepted only from the `notify.urls` config setting, not from the UI or API
 - Raw `http://` and `https://` webhook targets
 
 This keeps existing Shoutrrr configuration backward compatible while adding Apprise as a second notification engine. If you want Scrutiny to route a target through Apprise, the `apprise+` prefix is required.
@@ -700,7 +700,7 @@ Scrutiny can generate and email periodic health reports summarizing device statu
 | Monthly day | `metrics.report_monthly_day` | `1` | Day of month (1-28) |
 | Monthly time | `metrics.report_monthly_time` | `"03:00"` | Time to send monthly report |
 | PDF export | `metrics.report_pdf_enabled` | `false` | Also save reports as PDF files |
-| PDF path | `metrics.report_pdf_path` | `"/opt/scrutiny/reports"` | Directory for PDF files |
+| PDF path | `web.reports.path` (config file only) | `"/opt/scrutiny/reports"` | Directory for PDF files |
 
 **Example API call to enable daily reports:**
 
@@ -831,13 +831,17 @@ Dots and dashes in key names become underscores.
 | `web.metrics.enabled` | `SCRUTINY_WEB_METRICS_ENABLED` | `true` |
 | `web.metrics.token` | `SCRUTINY_WEB_METRICS_TOKEN` | `` |
 | `web.uptime_kuma.insecure_skip_verify` | `SCRUTINY_WEB_UPTIME_KUMA_INSECURE_SKIP_VERIFY` | `false` |
-| `web.auth.enabled` | `SCRUTINY_WEB_AUTH_ENABLED` | `false` |
+| `web.auth.enabled` | `SCRUTINY_WEB_AUTH_ENABLED` | `true` |
 | `web.auth.token` | `SCRUTINY_WEB_AUTH_TOKEN` | `` |
 | `web.auth.jwt_secret` | `SCRUTINY_WEB_AUTH_JWT_SECRET` | `` |
 | `web.auth.jwt_expiry_hours` | `SCRUTINY_WEB_AUTH_JWT_EXPIRY_HOURS` | `24` |
 | `web.auth.admin_username` | `SCRUTINY_WEB_AUTH_ADMIN_USERNAME` | `admin` |
 | `web.auth.admin_password` | `SCRUTINY_WEB_AUTH_ADMIN_PASSWORD` | `` |
 | `web.docs.public` | `SCRUTINY_WEB_DOCS_PUBLIC` | `false` |
+| `web.secrets.dir` | `SCRUTINY_WEB_SECRETS_DIR` | `/opt/scrutiny/config` |
+| `web.listen.trusted_proxies` | `SCRUTINY_WEB_LISTEN_TRUSTED_PROXIES` | `` |
+| `web.listen.max_body_bytes` | `SCRUTINY_WEB_LISTEN_MAX_BODY_BYTES` | `16777216` |
+| `web.reports.path` | `SCRUTINY_WEB_REPORTS_PATH` | `/opt/scrutiny/reports` |
 | `web.mqtt.enabled` | `SCRUTINY_WEB_MQTT_ENABLED` | `false` |
 | `web.mqtt.broker` | `SCRUTINY_WEB_MQTT_BROKER` | `tcp://localhost:1883` |
 | `web.mqtt.username` | `SCRUTINY_WEB_MQTT_USERNAME` | `` |
