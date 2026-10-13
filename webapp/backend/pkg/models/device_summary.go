@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"time"
 )
@@ -30,6 +31,8 @@ type DeviceSummaryPageOptions struct {
 	PageSize    int
 	Archived    bool
 	GroupByHost bool
+	// StatusThreshold masks DeviceStatus for the status sort, matching the dashboard badge.
+	StatusThreshold pkg.MetricsStatusThreshold
 }
 
 type DeviceSummaryPage struct {

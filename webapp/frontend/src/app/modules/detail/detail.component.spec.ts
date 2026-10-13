@@ -20,7 +20,7 @@ import { of, Subject } from 'rxjs';
 import { SmartModel } from 'app/core/models/measurements/smart-model';
 import { SmartAttributeModel } from 'app/core/models/measurements/smart-attribute-model';
 import { DeviceModel } from 'app/core/models/device-model';
-import { AppConfig } from 'app/core/config/app.config';
+import { AppConfig, AttributeOverride } from 'app/core/config/app.config';
 import { DeviceSelfTestModel } from 'app/core/models/device-selftest-model';
 import { SharedModule } from 'app/shared/shared.module';
 import { DetailSettingsModule } from 'app/layout/common/detail-settings/detail-settings.module';
@@ -204,6 +204,44 @@ describe('DetailComponent', () => {
                 expect(text).not.toContain('2464 hours');
             });
         }
+    });
+
+    describe('displayedStatus', () => {
+        const withThreshold = (status_threshold: number): void => {
+            component.config = { ...component.config, metrics: { status_threshold } } as AppConfig;
+        };
+
+        beforeEach(() => {
+            component.config = { metrics: { status_threshold: 3 } } as AppConfig;
+            component.smart_results = [];
+        });
+
+        it('shows passed for a passing drive', () => {
+            component.device = { device_status: 0 } as DeviceModel;
+            expect(component.displayedStatus).toBe('passed');
+        });
+
+        it('shows failed for a failing drive with the both threshold', () => {
+            component.device = { device_status: 2 } as DeviceModel;
+            expect(component.displayedStatus).toBe('failed');
+        });
+
+        it('shows passed when the threshold hides the failure', () => {
+            component.device = { device_status: 2 } as DeviceModel;
+            withThreshold(1);
+            expect(component.displayedStatus).toBe('passed');
+        });
+
+        it('shows failed for a forced failure on a passing drive', () => {
+            component.device = { device_status: 0, has_forced_failure: true } as DeviceModel;
+            expect(component.displayedStatus).toBe('failed');
+        });
+
+        it('shows unknown without SMART results', () => {
+            component.device = { device_status: 1 } as DeviceModel;
+            component.smart_results = null as any;
+            expect(component.displayedStatus).toBe('unknown');
+        });
     });
 
     describe('selfTestStatusLabel', () => {
@@ -679,7 +717,7 @@ describe('DetailComponent', () => {
     });
 
     describe('SMART attribute history with missing samples (#871)', () => {
-        const sample = (date: string, attrs: { [id: string]: Partial<SmartAttributeModel> }): SmartModel => ({ date, attrs } as unknown as SmartModel);
+        const sample = (date: string, attrs: { [id: string]: Partial<SmartAttributeModel> }): SmartModel => ({ date, attrs }) as unknown as SmartModel;
 
         beforeEach(() => {
             component.config = { time_format: '24' } as AppConfig;
@@ -703,6 +741,53 @@ describe('DetailComponent', () => {
             const history = (id: string) => rows.find((r) => `${r.attribute_id}` === id).chartData[0].data;
             expect(history('5').length).toBe(2);
             expect(history('devstat_7_8').length).toBe(1);
+        });
+    });
+
+    describe('override scoping', () => {
+        const attr = { attribute_id: 183 } as SmartAttributeModel;
+
+        beforeEach(() => {
+            component.device = { device_protocol: 'ATA', device_id: 'dev-a', wwn: '0x5002538844584d30' } as DeviceModel;
+            mockOverrideService.saveOverride.and.returnValue(of({ protocol: 'ATA', attribute_id: '183' }));
+            spyOn<any>(component, '_refreshAfterOverrideChange');
+        });
+
+        // A WWN can be shared by more than one device, and the server refuses to resolve
+        // an acknowledgement by a shared WWN (#939), so every action is scoped by device_id.
+        it('scopes acknowledge, ignore and force_status by device_id, not wwn', () => {
+            component.acknowledgeAttribute(attr);
+            component.ignoreAttribute(attr);
+            component.forcePassedAttribute(attr);
+
+            expect(mockOverrideService.saveOverride).toHaveBeenCalledTimes(3);
+            for (const call of mockOverrideService.saveOverride.calls.all()) {
+                const sent = call.args[0];
+                expect(sent.device_id).toBe('dev-a');
+                expect(sent.wwn).toBeUndefined();
+            }
+        });
+
+        it('prefers a device_id override over a legacy wwn one over a global one', () => {
+            const global: AttributeOverride = { id: 1, protocol: 'ATA', attribute_id: '183', action: 'ignore' };
+            const legacy: AttributeOverride = { id: 2, protocol: 'ATA', attribute_id: '183', wwn: '0x5002538844584d30', action: 'ignore' };
+            const own: AttributeOverride = { id: 3, protocol: 'ATA', attribute_id: '183', device_id: 'dev-a', action: 'acknowledge', pinned_value: 1 };
+            const build = (overrides: AttributeOverride[]) => {
+                component.activeOverrides = overrides;
+                component['_buildOverrideMap']();
+                return component.getOverrideForAttribute(183)?.id;
+            };
+
+            expect(build([own, legacy, global])).toBe(3);
+            expect(build([global, legacy])).toBe(2);
+            expect(build([global])).toBe(1);
+        });
+
+        it('ignores an override scoped to another device that shares the wwn', () => {
+            component.activeOverrides = [{ id: 4, protocol: 'ATA', attribute_id: '183', device_id: 'dev-b', action: 'acknowledge', pinned_value: 1 }];
+            component['_buildOverrideMap']();
+
+            expect(component.getOverrideForAttribute(183)).toBeNull();
         });
     });
 

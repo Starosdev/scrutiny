@@ -1,12 +1,14 @@
 import { Component, OnDestroy, OnInit, ViewEncapsulation, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
-import { Subject } from 'rxjs';
+import { combineLatest, Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { DashboardService } from 'app/modules/dashboard/dashboard.service';
 import { ZFSPoolsService } from 'app/modules/zfs-pools/zfs-pools.service';
 import { DeviceSummaryModel } from 'app/core/models/device-summary-model';
 import { ZFSPoolModel } from 'app/core/models/zfs-pool-model';
 import { MatIcon } from '@angular/material/icon';
+import { AppConfig, MetricsStatusThreshold } from 'app/core/config/app.config';
+import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 
 interface HealthCounts {
     healthy: number;
@@ -36,6 +38,7 @@ export class MobileHomeComponent implements OnInit, OnDestroy {
     private readonly _dashboardService = inject(DashboardService);
     private readonly _zfsPoolsService = inject(ZFSPoolsService);
     private readonly _router = inject(Router);
+    private readonly _configService = inject(ScrutinyConfigService);
 
     driveCounts: HealthCounts = { healthy: 0, warning: 0, critical: 0 };
     zfsCounts: HealthCounts = { healthy: 0, warning: 0, critical: 0 };
@@ -49,12 +52,15 @@ export class MobileHomeComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit(): void {
-        this._dashboardService.data$.pipe(takeUntil(this._unsubscribeAll)).subscribe((data) => {
-            if (data) {
-                this._processDriveData(data);
-                this.loaded = true;
-            }
-        });
+        // The status threshold decides which failures count, so reclassify when either changes.
+        combineLatest([this._dashboardService.data$, this._configService.config$])
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(([data, config]: [{ [key: string]: DeviceSummaryModel }, AppConfig]) => {
+                if (data) {
+                    this._processDriveData(data, config?.metrics?.status_threshold || MetricsStatusThreshold.Both);
+                    this.loaded = true;
+                }
+            });
 
         this._zfsPoolsService.data$.pipe(takeUntil(this._unsubscribeAll)).subscribe((data) => {
             if (data) {
@@ -72,7 +78,7 @@ export class MobileHomeComponent implements OnInit, OnDestroy {
         this._router.navigate([item.route]);
     }
 
-    private _processDriveData(data: { [key: string]: DeviceSummaryModel }): void {
+    private _processDriveData(data: { [key: string]: DeviceSummaryModel }, threshold: MetricsStatusThreshold): void {
         this.driveCounts = { healthy: 0, warning: 0, critical: 0 };
         const driveAttention: AttentionItem[] = [];
 
@@ -82,13 +88,17 @@ export class MobileHomeComponent implements OnInit, OnDestroy {
                 continue;
             }
 
-            // device_status: 0 = passed, non-zero = problem
-            const status = device.device.device_status;
-            if (!status || status === 0) {
+            // Like the status badge, apply the threshold to device_status and treat a forced
+            // failure as failed. A failure on both SMART and Scrutiny checks, or a forced
+            // failure, is critical; a failure on one of them is a warning. Like the backend
+            // attention count, a drive with a failed stored status still needs attention when
+            // it has no SMART results, even though its badge reads "unknown".
+            // tslint:disable-next-line:no-bitwise
+            const status = (device.device.device_status ?? 0) & threshold;
+            if (!device.device.has_forced_failure && status === 0) {
                 this.driveCounts.healthy++;
             } else {
-                // Use status >= 3 as critical (failed), others as warning
-                const severity = status >= 3 ? 'critical' : 'warning';
+                const severity = device.device.has_forced_failure || status === MetricsStatusThreshold.Both ? 'critical' : 'warning';
                 if (severity === 'critical') {
                     this.driveCounts.critical++;
                 } else {
