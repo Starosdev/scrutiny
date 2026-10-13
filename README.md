@@ -291,7 +291,10 @@ host-side rollout after images are published.
 > See [docker/example.hubspoke.docker-compose.yml](docker/example.hubspoke.docker-compose.yml) for a docker-compose file.
 
 ```bash
-docker run -p 8086:8086 --restart unless-stopped \
+docker network create scrutiny
+
+# InfluxDB is not published; the web container reaches it over the "scrutiny" network.
+docker run --network scrutiny --restart unless-stopped \
   -v `pwd`/influxdb2:/var/lib/influxdb2 \
   -e INFLUXD_USE_HASHED_TOKENS=false \
   --name scrutiny-influxdb \
@@ -299,8 +302,9 @@ docker run -p 8086:8086 --restart unless-stopped \
 
 # SCRUTINY_WEB_AUTH_TOKEN is required (generate one with: openssl rand -hex 32).
 # InfluxDB credentials are generated at first start and saved in the config volume.
-docker run -p 8080:8080 --restart unless-stopped \
+docker run -p 8080:8080 --network scrutiny --restart unless-stopped \
   -v `pwd`/scrutiny:/opt/scrutiny/config \
+  -e SCRUTINY_WEB_INFLUXDB_HOST=scrutiny-influxdb \
   -e SCRUTINY_WEB_AUTH_TOKEN=CHANGE_ME_TO_THE_GENERATED_TOKEN \
   --name scrutiny-web \
   ghcr.io/starosdev/scrutiny:latest-web
