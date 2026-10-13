@@ -5,6 +5,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/analogj/scrutiny/collector/pkg/errors"
 	"github.com/analogj/scrutiny/collector/pkg/models"
@@ -27,6 +28,9 @@ const configKeyMetricsSmartArgs = "commands.metrics_smart_args"
 type configuration struct {
 	*viper.Viper
 
+	// overridesMu guards the memoized deviceOverrides: parallel SMART collection reads it
+	// from several goroutines.
+	overridesMu     sync.Mutex
 	deviceOverrides []models.ScanOverride
 }
 
@@ -94,6 +98,9 @@ func (c *configuration) Init() error {
 	c.SetDefault("performance.mount_points", map[string]string{})
 
 	c.SetDefault("allow_listed_devices", []string{})
+	c.SetDefault("exclude", []string{})
+	c.SetDefault("exclude_virtual_disks", true)
+	c.SetDefault("commands.metrics_parallelism", 1)
 
 	c.SetDefault("cron.schedule", "")
 	c.SetDefault("cron.run_on_startup", false)
@@ -206,6 +213,8 @@ func (c *configuration) GetDeviceOverrides() []models.ScanOverride {
 	// Override the hook so WeaklyTypedInput simply lifts the scalar into a
 	// one-element slice verbatim; a YAML list still yields one entry per item.
 	// Fixes #418, #663.
+	c.overridesMu.Lock()
+	defer c.overridesMu.Unlock()
 	if c.deviceOverrides == nil {
 		overrides := []models.ScanOverride{}
 		err := c.UnmarshalKey("devices", &overrides, func(decoderConfig *mapstructure.DecoderConfig) {

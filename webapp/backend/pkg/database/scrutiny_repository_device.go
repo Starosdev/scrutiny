@@ -3,9 +3,11 @@ package database
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -234,7 +236,7 @@ func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Con
 	// 3. Get merged overrides (config + database)
 	mergedOverrides := sr.GetMergedOverrides(ctx)
 
-	newStatus, hasForcedFailure := recalculateStatusFromSmart(&device, &latestSmart, mergedOverrides)
+	newStatus, hasForcedFailure := recalculateStatusFromSmart(sr.appConfig, &device, &latestSmart, mergedOverrides)
 
 	// Note: Delta evaluation for cumulative counter attributes (e.g., attribute 199) is already
 	// reflected in the stored InfluxDB data. When SaveSmartAttributes writes to InfluxDB, the
@@ -257,22 +259,49 @@ func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Con
 	return nil
 }
 
-func recalculateStatusFromSmart(device *models.Device, latestSmart *measurements.Smart, mergedOverrides []overrides.AttributeOverride) (pkg.DeviceStatus, bool) {
+func recalculateStatusFromSmart(cfg config.Interface, device *models.Device, latestSmart *measurements.Smart, mergedOverrides []overrides.AttributeOverride) (pkg.DeviceStatus, bool) {
 	newStatus := pkg.DeviceStatusPassed
 	hasForcedFailure := false
+	attrFailedSmart := false
+	ignoredFailedSmart := false
 	for attrID, attr := range latestSmart.Attributes {
+		originalStatus := attr.GetStatus()
 		attrStatus, ignored, forcedFailure := recalculatedAttributeStatus(device, attrID, attr, mergedOverrides)
 		if ignored {
+			if pkg.AttributeStatusHas(originalStatus, pkg.AttributeStatusFailedSmart) {
+				ignoredFailedSmart = true
+			}
 			continue
 		}
 		if forcedFailure {
 			hasForcedFailure = true
 		}
+		// Match ingest: failures.transient.ata attributes never fail the device.
+		if isTransientForDevice(cfg, device, attrID) {
+			continue
+		}
 		if pkg.AttributeStatusHas(attrStatus, pkg.AttributeStatusFailedScrutiny) {
 			newStatus = pkg.DeviceStatusSet(newStatus, pkg.DeviceStatusFailedScrutiny)
 		}
+		if pkg.AttributeStatusHas(attrStatus, pkg.AttributeStatusFailedSmart) {
+			attrFailedSmart = true
+		}
+	}
+	// The smartctl overall smart_status is not stored with the measurement; it only lives in the
+	// device's FailedSmart bit. Keep that bit unless the only evidence for it was an attribute
+	// that an override now ignores.
+	if attrFailedSmart || (pkg.DeviceStatusHas(device.DeviceStatus, pkg.DeviceStatusFailedSmart) && !ignoredFailedSmart) {
+		newStatus = pkg.DeviceStatusSet(newStatus, pkg.DeviceStatusFailedSmart)
 	}
 	return newStatus, hasForcedFailure
+}
+
+func isTransientForDevice(cfg config.Interface, device *models.Device, attrID string) bool {
+	if device.DeviceProtocol != pkg.DeviceProtocolAta {
+		return false
+	}
+	id, err := strconv.Atoi(attrID)
+	return err == nil && measurements.IsTransientAtaAttribute(cfg, id)
 }
 
 func recalculatedAttributeStatus(device *models.Device, attrID string, attr measurements.SmartAttribute, mergedOverrides []overrides.AttributeOverride) (pkg.AttributeStatus, bool, bool) {
@@ -286,19 +315,22 @@ func recalculatedAttributeStatus(device *models.Device, attrID string, attr meas
 }
 
 func (sr *scrutinyRepository) persistRecalculatedDeviceStatus(ctx context.Context, deviceID string, device *models.Device, newStatus pkg.DeviceStatus) error {
-	if newStatus == pkg.DeviceStatusPassed && device.DeviceStatus != pkg.DeviceStatusPassed {
+	if newStatus == device.DeviceStatus {
+		return nil
+	}
+	if newStatus == pkg.DeviceStatusPassed {
 		if _, err := sr.ResetDeviceStatus(ctx, deviceID); err != nil {
 			return fmt.Errorf("could not reset device status: %w", err)
 		}
 		sr.logger.Infof("Device %s status recalculated to passed after override change", deviceID)
 		return nil
 	}
-	if newStatus != pkg.DeviceStatusPassed && device.DeviceStatus == pkg.DeviceStatusPassed {
-		if _, err := sr.UpdateDeviceStatus(ctx, deviceID, newStatus); err != nil {
-			return fmt.Errorf("could not update device status: %w", err)
-		}
-		sr.logger.Infof("Device %s status recalculated to failed after override change", deviceID)
+	// Map-based update writes the exact bitset, so a bit can also be cleared.
+	if err := sr.gormClient.WithContext(ctx).Model(&models.Device{}).Where(queryDeviceID, deviceID).
+		Update("device_status", newStatus).Error; err != nil {
+		return fmt.Errorf("could not update device status: %w", err)
 	}
+	sr.logger.Infof("Device %s status recalculated to %d after override change", deviceID, newStatus)
 	return nil
 }
 

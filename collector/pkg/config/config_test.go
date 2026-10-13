@@ -371,3 +371,12 @@ func TestConfiguration_GetAPIToken_Precedence(t *testing.T) {
 	testConfig.Set("api.token", "explicit")
 	require.Equal(t, "explicit", testConfig.GetAPIToken())
 }
+
+func TestConfiguration_ExcludeAndParallelismDefaults(t *testing.T) {
+	testConfig, err := config.Create()
+	require.NoError(t, err)
+
+	require.Empty(t, testConfig.GetStringSlice("exclude"))
+	require.True(t, testConfig.GetBool("exclude_virtual_disks"))
+	require.Equal(t, 1, testConfig.GetInt("commands.metrics_parallelism"))
+}

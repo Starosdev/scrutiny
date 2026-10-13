@@ -376,18 +376,22 @@ func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, modelFamily string, m
 
 		sm.Attributes[attrIdStr] = &attrModel
 
-		transient := isTransientAtaAttribute(cfg, collectorAttr.ID)
+		transient := IsTransientAtaAttribute(cfg, collectorAttr.ID)
 
 		// Only propagate failure if not transient AND not ignored
+		if !transient && !ignored {
+			sm.setFailedSmartFromAttribute(attrModel.Status)
+		}
+
 		if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !transient && !ignored {
 			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 		}
 	}
 }
 
-// isTransientAtaAttribute reports whether the given ATA attribute ID is configured as transient
+// IsTransientAtaAttribute reports whether the given ATA attribute ID is configured as transient
 // (failures.transient.ata), meaning its failure status should not propagate to the device.
-func isTransientAtaAttribute(cfg config.Interface, attrID int) bool {
+func IsTransientAtaAttribute(cfg config.Interface, attrID int) bool {
 	if cfg == nil {
 		return false
 	}
@@ -464,9 +468,26 @@ func (sm *Smart) ProcessNvmeSmartInfo(cfg config.Interface, nvmeSmartHealthInfor
 	for attrId, val := range sm.Attributes {
 		nvmeAttr := val.(*SmartNvmeAttribute)
 		ignored := applyNvmeOverrides(cfg, sm.DeviceWWN, attrId, nvmeAttr)
-		if pkg.AttributeStatusHas(nvmeAttr.GetStatus(), pkg.AttributeStatusFailedScrutiny) && !ignored {
-			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
+		if !ignored {
+			sm.setDeviceStatusFromNvmeAttribute(nvmeAttr.GetStatus())
 		}
+	}
+}
+
+// setFailedSmartFromAttribute marks the device as failing manufacturer SMART when an
+// attribute (not ignored by the caller) carries AttributeStatusFailedSmart.
+func (sm *Smart) setFailedSmartFromAttribute(status pkg.AttributeStatus) {
+	if pkg.AttributeStatusHas(status, pkg.AttributeStatusFailedSmart) {
+		sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedSmart)
+	}
+}
+
+// setDeviceStatusFromNvmeAttribute folds an NVMe attribute status into the device status,
+// keeping manufacturer (SMART) and Scrutiny failures separate.
+func (sm *Smart) setDeviceStatusFromNvmeAttribute(status pkg.AttributeStatus) {
+	sm.setFailedSmartFromAttribute(status)
+	if pkg.AttributeStatusHas(status, pkg.AttributeStatusFailedScrutiny) {
+		sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 	}
 }
 
@@ -628,9 +649,13 @@ func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, modelFam
 
 		sm.Attributes[attrIdStr] = &attrModel
 
-		transient := isTransientAtaAttribute(cfg, collectorAttr.ID)
+		transient := IsTransientAtaAttribute(cfg, collectorAttr.ID)
 
 		// Only propagate failure if not transient AND not ignored
+		if !transient && !ignored {
+			sm.setFailedSmartFromAttribute(attrModel.Status)
+		}
+
 		if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !transient && !ignored {
 			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 		}
@@ -796,8 +821,8 @@ func (sm *Smart) processNvmeSmartInfoWithOverrides(cfg config.Interface, nvmeSma
 			sm.HasForcedFailure = true
 		}
 
-		if pkg.AttributeStatusHas(nvmeAttr.GetStatus(), pkg.AttributeStatusFailedScrutiny) && !ignored {
-			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
+		if !ignored {
+			sm.setDeviceStatusFromNvmeAttribute(nvmeAttr.GetStatus())
 		}
 	}
 }
