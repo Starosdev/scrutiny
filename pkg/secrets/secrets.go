@@ -17,7 +17,7 @@ const (
 	DefaultDir = "/opt/scrutiny/config"
 
 	// AuthTokenFile holds the generated web.auth.token (omnibus only).
-	AuthTokenFile = ".auth-token"
+	AuthTokenFile = ".auth-token" //nolint:gosec // file name, not a credential
 	// JWTSecretFile holds the generated web.auth.jwt_secret.
 	JWTSecretFile = ".jwt-secret"
 
@@ -58,7 +58,7 @@ func EnsureSecret(dir, name string) (secret string, created bool, err error) {
 
 // Read returns the trimmed contents of dir/name. A missing file returns an error wrapping os.ErrNotExist.
 func Read(dir, name string) (string, error) {
-	data, err := os.ReadFile(filepath.Join(dir, name)) //nolint:gosec // path is built from operator config, not request input
+	data, err := os.ReadFile(filepath.Join(dir, name))
 	if err != nil {
 		return "", err
 	}
