@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	cfgInfluxDBToken        = "web.influxdb.token"
-	cfgInfluxDBInitPassword = "web.influxdb.init_password"
-	cfgSecretsDir           = "web.secrets.dir"
+	cfgInfluxDBToken        = "web.influxdb.token"         //nolint:gosec // config key name, not a credential
+	cfgInfluxDBInitPassword = "web.influxdb.init_password" //nolint:gosec // config key name, not a credential
+	cfgSecretsDir           = "web.secrets.dir"            //nolint:gosec // config key name, not a credential
 
 	// LegacyInfluxToken is the admin token every Scrutiny release before 2.0 used when
 	// web.influxdb.token was not set. An InfluxDB that was already initialized without a token
