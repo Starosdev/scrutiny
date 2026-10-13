@@ -65,7 +65,8 @@ services:
       # Authentication is enabled by default (see docs/AUTH.md). With no token set, the container
       # generates one and saves it to ./config/.auth-token. Read it with:
       #   docker exec scrutiny cat /opt/scrutiny/config/.auth-token
-      # To choose your own, set both of these to the same value:
+      # To choose your own, set SCRUTINY_WEB_AUTH_TOKEN (the bundled collectors use it too).
+      # COLLECTOR_API_TOKEN is only needed if the collectors should use a different value:
       # SCRUTINY_WEB_AUTH_TOKEN: 'your-secret-api-token'
       # COLLECTOR_API_TOKEN: 'your-secret-api-token'
       # SCRUTINY_WEB_AUTH_ADMIN_PASSWORD: 'your-admin-password'

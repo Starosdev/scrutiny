@@ -342,3 +342,32 @@ func TestConfiguration_GetAPIToken_EnvVar(t *testing.T) {
 
 	require.Equal(t, "env-token-value", testConfig.GetAPIToken())
 }
+
+func TestConfiguration_GetAPIToken_Precedence(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(path.Join(dir, ".auth-token"), []byte("file-token\n"), 0o600))
+	t.Setenv("SCRUTINY_WEB_SECRETS_DIR", dir)
+	t.Setenv("SCRUTINY_WEB_AUTH_TOKEN", "")
+	t.Setenv("COLLECTOR_API_TOKEN", "")
+
+	// only the generated file
+	testConfig, err := config.Create()
+	require.NoError(t, err)
+	require.Equal(t, "file-token", testConfig.GetAPIToken())
+
+	// the server token env var beats the file
+	t.Setenv("SCRUTINY_WEB_AUTH_TOKEN", "web-env-token")
+	testConfig, err = config.Create()
+	require.NoError(t, err)
+	require.Equal(t, "web-env-token", testConfig.GetAPIToken())
+
+	// COLLECTOR_API_TOKEN beats the server token env var
+	t.Setenv("COLLECTOR_API_TOKEN", "collector-env-token")
+	testConfig, err = config.Create()
+	require.NoError(t, err)
+	require.Equal(t, "collector-env-token", testConfig.GetAPIToken())
+
+	// explicit config beats everything
+	testConfig.Set("api.token", "explicit")
+	require.Equal(t, "explicit", testConfig.GetAPIToken())
+}
