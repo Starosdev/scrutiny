@@ -55,6 +55,11 @@ validation does not push images; the release tag then triggers
 The release job installs exact versions from the root package-lock.json with
 npm ci, then runs .github/scripts/run-semantic-release.mjs. Update
 package.json and package-lock.json together when changing release tooling.
+Keep `conventional-changelog-conventionalcommits` on 9.x while
+`conventional-changelog-writer` is on 8.x: preset 10.0.0 replaced its
+templates with render functions that writer 8.x does not use, and releases
+1.69.0 through 1.76.5 shipped with empty changelog entries. Nothing alerts
+on this; the release still succeeds.
 
 - Semantic versioning still comes from conventional commits and `semantic-release`.
 - Raw release notes are generated deterministically from `master` PR merge commits reachable between the previous tag and the new tag.
