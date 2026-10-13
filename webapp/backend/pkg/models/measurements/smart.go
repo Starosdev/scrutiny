@@ -378,6 +378,10 @@ func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, modelFamily string, m
 
 		transient := isTransientAtaAttribute(cfg, collectorAttr.ID)
 
+		if !ignored {
+			sm.setFailedSmartFromAttribute(attrModel.Status)
+		}
+
 		// Only propagate failure if not transient AND not ignored
 		if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !transient && !ignored {
 			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
@@ -470,12 +474,18 @@ func (sm *Smart) ProcessNvmeSmartInfo(cfg config.Interface, nvmeSmartHealthInfor
 	}
 }
 
-// setDeviceStatusFromNvmeAttribute folds an NVMe attribute status into the device status,
-// keeping manufacturer (SMART) and Scrutiny failures separate.
-func (sm *Smart) setDeviceStatusFromNvmeAttribute(status pkg.AttributeStatus) {
+// setFailedSmartFromAttribute marks the device as failing manufacturer SMART when an
+// attribute (not ignored by the caller) carries AttributeStatusFailedSmart.
+func (sm *Smart) setFailedSmartFromAttribute(status pkg.AttributeStatus) {
 	if pkg.AttributeStatusHas(status, pkg.AttributeStatusFailedSmart) {
 		sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedSmart)
 	}
+}
+
+// setDeviceStatusFromNvmeAttribute folds an NVMe attribute status into the device status,
+// keeping manufacturer (SMART) and Scrutiny failures separate.
+func (sm *Smart) setDeviceStatusFromNvmeAttribute(status pkg.AttributeStatus) {
+	sm.setFailedSmartFromAttribute(status)
 	if pkg.AttributeStatusHas(status, pkg.AttributeStatusFailedScrutiny) {
 		sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 	}
@@ -640,6 +650,10 @@ func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, modelFam
 		sm.Attributes[attrIdStr] = &attrModel
 
 		transient := isTransientAtaAttribute(cfg, collectorAttr.ID)
+
+		if !ignored {
+			sm.setFailedSmartFromAttribute(attrModel.Status)
+		}
 
 		// Only propagate failure if not transient AND not ignored
 		if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !transient && !ignored {

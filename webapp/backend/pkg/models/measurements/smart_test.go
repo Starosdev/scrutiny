@@ -2059,3 +2059,22 @@ func TestAttributeThresholdValueMatchesEvaluatedField(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, int64(9), nvmeValue)
 }
+
+func TestFromCollectorSmartInfo_AtaAttributeFailedSmartSetsDeviceStatus(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataBytes, err := os.ReadFile("../testdata/smart-fail2.json")
+	require.NoError(t, err)
+	var smartJson collector.SmartInfo
+	require.NoError(t, json.Unmarshal(smartDataBytes, &smartJson))
+	smartJson.SmartStatus.Passed = true // isolate the attribute path from smart_status
+
+	smartMdl := measurements.Smart{}
+	require.NoError(t, smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson))
+	require.True(t, pkg.DeviceStatusHas(smartMdl.Status, pkg.DeviceStatusFailedSmart))
+}
