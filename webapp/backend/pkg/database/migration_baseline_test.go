@@ -4,14 +4,18 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
 
+	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/glebarez/sqlite"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"gorm.io/gorm"
 )
 
@@ -108,22 +112,78 @@ func TestMigrateFreshSQLiteInstallUsesBaseline(t *testing.T) {
 	require.Equal(t, applied, appliedMigrationIDs(t, repo.gormClient))
 }
 
-func TestMigrateRefusesDatabaseOlderThanMinimumWithoutChangingIt(t *testing.T) {
+// sqliteProductionConfig is the configuration NewScrutinyRepository and openSQLiteDatabase read
+// for a SQLite database at path, with the default journal_mode=WAL connection pragma. Any other
+// key, such as the InfluxDB settings, is an unexpected call that fails the test.
+func sqliteProductionConfig(t *testing.T, path string) *mock_config.MockInterface {
+	t.Helper()
+	cfg := mock_config.NewMockInterface(gomock.NewController(t))
+	cfg.EXPECT().GetString("web.database.type").Return("sqlite").AnyTimes()
+	cfg.EXPECT().GetString("web.database.location").Return(path).AnyTimes()
+	cfg.EXPECT().GetString("web.database.journal_mode").Return("").AnyTimes()
+	cfg.EXPECT().GetString("log.level").Return("INFO").AnyTimes()
+	return cfg
+}
+
+// sqliteContents lists every schema object and every table's row count, read over a read-only
+// connection.
+func sqliteContents(t *testing.T, path string) []string {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open("file:"+path+"?mode=ro"), &gorm.Config{})
+	require.NoError(t, err)
+	defer func() {
+		if sqlDB, dbErr := db.DB(); dbErr == nil {
+			_ = sqlDB.Close()
+		}
+	}()
+	var objects []struct{ Type, Name, SQL string }
+	require.NoError(t, db.Raw(`SELECT type, name, coalesce(sql, '') AS sql FROM sqlite_master ORDER BY type, name`).Scan(&objects).Error)
+	var out []string
+	for _, o := range objects {
+		out = append(out, o.Type+" "+o.Name+" "+o.SQL)
+		if o.Type == "table" {
+			var n int64
+			require.NoError(t, db.Table(o.Name).Count(&n).Error)
+			out = append(out, fmt.Sprintf("rows %s %d", o.Name, n))
+		}
+	}
+	return out
+}
+
+// The production startup path refuses a too-old database over a read-only connection, before the
+// journal_mode=WAL pragma or the InfluxDB setup, so the file is byte-for-byte unchanged.
+func TestNewScrutinyRepositoryRefusesDatabaseOlderThanMinimumWithoutChangingIt(t *testing.T) {
+	ResetMigrationGuardForTests()
 	path := openFixture(t, "scrutiny-v1.69.0.db")
 	before := fileSHA256(t, path)
 
-	repo := openSQLiteRepo(t, path)
-	err := repo.Migrate(context.Background())
+	_, err := NewScrutinyRepository(sqliteProductionConfig(t, path), logrus.New())
 	require.ErrorIs(t, err, ErrDatabaseTooOld)
 	require.Contains(t, err.Error(), "1.76.x")
 	require.Contains(t, err.Error(), "m20260809000000")
-	require.NoError(t, repo.Close())
 
 	require.Equal(t, before, fileSHA256(t, path), "the refused database was modified")
 	for _, suffix := range []string{"-journal", "-wal", "-shm"} {
 		_, statErr := os.Stat(path + suffix)
 		require.True(t, os.IsNotExist(statErr), "unexpected %s file", suffix)
 	}
+}
+
+// Migrate refuses too, on a connection opened with the production DSN. That connection may
+// switch a DELETE-mode file to WAL, so this checks schema and data, not the file bytes.
+func TestMigrateRefusesDatabaseOlderThanMinimumWithoutChangingSchemaOrData(t *testing.T) {
+	path := openFixture(t, "scrutiny-v1.69.0.db")
+	before := sqliteContents(t, path)
+
+	db, err := openSQLiteDatabase(sqliteProductionConfig(t, path), logrus.New())
+	require.NoError(t, err)
+	repo := &scrutinyRepository{gormClient: db, logger: logrus.New()}
+	err = repo.Migrate(context.Background())
+	require.ErrorIs(t, err, ErrDatabaseTooOld)
+	require.Contains(t, err.Error(), "No schema or data was changed")
+	require.NoError(t, repo.Close())
+
+	require.Equal(t, before, sqliteContents(t, path))
 }
 
 func TestMigrateUpgradesMinimumVersionDatabase(t *testing.T) {
@@ -211,6 +271,10 @@ func TestClassifySQLiteDatabase(t *testing.T) {
 		{name: "at minimum version", setup: []string{
 			"CREATE TABLE migrations (id TEXT PRIMARY KEY)",
 			"INSERT INTO migrations VALUES ('m20250609210800'), ('" + minimumUpgradeMigrationID + "')",
+		}},
+		{name: "upstream history with an unknown upstream migration", setup: []string{
+			"CREATE TABLE migrations (id TEXT PRIMARY KEY)",
+			"INSERT INTO migrations VALUES ('m20250221084400'), ('m20260216155600'), ('m20260725120000')",
 		}},
 		{name: "staros history before minimum", setup: []string{
 			"CREATE TABLE migrations (id TEXT PRIMARY KEY)",

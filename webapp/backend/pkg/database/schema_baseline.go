@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -78,6 +79,7 @@ type baselineSettingEntry struct {
 func (baselineSettingEntry) TableName() string { return "settings" }
 
 // baselineModels is schemaModels with the three tables above swapped for their baseline structs.
+// Only SQLite uses it; see createBaselineSchema.
 func baselineModels() []interface{} {
 	out := schemaModels()
 	for i, model := range out {
@@ -93,10 +95,16 @@ func baselineModels() []interface{} {
 	return out
 }
 
-// createBaselineSchema builds the current schema directly from baselineModels, for a database
-// that starts empty and never ran the migration history.
+// createBaselineSchema builds the current schema directly from the models, for a database that
+// starts empty and never ran the migration history. SQLite uses baselineModels, so a new database
+// matches one that ran the SQLite history. PostgreSQL keeps schemaModels, the shape every
+// PostgreSQL database has had since 1.76.0, so databases created before and after 2.0 agree.
 func createBaselineSchema(db *gorm.DB) error {
-	if err := db.AutoMigrate(baselineModels()...); err != nil {
+	all := baselineModels()
+	if db.Name() == dialectPostgres {
+		all = schemaModels()
+	}
+	if err := db.AutoMigrate(all...); err != nil {
 		return err
 	}
 	for _, stmt := range baselineIndexes {
@@ -208,10 +216,24 @@ var upstreamMigrationIDs = map[string]bool{
 // ErrDatabaseTooOld means a Scrutiny SQLite database predates the minimum upgrade-from version.
 var ErrDatabaseTooOld = errors.New("database is older than the minimum upgrade-from version")
 
+// starosMigrationIDs are the schema migrations this fork added, which AnalogJ/scrutiny never
+// records.
+func starosMigrationIDs() map[string]bool {
+	out := map[string]bool{}
+	for _, m := range (&scrutinyRepository{}).schemaMigrations(context.Background()) {
+		if !upstreamMigrationIDs[m.ID] {
+			out[m.ID] = true
+		}
+	}
+	return out
+}
+
 // classifySQLiteDatabase decides how a SQLite database is migrated, reading only. It reports
 // fresh for a database with no tables, which gets the baseline. Every other database runs the
-// migrations it is missing, except a Scrutiny database that has recorded Staros migrations but
-// not minimumUpgradeMigrationID, which returns ErrDatabaseTooOld.
+// migrations it is missing, except a Scrutiny database that has recorded a Staros migration but
+// not minimumUpgradeMigrationID, which returns ErrDatabaseTooOld. IDs that are neither upstream
+// nor Staros (for example from an unreleased AnalogJ/scrutiny build) do not count as Staros
+// history, so such a database still takes the AnalogJ path.
 //
 // A database with tables but no recorded migrations predates gormigrate (AnalogJ/scrutiny before
 // 0.4.0) and keeps running the full history, as it did before the baseline existed.
@@ -242,24 +264,48 @@ func classifySQLiteDatabase(db *gorm.DB) (fresh bool, err error) {
 	if slices.Contains(applied, minimumUpgradeMigrationID) {
 		return false, nil
 	}
+	staros := starosMigrationIDs()
+	newest := ""
 	for _, id := range applied {
-		if !upstreamMigrationIDs[id] {
-			return false, fmt.Errorf("%w: this database was last migrated by a Scrutiny release older than 1.70.0 "+
-				"(it has migration %s but not %s). It has not been changed. Start the latest Scrutiny 1.76.x "+
-				"release on it once so it migrates, stop it, then start this version",
-				ErrDatabaseTooOld, latestAppliedID(applied), minimumUpgradeMigrationID)
+		if staros[id] && id > newest {
+			newest = id
 		}
+	}
+	if newest != "" {
+		return false, fmt.Errorf("%w: this database was last migrated by a Scrutiny release older than 1.70.0 "+
+			"(its newest migration is %s; %s is required). No schema or data was changed. Start the latest "+
+			"Scrutiny 1.76.x release on it once so it migrates, stop it, then start this version",
+			ErrDatabaseTooOld, newest, minimumUpgradeMigrationID)
 	}
 	return false, nil
 }
 
-// latestAppliedID returns the highest applied migration ID, for the refusal message.
-func latestAppliedID(applied []string) string {
-	latest := ""
-	for _, id := range applied {
-		if strings.TrimLeft(id, "mg") > strings.TrimLeft(latest, "mg") {
-			latest = id
-		}
+// precheckSQLiteDatabase classifies the SQLite database at path over a read-only connection and
+// returns ErrDatabaseTooOld for a database Migrate would refuse, so the refusal happens before the
+// normal connection sets journal_mode=WAL on it. A missing file is a new install. Any other
+// failure is logged and left to Migrate, which classifies again on the normal connection.
+func precheckSQLiteDatabase(path string, logger logrus.FieldLogger) error {
+	if _, err := os.Stat(path); err != nil {
+		return nil
 	}
-	return latest
+	db, err := gorm.Open(sqlite.Open("file:"+path+"?mode=ro"), &gorm.Config{
+		Logger: gormLogger.Default.LogMode(gormLogger.Silent),
+	})
+	if err != nil {
+		logger.Debugf("SQLite read-only precheck skipped: %v", err)
+		return nil
+	}
+	defer func() {
+		if sqlDB, dbErr := db.DB(); dbErr == nil {
+			_ = sqlDB.Close()
+		}
+	}()
+	if _, err := classifySQLiteDatabase(db); err != nil {
+		if errors.Is(err, ErrDatabaseTooOld) {
+			logger.Errorf("Database migration refused: %v", err)
+			return err
+		}
+		logger.Debugf("SQLite read-only precheck skipped: %v", err)
+	}
+	return nil
 }
