@@ -109,14 +109,14 @@ func (sa *SmartAtaAttribute) Inflate(key string, val interface{}) {
 // populate attribute status, using SMART Thresholds & Observed Metadata
 // Chainable
 func (sa *SmartAtaAttribute) PopulateAttributeStatus(profile *thresholds.ConsumerDriveProfile, isAtaSsd bool) *SmartAtaAttribute {
-	if strings.ToUpper(sa.WhenFailed) == pkg.AttributeWhenFailedFailingNow {
+	if strings.EqualFold(sa.WhenFailed, pkg.AttributeWhenFailedFailingNow) {
 		//this attribute has previously failed
 		sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusFailedSmart)
 		sa.StatusReason += "Attribute is failing manufacturer SMART threshold"
 		//if the Smart Status is failed, we should exit early, no need to look at thresholds.
 		return sa
 
-	} else if strings.ToUpper(sa.WhenFailed) == pkg.AttributeWhenFailedInThePast {
+	} else if strings.EqualFold(sa.WhenFailed, pkg.AttributeWhenFailedInThePast) {
 		sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusWarningScrutiny)
 		sa.StatusReason += "Attribute has previously failed manufacturer SMART threshold"
 	}
