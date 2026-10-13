@@ -28,6 +28,10 @@ jobs:
           fi
       - name: Guard SVG icon references
         run: npm --prefix webapp/frontend run test:icons
+      - name: Guard Tailwind arbitrary values
+        # src/styles/tailwind.scss is pre-generated, so a class such as
+        # 'min-w-[200px]' compiles to nothing and the style silently drops (#937).
+        run: npm --prefix webapp/frontend run test:tailwind
       - name: Test Frontend
         run: |
           make binary-frontend-test-coverage
@@ -152,7 +156,7 @@ jobs:
       - name: Package Collector Omnibus
         run: make package-collector-omnibus
       - name: Archive
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: binaries-${{ matrix.cfg.on }}-${{ matrix.cfg.goos }}-${{ matrix.cfg.goarch }}-${{ matrix.cfg.goarm || 'na' }}
           path: |

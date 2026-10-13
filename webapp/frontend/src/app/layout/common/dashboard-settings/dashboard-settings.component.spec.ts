@@ -192,3 +192,48 @@ describe('DashboardSettingsComponent temperature notifications', () => {
         expect(saveButton.disabled).toBeTrue();
     });
 });
+
+describe('DashboardSettingsComponent notification channel fields', () => {
+    let component: DashboardSettingsComponent;
+    let fixture: ComponentFixture<DashboardSettingsComponent>;
+
+    beforeEach(async () => {
+        TestBed.configureTestingModule({
+            imports: [DashboardSettingsComponent, MatIconTestingModule],
+            providers: [
+                { provide: ScrutinyConfigService, useValue: { config$: new BehaviorSubject<AppConfig>(structuredClone(appConfig)) } },
+                { provide: AttributeOverrideService, useValue: {} },
+                { provide: DashboardService, useValue: {} },
+                { provide: NotifyUrlService, useValue: {} },
+                { provide: HttpClient, useValue: {} },
+            ],
+        });
+        fixture = TestBed.createComponent(DashboardSettingsComponent);
+        component = fixture.componentInstance;
+        spyOn(component, 'loadOverrides');
+        spyOn(component, 'loadOverrideDevices');
+        spyOn(component, 'loadNotifyUrls');
+        // Width of the settings dialog in the #937 report.
+        fixture.nativeElement.style.display = 'block';
+        fixture.nativeElement.style.width = '760px';
+        document.body.appendChild(fixture.nativeElement);
+        component.showAddUrlForm = true;
+        component.selectedEngine = 'shoutrrr';
+        component.selectedShoutrrrService = 'smtp';
+        fixture.detectChanges();
+        await fixture.whenStable();
+    });
+
+    afterEach(() => fixture.nativeElement.remove());
+
+    it('wraps SMTP fields instead of shrinking them into one row (#937)', () => {
+        const host = fixture.nativeElement.querySelector('input[placeholder="smtp.gmail.com"]').closest('mat-form-field');
+        const fields: HTMLElement[] = Array.from(host.parentElement.children);
+        const rows = new Set(fields.map((field) => Math.round(field.getBoundingClientRect().top)));
+        expect(fields.length).toBe(6);
+        expect(rows.size).toBeGreaterThan(1);
+        for (const field of fields.filter((element) => element.classList.contains('field-lg'))) {
+            expect(field.getBoundingClientRect().width).toBeGreaterThanOrEqual(200);
+        }
+    });
+});

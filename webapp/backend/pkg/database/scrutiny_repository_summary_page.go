@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 )
 
@@ -40,7 +41,7 @@ func buildSummaryPage(summaries map[string]*models.DeviceSummary, options models
 	attentionCount := 0
 	hostSearch := strings.ToLower(strings.TrimSpace(options.HostSearch))
 	for _, summary := range summaries {
-		if !summary.Device.Archived && summary.Device.DeviceStatus > 0 {
+		if !summary.Device.Archived && summaryNeedsAttention(summary, options.StatusThreshold) {
 			attentionCount++
 		}
 		if summary.Device.Archived == options.Archived && (hostSearch == "" || strings.Contains(strings.ToLower(summary.Device.HostId), hostSearch)) {
@@ -49,7 +50,7 @@ func buildSummaryPage(summaries map[string]*models.DeviceSummary, options models
 	}
 
 	sort.SliceStable(ordered, func(i, j int) bool {
-		return compareDeviceSummaries(ordered[i], ordered[j], options.Sort, options.Display) < 0
+		return compareDeviceSummaries(ordered[i], ordered[j], options.Sort, options.Display, options.StatusThreshold) < 0
 	})
 
 	totalItems := len(ordered)
@@ -146,9 +147,12 @@ func normalizeSummaryPageOptions(sr *scrutinyRepository, options *models.DeviceS
 	if options.Display == "" {
 		options.Display = sr.appConfig.GetString("user.dashboard_display")
 	}
+	if options.StatusThreshold == 0 {
+		options.StatusThreshold = pkg.MetricsStatusThreshold(sr.appConfig.GetInt("user.metrics.status_threshold"))
+	}
 }
 
-func compareDeviceSummaries(left, right *models.DeviceSummary, sortBy, display string) int {
+func compareDeviceSummaries(left, right *models.DeviceSummary, sortBy, display string, threshold pkg.MetricsStatusThreshold) int {
 	if hostComparison := strings.Compare(left.Device.HostId, right.Device.HostId); hostComparison != 0 {
 		return hostComparison
 	}
@@ -168,7 +172,7 @@ func compareDeviceSummaries(left, right *models.DeviceSummary, sortBy, display s
 	case "temperature":
 		comparison = compareInt64(summaryTemperature(left), summaryTemperature(right))
 	default:
-		comparison = compareInt64(summaryStatusValue(left), summaryStatusValue(right))
+		comparison = compareInt64(summaryStatusValue(left, threshold), summaryStatusValue(right, threshold))
 	}
 
 	if descending {
@@ -195,14 +199,38 @@ func normalizeDashboardSort(sortBy string) string {
 	}
 }
 
-func summaryStatusValue(summary *models.DeviceSummary) int64 {
+// summaryStatusValue ranks device health by severity, higher is worse, so status_desc
+// lists failing drives first. Like the dashboard badge, it applies the status threshold
+// to DeviceStatus and treats a forced failure as failed regardless of the threshold.
+// Mirrors statusCompareFn in the frontend device sort pipe.
+func summaryStatusValue(summary *models.DeviceSummary, threshold pkg.MetricsStatusThreshold) int64 {
 	if summary.SmartResults == nil {
+		return 1 // unknown, matches the badge shown without SMART results
+	}
+	if summary.Device.HasForcedFailure {
+		return 5
+	}
+	if threshold == 0 {
+		threshold = pkg.MetricsStatusThresholdBoth
+	}
+	status := int64(summary.Device.DeviceStatus) & int64(threshold)
+	if status == 0 {
 		return 0
 	}
-	if summary.Device.DeviceStatus == 0 {
-		return 1
+	return status + 1 // failed smart 2, scrutiny 3, both 4
+}
+
+// summaryNeedsAttention reports whether a device counts toward the dashboard attention
+// count: a forced failure, or a DeviceStatus failure that the status threshold keeps.
+// A device without SMART results still counts when its stored status failed.
+func summaryNeedsAttention(summary *models.DeviceSummary, threshold pkg.MetricsStatusThreshold) bool {
+	if summary.Device.HasForcedFailure {
+		return true
 	}
-	return int64(summary.Device.DeviceStatus) * -1
+	if threshold == 0 {
+		threshold = pkg.MetricsStatusThresholdBoth
+	}
+	return int64(summary.Device.DeviceStatus)&int64(threshold) != 0
 }
 
 func summaryPowerOnHours(summary *models.DeviceSummary) int64 {
