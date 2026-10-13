@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"mime"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -30,6 +31,7 @@ import (
 
 const configKeyMetricsEnabled = "web.metrics.enabled"
 const configKeyMqttEnabled = "web.mqtt.enabled"
+const configKeyTrustedProxies = "web.listen.trusted_proxies"
 const indexFile = "index.html"
 const apiDocsDirName = "docs"
 const swaggerUIFile = "swagger-ui.html"
@@ -78,6 +80,7 @@ func registerZFSPoolRoutes(zfs *gin.RouterGroup, allowPoolModifications bool) {
 
 func (ae *AppEngine) registerMiddleware(r *gin.Engine, logger *logrus.Entry) {
 	r.Use(middleware.LoggerMiddleware(logger))
+	r.Use(middleware.BodyLimitMiddleware(ae.Config.GetInt64("web.listen.max_body_bytes")))
 	r.Use(middleware.RepositoryMiddleware(ae.Config, logger))
 	r.Use(middleware.ConfigMiddleware(ae.Config))
 	r.Use(middleware.AuthMiddleware(ae.Config, logger))
@@ -136,6 +139,9 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 	_ = mime.AddExtensionType(".json", "application/json")
 
 	r := gin.New()
+	// Trust X-Forwarded-For only from the configured proxies (default: none), so a client cannot pick
+	// the IP that the login rate limiter and the logs see.
+	configureTrustedProxies(r, ae.Config.GetStringSlice(configKeyTrustedProxies), logger)
 	ae.registerMiddleware(r, logger)
 
 	basePath := ae.Config.GetString("web.listen.basepath")
@@ -326,6 +332,31 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 	return r
 }
 
+// configureTrustedProxies sets which peers may supply X-Forwarded-For. An empty list trusts none, and an
+// invalid list falls back to trusting none.
+func configureTrustedProxies(r *gin.Engine, proxies []string, logger *logrus.Entry) {
+	if len(proxies) == 0 {
+		proxies = nil
+	}
+	if err := r.SetTrustedProxies(proxies); err != nil {
+		logger.Errorf("Invalid %s, trusting no proxies: %v", configKeyTrustedProxies, err)
+		_ = r.SetTrustedProxies(nil)
+	}
+}
+
+// validateTrustedProxies rejects entries that are neither an IP address nor a CIDR range.
+func validateTrustedProxies(proxies []string) error {
+	for _, p := range proxies {
+		if net.ParseIP(p) != nil {
+			continue
+		}
+		if _, _, err := net.ParseCIDR(p); err != nil {
+			return errors.ConfigValidationError(fmt.Sprintf("`%s` entry %q is not an IP address or CIDR range", configKeyTrustedProxies, p))
+		}
+	}
+	return nil
+}
+
 func actualDocsBasePath(frontendPath string) string {
 	return filepath.Dir(frontendPath)
 }
@@ -364,6 +395,10 @@ func (ae *AppEngine) Start() error {
 	gin.SetMode(gin.ReleaseMode)
 	if strings.ToLower(ae.Config.GetString("log.level")) == "debug" {
 		gin.SetMode(gin.DebugMode)
+	}
+
+	if err := validateTrustedProxies(ae.Config.GetStringSlice(configKeyTrustedProxies)); err != nil {
+		return err
 	}
 
 	// Resolve auth secrets first: hub/spoke without a token must fail before anything else starts.
