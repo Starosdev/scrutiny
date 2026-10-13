@@ -36,17 +36,22 @@ fi
 # holds PDF reports (web.reports.path).
 for dir in /opt/scrutiny/config /opt/scrutiny/reports; do
     mkdir -p "$dir"
-    if ! find "$dir" \( ! -user "$PUID" -o ! -group "$PGID" \) -exec chown "$PUID:$PGID" {} + 2>/dev/null; then
+    if ! find "$dir" \( ! -user "$PUID" -o ! -group "$PGID" \) -exec chown -h "$PUID:$PGID" {} + 2>/dev/null; then
         log warning "could not change ownership of $dir to $PUID:$PGID. Make it writable by that user, or set PUID and PGID to its owner"
     fi
 done
 
 # Dropping privileges needs CAP_SETUID and CAP_SETGID. With cap_drop: [ALL] it fails, so probe first
 # and fall back to the current user rather than refusing to start.
-if ! setpriv --reuid="$PUID" --regid="$PGID" --clear-groups true 2>/dev/null; then
-    log warning "cannot drop privileges (missing CAP_SETUID or CAP_SETGID): running as root"
+# The server keeps no capabilities and cannot regain privileges (no_new_privs).
+DROP="--reuid=$PUID --regid=$PGID --clear-groups --no-new-privs --inh-caps=-all --bounding-set=-all"
+
+# shellcheck disable=SC2086 # DROP is a fixed list of options
+if ! setpriv $DROP true 2>/dev/null; then
+    log warning "cannot drop privileges (missing CAP_SETUID or CAP_SETGID): running as root. With cap_drop: [ALL], set user: PUID:PGID or add cap_add: [CHOWN, SETUID, SETGID]"
     exec "$@"
 fi
 
 export HOME=/tmp
-exec setpriv --reuid="$PUID" --regid="$PGID" --clear-groups "$@"
+# shellcheck disable=SC2086
+exec setpriv $DROP "$@"
