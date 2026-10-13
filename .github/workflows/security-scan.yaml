@@ -16,6 +16,7 @@ on:
     branches:
       - master
       - develop
+      - beta
 
 jobs:
   trivy-scan:
