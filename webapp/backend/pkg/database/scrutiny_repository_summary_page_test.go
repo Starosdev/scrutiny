@@ -8,8 +8,8 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func TestCompareDeviceSummariesKeepsHostsTogetherBeforeDeviceSort(t *testing.T) {

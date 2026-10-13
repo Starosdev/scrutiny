@@ -5,7 +5,7 @@ import (
 	"github.com/analogj/scrutiny/collector/pkg/common/shell"
 	"github.com/analogj/scrutiny/collector/pkg/models"
 	"github.com/jaypipes/ghw"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -61,7 +61,7 @@ func (d *Detect) wwnFallback(detectedDevice *models.Device) {
 func populateUdevInfo(detectedDevice *models.Device) error {
 	// Get device major:minor numbers
 	// `cat /sys/class/block/sda/dev`
-	devNo, err := ioutil.ReadFile(filepath.Join("/sys/class/block/", detectedDevice.DeviceName, "dev"))
+	devNo, err := os.ReadFile(filepath.Join("/sys/class/block", detectedDevice.DeviceName, "dev")) //nolint:gocritic // absolute sysfs path
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func populateUdevInfo(detectedDevice *models.Device) error {
 	// Look up block device in udev runtime database
 	// `cat /run/udev/data/b8:0`
 	udevID := "b" + strings.TrimSpace(string(devNo))
-	udevBytes, err := ioutil.ReadFile(filepath.Join("/run/udev/data/", udevID))
+	udevBytes, err := os.ReadFile(filepath.Join("/run/udev/data", udevID)) //nolint:gocritic,gosec // absolute udev path; udevID is the kernel major:minor read from sysfs
 	if err != nil {
 		return err
 	}

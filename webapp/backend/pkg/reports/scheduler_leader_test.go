@@ -7,9 +7,9 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	mock_database "github.com/analogj/scrutiny/webapp/backend/pkg/database/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
-	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func TestCheckAndRun_SkipsWhenNotLeader(t *testing.T) {

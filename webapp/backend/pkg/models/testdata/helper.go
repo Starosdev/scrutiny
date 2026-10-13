@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/sirupsen/logrus"
@@ -69,7 +68,7 @@ func SendPostRequest(url string, file io.Reader) ([]byte, error) {
 
 	logrus.Infof("%v", response.Status)
 
-	return ioutil.ReadAll(response.Body)
+	return io.ReadAll(response.Body)
 }
 
 // InfluxDB will throw an error/ignore any submitted data with a timestamp older than the
@@ -80,7 +79,7 @@ func readSmartDataFileFixTimestamp(daysToSubtract int, smartDataFilepath string)
 		return nil, err
 	}
 
-	metricsFileData, err := ioutil.ReadAll(metricsfile)
+	metricsFileData, err := io.ReadAll(metricsfile)
 	if err != nil {
 		return nil, err
 	}

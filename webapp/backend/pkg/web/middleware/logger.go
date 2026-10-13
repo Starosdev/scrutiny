@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"io"
-	"io/ioutil"
 	"math"
 	"net/http"
 	"os"
@@ -80,10 +79,10 @@ func cloneRequestBody(c *gin.Context) string {
 	if c.Request.Body == nil {
 		return ""
 	}
-	buf, _ := ioutil.ReadAll(c.Request.Body)
+	buf, _ := io.ReadAll(c.Request.Body)
 	// We have to create a new Buffer because the read reader will be consumed.
-	c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
-	return readBody(ioutil.NopCloser(bytes.NewBuffer(buf)))
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(buf))
+	return readBody(io.NopCloser(bytes.NewBuffer(buf)))
 }
 
 // logRequestResult logs the request at the level appropriate for its status code, or logs the

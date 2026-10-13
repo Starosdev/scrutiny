@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,10 +20,10 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/web"
-	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/mock/gomock"
 )
 
 /*
@@ -50,7 +49,7 @@ influxdb:2.0
 // helperCreateFrontendFiles creates the index.html file required by the health check
 func helperCreateFrontendFiles(t *testing.T, parentPath string) {
 	indexPath := path.Join(parentPath, "index.html")
-	err := ioutil.WriteFile(indexPath, []byte("<html></html>"), 0644)
+	err := os.WriteFile(indexPath, []byte("<html></html>"), 0644)
 	require.NoError(t, err)
 }
 
@@ -61,9 +60,9 @@ func helperCreateAPIDocsFiles(t *testing.T, docsPath string) {
 	swaggerPath := path.Join(docsPath, "swagger-ui.html")
 	openAPIPath := path.Join(docsPath, "openapi.yaml")
 
-	err = ioutil.WriteFile(swaggerPath, []byte(`<html><body>swagger<script>window.ui={url: "/api/docs/openapi.yaml"}</script></body></html>`), 0644)
+	err = os.WriteFile(swaggerPath, []byte(`<html><body>swagger<script>window.ui={url: "/api/docs/openapi.yaml"}</script></body></html>`), 0644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(openAPIPath, []byte("openapi: 3.0.3\ninfo:\n  title: test\n  version: 1.0.0\n"), 0644)
+	err = os.WriteFile(openAPIPath, []byte("openapi: 3.0.3\ninfo:\n  title: test\n  version: 1.0.0\n"), 0644)
 	require.NoError(t, err)
 }
 
@@ -81,7 +80,7 @@ func helperReadSmartDataFileFixTimestamp(t *testing.T, smartDataFilepath string)
 	metricsfile, err := os.Open(smartDataFilepath)
 	require.NoError(t, err)
 
-	metricsFileData, err := ioutil.ReadAll(metricsfile)
+	metricsFileData, err := io.ReadAll(metricsfile)
 	require.NoError(t, err)
 
 	//unmarshal because we need to change the timestamp
@@ -157,7 +156,7 @@ func TestServerTestSuite_WithCustomBasePath(t *testing.T) {
 
 func (suite *ServerTestSuite) TestHealthRoute() {
 	//setup
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
 
@@ -221,7 +220,7 @@ func (suite *ServerTestSuite) TestHealthRoute() {
 
 func (suite *ServerTestSuite) TestHealthRoute_MissingFrontend() {
 	//setup
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 
 	// Do NOT create index.html to trigger the frontend check failure
@@ -285,7 +284,7 @@ func (suite *ServerTestSuite) TestHealthRoute_MissingFrontend() {
 }
 
 func (suite *ServerTestSuite) TestAPIDocsRoutes() {
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 
 	frontendPath := path.Join(parentPath, "web")
@@ -349,7 +348,7 @@ func (suite *ServerTestSuite) TestAPIDocsRoutes() {
 
 func (suite *ServerTestSuite) TestRegisterDevicesRoute() {
 	//setup
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
 	mockCtrl := gomock.NewController(suite.T())
@@ -411,7 +410,7 @@ func (suite *ServerTestSuite) TestRegisterDevicesRoute() {
 }
 
 func (suite *ServerTestSuite) TestRegisterDevicesRoute_LegacySmartSupportBool() {
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
 
@@ -473,7 +472,7 @@ func (suite *ServerTestSuite) TestRegisterDevicesRoute_LegacySmartSupportBool() 
 }
 
 func (suite *ServerTestSuite) TestRegisterDevicesRoute_LegacySmartSupportString() {
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
 
@@ -534,7 +533,7 @@ func (suite *ServerTestSuite) TestRegisterDevicesRoute_LegacySmartSupportString(
 
 func (suite *ServerTestSuite) TestUploadDeviceMetricsRoute() {
 	//setup
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
 	mockCtrl := gomock.NewController(suite.T())
@@ -600,7 +599,7 @@ func (suite *ServerTestSuite) TestUploadDeviceMetricsRoute() {
 
 func (suite *ServerTestSuite) TestPopulateMultiple() {
 	//setup
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
 	mockCtrl := gomock.NewController(suite.T())
@@ -694,7 +693,7 @@ func (suite *ServerTestSuite) TestPopulateMultiple() {
 //TODO: this test should use a recorded request/response playback.
 //func TestSendTestNotificationRoute(t *testing.T) {
 //	//setup
-//	parentPath, _ := ioutil.TempDir("", "")
+//	parentPath, _ := os.MkdirTemp("", "")
 //	defer os.RemoveAll(parentPath)
 //	mockCtrl := gomock.NewController(t)
 //	defer mockCtrl.Finish()
@@ -718,7 +717,7 @@ func (suite *ServerTestSuite) TestPopulateMultiple() {
 
 func (suite *ServerTestSuite) TestSendTestNotificationRoute_WebhookFailure() {
 	//setup
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
 	mockCtrl := gomock.NewController(suite.T())
@@ -776,7 +775,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_WebhookFailure() {
 
 func (suite *ServerTestSuite) TestSendTestNotificationRoute_ScriptFailure() {
 	//setup
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
 	mockCtrl := gomock.NewController(suite.T())
@@ -834,7 +833,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_ScriptFailure() {
 
 func (suite *ServerTestSuite) TestSendTestNotificationRoute_ScriptSuccess() {
 	//setup
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
 	mockCtrl := gomock.NewController(suite.T())
@@ -892,7 +891,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_ScriptSuccess() {
 
 func (suite *ServerTestSuite) TestSendTestNotificationRoute_ShoutrrrFailure() {
 	//setup
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
 	mockCtrl := gomock.NewController(suite.T())
@@ -948,7 +947,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_ShoutrrrFailure() {
 }
 
 func (suite *ServerTestSuite) TestSendTestNotificationRoute_AppriseSuccess() {
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
 
@@ -1008,7 +1007,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_AppriseSuccess() {
 }
 
 func (suite *ServerTestSuite) TestSendTestNotificationRoute_AppriseFailure() {
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
 
@@ -1069,7 +1068,7 @@ func (suite *ServerTestSuite) TestSendTestNotificationRoute_AppriseFailure() {
 
 func (suite *ServerTestSuite) TestGetDevicesSummaryRoute_Nvme() {
 	//setup
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
 	mockCtrl := gomock.NewController(suite.T())
@@ -1153,14 +1152,14 @@ func helperCreateTestStaticFiles(t *testing.T, parentPath string, files map[stri
 		dir := path.Dir(filePath)
 		err := os.MkdirAll(dir, 0755)
 		require.NoError(t, err)
-		err = ioutil.WriteFile(filePath, []byte(content), 0644)
+		err = os.WriteFile(filePath, []byte(content), 0644)
 		require.NoError(t, err)
 	}
 }
 
 func (suite *ServerTestSuite) TestStaticFileMimeTypes() {
 	//setup
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
 
@@ -1250,7 +1249,7 @@ func (suite *ServerTestSuite) TestStaticFileMimeTypes() {
 
 func (suite *ServerTestSuite) TestBrowserSubdirectoryDetection() {
 	//setup
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 
 	// Create browser subdirectory with index.html
@@ -1258,12 +1257,12 @@ func (suite *ServerTestSuite) TestBrowserSubdirectoryDetection() {
 	err := os.MkdirAll(browserPath, 0755)
 	require.NoError(suite.T(), err)
 	indexPath := path.Join(browserPath, "index.html")
-	err = ioutil.WriteFile(indexPath, []byte("<html><body>Browser subdirectory</body></html>"), 0644)
+	err = os.WriteFile(indexPath, []byte("<html><body>Browser subdirectory</body></html>"), 0644)
 	require.NoError(suite.T(), err)
 
 	// Create a test file in browser subdirectory
 	testFilePath := path.Join(browserPath, "test.js")
-	err = ioutil.WriteFile(testFilePath, []byte("console.log('test');"), 0644)
+	err = os.WriteFile(testFilePath, []byte("console.log('test');"), 0644)
 	require.NoError(suite.T(), err)
 
 	mockCtrl := gomock.NewController(suite.T())
@@ -1329,13 +1328,13 @@ func (suite *ServerTestSuite) TestBrowserSubdirectoryDetection() {
 
 func (suite *ServerTestSuite) TestBrowserSubdirectoryDetection_NoBrowserDir() {
 	//setup - create index.html directly in parent path (no browser subdirectory)
-	parentPath, _ := ioutil.TempDir("", "")
+	parentPath, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(parentPath)
 	helperCreateFrontendFiles(suite.T(), parentPath)
 
 	// Create a test file in parent path
 	testFilePath := path.Join(parentPath, "test.js")
-	err := ioutil.WriteFile(testFilePath, []byte("console.log('test');"), 0644)
+	err := os.WriteFile(testFilePath, []byte("console.log('test');"), 0644)
 	require.NoError(suite.T(), err)
 
 	mockCtrl := gomock.NewController(suite.T())

@@ -1,7 +1,6 @@
 package detect
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -19,7 +18,7 @@ md0 : active raid1 sdb[1] sda[0]
 
 unused devices: <none>`
 
-	tmpfile, err := ioutil.TempFile("", "mdstat")
+	tmpfile, err := os.CreateTemp("", "mdstat")
 	require.NoError(t, err)
 	defer os.Remove(tmpfile.Name())
 

@@ -8,9 +8,9 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
-	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func createHeartbeatTestAppEngine(t *testing.T) (*AppEngine, *gomock.Controller) {
@@ -182,8 +182,8 @@ func TestHeartbeatMonitor_FailedDeviceSkipsHeartbeat(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		name         string
-		devices      []models.Device
+		name          string
+		devices       []models.Device
 		expectHealthy bool
 	}{
 		{

@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func TestDeviceHistoryQueriesUseDeviceIdentityInsteadOfHostID(t *testing.T) {
