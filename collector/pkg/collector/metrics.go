@@ -126,7 +126,8 @@ func (mc *MetricsCollector) collectAll(devices []models.Device) {
 	wait := time.Duration(mc.config.GetInt("commands.metrics_smartctl_wait")) * time.Second
 	slots := make(chan struct{}, parallelism)
 	var wg sync.WaitGroup
-	for _, device := range devices {
+	for ndx := range devices {
+		device := &devices[ndx]
 		// Use device_id as the primary identifier for API calls.
 		// Fall back to WWN for compatibility with older backends that do not return device_id.
 		deviceIdentifier := device.DeviceID

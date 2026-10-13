@@ -170,9 +170,9 @@ type SkippedDevice struct {
 // excluder decides which devices are left out by the exclude list. Patterns are compiled
 // once per scan so an invalid one warns once per run.
 type excluder struct {
+	explicit func(*models.Device) bool
 	user     []*regexp.Regexp
 	defaults []*regexp.Regexp
-	explicit func(*models.Device) bool
 }
 
 func (d *Detect) newExcluder() *excluder {
