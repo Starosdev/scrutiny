@@ -85,10 +85,12 @@ func (c *configuration) Init() error {
 	c.SetDefault("web.influxdb.retention_policy", true)
 
 	// InfluxDB retention period settings (in seconds)
-	// daily bucket: 15 days = 60*60*24*15 = 1,296,000 seconds
-	c.SetDefault("web.influxdb.retention.daily", 1_296_000)
-	// weekly bucket: 9 weeks = 60*60*24*7*9 = 5,443,200 seconds
-	c.SetDefault("web.influxdb.retention.weekly", 5_443_200)
+	// daily bucket: 21 days = 60*60*24*21 = 1,814,400 seconds. The weekly downsample task reads
+	// days 7-14, so this leaves 7 days for a missed task run to catch up before data ages out.
+	c.SetDefault("web.influxdb.retention.daily", 1_814_400)
+	// weekly bucket: 13 weeks = 60*60*24*7*13 = 7,862,400 seconds. The monthly task reads up to
+	// 2 months back, so this leaves about a month of margin.
+	c.SetDefault("web.influxdb.retention.weekly", 7_862_400)
 	// monthly bucket: 25 months = 60*60*24*7*(52+52+4) = 65,318,400 seconds
 	c.SetDefault("web.influxdb.retention.monthly", 65_318_400)
 
