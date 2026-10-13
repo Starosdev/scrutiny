@@ -351,7 +351,7 @@ func validateTrustedProxies(proxies []string) error {
 			continue
 		}
 		if _, _, err := net.ParseCIDR(p); err != nil {
-			return errors.ConfigValidationError(fmt.Sprintf("`%s` entry %q is not an IP address or CIDR range", configKeyTrustedProxies, p))
+			return errors.ConfigValidationError(fmt.Sprintf("%#q entry %q is not an IP address or CIDR range", configKeyTrustedProxies, p))
 		}
 	}
 	return nil

@@ -12,9 +12,9 @@ import (
 
 const (
 	configKeyAuthEnabled = "web.auth.enabled"
-	configKeyAuthToken   = "web.auth.token" //nolint:gosec // config key name, not a credential
-	configKeyJWTSecret   = "web.auth.jwt_secret"
-	configKeySecretsDir  = "web.secrets.dir"
+	configKeyAuthToken   = "web.auth.token"      //nolint:gosec // config key name, not a credential
+	configKeyJWTSecret   = "web.auth.jwt_secret" //nolint:gosec // config key name, not a credential
+	configKeySecretsDir  = "web.secrets.dir"     //nolint:gosec // config key name, not a credential
 
 	localCollectorBinary = "scrutiny-collector-metrics"
 )
