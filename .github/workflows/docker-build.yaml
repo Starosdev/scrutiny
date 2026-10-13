@@ -100,6 +100,13 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # docker/metadata-action rewrites every {{version}}-based pattern to plain
+      # {{version}} for prerelease versions, so per-image prerelease tags are
+      # built here from the tag name instead.
+      - name: Resolve prerelease version
+        id: prerelease
+        if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-')
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v6
@@ -118,7 +125,8 @@ jobs:
             type=raw,value=beta,enable=${{ github.ref == 'refs/heads/beta' && github.event_name != 'workflow_dispatch' && matrix.default_image == true }}
             type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' && matrix.default_image == true }}
             # Version tags
-            type=semver,pattern={{version}}-${{ matrix.image }}
+            type=semver,pattern={{version}}-${{ matrix.image }},enable=${{ !contains(github.ref, '-') }}
+            type=raw,value=${{ steps.prerelease.outputs.version }}-${{ matrix.image }},enable=${{ steps.prerelease.outputs.version != '' }}
             type=semver,pattern={{major}}.{{minor}}-${{ matrix.image }},enable=${{ !contains(github.ref, '-') }}
             type=semver,pattern={{major}}-${{ matrix.image }},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') && !contains(github.ref, '-') }}
             type=semver,pattern={{version}},enable=${{ matrix.default_image == true }}
