@@ -75,6 +75,11 @@ func CreateAPIToken(c *gin.Context) {
 		return
 	}
 
+	if req.ExpiresAt != nil {
+		utc := req.ExpiresAt.UTC() // store one offset so text comparisons and audits agree
+		req.ExpiresAt = &utc
+	}
+
 	secret, err := auth.GenerateRandomSecret()
 	if err != nil {
 		logger.Errorln("Failed to generate API token:", err)

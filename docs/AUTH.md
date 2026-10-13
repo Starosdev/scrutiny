@@ -75,7 +75,7 @@ The following endpoints never require authentication, even when auth is enabled:
 | GET, HEAD | `/api/health` | Health check for load balancers and monitoring tools |
 | GET | `/api/auth/status` | Returns whether auth is enabled and which login methods are available |
 | POST | `/api/auth/login` | Authenticate with token or username/password to obtain a JWT |
-| GET | `/api/version` | Server version, API version, and capability flags. Booleans and version strings only, so a client can check compatibility and whether to show a login form before it has a token |
+| GET | `/api/version` | Server version, `api_version`, and `auth_required`, so a client can check compatibility and whether to show a login form before it has a token. The `capabilities` object is added only when the request carries a valid credential |
 
 ## Named API Tokens and Scopes
 
@@ -108,6 +108,8 @@ curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" https://scrutiny.example/
 - `expires_at` is optional. An expired or revoked token gets HTTP 401. Revoked tokens stay in the list with `revoked: true`.
 - `last_used_at` is updated at most once a minute per token.
 - Tokens are checked after the master token and JWT. When `web.auth.enabled=false`, scopes are not enforced.
+- A `collector` token is not bound to a host: it can submit data for any device, and for any ZFS pool, Btrfs filesystem or MDADM array. Store it with the same care as the master token.
+- `GET /api/settings` is available to `read` tokens, with secret-bearing fields (the Uptime Kuma push URL, which contains its push token) blanked. Admin credentials see them.
 - Existing collectors keep working with the master token. Giving each collector its own `collector` token lets you revoke one host without rotating the rest.
 
 ## API Docs Access

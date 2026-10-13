@@ -132,34 +132,100 @@ func TestRevokeAPIToken(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, del("abc"))
 }
 
-func TestGetVersion_Shape(t *testing.T) {
+func getVersion(t *testing.T, scope string) map[string]any {
+	t.Helper()
 	ctrl := gomock.NewController(t)
 	cfg := mock_config.NewMockInterface(ctrl)
-	cfg.EXPECT().GetBool("web.auth.enabled").Return(true)
+	cfg.EXPECT().GetBool("web.auth.enabled").Return(true).AnyTimes()
 	cfg.EXPECT().GetBool("web.zfs.allow_pool_modifications").Return(false).AnyTimes()
-	cfg.EXPECT().GetBool("web.metrics.enabled").Return(true)
-	cfg.EXPECT().GetBool("web.mqtt.enabled").Return(false)
+	cfg.EXPECT().GetBool("web.metrics.enabled").Return(true).AnyTimes()
+	cfg.EXPECT().GetBool("web.mqtt.enabled").Return(false).AnyTimes()
 	r := setupTokensRouter(t, mock_database.NewMockDeviceRepo(ctrl), cfg)
-
+	if scope != "" {
+		r = gin.New()
+		r.Use(func(c *gin.Context) {
+			c.Set("CONFIG", cfg)
+			c.Set("AUTH_SCOPE", scope)
+		})
+		r.GET("/api/version", handler.GetVersion)
+	}
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/version", nil)
 	r.ServeHTTP(w, req)
-
 	require.Equal(t, http.StatusOK, w.Code)
-	var resp struct {
-		Success      bool            `json:"success"`
-		Version      string          `json:"version"`
-		APIVersion   string          `json:"api_version"`
-		Capabilities map[string]bool `json:"capabilities"`
-	}
+	var resp map[string]any
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	require.True(t, resp.Success)
-	require.NotEmpty(t, resp.Version)
-	require.Equal(t, handler.APIVersion, resp.APIVersion)
-	require.Equal(t, true, resp.Capabilities["auth_required"])
-	require.Equal(t, true, resp.Capabilities["scoped_tokens"])
-	require.Equal(t, true, resp.Capabilities["metrics_enabled"])
-	require.Equal(t, false, resp.Capabilities["mqtt_enabled"])
-	require.Contains(t, resp.Capabilities, "collector_trigger_enabled")
-	require.Contains(t, resp.Capabilities, "zfs_pool_modifications_allowed")
+	return resp
+}
+
+func TestGetVersion_AnonymousGetsMinimalFields(t *testing.T) {
+	resp := getVersion(t, "")
+	require.Equal(t, handler.APIVersion, resp["api_version"])
+	require.NotEmpty(t, resp["version"])
+	require.Equal(t, true, resp["auth_required"])
+	require.NotContains(t, resp, "capabilities")
+}
+
+func TestGetVersion_AuthenticatedGetsCapabilities(t *testing.T) {
+	for _, scope := range []string{models.APITokenScopeRead, models.APITokenScopeCollector, models.APITokenScopeAdmin} {
+		resp := getVersion(t, scope)
+		caps, ok := resp["capabilities"].(map[string]any)
+		require.True(t, ok, "scope %s should see capabilities", scope)
+		require.Equal(t, true, caps["scoped_tokens"])
+		require.Equal(t, true, caps["metrics_enabled"])
+		require.Equal(t, false, caps["mqtt_enabled"])
+		require.Contains(t, caps, "collector_trigger_enabled")
+		require.Contains(t, caps, "zfs_pool_modifications_allowed")
+	}
+}
+
+func TestCreateAPIToken_ExpiryStoredInUTC(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	repo := mock_database.NewMockDeviceRepo(ctrl)
+	var stored *models.ApiToken
+	repo.EXPECT().CreateAPIToken(gomock.Any(), gomock.Any()).DoAndReturn(func(_ any, tok *models.ApiToken) error {
+		stored = tok
+		return nil
+	})
+	r := setupTokensRouter(t, repo, mock_config.NewMockInterface(ctrl))
+	exp := time.Now().Add(48 * time.Hour).In(time.FixedZone("x", 5*3600)).Format(time.RFC3339)
+	require.Equal(t, http.StatusCreated, postJSON(r, tokensPath, `{"name":"x","scope":"read","expires_at":"`+exp+`"}`).Code)
+	require.Equal(t, time.UTC, stored.ExpiresAt.Location())
+}
+
+func TestGetSettings_RedactsSecretsBelowAdmin(t *testing.T) {
+	const pushURL = "https://kuma.example/api/push/SECRETTOKEN?status=up"
+	for scope, wantSecret := range map[string]bool{
+		models.APITokenScopeRead:      false,
+		models.APITokenScopeCollector: false,
+		"":                            false,
+		models.APITokenScopeAdmin:     true,
+	} {
+		ctrl := gomock.NewController(t)
+		repo := mock_database.NewMockDeviceRepo(ctrl)
+		settings := &models.Settings{}
+		settings.Metrics.UptimeKumaPushURL = pushURL
+		repo.EXPECT().LoadSettings(gomock.Any()).Return(settings, nil)
+		cfg := mock_config.NewMockInterface(ctrl)
+		cfg.EXPECT().GetBool(gomock.Any()).Return(false).AnyTimes()
+
+		gin.SetMode(gin.TestMode)
+		r := gin.New()
+		r.Use(func(c *gin.Context) {
+			c.Set("LOGGER", logrus.WithField("test", t.Name()))
+			c.Set("DEVICE_REPOSITORY", repo)
+			c.Set("CONFIG", cfg)
+			if scope != "" {
+				c.Set("AUTH_SCOPE", scope)
+			}
+		})
+		r.GET("/api/settings", handler.GetSettings)
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/settings", nil)
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, wantSecret, bytes.Contains(w.Body.Bytes(), []byte("SECRETTOKEN")), "scope %q", scope)
+		require.Equal(t, pushURL, settings.Metrics.UptimeKumaPushURL, "redaction must not mutate the loaded settings")
+	}
 }

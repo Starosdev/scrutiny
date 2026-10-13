@@ -1,6 +1,7 @@
 package models
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -124,4 +125,70 @@ func TestApplyDefaults_PartiallyPopulated(t *testing.T) {
 	require.Equal(t, 1, s.Metrics.NotifyLevel)     // preserved
 	require.Equal(t, 3, s.Metrics.StatusThreshold) // defaulted
 	require.Equal(t, 2, s.DashboardColumns)
+}
+
+// nonSecretStringSettings lists every string setting reviewed as safe to show a read-scope caller.
+// A new string field fails TestSettingsRedactedClearsEverythingNotAllowlisted until someone decides
+// whether it can carry a credential (URL with a token, password, webhook) and either redacts it in
+// Settings.Redacted or adds it here.
+var nonSecretStringSettings = map[string]bool{
+	"Metrics.NotificationQuietStart": true, "Metrics.NotificationQuietEnd": true,
+	"Metrics.ReportMonthlyTime": true, "Metrics.ReportWeeklyTime": true, "Metrics.ReportDailyTime": true,
+	"Metrics.ReplacementRiskNotifyCategory": true, "Metrics.ConsumerDriveProfilesDenylist": true,
+	"Theme": true, "Layout": true, "DashboardDisplay": true, "DashboardSort": true, "DashboardDensity": true,
+	"TemperatureUnit": true, "LineStroke": true, "PoweredOnHoursUnit": true, "TimeFormat": true,
+}
+
+func fillStrings(v reflect.Value, path string, out map[string]bool) {
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		name := v.Type().Field(i).Name
+		if path != "" {
+			name = path + "." + name
+		}
+		switch f.Kind() {
+		case reflect.String:
+			f.SetString("SENTINEL")
+			out[name] = true
+		case reflect.Struct:
+			fillStrings(f, name, out)
+		}
+	}
+}
+
+func collectSurvivors(v reflect.Value, path string, survivors map[string]bool) {
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		name := v.Type().Field(i).Name
+		if path != "" {
+			name = path + "." + name
+		}
+		switch f.Kind() {
+		case reflect.String:
+			if f.String() == "SENTINEL" {
+				survivors[name] = true
+			}
+		case reflect.Struct:
+			collectSurvivors(f, name, survivors)
+		}
+	}
+}
+
+func TestSettingsRedactedClearsEverythingNotAllowlisted(t *testing.T) {
+	var s Settings
+	all := map[string]bool{}
+	fillStrings(reflect.ValueOf(&s).Elem(), "", all)
+
+	red := s.Redacted()
+	survivors := map[string]bool{}
+	collectSurvivors(reflect.ValueOf(&red).Elem(), "", survivors)
+
+	require.Empty(t, red.Metrics.UptimeKumaPushURL)
+	require.Equal(t, "SENTINEL", s.Metrics.UptimeKumaPushURL, "Redacted must work on a copy")
+	for name := range survivors {
+		require.True(t, nonSecretStringSettings[name], "string setting %s survives redaction but is not on the reviewed allowlist", name)
+	}
+	for name := range nonSecretStringSettings {
+		require.True(t, all[name], "allowlist names %s, which is not a string setting", name)
+	}
 }

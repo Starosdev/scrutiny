@@ -10,10 +10,13 @@ import (
 	"strings"
 	"testing"
 
+	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/web/handler"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -108,8 +111,10 @@ var publicRoutes = map[string]bool{
 	"GET /api/auth/status": true,
 	"POST /api/auth/login": true,
 	"GET /api/version":     true,
-	"GET /api/health":      true,
-	"HEAD /api/health":     true,
+	// served only when the docs directory exists; AuthMiddleware gates it separately (web.docs.public)
+	"GET /api/docs/openapi.yaml": true,
+	"GET /api/health":            true,
+	"HEAD /api/health":           true,
 }
 
 // specOnlyAllowlist lists documented operations that Setup registers outside registerAPIRoutes
@@ -118,17 +123,30 @@ var specOnlyAllowlist = map[string]bool{
 	"GET /api/docs/openapi.yaml": true,
 }
 
-func newContractRouter() *gin.Engine {
+// newContractRouter builds the route table the way Setup does (registerRoutes), minus the database
+// middleware, so a route registered outside registerAPIRoutes is still seen.
+func newContractRouter(t *testing.T) *gin.Engine {
+	t.Helper()
 	gin.SetMode(gin.TestMode)
+	ctrl := gomock.NewController(t)
+	cfg := mock_config.NewMockInterface(ctrl)
+	cfg.EXPECT().GetString("web.listen.basepath").Return("").AnyTimes()
+	cfg.EXPECT().GetString("web.src.frontend.path").Return(t.TempDir()).AnyTimes()
+	cfg.EXPECT().GetBool("web.metrics.enabled").Return(true).AnyTimes()
+	cfg.EXPECT().GetBool("web.zfs.allow_pool_modifications").Return(true).AnyTimes()
 	r := gin.New()
-	registerAPIRoutes(r.Group("/api"), true, true)
+	ae := &AppEngine{Config: cfg}
+	ae.registerRoutes(r, logrus.NewEntry(logrus.New()))
 	return r
 }
 
+// registeredRoutes returns the /api routes only; static, SPA and docs-page routes are not API.
 func registeredRoutes(r *gin.Engine) map[string]string {
 	routes := map[string]string{}
 	for _, ri := range r.Routes() {
-		routes[ri.Method+" "+ri.Path] = ri.Path
+		if strings.HasPrefix(ri.Path, "/api/") {
+			routes[ri.Method+" "+ri.Path] = ri.Path
+		}
 	}
 	return routes
 }
@@ -160,7 +178,7 @@ func TestRoutesMatchOpenAPI(t *testing.T) {
 	_, spec := loadOpenAPI(t)
 
 	var code []string
-	for key := range registeredRoutes(newContractRouter()) {
+	for key := range registeredRoutes(newContractRouter(t)) {
 		method, path, _ := strings.Cut(key, " ")
 		code = append(code, method+" "+ginParam.ReplaceAllString(path, "{$1}"))
 	}
@@ -189,16 +207,17 @@ func TestOpenAPIVersionMatchesAPIVersion(t *testing.T) {
 	require.Equal(t, handler.APIVersion, info["version"])
 }
 
-// TestEveryRouteDeclaresAScope checks the routeScopes table covers the route table exactly.
+// TestEveryRouteDeclaresAScope runs against the full router from registerRoutes, so a /api route added
+// outside the scope groups (or without a routeScopes entry) fails here. checks the routeScopes table covers the route table exactly.
 func TestEveryRouteDeclaresAScope(t *testing.T) {
-	for key := range registeredRoutes(newContractRouter()) {
+	for key := range registeredRoutes(newContractRouter(t)) {
 		if publicRoutes[key] {
 			continue
 		}
 		_, ok := routeScopes[key]
 		require.True(t, ok, "route %q has no entry in routeScopes (decide its minimum scope)", key)
 	}
-	registered := registeredRoutes(newContractRouter())
+	registered := registeredRoutes(newContractRouter(t))
 	for key := range routeScopes {
 		_, ok := registered[key]
 		require.True(t, ok, "routeScopes lists %q but no such route is registered", key)

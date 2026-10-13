@@ -85,3 +85,21 @@ func TestTouchAPITokenThrottlesWrites(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, first.LastUsedAt.Equal(*second.LastUsedAt))
 }
+
+// SQLite stores times as text. A token saved with a +05:00 offset must expire by instant, not by the
+// order of the text.
+func TestAPITokenExpiryWithNonUTCOffset(t *testing.T) {
+	repo, ctx := newAPITokenTestRepo(t)
+	plus5 := time.FixedZone("plus5", 5*3600)
+
+	// Expired 1h ago. In +05:00 the text reads a later hour than the current UTC text.
+	expired := time.Now().Add(-time.Hour).In(plus5)
+	live := time.Now().Add(time.Hour).In(plus5)
+	require.NoError(t, repo.CreateAPIToken(ctx, &models.ApiToken{Name: "e", Scope: models.APITokenScopeRead, TokenHash: "exp5", ExpiresAt: &expired}))
+	require.NoError(t, repo.CreateAPIToken(ctx, &models.ApiToken{Name: "l", Scope: models.APITokenScopeRead, TokenHash: "live5", ExpiresAt: &live}))
+
+	_, err := repo.GetActiveAPITokenByHash(ctx, "exp5")
+	require.ErrorIs(t, err, gorm.ErrRecordNotFound)
+	_, err = repo.GetActiveAPITokenByHash(ctx, "live5")
+	require.NoError(t, err)
+}

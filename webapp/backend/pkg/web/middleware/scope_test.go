@@ -157,3 +157,30 @@ func TestScopedToken_TouchedOnUse(t *testing.T) {
 }
 
 func ptrTime(t time.Time) *time.Time { return &t }
+
+func TestVersionRouteAuthenticatesOpportunistically(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	repo := mock_database.NewMockDeviceRepo(ctrl)
+	expectToken(repo, models.APITokenScopeRead)
+	repo.EXPECT().GetActiveAPITokenByHash(gomock.Any(), gomock.Any()).Return(nil, gorm.ErrRecordNotFound).AnyTimes()
+	r := setupScopeRouter(t, repo, true)
+	r.GET("/api/version", func(c *gin.Context) {
+		scope, _ := c.Get("AUTH_SCOPE")
+		c.JSON(http.StatusOK, gin.H{"scope": scope})
+	})
+
+	for bearer, want := range map[string]string{"": "", "garbage": "", scopedPlaintext: models.APITokenScopeRead, testAPIToken: models.APITokenScopeAdmin} {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/version", nil)
+		if bearer != "" {
+			req.Header.Set("Authorization", bearerPrefix+bearer)
+		}
+		r.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code, "version must never be rejected")
+		if want == "" {
+			require.NotContains(t, w.Body.String(), "scope\":\"")
+		} else {
+			require.Contains(t, w.Body.String(), want)
+		}
+	}
+}

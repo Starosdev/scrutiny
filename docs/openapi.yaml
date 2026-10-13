@@ -71,7 +71,7 @@ paths:
     get:
       tags: [Auth]
       summary: Get server version, API version, and capability flags
-      description: Public so a client can check compatibility and whether to show a login form before it has a token. Returns the release version and booleans only.
+      description: Public so a client can check compatibility and whether to show a login form before it has a token. An anonymous caller gets `version`, `api_version` and `auth_required`. `capabilities` is included only when the request carries a valid credential of any scope.
       security: []
       responses:
         "200":
@@ -1794,6 +1794,7 @@ components:
           description: API major version; matches `info.version` of this document
         capabilities:
           type: object
+          description: Present only for authenticated requests
           properties:
             auth_required:
               type: boolean
@@ -1808,7 +1809,9 @@ components:
               type: boolean
             mqtt_enabled:
               type: boolean
-      required: [success, version, api_version, capabilities]
+        auth_required:
+          type: boolean
+      required: [success, version, api_version, auth_required]
     ApiToken:
       type: object
       description: Token metadata. The secret and its hash are never included.

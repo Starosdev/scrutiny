@@ -18,24 +18,30 @@ const APIVersion = "2"
 //
 // It is public, like /api/auth/status, because a client must read it before it can log in: it needs
 // api_version to decide whether it can talk to this server and auth_required to decide whether to
-// show a login form. It returns only the release version and booleans. It carries no paths, hosts,
+// show a login form. Anonymous callers get only the release version, api_version and auth_required; the full capabilities object needs any valid credential. It carries no paths, hosts,
 // secrets, or token material. The cost is that an unauthenticated caller can fingerprint the release;
 // /api/auth/status already exposes that this is Scrutiny with auth settings, and the release
 // version is public on GitHub.
 func GetVersion(c *gin.Context) {
 	appConfig := c.MustGet("CONFIG").(config.Interface)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":     true,
-		"version":     version.VERSION,
-		"api_version": APIVersion,
-		"capabilities": gin.H{
+	resp := gin.H{
+		"success":       true,
+		"version":       version.VERSION,
+		"api_version":   APIVersion,
+		"auth_required": auth.IsAuthEnabled(appConfig),
+	}
+	// AuthMiddleware sets AUTH_SCOPE when the request carries a valid credential (or auth is off).
+	// Anonymous callers get only the three fields above.
+	if scope, _ := c.Get("AUTH_SCOPE"); scope != nil {
+		resp["capabilities"] = gin.H{
 			"auth_required":                  auth.IsAuthEnabled(appConfig),
 			"scoped_tokens":                  true,
 			"collector_trigger_enabled":      collectorTriggerEnabled(),
 			"zfs_pool_modifications_allowed": zfsPoolModificationsAllowed(c),
 			"metrics_enabled":                appConfig.GetBool("web.metrics.enabled"),
 			"mqtt_enabled":                   appConfig.GetBool("web.mqtt.enabled"),
-		},
-	})
+		}
+	}
+	c.JSON(http.StatusOK, resp)
 }

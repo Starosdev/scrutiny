@@ -270,7 +270,13 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 	// the IP that the login rate limiter and the logs see.
 	configureTrustedProxies(r, ae.Config.GetStringSlice(configKeyTrustedProxies), logger)
 	ae.registerMiddleware(r, logger)
+	ae.registerRoutes(r, logger)
+	return r
+}
 
+// registerRoutes registers the API, docs, and frontend routes. It is separate from Setup so a test can
+// build the full route table without opening a database.
+func (ae *AppEngine) registerRoutes(r *gin.Engine, logger *logrus.Entry) {
 	basePath := ae.Config.GetString("web.listen.basepath")
 	logger.Debugf("basepath: %s", basePath)
 
@@ -356,7 +362,6 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 	r.NoRoute(func(c *gin.Context) {
 		c.File(filepath.Join(actualFrontendPath, indexFile))
 	})
-	return r
 }
 
 // configureTrustedProxies sets which peers may supply X-Forwarded-For. An empty list trusts none, and an

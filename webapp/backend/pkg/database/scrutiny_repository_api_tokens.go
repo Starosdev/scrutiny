@@ -41,13 +41,18 @@ func (sr *scrutinyRepository) RevokeAPIToken(ctx context.Context, id uint) error
 }
 
 // GetActiveAPITokenByHash looks up a token by its hash, skipping revoked and expired tokens.
+// Expiry is checked in Go, not SQL: SQLite stores times as text, so a SQL comparison is wrong for
+// values saved with a non-UTC offset.
 func (sr *scrutinyRepository) GetActiveAPITokenByHash(ctx context.Context, tokenHash string) (*models.ApiToken, error) {
 	var token models.ApiToken
 	err := sr.gormClient.WithContext(ctx).
-		Where("token_hash = ? AND revoked = ? AND (expires_at IS NULL OR expires_at > ?)", tokenHash, false, time.Now()).
+		Where("token_hash = ? AND revoked = ?", tokenHash, false).
 		First(&token).Error
 	if err != nil {
 		return nil, err
+	}
+	if token.ExpiresAt != nil && !token.ExpiresAt.After(time.Now().UTC()) {
+		return nil, gorm.ErrRecordNotFound
 	}
 	return &token, nil
 }

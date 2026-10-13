@@ -23,6 +23,9 @@ var publicPathSuffixes = []string{
 	"/api/version",
 }
 
+// versionPathSuffix is the public route that authenticates opportunistically.
+const versionPathSuffix = "/api/version"
+
 // docsPathSuffixes lists the served documentation routes.
 var docsPathSuffixes = []string{
 	"/docs/api",
@@ -251,6 +254,11 @@ func (ac *authContext) authorize(c *gin.Context) {
 	// Non-API routes (frontend static files, SPA routes) and public API routes bypass auth.
 	// Only authenticated /api/* paths are subject to authentication.
 	if !strings.Contains(requestPath, "/api/") || isPublicPath(requestPath) {
+		// /api/version shows more to an authenticated caller. Try to authenticate without rejecting:
+		// a missing or bad token just leaves AUTH_SCOPE unset.
+		if strings.HasSuffix(requestPath, versionPathSuffix) {
+			ac.validateGeneralAuth(c)
+		}
 		c.Next()
 		return
 	}

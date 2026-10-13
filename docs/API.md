@@ -39,7 +39,7 @@ Named tokens (`POST /api/settings/tokens`) carry one scope: `read` for endpoints
 
 ## Versioning and Stability
 
-- `GET /api/version` returns the release `version`, the `api_version` (the major version of this contract, also `info.version` in the spec), and a `capabilities` object. Clients should read capability flags from it instead of inferring them from settings responses.
+- `GET /api/version` returns the release `version`, the `api_version` (the major version of this contract, also `info.version` in the spec), and `auth_required`. Authenticated requests also get a `capabilities` object. Clients should read capability flags from it instead of inferring them from settings responses.
 - Paths documented in the spec are stable within an API major version. Fields are only added, never removed or retyped.
 - A deprecation is announced one minor release before the change ships in the next major.
 - A Go test (`TestRoutesMatchOpenAPI`) compares the routes registered in `server.go` with the paths in the spec and fails on any difference.
