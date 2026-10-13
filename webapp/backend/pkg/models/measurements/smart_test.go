@@ -2078,3 +2078,38 @@ func TestFromCollectorSmartInfo_AtaAttributeFailedSmartSetsDeviceStatus(t *testi
 	require.NoError(t, smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson))
 	require.True(t, pkg.DeviceStatusHas(smartMdl.Status, pkg.DeviceStatusFailedSmart))
 }
+
+func ingestFail2WithFailedNow(t *testing.T, transient []int, overrideList interface{}, attrID int) measurements.Smart {
+	t.Helper()
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return(transient).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(overrideList).AnyTimes()
+
+	smartDataBytes, err := os.ReadFile("../testdata/smart-fail2.json")
+	require.NoError(t, err)
+	var smartJson collector.SmartInfo
+	require.NoError(t, json.Unmarshal(smartDataBytes, &smartJson))
+	smartJson.SmartStatus.Passed = true // isolate the attribute path from smart_status
+	if attrID != 5 {
+		smartJson.AtaSmartAttributes.Table[indexOfAtaAttribute(t, smartJson, 5)].ID = attrID
+	}
+
+	smartMdl := measurements.Smart{}
+	require.NoError(t, smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson))
+	return smartMdl
+}
+
+func TestFromCollectorSmartInfo_TransientAttributeFailedNowDoesNotFailDevice(t *testing.T) {
+	// Attribute 195 is in the default failures.transient.ata list.
+	smartMdl := ingestFail2WithFailedNow(t, []int{195}, nil, 195)
+	require.False(t, pkg.DeviceStatusHas(smartMdl.Status, pkg.DeviceStatusFailedSmart))
+}
+
+func TestFromCollectorSmartInfo_IgnoredAttributeFailedNowDoesNotFailDevice(t *testing.T) {
+	ignore := []map[string]interface{}{{"protocol": "ATA", "attribute_id": "5", "action": "ignore"}}
+	smartMdl := ingestFail2WithFailedNow(t, []int{195}, ignore, 5)
+	require.False(t, pkg.DeviceStatusHas(smartMdl.Status, pkg.DeviceStatusFailedSmart))
+}

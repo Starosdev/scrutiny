@@ -376,22 +376,22 @@ func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, modelFamily string, m
 
 		sm.Attributes[attrIdStr] = &attrModel
 
-		transient := isTransientAtaAttribute(cfg, collectorAttr.ID)
+		transient := IsTransientAtaAttribute(cfg, collectorAttr.ID)
 
-		if !ignored {
+		// Only propagate failure if not transient AND not ignored
+		if !transient && !ignored {
 			sm.setFailedSmartFromAttribute(attrModel.Status)
 		}
 
-		// Only propagate failure if not transient AND not ignored
 		if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !transient && !ignored {
 			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 		}
 	}
 }
 
-// isTransientAtaAttribute reports whether the given ATA attribute ID is configured as transient
+// IsTransientAtaAttribute reports whether the given ATA attribute ID is configured as transient
 // (failures.transient.ata), meaning its failure status should not propagate to the device.
-func isTransientAtaAttribute(cfg config.Interface, attrID int) bool {
+func IsTransientAtaAttribute(cfg config.Interface, attrID int) bool {
 	if cfg == nil {
 		return false
 	}
@@ -649,13 +649,13 @@ func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, modelFam
 
 		sm.Attributes[attrIdStr] = &attrModel
 
-		transient := isTransientAtaAttribute(cfg, collectorAttr.ID)
+		transient := IsTransientAtaAttribute(cfg, collectorAttr.ID)
 
-		if !ignored {
+		// Only propagate failure if not transient AND not ignored
+		if !transient && !ignored {
 			sm.setFailedSmartFromAttribute(attrModel.Status)
 		}
 
-		// Only propagate failure if not transient AND not ignored
 		if pkg.AttributeStatusHas(attrModel.Status, pkg.AttributeStatusFailedScrutiny) && !transient && !ignored {
 			sm.Status = pkg.DeviceStatusSet(sm.Status, pkg.DeviceStatusFailedScrutiny)
 		}

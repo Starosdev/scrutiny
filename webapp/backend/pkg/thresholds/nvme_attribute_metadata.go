@@ -9,8 +9,8 @@ type NvmeAttributeMetadata struct {
 	DisplayName string `json:"display_name"`
 	Ideal       string `json:"ideal"`
 	Critical    bool   `json:"critical"`
-	// WarnAbove and FailAbove are optional Scrutiny bands on the raw value (0 = unset).
-	// FailAbove is exclusive: the value must exceed it. WarnAbove is inclusive.
+	// WarnAtOrAbove is an optional Scrutiny warning band on the value (0 = unset).
+	// Failure still comes from the per-attribute threshold passed to PopulateAttributeStatus.
 	WarnAtOrAbove int64  `json:"-"`
 	Description   string `json:"description"`
 

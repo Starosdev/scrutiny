@@ -3,9 +3,11 @@ package database
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -234,7 +236,7 @@ func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Con
 	// 3. Get merged overrides (config + database)
 	mergedOverrides := sr.GetMergedOverrides(ctx)
 
-	newStatus, hasForcedFailure := recalculateStatusFromSmart(&device, &latestSmart, mergedOverrides)
+	newStatus, hasForcedFailure := recalculateStatusFromSmart(sr.appConfig, &device, &latestSmart, mergedOverrides)
 
 	// Note: Delta evaluation for cumulative counter attributes (e.g., attribute 199) is already
 	// reflected in the stored InfluxDB data. When SaveSmartAttributes writes to InfluxDB, the
@@ -257,7 +259,7 @@ func (sr *scrutinyRepository) RecalculateDeviceStatusFromHistory(ctx context.Con
 	return nil
 }
 
-func recalculateStatusFromSmart(device *models.Device, latestSmart *measurements.Smart, mergedOverrides []overrides.AttributeOverride) (pkg.DeviceStatus, bool) {
+func recalculateStatusFromSmart(cfg config.Interface, device *models.Device, latestSmart *measurements.Smart, mergedOverrides []overrides.AttributeOverride) (pkg.DeviceStatus, bool) {
 	newStatus := pkg.DeviceStatusPassed
 	hasForcedFailure := false
 	attrFailedSmart := false
@@ -274,6 +276,10 @@ func recalculateStatusFromSmart(device *models.Device, latestSmart *measurements
 		if forcedFailure {
 			hasForcedFailure = true
 		}
+		// Match ingest: failures.transient.ata attributes never fail the device.
+		if isTransientForDevice(cfg, device, attrID) {
+			continue
+		}
 		if pkg.AttributeStatusHas(attrStatus, pkg.AttributeStatusFailedScrutiny) {
 			newStatus = pkg.DeviceStatusSet(newStatus, pkg.DeviceStatusFailedScrutiny)
 		}
@@ -288,6 +294,14 @@ func recalculateStatusFromSmart(device *models.Device, latestSmart *measurements
 		newStatus = pkg.DeviceStatusSet(newStatus, pkg.DeviceStatusFailedSmart)
 	}
 	return newStatus, hasForcedFailure
+}
+
+func isTransientForDevice(cfg config.Interface, device *models.Device, attrID string) bool {
+	if device.DeviceProtocol != pkg.DeviceProtocolAta {
+		return false
+	}
+	id, err := strconv.Atoi(attrID)
+	return err == nil && measurements.IsTransientAtaAttribute(cfg, id)
 }
 
 func recalculatedAttributeStatus(device *models.Device, attrID string, attr measurements.SmartAttribute, mergedOverrides []overrides.AttributeOverride) (pkg.AttributeStatus, bool, bool) {
