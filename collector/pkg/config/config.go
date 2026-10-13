@@ -52,7 +52,12 @@ func (c *configuration) Init() error {
 	c.SetDefault("api.timeout", 60)
 	// Omnibus: the web server saves a token it generated at first start next to its config. Use it as the
 	// lowest-precedence default, so api.token in collector.yaml and COLLECTOR_API_TOKEN still win.
-	generatedToken, _ := secrets.Read(secrets.DefaultDir, secrets.AuthTokenFile)
+	// The directory follows the web server's SCRUTINY_WEB_SECRETS_DIR when set in the container.
+	secretsDir := os.Getenv("SCRUTINY_WEB_SECRETS_DIR")
+	if secretsDir == "" {
+		secretsDir = secrets.DefaultDir
+	}
+	generatedToken, _ := secrets.Read(secretsDir, secrets.AuthTokenFile)
 	c.SetDefault("api.token", generatedToken)
 
 	c.SetDefault("commands.metrics_smartctl_bin", "smartctl")
