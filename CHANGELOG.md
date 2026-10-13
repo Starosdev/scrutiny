@@ -4,41 +4,285 @@ All notable changes to Scrutiny will be documented in this file.
 
 ## [1.76.5](https://github.com/Starosdev/scrutiny/compare/v1.76.4...v1.76.5) (2026-10-13)
 
+### Bug Fixes
+
+* **ci:** serialize Project Router runs per issue ([#951](https://github.com/Starosdev/scrutiny/issues/951)) ([d7d29f1](https://github.com/Starosdev/scrutiny/commit/d7d29f1d73ae4b5db69f83c5729c043e3c75b84d))
+* **dashboard:** sort failed drives first for Status (Failed First) ([#945](https://github.com/Starosdev/scrutiny/issues/945)) ([4abeca3](https://github.com/Starosdev/scrutiny/commit/4abeca3aa5285842f8d54696aea860b62b555d67))
+* **deps:** clear new govulncheck and release-tooling audit findings ([#948](https://github.com/Starosdev/scrutiny/issues/948)) ([06ae095](https://github.com/Starosdev/scrutiny/commit/06ae095680576abcf78dcf79188bcf7764a7641a))
+* **detail:** color the status badge from the displayed status ([#959](https://github.com/Starosdev/scrutiny/issues/959)) ([3b5437f](https://github.com/Starosdev/scrutiny/commit/3b5437f235e63ecfb1a31618f53122959870817b))
+* **hooks:** format only staged frontend files in pre-commit ([#950](https://github.com/Starosdev/scrutiny/issues/950)) ([b722f2d](https://github.com/Starosdev/scrutiny/commit/b722f2d3f5a9e1cc7aeebd1f68592c38f501f669))
+* **hooks:** stage formatted frontend files from the repository root ([#958](https://github.com/Starosdev/scrutiny/issues/958)) ([a810845](https://github.com/Starosdev/scrutiny/commit/a810845d68c2b40e1567a0cbff699ed0c4e9070e))
+* **settings:** wrap notification channel fields instead of shrinking them ([#947](https://github.com/Starosdev/scrutiny/issues/947)) ([3bbe6ba](https://github.com/Starosdev/scrutiny/commit/3bbe6baed24f8b3c366370918cd927fe56987134)), closes [#937](https://github.com/Starosdev/scrutiny/issues/937)
+* **web:** scope detail-page SMART overrides by device_id ([#946](https://github.com/Starosdev/scrutiny/issues/946)) ([9755a6c](https://github.com/Starosdev/scrutiny/commit/9755a6c8758680aea3e7a0435827887018b8fe19))
+
 ## [1.76.4](https://github.com/Starosdev/scrutiny/compare/v1.76.3...v1.76.4) (2026-10-02)
+
+### Bug Fixes
+
+* **collector:** forget typed overrides that a later entry replaced ([75fa06b](https://github.com/Starosdev/scrutiny/commit/75fa06bbe842356b1fc4f640372bf77249806131))
+* **collector:** keep earlier override groups for symlink aliases ([10a690b](https://github.com/Starosdev/scrutiny/commit/10a690b6c5e1bd35808d4ee85b11375ebfa4a92b))
+* **collector:** keep earlier override groups only for typed aliases ([cac5442](https://github.com/Starosdev/scrutiny/commit/cac54425e8591808a5cd636b40f7de136ec25c30))
+* **collector:** match symlinked config device paths to scanned devices ([a31c823](https://github.com/Starosdev/scrutiny/commit/a31c8237100deddce3851cb45c604684a1fe172b)), closes [#910](https://github.com/Starosdev/scrutiny/issues/910)
+* **collector:** skip drives that smartctl -n standby leaves asleep ([50cffa7](https://github.com/Starosdev/scrutiny/commit/50cffa7ba4f80754a7502f5ec3423bc551cbda1c)), closes [#911](https://github.com/Starosdev/scrutiny/issues/911)
+* **collector:** typed aliases win and share their device file ([4c2c80f](https://github.com/Starosdev/scrutiny/commit/4c2c80fe05336c4188f07a00d6c55101c2070b75)), closes [#933](https://github.com/Starosdev/scrutiny/issues/933)
 
 ## [1.76.3](https://github.com/Starosdev/scrutiny/compare/v1.76.2...v1.76.3) (2026-09-30)
 
+### Bug Fixes
+
+* manual release trigger ([0dffbfa](https://github.com/Starosdev/scrutiny/commit/0dffbfa67a8b83b6c12d6c49f135f2463cf25d60))
+
 ## [1.76.2](https://github.com/Starosdev/scrutiny/compare/v1.76.1...v1.76.2) (2026-09-27)
+
+### Bug Fixes
+
+* **deps:** update shoutrrr to v0.21.1 ([bfc5a06](https://github.com/Starosdev/scrutiny/commit/bfc5a0639b65da9e3b55fab627d60715ab89a657)), closes [#872](https://github.com/Starosdev/scrutiny/issues/872)
 
 ## [1.76.1](https://github.com/Starosdev/scrutiny/compare/v1.76.0...v1.76.1) (2026-09-27)
 
+### Bug Fixes
+
+* **docker:** stop InfluxDB when the 2.9 upgrade preflight blocks ([b464a32](https://github.com/Starosdev/scrutiny/commit/b464a32475298e8effbca8a92a256d165065f644)), closes [#900](https://github.com/Starosdev/scrutiny/issues/900)
+
 ## [1.76.0](https://github.com/Starosdev/scrutiny/compare/v1.75.1...v1.76.0) (2026-09-27)
+
+### Features
+
+* add scrutiny db import-sqlite to move an install to PostgreSQL ([d527ee2](https://github.com/Starosdev/scrutiny/commit/d527ee23d2c6e1cd3b60492b60a6dd12f162c4c0)), closes [#880](https://github.com/Starosdev/scrutiny/issues/880)
+* **database:** add an optional PostgreSQL backend ([4a42edb](https://github.com/Starosdev/scrutiny/commit/4a42edb415dcef61b27c55689cc808f0751fd413)), closes [#880](https://github.com/Starosdev/scrutiny/issues/880)
+* **database:** add scheduler lease table and leader elector ([93673fc](https://github.com/Starosdev/scrutiny/commit/93673fc21de7431b7cfaa5bc61e549d2b32e5fe8)), closes [#880](https://github.com/Starosdev/scrutiny/issues/880)
+* **database:** build a baseline schema from the current models ([6b97b50](https://github.com/Starosdev/scrutiny/commit/6b97b5030b85ffd6231459253bfea8cb8c4ea717)), closes [#880](https://github.com/Starosdev/scrutiny/issues/880)
+* **notify:** deliver notifications through a leader-drained outbox ([07b1c8b](https://github.com/Starosdev/scrutiny/commit/07b1c8bf6a6000f43170a5bdc2c8b3f24cfff0f2)), closes [#880](https://github.com/Starosdev/scrutiny/issues/880)
+* **reports:** claim each report run before sending it ([a9c7328](https://github.com/Starosdev/scrutiny/commit/a9c732814e9ef8f3aec065bfa2843ee7052ef721)), closes [#880](https://github.com/Starosdev/scrutiny/issues/880)
+* **web:** run monitors and the report scheduler on the leader only ([a09e945](https://github.com/Starosdev/scrutiny/commit/a09e94574c9c266c2b64f522332fa9cf11e254c3)), closes [#880](https://github.com/Starosdev/scrutiny/issues/880)
+
+### Bug Fixes
+
+* **database:** close the SQL connection pool when a repository closes ([f9dc145](https://github.com/Starosdev/scrutiny/commit/f9dc14593a1c812cd789b469901265ce3c1ea1ec)), closes [#880](https://github.com/Starosdev/scrutiny/issues/880)
+* **database:** keep one settings row per key and enforce it ([0748530](https://github.com/Starosdev/scrutiny/commit/07485307ec6ffafc99a3cc7dc65b6bc72dbe31b7)), closes [#889](https://github.com/Starosdev/scrutiny/issues/889)
+* **database:** skip runtime tables and explain read-only WAL errors in import-sqlite ([fa2fa06](https://github.com/Starosdev/scrutiny/commit/fa2fa06a041b0ed38b4b1fcd0267afe963a007b5)), closes [#880](https://github.com/Starosdev/scrutiny/issues/880)
+* **leader:** order Elector fields for govet fieldalignment ([0b9e49f](https://github.com/Starosdev/scrutiny/commit/0b9e49fa2d809ce41069c0c5bfbc81c28192a66a)), closes [#880](https://github.com/Starosdev/scrutiny/issues/880)
+* **notify:** deliver directly on the leader so failed alerts are retried ([7b5ddb9](https://github.com/Starosdev/scrutiny/commit/7b5ddb914ba549ef71d2d7b0d0af72508fafd770)), closes [#884](https://github.com/Starosdev/scrutiny/issues/884) [#880](https://github.com/Starosdev/scrutiny/issues/880)
+* **notify:** order outbox structs for govet fieldalignment ([9ee1fe4](https://github.com/Starosdev/scrutiny/commit/9ee1fe41490de9c5faabbd5beba315770f60b099)), closes [#880](https://github.com/Starosdev/scrutiny/issues/880)
+* **notify:** save the heartbeat setting of a new notification URL ([df8c58c](https://github.com/Starosdev/scrutiny/commit/df8c58c8c31d677e3155ce1c6cfb98e19d68cf5a)), closes [#888](https://github.com/Starosdev/scrutiny/issues/888)
+* **web:** name the configured database in the health check log ([dd0f151](https://github.com/Starosdev/scrutiny/commit/dd0f15179f557966be1b06e013481340c6fb75ac)), closes [#880](https://github.com/Starosdev/scrutiny/issues/880)
 
 ## [1.75.1](https://github.com/Starosdev/scrutiny/compare/v1.75.0...v1.75.1) (2026-09-21)
 
+### Bug Fixes
+
+* manual release trigger ([4a390af](https://github.com/Starosdev/scrutiny/commit/4a390af5d96496270bb233de1b78009af39e2c4b))
+* **webapp:** tolerate SMART history samples that lack an attribute ([#871](https://github.com/Starosdev/scrutiny/issues/871)) ([ca9264a](https://github.com/Starosdev/scrutiny/commit/ca9264a9d7dd3f3602b9014c5f2a5e31d9ff8ab6))
+
 ## [1.75.0](https://github.com/Starosdev/scrutiny/compare/v1.74.3...v1.75.0) (2026-09-19)
+
+### Features
+
+* **webapp:** Add scsi attributes for data written ([a437617](https://github.com/Starosdev/scrutiny/commit/a437617f3bca6cdb3ee5565f4ff3af2ae4a29fb3))
+* **webapp:** scsi selftest support ([410ce95](https://github.com/Starosdev/scrutiny/commit/410ce953de9e6a2e005f932cf3d7a0c4af21bb59))
+
+### Bug Fixes
+
+* **mqtt:** keep reconnect syncs safe while the broker is unavailable ([7d9d6d3](https://github.com/Starosdev/scrutiny/commit/7d9d6d3e137ccb4b416ce681c57ae58f7e35e14e))
+* **webapp:** add missing scsi support for tests to frontend on details page ([697f0e9](https://github.com/Starosdev/scrutiny/commit/697f0e9eb9bf269805c5d02e948b225fdb261b3f))
+* **webapp:** Fix scsi revision detection (scsi_revision in smartctl data) ([55589c3](https://github.com/Starosdev/scrutiny/commit/55589c38d71f11f4eb3616481220acbafe913d14))
 
 ## [1.74.3](https://github.com/Starosdev/scrutiny/compare/v1.74.2...v1.74.3) (2026-09-16)
 
+### Bug Fixes
+
+* **backend:** delete device history before the device row ([#861](https://github.com/Starosdev/scrutiny/issues/861)) ([47950d2](https://github.com/Starosdev/scrutiny/commit/47950d2e5c85acf5c644e408aab243df1c3d4941))
+
+### Refactoring
+
+* **web:** share the startup migration step with the server tests ([#860](https://github.com/Starosdev/scrutiny/issues/860)) ([1c7f1a9](https://github.com/Starosdev/scrutiny/commit/1c7f1a9e24d6224783f4a85088e14b398e22a7b0))
+
 ## [1.74.2](https://github.com/Starosdev/scrutiny/compare/v1.74.1...v1.74.2) (2026-09-15)
+
+### Bug Fixes
+
+* **#845:** avoid SQLite table rebuild for attribute override migration ([a6ba687](https://github.com/Starosdev/scrutiny/commit/a6ba6873600f7c6365e407fb3d88f4ae38292485)), closes [#845](https://github.com/Starosdev/scrutiny/issues/845)
+* **backend:** attribute aggregated history and downsampled points by device_id ([#851](https://github.com/Starosdev/scrutiny/issues/851)) ([76e9e13](https://github.com/Starosdev/scrutiny/commit/76e9e1327b2fa7a3162310e92c2350186a51cd32))
+* **backend:** delete device history by device_id ([#851](https://github.com/Starosdev/scrutiny/issues/851)) ([12e38d0](https://github.com/Starosdev/scrutiny/commit/12e38d0c50ae1ce076d605181a7121689df3b338))
+* **backend:** keep history of re-keyed devices while their WWN is unique ([#851](https://github.com/Starosdev/scrutiny/issues/851)) ([5c0d759](https://github.com/Starosdev/scrutiny/commit/5c0d7591768fd10d41111095b11ad2903e456d5c))
+* **backend:** keep the newest whole SMART row per day and tolerate missing tags ([5fd2929](https://github.com/Starosdev/scrutiny/commit/5fd2929e1daa240651468a33768f1044e7234225))
+* **backend:** merge a device's SMART series before daily aggregation ([#851](https://github.com/Starosdev/scrutiny/issues/851)) ([a028d3f](https://github.com/Starosdev/scrutiny/commit/a028d3f634553b5bd0602fd981e6abced3a69923))
+* **backend:** read and write single-device history by device_id ([#851](https://github.com/Starosdev/scrutiny/issues/851)) ([e43dfe7](https://github.com/Starosdev/scrutiny/commit/e43dfe7f2f98920dc545d726aca9469bedcc15e1))
+* **backend:** register the devices that succeed and drop the unique WWN index ([#851](https://github.com/Starosdev/scrutiny/issues/851)) ([1890ea6](https://github.com/Starosdev/scrutiny/commit/1890ea69984e17520790827ce1b83dc387d0715e)), closes [#850](https://github.com/Starosdev/scrutiny/issues/850)
+* **backend:** treat null SMART history columns as absent ([1ba42dc](https://github.com/Starosdev/scrutiny/commit/1ba42dcb09d4e13744dc7c75ffbaeb136639fac2))
+* **collector:** key the serial fallback on a shared device file, not a type list ([#850](https://github.com/Starosdev/scrutiny/issues/850)) ([5c208f8](https://github.com/Starosdev/scrutiny/commit/5c208f8aad278708a55b05a1d2d36a24aecdcea1))
+* **collector:** stop sharing the block device WWN across controller drives ([#850](https://github.com/Starosdev/scrutiny/issues/850)) ([f5b4b11](https://github.com/Starosdev/scrutiny/commit/f5b4b11b03f5e8043753120541eac0181b1818d3))
+* label device detail icon actions ([9424f41](https://github.com/Starosdev/scrutiny/commit/9424f4186050dbdcdc7430cb2b59df4a802f744f))
+
+### Refactoring
+
+* **backend:** pass SMART info to SaveSmartAttributes by pointer ([#851](https://github.com/Starosdev/scrutiny/issues/851)) ([014a0ab](https://github.com/Starosdev/scrutiny/commit/014a0ab447150c279f4266a758846f57f7fa16f5))
 
 ## [1.74.1](https://github.com/Starosdev/scrutiny/compare/v1.74.0...v1.74.1) (2026-09-11)
 
+### Bug Fixes
+
+* **#824:** repair promotion CI checks ([54ecb8c](https://github.com/Starosdev/scrutiny/commit/54ecb8cdee03d3b064956cf763a94a94c8949d31)), closes [#824](https://github.com/Starosdev/scrutiny/issues/824)
+* **deps:** bump socket.io-parser override to 4.2.7 ([94278b1](https://github.com/Starosdev/scrutiny/commit/94278b1cc663155e56e320ede691353e74e86392))
+* **zfs:** track pool inventory presence for [#814](https://github.com/Starosdev/scrutiny/issues/814) ([52652bd](https://github.com/Starosdev/scrutiny/commit/52652bd82a3c4d24e28ad40af1f59ab6ac525471))
+* **zfs:** treat missing pools as empty inventory ([63111bb](https://github.com/Starosdev/scrutiny/commit/63111bbc728c00379306449a48f3c1c3fe6a7f9a))
+
 ## [1.74.0](https://github.com/Starosdev/scrutiny/compare/v1.73.0...v1.74.0) (2026-09-10)
+
+### Features
+
+* **metrics:** expose latest SMART self-test status ([5bc9ddc](https://github.com/Starosdev/scrutiny/commit/5bc9ddc7aee8ace6b289fca9b50806a2cfb99224))
+
+### Bug Fixes
+
+* **ci:** prevent stable tags from using dev frontend version ([e600923](https://github.com/Starosdev/scrutiny/commit/e6009234b28bd110d6f03e566d2d6c357f6c269f)), closes [#831](https://github.com/Starosdev/scrutiny/issues/831)
+* **dashboard:** persist temperature drive selection ([3f06fd0](https://github.com/Starosdev/scrutiny/commit/3f06fd0a549f33aba3287736454819ef8f47c41c))
+* **smart:** preserve device history across host migration ([83849d8](https://github.com/Starosdev/scrutiny/commit/83849d8716c1a044be5eac91d89c447d7e9be69e))
 
 ## [1.73.0](https://github.com/Starosdev/scrutiny/compare/v1.72.0...v1.73.0) (2026-09-07)
 
+### Features
+
+* add sustained drive temperature notifications ([f144cb8](https://github.com/Starosdev/scrutiny/commit/f144cb8230bcf3bc31f64542a413dec5d1399a78))
+
+### Bug Fixes
+
+* **ci:** let a release commit match the docker build path filter ([b5fafb9](https://github.com/Starosdev/scrutiny/commit/b5fafb94d37854f9ee11f7ce226f4fc64bbb699b)), closes [#822](https://github.com/Starosdev/scrutiny/issues/822)
+* **ci:** publish bare version tags and stop latest racing the release ([ee1baa6](https://github.com/Starosdev/scrutiny/commit/ee1baa6327343e54786359ce88ba65e7d6ab5c78)), closes [#818](https://github.com/Starosdev/scrutiny/issues/818)
+* harden temperature alert editing and history evaluation ([7df7f50](https://github.com/Starosdev/scrutiny/commit/7df7f50303c7bb116e9c030b4919a8d3b34e1f07))
+* **notify:** align temperature alert subject formatting ([4752307](https://github.com/Starosdev/scrutiny/commit/4752307af942760b4246c616515a42cc94f53702))
+* **notify:** bound notification transport execution ([c061ebb](https://github.com/Starosdev/scrutiny/commit/c061ebba4ca1b9fdf9f893a0da63226f983bb94d))
+* **notify:** bound webhook delivery and reject unsuccessful responses ([8163e1b](https://github.com/Starosdev/scrutiny/commit/8163e1b96ec701e8f2dc674bf95ecf7e8c31c37b))
+* **notify:** deliver and retain quiet-hours digests ([2d35795](https://github.com/Starosdev/scrutiny/commit/2d35795de62b62ed1c6a3c562404e7f771b9477d))
+* **notify:** satisfy tracker field alignment checks ([2f57c65](https://github.com/Starosdev/scrutiny/commit/2f57c656717c594d4031f795ddf348ed4761474d))
+* **notify:** seed temperature alerts from device-specific history ([9c74105](https://github.com/Starosdev/scrutiny/commit/9c74105b32b4fe21fff6ae3e38c7e7417743c0dc))
+* **notify:** validate temperature settings and reduce alert noise ([9025824](https://github.com/Starosdev/scrutiny/commit/902582433a121ea63f833c96737f0b7964973430))
+* **release:** join wrapped prose in release note summaries ([48f6205](https://github.com/Starosdev/scrutiny/commit/48f6205e603d9bb8e9ce221112524b99f5d4193a)), closes [#819](https://github.com/Starosdev/scrutiny/issues/819)
+
+### Refactoring
+
+* **notify:** share settings across upload notifications ([f375fea](https://github.com/Starosdev/scrutiny/commit/f375feac5dc0f926433e099b7025823dce8a5b19))
+
 ## [1.72.0](https://github.com/Starosdev/scrutiny/compare/v1.71.0...v1.72.0) (2026-09-07)
+
+### Features
+
+* **overrides:** add acknowledge action pinned to an attribute's current value ([7c24a58](https://github.com/Starosdev/scrutiny/commit/7c24a587ae69a8c6dc62603319efe6d009d26f04)), closes [#775](https://github.com/Starosdev/scrutiny/issues/775)
+* **zfs:** report usable pool capacity alongside raw size ([#801](https://github.com/Starosdev/scrutiny/issues/801)) ([0fe1b0d](https://github.com/Starosdev/scrutiny/commit/0fe1b0d73b0bf25b94edde46ca9ee079162868b4)), closes [#754](https://github.com/Starosdev/scrutiny/issues/754) [#754](https://github.com/Starosdev/scrutiny/issues/754)
+
+### Bug Fixes
+
+* **database:** tolerate summary records missing optional fields ([#807](https://github.com/Starosdev/scrutiny/issues/807)) ([d18a698](https://github.com/Starosdev/scrutiny/commit/d18a698e4e82bdb8bb12a34ae92a2d064ac24f22)), closes [#621](https://github.com/Starosdev/scrutiny/issues/621)
+* **deps:** bump engine.io and ws overrides on develop ([#802](https://github.com/Starosdev/scrutiny/issues/802)) ([1d5c38e](https://github.com/Starosdev/scrutiny/commit/1d5c38e1876635b464ce41ffe3a8492319cc455b)), closes [#741](https://github.com/Starosdev/scrutiny/issues/741)
+* **docker:** add a healthcheck so a dead web process is visible ([#811](https://github.com/Starosdev/scrutiny/issues/811)) ([2eac9f6](https://github.com/Starosdev/scrutiny/commit/2eac9f66f74fbb3b85f74305e7599c78080f0d6a))
+* **models:** make a missing temperature distinguishable from 0C ([#812](https://github.com/Starosdev/scrutiny/issues/812)) ([4de9ee9](https://github.com/Starosdev/scrutiny/commit/4de9ee9df59d6aa8109d9440b43d96a2f8ed3f4e))
+* **release:** preserve release note provenance ([7184760](https://github.com/Starosdev/scrutiny/commit/71847605d35e142ad54c589e2703149e679bebdd))
+* **theme:** preserve Angular Material system map in Treo adapter ([#805](https://github.com/Starosdev/scrutiny/issues/805)) ([503a127](https://github.com/Starosdev/scrutiny/commit/503a12718dc286a84ff31ecb785e97e18e8a71d1)), closes [#541](https://github.com/Starosdev/scrutiny/issues/541) [#165](https://github.com/Starosdev/scrutiny/issues/165)
+* **zfs:** raise contrast on the raw capacity line ([#808](https://github.com/Starosdev/scrutiny/issues/808)) ([d3881db](https://github.com/Starosdev/scrutiny/commit/d3881dbfb9fb813604eba577c2409ca8398b6678)), closes [#801](https://github.com/Starosdev/scrutiny/issues/801)
 
 ## [1.71.0](https://github.com/Starosdev/scrutiny/compare/v1.70.0...v1.71.0) (2026-09-06)
 
+### Features
+
+* **smart:** add Toshiba N300 drive profile ([#770](https://github.com/Starosdev/scrutiny/issues/770)) ([0b3e741](https://github.com/Starosdev/scrutiny/commit/0b3e7414cc9f965d43f797af62dd48bb2df194b5)), closes [#767](https://github.com/Starosdev/scrutiny/issues/767)
+* **smart:** add WD Gold WD102KRYZ drive profile ([#769](https://github.com/Starosdev/scrutiny/issues/769)) ([d34090e](https://github.com/Starosdev/scrutiny/commit/d34090e99273783d8c61a49f99222216cba26d63))
+
+### Bug Fixes
+
+* **database:** respect retention during AnalogJ history repair ([#787](https://github.com/Starosdev/scrutiny/issues/787)) ([3b06800](https://github.com/Starosdev/scrutiny/commit/3b068007932bf7a3f0ebf4e5fe1c06da7431486f))
+* **docker:** support omnibus startup under AppArmor ([#788](https://github.com/Starosdev/scrutiny/issues/788)) ([205c86a](https://github.com/Starosdev/scrutiny/commit/205c86aed71d823306ed2231e35703625ffafe73))
+* **release:** use actions token for protected release commits ([#795](https://github.com/Starosdev/scrutiny/issues/795)) ([722cc16](https://github.com/Starosdev/scrutiny/commit/722cc165b260503f8d7b14a0173fba69fa05b5c6))
+* **release:** use owner token for protected release commits ([#797](https://github.com/Starosdev/scrutiny/issues/797)) ([5a364a9](https://github.com/Starosdev/scrutiny/commit/5a364a9c2da4393663672b4a47b464cf912e9f2c))
+* **smart:** preserve ATA self-test chronology across lifetime rollover ([#789](https://github.com/Starosdev/scrutiny/issues/789)) ([cf1da6e](https://github.com/Starosdev/scrutiny/commit/cf1da6e859a72498455196cbe8cdea380a64712b))
+
 ## [1.70.0](https://github.com/Starosdev/scrutiny/compare/v1.69.2...v1.70.0) (2026-08-28)
+
+### Features
+
+* **smart:** add Toshiba N300 consumer drive profile ([#774](https://github.com/Starosdev/scrutiny/issues/774)) ([0f19cb4](https://github.com/Starosdev/scrutiny/commit/0f19cb4ef2ffd25eb75c26eb2fcefb0afafcf2e7))
+* **smart:** add WD Gold WD102KRYZ drive profile ([#777](https://github.com/Starosdev/scrutiny/issues/777)) ([d85deef](https://github.com/Starosdev/scrutiny/commit/d85deefc76b9aee1f2d8674b42b9904660bc640e))
+
+### Bug Fixes
+
+* **lint:** use switch for override scope ([a7d50eb](https://github.com/Starosdev/scrutiny/commit/a7d50eb9741a93c74af3fe446e72d525d72cb4f2))
+* **overrides:** scope SMART overrides by device ([a18d4d5](https://github.com/Starosdev/scrutiny/commit/a18d4d5b11dddf89bc882d2e3ab4a3dcf404d12e))
 
 ## [1.69.2](https://github.com/Starosdev/scrutiny/compare/v1.69.1...v1.69.2) (2026-08-25)
 
+### Bug Fixes
+
+* support device-scoped SMART attribute overrides ([#766](https://github.com/Starosdev/scrutiny/issues/766)) ([afebfbf](https://github.com/Starosdev/scrutiny/commit/afebfbf527ad7fc55e9e3464212d4761e5adc42f)), closes [#755](https://github.com/Starosdev/scrutiny/issues/755)
+
 ## [1.69.1](https://github.com/Staros-Labs/scrutiny/compare/v1.69.0...v1.69.1) (2026-08-19)
 
+### Bug Fixes
+
+* keep public scanner workflows local ([05aed87](https://github.com/Starosdev/scrutiny/commit/05aed878bc5175b54b6bb3a0ac54d328a7351024))
+* keep public scanner workflows local ([016ca25](https://github.com/Starosdev/scrutiny/commit/016ca25c2a544e1b5ce1afae7e80c4fe4068f142))
+* **release:** omit operational pull requests ([5c52777](https://github.com/Starosdev/scrutiny/commit/5c52777daae0cb9c1b5ea716767a9538e6211bed))
+* **release:** omit shared guard contract ([f42dce2](https://github.com/Starosdev/scrutiny/commit/f42dce2b60500064f6cf36e96b1a2a2f468c682d))
+* **release:** preserve authored release notes ([003880d](https://github.com/Starosdev/scrutiny/commit/003880dd62155c7b2d30edae579e999070c89309))
+* use canonical security scan contexts ([37cc4c5](https://github.com/Starosdev/scrutiny/commit/37cc4c5331496228c52d40748a824b541210b42b))
+* use canonical security scan contexts ([455fa04](https://github.com/Starosdev/scrutiny/commit/455fa045a8b76cf4d435d1681f140829e28753a3))
+
 ## [1.69.0](https://github.com/Staros-Labs/scrutiny/compare/v1.68.0...v1.69.0) (2026-08-13)
+
+### Features
+
+* **dashboard:** add global host search and host-count pagination that keeps each host's SMART devices together ([#674](https://github.com/Starosdev/scrutiny/issues/674))
+* **web:** add monitoring-only ZFS pool management mode ([#691](https://github.com/Starosdev/scrutiny/issues/691)) ([c681369](https://github.com/Starosdev/scrutiny/commit/c681369340f482219b1eb497112057ffa0b3f421))
+* **api:** expose and update heartbeat_enabled on notify URLs ([99bb242](https://github.com/Starosdev/scrutiny/commit/99bb24280c386a3be5fd04ed4975577ef5399340))
+* **docker:** add collector omnibus spoke image ([976c8ea](https://github.com/Starosdev/scrutiny/commit/976c8ea33dfe58c906eb97d49272db96c980c3cd))
+* enhance ATA consumer-drive profile pipeline, matching, and observability ([#552](https://github.com/Starosdev/scrutiny/issues/552)) ([#637](https://github.com/Starosdev/scrutiny/issues/637)) ([09bdb93](https://github.com/Starosdev/scrutiny/commit/09bdb93210173423ecc6326e3c066109f5f8de61))
+* **heartbeat:** filter notify URLs by heartbeat_enabled ([24f359a](https://github.com/Starosdev/scrutiny/commit/24f359ac6981803461f3b8be90c06c30d81bacd4))
+* **notify:** add heartbeat_enabled field to notify_urls ([6432a2c](https://github.com/Starosdev/scrutiny/commit/6432a2c9b16223b8f3e1cfdf9c621ffedd2f5393))
+* **notify:** enhance server alert emails ([66e5df0](https://github.com/Starosdev/scrutiny/commit/66e5df06bc28280c3093d42271872c40ec6154eb))
+* **notify:** LoadHeartbeatDatabaseUrls filters by heartbeat_enabled ([51d8662](https://github.com/Starosdev/scrutiny/commit/51d866237bc4b876ab0058bc7918b0d32ae856cb))
+* **thresholds:** detect Power-On Hours 16-bit counter rollover ([#595](https://github.com/Starosdev/scrutiny/issues/595)) ([#625](https://github.com/Starosdev/scrutiny/issues/625)) ([390de8b](https://github.com/Starosdev/scrutiny/commit/390de8b1d0144cb3f6b9183ff319b764a42a632e))
+* **ui:** add contextual help links for settings docs ([#492](https://github.com/Starosdev/scrutiny/issues/492)) ([8ceb12b](https://github.com/Starosdev/scrutiny/commit/8ceb12b92d095dcb2c8001f6f07b8fda704b6713))
+* **ui:** add contextual help links pointing to docs folder ([#492](https://github.com/Starosdev/scrutiny/issues/492)) ([7b484a0](https://github.com/Starosdev/scrutiny/commit/7b484a0d463f8f86b601c294f5e9a8ca1f207f7d))
+* **ui:** add heartbeat toggle per notification URL ([e6bbfea](https://github.com/Starosdev/scrutiny/commit/e6bbfea6978eed6c625ac46bcab9b2fac945123a))
+* **ui:** add navigation visibility settings for ZFS, MDADM, Btrfs, Workload ([#588](https://github.com/Starosdev/scrutiny/issues/588)) ([fca1ae3](https://github.com/Starosdev/scrutiny/commit/fca1ae313cecbdec26d0dfac51a82b6ae6605df3))
+* **ui:** group MDADM and Workload pages by host ([#579](https://github.com/Starosdev/scrutiny/issues/579)) ([3e3aa73](https://github.com/Starosdev/scrutiny/commit/3e3aa73e69c7086e66b58fba00c78fb5eadbd089))
+* **web:** add ZFS pool read-only mode ([c681369](https://github.com/Starosdev/scrutiny/commit/c681369340f482219b1eb497112057ffa0b3f421))
+
+### Bug Fixes
+
+* **dashboard:** retain the current page after device archive actions and remove MDADM cards from the SMART dashboard ([#674](https://github.com/Starosdev/scrutiny/issues/674))
+* **smart:** skip generic HDD observed-threshold scoring for vendor-specific ATA SSD attributes and add a Crucial RealSSD compatibility profile ([#587](https://github.com/Starosdev/scrutiny/issues/587))
+* **api:** return 404 when heartbeat toggle targets non-existent notify URL ([8c375c2](https://github.com/Starosdev/scrutiny/commit/8c375c288aeaa68c1257a62be1cec71178ef3139))
+* **backend:** pass SmartInfo by pointer to syncDeviceSelfTests (hugeParam) ([e027c33](https://github.com/Starosdev/scrutiny/commit/e027c336f810e666043762a82b15d7fed7fc4bdc))
+* **backend:** satisfy gocritic hugeParam and govet fieldalignment lint ([be05416](https://github.com/Starosdev/scrutiny/commit/be054166d7577db9eb0fbf05198ecbbfb9912835))
+* **ci:** pass ATA metadata helper by pointer ([07de6a5](https://github.com/Starosdev/scrutiny/commit/07de6a59bf03fc1303523e5b36917c68d25ce627))
+* **ci:** restore GitHub-hosted runners ([c06cf55](https://github.com/Starosdev/scrutiny/commit/c06cf55f09c950140d44764ae12edc0447914ce2))
+* **collector:** pass explicitly configured smartctl device types verbatim ([#678](https://github.com/Starosdev/scrutiny/issues/678)) ([b2d03c7](https://github.com/Starosdev/scrutiny/commit/b2d03c74aae1aadc3ff12754eaeeaddf00cd5cf1)), closes [#664](https://github.com/Starosdev/scrutiny/issues/664)
+* **collector:** preserve jmb39x-q device type and accept usable SMART JSON ([#677](https://github.com/Starosdev/scrutiny/issues/677)) ([967bbaa](https://github.com/Starosdev/scrutiny/commit/967bbaaff4a2c7200b367cf2c159c4e1c1690e54))
+* **dashboard:** stabilize temperature data panel ([b4a555b](https://github.com/Starosdev/scrutiny/commit/b4a555bb7cbe75f1f1831a80e9f4c84a37c995a4))
+* **database:** repair AnalogJ 0.9.x migration ([9a2ce05](https://github.com/Starosdev/scrutiny/commit/9a2ce059410feb206a945150a465417c5bb2d2e5)), closes [#694](https://github.com/Starosdev/scrutiny/issues/694)
+* **database:** use case-insensitive serial comparison ([0eb8307](https://github.com/Starosdev/scrutiny/commit/0eb8307e37835d0423fe98f4d5500f8dbae2a370))
+* **db:** simplify migration func to satisfy unlambda linter ([8158a34](https://github.com/Starosdev/scrutiny/commit/8158a346e3fdc85dcb3c084eb11ca9467c8fa0c0))
+* **deps:** update influxdb version to 2.9 ([#655](https://github.com/Starosdev/scrutiny/issues/655)) ([1599e60](https://github.com/Starosdev/scrutiny/commit/1599e60848f9f4db55d261b6cb029aff75b12363))
+* **docker:** restore frontend directory permissions ([f0a4d50](https://github.com/Starosdev/scrutiny/commit/f0a4d502cee3266c5d35e9ad796d67f2be4e2d34))
+* **frontend:** keep scroll position when a menu closes ([#679](https://github.com/Starosdev/scrutiny/issues/679)) ([5d196cb](https://github.com/Starosdev/scrutiny/commit/5d196cbf240407282da4ff896e6040a958d5d201))
+* **logging:** honor startup log level and suppress banner ([341c880](https://github.com/Starosdev/scrutiny/commit/341c88058361eb8bb9ad443b7e18e4141589e669))
+* **logging:** structure startup service logs ([231985f](https://github.com/Starosdev/scrutiny/commit/231985f48091d566e164bc38fd50f1af9fdf4a13))
+* **mdadm:** handle missing array devices ([#653](https://github.com/Starosdev/scrutiny/issues/653)) ([410c22c](https://github.com/Starosdev/scrutiny/commit/410c22c046df6208c26f878e5dfc8eb7eb080f35))
+* **mdadm:** persist host_id on array re-registration ([#640](https://github.com/Starosdev/scrutiny/issues/640)) ([23ea370](https://github.com/Starosdev/scrutiny/commit/23ea370c9bec83c6fc11ddf18de920000746635f))
+* **notify:** polish alert email subjects and details ([eae218d](https://github.com/Starosdev/scrutiny/commit/eae218dab8efa67a483a1f1af559ace1920dfc84))
+* **ui:** dark mode tokens for settings dialog and dropdowns ([0dc8048](https://github.com/Starosdev/scrutiny/commit/0dc8048c0ba5c68cb729d4d0ff30c8ba43586731))
+* **ui:** style learn more link in Consumer Drive Profiles hint ([#492](https://github.com/Starosdev/scrutiny/issues/492)) ([ba5b6c3](https://github.com/Starosdev/scrutiny/commit/ba5b6c38aeda1520e0048c81214c605413a2951d))
+
+### Refactoring
+
+* **collector:** reduce cognitive complexity in collector commands ([#617](https://github.com/Starosdev/scrutiny/issues/617)) ([dedf386](https://github.com/Starosdev/scrutiny/commit/dedf386ebbd9c6f0b58cc739ac35ecfe9cfb2d1f)), closes [#616](https://github.com/Starosdev/scrutiny/issues/616)
+* **collector:** reduce cognitive complexity in device detection ([#619](https://github.com/Starosdev/scrutiny/issues/619)) ([b2e5a9d](https://github.com/Starosdev/scrutiny/commit/b2e5a9de791c1682b1e758c6d991294a9b1daa45))
+* **database:** reduce cognitive complexity in repository ([#621](https://github.com/Starosdev/scrutiny/issues/621)) ([4990d88](https://github.com/Starosdev/scrutiny/commit/4990d8846216f422c41cbaca37ca32ae3c36d993))
+* **database:** reduce cognitive complexity in the migration runner ([#624](https://github.com/Starosdev/scrutiny/issues/624)) ([037c82d](https://github.com/Starosdev/scrutiny/commit/037c82d08d75994c06bf85aece0a1e85f61b22f6))
+* **frontend:** reduce cognitive complexity in components ([#620](https://github.com/Starosdev/scrutiny/issues/620)) ([278cd44](https://github.com/Starosdev/scrutiny/commit/278cd44bca76cbc3e7947efc28dbb56a6fd78792))
+* **measurements:** reduce cognitive complexity in smart.go ([#616](https://github.com/Starosdev/scrutiny/issues/616)) ([b82e0f5](https://github.com/Starosdev/scrutiny/commit/b82e0f5a6591227753091d0c0282a7b990fa84a0))
+* **models:** reduce cognitive complexity in measurement models ([#622](https://github.com/Starosdev/scrutiny/issues/622)) ([900e4c3](https://github.com/Starosdev/scrutiny/commit/900e4c323a4d494eb88a8242dc0eb86fcf0a44d9))
+* **notify:** reduce cognitive complexity in notification senders ([#618](https://github.com/Starosdev/scrutiny/issues/618)) ([249d836](https://github.com/Starosdev/scrutiny/commit/249d83631f1f38a1ec431740ccddf49924070122)), closes [#616](https://github.com/Starosdev/scrutiny/issues/616) [#617](https://github.com/Starosdev/scrutiny/issues/617)
+* **web:** reduce cognitive complexity in middleware and monitors ([#623](https://github.com/Starosdev/scrutiny/issues/623)) ([8695dc8](https://github.com/Starosdev/scrutiny/commit/8695dc833a9b34c48ebca240204c177673296373))
 
 ## [1.68.0](https://github.com/Starosdev/scrutiny/compare/v1.67.1...v1.68.0) (2026-07-30)
 
@@ -71,18 +315,6 @@ All notable changes to Scrutiny will be documented in this file.
 ### Bug Fixes
 
 * **ui:** dark mode tokens for settings dialog and dropdowns ([#634](https://github.com/Starosdev/scrutiny/issues/634)) ([c38d06f](https://github.com/Starosdev/scrutiny/commit/c38d06ff1d9bf1ef09eaaafaa6a91734b1ec3030))
-
-## Unreleased
-
-### Features
-
-* **dashboard:** add global host search and host-count pagination that keeps each host's SMART devices together ([#674](https://github.com/Starosdev/scrutiny/issues/674))
-* **web:** add monitoring-only ZFS pool management mode ([#691](https://github.com/Staros-Labs/scrutiny/issues/691)) ([c681369](https://github.com/Staros-Labs/scrutiny/commit/c681369340f482219b1eb497112057ffa0b3f421))
-
-### Bug Fixes
-
-* **dashboard:** retain the current page after device archive actions and remove MDADM cards from the SMART dashboard ([#674](https://github.com/Starosdev/scrutiny/issues/674))
-* **smart:** skip generic HDD observed-threshold scoring for vendor-specific ATA SSD attributes and add a Crucial RealSSD compatibility profile ([#587](https://github.com/Starosdev/scrutiny/issues/587))
 
 ## [1.65.0](https://github.com/Starosdev/scrutiny/compare/v1.64.0...v1.65.0) (2026-06-29)
 
@@ -1225,13 +1457,6 @@ All notable changes to Scrutiny will be documented in this file.
 ### Refactoring
 
 * **database:** extract hardcoded time ranges to constants ([deb2df0](https://github.com/Starosdev/scrutiny/commit/deb2df0bc718461c5a9826d6b6c1c1307b7122e8)), closes [#49](https://github.com/Starosdev/scrutiny/issues/49)
-## Unreleased
-
-### Features
-
-* **smart/ui:** add SMART self-test history endpoint and device detail view
-
-
 ## [1.1.1](https://github.com/Starosdev/scrutiny/compare/v1.1.0...v1.1.1) (2025-12-09)
 
 ### Bug Fixes

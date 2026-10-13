@@ -96,7 +96,7 @@ New Go direct dependencies added:
 
 ### Go Version
 
-- **Current floor**: 1.26.8
+- **Current floor**: 1.27 (from `go.mod`)
 - **Recommended**: Current
 
 ### Direct Dependencies
@@ -106,7 +106,7 @@ New Go direct dependencies added:
 | github.com/analogj/go-util | Removed | n/a | Replaced 2026-09-10 | - |
 | github.com/eclipse/paho.mqtt.golang | v1.5.0 | v1.5.0 | Current | - |
 | github.com/fatih/color | v1.18.0 | v1.18.0 | Current | - |
-| github.com/gin-gonic/gin | v1.9.1 | v1.11.0 | 2 minor | High |
+| github.com/gin-gonic/gin | v1.12.0 | v1.12.0 | Current | - |
 | github.com/glebarez/sqlite | v1.4.5 | v1.11.0 | 6 minor | Medium |
 | github.com/go-gormigrate/gormigrate/v2 | v2.0.0 | v2.1.5 | 1 minor | Low |
 | github.com/go-pdf/fpdf | v0.9.0 | v0.9.0 | Current | - |
@@ -115,7 +115,7 @@ New Go direct dependencies added:
 | go.uber.org/mock | v0.6.0 | v0.6.0 | Current | - |
 | github.com/google/uuid | v1.3.0 | v1.6.0 | 3 minor | Low |
 | github.com/influxdata/influxdb-client-go/v2 | v2.9.0 | v2.14.0 | 5 minor | Medium |
-| github.com/jaypipes/ghw | v0.6.1 | v0.21.2 | 15 minor | High |
+| github.com/jaypipes/ghw | v0.26.0 | v0.26.0 | Current | - |
 | github.com/mitchellh/mapstructure | v1.5.0 | v1.5.0 | Current | - |
 | github.com/nicholas-fedor/shoutrrr | v0.13.2 | v0.13.2 | Current | - |
 | github.com/prometheus/client_golang | v1.17.0 | v1.23.2 | 6 minor | Medium |

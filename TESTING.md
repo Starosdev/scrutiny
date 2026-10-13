@@ -40,7 +40,7 @@ main repository.
 | Tool | Version | Purpose |
 |------|---------|---------|
 | Go | 1.27+ | Backend compilation and tests |
-| Node.js | 22+ (LTS) | Frontend build and tests |
+| Node.js | 24+ (CI uses 24; release tooling needs >=24.15.0) | Frontend build and tests |
 | Docker | 20+ | Container builds and full-stack testing |
 | Docker Compose | v2+ | Multi-container orchestration |
 | smartmontools | any | Required inside collector containers |
