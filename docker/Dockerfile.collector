@@ -26,12 +26,20 @@ RUN echo "deb http://deb.debian.org/debian trixie-backports main" > /etc/apt/sou
     update-ca-certificates
 
 COPY /docker/entrypoint-collector.sh /entrypoint-collector.sh
+COPY /docker/healthcheck-collector.sh /healthcheck-collector.sh
 COPY /docker/apparmor-profile /opt/scrutiny/apparmor-profile
 COPY /rootfs/etc/cron.d/scrutiny /etc/cron.d/scrutiny
 COPY --from=backendbuild /go/src/github.com/analogj/scrutiny/scrutiny-collector-metrics /opt/scrutiny/bin/
 RUN chmod +x /opt/scrutiny/bin/scrutiny-collector-metrics && \
-    chmod +x /entrypoint-collector.sh && \
+    chmod +x /entrypoint-collector.sh /healthcheck-collector.sh && \
     chmod 0644 /etc/cron.d/scrutiny && \
     rm -f /etc/cron.daily/apt /etc/cron.daily/dpkg /etc/cron.daily/passwd
+
+# Collectors run as root on purpose: smartctl needs raw device access (CAP_SYS_RAWIO / CAP_SYS_ADMIN)
+# and the cron daemon needs root. Lock the container down with cap_drop and an explicit cap_add instead.
+# The check passes while cron runs. Set COLLECTOR_HEALTHCHECK_MAX_AGE_HOURS to also fail when no
+# collection has succeeded for that long (see docs/DEPLOYMENTS.md).
+HEALTHCHECK --interval=5m --timeout=10s --start-period=1m --retries=3 \
+    CMD ["/healthcheck-collector.sh"]
 
 CMD ["/entrypoint-collector.sh"]

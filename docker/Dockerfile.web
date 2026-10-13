@@ -36,15 +36,21 @@ COPY --link --from=backendbuild --chmod=755 /go/src/github.com/analogj/scrutiny/
 COPY --link --from=frontendbuild --chmod=644 /go/src/github.com/analogj/scrutiny/webapp/frontend/dist/treo/browser /opt/scrutiny/web
 COPY --link --from=backendbuild --chmod=644 /go/src/github.com/analogj/scrutiny/docs/openapi.yaml /opt/scrutiny/docs/openapi.yaml
 COPY --link --from=backendbuild --chmod=644 /go/src/github.com/analogj/scrutiny/docs/swagger-ui.html /opt/scrutiny/docs/swagger-ui.html
+COPY --chmod=755 /docker/entrypoint-web.sh /entrypoint-web.sh
 RUN mkdir -p /opt/scrutiny/web && \
     mkdir -p /opt/scrutiny/docs && \
     mkdir -p /opt/scrutiny/config && \
+    mkdir -p /opt/scrutiny/reports && \
     chmod -R a+rX /opt/scrutiny && \
-    chmod -R a+w /opt/scrutiny/config
+    chown 1000:1000 /opt/scrutiny/config /opt/scrutiny/reports && \
+    chmod a+w /opt/scrutiny/config /opt/scrutiny/reports
 # A dead web process must not present as a healthy container. Request a real
 # endpoint rather than relying on container state or an open port, which stays
 # bound by docker-proxy regardless (#806). 8080 is the in-container listen port.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD curl -fsS http://127.0.0.1:8080/api/health || exit 1
 
+# The entrypoint starts as root only to fix volume ownership, then runs the server as PUID:PGID
+# (default 1000:1000). See docs/UPGRADE_2.0.md.
+ENTRYPOINT ["/entrypoint-web.sh"]
 CMD ["/opt/scrutiny/bin/scrutiny", "start"]

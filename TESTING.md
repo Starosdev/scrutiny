@@ -472,10 +472,12 @@ curl -s $BASE/api/metrics
 ### Testing with Authentication Enabled
 
 ```bash
-# Enable auth via environment
+# Auth is on by default. The hub/spoke web image refuses to start without SCRUTINY_WEB_AUTH_TOKEN;
+# the omnibus image generates one (docker exec <container> cat /opt/scrutiny/config/.auth-token)
+# unless you set it. Set the same value as COLLECTOR_API_TOKEN for the collectors.
 docker run ... \
-  -e SCRUTINY_WEB_AUTH_ENABLED=true \
   -e SCRUTINY_WEB_AUTH_TOKEN=test-token \
+  -e COLLECTOR_API_TOKEN=test-token \
   -e SCRUTINY_WEB_AUTH_ADMIN_PASSWORD=testpass \
   scrutiny:local
 

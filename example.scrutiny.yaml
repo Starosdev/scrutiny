@@ -129,8 +129,8 @@ web:
 
   # if you're running influxdb on a different host (or using a cloud-provider) you'll need to update the host & port below.
   # token, org, bucket are unnecessary for a new InfluxDB installation, as Scrutiny will automatically run the InfluxDB setup,
-  # and store the information in the config file. If you 're re-using an existing influxdb installation, you'll need to provide
-  # the `token`
+  # generate an admin token and password, and save them in web.secrets.dir (.influxdb-token, .influxdb-password).
+  # If you 're re-using an existing influxdb installation, you'll need to provide the `token`
   influxdb:
 #    scheme: 'http'
     host: 0.0.0.0
@@ -144,8 +144,8 @@ web:
     # See docs/DOWNSAMPLING.md for details on the bucket structure
     #
     # retention:
-    #   daily: 1296000    # 15 days (default) - raw metrics bucket
-    #   weekly: 5443200   # 9 weeks (default) - weekly aggregated data
+    #   daily: 1814400    # 21 days (default) - raw metrics bucket
+    #   weekly: 7862400   # 13 weeks (default) - weekly aggregated data
     #   monthly: 65318400 # 25 months (default) - monthly aggregated data
     #   # yearly bucket has infinite retention (not configurable)
 

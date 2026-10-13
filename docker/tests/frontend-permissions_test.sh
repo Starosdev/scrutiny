@@ -7,6 +7,7 @@ test_suffix="${BASHPID:-$$}"
 omnibus_image="scrutiny-frontend-permissions-omnibus:${test_suffix}"
 web_image="scrutiny-frontend-permissions-web:${test_suffix}"
 container_name="scrutiny-frontend-permissions-${test_suffix}"
+config_volume="scrutiny-frontend-permissions-config-${test_suffix}"
 host_port="${TEST_HOST_PORT:-18080}"
 
 fail() {
@@ -16,6 +17,7 @@ fail() {
 
 cleanup() {
     docker rm --force "$container_name" >/dev/null 2>&1 || true
+    docker volume rm --force "$config_volume" >/dev/null 2>&1 || true
     docker image rm --force "$omnibus_image" "$web_image" >/dev/null 2>&1 || true
 }
 
@@ -68,6 +70,18 @@ for image in "$omnibus_image" "$web_image"; do
     assert_searchable_directory "$image" /opt/scrutiny/docs
     assert_readable_file "$image" /opt/scrutiny/web/index.html
 done
+
+# The web image starts as root only to fix volume ownership, then runs the server as 1000:1000. A
+# config volume left root-owned by an earlier release must become writable without a manual chown.
+web_uid="$(docker run --rm "$web_image" id -u)"
+[[ "$web_uid" == "1000" ]] || fail "web image runs as uid $web_uid, expected 1000"
+
+docker volume create "$config_volume" >/dev/null
+docker run --rm --volume "${config_volume}:/data" --entrypoint sh "$web_image" \
+    -c 'chown 0:0 /data && touch /data/scrutiny.db && chown 0:0 /data/scrutiny.db'
+migrated_owner="$(docker run --rm --volume "${config_volume}:/opt/scrutiny/config" "$web_image" \
+    sh -c 'touch /opt/scrutiny/config/.write-check && stat -c %u /opt/scrutiny/config/scrutiny.db')"
+[[ "$migrated_owner" == "1000" ]] || fail "root-owned config volume was not handed to uid 1000 (owner $migrated_owner)"
 
 docker run --detach \
     --name "$container_name" \

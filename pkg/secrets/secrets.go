@@ -22,6 +22,10 @@ const (
 	AuthTokenFile = ".auth-token" //nolint:gosec // file name, not a credential
 	// JWTSecretFile holds the generated web.auth.jwt_secret.
 	JWTSecretFile = ".jwt-secret"
+	// InfluxTokenFile holds the generated web.influxdb.token (first-time InfluxDB setup only).
+	InfluxTokenFile = ".influxdb-token" //nolint:gosec // file name, not a credential
+	// InfluxPasswordFile holds the generated web.influxdb.init_password (first-time InfluxDB setup only).
+	InfluxPasswordFile = ".influxdb-password" //nolint:gosec // file name, not a credential
 
 	secretBytes = 32
 )
