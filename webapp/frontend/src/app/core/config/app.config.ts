@@ -175,7 +175,6 @@ export interface AppConfig {
         report_monthly_day?: number;
         report_monthly_time?: string;
         report_pdf_enabled?: boolean;
-        report_pdf_path?: string;
     };
 
     navigation?: {
@@ -265,6 +264,5 @@ export const appConfig: AppConfig = {
         report_monthly_day: 1,
         report_monthly_time: '08:00',
         report_pdf_enabled: false,
-        report_pdf_path: '/opt/scrutiny/reports',
     },
 };

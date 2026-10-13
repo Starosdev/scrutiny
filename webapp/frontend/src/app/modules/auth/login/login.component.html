@@ -8,17 +8,23 @@
 
         <h2 class="login-title">Sign in</h2>
 
+        <p class="login-help">
+            Omnibus install: the server generated a token at <code>/opt/scrutiny/config/.auth-token</code>. Read it with
+            <code>docker exec &lt;container&gt; cat /opt/scrutiny/config/.auth-token</code>. Hub/spoke install: use the <code>SCRUTINY_WEB_AUTH_TOKEN</code> you configured on the
+            web container. See <a href="https://github.com/Starosdev/scrutiny/blob/master/docs/AUTH.md" target="_blank" rel="noopener noreferrer">docs/AUTH.md</a>.
+        </p>
+
         <!-- Loading bar -->
         @if (isLoading) {
-        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
         }
 
         <!-- Error message -->
         @if (errorMessage) {
-        <div class="login-error">
-            <mat-icon>error_outline</mat-icon>
-            <span>{{ errorMessage }}</span>
-        </div>
+            <div class="login-error" role="alert">
+                <mat-icon>error_outline</mat-icon>
+                <span>{{ errorMessage }}</span>
+            </div>
         }
 
         <!-- Login tabs -->
@@ -29,7 +35,7 @@
                     <mat-form-field appearance="outline" class="login-field">
                         <mat-label>API Token</mat-label>
                         <input matInput formControlName="token" [type]="hideToken ? 'password' : 'text'" placeholder="Enter your API token" autocomplete="off" />
-                        <button mat-icon-button matSuffix type="button" (click)="hideToken = !hideToken">
+                        <button mat-icon-button matSuffix type="button" [attr.aria-label]="hideToken ? 'Show token' : 'Hide token'" (click)="hideToken = !hideToken">
                             <mat-icon>{{ hideToken ? 'visibility_off' : 'visibility' }}</mat-icon>
                         </button>
                     </mat-form-field>
@@ -40,24 +46,30 @@
 
             <!-- Password tab (only if enabled) -->
             @if (showPasswordTab) {
-            <mat-tab label="Password">
-                <form [formGroup]="passwordForm" (ngSubmit)="onPasswordLogin()" class="login-form">
-                    <mat-form-field appearance="outline" class="login-field">
-                        <mat-label>Username</mat-label>
-                        <input matInput formControlName="username" type="text" placeholder="Enter your username" autocomplete="username" />
-                    </mat-form-field>
+                <mat-tab label="Password">
+                    <form [formGroup]="passwordForm" (ngSubmit)="onPasswordLogin()" class="login-form">
+                        <mat-form-field appearance="outline" class="login-field">
+                            <mat-label>Username</mat-label>
+                            <input matInput formControlName="username" type="text" placeholder="Enter your username" autocomplete="username" />
+                        </mat-form-field>
 
-                    <mat-form-field appearance="outline" class="login-field">
-                        <mat-label>Password</mat-label>
-                        <input matInput formControlName="password" [type]="hidePassword ? 'password' : 'text'" placeholder="Enter your password" autocomplete="current-password" />
-                        <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
-                            <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
-                        </button>
-                    </mat-form-field>
+                        <mat-form-field appearance="outline" class="login-field">
+                            <mat-label>Password</mat-label>
+                            <input
+                                matInput
+                                formControlName="password"
+                                [type]="hidePassword ? 'password' : 'text'"
+                                placeholder="Enter your password"
+                                autocomplete="current-password"
+                            />
+                            <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
+                                <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+                            </button>
+                        </mat-form-field>
 
-                    <button mat-flat-button color="primary" type="submit" class="login-button" [disabled]="passwordForm.invalid || isLoading">Sign in with Password</button>
-                </form>
-            </mat-tab>
+                        <button mat-flat-button color="primary" type="submit" class="login-button" [disabled]="passwordForm.invalid || isLoading">Sign in with Password</button>
+                    </form>
+                </mat-tab>
             }
         </mat-tab-group>
     </div>

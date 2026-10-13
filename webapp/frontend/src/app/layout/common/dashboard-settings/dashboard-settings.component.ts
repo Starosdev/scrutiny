@@ -223,7 +223,6 @@ export class DashboardSettingsComponent implements OnInit {
     reportMonthlyDay: number;
     reportMonthlyTime: string;
     reportPDFEnabled: boolean;
-    reportPDFPath: string;
 
     // Attribute overrides
     overrides: AttributeOverride[] = [];
@@ -248,6 +247,7 @@ export class DashboardSettingsComponent implements OnInit {
 
     // Notification URL management
     notifyUrls: NotifyUrlEntry[] = [];
+    notifyUrlError = '';
     notifyUrlColumns: string[] = ['label', 'url', 'source', 'heartbeat', 'actions'];
     showAddUrlForm = false;
     selectedEngine: 'shoutrrr' | 'apprise' = 'shoutrrr';
@@ -354,7 +354,6 @@ export class DashboardSettingsComponent implements OnInit {
             this.reportMonthlyDay = config.metrics.report_monthly_day ?? 1;
             this.reportMonthlyTime = config.metrics.report_monthly_time ?? '08:00';
             this.reportPDFEnabled = config.metrics.report_pdf_enabled ?? false;
-            this.reportPDFPath = config.metrics.report_pdf_path ?? '/opt/scrutiny/reports';
         });
 
         // Load attribute overrides
@@ -483,6 +482,7 @@ export class DashboardSettingsComponent implements OnInit {
             return;
         }
         this.testingUrlId = entry.id;
+        this.notifyUrlError = '';
         this._notifyUrlService
             .testNotifyUrl(entry.id)
             .pipe(takeUntil(this._unsubscribeAll))
@@ -490,8 +490,9 @@ export class DashboardSettingsComponent implements OnInit {
                 next: () => {
                     this.testingUrlId = null;
                 },
-                error: () => {
+                error: (err) => {
                     this.testingUrlId = null;
+                    this.notifyUrlError = this.notifyUrlErrorMessage(err, 'Test notification failed.');
                 },
             });
     }
@@ -598,15 +599,26 @@ export class DashboardSettingsComponent implements OnInit {
             return;
         }
         const label = this.newUrlLabel.trim();
+        this.notifyUrlError = '';
 
         this._notifyUrlService
             .addNotifyUrl(url, label, this.newUrlHeartbeatEnabled)
             .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe((saved) => {
-                this.notifyUrls = [...this.notifyUrls, saved];
-                this.showAddUrlForm = false;
-                this.resetAddForm();
+            .subscribe({
+                next: (saved) => {
+                    this.notifyUrls = [...this.notifyUrls, saved];
+                    this.showAddUrlForm = false;
+                    this.resetAddForm();
+                },
+                error: (err) => {
+                    this.notifyUrlError = this.notifyUrlErrorMessage(err, 'Could not save the notification URL.');
+                },
             });
+    }
+
+    // Prefer the server's message (for example the 400 for script:// or unsafe apprise+ URLs).
+    notifyUrlErrorMessage(err: any, fallback: string): string {
+        return err?.error?.error || err?.error?.errors?.[0] || fallback;
     }
 
     resetAddForm(): void {
@@ -689,7 +701,6 @@ export class DashboardSettingsComponent implements OnInit {
                 report_monthly_day: this.reportMonthlyDay,
                 report_monthly_time: this.reportMonthlyTime,
                 report_pdf_enabled: this.reportPDFEnabled,
-                report_pdf_path: this.reportPDFPath,
             },
         };
         this._configService.config = newSettings;

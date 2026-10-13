@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatIconTestingModule } from '@angular/material/icon/testing';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, throwError } from 'rxjs';
 import { DashboardSettingsComponent } from './dashboard-settings.component';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { AttributeOverrideService } from 'app/core/config/attribute-override.service';
@@ -235,5 +235,57 @@ describe('DashboardSettingsComponent notification channel fields', () => {
         for (const field of fields.filter((element) => element.classList.contains('field-lg'))) {
             expect(field.getBoundingClientRect().width).toBeGreaterThanOrEqual(200);
         }
+    });
+});
+
+describe('DashboardSettingsComponent notification URL errors', () => {
+    let component: DashboardSettingsComponent;
+    let fixture: ComponentFixture<DashboardSettingsComponent>;
+    let notifyService: { addNotifyUrl: jasmine.Spy; testNotifyUrl: jasmine.Spy };
+
+    beforeEach(async () => {
+        notifyService = { addNotifyUrl: jasmine.createSpy('addNotifyUrl'), testNotifyUrl: jasmine.createSpy('testNotifyUrl') };
+        TestBed.configureTestingModule({
+            imports: [DashboardSettingsComponent, MatIconTestingModule],
+            providers: [
+                { provide: ScrutinyConfigService, useValue: { config$: new BehaviorSubject<AppConfig>(structuredClone(appConfig)) } },
+                { provide: AttributeOverrideService, useValue: {} },
+                { provide: DashboardService, useValue: {} },
+                { provide: NotifyUrlService, useValue: notifyService },
+                { provide: HttpClient, useValue: {} },
+            ],
+        });
+        fixture = TestBed.createComponent(DashboardSettingsComponent);
+        component = fixture.componentInstance;
+        spyOn(component, 'loadOverrides');
+        spyOn(component, 'loadOverrideDevices');
+        spyOn(component, 'loadNotifyUrls');
+        fixture.detectChanges();
+        await fixture.whenStable();
+    });
+
+    it('shows the server message when saving a rejected URL returns 400', () => {
+        notifyService.addNotifyUrl.and.returnValue(throwError(() => ({ status: 400, error: { success: false, error: 'script:// URLs can only be set in the config file.' } })));
+        component.selectedEngine = 'shoutrrr';
+        component.selectedShoutrrrService = 'custom';
+        component.newUrlRaw = 'script:///bin/evil';
+        component.showAddUrlForm = true;
+        component.addNotifyUrl();
+        fixture.detectChanges();
+        expect(component.showAddUrlForm).toBeTrue();
+        const alert: HTMLElement = fixture.nativeElement.querySelector('[role="alert"]');
+        expect(alert.textContent).toContain('script:// URLs can only be set in the config file.');
+    });
+
+    it('shows the server message when a test returns 400', () => {
+        notifyService.testNotifyUrl.and.returnValue(throwError(() => ({ status: 400, error: { error: 'Unsafe URL' } })));
+        component.testNotifyUrl({ id: 3, url: 'x', source: 'ui' } as any);
+        expect(component.notifyUrlError).toBe('Unsafe URL');
+        expect(component.testingUrlId).toBeNull();
+    });
+
+    it('falls back to the errors array, then a generic message', () => {
+        expect(component.notifyUrlErrorMessage({ error: { errors: ['boom'] } }, 'x')).toBe('boom');
+        expect(component.notifyUrlErrorMessage({}, 'fallback')).toBe('fallback');
     });
 });
