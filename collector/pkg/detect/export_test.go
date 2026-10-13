@@ -7,3 +7,8 @@ import "github.com/analogj/scrutiny/collector/pkg/models"
 func (d *Detect) SetBlockWWNFallback(fallback func(*models.Device)) {
 	d.blockWWNFallback = fallback
 }
+
+// InflateDevices exposes the post-scan identification, exclusion and filtering step.
+func (d *Detect) InflateDevices(devices []models.Device) []models.Device {
+	return d.inflateDevices(devices, nil)
+}

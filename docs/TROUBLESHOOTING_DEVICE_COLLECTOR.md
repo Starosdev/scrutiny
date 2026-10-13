@@ -92,6 +92,39 @@ routinely label ATA disks as SCSI and forcing `-d scsi` on them loses the ATA at
 
 [example.collector.yaml](https://github.com/Staros-Labs/scrutiny/blob/master/example.collector.yaml)
 
+### Excluding Devices And Virtual Disks
+A device is skipped, and not registered, in these cases. Each is logged once by the collector.
+
+- `smartctl --info` failed with a fatal exit status (bit 0 command line error, or bit 1 device open failed), or returned no
+  usable output. Without the model and serial number the device could only be registered under its device name, and would
+  show up a second time once identification worked. It is registered on the first run where `--info` succeeds. A
+  non-fatal status such as 4 (checksum error, #663) still registers the device. Check the log line
+  `Skipping <device>: smartctl --info failed` and see [Exit Codes](#exit-codes).
+- The device matches an entry in the `exclude` list of `collector.yaml`. Each entry is a regular expression tested against
+  the full device path, the model name and the device type.
+- The model name is a known emulated disk: `QEMU HARDDISK`, `VBOX HARDDISK`, `Virtual Disk` or `Msft Virtual Disk`.
+  These return no SMART data. Set `exclude_virtual_disks: false` to register them anyway. A physical RAID volume that
+  reports one of these names can be kept the same way.
+
+```yaml
+# /opt/scrutiny/config/collector.yaml
+exclude:
+  - '^/dev/loop'
+  - '^Longhorn'
+exclude_virtual_disks: true
+```
+
+### Many Disks Are Slow To Collect
+The collector reads one disk after another. On a host with many drives behind slow USB bridges this can take
+minutes. Set `commands.metrics_parallelism` to read several disks at the same time. The default is `1`. Some USB
+bridges and RAID controllers reject concurrent commands, so raise it step by step and watch for new
+`smartctl returned a fatal error code` lines.
+
+```yaml
+commands:
+  metrics_parallelism: 4
+```
+
 ### RAID Controllers (Megaraid/3ware/HBA/Adaptec/HPE/etc)
 Smartctl has support for a large number of [RAID controllers](https://www.smartmontools.org/wiki/Supported_RAID-Controllers), however this 
 support is not automatic, and may require some additional device type hinting. You can provide this information to the Scrutiny collector

@@ -119,6 +119,20 @@ devices:
 #      metrics_smart_args: '--xall --json -T permissive' # used to retrieve smart data for each device.
 
 
+# Exclude devices from collection. Each entry is a regular expression (Go RE2 syntax, matched
+# anywhere in the value unless anchored with ^ and $) tested against the full device path
+# (for example /dev/sda), the model name reported by smartctl, and the device type. A device
+# matching any entry is skipped before registration and logged once at INFO. Invalid
+# expressions are ignored with a warning. Use the 'ignore: true' device entry above for a
+# single known path.
+#exclude:
+#  - '^/dev/loop'
+#  - '^Longhorn'
+#
+# Emulated disks (QEMU HARDDISK, VBOX HARDDISK, Virtual Disk, Msft Virtual Disk) return no
+# SMART data and are skipped by default. Set to false to register them anyway.
+#exclude_virtual_disks: true
+
 # Valid log levels (case-insensitive, highest to lowest severity):
 #   PANIC, FATAL, ERROR, WARN, INFO (default), DEBUG, TRACE
 # Setting a level includes all messages at that level and above.
@@ -149,6 +163,10 @@ devices:
 #                                      # A drive in standby is skipped (logged at INFO, no collector
 #                                      # error or notification) and keeps its last collected data.
 #  metrics_smartctl_wait: 0 # time to wait in seconds between each disk's check
+#  metrics_parallelism: 1 # number of disks whose SMART data is collected at the same time. The default of 1
+#                         # collects one disk after another. Raise it for hosts with many slow drives; some
+#                         # USB bridges and RAID controllers fail when queried concurrently. Environment
+#                         # variable: COLLECTOR_COMMANDS_METRICS_PARALLELISM
 #  metrics_api_retry_count: 2 # number of retries for transient API publish failures after the first attempt
 #  metrics_api_retry_delay: 2 # initial delay in seconds before retrying a transient API publish failure; later retries back off exponentially
 #  metrics_farm_enabled: false # Enable Seagate FARM log collection (requires smartmontools 7.4+).

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -138,6 +139,83 @@ func AppendDeviceTypeArgs(args []string, overrides []models.ScanOverride, fullDe
 		return args
 	}
 	return append(args, "--device", deviceType)
+}
+
+// configKeyExclude lists regular expressions matched against a device path, model name or
+// device type. configKeyExcludeVirtualDisks toggles the built-in virtual disk patterns.
+const (
+	configKeyExclude             = "exclude"
+	configKeyExcludeVirtualDisks = "exclude_virtual_disks"
+)
+
+// defaultVirtualDiskPatterns match the model names hypervisors give emulated disks. Those
+// return no SMART data, so registering them only produces failed or empty devices.
+var defaultVirtualDiskPatterns = []string{
+	`(?i)^QEMU HARDDISK$`,
+	`(?i)^VBOX HARDDISK$`,
+	`(?i)^(Msft )?Virtual Disk$`,
+}
+
+// excludeReason returns why device must not be collected, or "" if it should be kept. Empty
+// fields never match, so calling it before smartctl --info (no model yet) only applies
+// path and type patterns.
+func (d *Detect) excludeReason(device *models.Device) string {
+	patterns := append([]string{}, d.Config.GetStringSlice(configKeyExclude)...)
+	userCount := len(patterns)
+	if d.Config.GetBool(configKeyExcludeVirtualDisks) {
+		patterns = append(patterns, defaultVirtualDiskPatterns...)
+	}
+	fields := []struct{ name, value string }{
+		{"path", DeviceFullPath(device.DeviceName)},
+		{"model", device.ModelName},
+		{"type", device.DeviceType},
+	}
+	for i, pattern := range patterns {
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			if i < userCount {
+				d.Logger.Warnf("Ignoring invalid 'exclude' pattern %q: %v", pattern, err)
+			}
+			continue
+		}
+		for _, f := range fields {
+			if f.value != "" && re.MatchString(f.value) {
+				if i < userCount {
+					return fmt.Sprintf("%s %q matches exclude pattern %q", f.name, f.value, pattern)
+				}
+				return fmt.Sprintf("%s %q is a virtual disk (set exclude_virtual_disks: false to include it)", f.name, f.value)
+			}
+		}
+	}
+	return ""
+}
+
+// inflateDevices fills in device identity with smartctl --info (and the optional per-platform
+// extra), then drops devices that are excluded or whose --info call failed. A device without
+// identity would be registered under a device_name:host_id fallback and later duplicate the
+// real model:serial:wwn row, so it is skipped instead.
+func (d *Detect) inflateDevices(devices []models.Device, extra func(*models.Device)) []models.Device {
+	kept := make([]models.Device, 0, len(devices))
+	for ndx := range devices {
+		device := &devices[ndx]
+		if reason := d.excludeReason(device); reason != "" {
+			d.Logger.Infof("Skipping %s: %s", device.DeviceName, reason)
+			continue
+		}
+		if err := d.SmartCtlInfo(device); err != nil {
+			d.Logger.Warnf("Skipping %s: smartctl --info failed (%v); it is not registered until identification succeeds", device.DeviceName, err)
+			continue
+		}
+		if extra != nil {
+			extra(device)
+		}
+		if reason := d.excludeReason(device); reason != "" {
+			d.Logger.Infof("Skipping %s: %s", device.DeviceName, reason)
+			continue
+		}
+		kept = append(kept, *device)
+	}
+	return kept
 }
 
 //private/common functions
