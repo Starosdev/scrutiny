@@ -35,7 +35,7 @@ If you cannot adopt this change yet, stay on the frozen `:1` image tag. See [UPG
 | `<web.secrets.dir>/.auth-token` | The generated API token | Omnibus only, when `web.auth.token` is empty |
 | `<web.secrets.dir>/.jwt-secret` | The generated JWT signing secret | When `web.auth.jwt_secret` is empty |
 
-`web.secrets.dir` defaults to `/opt/scrutiny/config`. Both files are created with mode `0600` and reused on later starts. A token set in `scrutiny.yaml` or `SCRUTINY_WEB_AUTH_TOKEN` always wins over the file. If you set `SCRUTINY_WEB_AUTH_TOKEN` on an omnibus container that already generated a token, also set `COLLECTOR_API_TOKEN` to the same value, because the collectors prefer their own configuration over the generated file. To rotate the generated token, stop the container, delete `.auth-token`, and start it again.
+`web.secrets.dir` defaults to `/opt/scrutiny/config`. Both files are created with mode `0600` and reused on later starts. A token set in `scrutiny.yaml` or `SCRUTINY_WEB_AUTH_TOKEN` always wins over the file. If you set `SCRUTINY_WEB_AUTH_TOKEN` on an omnibus container that already generated a token, also set `COLLECTOR_API_TOKEN` to the same value, because the collectors prefer their own configuration over the generated file. To rotate the generated token, stop the container, delete `.auth-token`, and start it again. Also delete `.jwt-secret` if you want existing browser sessions to end; sessions signed with the old secret stay valid until they expire.
 
 ## Configuration Reference
 
@@ -46,7 +46,7 @@ If you cannot adopt this change yet, stay on the frozen `:1` image tag. See [UPG
 | `web.auth.enabled` | `SCRUTINY_WEB_AUTH_ENABLED` | `true` | API authentication. Set `false` to opt out. |
 | `web.auth.token` | `SCRUTINY_WEB_AUTH_TOKEN` | (empty) | Master API token. Required when auth is enabled, except in the omnibus image, which generates one. Used by collectors and for token-based login. |
 | `web.auth.jwt_secret` | `SCRUTINY_WEB_AUTH_JWT_SECRET` | (empty) | Secret key for signing JWT session tokens. If empty, a random secret is generated once and saved to `web.secrets.dir`, so sessions survive restarts. See [JWT Session Persistence](#jwt-session-persistence). |
-| `web.secrets.dir` | `SCRUTINY_WEB_SECRETS_DIR` | `/opt/scrutiny/config` | Directory where generated secrets are saved (mode `0600`). Must be writable for secret generation. |
+| `web.secrets.dir` | `SCRUTINY_WEB_SECRETS_DIR` | `/opt/scrutiny/config` | Directory where generated secrets are saved (mode `0600`). Must be writable for secret generation. In the omnibus image the collectors read `SCRUTINY_WEB_SECRETS_DIR` from the container environment as well. |
 | `web.listen.trusted_proxies` | `SCRUTINY_WEB_LISTEN_TRUSTED_PROXIES` | (empty) | IP addresses or CIDR ranges of reverse proxies whose `X-Forwarded-For` header is trusted. Space-separated in the environment variable. See [Reverse Proxies](#reverse-proxies-and-the-login-rate-limit). |
 | `web.auth.jwt_expiry_hours` | `SCRUTINY_WEB_AUTH_JWT_EXPIRY_HOURS` | `24` | JWT token expiry in hours |
 | `web.auth.admin_username` | `SCRUTINY_WEB_AUTH_ADMIN_USERNAME` | `admin` | Admin username for password-based login |
@@ -72,7 +72,7 @@ The following endpoints never require authentication, even when auth is enabled:
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/health` | Health check for load balancers and monitoring tools |
+| GET, HEAD | `/api/health` | Health check for load balancers and monitoring tools |
 | GET | `/api/auth/status` | Returns whether auth is enabled and which login methods are available |
 | POST | `/api/auth/login` | Authenticate with token or username/password to obtain a JWT |
 
@@ -318,9 +318,11 @@ web:
 
 Only list proxies you control. A listed proxy can set any client IP.
 
+**Set this when you use a reverse proxy.** Without it, all users share the proxy's IP, so ten failed logins from one person lock everyone out for five minutes. The server logs a one-time warning, naming only the peer IP, the first time it sees `X-Forwarded-For` from a peer that is not trusted. The header is never used until the peer is listed.
+
 ## Request Size Limit
 
-Request bodies larger than `web.listen.max_body_bytes` (default 16 MiB) are rejected with HTTP 413. `/api/auth/login` accepts at most 64 KiB. A smartctl `--xall --json` report is tens of KiB, and a report merged with FARM data is a few hundred KiB, so the default leaves a wide margin.
+Request bodies larger than `web.listen.max_body_bytes` (default 16 MiB) are rejected with HTTP 413. Requests to `/api/auth/*` (including login) accept at most 64 KiB. A smartctl `--xall --json` report is tens of KiB, and a report merged with FARM data is a few hundred KiB, so the default leaves a wide margin.
 
 ## Docker Deployment
 
