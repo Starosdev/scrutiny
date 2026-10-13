@@ -97,6 +97,11 @@ func SaveNotifyUrl(c *gin.Context) {
 		return
 	}
 
+	if notify.IsUnsafeAppriseTarget(input.URL) {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid apprise+ URL: the target must not start with \"-\"."})
+		return
+	}
+
 	entry := &models.NotifyUrl{
 		URL:              input.URL,
 		Label:            input.Label,
@@ -209,7 +214,7 @@ func TestNotifyUrl(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Notification URL not found"})
 		return
 	}
-	if notify.IsScriptURL(targetUrl) {
+	if notify.IsScriptURL(targetUrl) || notify.IsUnsafeAppriseTarget(targetUrl) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": errScriptUrlConfigOnly})
 		return
 	}
@@ -226,8 +231,9 @@ func TestNotifyUrl(c *gin.Context) {
 	)
 
 	if err := testNotify.SendToUrls([]string{targetUrl}); err != nil {
+		// The error can embed the target URL (with credentials) and raw apprise output; keep it in the server log.
 		logger.Errorln("Test notification failed:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "errors": []string{err.Error()}})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "errors": []string{"Test notification failed. See the server log for details."}})
 		return
 	}
 

@@ -883,6 +883,8 @@ func TestSendAppriseNotification_Text(t *testing.T) {
 	require.Contains(t, string(argsData), "text")
 	require.Contains(t, string(argsData), "mailto://example.com?to=alerts@example.com")
 	require.NotContains(t, string(argsData), "apprise+mailto://")
+	// "--" must come right before the target so it can never be parsed as an option.
+	require.Regexp(t, `--\s+mailto://example\.com`, string(argsData))
 }
 
 func TestSendAppriseNotification_HTML(t *testing.T) {
