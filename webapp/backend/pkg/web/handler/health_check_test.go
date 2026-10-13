@@ -10,9 +10,9 @@ import (
 	mock_database "github.com/analogj/scrutiny/webapp/backend/pkg/database/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/web/handler"
 	"github.com/gin-gonic/gin"
-	"github.com/golang/mock/gomock"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 // The health check log names the configured relational database (#880).

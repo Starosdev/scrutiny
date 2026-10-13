@@ -12,9 +12,9 @@ import (
 
 	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
-	"github.com/golang/mock/gomock"
 	influxapi "github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 const notificationHistoryCSV = `#datatype,string,long,dateTime:RFC3339,long,string,string

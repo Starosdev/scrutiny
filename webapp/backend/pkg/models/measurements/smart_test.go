@@ -2,7 +2,7 @@ package measurements_test
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -12,9 +12,9 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
-	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func expectConsumerDriveProfilesEnabledDefault(fakeConfig *mock_config.MockInterface) {
@@ -393,7 +393,7 @@ func TestFromCollectorSmartInfo(t *testing.T) {
 
 	var smartJson collector.SmartInfo
 
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -435,7 +435,7 @@ func TestFromCollectorSmartInfo_Fail_Smart(t *testing.T) {
 
 	var smartJson collector.SmartInfo
 
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -466,7 +466,7 @@ func TestFromCollectorSmartInfo_Fail_ScrutinySmart(t *testing.T) {
 
 	var smartJson collector.SmartInfo
 
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -497,7 +497,7 @@ func TestFromCollectorSmartInfo_Fail_ScrutinyNonCriticalFailed(t *testing.T) {
 
 	var smartJson collector.SmartInfo
 
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -534,7 +534,7 @@ func TestFromCollectorSmartInfo_ATA_Issue587VendorSpecificSsdAttribute(t *testin
 
 	var smartJson collector.SmartInfo
 
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -569,7 +569,7 @@ func TestFromCollectorSmartInfo_ATA_HddHighFlyWritesStillUsesGenericScoring(t *t
 
 	var smartJson collector.SmartInfo
 
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -603,7 +603,7 @@ func TestFromCollectorSmartInfo_ATA_SsdRuntimeBadBlockStillUsesGenericScoring(t 
 
 	var smartJson collector.SmartInfo
 
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -639,7 +639,7 @@ func TestFromCollectorSmartInfo_NVMe_Fail_Scrutiny(t *testing.T) {
 
 	var smartJson collector.SmartInfo
 
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -677,7 +677,7 @@ func TestFromCollectorSmartInfo_Nvme(t *testing.T) {
 
 	var smartJson collector.SmartInfo
 
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -711,7 +711,7 @@ func TestFromCollectorSmartInfo_Scsi(t *testing.T) {
 
 	var smartJson collector.SmartInfo
 
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -757,7 +757,7 @@ func TestFromCollectorSmartInfo_Scsi_Fail_Scrutiny(t *testing.T) {
 
 	var smartJson collector.SmartInfo
 
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -809,7 +809,7 @@ func TestFromCollectorSmartInfo_Scsi_SAS_SSD_Endurance(t *testing.T) {
 
 	var smartJson collector.SmartInfo
 
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -858,7 +858,7 @@ func TestFromCollectorSmartInfo_Scsi_SAS_SSD_Endurance_ExceedsThreshold(t *testi
 
 	var smartJson collector.SmartInfo
 
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -900,7 +900,7 @@ func TestFromCollectorSmartInfo_Scsi_SAS_EnvironmentalReports(t *testing.T) {
 
 	var smartJson collector.SmartInfo
 
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -935,7 +935,7 @@ func TestFromCollectorSmartInfo_Scsi_TemperatureAttributeType(t *testing.T) {
 	defer smartDataFile.Close()
 
 	var smartJson collector.SmartInfo
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -967,7 +967,7 @@ func TestFromCollectorSmartInfo_Scsi_TemperatureAttributeType_EnvReports(t *test
 	defer smartDataFile.Close()
 
 	var smartJson collector.SmartInfo
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
@@ -1003,7 +1003,7 @@ func TestFromCollectorSmartInfo_ATA_DeviceStatistics(t *testing.T) {
 
 	var smartJson collector.SmartInfo
 
-	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	smartDataBytes, err := io.ReadAll(smartDataFile)
 	require.NoError(t, err)
 	err = json.Unmarshal(smartDataBytes, &smartJson)
 	require.NoError(t, err)
