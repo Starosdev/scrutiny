@@ -5,6 +5,9 @@
 # will then source into the crontab file (/etc/cron.d/scrutiny)
 (set -o posix; export -p) > /env.sh
 
+# run-state files read by healthcheck-collector.sh
+touch /tmp/scrutiny-collector-started
+
 log_info() {
     printf 'time="%s" level=info msg="%s" type=metrics\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$1"
 }
@@ -23,7 +26,7 @@ sed -i 's|{COLLECTOR_CRON_SCHEDULE}|'"${COLLECTOR_CRON_SCHEDULE}"'|g' /etc/cron.
 if [[ "${COLLECTOR_RUN_STARTUP}" == "true" ]]; then
     sleep ${COLLECTOR_RUN_STARTUP_SLEEP}
     log_info "starting scrutiny collector (run-once mode. subsequent calls will be triggered via cron service)"
-    COLLECTOR_CRON_SCHEDULE= COLLECTOR_RUN_STARTUP= /opt/scrutiny/bin/scrutiny-collector-metrics run
+    COLLECTOR_CRON_SCHEDULE= COLLECTOR_RUN_STARTUP= /opt/scrutiny/bin/scrutiny-collector-metrics run && touch /tmp/scrutiny-collector-last-run
 fi
 
 
