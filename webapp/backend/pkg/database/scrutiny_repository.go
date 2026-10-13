@@ -237,6 +237,14 @@ func setupInfluxClient(ctx context.Context, appConfig config.Interface, globalLo
 func newScrutinyRepository(appConfig config.Interface, globalLogger logrus.FieldLogger, runMigrations bool) (_ DeviceRepo, err error) {
 	backgroundContext := context.Background()
 
+	// Refuse a too-old SQLite database before the connection pragmas (journal_mode=WAL) or the
+	// InfluxDB setup touch anything.
+	if runMigrations && appConfig.GetString(cfgDatabaseType) != dialectPostgres {
+		if precheckErr := precheckSQLiteDatabase(appConfig.GetString(cfgDatabaseLocation), globalLogger); precheckErr != nil {
+			return nil, precheckErr
+		}
+	}
+
 	database, err := openGormDatabase(appConfig, globalLogger)
 	if err != nil {
 		return nil, err

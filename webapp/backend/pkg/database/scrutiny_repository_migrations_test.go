@@ -46,6 +46,10 @@ func createMigrationTestRepositoryWithAppliedMigrations(t *testing.T, appliedMig
 	}
 }
 
+// The tests in this file seed histories older than minimumUpgradeMigrationID to exercise single
+// migrations, so they call migrateSQLite directly. Migrate would refuse those databases; the
+// history still runs in full for AnalogJ databases and builds the reference settings.
+
 func createMigrationTestRepository(t *testing.T) *scrutinyRepository {
 	t.Helper()
 
@@ -82,7 +86,7 @@ func TestMigrateBackfillsDistinctDeviceIDsForLegacyDevicesWithMissingWWN(t *test
 			(NULL, 'NVMe Drive', 'SERIAL002', 'scrutiny')
 	`).Error)
 
-	err := repo.Migrate(ctx)
+	err := repo.migrateSQLite(ctx, false)
 	require.NoError(t, err)
 
 	var deviceCount int64
@@ -104,7 +108,7 @@ func TestMigrateBackfillsDistinctDeviceIDsForLegacyDevicesWithMissingWWN(t *test
 
 func TestMigrateAttributeOverridesSupportsDistinctDeviceSelectors(t *testing.T) {
 	repo := createMigrationTestRepository(t)
-	require.NoError(t, repo.Migrate(context.Background()))
+	require.NoError(t, repo.migrateSQLite(context.Background(), false))
 
 	first := models.AttributeOverride{Protocol: "NVMe", AttributeId: "media_errors", DeviceID: "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e", Action: "ignore"}
 	second := models.AttributeOverride{Protocol: "NVMe", AttributeId: "media_errors", DeviceID: "c4ac4ff4-1a4d-52aa-9724-40fbc47dd306", Action: "ignore"}
@@ -199,7 +203,7 @@ CREATE TABLE devices (
 		)
 	`).Error)
 
-	err := repo.Migrate(ctx)
+	err := repo.migrateSQLite(ctx, false)
 	require.NoError(t, err)
 
 	var deviceCount int64
@@ -275,7 +279,7 @@ CREATE TABLE devices (
 // migration from before that rebuild and pins the final index definition.
 func TestMigrateLeavesDevicesWWNIndexNonUnique(t *testing.T) {
 	repo := createMigrationTestRepository(t)
-	require.NoError(t, repo.Migrate(context.Background()))
+	require.NoError(t, repo.migrateSQLite(context.Background(), false))
 
 	var indexSQL string
 	require.NoError(t, repo.gormClient.Raw(
@@ -351,7 +355,7 @@ CREATE TABLE attribute_overrides (
 		)
 	`).Error)
 
-	require.NoError(t, repo.Migrate(ctx))
+	require.NoError(t, repo.migrateSQLite(ctx, false))
 	require.NoError(t, repo.gormClient.AutoMigrate(&models.AttributeOverride{}))
 
 	rows, err := repo.gormClient.Raw(`
@@ -467,7 +471,7 @@ CREATE TABLE attribute_overrides (
 	) VALUES (1, 'ATA', '188', '0x5000c500d575cbfc', 'ignore', 'ui')
 	`).Error)
 
-	require.NoError(t, repo.Migrate(context.Background()))
+	require.NoError(t, repo.migrateSQLite(context.Background(), false))
 
 	var pinnedColumnCount int64
 	require.NoError(t, repo.gormClient.Raw(`
@@ -552,7 +556,7 @@ CREATE TABLE devices (
 	collector_version TEXT
 )`).Error)
 
-	require.NoError(t, repo.Migrate(ctx))
+	require.NoError(t, repo.migrateSQLite(ctx, false))
 	require.True(t, repo.gormClient.Migrator().HasColumn(&models.Device{}, "model_family"))
 	require.True(t, repo.gormClient.Migrator().HasColumn(&models.Device{}, "smart_display_mode"))
 	require.True(t, repo.gormClient.Migrator().HasColumn(&models.Device{}, "device_status"))
@@ -643,7 +647,7 @@ CREATE TABLE devices (
 			('valid-uuid', 'wwn-1', 'sda', 'Samsung SSD 870', 'SN123', 'scrutiny')
 	`).Error)
 
-	require.NoError(t, repo.Migrate(ctx))
+	require.NoError(t, repo.migrateSQLite(ctx, false))
 
 	var deviceCount int64
 	require.NoError(t, repo.gormClient.Raw(`SELECT COUNT(*) FROM devices`).Scan(&deviceCount).Error)
@@ -657,14 +661,14 @@ CREATE TABLE devices (
 func TestMigrateCreatesDeviceSelfTestsTable(t *testing.T) {
 	repo := createMigrationTestRepository(t)
 
-	require.NoError(t, repo.Migrate(context.Background()))
+	require.NoError(t, repo.migrateSQLite(context.Background(), false))
 	require.True(t, repo.gormClient.Migrator().HasTable(&models.DeviceSelfTest{}))
 }
 
 func TestMigrateAddsDashboardPageSizeSetting(t *testing.T) {
 	repo := createMigrationTestRepository(t)
 
-	require.NoError(t, repo.Migrate(context.Background()))
+	require.NoError(t, repo.migrateSQLite(context.Background(), false))
 
 	var setting models.SettingEntry
 	require.NoError(t, repo.gormClient.Where("setting_key_name = ?", "dashboard_page_size").First(&setting).Error)
@@ -675,7 +679,7 @@ func TestMigrateAddsDashboardPageSizeSetting(t *testing.T) {
 func TestMigrateAddsDashboardHostPageSizeSetting(t *testing.T) {
 	repo := createMigrationTestRepository(t)
 
-	require.NoError(t, repo.Migrate(context.Background()))
+	require.NoError(t, repo.migrateSQLite(context.Background(), false))
 
 	var setting models.SettingEntry
 	require.NoError(t, repo.gormClient.Where("setting_key_name = ?", "dashboard_host_page_size").First(&setting).Error)
@@ -686,7 +690,7 @@ func TestMigrateAddsDashboardHostPageSizeSetting(t *testing.T) {
 func TestMigrateEnablesTemperatureHistoryStorage(t *testing.T) {
 	repo := createMigrationTestRepository(t)
 
-	require.NoError(t, repo.Migrate(context.Background()))
+	require.NoError(t, repo.migrateSQLite(context.Background(), false))
 
 	var setting models.SettingEntry
 	require.NoError(t, repo.gormClient.Where("setting_key_name = ?", "collector.store_temperature_history").First(&setting).Error)
@@ -696,7 +700,7 @@ func TestMigrateEnablesTemperatureHistoryStorage(t *testing.T) {
 
 func TestTemperatureSettingsPersistAcrossConfigReload(t *testing.T) {
 	repo := createMigrationTestRepository(t)
-	require.NoError(t, repo.Migrate(context.Background()))
+	require.NoError(t, repo.migrateSQLite(context.Background(), false))
 	var err error
 	repo.appConfig, err = config.Create()
 	require.NoError(t, err)
@@ -781,8 +785,8 @@ func TestMigrateSelfTestChronologyPreservesLegacyHistory(t *testing.T) {
 	require.NoError(t, repo.gormClient.Exec(`CREATE INDEX idx_device_self_tests_history ON device_self_tests(device_identity,lifetime_hours)`).Error)
 	require.NoError(t, repo.gormClient.Exec(`INSERT INTO device_self_tests(id,device_identity,device_id,device_wwn,type_value,lifetime_hours) VALUES (42,'wwn-1','device-1','wwn-1',1,2464)`).Error)
 	require.NoError(t, repo.gormClient.Exec(`INSERT INTO migrations(id) VALUES ('m20260616000000')`).Error)
-	require.NoError(t, repo.Migrate(context.Background()))
-	require.NoError(t, repo.Migrate(context.Background()))
+	require.NoError(t, repo.migrateSQLite(context.Background(), false))
+	require.NoError(t, repo.migrateSQLite(context.Background(), false))
 	var row models.DeviceSelfTest
 	require.NoError(t, repo.gormClient.First(&row, 42).Error)
 	require.Equal(t, 2464, row.LifetimeHours)
@@ -800,7 +804,7 @@ func TestMigrateSelfTestChronologyPreservesLegacyHistory(t *testing.T) {
 func TestMigrateAttributeOverridesAddsNullablePinnedValue(t *testing.T) {
 	repo := createMigrationTestRepository(t)
 	ctx := context.Background()
-	require.NoError(t, repo.Migrate(ctx))
+	require.NoError(t, repo.migrateSQLite(ctx, false))
 
 	existing := models.AttributeOverride{Protocol: "NVMe", AttributeId: "media_errors", DeviceID: "b62e6d86-6ce0-50da-8bff-b2ee54c4af4e", Action: "ignore"}
 	require.NoError(t, repo.gormClient.Create(&existing).Error)

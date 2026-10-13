@@ -33,7 +33,7 @@ func (sr *scrutinyRepository) UpdateHostArchived(ctx context.Context, hostID str
 	result := sr.gormClient.WithContext(ctx).
 		Model(&models.Device{}).
 		Where("host_id = ?", hostID).
-		Update("archived", archived)
+		Updates(map[string]interface{}{"archived": archived, "auto_archived": false})
 	if result.Error != nil {
 		return 0, fmt.Errorf("could not update host %q: %w", hostID, result.Error)
 	}

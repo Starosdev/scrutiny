@@ -46,6 +46,9 @@ type Device struct {
 	Archived                  bool                `json:"archived"`
 	DeviceStatus              pkg.DeviceStatus    `json:"device_status"`
 	HasForcedFailure          bool                `json:"has_forced_failure" gorm:"default:false"`
+	// AutoArchived is set when the missed-ping monitor archived the device, and cleared by any
+	// manual archive or unarchive.
+	AutoArchived bool `json:"auto_archived" gorm:"default:false"`
 }
 
 func (dv *Device) IsAta() bool {

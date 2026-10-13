@@ -372,14 +372,25 @@ func (sr *scrutinyRepository) GetDeviceByWWN(ctx context.Context, wwn string) (m
 	}
 }
 
-// Update Device Archived State
+// UpdateDeviceArchived sets a device's archived state on a user's request. It clears
+// auto_archived, so a device the user archived or unarchived is never treated as auto-archived.
 func (sr *scrutinyRepository) UpdateDeviceArchived(ctx context.Context, deviceID string, archived bool) error {
+	return sr.setDeviceArchived(ctx, deviceID, archived, false)
+}
+
+// AutoArchiveDevice archives a device for the missed-ping monitor and records that it did so.
+func (sr *scrutinyRepository) AutoArchiveDevice(ctx context.Context, deviceID string) error {
+	return sr.setDeviceArchived(ctx, deviceID, true, true)
+}
+
+func (sr *scrutinyRepository) setDeviceArchived(ctx context.Context, deviceID string, archived, auto bool) error {
 	var device models.Device
 	if err := sr.gormClient.WithContext(ctx).Where(queryDeviceID, deviceID).First(&device).Error; err != nil {
 		return fmt.Errorf(errDeviceNotFound, err)
 	}
 
-	return sr.gormClient.Model(&device).Update("archived", archived).Error
+	return sr.gormClient.WithContext(ctx).Model(&device).
+		Updates(map[string]interface{}{"archived": archived, "auto_archived": auto}).Error
 }
 
 // Update Device Muted State

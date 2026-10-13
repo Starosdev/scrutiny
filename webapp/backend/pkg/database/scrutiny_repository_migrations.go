@@ -40,6 +40,8 @@ import (
 	m20260925000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260925000000"
 	m20260930000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260930000000"
 	m20261002000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20261002000000"
+	m20261013000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20261013000000"
+	m20261013000001 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20261013000001"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -223,17 +225,46 @@ func (sr *scrutinyRepository) migrateWriteDatapoint(ctx context.Context, bucketN
 	return nil
 }
 
+// Migrate brings the database to the current schema.
+//
+// An empty SQLite database gets the baseline schema and default settings, and every migration in
+// the history is recorded as applied, so a fresh install never runs the history (BRK-02). A
+// database that already has history runs the migrations it is missing, unless it is a Scrutiny
+// database older than the minimum upgrade-from version, which is refused before anything is
+// written. PostgreSQL databases follow migratePostgres.
 func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 	if sr.gormClient.Name() == dialectPostgres {
 		return sr.migratePostgres(ctx)
 	}
 
+	fresh, err := classifySQLiteDatabase(sr.gormClient.WithContext(ctx))
+	if err != nil {
+		sr.logger.Errorf("Database migration refused: %v", err)
+		return err
+	}
+	return sr.migrateSQLite(ctx, fresh)
+}
+
+// migrateSQLite runs the SQLite migrations. With baseline set, the gormigrate InitSchema hook
+// creates the baseline schema instead of running the history; callers set it only for a database
+// classifySQLiteDatabase found empty, since gormigrate would also treat a database with tables
+// but no recorded migrations as new.
+func (sr *scrutinyRepository) migrateSQLite(ctx context.Context, baseline bool) error {
 	sr.logger.Infoln("Database migration starting. Please wait, this process may take a long time....")
 
-	gormMigrateOptions := gormigrate.DefaultOptions
+	// Copy the options: gormigrate.DefaultOptions is a shared pointer, and the baseline runs a
+	// nested migration on its reference database that would otherwise flip UseTransaction under
+	// this run and leave its transaction uncommitted.
+	gormMigrateOptions := *gormigrate.DefaultOptions
 	gormMigrateOptions.UseTransaction = true
 
-	m := gormigrate.New(sr.gormClient, gormMigrateOptions, sr.schemaMigrations(ctx))
+	m := gormigrate.New(sr.gormClient, &gormMigrateOptions, sr.schemaMigrations(ctx))
+	if baseline {
+		m.InitSchema(func(tx *gorm.DB) error {
+			sr.logger.Infoln("New SQLite database: creating baseline schema and default settings")
+			return initializeBaseline(ctx, tx, sr.logger)
+		})
+	}
 
 	if err := m.Migrate(); err != nil {
 		if strings.Contains(err.Error(), "readonly database") ||
@@ -259,9 +290,9 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 
 	//these migrations cannot be done within a transaction, so they are done as a separate group, with `UseTransaction = false`
 	sr.logger.Infoln("SQLite global configuration migrations starting. Please wait....")
-	globalMigrateOptions := gormigrate.DefaultOptions
+	globalMigrateOptions := *gormigrate.DefaultOptions
 	globalMigrateOptions.UseTransaction = false
-	gm := gormigrate.New(sr.gormClient, globalMigrateOptions, []*gormigrate.Migration{
+	gm := gormigrate.New(sr.gormClient, &globalMigrateOptions, []*gormigrate.Migration{
 		{
 			ID: "g20220802211500",
 			Migrate: func(tx *gorm.DB) error {
@@ -1708,6 +1739,8 @@ func (sr *scrutinyRepository) schemaMigrations(ctx context.Context) []*gormigrat
 		{ID: "m20260926000000", Migrate: migrateSettingsUniqueKey}, // one settings row per key, unique key (#889)
 		{ID: "m20260930000000", Migrate: m20260930000000.Migrate},  // add btrfs statfs used/available columns
 		{ID: "m20261002000000", Migrate: m20261002000000.Migrate},  // drop btrfs free_statfs column (#929)
+		{ID: "m20261013000000", Migrate: m20261013000000.Migrate},  // drop legacy 'full' api_tokens.scope default (#965)
+		{ID: "m20261013000001", Migrate: m20261013000001.Migrate},  // add devices.auto_archived (#965)
 	}
 }
 
@@ -1729,9 +1762,9 @@ func (sr *scrutinyRepository) migratePostgres(ctx context.Context) error {
 		if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", migrationLockKey).Error; err != nil {
 			return err
 		}
-		options := gormigrate.DefaultOptions
+		options := *gormigrate.DefaultOptions
 		options.UseTransaction = false
-		m := gormigrate.New(tx, options, sr.schemaMigrations(ctx))
+		m := gormigrate.New(tx, &options, sr.schemaMigrations(ctx))
 		m.InitSchema(func(tx *gorm.DB) error {
 			sr.logger.Infoln("New PostgreSQL database: creating baseline schema and default settings")
 			return initializeBaseline(ctx, tx, sr.logger)

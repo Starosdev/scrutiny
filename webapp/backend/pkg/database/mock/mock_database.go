@@ -47,6 +47,20 @@ func (m *MockDeviceRepo) EXPECT() *MockDeviceRepoMockRecorder {
 	return m.recorder
 }
 
+// AutoArchiveDevice mocks base method.
+func (m *MockDeviceRepo) AutoArchiveDevice(ctx context.Context, deviceID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AutoArchiveDevice", ctx, deviceID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AutoArchiveDevice indicates an expected call of AutoArchiveDevice.
+func (mr *MockDeviceRepoMockRecorder) AutoArchiveDevice(ctx, deviceID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AutoArchiveDevice", reflect.TypeOf((*MockDeviceRepo)(nil).AutoArchiveDevice), ctx, deviceID)
+}
+
 // Close mocks base method.
 func (m *MockDeviceRepo) Close() error {
 	m.ctrl.T.Helper()
