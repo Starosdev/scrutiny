@@ -291,3 +291,23 @@ func TestPopulateAttributeStatus_SkipsGenericObservedThresholdsForVendorSpecific
 	require.Equal(t, ataSsdVendorSpecificThresholdSkipReason, sa.StatusReason)
 	require.Zero(t, sa.FailureRate)
 }
+
+func TestPopulateAttributeStatus_WhenFailed(t *testing.T) {
+	tests := []struct {
+		name       string
+		whenFailed string
+		want       pkg.AttributeStatus
+	}{
+		{"now is a manufacturer failure", "now", pkg.AttributeStatusFailedSmart},
+		{"past is a warning", "past", pkg.AttributeStatusWarningScrutiny},
+		{"case is ignored", "Now", pkg.AttributeStatusFailedSmart},
+		{"empty passes", "", pkg.AttributeStatusPassed},
+		{"legacy FAILING_NOW is not a smartctl value", "FAILING_NOW", pkg.AttributeStatusPassed},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			attr := (&SmartAtaAttribute{AttributeId: 2, Value: 100, Threshold: 0, WhenFailed: tc.whenFailed}).PopulateAttributeStatus(nil, false)
+			require.Equal(t, tc.want, attr.Status)
+		})
+	}
+}

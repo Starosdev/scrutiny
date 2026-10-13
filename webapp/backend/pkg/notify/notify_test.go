@@ -17,6 +17,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	mock_database "github.com/analogj/scrutiny/webapp/backend/pkg/database/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -134,6 +135,18 @@ func TestShouldNotify_MetricsStatusFilterAttributesCritical_WithCriticalAttrs(t 
 
 	//assert
 	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil))
+}
+
+func TestShouldNotify_NvmeCriticalWarning_SmartThreshold(t *testing.T) {
+	t.Parallel()
+	smartAttrs := measurements.Smart{}
+	smartAttrs.ProcessNvmeSmartInfo(nil, collector.NvmeSmartHealthInformationLog{CriticalWarning: 1, AvailableSpare: 100, AvailableSpareThreshold: 10})
+	device := models.Device{DeviceStatus: smartAttrs.Status, DeviceProtocol: pkg.DeviceProtocolNvme}
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
+
+	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, pkg.MetricsStatusThresholdSmart, pkg.MetricsStatusFilterAttributesCritical, true, "", &gin.Context{}, fakeDatabase, nil))
 }
 
 func TestShouldNotify_MetricsStatusFilterAttributesCritical_WithMultipleCriticalAttrs(t *testing.T) {
@@ -309,6 +322,21 @@ func TestShouldNotify_WarnLevel_PassedDeviceWithWarnAttr(t *testing.T) {
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
 	//assert: warn level should trigger on a device with only warning attributes
 	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelWarn, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil))
+}
+
+// A when_failed "past" attribute is a Scrutiny warning: it notifies at warn level and not at fail level.
+func TestShouldNotify_WarnLevel_WhenFailedPastAttribute(t *testing.T) {
+	t.Parallel()
+	attr := (&measurements.SmartAtaAttribute{AttributeId: 5, WhenFailed: "past"}).PopulateAttributeStatus(nil, false)
+	require.Equal(t, pkg.AttributeStatusWarningScrutiny, attr.Status)
+	device := models.Device{DeviceStatus: pkg.DeviceStatusPassed}
+	smartAttrs := measurements.Smart{Attributes: map[string]measurements.SmartAttribute{"5": attr}}
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
+
+	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelWarn, pkg.MetricsStatusThresholdBoth, pkg.MetricsStatusFilterAttributesAll, true, "", &gin.Context{}, fakeDatabase, nil))
+	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, pkg.MetricsStatusThresholdBoth, pkg.MetricsStatusFilterAttributesAll, true, "", &gin.Context{}, fakeDatabase, nil))
 }
 
 func TestShouldNotify_WarnLevel_PassedDeviceWithFailLevelSetting(t *testing.T) {

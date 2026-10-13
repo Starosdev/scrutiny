@@ -9,7 +9,10 @@ type NvmeAttributeMetadata struct {
 	DisplayName string `json:"display_name"`
 	Ideal       string `json:"ideal"`
 	Critical    bool   `json:"critical"`
-	Description string `json:"description"`
+	// WarnAtOrAbove is an optional Scrutiny warning band on the value (0 = unset).
+	// Failure still comes from the per-attribute threshold passed to PopulateAttributeStatus.
+	WarnAtOrAbove int64  `json:"-"`
+	Description   string `json:"description"`
 
 	Transform          func(int64, int64, string) int64 `json:"-"` //this should be a method to extract/tranform the normalized or raw data to a chartable format. Str
 	TransformValueUnit string                           `json:"transform_value_unit,omitempty"`
@@ -47,7 +50,10 @@ var NmveMetadata = map[string]NvmeAttributeMetadata{
 		DisplayType: "",
 		Ideal:       "low",
 		Critical:    true,
-		Description: "Contains a vendor specific estimate of the percentage of NVM subsystem life used based on the actual usage and the manufacturer’s prediction of NVM life. A value of 100 indicates that the estimated endurance of the NVM in the NVM subsystem has been consumed, but may not indicate an NVM subsystem failure. The value is allowed to exceed 100. Percentages greater than 254 shall be represented as 255. This value shall be updated once per power-on hour (when the controller is not in a sleep state).",
+		// Warn at 90% of rated endurance; the spec allows values above 100, which the
+		// existing threshold of 100 already fails.
+		WarnAtOrAbove: 90,
+		Description:   "Contains a vendor specific estimate of the percentage of NVM subsystem life used based on the actual usage and the manufacturer’s prediction of NVM life. A value of 100 indicates that the estimated endurance of the NVM in the NVM subsystem has been consumed, but may not indicate an NVM subsystem failure. The value is allowed to exceed 100. Percentages greater than 254 shall be represented as 255. This value shall be updated once per power-on hour (when the controller is not in a sleep state).",
 	},
 	"data_units_read": {
 		ID:          "data_units_read",
