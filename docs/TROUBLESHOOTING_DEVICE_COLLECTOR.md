@@ -93,18 +93,24 @@ routinely label ATA disks as SCSI and forcing `-d scsi` on them loses the ATA at
 [example.collector.yaml](https://github.com/Staros-Labs/scrutiny/blob/master/example.collector.yaml)
 
 ### Excluding Devices And Virtual Disks
-A device is skipped, and not registered, in these cases. Each is logged once by the collector.
+A device is skipped, and not registered, in these cases. Each is logged once per run by the collector.
 
-- `smartctl --info` failed with a fatal exit status (bit 0 command line error, or bit 1 device open failed), or returned no
-  usable output. Without the model and serial number the device could only be registered under its device name, and would
-  show up a second time once identification worked. It is registered on the first run where `--info` succeeds. A
-  non-fatal status such as 4 (checksum error, #663) still registers the device. Check the log line
+- `smartctl --info` failed: a fatal exit status (bit 0 command line error, or bit 1 device open failed), a timeout, a
+  missing `smartctl` binary, empty output, or output that is not valid JSON. Without the model and serial number the
+  device could only be registered under its device name, and would show up a second time once identification worked.
+  The failure is still sent to the server as a collector scan error (type `info`) on every run, so notifications for
+  a failing drive keep working. The device is registered on the first run where `--info` succeeds. A non-fatal
+  status such as 4 (checksum error, #663) still registers the device. Look for the log line
   `Skipping <device>: smartctl --info failed` and see [Exit Codes](#exit-codes).
-- The device matches an entry in the `exclude` list of `collector.yaml`. Each entry is a regular expression tested against
-  the full device path, the model name and the device type.
-- The model name is a known emulated disk: `QEMU HARDDISK`, `VBOX HARDDISK`, `Virtual Disk` or `Msft Virtual Disk`.
-  These return no SMART data. Set `exclude_virtual_disks: false` to register them anyway. A physical RAID volume that
-  reports one of these names can be kept the same way.
+- The device matches an entry in the `exclude` list of `collector.yaml`. Each entry is a regular expression
+  (case-sensitive) tested against the full device path, the model name and the device type. `exclude` must be a YAML
+  list. The `COLLECTOR_EXCLUDE` environment variable splits on whitespace, so it cannot hold a pattern with a space.
+  On Windows the device prefix is empty, so a path such as `sda` has no `/dev/` to anchor on; match on model or
+  type there.
+- The model name is a known emulated disk: `QEMU HARDDISK`, `VBOX HARDDISK`, `Virtual Disk` or `Msft Virtual Disk`
+  (matched case-insensitively). These return no SMART data. The default is skipped for a device you name explicitly
+  in the `devices` section or in `allow_listed_devices`. Set `exclude_virtual_disks: false` to register every such
+  disk, for example a physical RAID volume that reports one of these names. Your own `exclude` entries always apply.
 
 ```yaml
 # /opt/scrutiny/config/collector.yaml
@@ -115,10 +121,11 @@ exclude_virtual_disks: true
 ```
 
 ### Many Disks Are Slow To Collect
-The collector reads one disk after another. On a host with many drives behind slow USB bridges this can take
-minutes. Set `commands.metrics_parallelism` to read several disks at the same time. The default is `1`. Some USB
+By default the collector reads one disk after another. On a host with many drives behind slow USB bridges this can
+take minutes. Set `commands.metrics_parallelism` to read several disks at the same time. Some USB
 bridges and RAID controllers reject concurrent commands, so raise it step by step and watch for new
-`smartctl returned a fatal error code` lines.
+`smartctl returned a fatal error code` lines. `commands.metrics_smartctl_wait` is a pause that each worker takes
+after it finishes a disk, so with parallelism above 1 several disks are read between pauses.
 
 ```yaml
 commands:

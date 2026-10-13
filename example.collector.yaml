@@ -124,13 +124,14 @@ devices:
 # (for example /dev/sda), the model name reported by smartctl, and the device type. A device
 # matching any entry is skipped before registration and logged once at INFO. Invalid
 # expressions are ignored with a warning. Use the 'ignore: true' device entry above for a
-# single known path.
+# single known path. Patterns are case-sensitive, and 'exclude' must be a YAML list.
 #exclude:
 #  - '^/dev/loop'
 #  - '^Longhorn'
 #
 # Emulated disks (QEMU HARDDISK, VBOX HARDDISK, Virtual Disk, Msft Virtual Disk) return no
-# SMART data and are skipped by default. Set to false to register them anyway.
+# SMART data and are skipped by default (case-insensitive), unless the device is named in the
+# 'devices' section or in allow_listed_devices. Set to false to register them anyway.
 #exclude_virtual_disks: true
 
 # Valid log levels (case-insensitive, highest to lowest severity):
@@ -162,7 +163,7 @@ devices:
 #                                      #   metrics_smart_args: '--xall --json -n standby'
 #                                      # A drive in standby is skipped (logged at INFO, no collector
 #                                      # error or notification) and keeps its last collected data.
-#  metrics_smartctl_wait: 0 # time to wait in seconds between each disk's check
+#  metrics_smartctl_wait: 0 # time in seconds each worker waits after finishing a disk (see metrics_parallelism)
 #  metrics_parallelism: 1 # number of disks whose SMART data is collected at the same time. The default of 1
 #                         # collects one disk after another. Raise it for hosts with many slow drives; some
 #                         # USB bridges and RAID controllers fail when queried concurrently. Environment
