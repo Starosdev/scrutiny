@@ -107,7 +107,7 @@ RUN chmod 0644 /etc/cron.d/scrutiny && \
     chmod 0644 /etc/cron.d/scrutiny-mdadm && \
     chmod 0644 /etc/cron.d/scrutiny-filesystem && \
     chmod 0644 /etc/cron.d/scrutiny-btrfs && \
-    rm -f /etc/cron.daily/* && \
+    rm -f /etc/cron.daily/* /etc/cron.d/zfsutils-linux /usr/lib/zfs-linux/scrub /usr/lib/zfs-linux/trim && \
     mkdir -p /opt/scrutiny/web && \
     mkdir -p /opt/scrutiny/docs && \
     mkdir -p /opt/scrutiny/config && \
