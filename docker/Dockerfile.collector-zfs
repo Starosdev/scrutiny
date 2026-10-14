@@ -34,6 +34,7 @@ COPY --from=backendbuild /go/src/github.com/analogj/scrutiny/scrutiny-collector-
 RUN chmod +x /opt/scrutiny/bin/scrutiny-collector-zfs && \
     chmod +x /entrypoint-collector-zfs.sh && \
     chmod 0644 /etc/cron.d/scrutiny-zfs && \
-    rm -f /etc/cron.daily/apt /etc/cron.daily/dpkg /etc/cron.daily/passwd
+    rm -f /etc/cron.daily/apt /etc/cron.daily/dpkg /etc/cron.daily/passwd \
+          /etc/cron.d/zfsutils-linux /usr/lib/zfs-linux/scrub /usr/lib/zfs-linux/trim
 
 CMD ["/entrypoint-collector-zfs.sh"]
