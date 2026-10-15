@@ -25,7 +25,9 @@ We use a Gitflow-style workflow:
 2. Follow the commit convention: `type(scope): description`
 3. Ensure all tests pass
 4. Update `README.md` when your change affects the top-level product surface, feature set, supported deployment paths, or published image matrix
-5. Submit a PR to `develop` (or `master` for hotfixes)
+5. Submit a PR to `develop`, including for hotfixes
+
+`master` accepts pull requests only from `develop`. The required Promotion Policy check (`.github/workflows/promotion-policy.yaml`) fails any other source branch, and a `develop` to `master` promotion PR needs a `## Product changes` heading followed by `## Summary` content. An urgent fix lands on `develop` first and reaches `master` through a promotion PR.
 
 ### PR Description Automation
 
