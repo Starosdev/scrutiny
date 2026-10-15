@@ -2,6 +2,16 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [2.0.0-beta.2](https://github.com/Starosdev/scrutiny/compare/v2.0.0-beta.1...v2.0.0-beta.2) (2026-10-15)
+
+### Bug Fixes
+
+* **ci:** publish distinct per-image tags for prerelease versions ([35b8637](https://github.com/Starosdev/scrutiny/commit/35b8637f85d7de5f545db87fb3e1703fe7acbf81))
+* **docker:** strip Debian's zfsutils-linux cron + scripts from the remaining images ([2ba3df5](https://github.com/Starosdev/scrutiny/commit/2ba3df5a469691a030100b4f8d10cf5a223f297b))
+* **docker:** strip Debian's zfsutils-linux cron + scripts from the remaining images ([c11e245](https://github.com/Starosdev/scrutiny/commit/c11e2456bbfa31769fa124d6474dca177e69c57d))
+* **docker:** strip Debian's zfsutils-linux cron from the omnibus image ([b9d5130](https://github.com/Starosdev/scrutiny/commit/b9d5130225653567966531e2568de63a41e96b21))
+* **summary:** report stale only when missed ping monitoring is enabled ([#982](https://github.com/Starosdev/scrutiny/issues/982)) ([0ba95a0](https://github.com/Starosdev/scrutiny/commit/0ba95a0b091716754b26242a1c048aa528c7adda))
+
 ## [2.0.0-beta.1](https://github.com/Starosdev/scrutiny/compare/v1.76.5...v2.0.0-beta.1) (2026-10-13)
 
 ### ⚠ BREAKING CHANGES
