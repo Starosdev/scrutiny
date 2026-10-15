@@ -3343,8 +3343,11 @@ components:
           description: >-
             True when the device has been silent longer than its missed-ping timeout (per-device override,
             else the global timeout, default 60 minutes). False for archived devices. Muted devices are
-            reported like any other. Omitted when staleness could not be determined (last-seen query
-            failed) or the device never reported. Last-seen data is cached for 30 seconds.
+            reported like any other. Reported only when missed ping monitoring is enabled
+            (metrics.notify_on_missed_ping), because the timeout must match the collector schedule
+            (daily by default). Omitted when monitoring is disabled, staleness could not be determined
+            (last-seen query failed), or the device never reported. Last-seen data is cached for 30
+            seconds.
     SmartSummary:
       type: object
       properties:

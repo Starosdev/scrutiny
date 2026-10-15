@@ -422,7 +422,9 @@ failures:
 #
 # Dashboard data: GET /api/summary reports last_seen and stale for each device. A device is stale
 # when its last SMART submission is older than its missed-ping timeout (per-device override, else
-# metrics.missed_ping_timeout_minutes), whether or not missed ping notifications are enabled.
+# metrics.missed_ping_timeout_minutes). stale is reported only while missed ping notifications are
+# enabled, since the timeout must match the collector schedule (daily by default); last_seen is
+# always reported.
 # Muted devices are reported stale like any other; mute only suppresses notifications.
 #
 # Example API call to enable missed ping notifications:
