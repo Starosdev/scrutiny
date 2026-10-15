@@ -106,15 +106,21 @@ func annotateStaleness(c *gin.Context, logger *logrus.Entry, deviceRepo database
 		return
 	}
 
+	// Stale is only meaningful once the operator has enabled missed ping monitoring and set a
+	// timeout that matches the collector schedule. The collector runs daily by default, so the
+	// 60 minute default timeout would mark every device stale for most of the day.
+	reportStale := settings.Metrics.NotifyOnMissedPing
 	now := time.Now()
 	for id, summary := range summaries {
 		lastSeen, ok := lastSeenTimes[id]
 		if !ok {
 			continue
 		}
-		stale := summary.Device.IsStale(lastSeen, now, settings.Metrics.MissedPingTimeoutMinutes)
 		summary.LastSeen = &lastSeen
-		summary.Stale = &stale
+		if reportStale {
+			stale := summary.Device.IsStale(lastSeen, now, settings.Metrics.MissedPingTimeoutMinutes)
+			summary.Stale = &stale
+		}
 	}
 }
 

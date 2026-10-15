@@ -138,6 +138,7 @@ func TestGetDevicesSummaryFlagsStaleDevices(t *testing.T) {
 	repo.EXPECT().GetSummary(gomock.Any()).Return(summary, nil)
 	settings := &models.Settings{}
 	settings.Metrics.MissedPingTimeoutMinutes = 60
+	settings.Metrics.NotifyOnMissedPing = true
 	repo.EXPECT().LoadSettings(gomock.Any()).Return(settings, nil)
 	repo.EXPECT().GetDevicesLastSeenTimes(gomock.Any()).Return(map[string]time.Time{
 		"silent": old, "fresh": recent, "override": old, "archived": old,
@@ -174,7 +175,9 @@ func TestGetDevicesSummaryZeroGlobalTimeoutUsesDefault(t *testing.T) {
 	repo := mock_database.NewMockDeviceRepo(mockCtrl)
 	summary := map[string]*models.DeviceSummary{"fresh": {Device: models.Device{DeviceID: "fresh"}}}
 	repo.EXPECT().GetSummary(gomock.Any()).Return(summary, nil)
-	repo.EXPECT().LoadSettings(gomock.Any()).Return(&models.Settings{}, nil) // MissedPingTimeoutMinutes == 0
+	settings := &models.Settings{} // MissedPingTimeoutMinutes == 0
+	settings.Metrics.NotifyOnMissedPing = true
+	repo.EXPECT().LoadSettings(gomock.Any()).Return(settings, nil)
 	repo.EXPECT().GetDevicesLastSeenTimes(gomock.Any()).Return(map[string]time.Time{"fresh": time.Now().Add(-time.Minute)}, nil)
 
 	w := httptest.NewRecorder()
@@ -195,5 +198,23 @@ func TestGetDevicesSummaryLastSeenFailureLeavesStaleUnset(t *testing.T) {
 	w := httptest.NewRecorder()
 	setupSummaryRouter(t, repo).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/summary", nil))
 	require.Equal(t, http.StatusOK, w.Code)
+	require.NotContains(t, w.Body.String(), `"stale"`)
+}
+
+func TestGetDevicesSummaryOmitsStaleWhenMissedPingMonitoringDisabled(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	t.Cleanup(mockCtrl.Finish)
+	repo := mock_database.NewMockDeviceRepo(mockCtrl)
+	summary := map[string]*models.DeviceSummary{"silent": {Device: models.Device{DeviceID: "silent"}}}
+	repo.EXPECT().GetSummary(gomock.Any()).Return(summary, nil)
+	settings := &models.Settings{}
+	settings.Metrics.MissedPingTimeoutMinutes = 60 // default; collectors run daily by default
+	repo.EXPECT().LoadSettings(gomock.Any()).Return(settings, nil)
+	repo.EXPECT().GetDevicesLastSeenTimes(gomock.Any()).Return(map[string]time.Time{"silent": time.Now().Add(-12 * time.Hour)}, nil)
+
+	w := httptest.NewRecorder()
+	setupSummaryRouter(t, repo).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/summary", nil))
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Contains(t, w.Body.String(), `"last_seen"`)
 	require.NotContains(t, w.Body.String(), `"stale"`)
 }
