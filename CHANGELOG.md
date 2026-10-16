@@ -112,6 +112,8 @@ allow_listed_devices, or exclude_virtual_disks is set to false.
 
 * **collector:** document skip causes, exclude semantics and per-worker wait ([0a452cd](https://github.com/Starosdev/scrutiny/commit/0a452cd91a00f81233212234f563076d2e52de4f))
 
+## [1.76.6](https://github.com/Starosdev/scrutiny/compare/v1.76.5...v1.76.6) (2026-10-15)
+
 ## [1.76.5](https://github.com/Starosdev/scrutiny/compare/v1.76.4...v1.76.5) (2026-10-13)
 
 ### Bug Fixes
