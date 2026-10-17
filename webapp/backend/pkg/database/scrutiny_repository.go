@@ -151,14 +151,7 @@ func openSQLiteDatabase(appConfig config.Interface, globalLogger logrus.FieldLog
 		journalMode = "WAL"
 	}
 
-	pragmaStr := sqlitePragmaString(map[string]string{
-		"busy_timeout": "30000",
-		"journal_mode": journalMode,
-		"temp_store":   "MEMORY",
-		"synchronous":  "NORMAL",
-	})
-
-	database, err := gorm.Open(sqlite.Open(appConfig.GetString(cfgDatabaseLocation)+pragmaStr), newGormConfig(appConfig, globalLogger))
+	database, err := gorm.Open(sqlite.Open(appConfig.GetString(cfgDatabaseLocation)+sqliteDSNQuery(journalMode)), newGormConfig(appConfig, globalLogger))
 	if err != nil {
 		if strings.Contains(err.Error(), "readonly database") ||
 			strings.Contains(err.Error(), "attempt to write") {
@@ -886,6 +879,22 @@ func (sr *scrutinyRepository) lookupNestedDurationKeys(durationKey string) []str
 		return []string{DURATION_KEY_WEEK, DURATION_KEY_MONTH, DURATION_KEY_YEAR, DURATION_KEY_FOREVER}
 	}
 	return []string{DURATION_KEY_WEEK}
+}
+
+// sqliteDSNQuery returns the connection query used for the SQLite database.
+//
+// _txlock=immediate starts every transaction with BEGIN IMMEDIATE. A default (deferred)
+// transaction that reads first and writes later, such as RegisterDevice, has to upgrade its
+// lock mid-transaction; if another connection committed a write in between, SQLite returns
+// SQLITE_BUSY at once and busy_timeout does not apply. Taking the write lock at BEGIN lets
+// busy_timeout queue the transaction behind the other writer instead.
+func sqliteDSNQuery(journalMode string) string {
+	return sqlitePragmaString(map[string]string{
+		"busy_timeout": "30000",
+		"journal_mode": journalMode,
+		"temp_store":   "MEMORY",
+		"synchronous":  "NORMAL",
+	}) + "&_txlock=immediate"
 }
 
 func sqlitePragmaString(pragmas map[string]string) string {
