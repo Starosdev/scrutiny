@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [2.0.0-beta.3](https://github.com/Starosdev/scrutiny/compare/v2.0.0-beta.2...v2.0.0-beta.3) (2026-10-17)
+
+### Bug Fixes
+
+* **database:** start SQLite transactions with BEGIN IMMEDIATE ([#991](https://github.com/Starosdev/scrutiny/issues/991)) ([bc7b1d3](https://github.com/Starosdev/scrutiny/commit/bc7b1d3ed0fb730c73ddd2e0152d3db48cdd6eb9))
+
 ## [2.0.0-beta.2](https://github.com/Starosdev/scrutiny/compare/v2.0.0-beta.1...v2.0.0-beta.2) (2026-10-15)
 
 ### Bug Fixes
