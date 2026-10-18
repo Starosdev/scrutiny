@@ -26,6 +26,15 @@ jobs:
             echo "Add it to the component's imports array, see webapp/frontend/src/app/shared/menu-trigger-restore-focus.directive.ts"
             exit 1
           fi
+      - name: Guard PWA manifest name
+        # The Angular scaffold ships "name": "App" in manifest.json, which is the
+        # name a browser offers when installing Scrutiny as an app (#990).
+        run: |
+          manifest_name=$(jq -r .name webapp/frontend/src/manifest.json)
+          if [ "$manifest_name" != "Scrutiny" ]; then
+            echo "webapp/frontend/src/manifest.json name is '$manifest_name', expected 'Scrutiny'"
+            exit 1
+          fi
       - name: Guard SVG icon references
         run: npm --prefix webapp/frontend run test:icons
       - name: Guard Tailwind arbitrary values

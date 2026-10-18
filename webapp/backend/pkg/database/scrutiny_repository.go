@@ -522,8 +522,11 @@ func (sr *scrutinyRepository) getSummary(ctx context.Context, includeTemperature
 	for result.Next() {
 		sr.applySummaryRecord(summaries, owners, result.Record().Values())
 	}
+	// A Flux runtime error surfaces here rather than from Query(). Returning the summaries
+	// anyway would show every device on the dashboard as having no SMART data, which reads
+	// as healthy-but-quiet instead of as a failure (#995).
 	if result.Err() != nil {
-		sr.logger.Errorf("Query error: %s", result.Err().Error())
+		return nil, fmt.Errorf("device summary query failed: %w", result.Err())
 	}
 
 	if includeTemperatureHistory {
