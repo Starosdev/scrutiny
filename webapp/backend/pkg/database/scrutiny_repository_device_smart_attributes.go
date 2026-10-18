@@ -92,22 +92,24 @@ func (sr *scrutinyRepository) GetSmartAttributeHistory(ctx context.Context, devi
 	smartResults := []measurements.Smart{}
 
 	result, err := sr.influxQueryApi.Query(ctx, queryStr)
-	if err == nil {
-		defer result.Close()
-		// Use Next() to iterate over query result lines
-		for result.Next() {
-			smartData, err := measurements.NewSmartFromInfluxDB(result.Record().Values(), sr.logger)
-			if err != nil {
-				return nil, err
-			}
-			smartResults = append(smartResults, *smartData)
-
-		}
-		if result.Err() != nil {
-			sr.logger.Errorf("Query error: %s", result.Err().Error())
-		}
-	} else {
+	if err != nil {
 		return nil, err
+	}
+	defer result.Close()
+	// Use Next() to iterate over query result lines
+	for result.Next() {
+		smartData, err := measurements.NewSmartFromInfluxDB(result.Record().Values(), sr.logger)
+		if err != nil {
+			return nil, err
+		}
+		smartResults = append(smartResults, *smartData)
+
+	}
+	// Query() reports request-level failures only. A Flux runtime error arrives while the
+	// stream is read and surfaces here, so returning the partial results with a nil error
+	// would present a failed query as a device that reported nothing (#995).
+	if result.Err() != nil {
+		return nil, fmt.Errorf("smart attribute history query failed: %w", result.Err())
 	}
 
 	return smartResults, nil
