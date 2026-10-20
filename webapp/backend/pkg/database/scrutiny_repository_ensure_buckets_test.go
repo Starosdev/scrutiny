@@ -11,6 +11,7 @@ import (
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	influxapi "github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/influxdata/influxdb-client-go/v2/domain"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 
@@ -149,8 +150,10 @@ func newBucketTestRepository(t *testing.T, buckets influxapi.BucketsAPI, applyRe
 	fakeConfig.EXPECT().GetInt("web.influxdb.retention.weekly").Return(testWeeklyRetention).AnyTimes()
 	fakeConfig.EXPECT().GetInt("web.influxdb.retention.monthly").Return(testMonthlyRetention).AnyTimes()
 
+	logger, _ := logrustest.NewNullLogger()
 	return &scrutinyRepository{
 		appConfig:    fakeConfig,
+		logger:       logger,
 		influxClient: &stubInfluxClient{buckets: buckets},
 	}
 }
@@ -187,6 +190,7 @@ func TestEnsureBucketExistsReturnsErrorWhenBucketIsStillMissing(t *testing.T) {
 	bucket, err := ensureBucketExists(context.Background(), buckets, testOrg(), "metrics_yearly")
 
 	require.ErrorContains(t, err, "conflict")
+	require.ErrorContains(t, err, "not found in organization")
 	require.Nil(t, bucket)
 }
 

@@ -249,8 +249,9 @@ var (
 	ourScript    = downsampleTestScript("metrics_weekly", "current")
 	ourOldScript = downsampleTestScript("metrics_weekly", "previous")
 	// a second deployment in this organization, configured with a different base bucket: same
-	// task name, different destination
-	foreignScript = downsampleTestScript("other_weekly", "current")
+	// task name, different destination. The name deliberately starts with this deployment's,
+	// so matching on the bare bucket name rather than the quoted assignment would adopt it.
+	foreignScript = downsampleTestScript("metrics2_weekly", "current")
 )
 
 // the generated script carries the assignment that task ownership is matched on. If
