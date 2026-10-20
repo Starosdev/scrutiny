@@ -4,9 +4,18 @@ log_info() {
     printf 'time="%s" level=info msg="%s" type=performance\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$1"
 }
 
+. /etc/scrutiny/startup-gate.sh
+
 # Only run if performance collection is enabled
-if [ -z "${COLLECTOR_PERF_CRON_SCHEDULE}" ] && [ "${COLLECTOR_PERF_RUN_STARTUP}" != "true" ]; then
+if [ -z "${COLLECTOR_PERF_CRON_SCHEDULE}" ] && ! scrutiny_startup_enabled "${COLLECTOR_PERF_RUN_STARTUP-}"; then
     log_info "Performance collector not enabled"
+    s6-svc -D /run/service/collector-performance-once
+    exit 0
+fi
+
+# An explicit false suppresses the startup benchmark only. Any configured cron schedule still applies.
+if scrutiny_startup_disabled "${COLLECTOR_PERF_RUN_STARTUP-}"; then
+    log_info "COLLECTOR_PERF_RUN_STARTUP is false, skipping startup benchmark (cron schedule still applies)"
     s6-svc -D /run/service/collector-performance-once
     exit 0
 fi

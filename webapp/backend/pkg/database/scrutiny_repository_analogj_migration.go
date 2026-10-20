@@ -220,7 +220,7 @@ func (sr *scrutinyRepository) rewriteAnalogJInfluxHistory(ctx context.Context, m
 	deleteStart := time.Unix(0, 0).UTC()
 	deleteStop := time.Now().UTC().Add(24 * time.Hour)
 	for _, bucket := range buckets {
-		bucketInfo, err := sr.influxClient.BucketsAPI().FindBucketByName(ctx, bucket)
+		bucketInfo, err := findBucketInOrg(ctx, sr.influxClient.BucketsAPI(), org, bucket)
 		if err != nil {
 			return fmt.Errorf("could not inspect retention for AnalogJ history in bucket %s: %w", bucket, err)
 		}
