@@ -263,7 +263,7 @@ func (c *Collector) Benchmark(device *models.Device, profile string) (*models.Pe
 	if result.SeqReadBwBytes == 0 && result.RandReadIOPS == 0 {
 		hint := ""
 		if directIO {
-			hint = ". Hint: configure performance.mount_points in collector-performance.yaml to specify the filesystem mount point for this device, or ensure the container has sufficient capabilities for raw block device access"
+			hint = ". Hint: configure performance.mount_points in collector-performance.yaml to specify the filesystem mount point for this device, or ensure the container has sufficient capabilities for raw block device access. See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md"
 		}
 		return nil, fmt.Errorf("all read benchmarks produced zero results for %s -- skipping (device may be inaccessible%s)", device.DeviceName, hint)
 	}
@@ -351,10 +351,10 @@ func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), bo
 		return effectiveDevicePath, nil, true, nil
 	}
 
-	// Try to find mount point for the device
-	mountPoint, err := findMountPoint(effectiveDevicePath)
+	// Try to find mount point for the device (or one of its partitions)
+	mountPoint, err := findDeviceMountPoint(effectiveDevicePath)
 	if err != nil {
-		c.logger.Warnf("Could not find mount point for %s: %v -- falling back to direct device I/O (read-only)", effectiveDevicePath, err)
+		c.logger.Warnf("Could not find mount point for %s: %v -- falling back to direct device I/O (read-only, write tests skipped). See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md", effectiveDevicePath, err)
 		return effectiveDevicePath, nil, true, nil
 	}
 
@@ -362,7 +362,7 @@ func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), bo
 	requiredSize := c.getRequiredTestFileSize()
 	suitable, reason := isMountPointSuitable(mountPoint, requiredSize)
 	if !suitable {
-		c.logger.Warnf("Mount point %s for device %s is not suitable: %s -- falling back to direct device I/O (read-only)", mountPoint, effectiveDevicePath, reason)
+		c.logger.Warnf("Mount point %s for device %s is not suitable: %s -- falling back to direct device I/O (read-only, write tests skipped). See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md", mountPoint, effectiveDevicePath, reason)
 		return effectiveDevicePath, nil, true, nil
 	}
 
@@ -503,27 +503,4 @@ func (c *Collector) runFio(fioBin string, args []string) ([]byte, error) {
 	}
 
 	return stdout.Bytes(), nil
-}
-
-// findMountPoint finds the mount point for a given device path
-func findMountPoint(devicePath string) (string, error) {
-	// Use df to find the mount point
-	cmd := exec.Command("df", devicePath)
-	output, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("df command failed for %s: %w", devicePath, err)
-	}
-
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	if len(lines) < 2 {
-		return "", fmt.Errorf("unexpected df output for %s", devicePath)
-	}
-
-	// The mount point is the last field in the second line
-	fields := strings.Fields(lines[1])
-	if len(fields) == 0 {
-		return "", fmt.Errorf("could not parse df output for %s", devicePath)
-	}
-
-	return fields[len(fields)-1], nil
 }

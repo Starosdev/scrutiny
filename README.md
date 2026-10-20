@@ -510,6 +510,14 @@ docker run --restart unless-stopped \
 
 The collector requires direct device access (not virtualized). Running benchmarks will temporarily increase I/O on the target drives, so schedule accordingly.
 
+Write tests need a writable filesystem on the target device, because the
+benchmark writes a temporary file into it. Passing the device node alone yields
+read-only results: raw block device write tests are disabled so a benchmark can
+never overwrite data. Mount the device's filesystem into the container
+(`-v /data:/data`) to measure writes, and see
+[docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md](./docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md)
+when write tests are skipped.
+
 ### Viewing Results
 
 Performance data appears on the device detail page when benchmark results are available. The UI shows:
@@ -954,6 +962,7 @@ The performance collector checks `COLLECTOR_PERF_` prefixed variables first, the
 | `performance.enabled` | `COLLECTOR_PERFORMANCE_ENABLED` | `false` |
 | `performance.allow_direct_device_io` | `COLLECTOR_PERFORMANCE_ALLOW_DIRECT_DEVICE_IO` | `false` |
 | `performance.temp_file_size` | `COLLECTOR_PERFORMANCE_TEMP_FILE_SIZE` | `256M` |
+| `performance.mount_points.<device>` | `COLLECTOR_PERFORMANCE_MOUNT_POINTS_<DEVICE>` | `{}` |
 | `commands.performance_fio_bin` | `COLLECTOR_COMMANDS_PERFORMANCE_FIO_BIN` | `fio` |
 | `log.level` | `COLLECTOR_LOG_LEVEL` | `INFO` |
 | `log.file` | `COLLECTOR_PERF_LOG_FILE` or `COLLECTOR_LOG_FILE` | `` |
@@ -979,6 +988,14 @@ docker run --restart unless-stopped \
   -e COLLECTOR_PERF_CRON_SCHEDULE="0 2 * * 0" \
   ghcr.io/starosdev/scrutiny:latest-collector-performance
 ```
+
+`performance.mount_points` maps a device name (`sdb`) or WWN
+(`0x5000cca7aae69487`) to the mount point the benchmark should write its test
+file into, as the collector sees it. The environment variable form uppercases
+the key, for example `COLLECTOR_PERFORMANCE_MOUNT_POINTS_SDB=/data`. Set it when
+the device's filesystem is reached through another layer such as LVM, mdadm, or
+a multi-device pool. See
+[docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md](./docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md).
 
 ## MDADM Collector
 

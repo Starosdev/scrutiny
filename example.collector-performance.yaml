@@ -24,6 +24,7 @@
 #   performance.profile           -> COLLECTOR_PERF_PROFILE or COLLECTOR_PERFORMANCE_PROFILE
 #   performance.enabled           -> COLLECTOR_PERFORMANCE_ENABLED
 #   performance.temp_file_size    -> COLLECTOR_PERFORMANCE_TEMP_FILE_SIZE
+#   performance.mount_points.sda  -> COLLECTOR_PERFORMANCE_MOUNT_POINTS_SDA
 #   commands.performance_fio_bin  -> COLLECTOR_COMMANDS_PERFORMANCE_FIO_BIN
 #   log.level                     -> COLLECTOR_LOG_LEVEL (or use --debug / COLLECTOR_PERF_DEBUG)
 #   log.file                      -> COLLECTOR_PERF_LOG_FILE or COLLECTOR_LOG_FILE
@@ -68,10 +69,16 @@ performance:
 #  mount_points:              # Explicit mount point overrides per device (useful in containers).
 #    sda: '/mnt/data'         # Key: device name (e.g., sda, nvme0n1)
 #    0x5000cca7aae69487: '/mnt/backup'  # Key: device WWN (stable across reboots)
+#  # Write tests need a writable filesystem: the benchmark writes a temp file into
+#  # the mount point. Raw block device benchmarks are read-only, always.
 #  # In containers, volume-mount the host filesystem path into the container and map it here.
 #  # Example: docker run -v /mnt/data:/mnt/data --device=/dev/sda ...
-#  # The collector checks device name first, then WWN. If neither is configured,
-#  # it auto-detects via 'df' and falls back to direct device I/O if no mount is found.
+#  # Env form: COLLECTOR_PERFORMANCE_MOUNT_POINTS_SDA=/mnt/data (key uppercased).
+#  # The collector checks device name first, then WWN. If neither is configured, it
+#  # resolves a mount point backed by the device or one of its partitions, and falls
+#  # back to direct device I/O (read-only) when none is found. Configure this
+#  # explicitly for LVM, mdadm/RAID members, and multi-device ZFS or btrfs pools.
+#  # See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md
 
 # Benchmark Profiles:
 #
