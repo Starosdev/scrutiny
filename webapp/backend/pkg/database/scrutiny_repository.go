@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -479,7 +480,11 @@ func (sr *scrutinyRepository) ensureRetentionBucket(ctx context.Context, org *do
 	if applyRetention {
 		// correctly set the retention period (may not be able to do it during setup/creation)
 		found.RetentionRules = domain.RetentionRules{retentionRule}
-		_, _ = sr.influxClient.BucketsAPI().UpdateBucket(ctx, found)
+		if _, err := sr.influxClient.BucketsAPI().UpdateBucket(ctx, found); err != nil {
+			// not fatal, the bucket is usable with the retention it has, but a bucket quietly
+			// keeping a different period than the configuration asks for is worth saying
+			sr.logger.Warnf("could not set the retention period on bucket %s: %s", bucketName, err.Error())
+		}
 	}
 	return nil
 }
@@ -503,7 +508,9 @@ func ensureBucketExists(ctx context.Context, bucketsAPI api.BucketsAPI, org *dom
 	}
 	found, foundErr := findBucketInOrg(ctx, bucketsAPI, org.Name, bucketName)
 	if foundErr != nil {
-		return nil, err
+		// both halves matter: the create said the bucket is there and the lookup could not
+		// confirm it, which reads as a contradiction without the second error
+		return nil, errors.Join(err, foundErr)
 	}
 	return found, nil
 }
@@ -854,15 +861,23 @@ func applyLastSeenRecord(lastSeenTimes map[string]time.Time, owners historyOwner
 func (sr *scrutinyRepository) GetAvailableInfluxDBBuckets(ctx context.Context) ([]string, error) {
 	org := sr.appConfig.GetString(cfgInfluxDBOrg)
 
-	// Query InfluxDB for all buckets in the organization
-	buckets, err := sr.influxClient.BucketsAPI().FindBucketsByOrgName(ctx, org)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query InfluxDB buckets: %w", err)
-	}
-
-	bucketNames := make([]string, 0, len(*buckets))
-	for _, bucket := range *buckets {
-		bucketNames = append(bucketNames, bucket.Name)
+	// Query InfluxDB for all buckets in the organization, a page at a time: the API returns 20
+	// per page by default, which an organization can exceed
+	bucketNames := []string{}
+	for offset := 0; ; offset += bucketPageSize {
+		page, err := sr.influxClient.BucketsAPI().FindBucketsByOrgName(ctx, org, api.PagingWithOffset(offset), api.PagingWithLimit(bucketPageSize))
+		if err != nil {
+			return nil, fmt.Errorf("failed to query InfluxDB buckets: %w", err)
+		}
+		if page == nil {
+			break
+		}
+		for i := range *page {
+			bucketNames = append(bucketNames, (*page)[i].Name)
+		}
+		if len(*page) < bucketPageSize {
+			break
+		}
 	}
 
 	return bucketNames, nil

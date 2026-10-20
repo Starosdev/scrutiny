@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"errors"
+	"fmt"
 	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
 	"github.com/golang/mock/gomock"
 	influxapi "github.com/influxdata/influxdb-client-go/v2/api"
@@ -238,6 +239,38 @@ func newTaskTestRepository(tasks influxapi.TasksAPI) *scrutinyRepository {
 	return &scrutinyRepository{logger: logger, influxTaskApi: tasks}
 }
 
+// downsampleTestScript is a stand-in for a generated downsample script: what matters to task
+// ownership is the destBucket assignment, and what matters to the update is the rest changing.
+func downsampleTestScript(destBucket, version string) string {
+	return fmt.Sprintf("option task = {\n  name: \"tsk-weekly-aggr\",\n}\n\nsourceBucket = \"metrics\"\ndestBucket = \"%s\"\n\n// %s\n", destBucket, version)
+}
+
+var (
+	ourScript    = downsampleTestScript("metrics_weekly", "current")
+	ourOldScript = downsampleTestScript("metrics_weekly", "previous")
+	// a second deployment in this organization, configured with a different base bucket: same
+	// task name, different destination
+	foreignScript = downsampleTestScript("other_weekly", "current")
+)
+
+// the generated script carries the assignment that task ownership is matched on. If
+// DownsampleScript stops emitting it, ownership silently stops being decidable, so pin the two
+// together.
+func TestDownsampleScriptCarriesDestBucketAssignment(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetString("web.influxdb.bucket").Return("metrics").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.org").Return("scrutiny").AnyTimes()
+	repo := scrutinyRepository{appConfig: fakeConfig}
+
+	script := repo.DownsampleScript("weekly", "tsk-weekly-aggr", "0 1 * * 0")
+
+	require.Equal(t, `destBucket = "metrics_weekly"`, downsampleDestBucketLine(script))
+}
+
 // task names are not unique in InfluxDB, so two processes starting together can both create the
 // same downsample task, and every copy is scheduled and writes to the same destination bucket.
 // One task survives, with the current script, and the keeper is the lowest ID so that two
@@ -246,19 +279,39 @@ func TestEnsureDownsampleTaskUpdatesKeeperAndPrunesDuplicates(t *testing.T) {
 	t.Parallel()
 
 	tasks := &stubTasksAPI{tasks: []domain.Task{
-		{Id: "task-2", Name: "tsk-weekly-aggr", Flux: "old script"},
-		{Id: "task-1", Name: "tsk-weekly-aggr", Flux: "old script"},
+		{Id: "task-2", Name: "tsk-weekly-aggr", Flux: ourOldScript},
+		{Id: "task-1", Name: "tsk-weekly-aggr", Flux: ourOldScript},
 	}}
 
-	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
 
 	require.NoError(t, err)
 	require.Equal(t, 0, tasks.creates)
 	require.Len(t, tasks.updated, 1)
 	require.Equal(t, "task-1", tasks.updated[0].Id)
-	require.Equal(t, "new script", tasks.updated[0].Flux)
+	require.Equal(t, ourScript, tasks.updated[0].Flux)
 	require.Equal(t, []string{"task-2"}, tasks.deleted)
 	require.Len(t, tasks.tasks, 1)
+}
+
+// a second deployment sharing this organization writes to its own destination bucket under the
+// same task name. Its task is neither rewritten nor deleted, and this deployment creates its
+// own rather than adopting it.
+func TestEnsureDownsampleTaskLeavesForeignTaskAlone(t *testing.T) {
+	t.Parallel()
+
+	tasks := &stubTasksAPI{tasks: []domain.Task{
+		{Id: "task-1", Name: "tsk-weekly-aggr", Flux: foreignScript},
+	}}
+
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
+
+	require.NoError(t, err)
+	require.Equal(t, 1, tasks.creates)
+	require.Empty(t, tasks.updated)
+	require.Empty(t, tasks.deleted)
+	require.Len(t, tasks.tasks, 2)
+	require.Equal(t, foreignScript, tasks.tasks[0].Flux)
 }
 
 // losing the create race leaves two tasks behind. They are pruned on the spot rather than left
@@ -268,7 +321,7 @@ func TestEnsureDownsampleTaskPrunesDuplicateFromCreateRace(t *testing.T) {
 
 	tasks := &stubTasksAPI{createRace: true}
 
-	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
 
 	require.NoError(t, err)
 	require.Equal(t, 1, tasks.creates)
@@ -285,12 +338,12 @@ func TestEnsureDownsampleTaskToleratesDeleteFailure(t *testing.T) {
 	tasks := &stubTasksAPI{
 		deleteErr: errors.New("not found: task not found"),
 		tasks: []domain.Task{
-			{Id: "task-1", Name: "tsk-weekly-aggr", Flux: "new script"},
-			{Id: "task-2", Name: "tsk-weekly-aggr", Flux: "new script"},
+			{Id: "task-1", Name: "tsk-weekly-aggr", Flux: ourScript},
+			{Id: "task-2", Name: "tsk-weekly-aggr", Flux: ourScript},
 		},
 	}
 
-	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
 
 	require.NoError(t, err)
 	require.Equal(t, []string{"task-2"}, tasks.deleted)
@@ -301,15 +354,33 @@ func TestEnsureDownsampleTaskLeavesCurrentTaskAlone(t *testing.T) {
 	t.Parallel()
 
 	tasks := &stubTasksAPI{tasks: []domain.Task{
-		{Id: "task-1", Name: "tsk-weekly-aggr", Flux: "new script"},
+		{Id: "task-1", Name: "tsk-weekly-aggr", Flux: ourScript},
 	}}
 
-	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
 
 	require.NoError(t, err)
 	require.Equal(t, 0, tasks.creates)
 	require.Empty(t, tasks.updated)
 	require.Empty(t, tasks.deleted)
+}
+
+// a generated script with no destBucket assignment is a template defect, not a deployment
+// state. Ownership cannot be decided, so nothing is deleted on a guess.
+func TestEnsureDownsampleTaskWithoutDestBucketLeavesDuplicatesAlone(t *testing.T) {
+	t.Parallel()
+
+	tasks := &stubTasksAPI{tasks: []domain.Task{
+		{Id: "task-1", Name: "tsk-weekly-aggr", Flux: "old script"},
+		{Id: "task-2", Name: "tsk-weekly-aggr", Flux: "old script"},
+	}}
+
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "script without a destination", "weekly")
+
+	require.NoError(t, err)
+	require.Empty(t, tasks.deleted)
+	require.Empty(t, tasks.updated)
+	require.Equal(t, 0, tasks.creates)
 }
 
 // the lookup is scoped to this deployment's organization. An unscoped name query matches across
@@ -320,7 +391,7 @@ func TestEnsureDownsampleTaskScopesLookupToOrg(t *testing.T) {
 
 	tasks := &stubTasksAPI{}
 
-	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
 
 	require.NoError(t, err)
 	require.NotEmpty(t, tasks.filters)
@@ -341,7 +412,7 @@ func TestEnsureDownsampleTaskWarnsAndSkipsWhenLookupFails(t *testing.T) {
 	logger, hook := logrustest.NewNullLogger()
 	repo := &scrutinyRepository{logger: logger, influxTaskApi: tasks}
 
-	err := repo.ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
+	err := repo.ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
 
 	require.NoError(t, err)
 	require.Equal(t, 0, tasks.creates)

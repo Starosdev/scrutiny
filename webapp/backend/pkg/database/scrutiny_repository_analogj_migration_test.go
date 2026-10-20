@@ -68,6 +68,12 @@ func TestAnalogJHistoryRewritePreservesSourceOnFailureAndRetries(t *testing.T) {
 						http.Error(w, "bucket access denied", http.StatusForbidden)
 						return
 					}
+					if r.URL.Query().Get("org") == "" {
+						// the lookup has to be organization-scoped: a query by bucket name alone
+						// matches every organization the token can read
+						http.Error(w, "organization-scoped bucket lookup required", http.StatusForbidden)
+						return
+					}
 					// the lookup is organization-scoped, so the response is the organization's
 					// bucket list rather than one bucket echoed back by name
 					w.Header().Set("Content-Type", "application/json")

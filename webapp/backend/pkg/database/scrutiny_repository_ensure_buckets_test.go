@@ -33,6 +33,10 @@ type stubBucketsAPI struct {
 	createdByRace map[string]bool
 	createErrs    map[string]error
 
+	// pages, when set, is returned one page per call, which is how the stub stands in for the
+	// API's paging without being able to read the opaque PagingOption values
+	pages [][]domain.Bucket
+
 	listedOrgs   []string
 	creates      map[string]int
 	createdRules map[string][]domain.RetentionRule
@@ -59,6 +63,16 @@ func newStubBucketsAPI(existing ...string) *stubBucketsAPI {
 
 func (s *stubBucketsAPI) FindBucketsByOrgName(_ context.Context, orgName string, _ ...influxapi.PagingOption) (*[]domain.Bucket, error) {
 	s.listedOrgs = append(s.listedOrgs, orgName)
+
+	if s.pages != nil {
+		if len(s.pages) == 0 {
+			empty := []domain.Bucket{}
+			return &empty, nil
+		}
+		page := s.pages[0]
+		s.pages = s.pages[1:]
+		return &page, nil
+	}
 
 	names := make([]string, 0, len(s.present))
 	for name := range s.present {
@@ -249,4 +263,40 @@ func TestEnsureBucketsCreatesEachBucketWithItsOwnRetention(t *testing.T) {
 	require.Equal(t, []domain.RetentionRule{{EverySeconds: testMonthlyRetention}}, buckets.createdRules["metrics_monthly"])
 	require.Empty(t, buckets.createdRules["metrics_yearly"])
 	require.Len(t, buckets.updatedIDs, 3)
+}
+
+// findBucketInOrg has to walk past the first page: the API returns 20 buckets per page by
+// default and this code asks for 100, which a shared InfluxDB organization can exceed.
+func TestFindBucketInOrgReadsPastTheFirstPage(t *testing.T) {
+	first := make([]domain.Bucket, 0, bucketPageSize)
+	for i := 0; i < bucketPageSize; i++ {
+		name := fmt.Sprintf("unrelated_%d", i)
+		id := bucketTestID(name)
+		first = append(first, domain.Bucket{Id: &id, Name: name})
+	}
+	target := bucketTestID("metrics_yearly")
+	second := []domain.Bucket{{Id: &target, Name: "metrics_yearly"}}
+
+	buckets := newStubBucketsAPI()
+	buckets.pages = [][]domain.Bucket{first, second}
+
+	found, err := findBucketInOrg(context.Background(), buckets, testOrgName, "metrics_yearly")
+
+	require.NoError(t, err)
+	require.NotNil(t, found)
+	require.Equal(t, "metrics_yearly", found.Name)
+	require.Len(t, buckets.listedOrgs, 2)
+}
+
+// a bucket that is in no page is not found, and the walk stops on the short page rather than
+// asking for the next one forever.
+func TestFindBucketInOrgStopsOnAShortPage(t *testing.T) {
+	buckets := newStubBucketsAPI()
+	buckets.pages = [][]domain.Bucket{{}}
+
+	found, err := findBucketInOrg(context.Background(), buckets, testOrgName, "metrics_yearly")
+
+	require.ErrorContains(t, err, "not found in organization")
+	require.Nil(t, found)
+	require.Len(t, buckets.listedOrgs, 1)
 }
