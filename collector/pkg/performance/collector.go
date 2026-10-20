@@ -327,21 +327,12 @@ func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), bo
 
 	// Check for explicitly configured mount point (by device name, then by WWN)
 	if configuredMount := c.lookupConfiguredMountPoint(device); configuredMount != "" {
-		if _, statErr := os.Stat(configuredMount); statErr != nil {
-			c.logger.Warnf("Configured mount point %s for device %s does not exist: %v -- ignoring", configuredMount, device.DeviceName, statErr)
+		suitable, reason := isMountPointSuitable(configuredMount, c.getRequiredTestFileSize())
+		if !suitable {
+			c.logger.Warnf("Configured mount point %s for device %s is not suitable: %s -- ignoring", configuredMount, device.DeviceName, reason)
 		} else {
-			requiredSize := c.getRequiredTestFileSize()
-			suitable, reason := isMountPointSuitable(configuredMount, requiredSize)
-			if !suitable {
-				c.logger.Warnf("Configured mount point %s for device %s is not suitable: %s -- ignoring", configuredMount, device.DeviceName, reason)
-			} else {
-				c.logger.Infof("Using configured mount point %s for device %s", configuredMount, device.DeviceName)
-				tempFile := fmt.Sprintf("%s/.scrutiny_perf_bench", configuredMount)
-				cleanup := func() {
-					os.Remove(tempFile)
-				}
-				return tempFile, cleanup, false, nil
-			}
+			c.logger.Infof("Using configured mount point %s for device %s", configuredMount, device.DeviceName)
+			return benchmarkFileTarget(configuredMount)
 		}
 	}
 
@@ -351,26 +342,41 @@ func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), bo
 		return effectiveDevicePath, nil, true, nil
 	}
 
-	// Try to find mount point for the device (or one of its partitions)
-	mountPoint, err := findDeviceMountPoint(effectiveDevicePath)
+	// Find the mount points this device backs, including its partitions
+	candidates, err := deviceMountCandidates(effectiveDevicePath)
 	if err != nil {
 		c.logger.Warnf("Could not find mount point for %s: %v -- falling back to direct device I/O (read-only, write tests skipped). See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md", effectiveDevicePath, err)
 		return effectiveDevicePath, nil, true, nil
 	}
 
-	// Validate the mount point is suitable for benchmarking
+	// Take the first candidate the benchmark can actually use. A device can back
+	// several filesystems, and only some of them are writable with room to spare.
 	requiredSize := c.getRequiredTestFileSize()
-	suitable, reason := isMountPointSuitable(mountPoint, requiredSize)
-	if !suitable {
-		c.logger.Warnf("Mount point %s for device %s is not suitable: %s -- falling back to direct device I/O (read-only, write tests skipped). See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md", mountPoint, effectiveDevicePath, reason)
-		return effectiveDevicePath, nil, true, nil
+	for _, mountPoint := range candidates {
+		suitable, reason := isMountPointSuitable(mountPoint, requiredSize)
+		if !suitable {
+			c.logger.Warnf("Mount point %s for device %s is not suitable: %s", mountPoint, effectiveDevicePath, reason)
+			continue
+		}
+		c.logger.Infof("Using mount point %s for device %s", mountPoint, effectiveDevicePath)
+		return benchmarkFileTarget(mountPoint)
 	}
 
+	if len(candidates) == 0 {
+		c.logger.Warnf("No mount point found for %s or its partitions -- falling back to direct device I/O (read-only, write tests skipped). See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md", effectiveDevicePath)
+	} else {
+		c.logger.Warnf("No suitable mount point among %d candidate(s) for %s -- falling back to direct device I/O (read-only, write tests skipped). See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md", len(candidates), effectiveDevicePath)
+	}
+	return effectiveDevicePath, nil, true, nil
+}
+
+// benchmarkFileTarget returns the test file path inside a mount point, with the
+// cleanup that removes it.
+func benchmarkFileTarget(mountPoint string) (string, func(), bool, error) {
 	tempFile := fmt.Sprintf("%s/.scrutiny_perf_bench", mountPoint)
 	cleanup := func() {
 		os.Remove(tempFile)
 	}
-
 	return tempFile, cleanup, false, nil
 }
 

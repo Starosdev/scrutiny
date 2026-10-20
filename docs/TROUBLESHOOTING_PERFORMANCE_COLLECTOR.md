@@ -28,13 +28,20 @@ device.
 1. `performance.mount_points` for the device name, then for its WWN.
 2. `performance.allow_direct_device_io`, when set, benchmarks the raw device
    (reads only).
-3. Automatic lookup of a mount point backed by the device or one of its
-   partitions.
+3. Automatic lookup of the mount points backed by the device or one of its
+   partitions, in order, until one is usable.
 4. Raw block device, reads only.
 
-Steps 1 and 3 reject a mount point that is a `tmpfs` or `devtmpfs`, is mounted
-read-only, or has less free space than the test file needs
-(`performance.temp_file_size`, or 1G for the `comprehensive` profile).
+A mount point is rejected when it is not a directory, when its filesystem is a
+pseudo-filesystem or a container overlay, when it is a path the container
+runtime bind-mounts into every container (`/etc/hosts`, `/etc/resolv.conf`,
+`/opt/scrutiny/config`, `/opt/scrutiny/influxdb`), when it is mounted read-only,
+or when free space is below the test file size plus 64 MB of headroom. The test
+file size is `performance.temp_file_size`, or 1G for the `comprehensive` profile.
+
+Step 3 considers every mount the device backs, so a device whose first candidate
+is too small (an EFI system partition, say) still resolves to a larger one. Each
+rejection is logged with its reason.
 
 ## Containers need the filesystem mounted in
 
@@ -64,8 +71,16 @@ explicitly:
 
 - LVM logical volumes, where the mount source is `/dev/mapper/...`
 - mdadm and hardware RAID members, where the array is mounted, not the member
-- ZFS and multi-device btrfs pools
+- ZFS, where the mount source is the pool name
 - A device whose mount point is not visible inside the container
+
+Multi-device btrfs needs care rather than configuration. The mount table lists
+the pool with whichever member device was passed at mount time, so that one
+member resolves to the pool mount and the others do not. Benchmark writes then
+land on every disk in the pool while the results are recorded against the one
+device, which is misleading on RAID1 and worse on RAID10. Point such a device at
+a single-device filesystem, or set `performance.allow_direct_device_io: true` to
+keep read-only results.
 
 Keys are the device name or the WWN, and values are paths as the collector sees
 them:
@@ -78,7 +93,8 @@ performance:
 ```
 
 The same settings work as environment variables, which is usually easier in
-Docker because no config file is needed:
+Docker because no config file is needed. The key is uppercased, and `-` becomes
+`_`, so a device named `dm-0` reads `..._DM_0`:
 
 ```yaml
 environment:

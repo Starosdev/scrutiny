@@ -1,43 +1,41 @@
 package performance
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"os"
-	"strings"
 	"syscall"
+
+	"github.com/analogj/scrutiny/collector/pkg/mounts"
 )
 
-const procMounts = "/proc/mounts"
-
-// mountEntry is one parsed line from /proc/mounts.
-type mountEntry struct {
-	Source     string
-	MountPoint string
-	FsType     string
-	Options    string
-}
-
-// readOnly reports whether the filesystem is mounted read-only.
-func (m mountEntry) readOnly() bool {
-	for _, opt := range strings.Split(m.Options, ",") {
-		if opt == "ro" {
-			return true
-		}
-	}
-	return false
-}
+// spaceHeadroomBytes is kept free above the benchmark test file, so filling a
+// filesystem to zero available bytes is never a possible outcome of a benchmark.
+const spaceHeadroomBytes = 64 * 1024 * 1024
 
 // isMountPointSuitable checks whether a mount point is appropriate for benchmarking.
-// Returns false if the mount point is a tmpfs/devtmpfs (indicating the device is
-// not actually mounted as a real filesystem), if it is mounted read-only, or if
-// available space is insufficient.
+// It rejects a path that is not a directory, a pseudo-filesystem or container
+// runtime mount, a read-only mount, and a filesystem without room for the test
+// file. A mount table that cannot be read is also a rejection: the alternative is
+// writing to a filesystem whose properties are unknown.
 func isMountPointSuitable(mountPoint string, requiredBytes uint64) (bool, string) {
-	if entry, err := lookupMountEntryForPath(mountPoint); err == nil {
-		if suitable, reason := isMountEntrySuitable(entry); !suitable {
-			return false, reason
-		}
+	info, err := os.Stat(mountPoint)
+	if err != nil {
+		return false, fmt.Sprintf("could not inspect %s: %v", mountPoint, err)
+	}
+	if !info.IsDir() {
+		return false, fmt.Sprintf("%s is not a directory (benchmark test file cannot be created inside it)", mountPoint)
+	}
+
+	entries, err := mounts.Load()
+	if err != nil {
+		return false, fmt.Sprintf("could not read %s: %v", mounts.ProcMounts, err)
+	}
+	entry, found := mounts.FindForPath(entries, mountPoint)
+	if !found {
+		return false, fmt.Sprintf("no mount point in %s owns %s", mounts.ProcMounts, mountPoint)
+	}
+	if suitable, reason := isMountEntrySuitable(entry); !suitable {
+		return false, reason
 	}
 
 	var stat syscall.Statfs_t
@@ -49,98 +47,74 @@ func isMountPointSuitable(mountPoint string, requiredBytes uint64) (bool, string
 		return false, fmt.Sprintf("unexpected block size %d for mount point %s", bsize, mountPoint)
 	}
 	availableBytes := stat.Bavail * uint64(bsize)
-	if availableBytes < requiredBytes {
-		return false, fmt.Sprintf("insufficient space: %d bytes available, %d bytes required", availableBytes, requiredBytes)
+	if availableBytes < requiredBytes+spaceHeadroomBytes {
+		return false, fmt.Sprintf("insufficient space: %d bytes available, %d bytes required (test file plus %d bytes headroom)",
+			availableBytes, requiredBytes+spaceHeadroomBytes, uint64(spaceHeadroomBytes))
 	}
 
 	return true, ""
 }
 
 // isMountEntrySuitable rejects mounts that cannot hold a benchmark test file:
-// pseudo-filesystems, where the device is not mounted as a real filesystem, and
-// read-only mounts, where the write tests cannot create their test file.
-func isMountEntrySuitable(entry mountEntry) (bool, string) {
-	if entry.FsType == "tmpfs" || entry.FsType == "devtmpfs" {
-		return false, fmt.Sprintf("filesystem type is %s (device not mounted as a real filesystem)", entry.FsType)
+// pseudo-filesystems and container runtime mounts, which are not host storage,
+// and read-only mounts, where the write tests cannot create their test file.
+func isMountEntrySuitable(entry mounts.Entry) (bool, string) {
+	if mounts.ExcludedFSType(entry.FSType) {
+		return false, fmt.Sprintf("filesystem type is %s (device not mounted as a real filesystem)", entry.FSType)
 	}
-	if entry.readOnly() {
+	if mounts.ExcludedMountPoint(entry.MountPoint) {
+		return false, fmt.Sprintf("%s is a container runtime mount, not host storage", entry.MountPoint)
+	}
+	if entry.ReadOnly() {
 		return false, fmt.Sprintf("%s is mounted read-only (benchmark test file cannot be created)", entry.MountPoint)
 	}
 	return true, ""
 }
 
-// lookupMountEntryForPath resolves the mount entry owning path from /proc/mounts.
-func lookupMountEntryForPath(path string) (mountEntry, error) {
-	file, err := os.Open(procMounts)
+// deviceMountCandidates returns the mount points backed by devicePath, best
+// first, read from /proc/mounts. A whole-disk device such as /dev/sdb is rarely
+// mounted itself -- its partitions are -- so partitions of the device are
+// matched too. Reading the mount table also works where the device node is
+// absent from a container's /dev, which df requires.
+//
+// Every candidate is returned, not just the best one, because suitability is
+// decided later: a device can back both a filesystem that is too full and one
+// the benchmark can use.
+func deviceMountCandidates(devicePath string) ([]string, error) {
+	entries, err := mounts.Load()
 	if err != nil {
-		return mountEntry{}, err
+		return nil, err
 	}
-	defer file.Close()
-	return findMountEntryForPath(file, path)
+	return rankDeviceMountCandidates(entries, devicePath), nil
 }
 
-// findMountEntryForPath returns the entry for the longest mount point containing path.
-func findMountEntryForPath(reader io.Reader, path string) (mountEntry, error) {
-	best := mountEntry{}
-	for _, entry := range parseMountEntries(reader) {
-		if path != entry.MountPoint && !strings.HasPrefix(path, entry.MountPoint+"/") {
+// rankDeviceMountCandidates orders the mounts backed by devicePath, device
+// before partition, preserving mount table order within each group.
+//
+// Unusable mounts are dropped rather than ranked. A read-only mount cannot hold
+// the test file at all, and excluded filesystems are not host storage: Docker
+// reports its single-file binds (/etc/resolv.conf and friends) with the backing
+// block device as their source, so a device lookup matches a file otherwise.
+func rankDeviceMountCandidates(entries []mounts.Entry, devicePath string) []string {
+	exactMounts := make([]string, 0)
+	partitionMounts := make([]string, 0)
+
+	for _, entry := range entries {
+		exact := entry.Source == devicePath
+		if !exact && !isPartitionOf(entry.Source, devicePath) {
 			continue
 		}
-		if len(entry.MountPoint) > len(best.MountPoint) {
-			best = entry
-		}
-	}
-
-	if best.MountPoint == "" {
-		return mountEntry{}, fmt.Errorf("mount point %s not found in %s", path, procMounts)
-	}
-	return best, nil
-}
-
-// findDeviceMountPoint resolves the mount point backed by devicePath from
-// /proc/mounts. A whole-disk device such as /dev/sdb is rarely mounted itself --
-// its partitions are -- so partitions of the device are matched too. Reading the
-// mount table also works where the device node is absent from a container's /dev.
-func findDeviceMountPoint(devicePath string) (string, error) {
-	file, err := os.Open(procMounts)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-	return findDeviceMountPointFromReader(file, devicePath)
-}
-
-// findDeviceMountPointFromReader returns the mount point for devicePath or one of
-// its partitions. The device itself outranks a partition, and a writable mount
-// outranks a read-only one, so a device mounted more than once resolves to the
-// mount the benchmark can actually use.
-func findDeviceMountPointFromReader(reader io.Reader, devicePath string) (string, error) {
-	best := mountEntry{}
-	bestRank := -1
-
-	for _, entry := range parseMountEntries(reader) {
-		var rank int
-		switch {
-		case entry.Source == devicePath:
-			rank = 2
-		case isPartitionOf(entry.Source, devicePath):
-			rank = 1
-		default:
+		if suitable, _ := isMountEntrySuitable(entry); !suitable {
 			continue
 		}
-		if entry.readOnly() {
-			rank--
+		if exact {
+			exactMounts = append(exactMounts, entry.MountPoint)
+			continue
 		}
-		if rank > bestRank {
-			best = entry
-			bestRank = rank
-		}
+		partitionMounts = append(partitionMounts, entry.MountPoint)
 	}
 
-	if bestRank < 0 {
-		return "", fmt.Errorf("no mount point found for %s or its partitions in %s", devicePath, procMounts)
-	}
-	return best.MountPoint, nil
+	return append(exactMounts, partitionMounts...)
 }
 
 // isPartitionOf reports whether source names a partition of devicePath.
@@ -149,12 +123,12 @@ func findDeviceMountPointFromReader(reader io.Reader, devicePath string) (string
 // appends it directly otherwise (/dev/sdb -> /dev/sdb1). Requiring that separator
 // keeps namespace siblings such as /dev/nvme0n11 from matching /dev/nvme0n1.
 func isPartitionOf(source string, devicePath string) bool {
-	if devicePath == "" || !strings.HasPrefix(source, devicePath) {
+	if devicePath == "" || len(source) <= len(devicePath) || source[:len(devicePath)] != devicePath {
 		return false
 	}
 	suffix := source[len(devicePath):]
 	if endsWithDigit(devicePath) {
-		if !strings.HasPrefix(suffix, "p") {
+		if suffix[0] != 'p' {
 			return false
 		}
 		suffix = suffix[1:]
@@ -176,26 +150,4 @@ func isAllDigits(s string) bool {
 		}
 	}
 	return true
-}
-
-// parseMountEntries reads mount entries from a reader such as /proc/mounts.
-func parseMountEntries(reader io.Reader) []mountEntry {
-	var entries []mountEntry
-	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		fields := strings.Fields(scanner.Text())
-		if len(fields) < 3 {
-			continue
-		}
-		entry := mountEntry{
-			Source:     fields[0],
-			MountPoint: fields[1],
-			FsType:     fields[2],
-		}
-		if len(fields) > 3 {
-			entry.Options = fields[3]
-		}
-		entries = append(entries, entry)
-	}
-	return entries
 }

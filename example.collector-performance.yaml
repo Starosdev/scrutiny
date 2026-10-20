@@ -77,7 +77,8 @@ performance:
 #  # The collector checks device name first, then WWN. If neither is configured, it
 #  # resolves a mount point backed by the device or one of its partitions, and falls
 #  # back to direct device I/O (read-only) when none is found. Configure this
-#  # explicitly for LVM, mdadm/RAID members, and multi-device ZFS or btrfs pools.
+#  # explicitly for LVM, mdadm/RAID members, and ZFS. Multi-device btrfs resolves
+#  # through whichever member was passed at mount time; see the doc below.
 #  # See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md
 
 # Benchmark Profiles:

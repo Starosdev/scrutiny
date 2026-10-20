@@ -1,73 +1,30 @@
 package performance
 
 import (
+	"os"
 	"strings"
 	"testing"
 
+	"github.com/analogj/scrutiny/collector/pkg/mounts"
 	"github.com/stretchr/testify/require"
 )
 
-const sampleProcMounts = `sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
-proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
-udev /dev devtmpfs rw,nosuid,relatime,size=16384k 0 0
-tmpfs /dev/shm tmpfs rw,nosuid,nodev 0 0
-tmpfs /run tmpfs rw,nosuid,nodev,size=3276880k,mode=755 0 0
-/dev/sda1 /boot ext4 rw,relatime 0 0
-/dev/sdb1 /mnt/data xfs rw,relatime,attr2,inode64,logbufs=8 0 0
-/dev/nvme0n1p1 /mnt/fast ext4 rw,relatime 0 0
-overlay /var/lib/docker/overlay2/abc123/merged overlay rw,relatime 0 0
-`
-
-func fsTypeForPath(t *testing.T, mounts string, path string) string {
+func parseFixture(t *testing.T, table string) []mounts.Entry {
 	t.Helper()
-	entry, err := findMountEntryForPath(strings.NewReader(mounts), path)
+	entries, err := mounts.Parse(strings.NewReader(table))
 	require.NoError(t, err)
-	return entry.FsType
+	return entries
 }
 
-func TestFindMountEntryForPath_Tmpfs(t *testing.T) {
-	require.Equal(t, "devtmpfs", fsTypeForPath(t, sampleProcMounts, "/dev"))
-}
-
-func TestFindMountEntryForPath_RealFilesystem(t *testing.T) {
-	require.Equal(t, "xfs", fsTypeForPath(t, sampleProcMounts, "/mnt/data"))
-}
-
-func TestFindMountEntryForPath_NvmeFilesystem(t *testing.T) {
-	require.Equal(t, "ext4", fsTypeForPath(t, sampleProcMounts, "/mnt/fast"))
-}
-
-func TestFindMountEntryForPath_LongestMatch(t *testing.T) {
-	// /dev/shm should match "tmpfs" (longer match) not "devtmpfs" (shorter /dev match)
-	require.Equal(t, "tmpfs", fsTypeForPath(t, sampleProcMounts, "/dev/shm"))
-}
-
-func TestFindMountEntryForPath_SubdirMatch(t *testing.T) {
-	// A file inside /mnt/data should resolve to the /mnt/data mount point
-	require.Equal(t, "xfs", fsTypeForPath(t, sampleProcMounts, "/mnt/data/subdir"))
-}
-
-func TestFindMountEntryForPath_NotFound(t *testing.T) {
-	_, err := findMountEntryForPath(strings.NewReader(sampleProcMounts), "/nonexistent")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "not found")
-}
-
-func TestFindMountEntryForPath_EmptyInput(t *testing.T) {
-	_, err := findMountEntryForPath(strings.NewReader(""), "/dev")
-	require.Error(t, err)
-}
-
-func TestFindMountEntryForPath_ReportsMountOptions(t *testing.T) {
-	entry, err := findMountEntryForPath(strings.NewReader(sampleProcMounts), "/mnt/data")
-	require.NoError(t, err)
-	require.Equal(t, "/dev/sdb1", entry.Source)
-	require.False(t, entry.readOnly())
-}
-
-func TestFindDeviceMountPointFromReader(t *testing.T) {
-	const multiDeviceMounts = `udev /dev devtmpfs rw,nosuid,relatime 0 0
-/dev/sda2 / ext4 rw,relatime 0 0
+func TestRankDeviceMountCandidates(t *testing.T) {
+	// A container's mount table. /dev/sda2 backs the container runtime's
+	// single-file binds, /dev/sdb1 is a bind-mounted data filesystem, /dev/sdd is
+	// mounted whole, /dev/sde1 is read-only, /dev/md1p1 is an array partition.
+	const table = `overlay / overlay rw,relatime 0 0
+tmpfs /dev tmpfs rw,nosuid,mode=755 0 0
+/dev/sda2 /etc/resolv.conf ext4 rw,relatime 0 0
+/dev/sda2 /etc/hostname ext4 rw,relatime 0 0
+/dev/sda2 /opt/scrutiny/config ext4 rw,relatime 0 0
 /dev/sdb1 /data ext4 rw,relatime 0 0
 /dev/nvme0n1p1 /mnt/fast xfs rw,relatime 0 0
 /dev/nvme0n11 /mnt/other-namespace xfs rw,relatime 0 0
@@ -77,75 +34,98 @@ func TestFindDeviceMountPointFromReader(t *testing.T) {
 `
 
 	tests := []struct {
-		name       string
-		device     string
-		wantMount  string
-		wantErrMsg string
+		name   string
+		device string
+		want   []string
 	}{
 		{
-			// The reported case: a whole disk is not mounted, its partition is.
-			name:      "whole disk resolves through its partition",
-			device:    "/dev/sdb",
-			wantMount: "/data",
+			// The reported case: the whole disk is not mounted, its partition is.
+			name:   "whole disk resolves through its partition",
+			device: "/dev/sdb",
+			want:   []string{"/data"},
 		},
 		{
-			name:      "whole disk mounted directly",
-			device:    "/dev/sdd",
-			wantMount: "/mnt/whole-disk",
+			name:   "whole disk mounted directly",
+			device: "/dev/sdd",
+			want:   []string{"/mnt/whole-disk"},
 		},
 		{
-			name:      "nvme namespace resolves through p-separated partition",
-			device:    "/dev/nvme0n1",
-			wantMount: "/mnt/fast",
+			name:   "nvme namespace resolves through p-separated partition",
+			device: "/dev/nvme0n1",
+			want:   []string{"/mnt/fast"},
 		},
 		{
-			name:      "md array resolves through p-separated partition",
-			device:    "/dev/md1",
-			wantMount: "/mnt/array",
+			name:   "md array resolves through p-separated partition",
+			device: "/dev/md1",
+			want:   []string{"/mnt/array"},
 		},
 		{
-			name:      "read-only partition still resolves",
-			device:    "/dev/sde",
-			wantMount: "/mnt/readonly",
+			// Regression guard: Docker reports /etc/resolv.conf and friends with
+			// the backing block device as source. Benchmarking them targets a
+			// file, so fio fails and zero write values get published.
+			name:   "container runtime file binds are never candidates",
+			device: "/dev/sda",
+			want:   []string{},
 		},
 		{
-			name:       "unmounted disk is not resolved",
-			device:     "/dev/sdc",
-			wantErrMsg: "no mount point found",
+			name:   "read-only mount is not a candidate",
+			device: "/dev/sde",
+			want:   []string{},
+		},
+		{
+			name:   "unmounted disk has no candidates",
+			device: "/dev/sdc",
+			want:   []string{},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			mountPoint, err := findDeviceMountPointFromReader(strings.NewReader(multiDeviceMounts), test.device)
-			if test.wantErrMsg != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), test.wantErrMsg)
-				return
-			}
-			require.NoError(t, err)
-			require.Equal(t, test.wantMount, mountPoint)
+			require.Equal(t, test.want, rankDeviceMountCandidates(parseFixture(t, table), test.device))
 		})
 	}
 }
 
-func TestFindDeviceMountPointFromReader_PrefersWritableMount(t *testing.T) {
-	// The same device bind-mounted twice: the writable mount is the usable one.
-	const duplicateMounts = `/dev/sdb1 /mnt/readonly xfs ro,relatime 0 0
-/dev/sdb1 /mnt/writable xfs rw,relatime 0 0
+func TestRankDeviceMountCandidates_PrefersWritablePartitionOverReadOnlyDevice(t *testing.T) {
+	// A read-only mount cannot hold the test file, so it must never shadow a
+	// writable partition of the same device, whichever comes first in the table.
+	const table = `/dev/sdb /mnt/ro xfs ro,relatime 0 0
+/dev/sdb1 /mnt/rw xfs rw,relatime 0 0
 `
-	mountPoint, err := findDeviceMountPointFromReader(strings.NewReader(duplicateMounts), "/dev/sdb")
-	require.NoError(t, err)
-	require.Equal(t, "/mnt/writable", mountPoint)
+	require.Equal(t, []string{"/mnt/rw"}, rankDeviceMountCandidates(parseFixture(t, table), "/dev/sdb"))
 }
 
-func TestFindDeviceMountPointFromReader_PrefersDeviceOverPartition(t *testing.T) {
-	const bothMounts = `/dev/sdb1 /mnt/partition xfs rw,relatime 0 0
+func TestRankDeviceMountCandidates_DeviceBeforePartition(t *testing.T) {
+	const table = `/dev/sdb1 /mnt/partition xfs rw,relatime 0 0
 /dev/sdb /mnt/device btrfs rw,relatime 0 0
 `
-	mountPoint, err := findDeviceMountPointFromReader(strings.NewReader(bothMounts), "/dev/sdb")
-	require.NoError(t, err)
-	require.Equal(t, "/mnt/device", mountPoint)
+	require.Equal(t, []string{"/mnt/device", "/mnt/partition"}, rankDeviceMountCandidates(parseFixture(t, table), "/dev/sdb"))
+}
+
+func TestRankDeviceMountCandidates_ReturnsEveryCandidateInOrder(t *testing.T) {
+	// Both partitions are plausible targets. The caller checks free space and
+	// falls through to the next one, so neither may be dropped here: /boot/efi
+	// is far too small for a test file, and / is usable.
+	const table = `/dev/sda1 /boot/efi vfat rw,relatime 0 0
+/dev/sda2 / ext4 rw,relatime 0 0
+`
+	require.Equal(t, []string{"/boot/efi", "/"}, rankDeviceMountCandidates(parseFixture(t, table), "/dev/sda"))
+}
+
+func TestRankDeviceMountCandidates_MultiDeviceBtrfsResolvesToPoolMount(t *testing.T) {
+	// A multi-device btrfs pool is listed with whichever member was passed at
+	// mount time, so one member resolves to the pool and the others do not.
+	const table = `/dev/sdb1 /mnt/pool btrfs rw,relatime,subvol=/ 0 0
+`
+	entries := parseFixture(t, table)
+	require.Equal(t, []string{"/mnt/pool"}, rankDeviceMountCandidates(entries, "/dev/sdb"))
+	require.Empty(t, rankDeviceMountCandidates(entries, "/dev/sdc"))
+}
+
+func TestRankDeviceMountCandidates_DecodesEscapedMountPoint(t *testing.T) {
+	const table = `/dev/sdb1 /mnt/my\040disk xfs rw,relatime 0 0
+`
+	require.Equal(t, []string{"/mnt/my disk"}, rankDeviceMountCandidates(parseFixture(t, table), "/dev/sdb"))
 }
 
 func TestIsPartitionOf(t *testing.T) {
@@ -166,6 +146,11 @@ func TestIsPartitionOf(t *testing.T) {
 		{source: "/dev/sdb", device: "/dev/sdb", want: false},
 		{source: "/dev/sda1", device: "/dev/sdb", want: false},
 		{source: "/dev/sdb1", device: "", want: false},
+		{source: "", device: "/dev/sdb", want: false},
+		// LVM and ZFS sources name no device, which is why they need explicit
+		// mount_points configuration.
+		{source: "/dev/mapper/vg0-data", device: "/dev/sdb", want: false},
+		{source: "tank/data", device: "/dev/sdb", want: false},
 	}
 
 	for _, test := range tests {
@@ -178,28 +163,43 @@ func TestIsPartitionOf(t *testing.T) {
 func TestIsMountEntrySuitable(t *testing.T) {
 	tests := []struct {
 		name       string
-		entry      mountEntry
+		entry      mounts.Entry
 		suitable   bool
 		wantReason string
 	}{
 		{
 			name:     "writable real filesystem",
-			entry:    mountEntry{MountPoint: "/data", FsType: "ext4", Options: "rw,relatime"},
+			entry:    mounts.Entry{MountPoint: "/data", FSType: "ext4", Options: "rw,relatime"},
 			suitable: true,
 		},
 		{
 			name:       "devtmpfs is not a real filesystem",
-			entry:      mountEntry{MountPoint: "/dev", FsType: "devtmpfs", Options: "rw,nosuid"},
+			entry:      mounts.Entry{MountPoint: "/dev", FSType: "devtmpfs", Options: "rw,nosuid"},
 			wantReason: "not mounted as a real filesystem",
 		},
 		{
 			name:       "tmpfs is not a real filesystem",
-			entry:      mountEntry{MountPoint: "/run", FsType: "tmpfs", Options: "rw,nosuid"},
+			entry:      mounts.Entry{MountPoint: "/run", FSType: "tmpfs", Options: "rw,nosuid"},
 			wantReason: "not mounted as a real filesystem",
 		},
 		{
+			name:       "container overlay is not host storage",
+			entry:      mounts.Entry{MountPoint: "/", FSType: "overlay", Options: "rw,relatime"},
+			wantReason: "not mounted as a real filesystem",
+		},
+		{
+			name:       "container runtime file bind is not host storage",
+			entry:      mounts.Entry{MountPoint: "/etc/resolv.conf", FSType: "ext4", Options: "rw,relatime"},
+			wantReason: "container runtime mount",
+		},
+		{
+			name:       "scrutiny config volume is not a benchmark target",
+			entry:      mounts.Entry{MountPoint: "/opt/scrutiny/config", FSType: "ext4", Options: "rw,relatime"},
+			wantReason: "container runtime mount",
+		},
+		{
 			name:       "read-only mount cannot hold a test file",
-			entry:      mountEntry{MountPoint: "/mnt/disk1", FsType: "xfs", Options: "ro,noatime"},
+			entry:      mounts.Entry{MountPoint: "/mnt/disk1", FSType: "xfs", Options: "ro,noatime"},
 			wantReason: "mounted read-only",
 		},
 	}
@@ -217,10 +217,19 @@ func TestIsMountEntrySuitable(t *testing.T) {
 	}
 }
 
-func TestMountEntryReadOnly(t *testing.T) {
-	// "ro" must match an option, not a substring of one such as "relatime".
-	require.False(t, mountEntry{Options: "rw,relatime,errors=remount-ro"}.readOnly())
-	require.True(t, mountEntry{Options: "ro,relatime"}.readOnly())
-	require.True(t, mountEntry{Options: "noatime,ro"}.readOnly())
-	require.False(t, mountEntry{Options: ""}.readOnly())
+func TestIsMountPointSuitable_RejectsNonDirectory(t *testing.T) {
+	// Defence in depth behind the exclusion list: a file can never hold the
+	// test file, whatever the mount table says.
+	file := t.TempDir() + "/not-a-directory"
+	require.NoError(t, os.WriteFile(file, []byte("x"), 0o600))
+
+	suitable, reason := isMountPointSuitable(file, 1)
+	require.False(t, suitable)
+	require.Contains(t, reason, "not a directory")
+}
+
+func TestIsMountPointSuitable_RejectsMissingPath(t *testing.T) {
+	suitable, reason := isMountPointSuitable(t.TempDir()+"/absent", 1)
+	require.False(t, suitable)
+	require.Contains(t, reason, "could not inspect")
 }

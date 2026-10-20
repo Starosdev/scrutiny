@@ -962,7 +962,7 @@ The performance collector checks `COLLECTOR_PERF_` prefixed variables first, the
 | `performance.enabled` | `COLLECTOR_PERFORMANCE_ENABLED` | `false` |
 | `performance.allow_direct_device_io` | `COLLECTOR_PERFORMANCE_ALLOW_DIRECT_DEVICE_IO` | `false` |
 | `performance.temp_file_size` | `COLLECTOR_PERFORMANCE_TEMP_FILE_SIZE` | `256M` |
-| `performance.mount_points.<device>` | `COLLECTOR_PERFORMANCE_MOUNT_POINTS_<DEVICE>` | `{}` |
+| `performance.mount_points.<device>` | `COLLECTOR_PERFORMANCE_MOUNT_POINTS_<DEVICE>` | unset |
 | `commands.performance_fio_bin` | `COLLECTOR_COMMANDS_PERFORMANCE_FIO_BIN` | `fio` |
 | `log.level` | `COLLECTOR_LOG_LEVEL` | `INFO` |
 | `log.file` | `COLLECTOR_PERF_LOG_FILE` or `COLLECTOR_LOG_FILE` | `` |
@@ -992,9 +992,9 @@ docker run --restart unless-stopped \
 `performance.mount_points` maps a device name (`sdb`) or WWN
 (`0x5000cca7aae69487`) to the mount point the benchmark should write its test
 file into, as the collector sees it. The environment variable form uppercases
-the key, for example `COLLECTOR_PERFORMANCE_MOUNT_POINTS_SDB=/data`. Set it when
-the device's filesystem is reached through another layer such as LVM, mdadm, or
-a multi-device pool. See
+the key and maps `-` to `_`, for example
+`COLLECTOR_PERFORMANCE_MOUNT_POINTS_SDB=/data`. Set it when the device's
+filesystem is reached through another layer such as LVM, mdadm, or ZFS. See
 [docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md](./docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md).
 
 ## MDADM Collector
