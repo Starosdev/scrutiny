@@ -4,15 +4,17 @@ log_info() {
     printf 'time="%s" level=info msg="%s" type=zfs\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$1"
 }
 
+. /etc/scrutiny/startup-gate.sh
+
 # Only run if ZFS collection is enabled
-if [ -z "${COLLECTOR_ZFS_CRON_SCHEDULE}" ] && [ "${COLLECTOR_ZFS_RUN_STARTUP}" != "true" ]; then
+if [ -z "${COLLECTOR_ZFS_CRON_SCHEDULE}" ] && ! scrutiny_startup_enabled "${COLLECTOR_ZFS_RUN_STARTUP-}"; then
     log_info "ZFS collector not enabled"
     s6-svc -D /run/service/collector-zfs-once
     exit 0
 fi
 
 # An explicit false suppresses the startup collection only. Any configured cron schedule still applies.
-if [ "${COLLECTOR_ZFS_RUN_STARTUP,,}" = "false" ]; then
+if scrutiny_startup_disabled "${COLLECTOR_ZFS_RUN_STARTUP-}"; then
     log_info "COLLECTOR_ZFS_RUN_STARTUP is false, skipping startup collection (cron schedule still applies)"
     s6-svc -D /run/service/collector-zfs-once
     exit 0

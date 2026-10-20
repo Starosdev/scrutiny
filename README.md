@@ -927,6 +927,12 @@ These environment variables are only available when running the collector in Doc
 | `COLLECTOR_RUN_STARTUP_SLEEP` | `1` | Delay in seconds before startup collection |
 
 > **Startup runs in the omnibus image.** The all-in-one omnibus image starts the collector once shortly after the web service reports healthy, so its effective default is `true` rather than the `false` shown above. Set `COLLECTOR_RUN_STARTUP` to `false` to suppress that run and leave `COLLECTOR_CRON_SCHEDULE` as the only trigger. The standalone collector and collector-omnibus images default to `false` and run at startup only when the variable is `true`.
+>
+> Values are read the same way `strconv.ParseBool` reads them, so `false`, `False`, `f`, and `0` all suppress the run, with surrounding quotes and whitespace ignored.
+>
+> `COLLECTOR_RUN_STARTUP_SLEEP` has no effect in the all-in-one image. That image waits for the web service and its `/api/health` endpoint instead of sleeping for a fixed interval. The variable applies to the standalone collector images.
+>
+> Unraid installs created from `docker/unraid/scrutiny-omnibus.xml` before this behavior was fixed have `COLLECTOR_RUN_STARTUP` explicitly set to `false`, because that was the template default. Those containers stop collecting at startup once they are updated. Change the field to `true` to keep the previous behavior. The template now ships `true`.
 
 ## Performance Collector
 
@@ -969,6 +975,8 @@ The performance collector checks `COLLECTOR_PERF_` prefixed variables first, the
 | `COLLECTOR_PERF_RUN_STARTUP_SLEEP` | `1` | Delay in seconds before startup run |
 
 > **Startup runs in the omnibus image.** Setting `COLLECTOR_PERF_CRON_SCHEDULE` also enables a benchmark shortly after the all-in-one omnibus container starts. Set `COLLECTOR_PERF_RUN_STARTUP` to `false` to keep the schedule without the startup benchmark. The same applies to `COLLECTOR_ZFS_RUN_STARTUP`, `COLLECTOR_MDADM_RUN_STARTUP`, `COLLECTOR_BTRFS_RUN_STARTUP`, and `COLLECTOR_FILESYSTEM_RUN_STARTUP`.
+>
+> The matching `*_RUN_STARTUP_SLEEP` variables are likewise ignored by the all-in-one image.
 
 Example:
 
