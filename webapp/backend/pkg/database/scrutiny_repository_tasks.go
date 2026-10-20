@@ -75,7 +75,8 @@ func (sr *scrutinyRepository) ensureDownsampleTask(ctx context.Context, orgID, t
 		}
 	}
 
-	for _, duplicate := range found[1:] {
+	for i := 1; i < len(found); i++ {
+		duplicate := &found[i]
 		sr.logger.Warnf("deleting duplicate %s downsample task %s", label, duplicate.Id)
 		if err := sr.influxTaskApi.DeleteTaskWithID(ctx, duplicate.Id); err != nil {
 			// another process pruning the same duplicate gets here second, and a duplicate that
