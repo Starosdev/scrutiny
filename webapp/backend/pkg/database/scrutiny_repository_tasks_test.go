@@ -422,3 +422,47 @@ func TestEnsureDownsampleTaskWarnsAndSkipsWhenLookupFails(t *testing.T) {
 	require.Equal(t, logrus.WarnLevel, hook.LastEntry().Level)
 	require.Contains(t, hook.LastEntry().Message, "influxdb unreachable")
 }
+
+// the placeholder script docs/TROUBLESHOOTING_INFLUXDB.md has the operator pre-create for a
+// "Bring your own InfluxDB" deployment. It carries no destBucket assignment, because it is not
+// configured for any bucket yet.
+const byoPlaceholderFlux = "option task = {name: \"tsk-weekly-aggr\", every: 1y} \nyield now()"
+
+// that deployment's token can only write the three tasks it was scoped to by id, so the
+// placeholder has to be adopted and updated. Creating a replacement is refused and the service
+// fails to start, which is what the documented contract exists to avoid.
+func TestEnsureDownsampleTaskAdoptsAPlaceholderTask(t *testing.T) {
+	t.Parallel()
+
+	tasks := &stubTasksAPI{tasks: []domain.Task{
+		{Id: "task-placeholder", Name: "tsk-weekly-aggr", Flux: byoPlaceholderFlux},
+	}}
+
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
+
+	require.NoError(t, err)
+	require.Equal(t, 0, tasks.creates, "a placeholder task has to be updated, not replaced")
+	require.Len(t, tasks.updated, 1)
+	require.Equal(t, "task-placeholder", tasks.updated[0].Id)
+	require.Equal(t, ourScript, tasks.updated[0].Flux)
+	require.Empty(t, tasks.deleted)
+}
+
+// adopting an unconfigured task must not extend to one that writes somewhere else: that belongs
+// to another deployment, and this one creates its own.
+func TestEnsureDownsampleTaskAdoptionStopsAtForeignTasks(t *testing.T) {
+	t.Parallel()
+
+	tasks := &stubTasksAPI{tasks: []domain.Task{
+		{Id: "task-foreign", Name: "tsk-weekly-aggr", Flux: foreignScript},
+		{Id: "task-placeholder", Name: "tsk-weekly-aggr", Flux: byoPlaceholderFlux},
+	}}
+
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
+
+	require.NoError(t, err)
+	require.Equal(t, 0, tasks.creates)
+	require.Len(t, tasks.updated, 1)
+	require.Equal(t, "task-placeholder", tasks.updated[0].Id)
+	require.Empty(t, tasks.deleted, "the foreign task is left alone, not pruned as a duplicate")
+}

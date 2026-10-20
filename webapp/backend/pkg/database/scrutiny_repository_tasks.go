@@ -59,6 +59,12 @@ func (sr *scrutinyRepository) ensureDownsampleTask(ctx context.Context, orgID, t
 
 	owned, decidable := sr.ownedDownsampleTasks(found, taskScript, label)
 	if decidable && len(owned) == 0 {
+		if len(found) > 0 {
+			// the start after a web.influxdb.bucket rename, or a second deployment's first
+			// start: the tasks already there write somewhere else and are left running, so
+			// say it once here rather than on every start
+			sr.logger.Warnf("creating a %s downsample task while %d task(s) of that name write to another destination bucket", label, len(found))
+		}
 		if _, err := sr.influxTaskApi.CreateTaskByFlux(ctx, taskScript, orgID); err != nil {
 			return err
 		}
@@ -98,11 +104,18 @@ func (sr *scrutinyRepository) ensureDownsampleTask(ctx context.Context, orgID, t
 // taskScript, which is what makes them this deployment's to update and to delete.
 //
 // Tasks are matched on the generated script's own destBucket assignment, so the marker cannot
-// drift from what DownsampleScript emits. A generated script without that line is a defect in
-// the template rather than a deployment state, and the second return value reports that
-// ownership could not be decided: the caller then leaves whatever is there alone instead of
-// deleting a task, or creating another, on a guess. A lone task is still updated, which is what
-// the code did before pruning existed.
+// drift from what DownsampleScript emits. A task carrying no destBucket assignment at all counts
+// as this deployment's: that is the placeholder the "Bring your own InfluxDB" setup in
+// docs/TROUBLESHOOTING_INFLUXDB.md has the operator pre-create, and the documented contract is
+// that Scrutiny replaces its script on startup. It cannot be a second configured deployment's,
+// because every configured deployment writes the assignment. Adopting it matters more than it
+// looks: the token that setup mints can only write the tasks it was scoped to by id, so creating
+// a replacement instead of updating that task is refused and the service fails to start.
+//
+// A generated script without that line is a defect in the template rather than a deployment
+// state, and the second return value reports that ownership could not be decided: the caller
+// then leaves whatever is there alone instead of deleting a task, or creating another, on a
+// guess. A lone task is still updated, which is what the code did before pruning existed.
 func (sr *scrutinyRepository) ownedDownsampleTasks(found []domain.Task, taskScript, label string) ([]*domain.Task, bool) {
 	marker := downsampleDestBucketLine(taskScript)
 	if marker == "" {
@@ -115,14 +128,15 @@ func (sr *scrutinyRepository) ownedDownsampleTasks(found []domain.Task, taskScri
 
 	owned := make([]*domain.Task, 0, len(found))
 	for i := range found {
-		if strings.Contains(found[i].Flux, marker) {
+		if strings.Contains(found[i].Flux, marker) || downsampleDestBucketLine(found[i].Flux) == "" {
 			owned = append(owned, &found[i])
 		}
 	}
 	if len(owned) < len(found) {
-		// Debug, not a warning: the common case is two Scrutiny deployments sharing an
-		// organization, which is a supported configuration and needs no operator attention.
-		// Every pkg/web and pkg/database test binary pair logs it too, hundreds of lines a run.
+		// Debug, not a warning: the steady state is two Scrutiny deployments sharing an
+		// organization, which is supported and needs no operator attention, and every pkg/web
+		// and pkg/database test binary pair logs it too. The start that creates a task while
+		// foreign ones are present says so at warning level, in ensureDownsampleTask.
 		sr.logger.Debugf("leaving %d %s task(s) that write to another destination bucket in place", len(found)-len(owned), label)
 	}
 	return owned, true
