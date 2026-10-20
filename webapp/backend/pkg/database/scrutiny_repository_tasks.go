@@ -42,7 +42,7 @@ func (sr *scrutinyRepository) EnsureTasks(ctx context.Context, orgID string) err
 // and the script update has to keep running against them - skipping it leaves the duplicated
 // tasks pinned to the flux script they were first created with.
 func (sr *scrutinyRepository) ensureDownsampleTask(ctx context.Context, orgID, taskName, taskScript, label string) error {
-	// the filter is scoped to this organization: task names are unique to neither, and an
+	// the filter is scoped to this organization: task names are not unique in InfluxDB, and an
 	// unscoped query matches by name across every organization the token can read.
 	found, findErr := sr.influxTaskApi.FindTasks(ctx, &api.TaskFilter{Name: taskName, OrgID: orgID})
 	if findErr != nil {

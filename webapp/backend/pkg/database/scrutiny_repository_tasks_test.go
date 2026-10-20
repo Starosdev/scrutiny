@@ -8,6 +8,7 @@ import (
 	influxapi "github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/influxdata/influxdb-client-go/v2/domain"
 	"github.com/sirupsen/logrus"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -203,7 +204,8 @@ func (s *stubTasksAPI) UpdateTask(_ context.Context, task *domain.Task) (*domain
 }
 
 func newTaskTestRepository(tasks influxapi.TasksAPI) *scrutinyRepository {
-	return &scrutinyRepository{logger: logrus.New(), influxTaskApi: tasks}
+	logger, _ := logrustest.NewNullLogger()
+	return &scrutinyRepository{logger: logger, influxTaskApi: tasks}
 }
 
 // task names are not unique in InfluxDB, so two processes starting together can both create the
@@ -244,16 +246,22 @@ func TestEnsureDownsampleTaskScopesLookupToOrg(t *testing.T) {
 	require.Equal(t, 1, tasks.creates)
 }
 
-// a lookup failure leaves the task alone rather than failing startup, but it must not be read as
-// "no task exists" and turned into a create.
-func TestEnsureDownsampleTaskDoesNotCreateWhenLookupFails(t *testing.T) {
+// a lookup failure leaves the task alone rather than failing startup, since InfluxDB is already
+// proven reachable by this point and the next start retries. It must not pass silently, and it
+// must not be read as "no task exists" and turned into a create.
+func TestEnsureDownsampleTaskWarnsAndSkipsWhenLookupFails(t *testing.T) {
 	t.Parallel()
 
 	tasks := &stubTasksAPI{findErr: errors.New("influxdb unreachable")}
+	logger, hook := logrustest.NewNullLogger()
+	repo := &scrutinyRepository{logger: logger, influxTaskApi: tasks}
 
-	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
+	err := repo.ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
 
 	require.NoError(t, err)
 	require.Equal(t, 0, tasks.creates)
 	require.Empty(t, tasks.updated)
+	require.NotNil(t, hook.LastEntry())
+	require.Equal(t, logrus.WarnLevel, hook.LastEntry().Level)
+	require.Contains(t, hook.LastEntry().Message, "influxdb unreachable")
 }

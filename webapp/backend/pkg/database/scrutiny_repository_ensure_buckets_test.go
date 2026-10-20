@@ -36,6 +36,7 @@ type stubBucketsAPI struct {
 	creates      map[string]int
 	createdRules map[string][]domain.RetentionRule
 	updated      map[string]domain.RetentionRules
+	updatedIDs   []string
 }
 
 var _ influxapi.BucketsAPI = (*stubBucketsAPI)(nil)
@@ -61,7 +62,8 @@ func (s *stubBucketsAPI) FindBucketByName(_ context.Context, bucketName string) 
 	if override, ok := s.foundOrgIDs[bucketName]; ok {
 		orgID = override
 	}
-	return &domain.Bucket{Name: bucketName, OrgID: &orgID}, nil
+	id := "bucket-" + bucketName
+	return &domain.Bucket{Id: &id, Name: bucketName, OrgID: &orgID}, nil
 }
 
 func (s *stubBucketsAPI) CreateBucketWithName(_ context.Context, org *domain.Organization, bucketName string, rules ...domain.RetentionRule) (*domain.Bucket, error) {
@@ -70,10 +72,14 @@ func (s *stubBucketsAPI) CreateBucketWithName(_ context.Context, org *domain.Org
 	if err, ok := s.createErrs[bucketName]; ok {
 		return nil, err
 	}
-	return &domain.Bucket{Name: bucketName, OrgID: org.Id}, nil
+	id := "bucket-" + bucketName
+	return &domain.Bucket{Id: &id, Name: bucketName, OrgID: org.Id}, nil
 }
 
 func (s *stubBucketsAPI) UpdateBucket(_ context.Context, bucket *domain.Bucket) (*domain.Bucket, error) {
+	// the real UpdateBucket dereferences the bucket ID, so do it here too: a caller that passes
+	// a bucket without one has to fail the test rather than pass it
+	s.updatedIDs = append(s.updatedIDs, *bucket.Id)
 	s.updated[bucket.Name] = bucket.RetentionRules
 	return bucket, nil
 }
@@ -159,6 +165,23 @@ func TestEnsureRetentionBucketAppliesRetentionAfterLosingCreateRace(t *testing.T
 	require.NoError(t, err)
 	require.Equal(t, []domain.RetentionRule{rule}, buckets.createdRules["metrics"])
 	require.Equal(t, domain.RetentionRules{rule}, buckets.updated["metrics"])
+}
+
+// the first start of a fresh install: the bucket does not exist, the create succeeds, and the
+// retention rule still has to be applied. Production defaults web.influxdb.retention_policy to
+// true, so this is the common path rather than an edge case.
+func TestEnsureRetentionBucketAppliesRetentionAfterCreating(t *testing.T) {
+	buckets := newStubBucketsAPI()
+	buckets.findsFailUntil["metrics"] = 1
+	rule := domain.RetentionRule{EverySeconds: 4321}
+
+	err := newBucketTestRepository(buckets).ensureRetentionBucket(context.Background(), testOrg(), "metrics", rule, true)
+
+	require.NoError(t, err)
+	require.Equal(t, 1, buckets.creates["metrics"])
+	require.Equal(t, []domain.RetentionRule{rule}, buckets.createdRules["metrics"])
+	require.Equal(t, domain.RetentionRules{rule}, buckets.updated["metrics"])
+	require.Equal(t, []string{"bucket-metrics"}, buckets.updatedIDs)
 }
 
 // the bucket and the traceback from #1004: EnsureBuckets has to survive losing the race on the
