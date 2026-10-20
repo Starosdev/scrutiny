@@ -16,6 +16,7 @@ run_startup_collector() {
     local delay="${!sleep_var:-1}"
 
     if [ "${startup}" != "true" ]; then
+        log_info "${component}" "startup collection is disabled (${startup_var} is not \"true\"); the ${label} collector will next run on its cron schedule"
         return
     fi
 
