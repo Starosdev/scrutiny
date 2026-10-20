@@ -42,20 +42,30 @@ func (sr *scrutinyRepository) EnsureTasks(ctx context.Context, orgID string) err
 // and the script update has to keep running against them - skipping it leaves the duplicated
 // tasks pinned to the flux script they were first created with.
 func (sr *scrutinyRepository) ensureDownsampleTask(ctx context.Context, orgID, taskName, taskScript, label string) error {
-	found, findErr := sr.influxTaskApi.FindTasks(ctx, &api.TaskFilter{Name: taskName})
-	if findErr == nil && len(found) == 0 {
+	// the filter is scoped to this organization: task names are unique to neither, and an
+	// unscoped query matches by name across every organization the token can read.
+	found, findErr := sr.influxTaskApi.FindTasks(ctx, &api.TaskFilter{Name: taskName, OrgID: orgID})
+	if findErr != nil {
+		// a lookup failure leaves the task alone, as it always has, but it is no longer silent
+		sr.logger.Warnf("could not look up the %s downsample task: %s", label, findErr.Error())
+		return nil
+	}
+	if len(found) == 0 {
 		_, err := sr.influxTaskApi.CreateTaskByFlux(ctx, taskScript, orgID)
 		return err
-	} else if len(found) > 0 {
-		if len(found) > 1 {
-			sr.logger.Warnf("found %d %s downsample tasks named %s, updating the first", len(found), label, taskName)
-		}
+	}
+	if len(found) > 1 {
+		sr.logger.Warnf("found %d %s downsample tasks named %s, updating all of them", len(found), label, taskName)
+	}
+	for i := range found {
+		task := &found[i]
 		//check if we should update
-		task := &found[0]
-		if taskScript != task.Flux {
-			sr.logger.Infoln("updating " + label + " task script")
-			task.Flux = taskScript
-			_, err := sr.influxTaskApi.UpdateTask(ctx, task)
+		if taskScript == task.Flux {
+			continue
+		}
+		sr.logger.Infoln("updating " + label + " task script")
+		task.Flux = taskScript
+		if _, err := sr.influxTaskApi.UpdateTask(ctx, task); err != nil {
 			return err
 		}
 	}

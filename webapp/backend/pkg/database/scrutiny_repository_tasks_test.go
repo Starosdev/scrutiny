@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
 	"github.com/golang/mock/gomock"
 	influxapi "github.com/influxdata/influxdb-client-go/v2/api"
@@ -167,19 +168,27 @@ from(bucket: sourceBucket)
 		`, influxDbScript)
 }
 
-// stubTasksAPI replays a scripted task list. Only the three methods ensureDownsampleTask calls
-// are implemented; any other call panics rather than returning a wrong answer quietly.
+// stubTasksAPI replays a scripted task list and records the filter it was asked for. Only the
+// three methods ensureDownsampleTask calls are implemented; the embedded interface is nil, so
+// any other call panics rather than returning a wrong answer quietly.
 type stubTasksAPI struct {
 	influxapi.TasksAPI
 
 	tasks   []domain.Task
+	findErr error
+
+	filter  *influxapi.TaskFilter
 	creates int
 	updated []domain.Task
 }
 
 var _ influxapi.TasksAPI = (*stubTasksAPI)(nil)
 
-func (s *stubTasksAPI) FindTasks(_ context.Context, _ *influxapi.TaskFilter) ([]domain.Task, error) {
+func (s *stubTasksAPI) FindTasks(_ context.Context, filter *influxapi.TaskFilter) ([]domain.Task, error) {
+	s.filter = filter
+	if s.findErr != nil {
+		return nil, s.findErr
+	}
 	return s.tasks, nil
 }
 
@@ -193,22 +202,58 @@ func (s *stubTasksAPI) UpdateTask(_ context.Context, task *domain.Task) (*domain
 	return task, nil
 }
 
+func newTaskTestRepository(tasks influxapi.TasksAPI) *scrutinyRepository {
+	return &scrutinyRepository{logger: logrus.New(), influxTaskApi: tasks}
+}
+
 // task names are not unique in InfluxDB, so two processes starting together can both create the
 // same downsample task. Treating that as a state to leave alone pinned the duplicates to the
-// flux script they were first created with, because no later startup would update them.
-func TestEnsureDownsampleTaskUpdatesScriptWhenDuplicatesExist(t *testing.T) {
+// flux script they were first created with, because no later startup would update them. Every
+// duplicate is scheduled and writes to the same destination bucket, so they all get the script.
+func TestEnsureDownsampleTaskUpdatesEveryDuplicate(t *testing.T) {
 	t.Parallel()
 
 	tasks := &stubTasksAPI{tasks: []domain.Task{
 		{Id: "task-1", Name: "tsk-weekly-aggr", Flux: "old script"},
 		{Id: "task-2", Name: "tsk-weekly-aggr", Flux: "old script"},
 	}}
-	repo := &scrutinyRepository{logger: logrus.New(), influxTaskApi: tasks}
 
-	err := repo.ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
 
 	require.NoError(t, err)
 	require.Equal(t, 0, tasks.creates)
-	require.Len(t, tasks.updated, 1)
+	require.Len(t, tasks.updated, 2)
 	require.Equal(t, "new script", tasks.updated[0].Flux)
+	require.Equal(t, "new script", tasks.updated[1].Flux)
+}
+
+// the lookup is scoped to this deployment's organization. An unscoped query matches by name
+// across every organization the token can read, and updating another organization's task would
+// write this deployment's bucket names into its flux script.
+func TestEnsureDownsampleTaskScopesLookupToOrg(t *testing.T) {
+	t.Parallel()
+
+	tasks := &stubTasksAPI{}
+
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
+
+	require.NoError(t, err)
+	require.NotNil(t, tasks.filter)
+	require.Equal(t, "org-scrutiny", tasks.filter.OrgID)
+	require.Equal(t, "tsk-weekly-aggr", tasks.filter.Name)
+	require.Equal(t, 1, tasks.creates)
+}
+
+// a lookup failure leaves the task alone rather than failing startup, but it must not be read as
+// "no task exists" and turned into a create.
+func TestEnsureDownsampleTaskDoesNotCreateWhenLookupFails(t *testing.T) {
+	t.Parallel()
+
+	tasks := &stubTasksAPI{findErr: errors.New("influxdb unreachable")}
+
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
+
+	require.NoError(t, err)
+	require.Equal(t, 0, tasks.creates)
+	require.Empty(t, tasks.updated)
 }

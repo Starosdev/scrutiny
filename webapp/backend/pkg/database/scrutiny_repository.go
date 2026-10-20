@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -20,7 +19,6 @@ import (
 	"github.com/glebarez/sqlite"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/influxdata/influxdb-client-go/v2/api"
-	influxhttp "github.com/influxdata/influxdb-client-go/v2/api/http"
 	"github.com/influxdata/influxdb-client-go/v2/domain"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
@@ -474,7 +472,7 @@ func (sr *scrutinyRepository) ensureRetentionBucket(ctx context.Context, org *do
 		// bucket silently keeps whatever rule the winner created it with.
 		found = created
 	}
-	if applyRetention && found != nil {
+	if applyRetention {
 		// correctly set the retention period (may not be able to do it during setup/creation)
 		found.RetentionRules = domain.RetentionRules{retentionRule}
 		_, _ = sr.influxClient.BucketsAPI().UpdateBucket(ctx, found)
@@ -482,42 +480,34 @@ func (sr *scrutinyRepository) ensureRetentionBucket(ctx context.Context, org *do
 	return nil
 }
 
-// ensureBucketExists creates bucketName and returns the bucket, treating a creation conflict as
-// success. Check-then-create has no tolerance for a second creator: two Scrutiny processes
-// pointed at one InfluxDB, or the pkg/web and pkg/database test binaries sharing one service
-// container, can both find the bucket missing and both create it, and the loser gets a 409. The
-// desired end state is that the bucket exists, so re-read it and continue when it does.
+// ensureBucketExists creates bucketName and returns the bucket, treating a bucket that already
+// exists as success. Check-then-create has no tolerance for a second creator: two Scrutiny
+// processes pointed at one InfluxDB, or the pkg/web and pkg/database test binaries sharing one
+// service container, can both find the bucket missing and both create it, and the loser gets a
+// 409 conflict. The desired end state is that the bucket exists, so re-read it and continue.
 //
-// Only a 409 is tolerated. Any other failure is returned, because bucket names are unique per
-// organization while FindBucketByName queries by name across every organization the token can
-// read, so a broader re-read could report another organization's bucket as this one.
+// A failed create is tolerated only when the re-read finds the bucket in the organization the
+// create was addressed to. Bucket names are unique per organization while FindBucketByName
+// queries by name across every organization the token can read, so without the organization
+// check a failure for an unrelated reason could be masked by another organization's bucket of
+// the same name. The create error is not classified by status code: the generated REST client
+// turns a non-2xx into a plain fmt.Errorf("code: message") carrying neither status code nor
+// wrapped error (see decodeError in the client's domain package), so there is nothing to match
+// on, and the re-read answers the only question that matters.
 func ensureBucketExists(ctx context.Context, bucketsAPI api.BucketsAPI, org *domain.Organization, bucketName string, retentionRules ...domain.RetentionRule) (*domain.Bucket, error) {
 	created, err := bucketsAPI.CreateBucketWithName(ctx, org, bucketName, retentionRules...)
 	if err == nil {
 		return created, nil
-	}
-	if !isInfluxConflictError(err) {
-		return nil, err
 	}
 	found, foundErr := bucketsAPI.FindBucketByName(ctx, bucketName)
 	if foundErr != nil {
 		return nil, err
 	}
 	if found.OrgID != nil && org != nil && org.Id != nil && *found.OrgID != *org.Id {
-		// a bucket of this name in another organization is not the one the conflict was about
+		// a bucket of this name in another organization is not this bucket
 		return nil, err
 	}
 	return found, nil
-}
-
-// isInfluxConflictError reports whether err is an InfluxDB 409, which is how the API reports a
-// resource that already exists.
-func isInfluxConflictError(err error) bool {
-	var influxErr *influxhttp.Error
-	if !errors.As(err, &influxErr) {
-		return false
-	}
-	return influxErr.StatusCode == http.StatusConflict
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
