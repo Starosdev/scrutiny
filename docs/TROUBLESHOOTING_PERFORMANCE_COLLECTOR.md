@@ -50,8 +50,23 @@ collector cannot create a file in it. The test file size is
 
 The last check creates and removes a real file, because a writable filesystem
 and a writable directory are not the same thing: a root-owned path or an
-exhausted quota passes every other check and then fails inside fio, which
-publishes a zero instead of skipping the test.
+exhausted inode quota passes every other check and then fails inside fio, which
+publishes a zero instead of skipping the test. The probe file is empty, so a
+block quota is not detected.
+
+The space, filesystem type and read-only checks read `/proc/mounts` and are
+therefore Linux-only. On macOS and FreeBSD a mount point is accepted when it
+exists, is a directory, and accepts the probe file.
+
+### The root filesystem is an eligible target
+
+A device backs whatever is mounted on it, including `/`. A single-disk server
+running the collector outside a container has no other candidate, so the
+benchmark writes its test file into the root filesystem and runs its write
+tests there. That is the only way to measure writes on such a host, but it is
+I/O against the system disk on every scheduled run. Set
+`performance.allow_direct_device_io: true` to keep read-only results instead, or
+name a different filesystem with `performance.mount_points`.
 
 Step 3 considers every mount the device backs, so a device whose first candidate
 is too small (an EFI system partition, say) still resolves to a larger one. Each
@@ -87,7 +102,10 @@ explicitly:
 - LVM logical volumes, where the mount source is `/dev/mapper/...`
 - mdadm and hardware RAID members, where the array is mounted, not the member
 - ZFS, where the mount source is the pool name rather than a device. A dataset
-  is a valid benchmark target once it is named here.
+  is a valid benchmark target once it is named here, on OpenZFS 2.3 or newer.
+  Earlier releases do not implement `O_DIRECT` on files and reject every fio
+  job the collector runs, which publishes no result at all for that device.
+  Check with `zfs version`, and prefer `allow_direct_device_io` below 2.3.
 - A device whose mount point is not visible inside the container
 
 Multi-device btrfs needs care rather than configuration. The mount table lists

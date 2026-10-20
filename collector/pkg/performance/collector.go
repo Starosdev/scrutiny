@@ -343,7 +343,7 @@ func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), bo
 		if resolvedMount != "" {
 			usable, reason := c.mountPointUsable(resolvedMount)
 			if !usable {
-				c.logger.Warnf("Configured mount point %s for device %s is not suitable: %s -- ignoring", configuredMount, device.DeviceName, reason)
+				c.logger.Warnf("Configured mount point %s (resolved to %s) for device %s is not suitable: %s -- ignoring", configuredMount, resolvedMount, device.DeviceName, reason)
 			} else {
 				c.logger.Infof("Using configured mount point %s for device %s", resolvedMount, device.DeviceName)
 				return benchmarkFileTarget(resolvedMount)
@@ -351,7 +351,8 @@ func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), bo
 		}
 	}
 
-	// Explicit opt-in takes precedence (now uses namespace device for NVMe)
+	// Opt in to raw device I/O, unless a mount point was configured for this
+	// device above (now uses namespace device for NVMe)
 	if c.config.GetBool("performance.allow_direct_device_io") {
 		c.logger.Infof("Direct device I/O enabled -- benchmarking %s (read-only, write tests skipped)", effectiveDevicePath)
 		return effectiveDevicePath, nil, true, nil
@@ -399,9 +400,12 @@ func (c *Collector) mountPointUsable(mountPoint string) (bool, string) {
 
 // canCreateFileIn confirms the collector can actually create a file in a
 // directory. The mount table reports how a filesystem was mounted, not what
-// this process may do: a root-owned mount, a full quota, or an overlay the
-// container cannot write passes every other check and fails inside fio, where
-// the failure is logged as a warning and published as a zero.
+// this process may do: a root-owned directory, an exhausted inode quota, or an
+// overlay the container cannot write passes every other check and fails inside
+// fio, where the failure is logged as a warning and published as a zero.
+//
+// The probe file is empty, so it does not detect a block quota. Catching that
+// would mean writing the whole test file twice.
 func canCreateFileIn(dir string) (bool, string) {
 	probe, err := os.CreateTemp(dir, ".scrutiny_perf_probe-*")
 	if err != nil {
@@ -416,7 +420,7 @@ func canCreateFileIn(dir string) (bool, string) {
 // benchmarkFileTarget returns the test file path inside a mount point, with the
 // cleanup that removes it.
 func benchmarkFileTarget(mountPoint string) (string, func(), bool, error) {
-	tempFile := fmt.Sprintf("%s/.scrutiny_perf_bench", mountPoint)
+	tempFile := filepath.Join(mountPoint, ".scrutiny_perf_bench")
 	cleanup := func() {
 		os.Remove(tempFile)
 	}

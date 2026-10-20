@@ -514,7 +514,10 @@ Write tests need a writable filesystem on the target device, because the
 benchmark writes a temporary file into it. Passing the device node alone yields
 read-only results: raw block device write tests are disabled so a benchmark can
 never overwrite data. Mount the device's filesystem into the container
-(`-v /data:/data`) to measure writes, and see
+(`-v /data:/data`) to measure writes. Any filesystem the device backs is
+eligible, including the root filesystem on a single-disk host; set
+`performance.allow_direct_device_io: true` to keep read-only results, or name a
+specific filesystem with `performance.mount_points`. See
 [docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md](./docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md)
 when write tests are skipped.
 
