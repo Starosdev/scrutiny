@@ -6,7 +6,7 @@ The CI script used to orchestrate the Docker image builds lives in `.github/work
 
 Scrutiny uses two branch-backed image channels and one release-backed stable channel:
 
-- `develop` branch -> `develop`, `develop-omnibus`, and `develop-collector-omnibus`
+- `develop` branch -> `develop` and `develop-omnibus`
 - `beta` branch -> `beta` and `beta-omnibus`
 - release tag -> `latest` and `latest-omnibus`
 
