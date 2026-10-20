@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -19,6 +20,7 @@ import (
 	"github.com/glebarez/sqlite"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/influxdata/influxdb-client-go/v2/api"
+	influxhttp "github.com/influxdata/influxdb-client-go/v2/api/http"
 	"github.com/influxdata/influxdb-client-go/v2/domain"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
@@ -451,7 +453,7 @@ func (sr *scrutinyRepository) EnsureBuckets(ctx context.Context, org *domain.Org
 	// metrics_yearly bucket will have an infinite retention period
 	yearlyBucket := baseBucket + "_yearly"
 	if _, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, yearlyBucket); foundErr != nil {
-		if err := ensureBucketExists(ctx, sr.influxClient.BucketsAPI(), org, yearlyBucket); err != nil {
+		if _, err := ensureBucketExists(ctx, sr.influxClient.BucketsAPI(), org, yearlyBucket); err != nil {
 			return err
 		}
 	}
@@ -464,9 +466,15 @@ func (sr *scrutinyRepository) EnsureBuckets(ctx context.Context, org *domain.Org
 func (sr *scrutinyRepository) ensureRetentionBucket(ctx context.Context, org *domain.Organization, bucketName string, retentionRule domain.RetentionRule, applyRetention bool) error {
 	found, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, bucketName)
 	if foundErr != nil {
-		return ensureBucketExists(ctx, sr.influxClient.BucketsAPI(), org, bucketName, retentionRule)
+		created, err := ensureBucketExists(ctx, sr.influxClient.BucketsAPI(), org, bucketName, retentionRule)
+		if err != nil {
+			return err
+		}
+		// losing the create race still has to apply this process's retention rule, otherwise the
+		// bucket silently keeps whatever rule the winner created it with.
+		found = created
 	}
-	if applyRetention {
+	if applyRetention && found != nil {
 		// correctly set the retention period (may not be able to do it during setup/creation)
 		found.RetentionRules = domain.RetentionRules{retentionRule}
 		_, _ = sr.influxClient.BucketsAPI().UpdateBucket(ctx, found)
@@ -474,19 +482,42 @@ func (sr *scrutinyRepository) ensureRetentionBucket(ctx context.Context, org *do
 	return nil
 }
 
-// ensureBucketExists creates bucketName and treats an already existing bucket as success.
-// Check-then-create has no tolerance for a second creator: two Scrutiny processes pointed at
-// one InfluxDB, or the pkg/web and pkg/database test binaries sharing one service container,
-// can both find the bucket missing and both create it, and the loser gets a 409 conflict. The
+// ensureBucketExists creates bucketName and returns the bucket, treating a creation conflict as
+// success. Check-then-create has no tolerance for a second creator: two Scrutiny processes
+// pointed at one InfluxDB, or the pkg/web and pkg/database test binaries sharing one service
+// container, can both find the bucket missing and both create it, and the loser gets a 409. The
 // desired end state is that the bucket exists, so re-read it and continue when it does.
-func ensureBucketExists(ctx context.Context, bucketsAPI api.BucketsAPI, org *domain.Organization, bucketName string, retentionRules ...domain.RetentionRule) error {
-	if _, err := bucketsAPI.CreateBucketWithName(ctx, org, bucketName, retentionRules...); err != nil {
-		if _, foundErr := bucketsAPI.FindBucketByName(ctx, bucketName); foundErr == nil {
-			return nil
-		}
-		return err
+//
+// Only a 409 is tolerated. Any other failure is returned, because bucket names are unique per
+// organization while FindBucketByName queries by name across every organization the token can
+// read, so a broader re-read could report another organization's bucket as this one.
+func ensureBucketExists(ctx context.Context, bucketsAPI api.BucketsAPI, org *domain.Organization, bucketName string, retentionRules ...domain.RetentionRule) (*domain.Bucket, error) {
+	created, err := bucketsAPI.CreateBucketWithName(ctx, org, bucketName, retentionRules...)
+	if err == nil {
+		return created, nil
 	}
-	return nil
+	if !isInfluxConflictError(err) {
+		return nil, err
+	}
+	found, foundErr := bucketsAPI.FindBucketByName(ctx, bucketName)
+	if foundErr != nil {
+		return nil, err
+	}
+	if found.OrgID != nil && org != nil && org.Id != nil && *found.OrgID != *org.Id {
+		// a bucket of this name in another organization is not the one the conflict was about
+		return nil, err
+	}
+	return found, nil
+}
+
+// isInfluxConflictError reports whether err is an InfluxDB 409, which is how the API reports a
+// resource that already exists.
+func isInfluxConflictError(err error) bool {
+	var influxErr *influxhttp.Error
+	if !errors.As(err, &influxErr) {
+		return false
+	}
+	return influxErr.StatusCode == http.StatusConflict
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

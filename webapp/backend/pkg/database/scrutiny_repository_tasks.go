@@ -34,13 +34,22 @@ func (sr *scrutinyRepository) EnsureTasks(ctx context.Context, orgID string) err
 }
 
 // ensureDownsampleTask creates the named downsample task when it does not exist,
-// or updates its flux script when the single existing task differs.
+// or updates the existing task's flux script when it differs.
+//
+// Task names are not unique in InfluxDB, so this check-then-create races the same way bucket
+// creation does (see ensureBucketExists): two processes starting together both find no task and
+// both create one. Duplicates are therefore an expected state rather than a reason to give up,
+// and the script update has to keep running against them - skipping it leaves the duplicated
+// tasks pinned to the flux script they were first created with.
 func (sr *scrutinyRepository) ensureDownsampleTask(ctx context.Context, orgID, taskName, taskScript, label string) error {
 	found, findErr := sr.influxTaskApi.FindTasks(ctx, &api.TaskFilter{Name: taskName})
 	if findErr == nil && len(found) == 0 {
 		_, err := sr.influxTaskApi.CreateTaskByFlux(ctx, taskScript, orgID)
 		return err
-	} else if len(found) == 1 {
+	} else if len(found) > 0 {
+		if len(found) > 1 {
+			sr.logger.Warnf("found %d %s downsample tasks named %s, updating the first", len(found), label, taskName)
+		}
 		//check if we should update
 		task := &found[0]
 		if taskScript != task.Flux {

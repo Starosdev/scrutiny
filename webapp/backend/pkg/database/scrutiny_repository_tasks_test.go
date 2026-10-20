@@ -1,8 +1,12 @@
 package database
 
 import (
+	"context"
 	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
 	"github.com/golang/mock/gomock"
+	influxapi "github.com/influxdata/influxdb-client-go/v2/api"
+	"github.com/influxdata/influxdb-client-go/v2/domain"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -161,4 +165,50 @@ from(bucket: sourceBucket)
 |> set(key: "_field", value: "temp")
 |> to(bucket: destBucket, org: destOrg)
 		`, influxDbScript)
+}
+
+// stubTasksAPI replays a scripted task list. Only the three methods ensureDownsampleTask calls
+// are implemented; any other call panics rather than returning a wrong answer quietly.
+type stubTasksAPI struct {
+	influxapi.TasksAPI
+
+	tasks   []domain.Task
+	creates int
+	updated []domain.Task
+}
+
+var _ influxapi.TasksAPI = (*stubTasksAPI)(nil)
+
+func (s *stubTasksAPI) FindTasks(_ context.Context, _ *influxapi.TaskFilter) ([]domain.Task, error) {
+	return s.tasks, nil
+}
+
+func (s *stubTasksAPI) CreateTaskByFlux(_ context.Context, flux, _ string) (*domain.Task, error) {
+	s.creates++
+	return &domain.Task{Flux: flux}, nil
+}
+
+func (s *stubTasksAPI) UpdateTask(_ context.Context, task *domain.Task) (*domain.Task, error) {
+	s.updated = append(s.updated, *task)
+	return task, nil
+}
+
+// task names are not unique in InfluxDB, so two processes starting together can both create the
+// same downsample task. Treating that as a state to leave alone pinned the duplicates to the
+// flux script they were first created with, because no later startup would update them.
+func TestEnsureDownsampleTaskUpdatesScriptWhenDuplicatesExist(t *testing.T) {
+	t.Parallel()
+
+	tasks := &stubTasksAPI{tasks: []domain.Task{
+		{Id: "task-1", Name: "tsk-weekly-aggr", Flux: "old script"},
+		{Id: "task-2", Name: "tsk-weekly-aggr", Flux: "old script"},
+	}}
+	repo := &scrutinyRepository{logger: logrus.New(), influxTaskApi: tasks}
+
+	err := repo.ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
+
+	require.NoError(t, err)
+	require.Equal(t, 0, tasks.creates)
+	require.Len(t, tasks.updated, 1)
+	require.Equal(t, "new script", tasks.updated[0].Flux)
 }
