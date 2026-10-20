@@ -97,6 +97,8 @@ jobs:
         run: bash docker/tests/influxdb-upgrade-preflight_test.sh
       - name: Test Omnibus collector startup gate
         run: bash docker/tests/collector-startup-gate_test.sh
+      - name: Test collector entrypoint startup logging
+        run: bash docker/tests/entrypoint-startup-log_test.sh
       - name: Setup Go
         uses: actions/setup-go@v7
         with:

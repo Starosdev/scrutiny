@@ -25,7 +25,7 @@ if [[ "${COLLECTOR_MDADM_RUN_STARTUP}" == "true" ]]; then
     log_info "starting scrutiny MDADM collector (run-once mode. subsequent calls will be triggered via cron service)"
     COLLECTOR_CRON_SCHEDULE= COLLECTOR_MDADM_RUN_STARTUP= /opt/scrutiny/bin/scrutiny-collector-mdadm run
 else
-    log_info "startup collection is disabled (COLLECTOR_MDADM_RUN_STARTUP is not \"true\"); the scrutiny MDADM collector will next run on its cron schedule: ${COLLECTOR_MDADM_CRON_SCHEDULE}"
+    log_info "startup collection is disabled (COLLECTOR_MDADM_RUN_STARTUP is not set to true); the scrutiny MDADM collector will next run on its cron schedule: ${COLLECTOR_MDADM_CRON_SCHEDULE}"
 fi
 
 
