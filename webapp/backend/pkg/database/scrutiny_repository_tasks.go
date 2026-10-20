@@ -55,7 +55,7 @@ func (sr *scrutinyRepository) ensureDownsampleTask(ctx context.Context, orgID, t
 		return err
 	}
 	if len(found) > 1 {
-		sr.logger.Warnf("found %d %s downsample tasks named %s, updating all of them", len(found), label, taskName)
+		sr.logger.Warnf("found %d %s downsample tasks named %s", len(found), label, taskName)
 	}
 	for i := range found {
 		task := &found[i]
@@ -63,7 +63,7 @@ func (sr *scrutinyRepository) ensureDownsampleTask(ctx context.Context, orgID, t
 		if taskScript == task.Flux {
 			continue
 		}
-		sr.logger.Infoln("updating " + label + " task script")
+		sr.logger.Infof("updating the %s task script for task %s", label, task.Id)
 		task.Flux = taskScript
 		if _, err := sr.influxTaskApi.UpdateTask(ctx, task); err != nil {
 			return err

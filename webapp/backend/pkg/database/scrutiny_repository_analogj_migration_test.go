@@ -68,10 +68,14 @@ func TestAnalogJHistoryRewritePreservesSourceOnFailureAndRetries(t *testing.T) {
 						http.Error(w, "bucket access denied", http.StatusForbidden)
 						return
 					}
+					// the lookup is organization-scoped, so the response is the organization's
+					// bucket list rather than one bucket echoed back by name
 					w.Header().Set("Content-Type", "application/json")
-					_ = json.NewEncoder(w).Encode(map[string]interface{}{
-						"buckets": []domain.Bucket{{Name: r.URL.Query().Get("name"), RetentionRules: domain.RetentionRules{{EverySeconds: 5443200}}}},
-					})
+					listed := make([]domain.Bucket, 0, 4)
+					for _, name := range []string{"metrics", "metrics_weekly", "metrics_monthly", "metrics_yearly"} {
+						listed = append(listed, domain.Bucket{Name: name, RetentionRules: domain.RetentionRules{{EverySeconds: 5443200}}})
+					}
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{"buckets": listed})
 				case "/api/v2/query":
 					if fail.Load() && failure == "HTTP rejection" {
 						w.Header().Set("Content-Type", "application/json")

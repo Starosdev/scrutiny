@@ -47,6 +47,10 @@ const (
 	INFLUX_DURATION_10_YEARS = "-10y"
 	INFLUX_NOW               = "now()"
 
+	// bucketPageSize is the page size for listing an organization's buckets. The API's own
+	// default is 20, which a shared InfluxDB can exceed.
+	bucketPageSize = 100
+
 	// Aggregation window resolutions
 	RESOLUTION_10_MINUTES = "10m"
 	RESOLUTION_1_HOUR     = "1h"
@@ -450,7 +454,7 @@ func (sr *scrutinyRepository) EnsureBuckets(ctx context.Context, org *domain.Org
 
 	// metrics_yearly bucket will have an infinite retention period
 	yearlyBucket := baseBucket + "_yearly"
-	if _, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, yearlyBucket); foundErr != nil {
+	if _, foundErr := findBucketInOrg(ctx, sr.influxClient.BucketsAPI(), org.Name, yearlyBucket); foundErr != nil {
 		if _, err := ensureBucketExists(ctx, sr.influxClient.BucketsAPI(), org, yearlyBucket); err != nil {
 			return err
 		}
@@ -462,7 +466,7 @@ func (sr *scrutinyRepository) EnsureBuckets(ctx context.Context, org *domain.Org
 // ensureRetentionBucket creates bucketName with the given retention rule when it does not exist,
 // or (when applyRetention is set) updates the existing bucket's retention rule.
 func (sr *scrutinyRepository) ensureRetentionBucket(ctx context.Context, org *domain.Organization, bucketName string, retentionRule domain.RetentionRule, applyRetention bool) error {
-	found, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, bucketName)
+	found, foundErr := findBucketInOrg(ctx, sr.influxClient.BucketsAPI(), org.Name, bucketName)
 	if foundErr != nil {
 		created, err := ensureBucketExists(ctx, sr.influxClient.BucketsAPI(), org, bucketName, retentionRule)
 		if err != nil {
@@ -486,28 +490,49 @@ func (sr *scrutinyRepository) ensureRetentionBucket(ctx context.Context, org *do
 // service container, can both find the bucket missing and both create it, and the loser gets a
 // 409 conflict. The desired end state is that the bucket exists, so re-read it and continue.
 //
-// A failed create is tolerated only when the re-read finds the bucket in the organization the
-// create was addressed to. Bucket names are unique per organization while FindBucketByName
-// queries by name across every organization the token can read, so without the organization
-// check a failure for an unrelated reason could be masked by another organization's bucket of
-// the same name. The create error is not classified by status code: the generated REST client
-// turns a non-2xx into a plain fmt.Errorf("code: message") carrying neither status code nor
-// wrapped error (see decodeError in the client's domain package), so there is nothing to match
-// on, and the re-read answers the only question that matters.
+// A failed create is tolerated only when the bucket then turns out to exist in this
+// organization, which findBucketInOrg is what establishes. The create error is not classified
+// by status code: the generated REST client turns a non-2xx into a plain
+// fmt.Errorf("code: message") carrying neither status code nor wrapped error (see decodeError in
+// the client's domain package), so there is nothing to match on, and the lookup answers the only
+// question that matters.
 func ensureBucketExists(ctx context.Context, bucketsAPI api.BucketsAPI, org *domain.Organization, bucketName string, retentionRules ...domain.RetentionRule) (*domain.Bucket, error) {
 	created, err := bucketsAPI.CreateBucketWithName(ctx, org, bucketName, retentionRules...)
 	if err == nil {
 		return created, nil
 	}
-	found, foundErr := bucketsAPI.FindBucketByName(ctx, bucketName)
+	found, foundErr := findBucketInOrg(ctx, bucketsAPI, org.Name, bucketName)
 	if foundErr != nil {
 		return nil, err
 	}
-	if found.OrgID != nil && org != nil && org.Id != nil && *found.OrgID != *org.Id {
-		// a bucket of this name in another organization is not this bucket
-		return nil, err
-	}
 	return found, nil
+}
+
+// findBucketInOrg returns the bucket named bucketName belonging to orgName.
+//
+// The client's FindBucketByName is not usable here: it queries by name with no organization
+// filter and returns the first match, while bucket names are unique per organization. A
+// deployment sharing an InfluxDB with another organization could therefore read, update the
+// retention of, and down-sample into that organization's bucket, and never create its own.
+func findBucketInOrg(ctx context.Context, bucketsAPI api.BucketsAPI, orgName, bucketName string) (*domain.Bucket, error) {
+	for offset := 0; ; offset += bucketPageSize {
+		page, err := bucketsAPI.FindBucketsByOrgName(ctx, orgName, api.PagingWithOffset(offset), api.PagingWithLimit(bucketPageSize))
+		if err != nil {
+			return nil, err
+		}
+		if page == nil {
+			break
+		}
+		for i := range *page {
+			if (*page)[i].Name == bucketName {
+				return &(*page)[i], nil
+			}
+		}
+		if len(*page) < bucketPageSize {
+			break
+		}
+	}
+	return nil, fmt.Errorf("bucket '%s' not found in organization '%s'", bucketName, orgName)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

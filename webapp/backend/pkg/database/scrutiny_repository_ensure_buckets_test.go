@@ -2,8 +2,8 @@ package database
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"sort"
 	"testing"
 
 	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
@@ -14,25 +14,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testOrgID = "org-scrutiny"
+const (
+	testOrgID   = "org-scrutiny"
+	testOrgName = "scrutiny"
+)
 
-// stubBucketsAPI records what the repository asked for and replays a scripted InfluxDB, keyed by
-// bucket name so a single call to EnsureBuckets can script each of its four buckets separately.
-// It implements only the three methods the bucket code calls; the embedded interface is nil, so
-// any other call panics rather than returning a wrong answer quietly.
+// stubBucketsAPI replays a scripted InfluxDB organization. It implements only the three methods
+// the bucket code calls, and the embedded interface is nil on purpose: a call to anything else,
+// including the cross-organization FindBucketByName this code deliberately avoids, panics rather
+// than returning a wrong answer quietly.
 type stubBucketsAPI struct {
 	influxapi.BucketsAPI
 
-	// findsFailUntil makes the first N finds of a bucket report it missing, which is how a
-	// caller enters the create path. A value of 1 is the race: the caller's own find misses and
-	// the re-read after the failed create succeeds, because a concurrent creator got there.
-	findsFailUntil map[string]int
-	createErrs     map[string]error
-	// foundOrgIDs overrides the organization of the bucket a find returns. Unset means the
-	// organization the create was addressed to.
-	foundOrgIDs map[string]string
+	// present holds the buckets the organization has. A successful create adds to it.
+	present map[string]bool
+	// createdByRace names buckets a concurrent creator owns: the create fails, and the bucket
+	// exists immediately afterwards, which is what losing the race looks like.
+	createdByRace map[string]bool
+	createErrs    map[string]error
 
-	finds        map[string]int
+	listedOrgs   []string
 	creates      map[string]int
 	createdRules map[string][]domain.RetentionRule
 	updated      map[string]domain.RetentionRules
@@ -41,38 +42,50 @@ type stubBucketsAPI struct {
 
 var _ influxapi.BucketsAPI = (*stubBucketsAPI)(nil)
 
-func newStubBucketsAPI() *stubBucketsAPI {
-	return &stubBucketsAPI{
-		findsFailUntil: map[string]int{},
-		createErrs:     map[string]error{},
-		foundOrgIDs:    map[string]string{},
-		finds:          map[string]int{},
-		creates:        map[string]int{},
-		createdRules:   map[string][]domain.RetentionRule{},
-		updated:        map[string]domain.RetentionRules{},
+func newStubBucketsAPI(existing ...string) *stubBucketsAPI {
+	stub := &stubBucketsAPI{
+		present:       map[string]bool{},
+		createdByRace: map[string]bool{},
+		createErrs:    map[string]error{},
+		creates:       map[string]int{},
+		createdRules:  map[string][]domain.RetentionRule{},
+		updated:       map[string]domain.RetentionRules{},
 	}
+	for _, name := range existing {
+		stub.present[name] = true
+	}
+	return stub
 }
 
-func (s *stubBucketsAPI) FindBucketByName(_ context.Context, bucketName string) (*domain.Bucket, error) {
-	s.finds[bucketName]++
-	if s.finds[bucketName] <= s.findsFailUntil[bucketName] {
-		return nil, errors.New("bucket '" + bucketName + "' not found")
+func (s *stubBucketsAPI) FindBucketsByOrgName(_ context.Context, orgName string, _ ...influxapi.PagingOption) (*[]domain.Bucket, error) {
+	s.listedOrgs = append(s.listedOrgs, orgName)
+
+	names := make([]string, 0, len(s.present))
+	for name := range s.present {
+		names = append(names, name)
 	}
-	orgID := testOrgID
-	if override, ok := s.foundOrgIDs[bucketName]; ok {
-		orgID = override
+	sort.Strings(names)
+
+	buckets := make([]domain.Bucket, 0, len(names))
+	for _, name := range names {
+		id := bucketTestID(name)
+		buckets = append(buckets, domain.Bucket{Id: &id, Name: name})
 	}
-	id := "bucket-" + bucketName
-	return &domain.Bucket{Id: &id, Name: bucketName, OrgID: &orgID}, nil
+	return &buckets, nil
 }
 
 func (s *stubBucketsAPI) CreateBucketWithName(_ context.Context, org *domain.Organization, bucketName string, rules ...domain.RetentionRule) (*domain.Bucket, error) {
 	s.creates[bucketName]++
 	s.createdRules[bucketName] = rules
 	if err, ok := s.createErrs[bucketName]; ok {
+		// the winner of the race leaves the bucket behind
+		if s.createdByRace[bucketName] {
+			s.present[bucketName] = true
+		}
 		return nil, err
 	}
-	id := "bucket-" + bucketName
+	s.present[bucketName] = true
+	id := bucketTestID(bucketName)
 	return &domain.Bucket{Id: &id, Name: bucketName, OrgID: org.Id}, nil
 }
 
@@ -83,6 +96,8 @@ func (s *stubBucketsAPI) UpdateBucket(_ context.Context, bucket *domain.Bucket) 
 	s.updated[bucket.Name] = bucket.RetentionRules
 	return bucket, nil
 }
+
+func bucketTestID(bucketName string) string { return "bucket-" + bucketName }
 
 // stubInfluxClient exposes a scripted BucketsAPI so the repository's own bucket code runs against
 // it. Only BucketsAPI is implemented, for the same reason as above.
@@ -104,18 +119,41 @@ func influxConflict(bucketName string) error {
 
 func testOrg() *domain.Organization {
 	orgID := testOrgID
-	return &domain.Organization{Name: "scrutiny", Id: &orgID}
+	return &domain.Organization{Name: testOrgName, Id: &orgID}
 }
 
-func newBucketTestRepository(buckets influxapi.BucketsAPI) *scrutinyRepository {
-	return &scrutinyRepository{influxClient: &stubInfluxClient{buckets: buckets}}
+func newBucketTestRepository(t *testing.T, buckets influxapi.BucketsAPI, applyRetention bool) *scrutinyRepository {
+	t.Helper()
+
+	mockCtrl := gomock.NewController(t)
+	t.Cleanup(func() { mockCtrl.Finish() })
+
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetString(cfgInfluxDBBucket).Return("metrics").AnyTimes()
+	fakeConfig.EXPECT().GetBool(cfgInfluxDBRetentionPolicy).Return(applyRetention).AnyTimes()
+	fakeConfig.EXPECT().GetInt("web.influxdb.retention.daily").Return(testDailyRetention).AnyTimes()
+	fakeConfig.EXPECT().GetInt("web.influxdb.retention.weekly").Return(testWeeklyRetention).AnyTimes()
+	fakeConfig.EXPECT().GetInt("web.influxdb.retention.monthly").Return(testMonthlyRetention).AnyTimes()
+
+	return &scrutinyRepository{
+		appConfig:    fakeConfig,
+		influxClient: &stubInfluxClient{buckets: buckets},
+	}
 }
+
+// distinct values, so an assertion cannot pass on the wrong window's rule
+const (
+	testDailyRetention   = 111
+	testWeeklyRetention  = 222
+	testMonthlyRetention = 333
+)
 
 // fixes #1004: the Test Backend job gives pkg/web and pkg/database one InfluxDB container, both
 // ran EnsureBuckets at once, and the process that lost the create race failed the whole suite.
 func TestEnsureBucketExistsTreatsConflictAsSuccess(t *testing.T) {
 	buckets := newStubBucketsAPI()
 	buckets.createErrs["metrics_yearly"] = influxConflict("metrics_yearly")
+	buckets.createdByRace["metrics_yearly"] = true
 
 	bucket, err := ensureBucketExists(context.Background(), buckets, testOrg(), "metrics_yearly")
 
@@ -125,25 +163,12 @@ func TestEnsureBucketExistsTreatsConflictAsSuccess(t *testing.T) {
 	require.Equal(t, 1, buckets.creates["metrics_yearly"])
 }
 
-// FindBucketByName queries by name across every organization the token can read, while bucket
-// names are unique per organization. Another organization's bucket is not this one, so the
-// create error stands rather than being masked.
-func TestEnsureBucketExistsRejectsBucketFromAnotherOrg(t *testing.T) {
-	buckets := newStubBucketsAPI()
-	buckets.createErrs["metrics_yearly"] = errors.New("unauthorized: insufficient permissions")
-	buckets.foundOrgIDs["metrics_yearly"] = "org-other"
-
-	bucket, err := ensureBucketExists(context.Background(), buckets, testOrg(), "metrics_yearly")
-
-	require.ErrorContains(t, err, "unauthorized")
-	require.Nil(t, bucket)
-}
-
-// a failed create with no bucket behind it is a real error and still has to surface.
+// a failed create with no bucket behind it in this organization is a real error and still has to
+// surface. A bucket of the same name in another organization is not this bucket, and the
+// organization-scoped lookup cannot see it.
 func TestEnsureBucketExistsReturnsErrorWhenBucketIsStillMissing(t *testing.T) {
 	buckets := newStubBucketsAPI()
 	buckets.createErrs["metrics_yearly"] = influxConflict("metrics_yearly")
-	buckets.findsFailUntil["metrics_yearly"] = 99
 
 	bucket, err := ensureBucketExists(context.Background(), buckets, testOrg(), "metrics_yearly")
 
@@ -151,20 +176,35 @@ func TestEnsureBucketExistsReturnsErrorWhenBucketIsStillMissing(t *testing.T) {
 	require.Nil(t, bucket)
 }
 
-// the repository's own call path: the first find misses, the create loses the race, and the
+// every bucket lookup is scoped to this deployment's organization. The client's FindBucketByName
+// queries by name across every organization the token can read and returns the first match, so
+// using it could read, re-time and down-sample into another organization's bucket. The stub
+// panics if it is called at all.
+func TestEnsureBucketsLooksUpBucketsWithinTheOrg(t *testing.T) {
+	buckets := newStubBucketsAPI("metrics", "metrics_weekly", "metrics_monthly", "metrics_yearly")
+	repo := newBucketTestRepository(t, buckets, false)
+
+	require.NoError(t, repo.EnsureBuckets(context.Background(), testOrg()))
+
+	require.Equal(t, []string{testOrgName, testOrgName, testOrgName, testOrgName}, buckets.listedOrgs)
+	require.Empty(t, buckets.creates)
+}
+
+// the repository's own call path: the bucket is missing, the create loses the race, and the
 // retention rule this process is configured with still has to reach the bucket. Without the
 // fall-through the loser silently inherits whatever rule the winner created the bucket with.
 func TestEnsureRetentionBucketAppliesRetentionAfterLosingCreateRace(t *testing.T) {
 	buckets := newStubBucketsAPI()
 	buckets.createErrs["metrics"] = influxConflict("metrics")
-	buckets.findsFailUntil["metrics"] = 1
+	buckets.createdByRace["metrics"] = true
 	rule := domain.RetentionRule{EverySeconds: 1234}
 
-	err := newBucketTestRepository(buckets).ensureRetentionBucket(context.Background(), testOrg(), "metrics", rule, true)
+	err := newBucketTestRepository(t, buckets, true).ensureRetentionBucket(context.Background(), testOrg(), "metrics", rule, true)
 
 	require.NoError(t, err)
 	require.Equal(t, []domain.RetentionRule{rule}, buckets.createdRules["metrics"])
 	require.Equal(t, domain.RetentionRules{rule}, buckets.updated["metrics"])
+	require.Equal(t, []string{bucketTestID("metrics")}, buckets.updatedIDs)
 }
 
 // the first start of a fresh install: the bucket does not exist, the create succeeds, and the
@@ -172,59 +212,41 @@ func TestEnsureRetentionBucketAppliesRetentionAfterLosingCreateRace(t *testing.T
 // true, so this is the common path rather than an edge case.
 func TestEnsureRetentionBucketAppliesRetentionAfterCreating(t *testing.T) {
 	buckets := newStubBucketsAPI()
-	buckets.findsFailUntil["metrics"] = 1
 	rule := domain.RetentionRule{EverySeconds: 4321}
 
-	err := newBucketTestRepository(buckets).ensureRetentionBucket(context.Background(), testOrg(), "metrics", rule, true)
+	err := newBucketTestRepository(t, buckets, true).ensureRetentionBucket(context.Background(), testOrg(), "metrics", rule, true)
 
 	require.NoError(t, err)
 	require.Equal(t, 1, buckets.creates["metrics"])
 	require.Equal(t, []domain.RetentionRule{rule}, buckets.createdRules["metrics"])
 	require.Equal(t, domain.RetentionRules{rule}, buckets.updated["metrics"])
-	require.Equal(t, []string{"bucket-metrics"}, buckets.updatedIDs)
+	require.Equal(t, []string{bucketTestID("metrics")}, buckets.updatedIDs)
 }
 
 // the bucket and the traceback from #1004: EnsureBuckets has to survive losing the race on the
 // yearly bucket, which does not go through ensureRetentionBucket.
 func TestEnsureBucketsSurvivesConflictOnYearlyBucket(t *testing.T) {
-	buckets := newStubBucketsAPI()
+	buckets := newStubBucketsAPI("metrics", "metrics_weekly", "metrics_monthly")
 	buckets.createErrs["metrics_yearly"] = influxConflict("metrics_yearly")
-	buckets.findsFailUntil["metrics_yearly"] = 1
-	repo := newBucketTestRepository(buckets)
-	repo.appConfig = newBucketTestConfig(t)
+	buckets.createdByRace["metrics_yearly"] = true
+	repo := newBucketTestRepository(t, buckets, false)
 
 	require.NoError(t, repo.EnsureBuckets(context.Background(), testOrg()))
 
 	require.Equal(t, 1, buckets.creates["metrics_yearly"])
 }
 
-// the yearly bucket keeps its infinite retention: it is created with no retention rules, while
-// the down-sampling buckets are created with theirs.
-func TestEnsureBucketsCreatesYearlyBucketWithoutRetentionRules(t *testing.T) {
+// each bucket is created with its own configured retention period, and the yearly bucket with
+// none at all, which is how it keeps an infinite retention.
+func TestEnsureBucketsCreatesEachBucketWithItsOwnRetention(t *testing.T) {
 	buckets := newStubBucketsAPI()
-	for _, name := range []string{"metrics", "metrics_weekly", "metrics_monthly", "metrics_yearly"} {
-		buckets.findsFailUntil[name] = 1
-	}
-	repo := newBucketTestRepository(buckets)
-	repo.appConfig = newBucketTestConfig(t)
+	repo := newBucketTestRepository(t, buckets, true)
 
 	require.NoError(t, repo.EnsureBuckets(context.Background(), testOrg()))
 
+	require.Equal(t, []domain.RetentionRule{{EverySeconds: testDailyRetention}}, buckets.createdRules["metrics"])
+	require.Equal(t, []domain.RetentionRule{{EverySeconds: testWeeklyRetention}}, buckets.createdRules["metrics_weekly"])
+	require.Equal(t, []domain.RetentionRule{{EverySeconds: testMonthlyRetention}}, buckets.createdRules["metrics_monthly"])
 	require.Empty(t, buckets.createdRules["metrics_yearly"])
-	require.Len(t, buckets.createdRules["metrics"], 1)
-	require.Len(t, buckets.createdRules["metrics_weekly"], 1)
-	require.Len(t, buckets.createdRules["metrics_monthly"], 1)
-}
-
-func newBucketTestConfig(t *testing.T) *mock_config.MockInterface {
-	t.Helper()
-
-	mockCtrl := gomock.NewController(t)
-	t.Cleanup(func() { mockCtrl.Finish() })
-
-	fakeConfig := mock_config.NewMockInterface(mockCtrl)
-	fakeConfig.EXPECT().GetBool(gomock.Any()).Return(false).AnyTimes()
-	fakeConfig.EXPECT().GetInt(gomock.Any()).Return(0).AnyTimes()
-	fakeConfig.EXPECT().GetString(gomock.Any()).Return("metrics").AnyTimes()
-	return fakeConfig
+	require.Len(t, buckets.updatedIDs, 3)
 }
