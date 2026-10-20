@@ -3,7 +3,10 @@ package database
 import (
 	"context"
 	"fmt"
+	"sort"
+
 	"github.com/influxdata/influxdb-client-go/v2/api"
+	"github.com/influxdata/influxdb-client-go/v2/domain"
 )
 
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,43 +36,67 @@ func (sr *scrutinyRepository) EnsureTasks(ctx context.Context, orgID string) err
 	return nil
 }
 
-// ensureDownsampleTask creates the named downsample task when it does not exist,
-// or updates the existing task's flux script when it differs.
+// ensureDownsampleTask converges on exactly one task named taskName in orgID, running the
+// current flux script.
 //
 // Task names are not unique in InfluxDB, so this check-then-create races the same way bucket
 // creation does (see ensureBucketExists): two processes starting together both find no task and
-// both create one. Duplicates are therefore an expected state rather than a reason to give up,
-// and the script update has to keep running against them - skipping it leaves the duplicated
-// tasks pinned to the flux script they were first created with.
+// both create one, and InfluxDB reports no conflict. Each copy is scheduled and writes to the
+// same destination bucket, so duplicates are pruned rather than tolerated, and the keeper is
+// chosen by lowest ID so that two processes pruning at once converge on the same task instead
+// of deleting each other's.
 func (sr *scrutinyRepository) ensureDownsampleTask(ctx context.Context, orgID, taskName, taskScript, label string) error {
-	// the filter is scoped to this organization: task names are not unique in InfluxDB, and an
-	// unscoped query matches by name across every organization the token can read.
-	found, findErr := sr.influxTaskApi.FindTasks(ctx, &api.TaskFilter{Name: taskName, OrgID: orgID})
+	found, findErr := sr.findDownsampleTasks(ctx, orgID, taskName, label)
 	if findErr != nil {
-		// a lookup failure leaves the task alone, as it always has, but it is no longer silent
-		sr.logger.Warnf("could not look up the %s downsample task: %s", label, findErr.Error())
 		return nil
 	}
+
 	if len(found) == 0 {
-		_, err := sr.influxTaskApi.CreateTaskByFlux(ctx, taskScript, orgID)
-		return err
-	}
-	if len(found) > 1 {
-		sr.logger.Warnf("found %d %s downsample tasks named %s", len(found), label, taskName)
-	}
-	for i := range found {
-		task := &found[i]
-		//check if we should update
-		if taskScript == task.Flux {
-			continue
+		if _, err := sr.influxTaskApi.CreateTaskByFlux(ctx, taskScript, orgID); err != nil {
+			return err
 		}
-		sr.logger.Infof("updating the %s task script for task %s", label, task.Id)
-		task.Flux = taskScript
-		if _, err := sr.influxTaskApi.UpdateTask(ctx, task); err != nil {
+		// a concurrent process may have created the same task: look again and prune now, rather
+		// than leaving the duplicate scheduled until some later startup
+		if found, findErr = sr.findDownsampleTasks(ctx, orgID, taskName, label); findErr != nil {
+			return nil
+		}
+	}
+	if len(found) == 0 {
+		return nil
+	}
+
+	sort.Slice(found, func(i, j int) bool { return found[i].Id < found[j].Id })
+	keeper := &found[0]
+	if taskScript != keeper.Flux {
+		sr.logger.Infoln("updating " + label + " task script")
+		keeper.Flux = taskScript
+		if _, err := sr.influxTaskApi.UpdateTask(ctx, keeper); err != nil {
 			return err
 		}
 	}
+
+	for _, duplicate := range found[1:] {
+		sr.logger.Warnf("deleting duplicate %s downsample task %s", label, duplicate.Id)
+		if err := sr.influxTaskApi.DeleteTaskWithID(ctx, duplicate.Id); err != nil {
+			// another process pruning the same duplicate gets here second, and a duplicate that
+			// is already gone is the wanted end state
+			sr.logger.Warnf("could not delete duplicate %s downsample task %s: %s", label, duplicate.Id, err.Error())
+		}
+	}
 	return nil
+}
+
+// findDownsampleTasks lists the tasks named taskName in orgID. The filter is scoped to the
+// organization because task names are unique to neither it nor the task, and an unscoped query
+// matches by name across every organization the token can read.
+func (sr *scrutinyRepository) findDownsampleTasks(ctx context.Context, orgID, taskName, label string) ([]domain.Task, error) {
+	found, err := sr.influxTaskApi.FindTasks(ctx, &api.TaskFilter{Name: taskName, OrgID: orgID})
+	if err != nil {
+		// a lookup failure leaves the task alone, as it always has, but it is no longer silent
+		sr.logger.Warnf("could not look up the %s downsample task: %s", label, err.Error())
+		return nil, err
+	}
+	return found, nil
 }
 
 func (sr *scrutinyRepository) DownsampleScript(aggregationType string, name string, cron string) string {

@@ -169,38 +169,68 @@ from(bucket: sourceBucket)
 		`, influxDbScript)
 }
 
-// stubTasksAPI replays a scripted task list and records the filter it was asked for. Only the
-// three methods ensureDownsampleTask calls are implemented; the embedded interface is nil, so
-// any other call panics rather than returning a wrong answer quietly.
+// stubTasksAPI replays a scripted task list, records what it was asked for, and applies writes
+// to its own state so a second lookup sees them. Only the four methods ensureDownsampleTask
+// calls are implemented; the embedded interface is nil, so any other call panics rather than
+// returning a wrong answer quietly.
 type stubTasksAPI struct {
 	influxapi.TasksAPI
 
-	tasks   []domain.Task
-	findErr error
+	tasks     []domain.Task
+	findErr   error
+	deleteErr error
+	// createRace adds a second task on create, as a process that raced this one would have
+	createRace bool
 
-	filter  *influxapi.TaskFilter
+	filters []*influxapi.TaskFilter
 	creates int
 	updated []domain.Task
+	deleted []string
 }
 
 var _ influxapi.TasksAPI = (*stubTasksAPI)(nil)
 
 func (s *stubTasksAPI) FindTasks(_ context.Context, filter *influxapi.TaskFilter) ([]domain.Task, error) {
-	s.filter = filter
+	s.filters = append(s.filters, filter)
 	if s.findErr != nil {
 		return nil, s.findErr
 	}
-	return s.tasks, nil
+	return append([]domain.Task(nil), s.tasks...), nil
 }
 
 func (s *stubTasksAPI) CreateTaskByFlux(_ context.Context, flux, _ string) (*domain.Task, error) {
 	s.creates++
-	return &domain.Task{Flux: flux}, nil
+	created := domain.Task{Id: "task-created", Name: "tsk-weekly-aggr", Flux: flux}
+	s.tasks = append(s.tasks, created)
+	if s.createRace {
+		s.tasks = append(s.tasks, domain.Task{Id: "task-racer", Name: "tsk-weekly-aggr", Flux: flux})
+	}
+	return &created, nil
 }
 
 func (s *stubTasksAPI) UpdateTask(_ context.Context, task *domain.Task) (*domain.Task, error) {
 	s.updated = append(s.updated, *task)
+	for i := range s.tasks {
+		if s.tasks[i].Id == task.Id {
+			s.tasks[i].Flux = task.Flux
+		}
+	}
 	return task, nil
+}
+
+func (s *stubTasksAPI) DeleteTaskWithID(_ context.Context, taskID string) error {
+	s.deleted = append(s.deleted, taskID)
+	if s.deleteErr != nil {
+		return s.deleteErr
+	}
+	remaining := make([]domain.Task, 0, len(s.tasks))
+	for _, task := range s.tasks {
+		if task.Id != taskID {
+			remaining = append(remaining, task)
+		}
+	}
+	s.tasks = remaining
+	return nil
 }
 
 func newTaskTestRepository(tasks influxapi.TasksAPI) *scrutinyRepository {
@@ -209,29 +239,82 @@ func newTaskTestRepository(tasks influxapi.TasksAPI) *scrutinyRepository {
 }
 
 // task names are not unique in InfluxDB, so two processes starting together can both create the
-// same downsample task. Treating that as a state to leave alone pinned the duplicates to the
-// flux script they were first created with, because no later startup would update them. Every
-// duplicate is scheduled and writes to the same destination bucket, so they all get the script.
-func TestEnsureDownsampleTaskUpdatesEveryDuplicate(t *testing.T) {
+// same downsample task, and every copy is scheduled and writes to the same destination bucket.
+// One task survives, with the current script, and the keeper is the lowest ID so that two
+// processes pruning at once converge instead of deleting each other's.
+func TestEnsureDownsampleTaskUpdatesKeeperAndPrunesDuplicates(t *testing.T) {
 	t.Parallel()
 
 	tasks := &stubTasksAPI{tasks: []domain.Task{
-		{Id: "task-1", Name: "tsk-weekly-aggr", Flux: "old script"},
 		{Id: "task-2", Name: "tsk-weekly-aggr", Flux: "old script"},
+		{Id: "task-1", Name: "tsk-weekly-aggr", Flux: "old script"},
 	}}
 
 	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
 
 	require.NoError(t, err)
 	require.Equal(t, 0, tasks.creates)
-	require.Len(t, tasks.updated, 2)
+	require.Len(t, tasks.updated, 1)
+	require.Equal(t, "task-1", tasks.updated[0].Id)
 	require.Equal(t, "new script", tasks.updated[0].Flux)
-	require.Equal(t, "new script", tasks.updated[1].Flux)
+	require.Equal(t, []string{"task-2"}, tasks.deleted)
+	require.Len(t, tasks.tasks, 1)
 }
 
-// the lookup is scoped to this deployment's organization. An unscoped query matches by name
-// across every organization the token can read, and updating another organization's task would
-// write this deployment's bucket names into its flux script.
+// losing the create race leaves two tasks behind. They are pruned on the spot rather than left
+// scheduled until some later startup.
+func TestEnsureDownsampleTaskPrunesDuplicateFromCreateRace(t *testing.T) {
+	t.Parallel()
+
+	tasks := &stubTasksAPI{createRace: true}
+
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
+
+	require.NoError(t, err)
+	require.Equal(t, 1, tasks.creates)
+	require.Empty(t, tasks.updated)
+	require.Len(t, tasks.deleted, 1)
+	require.Len(t, tasks.tasks, 1)
+}
+
+// the other process pruning the same duplicate gets here first, and a duplicate that is already
+// gone is the wanted end state, so the delete failure does not fail startup.
+func TestEnsureDownsampleTaskToleratesDeleteFailure(t *testing.T) {
+	t.Parallel()
+
+	tasks := &stubTasksAPI{
+		deleteErr: errors.New("not found: task not found"),
+		tasks: []domain.Task{
+			{Id: "task-1", Name: "tsk-weekly-aggr", Flux: "new script"},
+			{Id: "task-2", Name: "tsk-weekly-aggr", Flux: "new script"},
+		},
+	}
+
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"task-2"}, tasks.deleted)
+}
+
+// the steady state: one task with the current script is left entirely alone.
+func TestEnsureDownsampleTaskLeavesCurrentTaskAlone(t *testing.T) {
+	t.Parallel()
+
+	tasks := &stubTasksAPI{tasks: []domain.Task{
+		{Id: "task-1", Name: "tsk-weekly-aggr", Flux: "new script"},
+	}}
+
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
+
+	require.NoError(t, err)
+	require.Equal(t, 0, tasks.creates)
+	require.Empty(t, tasks.updated)
+	require.Empty(t, tasks.deleted)
+}
+
+// the lookup is scoped to this deployment's organization. An unscoped name query matches across
+// every organization the token can read, and updating or deleting another organization's task
+// would be worse than leaving a duplicate.
 func TestEnsureDownsampleTaskScopesLookupToOrg(t *testing.T) {
 	t.Parallel()
 
@@ -240,9 +323,11 @@ func TestEnsureDownsampleTaskScopesLookupToOrg(t *testing.T) {
 	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "new script", "weekly")
 
 	require.NoError(t, err)
-	require.NotNil(t, tasks.filter)
-	require.Equal(t, "org-scrutiny", tasks.filter.OrgID)
-	require.Equal(t, "tsk-weekly-aggr", tasks.filter.Name)
+	require.NotEmpty(t, tasks.filters)
+	for _, filter := range tasks.filters {
+		require.Equal(t, "org-scrutiny", filter.OrgID)
+		require.Equal(t, "tsk-weekly-aggr", filter.Name)
+	}
 	require.Equal(t, 1, tasks.creates)
 }
 
