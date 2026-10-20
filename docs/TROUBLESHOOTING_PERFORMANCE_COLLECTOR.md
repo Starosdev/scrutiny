@@ -44,8 +44,14 @@ when the mount table cannot be read or does not account for it, when its
 filesystem is a pseudo-filesystem or a container overlay, when it is a path the container
 runtime bind-mounts into every container (`/etc/hosts`, `/etc/resolv.conf`,
 `/opt/scrutiny/config`, `/opt/scrutiny/influxdb`), when it is mounted read-only,
-or when free space is below the test file size plus 64 MiB of headroom. The test
-file size is `performance.temp_file_size`, or 1G for the `comprehensive` profile.
+when free space is below the test file size plus 64 MiB of headroom, or when the
+collector cannot create a file in it. The test file size is
+`performance.temp_file_size`, or 1G for the `comprehensive` profile.
+
+The last check creates and removes a real file, because a writable filesystem
+and a writable directory are not the same thing: a root-owned path or an
+exhausted quota passes every other check and then fails inside fio, which
+publishes a zero instead of skipping the test.
 
 Step 3 considers every mount the device backs, so a device whose first candidate
 is too small (an EFI system partition, say) still resolves to a larger one. Each
@@ -93,7 +99,8 @@ a single-device filesystem, or set `performance.allow_direct_device_io: true` to
 keep read-only results.
 
 Keys are the device name or the WWN, and values are paths as the collector sees
-them:
+them. A symlink is resolved before the checks run, so the filesystem that gets
+inspected is the one that gets written to:
 
 ```yaml
 performance:
