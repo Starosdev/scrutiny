@@ -62,25 +62,3 @@ jobs:
             ${{ env.REGISTRY }}/${{ steps.image_name.outputs.value }}:develop-omnibus
           cache-from: type=gha,scope=testing-omnibus
           cache-to: type=gha,mode=max,scope=testing-omnibus
-
-      # The all-in-one image above starts its collectors from
-      # rootfs/etc/services.d, so it cannot exercise a change to any
-      # docker/entrypoint-collector*.sh script. Without this second image a
-      # collector-side fix has no testing tag at all, and a reporter has nothing
-      # to try before the next stable release.
-      #
-      # amd64 only, deliberately. This image installs zfsutils-linux, mdadm,
-      # btrfs-progs and fio, and emulating that build for arm64 under QEMU would
-      # dominate the runtime of every develop push. Stable releases still publish
-      # both architectures.
-      - name: Build and push testing collector-omnibus image
-        uses: docker/build-push-action@v7
-        with:
-          platforms: linux/amd64
-          context: .
-          file: docker/Dockerfile.collector-omnibus
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ steps.image_name.outputs.value }}:develop-collector-omnibus
-          cache-from: type=gha,scope=testing-collector-omnibus
-          cache-to: type=gha,mode=max,scope=testing-collector-omnibus
