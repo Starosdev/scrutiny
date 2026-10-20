@@ -120,7 +120,10 @@ func (sr *scrutinyRepository) ownedDownsampleTasks(found []domain.Task, taskScri
 		}
 	}
 	if len(owned) < len(found) {
-		sr.logger.Warnf("leaving %d %s task(s) that write to another destination bucket in place", len(found)-len(owned), label)
+		// Debug, not a warning: the common case is two Scrutiny deployments sharing an
+		// organization, which is a supported configuration and needs no operator attention.
+		// Every pkg/web and pkg/database test binary pair logs it too, hundreds of lines a run.
+		sr.logger.Debugf("leaving %d %s task(s) that write to another destination bucket in place", len(found)-len(owned), label)
 	}
 	return owned, true
 }

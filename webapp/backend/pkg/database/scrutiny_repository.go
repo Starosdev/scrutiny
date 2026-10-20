@@ -477,6 +477,10 @@ func (sr *scrutinyRepository) ensureRetentionBucket(ctx context.Context, org *do
 		// bucket silently keeps whatever rule the winner created it with.
 		found = created
 	}
+	if found == nil {
+		// a 2xx carrying an empty body, which no InfluxDB does, would otherwise panic below
+		return nil
+	}
 	if applyRetention {
 		// correctly set the retention period (may not be able to do it during setup/creation)
 		found.RetentionRules = domain.RetentionRules{retentionRule}
@@ -521,6 +525,10 @@ func ensureBucketExists(ctx context.Context, bucketsAPI api.BucketsAPI, org *dom
 // filter and returns the first match, while bucket names are unique per organization. A
 // deployment sharing an InfluxDB with another organization could therefore read, update the
 // retention of, and down-sample into that organization's bucket, and never create its own.
+//
+// Listing the organization's buckets and matching the name here costs more than one filtered
+// query would, and there is no cheaper call available: domain.GetBucketsParams carries both Name
+// and Org, but no BucketsAPI method sets both. Do not swap this back to FindBucketByName.
 func findBucketInOrg(ctx context.Context, bucketsAPI api.BucketsAPI, orgName, bucketName string) (*domain.Bucket, error) {
 	for offset := 0; ; offset += bucketPageSize {
 		page, err := bucketsAPI.FindBucketsByOrgName(ctx, orgName, api.PagingWithOffset(offset), api.PagingWithLimit(bucketPageSize))
