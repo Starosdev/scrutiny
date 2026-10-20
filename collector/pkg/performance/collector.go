@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -327,12 +328,26 @@ func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), bo
 
 	// Check for explicitly configured mount point (by device name, then by WWN)
 	if configuredMount := c.lookupConfiguredMountPoint(device); configuredMount != "" {
-		suitable, reason := isMountPointSuitable(configuredMount, c.getRequiredTestFileSize())
-		if !suitable {
-			c.logger.Warnf("Configured mount point %s for device %s is not suitable: %s -- ignoring", configuredMount, device.DeviceName, reason)
-		} else {
-			c.logger.Infof("Using configured mount point %s for device %s", configuredMount, device.DeviceName)
-			return benchmarkFileTarget(configuredMount)
+		// A configured path can be a symlink, unlike a mount point read from the
+		// mount table. Resolve it first, or the filesystem checks run against the
+		// symlink's own filesystem while the write lands on the target's.
+		resolvedMount := configuredMount
+		if resolved, err := filepath.EvalSymlinks(configuredMount); err != nil {
+			c.logger.Warnf("Could not resolve configured mount point %s for device %s: %v -- ignoring", configuredMount, device.DeviceName, err)
+			resolvedMount = ""
+		} else if resolved != configuredMount {
+			c.logger.Infof("Configured mount point %s for device %s resolves to %s", configuredMount, device.DeviceName, resolved)
+			resolvedMount = resolved
+		}
+
+		if resolvedMount != "" {
+			usable, reason := c.mountPointUsable(resolvedMount)
+			if !usable {
+				c.logger.Warnf("Configured mount point %s for device %s is not suitable: %s -- ignoring", configuredMount, device.DeviceName, reason)
+			} else {
+				c.logger.Infof("Using configured mount point %s for device %s", resolvedMount, device.DeviceName)
+				return benchmarkFileTarget(resolvedMount)
+			}
 		}
 	}
 
@@ -351,11 +366,10 @@ func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), bo
 
 	// Take the first candidate the benchmark can actually use. A device can back
 	// several filesystems, and only some of them are writable with room to spare.
-	requiredSize := c.getRequiredTestFileSize()
 	rejections := make([]string, 0, len(candidates))
 	for _, mountPoint := range candidates {
-		suitable, reason := isMountPointSuitable(mountPoint, requiredSize)
-		if !suitable {
+		usable, reason := c.mountPointUsable(mountPoint)
+		if !usable {
 			c.logger.Debugf("Mount point %s for device %s is not suitable: %s", mountPoint, effectiveDevicePath, reason)
 			rejections = append(rejections, reason)
 			continue
@@ -372,6 +386,31 @@ func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), bo
 		c.logger.Warnf("No usable mount point for %s (%s) -- falling back to direct device I/O (read-only, write tests skipped). See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md", effectiveDevicePath, strings.Join(rejections, "; "))
 	}
 	return effectiveDevicePath, nil, true, nil
+}
+
+// mountPointUsable reports whether a benchmark can write its test file into a
+// mount point, and why not when it cannot.
+func (c *Collector) mountPointUsable(mountPoint string) (bool, string) {
+	if suitable, reason := isMountPointSuitable(mountPoint, c.getRequiredTestFileSize()); !suitable {
+		return false, reason
+	}
+	return canCreateFileIn(mountPoint)
+}
+
+// canCreateFileIn confirms the collector can actually create a file in a
+// directory. The mount table reports how a filesystem was mounted, not what
+// this process may do: a root-owned mount, a full quota, or an overlay the
+// container cannot write passes every other check and fails inside fio, where
+// the failure is logged as a warning and published as a zero.
+func canCreateFileIn(dir string) (bool, string) {
+	probe, err := os.CreateTemp(dir, ".scrutiny_perf_probe-*")
+	if err != nil {
+		return false, fmt.Sprintf("cannot create a file in %s: %v", dir, err)
+	}
+	probeName := probe.Name()
+	probe.Close()
+	os.Remove(probeName)
+	return true, ""
 }
 
 // benchmarkFileTarget returns the test file path inside a mount point, with the
