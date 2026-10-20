@@ -11,6 +11,13 @@ if [ -z "${COLLECTOR_MDADM_CRON_SCHEDULE}" ] && [ "${COLLECTOR_MDADM_RUN_STARTUP
     exit 0
 fi
 
+# An explicit false suppresses the startup collection only. Any configured cron schedule still applies.
+if [ "${COLLECTOR_MDADM_RUN_STARTUP,,}" = "false" ]; then
+    log_info "COLLECTOR_MDADM_RUN_STARTUP is false, skipping startup collection (cron schedule still applies)"
+    s6-svc -D /run/service/collector-mdadm-once
+    exit 0
+fi
+
 # ensure not run before
 if [ -f /tmp/mdadm-collector-init-performed ]; then
     log_info "MDADM collector init already performed"

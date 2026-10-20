@@ -95,6 +95,8 @@ jobs:
         uses: actions/checkout@v7.0.1
       - name: Test Omnibus InfluxDB upgrade preflight
         run: bash docker/tests/influxdb-upgrade-preflight_test.sh
+      - name: Test Omnibus collector startup gate
+        run: bash docker/tests/collector-startup-gate_test.sh
       - name: Setup Go
         uses: actions/setup-go@v7
         with:

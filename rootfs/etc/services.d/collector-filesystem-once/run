@@ -11,6 +11,13 @@ if [ -z "${COLLECTOR_FILESYSTEM_CRON_SCHEDULE}" ] && [ "${COLLECTOR_FILESYSTEM_R
     exit 0
 fi
 
+# An explicit false suppresses the startup collection only. Any configured cron schedule still applies.
+if [ "${COLLECTOR_FILESYSTEM_RUN_STARTUP,,}" = "false" ]; then
+    log_info "COLLECTOR_FILESYSTEM_RUN_STARTUP is false, skipping startup collection (cron schedule still applies)"
+    s6-svc -D /run/service/collector-filesystem-once
+    exit 0
+fi
+
 # ensure not run before
 if [ -f /tmp/filesystem-collector-init-performed ]; then
     log_info "Filesystem collector init already performed"

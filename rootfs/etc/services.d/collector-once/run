@@ -4,6 +4,13 @@ log_info() {
   printf 'time="%s" level=info msg="%s" type=metrics\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$1"
 }
 
+# An explicit false suppresses the startup collection only. Any configured cron schedule still applies.
+if [ "${COLLECTOR_RUN_STARTUP,,}" = "false" ]; then
+  log_info "COLLECTOR_RUN_STARTUP is false, skipping startup collection (cron schedule still applies)"
+  s6-svc -D /run/service/collector-once
+  exit 0
+fi
+
 # ensure not run (successfully) before
 if [ -f /tmp/custom-init-performed ]; then
   log_info "custom init already performed"

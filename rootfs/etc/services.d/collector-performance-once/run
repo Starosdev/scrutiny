@@ -11,6 +11,13 @@ if [ -z "${COLLECTOR_PERF_CRON_SCHEDULE}" ] && [ "${COLLECTOR_PERF_RUN_STARTUP}"
     exit 0
 fi
 
+# An explicit false suppresses the startup benchmark only. Any configured cron schedule still applies.
+if [ "${COLLECTOR_PERF_RUN_STARTUP,,}" = "false" ]; then
+    log_info "COLLECTOR_PERF_RUN_STARTUP is false, skipping startup benchmark (cron schedule still applies)"
+    s6-svc -D /run/service/collector-performance-once
+    exit 0
+fi
+
 # ensure not run before
 if [ -f /tmp/perf-collector-init-performed ]; then
     log_info "Performance collector init already performed"

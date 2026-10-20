@@ -11,6 +11,13 @@ if [ -z "${COLLECTOR_ZFS_CRON_SCHEDULE}" ] && [ "${COLLECTOR_ZFS_RUN_STARTUP}" !
     exit 0
 fi
 
+# An explicit false suppresses the startup collection only. Any configured cron schedule still applies.
+if [ "${COLLECTOR_ZFS_RUN_STARTUP,,}" = "false" ]; then
+    log_info "COLLECTOR_ZFS_RUN_STARTUP is false, skipping startup collection (cron schedule still applies)"
+    s6-svc -D /run/service/collector-zfs-once
+    exit 0
+fi
+
 # ensure not run before
 if [ -f /tmp/zfs-collector-init-performed ]; then
     log_info "ZFS collector init already performed"

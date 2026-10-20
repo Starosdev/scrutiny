@@ -11,6 +11,13 @@ if [ -z "${COLLECTOR_BTRFS_CRON_SCHEDULE}" ] && [ "${COLLECTOR_BTRFS_RUN_STARTUP
     exit 0
 fi
 
+# An explicit false suppresses the startup collection only. Any configured cron schedule still applies.
+if [ "${COLLECTOR_BTRFS_RUN_STARTUP,,}" = "false" ]; then
+    log_info "COLLECTOR_BTRFS_RUN_STARTUP is false, skipping startup collection (cron schedule still applies)"
+    s6-svc -D /run/service/collector-btrfs-once
+    exit 0
+fi
+
 # ensure not run before
 if [ -f /tmp/btrfs-collector-init-performed ]; then
     log_info "Btrfs collector init already performed"
