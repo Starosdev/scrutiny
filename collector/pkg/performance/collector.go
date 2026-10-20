@@ -352,20 +352,24 @@ func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), bo
 	// Take the first candidate the benchmark can actually use. A device can back
 	// several filesystems, and only some of them are writable with room to spare.
 	requiredSize := c.getRequiredTestFileSize()
+	rejections := make([]string, 0, len(candidates))
 	for _, mountPoint := range candidates {
 		suitable, reason := isMountPointSuitable(mountPoint, requiredSize)
 		if !suitable {
-			c.logger.Warnf("Mount point %s for device %s is not suitable: %s", mountPoint, effectiveDevicePath, reason)
+			c.logger.Debugf("Mount point %s for device %s is not suitable: %s", mountPoint, effectiveDevicePath, reason)
+			rejections = append(rejections, reason)
 			continue
 		}
 		c.logger.Infof("Using mount point %s for device %s", mountPoint, effectiveDevicePath)
 		return benchmarkFileTarget(mountPoint)
 	}
 
-	if len(candidates) == 0 {
+	// Report why, not just that it failed: "no mount point found" sends a user
+	// looking for a missing bind mount when the real cause was a read-only one.
+	if len(rejections) == 0 {
 		c.logger.Warnf("No mount point found for %s or its partitions -- falling back to direct device I/O (read-only, write tests skipped). See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md", effectiveDevicePath)
 	} else {
-		c.logger.Warnf("No suitable mount point among %d candidate(s) for %s -- falling back to direct device I/O (read-only, write tests skipped). See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md", len(candidates), effectiveDevicePath)
+		c.logger.Warnf("No usable mount point for %s (%s) -- falling back to direct device I/O (read-only, write tests skipped). See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md", effectiveDevicePath, strings.Join(rejections, "; "))
 	}
 	return effectiveDevicePath, nil, true, nil
 }

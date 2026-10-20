@@ -60,17 +60,16 @@ tmpfs /dev tmpfs rw,nosuid,mode=755 0 0
 			want:   []string{"/mnt/array"},
 		},
 		{
-			// Regression guard: Docker reports /etc/resolv.conf and friends with
-			// the backing block device as source. Benchmarking them targets a
-			// file, so fio fails and zero write values get published.
-			name:   "container runtime file binds are never candidates",
+			// Candidates are not filtered here; the caller rejects them with a
+			// reason. isMountEntrySuitable is what keeps them from being used.
+			name:   "container runtime file binds are returned for the caller to reject",
 			device: "/dev/sda",
-			want:   []string{},
+			want:   []string{"/etc/resolv.conf", "/etc/hostname", "/opt/scrutiny/config"},
 		},
 		{
-			name:   "read-only mount is not a candidate",
+			name:   "read-only mount is returned for the caller to reject",
 			device: "/dev/sde",
-			want:   []string{},
+			want:   []string{"/mnt/readonly"},
 		},
 		{
 			name:   "unmounted disk has no candidates",
@@ -86,13 +85,24 @@ tmpfs /dev tmpfs rw,nosuid,mode=755 0 0
 	}
 }
 
-func TestRankDeviceMountCandidates_PrefersWritablePartitionOverReadOnlyDevice(t *testing.T) {
-	// A read-only mount cannot hold the test file, so it must never shadow a
-	// writable partition of the same device, whichever comes first in the table.
+func TestRankDeviceMountCandidates_ReadOnlyDeviceDoesNotHideWritablePartition(t *testing.T) {
+	// A read-only mount cannot hold the test file. It may be offered first,
+	// because the device outranks its partition, but the writable partition
+	// must still be in the list for the caller to fall through to.
 	const table = `/dev/sdb /mnt/ro xfs ro,relatime 0 0
 /dev/sdb1 /mnt/rw xfs rw,relatime 0 0
 `
-	require.Equal(t, []string{"/mnt/rw"}, rankDeviceMountCandidates(parseFixture(t, table), "/dev/sdb"))
+	candidates := rankDeviceMountCandidates(parseFixture(t, table), "/dev/sdb")
+	require.Equal(t, []string{"/mnt/ro", "/mnt/rw"}, candidates)
+
+	// The read-only one is rejected with a reason naming the cause, so the log
+	// says "mounted read-only" rather than "no mount point found".
+	entries := parseFixture(t, table)
+	readOnly, found := mounts.FindForPath(entries, "/mnt/ro")
+	require.True(t, found)
+	suitable, reason := isMountEntrySuitable(readOnly)
+	require.False(t, suitable)
+	require.Contains(t, reason, "mounted read-only")
 }
 
 func TestRankDeviceMountCandidates_DeviceBeforePartition(t *testing.T) {
@@ -198,6 +208,14 @@ func TestIsMountEntrySuitable(t *testing.T) {
 			wantReason: "container runtime mount",
 		},
 		{
+			// Only the capacity collector skips zfs, because the dedicated zfs
+			// collector reports those pools. A dataset is a real filesystem and
+			// a benchmark can write a test file to it.
+			name:     "zfs dataset is a benchmark target",
+			entry:    mounts.Entry{MountPoint: "/tank/data", FSType: "zfs", Options: "rw,noatime"},
+			suitable: true,
+		},
+		{
 			name:       "read-only mount cannot hold a test file",
 			entry:      mounts.Entry{MountPoint: "/mnt/disk1", FSType: "xfs", Options: "ro,noatime"},
 			wantReason: "mounted read-only",
@@ -232,4 +250,13 @@ func TestIsMountPointSuitable_RejectsMissingPath(t *testing.T) {
 	suitable, reason := isMountPointSuitable(t.TempDir()+"/absent", 1)
 	require.False(t, suitable)
 	require.Contains(t, reason, "could not inspect")
+}
+
+func TestIsMountPointSuitable_RequiresHeadroomAboveTestFile(t *testing.T) {
+	// No filesystem has this much free, so the rejection must name the
+	// headroom the check adds on top of the test file size.
+	suitable, reason := isMountPointSuitable(t.TempDir(), 1<<60)
+	require.False(t, suitable)
+	require.Contains(t, reason, "insufficient space")
+	require.Contains(t, reason, "headroom")
 }

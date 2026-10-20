@@ -35,9 +35,9 @@ func (e Entry) ReadOnly() bool {
 	return false
 }
 
-// excludedFSTypes are pseudo-filesystems and container overlays. They are not
-// host storage, so neither capacity nor benchmark results mean anything on them.
-var excludedFSTypes = map[string]struct{}{
+// pseudoFSTypes are kernel and container filesystems. They are not host
+// storage, so neither capacity nor benchmark results mean anything on them.
+var pseudoFSTypes = map[string]struct{}{
 	"autofs":      {},
 	"binfmt_misc": {},
 	"bpf":         {},
@@ -58,7 +58,6 @@ var excludedFSTypes = map[string]struct{}{
 	"sysfs":       {},
 	"tmpfs":       {},
 	"tracefs":     {},
-	"zfs":         {},
 }
 
 // excludedMountPoints are paths a container runtime bind-mounts into every
@@ -73,10 +72,19 @@ var excludedMountPoints = map[string]struct{}{
 	"/opt/scrutiny/influxdb": {},
 }
 
-// ExcludedFSType reports whether a filesystem type is never host storage.
-func ExcludedFSType(fsType string) bool {
-	_, excluded := excludedFSTypes[fsType]
+// PseudoFSType reports whether a filesystem type is never host storage.
+func PseudoFSType(fsType string) bool {
+	_, excluded := pseudoFSTypes[fsType]
 	return excluded
+}
+
+// ExcludedCapacityFSType reports whether the filesystem capacity collector
+// skips a filesystem type. It skips every pseudo-filesystem, and additionally
+// zfs, which the dedicated zfs collector reports instead. The benchmark
+// collector deliberately does not share that second rule: a zfs dataset is a
+// real filesystem a benchmark can write a test file to.
+func ExcludedCapacityFSType(fsType string) bool {
+	return PseudoFSType(fsType) || fsType == "zfs"
 }
 
 // ExcludedMountPoint reports whether a mount point belongs to the container

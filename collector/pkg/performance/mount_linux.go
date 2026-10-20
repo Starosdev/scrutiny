@@ -59,7 +59,7 @@ func isMountPointSuitable(mountPoint string, requiredBytes uint64) (bool, string
 // pseudo-filesystems and container runtime mounts, which are not host storage,
 // and read-only mounts, where the write tests cannot create their test file.
 func isMountEntrySuitable(entry mounts.Entry) (bool, string) {
-	if mounts.ExcludedFSType(entry.FSType) {
+	if mounts.PseudoFSType(entry.FSType) {
 		return false, fmt.Sprintf("filesystem type is %s (device not mounted as a real filesystem)", entry.FSType)
 	}
 	if mounts.ExcludedMountPoint(entry.MountPoint) {
@@ -91,27 +91,21 @@ func deviceMountCandidates(devicePath string) ([]string, error) {
 // rankDeviceMountCandidates orders the mounts backed by devicePath, device
 // before partition, preserving mount table order within each group.
 //
-// Unusable mounts are dropped rather than ranked. A read-only mount cannot hold
-// the test file at all, and excluded filesystems are not host storage: Docker
-// reports its single-file binds (/etc/resolv.conf and friends) with the backing
-// block device as their source, so a device lookup matches a file otherwise.
+// Every match is returned, including mounts that will be rejected later. The
+// caller checks each one and logs why it was skipped, which is the difference
+// between telling a user that their disk's only mount is read-only and telling
+// them no mount was found at all.
 func rankDeviceMountCandidates(entries []mounts.Entry, devicePath string) []string {
 	exactMounts := make([]string, 0)
 	partitionMounts := make([]string, 0)
 
 	for _, entry := range entries {
-		exact := entry.Source == devicePath
-		if !exact && !isPartitionOf(entry.Source, devicePath) {
-			continue
-		}
-		if suitable, _ := isMountEntrySuitable(entry); !suitable {
-			continue
-		}
-		if exact {
+		switch {
+		case entry.Source == devicePath:
 			exactMounts = append(exactMounts, entry.MountPoint)
-			continue
+		case isPartitionOf(entry.Source, devicePath):
+			partitionMounts = append(partitionMounts, entry.MountPoint)
 		}
-		partitionMounts = append(partitionMounts, entry.MountPoint)
 	}
 
 	return append(exactMounts, partitionMounts...)

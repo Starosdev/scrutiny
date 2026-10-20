@@ -39,7 +39,7 @@ func collectSnapshots(reader io.Reader, hostID string, now time.Time, statfsFn f
 	failedEligibleCount := 0
 
 	for _, mount := range mountEntries {
-		if mountsPkg.ExcludedFSType(mount.FSType) || mountsPkg.ExcludedMountPoint(mount.MountPoint) {
+		if mountsPkg.ExcludedCapacityFSType(mount.FSType) || mountsPkg.ExcludedMountPoint(mount.MountPoint) {
 			continue
 		}
 

@@ -129,13 +129,24 @@ func TestFindForPath_NoMatch(t *testing.T) {
 	require.False(t, found)
 }
 
-func TestExclusions(t *testing.T) {
-	require.True(t, ExcludedFSType("tmpfs"))
-	require.True(t, ExcludedFSType("overlay"))
-	require.True(t, ExcludedFSType("devtmpfs"))
-	require.False(t, ExcludedFSType("ext4"))
-	require.False(t, ExcludedFSType("btrfs"))
+func TestPseudoFSType(t *testing.T) {
+	require.True(t, PseudoFSType("tmpfs"))
+	require.True(t, PseudoFSType("overlay"))
+	require.True(t, PseudoFSType("devtmpfs"))
+	require.False(t, PseudoFSType("ext4"))
+	require.False(t, PseudoFSType("btrfs"))
+	// zfs is a real filesystem. Only the capacity collector skips it, because
+	// the dedicated zfs collector reports those pools instead.
+	require.False(t, PseudoFSType("zfs"))
+}
 
+func TestExcludedCapacityFSType(t *testing.T) {
+	require.True(t, ExcludedCapacityFSType("zfs"))
+	require.True(t, ExcludedCapacityFSType("tmpfs"))
+	require.False(t, ExcludedCapacityFSType("ext4"))
+}
+
+func TestExcludedMountPoint(t *testing.T) {
 	require.True(t, ExcludedMountPoint("/etc/resolv.conf"))
 	require.True(t, ExcludedMountPoint("/opt/scrutiny/config"))
 	require.False(t, ExcludedMountPoint("/data"))

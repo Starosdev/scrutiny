@@ -4,13 +4,24 @@ package performance
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
 
-// isMountPointSuitable always returns true on non-Linux platforms.
-// The tmpfs/container detection scenario only applies to Linux containers.
+// isMountPointSuitable checks what can be checked without a mount table. The
+// pseudo-filesystem and read-only detection is Linux-only, because it reads
+// /proc/mounts, but a configured mount point that does not exist or is not a
+// directory is wrong on every platform: fio would fail on all four tests and
+// the collector would publish zeroes.
 func isMountPointSuitable(mountPoint string, requiredBytes uint64) (bool, string) {
+	info, err := os.Stat(mountPoint)
+	if err != nil {
+		return false, fmt.Sprintf("could not inspect %s: %v", mountPoint, err)
+	}
+	if !info.IsDir() {
+		return false, fmt.Sprintf("%s is not a directory (benchmark test file cannot be created inside it)", mountPoint)
+	}
 	return true, ""
 }
 

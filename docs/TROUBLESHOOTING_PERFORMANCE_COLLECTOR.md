@@ -9,9 +9,16 @@ This page covers the fio-based performance collector
 The log shows read results but reports skipped writes:
 
 ```
-level=warning msg="Mount point /dev for device /dev/sdb is not suitable: filesystem type is devtmpfs (device not mounted as a real filesystem) -- falling back to direct device I/O (read-only)"
+level=warning msg="No mount point found for /dev/sdb or its partitions -- falling back to direct device I/O (read-only, write tests skipped). See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md"
 level=info msg="Skipping sequential write test on sdb (direct device I/O -- writes disabled for safety)"
 level=info msg="Skipping random write test on sdb (direct device I/O -- writes disabled for safety)"
+```
+
+When the device does back a mount that the collector refused, the warning names
+every reason instead:
+
+```
+level=warning msg="No usable mount point for /dev/sdb (/mnt/archive is mounted read-only (benchmark test file cannot be created)) -- falling back to direct device I/O (read-only, write tests skipped). See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md"
 ```
 
 Write tests need a filesystem. The collector writes a temporary file
@@ -32,16 +39,18 @@ device.
    partitions, in order, until one is usable.
 4. Raw block device, reads only.
 
-A mount point is rejected when it is not a directory, when its filesystem is a
-pseudo-filesystem or a container overlay, when it is a path the container
+A mount point is rejected when it does not exist, when it is not a directory,
+when the mount table cannot be read or does not account for it, when its
+filesystem is a pseudo-filesystem or a container overlay, when it is a path the container
 runtime bind-mounts into every container (`/etc/hosts`, `/etc/resolv.conf`,
 `/opt/scrutiny/config`, `/opt/scrutiny/influxdb`), when it is mounted read-only,
-or when free space is below the test file size plus 64 MB of headroom. The test
+or when free space is below the test file size plus 64 MiB of headroom. The test
 file size is `performance.temp_file_size`, or 1G for the `comprehensive` profile.
 
 Step 3 considers every mount the device backs, so a device whose first candidate
 is too small (an EFI system partition, say) still resolves to a larger one. Each
-rejection is logged with its reason.
+rejected candidate is logged with its reason at debug level, and when no
+candidate is usable the collector logs every reason together at warning level.
 
 ## Containers need the filesystem mounted in
 
@@ -71,7 +80,8 @@ explicitly:
 
 - LVM logical volumes, where the mount source is `/dev/mapper/...`
 - mdadm and hardware RAID members, where the array is mounted, not the member
-- ZFS, where the mount source is the pool name
+- ZFS, where the mount source is the pool name rather than a device. A dataset
+  is a valid benchmark target once it is named here.
 - A device whose mount point is not visible inside the container
 
 Multi-device btrfs needs care rather than configuration. The mount table lists
