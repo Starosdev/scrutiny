@@ -14,27 +14,62 @@ import (
 // Tasks
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 func (sr *scrutinyRepository) EnsureTasks(ctx context.Context, orgID string) error {
-	weeklyTaskName := "tsk-weekly-aggr"
-	// weekly on Sunday at 1:00am
-	weeklyTaskScript := sr.DownsampleScript("weekly", weeklyTaskName, "0 1 * * 0")
-	if err := sr.ensureDownsampleTask(ctx, orgID, weeklyTaskName, weeklyTaskScript, "weekly"); err != nil {
-		return err
-	}
-
-	monthlyTaskName := "tsk-monthly-aggr"
-	// monthly on first day of the month at 1:30am
-	monthlyTaskScript := sr.DownsampleScript("monthly", monthlyTaskName, "30 1 1 * *")
-	if err := sr.ensureDownsampleTask(ctx, orgID, monthlyTaskName, monthlyTaskScript, "monthly"); err != nil {
-		return err
-	}
-
-	yearlyTaskName := "tsk-yearly-aggr"
-	// yearly on the first day of the year at 2:00am
-	yearlyTaskScript := sr.DownsampleScript("yearly", yearlyTaskName, "0 2 1 1 *")
-	if err := sr.ensureDownsampleTask(ctx, orgID, yearlyTaskName, yearlyTaskScript, "yearly"); err != nil {
-		return err
+	for _, downsample := range []struct {
+		label      string
+		cron       string
+		legacyName string
+	}{
+		// weekly on Sunday at 1:00am
+		{label: "weekly", cron: "0 1 * * 0", legacyName: "tsk-weekly-aggr"},
+		// monthly on first day of the month at 1:30am
+		{label: "monthly", cron: "30 1 1 * *", legacyName: "tsk-monthly-aggr"},
+		// yearly on the first day of the year at 2:00am
+		{label: "yearly", cron: "0 2 1 1 *", legacyName: "tsk-yearly-aggr"},
+	} {
+		taskName := sr.downsampleTaskName(downsample.label)
+		taskScript := sr.DownsampleScript(downsample.label, taskName, downsample.cron)
+		if err := sr.ensureDownsampleTask(ctx, orgID, taskName, taskScript, downsample.label); err != nil {
+			return err
+		}
+		sr.pruneLegacyDownsampleTask(ctx, orgID, downsample.legacyName, taskScript, downsample.label)
 	}
 	return nil
+}
+
+// downsampleTaskName qualifies the task name with the configured base bucket.
+//
+// The names used to be fixed strings, so two Scrutiny deployments sharing an InfluxDB
+// organization with different web.influxdb.bucket values owned same-named tasks that wrote to
+// different destinations, and neither could tell its own task from the other's by name. The two
+// test binaries do the same against the one CI container. Qualifying the name keeps them apart
+// structurally, rather than relying on reading the stored flux.
+func (sr *scrutinyRepository) downsampleTaskName(label string) string {
+	return fmt.Sprintf("tsk-%s-aggr-%s", label, sr.appConfig.GetString(cfgInfluxDBBucket))
+}
+
+// pruneLegacyDownsampleTask removes the task this deployment created under the unqualified name,
+// now that the same work runs under the bucket-qualified one. Leaving it would double every
+// down-sampling write.
+//
+// Only a legacy task writing to this deployment's destination bucket is removed: one writing
+// somewhere else belongs to another deployment that has not upgraded yet, and deleting it would
+// stop its down-sampling. A lookup or delete failure is logged and retried on the next start,
+// because the work is already running under the new name by this point.
+func (sr *scrutinyRepository) pruneLegacyDownsampleTask(ctx context.Context, orgID, legacyName, taskScript, label string) {
+	found, err := sr.findDownsampleTasks(ctx, orgID, legacyName, label)
+	if err != nil {
+		return
+	}
+	owned, decidable := sr.ownedDownsampleTasks(found, taskScript, label)
+	if !decidable {
+		return
+	}
+	for _, task := range owned {
+		sr.logger.Infof("removing the superseded %s downsample task %s", label, task.Id)
+		if deleteErr := sr.influxTaskApi.DeleteTaskWithID(ctx, task.Id); deleteErr != nil {
+			sr.logger.Warnf("could not remove the superseded %s downsample task %s: %s", label, task.Id, deleteErr.Error())
+		}
+	}
 }
 
 // ensureDownsampleTask converges on exactly one task named taskName in orgID that writes to
