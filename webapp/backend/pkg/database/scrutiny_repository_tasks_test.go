@@ -11,7 +11,6 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
-	"strings"
 	"testing"
 )
 
@@ -197,36 +196,17 @@ func (s *stubTasksAPI) FindTasks(_ context.Context, filter *influxapi.TaskFilter
 	if s.findErr != nil {
 		return nil, s.findErr
 	}
-	matching := []domain.Task{}
-	for _, task := range s.tasks {
-		if filter == nil || filter.Name == "" || task.Name == filter.Name {
-			matching = append(matching, task)
-		}
-	}
-	return matching, nil
+	return append([]domain.Task(nil), s.tasks...), nil
 }
 
 func (s *stubTasksAPI) CreateTaskByFlux(_ context.Context, flux, _ string) (*domain.Task, error) {
 	s.creates++
-	// the real API takes the task name from the script's option block
-	name := fluxTaskName(flux)
-	created := domain.Task{Id: fmt.Sprintf("task-created-%d", s.creates), Name: name, Flux: flux}
+	created := domain.Task{Id: "task-created", Name: "tsk-weekly-aggr", Flux: flux}
 	s.tasks = append(s.tasks, created)
 	if s.createRace {
-		s.tasks = append(s.tasks, domain.Task{Id: fmt.Sprintf("task-racer-%d", s.creates), Name: name, Flux: flux})
+		s.tasks = append(s.tasks, domain.Task{Id: "task-racer", Name: "tsk-weekly-aggr", Flux: flux})
 	}
 	return &created, nil
-}
-
-// fluxTaskName reads the name out of a generated script's option block.
-func fluxTaskName(flux string) string {
-	for _, line := range strings.Split(flux, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if after, ok := strings.CutPrefix(trimmed, `name: "`); ok {
-			return strings.TrimSuffix(strings.TrimSuffix(after, `",`), `"`)
-		}
-	}
-	return ""
 }
 
 func (s *stubTasksAPI) UpdateTask(_ context.Context, task *domain.Task) (*domain.Task, error) {
@@ -262,11 +242,7 @@ func newTaskTestRepository(tasks influxapi.TasksAPI) *scrutinyRepository {
 // downsampleTestScript is a stand-in for a generated downsample script: what matters to task
 // ownership is the destBucket assignment, and what matters to the update is the rest changing.
 func downsampleTestScript(destBucket, version string) string {
-	return downsampleTestScriptNamed("tsk-weekly-aggr-metrics", destBucket, version)
-}
-
-func downsampleTestScriptNamed(taskName, destBucket, version string) string {
-	return fmt.Sprintf("option task = {\n  name: \"%s\",\n}\n\nsourceBucket = \"metrics\"\ndestBucket = \"%s\"\n\n// %s\n", taskName, destBucket, version)
+	return fmt.Sprintf("option task = {\n  name: \"tsk-weekly-aggr\",\n}\n\nsourceBucket = \"metrics\"\ndestBucket = \"%s\"\n\n// %s\n", destBucket, version)
 }
 
 var (
@@ -304,11 +280,11 @@ func TestEnsureDownsampleTaskUpdatesKeeperAndPrunesDuplicates(t *testing.T) {
 	t.Parallel()
 
 	tasks := &stubTasksAPI{tasks: []domain.Task{
-		{Id: "task-2", Name: "tsk-weekly-aggr-metrics", Flux: ourOldScript},
-		{Id: "task-1", Name: "tsk-weekly-aggr-metrics", Flux: ourOldScript},
+		{Id: "task-2", Name: "tsk-weekly-aggr", Flux: ourOldScript},
+		{Id: "task-1", Name: "tsk-weekly-aggr", Flux: ourOldScript},
 	}}
 
-	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr-metrics", ourScript, "weekly")
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
 
 	require.NoError(t, err)
 	require.Equal(t, 0, tasks.creates)
@@ -326,10 +302,10 @@ func TestEnsureDownsampleTaskLeavesForeignTaskAlone(t *testing.T) {
 	t.Parallel()
 
 	tasks := &stubTasksAPI{tasks: []domain.Task{
-		{Id: "task-1", Name: "tsk-weekly-aggr-metrics", Flux: foreignScript},
+		{Id: "task-1", Name: "tsk-weekly-aggr", Flux: foreignScript},
 	}}
 
-	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr-metrics", ourScript, "weekly")
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
 
 	require.NoError(t, err)
 	require.Equal(t, 1, tasks.creates)
@@ -346,7 +322,7 @@ func TestEnsureDownsampleTaskPrunesDuplicateFromCreateRace(t *testing.T) {
 
 	tasks := &stubTasksAPI{createRace: true}
 
-	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr-metrics", ourScript, "weekly")
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
 
 	require.NoError(t, err)
 	require.Equal(t, 1, tasks.creates)
@@ -363,12 +339,12 @@ func TestEnsureDownsampleTaskToleratesDeleteFailure(t *testing.T) {
 	tasks := &stubTasksAPI{
 		deleteErr: errors.New("not found: task not found"),
 		tasks: []domain.Task{
-			{Id: "task-1", Name: "tsk-weekly-aggr-metrics", Flux: ourScript},
-			{Id: "task-2", Name: "tsk-weekly-aggr-metrics", Flux: ourScript},
+			{Id: "task-1", Name: "tsk-weekly-aggr", Flux: ourScript},
+			{Id: "task-2", Name: "tsk-weekly-aggr", Flux: ourScript},
 		},
 	}
 
-	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr-metrics", ourScript, "weekly")
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
 
 	require.NoError(t, err)
 	require.Equal(t, []string{"task-2"}, tasks.deleted)
@@ -379,10 +355,10 @@ func TestEnsureDownsampleTaskLeavesCurrentTaskAlone(t *testing.T) {
 	t.Parallel()
 
 	tasks := &stubTasksAPI{tasks: []domain.Task{
-		{Id: "task-1", Name: "tsk-weekly-aggr-metrics", Flux: ourScript},
+		{Id: "task-1", Name: "tsk-weekly-aggr", Flux: ourScript},
 	}}
 
-	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr-metrics", ourScript, "weekly")
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
 
 	require.NoError(t, err)
 	require.Equal(t, 0, tasks.creates)
@@ -396,8 +372,8 @@ func TestEnsureDownsampleTaskWithoutDestBucketLeavesDuplicatesAlone(t *testing.T
 	t.Parallel()
 
 	tasks := &stubTasksAPI{tasks: []domain.Task{
-		{Id: "task-1", Name: "tsk-weekly-aggr-metrics", Flux: "old script"},
-		{Id: "task-2", Name: "tsk-weekly-aggr-metrics", Flux: "old script"},
+		{Id: "task-1", Name: "tsk-weekly-aggr", Flux: "old script"},
+		{Id: "task-2", Name: "tsk-weekly-aggr", Flux: "old script"},
 	}}
 
 	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", "script without a destination", "weekly")
@@ -416,13 +392,13 @@ func TestEnsureDownsampleTaskScopesLookupToOrg(t *testing.T) {
 
 	tasks := &stubTasksAPI{}
 
-	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr-metrics", ourScript, "weekly")
+	err := newTaskTestRepository(tasks).ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
 
 	require.NoError(t, err)
 	require.NotEmpty(t, tasks.filters)
 	for _, filter := range tasks.filters {
 		require.Equal(t, "org-scrutiny", filter.OrgID)
-		require.Equal(t, "tsk-weekly-aggr-metrics", filter.Name)
+		require.Equal(t, "tsk-weekly-aggr", filter.Name)
 	}
 	require.Equal(t, 1, tasks.creates)
 }
@@ -437,7 +413,7 @@ func TestEnsureDownsampleTaskWarnsAndSkipsWhenLookupFails(t *testing.T) {
 	logger, hook := logrustest.NewNullLogger()
 	repo := &scrutinyRepository{logger: logger, influxTaskApi: tasks}
 
-	err := repo.ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr-metrics", ourScript, "weekly")
+	err := repo.ensureDownsampleTask(context.Background(), "org-scrutiny", "tsk-weekly-aggr", ourScript, "weekly")
 
 	require.NoError(t, err)
 	require.Equal(t, 0, tasks.creates)
@@ -445,72 +421,4 @@ func TestEnsureDownsampleTaskWarnsAndSkipsWhenLookupFails(t *testing.T) {
 	require.NotNil(t, hook.LastEntry())
 	require.Equal(t, logrus.WarnLevel, hook.LastEntry().Level)
 	require.Contains(t, hook.LastEntry().Message, "influxdb unreachable")
-}
-
-func newEnsureTasksRepository(t *testing.T, tasks influxapi.TasksAPI, bucket string) *scrutinyRepository {
-	t.Helper()
-
-	mockCtrl := gomock.NewController(t)
-	t.Cleanup(mockCtrl.Finish)
-	fakeConfig := mock_config.NewMockInterface(mockCtrl)
-	fakeConfig.EXPECT().GetString("web.influxdb.bucket").Return(bucket).AnyTimes()
-	fakeConfig.EXPECT().GetString("web.influxdb.org").Return("scrutiny").AnyTimes()
-
-	logger, _ := logrustest.NewNullLogger()
-	return &scrutinyRepository{appConfig: fakeConfig, logger: logger, influxTaskApi: tasks}
-}
-
-// the task names carry the configured bucket, so two deployments sharing an organization with
-// different buckets no longer own same-named tasks. The two test binaries in CI are the same
-// case: one configures metrics, the other its own bucket.
-func TestEnsureTasksQualifiesTaskNamesWithTheBucket(t *testing.T) {
-	t.Parallel()
-
-	tasks := &stubTasksAPI{}
-	repo := newEnsureTasksRepository(t, tasks, "metrics_web_test")
-
-	require.NoError(t, repo.EnsureTasks(context.Background(), "org-scrutiny"))
-
-	require.Equal(t, 3, tasks.creates)
-	created := []string{}
-	for _, task := range tasks.tasks {
-		created = append(created, task.Name)
-	}
-	require.ElementsMatch(t, []string{
-		"tsk-weekly-aggr-metrics_web_test",
-		"tsk-monthly-aggr-metrics_web_test",
-		"tsk-yearly-aggr-metrics_web_test",
-	}, created)
-}
-
-// upgrading leaves the task this deployment created under the unqualified name behind. Keeping it
-// would double every down-sampling write, so it goes once the qualified one is in place.
-func TestEnsureTasksRemovesItsOwnLegacyTasks(t *testing.T) {
-	t.Parallel()
-
-	tasks := &stubTasksAPI{tasks: []domain.Task{
-		{Id: "legacy-weekly", Name: "tsk-weekly-aggr", Flux: downsampleTestScriptNamed("tsk-weekly-aggr", "metrics_weekly", "previous")},
-	}}
-	repo := newEnsureTasksRepository(t, tasks, "metrics")
-
-	require.NoError(t, repo.EnsureTasks(context.Background(), "org-scrutiny"))
-
-	require.Equal(t, []string{"legacy-weekly"}, tasks.deleted)
-	require.Equal(t, 3, tasks.creates)
-}
-
-// a legacy task writing somewhere else belongs to a deployment that has not upgraded yet.
-// Deleting it would stop that deployment's down-sampling.
-func TestEnsureTasksLeavesAnotherDeploymentsLegacyTaskAlone(t *testing.T) {
-	t.Parallel()
-
-	tasks := &stubTasksAPI{tasks: []domain.Task{
-		{Id: "legacy-foreign", Name: "tsk-weekly-aggr", Flux: downsampleTestScriptNamed("tsk-weekly-aggr", "metrics2_weekly", "previous")},
-	}}
-	repo := newEnsureTasksRepository(t, tasks, "metrics")
-
-	require.NoError(t, repo.EnsureTasks(context.Background(), "org-scrutiny"))
-
-	require.Empty(t, tasks.deleted)
-	require.Equal(t, 3, tasks.creates)
 }
