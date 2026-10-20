@@ -451,7 +451,7 @@ func (sr *scrutinyRepository) EnsureBuckets(ctx context.Context, org *domain.Org
 	// metrics_yearly bucket will have an infinite retention period
 	yearlyBucket := baseBucket + "_yearly"
 	if _, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, yearlyBucket); foundErr != nil {
-		if _, err := sr.influxClient.BucketsAPI().CreateBucketWithName(ctx, org, yearlyBucket); err != nil {
+		if err := ensureBucketExists(ctx, sr.influxClient.BucketsAPI(), org, yearlyBucket); err != nil {
 			return err
 		}
 	}
@@ -464,13 +464,27 @@ func (sr *scrutinyRepository) EnsureBuckets(ctx context.Context, org *domain.Org
 func (sr *scrutinyRepository) ensureRetentionBucket(ctx context.Context, org *domain.Organization, bucketName string, retentionRule domain.RetentionRule, applyRetention bool) error {
 	found, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, bucketName)
 	if foundErr != nil {
-		_, err := sr.influxClient.BucketsAPI().CreateBucketWithName(ctx, org, bucketName, retentionRule)
-		return err
+		return ensureBucketExists(ctx, sr.influxClient.BucketsAPI(), org, bucketName, retentionRule)
 	}
 	if applyRetention {
 		// correctly set the retention period (may not be able to do it during setup/creation)
 		found.RetentionRules = domain.RetentionRules{retentionRule}
 		_, _ = sr.influxClient.BucketsAPI().UpdateBucket(ctx, found)
+	}
+	return nil
+}
+
+// ensureBucketExists creates bucketName and treats an already existing bucket as success.
+// Check-then-create has no tolerance for a second creator: two Scrutiny processes pointed at
+// one InfluxDB, or the pkg/web and pkg/database test binaries sharing one service container,
+// can both find the bucket missing and both create it, and the loser gets a 409 conflict. The
+// desired end state is that the bucket exists, so re-read it and continue when it does.
+func ensureBucketExists(ctx context.Context, bucketsAPI api.BucketsAPI, org *domain.Organization, bucketName string, retentionRules ...domain.RetentionRule) error {
+	if _, err := bucketsAPI.CreateBucketWithName(ctx, org, bucketName, retentionRules...); err != nil {
+		if _, foundErr := bucketsAPI.FindBucketByName(ctx, bucketName); foundErr == nil {
+			return nil
+		}
+		return err
 	}
 	return nil
 }
