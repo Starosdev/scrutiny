@@ -80,7 +80,7 @@ OPTIONS:
 				return nil
 			}
 
-			collectorMetrics := "AnalogJ/scrutiny/metrics"
+			collectorMetrics := "Staros-Labs/scrutiny/metrics"
 
 			var versionInfo string
 			if len(goos) > 0 && len(goarch) > 0 {
