@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/analogj/scrutiny/collector/pkg/omnibus"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -43,12 +44,12 @@ func TriggerCollectors(c *gin.Context) {
 			}
 
 			logger.Infof("Executing collector: %s", bin)
-			
+
 			// Create command with a timeout to prevent hanging processes
 			ctx, cancel := context.WithTimeout(bgCtx, 5*time.Minute)
-			cmd := exec.CommandContext(ctx, path, "run")
-			
-			// We don't capture stdout/stderr here to keep it simple, 
+			cmd := exec.CommandContext(ctx, path, omnibus.OneShotArgs(bin)...)
+
+			// We don't capture stdout/stderr here to keep it simple,
 			// but we log the result. Collectors log to their own destinations usually.
 			output, err := cmd.CombinedOutput()
 			if err != nil {
@@ -57,11 +58,11 @@ func TriggerCollectors(c *gin.Context) {
 				logger.Infof("Collector %s completed successfully", bin)
 			}
 			cancel()
-			
+
 			// Small buffer between collectors
 			time.Sleep(1 * time.Second)
 		}
-		
+
 		logger.Info("Manual sequential collector run finished")
 	}()
 
