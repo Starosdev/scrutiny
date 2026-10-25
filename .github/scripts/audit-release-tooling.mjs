@@ -69,7 +69,7 @@ const viaNamesOf = (vuln) => vuln.via.filter((via) => typeof via === 'string');
 const ownAllowed = (name, vuln) => {
   // An entry that names neither an advisory nor a dependency carries no evidence either way; fail closed.
   if (vuln.via.length === 0) return false;
-  const bundled = vuln.nodes.every((node) => node.startsWith(BUNDLED_NPM_PREFIX));
+  const bundled = vuln.nodes.length > 0 && vuln.nodes.every((node) => node.startsWith(BUNDLED_NPM_PREFIX));
   return advisoriesOf(vuln).every((id) => UNPATCHED_ADVISORIES.get(id)?.pkg === name || (bundled && ALLOWED_ADVISORIES.has(id)));
 };
 const blocked = new Set(Object.entries(vulnerabilities).filter(([name, vuln]) => !ownAllowed(name, vuln)).map(([name]) => name));

@@ -31,7 +31,7 @@ for (const [name, id] of advisories) {
   test(`${id}: only bundled paths pass`, () => {
     const allowed = audit(name, id, [`${bundled}${name}`]);
     assert.equal(allowed.status, 0, allowed.stderr);
-    for (const nodes of [[`node_modules/${name}`], [`${bundled}${name}`, `node_modules/${name}`]]) {
+    for (const nodes of [[], [`node_modules/${name}`], [`${bundled}${name}`, `node_modules/${name}`]]) {
       const blocked = audit(name, id, nodes);
       assert.equal(blocked.status, 1, blocked.stderr);
       assert.match(blocked.stderr, /findings not covered by the allowlist/);
