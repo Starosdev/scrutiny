@@ -532,3 +532,36 @@ collected anything. This matters after a configuration change: with startup coll
 off, nothing is collected until the next cron tick, and until then the dashboard still
 shows the previous run's data.
 
+## Manual collection with a configured schedule
+
+The SMART collector stays running when `cron.schedule` is set in its YAML file or
+`COLLECTOR_CRON_SCHEDULE` is set in its environment. To collect once and exit,
+pass an explicit empty schedule:
+
+```sh
+docker exec scrutiny /opt/scrutiny/bin/scrutiny-collector-metrics run --cron-schedule=""
+```
+
+Replace `scrutiny` with your container name. For a standalone binary, use the same
+`run --cron-schedule=""` arguments. This override also skips the scheduler's startup
+delay. API, authentication, and device settings remain in effect.
+
+The dashboard's **Run collectors** action, the omnibus manager, and Docker SMART
+cron and startup jobs pass this override. Removing the environment variable alone
+does not disable a schedule in the YAML file. Standalone scheduled runs without
+this override retain their configured schedule.
+
+### Optional collectors in the dashboard
+
+The dashboard's **Run collectors** action runs SMART by default. It runs ZFS and
+MDADM only when their cron schedule is nonempty or their startup flag is true.
+Surrounding quotes and whitespace do not enable an empty schedule.
+These are the same enablement conditions used by the all-in-one image:
+
+- ZFS: `COLLECTOR_ZFS_CRON_SCHEDULE` or `COLLECTOR_ZFS_RUN_STARTUP`
+- MDADM: `COLLECTOR_MDADM_CRON_SCHEDULE` or `COLLECTOR_MDADM_RUN_STARTUP`
+
+A false startup flag prevents startup collection. It does not disable manual
+collection when a cron schedule is set. Installed binaries alone do not enable
+optional collectors. Disabled collectors log a skip message. Errors from enabled
+collectors remain failures, including missing access to `/dev/zfs` for ZFS.

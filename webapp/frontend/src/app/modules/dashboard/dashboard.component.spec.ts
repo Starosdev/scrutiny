@@ -8,7 +8,7 @@ import { DashboardComponent } from './dashboard.component';
 import { DashboardService } from './dashboard.service';
 import { TemperatureSelection } from './temperature-selection';
 
-describe('DashboardComponent temperature chart', () => {
+describe('DashboardComponent', () => {
     let component: DashboardComponent;
     let fixture: ComponentFixture<DashboardComponent>;
     let dashboardService: jasmine.SpyObj<DashboardService>;
@@ -97,6 +97,13 @@ describe('DashboardComponent temperature chart', () => {
 
     afterEach(() => {
         fixture.destroy();
+    });
+
+    it('links stable and beta release versions to their GitHub release tags', () => {
+        expect(component.getReleaseUrl('1.76.2')).toBe('https://github.com/Starosdev/scrutiny/releases/tag/v1.76.2');
+        expect(component.getReleaseUrl('1.77.0-beta.1')).toBe('https://github.com/Starosdev/scrutiny/releases/tag/v1.77.0-beta.1');
+        expect(component.getReleaseUrl('dev')).toBeNull();
+        expect(component.getReleaseUrl('1.76.2-3-gabc')).toBeNull();
     });
 
     it('shows selected drives out of available drives', () => {
