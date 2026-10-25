@@ -40,6 +40,12 @@ func TestTriggerCollectorsEnablement(t *testing.T) {
 		fail     bool
 	}{
 		{name: "optional disabled"},
+		{name: "quoted-empty double", schedule: `""`},
+		{name: "quoted-empty single", schedule: "''"},
+		{name: "quoted-empty padded", schedule: " \t\"  \"\r\n"},
+		{name: "whitespace-only schedule", schedule: " \t\r\n"},
+		{name: "quoted-empty startup enabled", schedule: `""`, startup: "true", enabled: true},
+		{name: "quoted schedule enabled", schedule: `"*/15 * * * *"`, enabled: true},
 		{name: "startup enabled", startup: "true", enabled: true},
 		{name: "zfs only", only: "ZFS", startup: "true", enabled: true},
 		{name: "mdadm only", only: "MDADM", schedule: "*/15 * * * *", enabled: true},

@@ -555,6 +555,7 @@ this override retain their configured schedule.
 
 The dashboard's **Run collectors** action runs SMART by default. It runs ZFS and
 MDADM only when their cron schedule is nonempty or their startup flag is true.
+Surrounding quotes and whitespace do not enable an empty schedule.
 These are the same enablement conditions used by the all-in-one image:
 
 - ZFS: `COLLECTOR_ZFS_CRON_SCHEDULE` or `COLLECTOR_ZFS_RUN_STARTUP`

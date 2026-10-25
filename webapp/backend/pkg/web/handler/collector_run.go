@@ -87,7 +87,9 @@ func manualCollectorEnabled(binaryName string) bool {
 		if spec.BinaryName != binaryName {
 			continue
 		}
-		if spec.Name == "metrics" || os.Getenv(spec.ScheduleEnv) != "" {
+		// Ignore env-file quoting and padding when checking for a schedule.
+		schedule := strings.Trim(os.Getenv(spec.ScheduleEnv), "\"' \t\r\n")
+		if spec.Name == "metrics" || schedule != "" {
 			return true
 		}
 		// Match /etc/scrutiny/startup-gate.sh, including quoted env-file values.
