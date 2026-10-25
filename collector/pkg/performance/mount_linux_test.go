@@ -2,6 +2,7 @@ package performance
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -259,4 +260,35 @@ func TestIsMountPointSuitable_RequiresHeadroomAboveTestFile(t *testing.T) {
 	require.False(t, suitable)
 	require.Contains(t, reason, "insufficient space")
 	require.Contains(t, reason, "headroom")
+}
+
+func TestRankDeviceMountCandidates_ResolvesDeviceAliases(t *testing.T) {
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	require.NoError(t, err)
+	disk := filepath.Join(root, "sdb")
+	partition := disk + "1"
+	for _, path := range []string{disk, partition} {
+		require.NoError(t, os.WriteFile(path, nil, 0o600))
+	}
+	alias := filepath.Join(root, "by-id")
+	require.NoError(t, os.Symlink(disk, alias))
+	partitionAlias := filepath.Join(root, "by-id-part1")
+	require.NoError(t, os.Symlink(partition, partitionAlias))
+	tests := []struct{ name, device, source string }{
+		{"mounted device alias", alias, disk},
+		{"mounted partition alias", partitionAlias, partition},
+		{"whole disk alias finds partition", alias, partition},
+		{"mount source alias", disk, alias},
+		{"partition source alias", disk, partitionAlias},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			entries := []mounts.Entry{{Source: tt.source, MountPoint: "/data"}, {Source: disk + "2", MountPoint: "/other"}}
+			want := []string{"/data"}
+			if tt.device == alias || tt.device == disk {
+				want = append(want, "/other")
+			}
+			require.Equal(t, want, rankDeviceMountCandidates(entries, tt.device))
+		})
+	}
 }

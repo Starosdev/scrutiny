@@ -3,6 +3,7 @@ package performance
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"syscall"
 
 	"github.com/analogj/scrutiny/collector/pkg/mounts"
@@ -96,14 +97,25 @@ func deviceMountCandidates(devicePath string) ([]string, error) {
 // between telling a user that their disk's only mount is read-only and telling
 // them no mount was found at all.
 func rankDeviceMountCandidates(entries []mounts.Entry, devicePath string) []string {
+	// Resolve aliases on both sides, but retain lexical matching when a container
+	// does not expose the host device node.
+	if resolved, err := filepath.EvalSymlinks(devicePath); err == nil {
+		devicePath = resolved
+	}
 	exactMounts := make([]string, 0)
 	partitionMounts := make([]string, 0)
 
 	for _, entry := range entries {
+		source := entry.Source
+		if filepath.IsAbs(source) {
+			if resolved, err := filepath.EvalSymlinks(source); err == nil {
+				source = resolved
+			}
+		}
 		switch {
-		case entry.Source == devicePath:
+		case source == devicePath:
 			exactMounts = append(exactMounts, entry.MountPoint)
-		case isPartitionOf(entry.Source, devicePath):
+		case isPartitionOf(source, devicePath):
 			partitionMounts = append(partitionMounts, entry.MountPoint)
 		}
 	}

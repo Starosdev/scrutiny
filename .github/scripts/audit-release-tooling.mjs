@@ -33,10 +33,15 @@ const ALLOWED_ADVISORIES = new Set([
   'GHSA-2vr4-cq9g-pvrc',
   'GHSA-j6r3-76f7-8jcv',
   'GHSA-h3mg-xc3c-68pw',
+  // Still bundled by npm 11.21.1; same bundled-only boundary and expiry.
+  'GHSA-rxp7-6hxx-x8q5',
   // undici
   'GHSA-3wwx-pv8p-q78v',
   'GHSA-r53p-7pc4-xj5r',
   'GHSA-rfgv-xxqx-mfg5',
+  // Non-bundled copies are patched in package-lock.json.
+  'GHSA-4qv8-2p9j-2685',
+  'GHSA-xjj6-f33q-929c',
   // http-cache-semantics
   'GHSA-ch52-4w7c-c8xp',
   // postcss-selector-parser
