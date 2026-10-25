@@ -2,8 +2,48 @@
 
 package performance
 
-// isMountPointSuitable always returns true on non-Linux platforms.
-// The tmpfs/container detection scenario only applies to Linux containers.
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// isMountPointSuitable checks what can be checked without a mount table. The
+// pseudo-filesystem and read-only detection is Linux-only, because it reads
+// /proc/mounts, but a configured mount point that does not exist or is not a
+// directory is wrong on every platform: fio would fail on all four tests and
+// the collector would publish zeroes.
 func isMountPointSuitable(mountPoint string, requiredBytes uint64) (bool, string) {
+	info, err := os.Stat(mountPoint)
+	if err != nil {
+		return false, fmt.Sprintf("could not inspect %s: %v", mountPoint, err)
+	}
+	if !info.IsDir() {
+		return false, fmt.Sprintf("%s is not a directory (benchmark test file cannot be created inside it)", mountPoint)
+	}
 	return true, ""
+}
+
+// deviceMountCandidates resolves the mount point for a device using df, which
+// reports the filesystem of a mounted device node. Linux reads /proc/mounts
+// instead, so it can also resolve a whole-disk device through its partitions.
+func deviceMountCandidates(devicePath string) ([]string, error) {
+	output, err := exec.Command("df", devicePath).Output()
+	if err != nil {
+		return nil, fmt.Errorf("df command failed for %s: %w", devicePath, err)
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) < 2 {
+		return nil, fmt.Errorf("unexpected df output for %s", devicePath)
+	}
+
+	// The mount point is the last field in the second line
+	fields := strings.Fields(lines[1])
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("could not parse df output for %s", devicePath)
+	}
+
+	return []string{fields[len(fields)-1]}, nil
 }

@@ -30,6 +30,14 @@ Last updated: 2026-09-10
 
 ## Security Status
 
+### Frontend tooling fixes (2026-10-21)
+
+The frontend overrides require `follow-redirects` 1.16.1 or later in the 1.x series and Vite 8.3.3 or later in the 8.x series. The lockfile resolves 1.16.1 and 8.3.5 respectively. Angular build tooling 22.2.2 pins Vite 8.3.0, so a lockfile refresh alone cannot replace that vulnerable version. Keep the Vite override until the Angular dependency pins a patched version.
+
+These updates address the credential-header leaks in `follow-redirects` and the editor-launch vulnerabilities bundled in Vite. Both packages are development dependencies. The production Docker image copies compiled frontend assets rather than frontend `node_modules`.
+
+Run `node ../../.github/scripts/audit-release-tooling.mjs` from `webapp/frontend` after dependency updates. The existing audit allowlist remains unchanged. A passing gate can still include the documented, temporary exception for the unpatched `braces` advisory. See issue #1022 and the related `follow-redirects` update in PR #1019.
+
 ### Current baseline (2026-09-10)
 
 - Root release tooling: `npm audit --audit-level=low` reports 0 vulnerabilities.

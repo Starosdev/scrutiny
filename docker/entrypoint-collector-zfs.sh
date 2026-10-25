@@ -24,6 +24,8 @@ if [[ "${COLLECTOR_ZFS_RUN_STARTUP}" == "true" ]]; then
     sleep ${COLLECTOR_ZFS_RUN_STARTUP_SLEEP}
     log_info "starting scrutiny ZFS collector (run-once mode. subsequent calls will be triggered via cron service)"
     COLLECTOR_CRON_SCHEDULE= COLLECTOR_ZFS_RUN_STARTUP= /opt/scrutiny/bin/scrutiny-collector-zfs run
+else
+    log_info "startup collection is disabled (COLLECTOR_ZFS_RUN_STARTUP is not set to true); the scrutiny ZFS collector will next run on its cron schedule: ${COLLECTOR_ZFS_CRON_SCHEDULE}"
 fi
 
 

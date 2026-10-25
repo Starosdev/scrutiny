@@ -94,6 +94,7 @@
     "browserslist": "^4.28.7",
     "diff": "4.0.4",
     "fast-uri": "^3.1.6",
+    "follow-redirects": "^1.16.1",
     "hono": "^4.13.5",
     "js-yaml": "^4.3.2",
     "lodash-es": "4.18.1",
@@ -108,6 +109,8 @@
     "engine.io": "6.6.11",
     "socket.io-parser": "^4.2.7",
     "ws": "8.21.3",
-    "source-map-js": "^1.2.2"
+    "vite@8": "^8.3.3",
+    "source-map-js": "^1.2.2",
+    "zod": "^4.6.6"
   }
 }

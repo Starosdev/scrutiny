@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -46,6 +47,10 @@ const (
 	INFLUX_DURATION_1_YEAR   = "-1y"
 	INFLUX_DURATION_10_YEARS = "-10y"
 	INFLUX_NOW               = "now()"
+
+	// bucketPageSize is the page size for listing an organization's buckets. The API's own
+	// default is 20, which a shared InfluxDB can exceed.
+	bucketPageSize = 100
 
 	// Aggregation window resolutions
 	RESOLUTION_10_MINUTES = "10m"
@@ -467,8 +472,8 @@ func (sr *scrutinyRepository) EnsureBuckets(ctx context.Context, org *domain.Org
 
 	// metrics_yearly bucket will have an infinite retention period
 	yearlyBucket := baseBucket + "_yearly"
-	if _, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, yearlyBucket); foundErr != nil {
-		if _, err := sr.influxClient.BucketsAPI().CreateBucketWithName(ctx, org, yearlyBucket); err != nil {
+	if _, foundErr := findBucketInOrg(ctx, sr.influxClient.BucketsAPI(), org.Name, yearlyBucket); foundErr != nil {
+		if _, err := ensureBucketExists(ctx, sr.influxClient.BucketsAPI(), org, yearlyBucket); err != nil {
 			return err
 		}
 	}
@@ -479,17 +484,87 @@ func (sr *scrutinyRepository) EnsureBuckets(ctx context.Context, org *domain.Org
 // ensureRetentionBucket creates bucketName with the given retention rule when it does not exist,
 // or (when applyRetention is set) updates the existing bucket's retention rule.
 func (sr *scrutinyRepository) ensureRetentionBucket(ctx context.Context, org *domain.Organization, bucketName string, retentionRule domain.RetentionRule, applyRetention bool) error {
-	found, foundErr := sr.influxClient.BucketsAPI().FindBucketByName(ctx, bucketName)
+	found, foundErr := findBucketInOrg(ctx, sr.influxClient.BucketsAPI(), org.Name, bucketName)
 	if foundErr != nil {
-		_, err := sr.influxClient.BucketsAPI().CreateBucketWithName(ctx, org, bucketName, retentionRule)
-		return err
+		created, err := ensureBucketExists(ctx, sr.influxClient.BucketsAPI(), org, bucketName, retentionRule)
+		if err != nil {
+			return err
+		}
+		// losing the create race still has to apply this process's retention rule, otherwise the
+		// bucket silently keeps whatever rule the winner created it with.
+		found = created
+	}
+	if found == nil {
+		// a 2xx carrying an empty body, which no InfluxDB does, would otherwise panic below
+		return nil
 	}
 	if applyRetention {
 		// correctly set the retention period (may not be able to do it during setup/creation)
 		found.RetentionRules = domain.RetentionRules{retentionRule}
-		_, _ = sr.influxClient.BucketsAPI().UpdateBucket(ctx, found)
+		if _, err := sr.influxClient.BucketsAPI().UpdateBucket(ctx, found); err != nil {
+			// not fatal, the bucket is usable with the retention it has, but a bucket quietly
+			// keeping a different period than the configuration asks for is worth saying
+			sr.logger.Warnf("could not set the retention period on bucket %s: %s", bucketName, err.Error())
+		}
 	}
 	return nil
+}
+
+// ensureBucketExists creates bucketName and returns the bucket, treating a bucket that already
+// exists as success. Check-then-create has no tolerance for a second creator: two Scrutiny
+// processes pointed at one InfluxDB, or the pkg/web and pkg/database test binaries sharing one
+// service container, can both find the bucket missing and both create it, and the loser gets a
+// 409 conflict. The desired end state is that the bucket exists, so re-read it and continue.
+//
+// A failed create is tolerated only when the bucket then turns out to exist in this
+// organization, which findBucketInOrg is what establishes. The create error is not classified
+// by status code: the generated REST client turns a non-2xx into a plain
+// fmt.Errorf("code: message") carrying neither status code nor wrapped error (see decodeError in
+// the client's domain package), so there is nothing to match on, and the lookup answers the only
+// question that matters.
+func ensureBucketExists(ctx context.Context, bucketsAPI api.BucketsAPI, org *domain.Organization, bucketName string, retentionRules ...domain.RetentionRule) (*domain.Bucket, error) {
+	created, err := bucketsAPI.CreateBucketWithName(ctx, org, bucketName, retentionRules...)
+	if err == nil {
+		return created, nil
+	}
+	found, foundErr := findBucketInOrg(ctx, bucketsAPI, org.Name, bucketName)
+	if foundErr != nil {
+		// both halves matter: the create said the bucket is there and the lookup could not
+		// confirm it, which reads as a contradiction without the second error
+		return nil, errors.Join(err, foundErr)
+	}
+	return found, nil
+}
+
+// findBucketInOrg returns the bucket named bucketName belonging to orgName.
+//
+// The client's FindBucketByName is not usable here: it queries by name with no organization
+// filter and returns the first match, while bucket names are unique per organization. A
+// deployment sharing an InfluxDB with another organization could therefore read, update the
+// retention of, and down-sample into that organization's bucket, and never create its own.
+//
+// Listing the organization's buckets and matching the name here costs more than one filtered
+// query would, and there is no cheaper call available: domain.GetBucketsParams carries both Name
+// and Org, but no BucketsAPI method sets both. Do not swap this back to FindBucketByName.
+func findBucketInOrg(ctx context.Context, bucketsAPI api.BucketsAPI, orgName, bucketName string) (*domain.Bucket, error) {
+	for offset := 0; ; offset += bucketPageSize {
+		page, err := bucketsAPI.FindBucketsByOrgName(ctx, orgName, api.PagingWithOffset(offset), api.PagingWithLimit(bucketPageSize))
+		if err != nil {
+			return nil, err
+		}
+		if page == nil {
+			break
+		}
+		for i := range *page {
+			if (*page)[i].Name == bucketName {
+				return &(*page)[i], nil
+			}
+		}
+		if len(*page) < bucketPageSize {
+			break
+		}
+	}
+	return nil, fmt.Errorf("bucket '%s' not found in organization '%s'", bucketName, orgName)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -811,15 +886,23 @@ func applyLastSeenRecord(lastSeenTimes map[string]time.Time, owners historyOwner
 func (sr *scrutinyRepository) GetAvailableInfluxDBBuckets(ctx context.Context) ([]string, error) {
 	org := sr.appConfig.GetString(cfgInfluxDBOrg)
 
-	// Query InfluxDB for all buckets in the organization
-	buckets, err := sr.influxClient.BucketsAPI().FindBucketsByOrgName(ctx, org)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query InfluxDB buckets: %w", err)
-	}
-
-	bucketNames := make([]string, 0, len(*buckets))
-	for _, bucket := range *buckets {
-		bucketNames = append(bucketNames, bucket.Name)
+	// Query InfluxDB for all buckets in the organization, a page at a time: the API returns 20
+	// per page by default, which an organization can exceed
+	bucketNames := []string{}
+	for offset := 0; ; offset += bucketPageSize {
+		page, err := sr.influxClient.BucketsAPI().FindBucketsByOrgName(ctx, org, api.PagingWithOffset(offset), api.PagingWithLimit(bucketPageSize))
+		if err != nil {
+			return nil, fmt.Errorf("failed to query InfluxDB buckets: %w", err)
+		}
+		if page == nil {
+			break
+		}
+		for i := range *page {
+			bucketNames = append(bucketNames, (*page)[i].Name)
+		}
+		if len(*page) < bucketPageSize {
+			break
+		}
 	}
 
 	return bucketNames, nil
