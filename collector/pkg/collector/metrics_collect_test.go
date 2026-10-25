@@ -179,6 +179,38 @@ func TestMetricsCollector_Collect_ReportsErrorOnFatalExitStatus(t *testing.T) {
 	require.Equal(t, []string{"/api/device/some-device-id/collector-error"}, publishedPaths)
 }
 
+// fixes #911: with `-n standby` smartctl skips a sleeping drive and exits 2. That
+// is not a failure: nothing is published and no collector error is reported. The
+// `-n standby,0` form exits 0 and must be skipped the same way.
+func TestMetricsCollector_Collect_SkipsDriveInStandby(t *testing.T) {
+	const standbyPayload = `{"smartctl":{"exit_status":%d,"messages":[{"string":"Device is in STANDBY mode, exit(%d)","severity":"information"}]}}`
+
+	for _, code := range []int{2, 0} {
+		t.Run(strconv.Itoa(code), func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			var runErr error
+			if code != 0 {
+				runErr = collectExitErrorWithCode(t, code)
+			}
+			fakeShell := mock_shell.NewMockInterface(ctrl)
+			fakeShell.EXPECT().
+				CommandContext(gomock.Any(), gomock.Any(), "smartctl", gomock.Any(), "", gomock.Any()).
+				Return(fmt.Sprintf(standbyPayload, code, code), runErr)
+
+			var publishedPaths []string
+			mc := newTestCollectCollector(t, fakeShell, func(req *http.Request) {
+				publishedPaths = append(publishedPaths, req.URL.Path)
+			})
+
+			mc.Collect("some-device-id", "sda", "sat")
+
+			require.Empty(t, publishedPaths)
+		})
+	}
+}
+
 // newTestCollectCollector builds a MetricsCollector wired to the given shell, with
 // every HTTP request answered 200 and optionally handed to observe first.
 func newTestCollectCollector(t *testing.T, fakeShell *mock_shell.MockInterface, observe func(*http.Request)) MetricsCollector {

@@ -3,7 +3,11 @@ package database
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/influxdata/influxdb-client-go/v2/api"
+	"github.com/influxdata/influxdb-client-go/v2/domain"
 )
 
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,24 +37,134 @@ func (sr *scrutinyRepository) EnsureTasks(ctx context.Context, orgID string) err
 	return nil
 }
 
-// ensureDownsampleTask creates the named downsample task when it does not exist,
-// or updates its flux script when the single existing task differs.
+// ensureDownsampleTask converges on exactly one task named taskName in orgID that writes to
+// this deployment's destination bucket, running the current flux script.
+//
+// Task names are not unique in InfluxDB, so this check-then-create races the same way bucket
+// creation does (see ensureBucketExists): two processes starting together both find no task and
+// both create one, and InfluxDB reports no conflict. Each copy is scheduled and writes to the
+// same destination bucket, so duplicates are pruned rather than tolerated, and the keeper is
+// chosen by lowest ID so that two processes pruning at once converge on the same task instead
+// of deleting each other's.
+//
+// Only tasks writing to this deployment's destination bucket are touched. The task names are
+// fixed strings rather than derived from the configured bucket, so a second Scrutiny deployment
+// sharing this organization with a different web.influxdb.bucket owns same-named tasks whose
+// flux differs, and those are left alone.
 func (sr *scrutinyRepository) ensureDownsampleTask(ctx context.Context, orgID, taskName, taskScript, label string) error {
-	found, findErr := sr.influxTaskApi.FindTasks(ctx, &api.TaskFilter{Name: taskName})
-	if findErr == nil && len(found) == 0 {
-		_, err := sr.influxTaskApi.CreateTaskByFlux(ctx, taskScript, orgID)
-		return err
-	} else if len(found) == 1 {
-		//check if we should update
-		task := &found[0]
-		if taskScript != task.Flux {
-			sr.logger.Infoln("updating " + label + " task script")
-			task.Flux = taskScript
-			_, err := sr.influxTaskApi.UpdateTask(ctx, task)
+	found, findErr := sr.findDownsampleTasks(ctx, orgID, taskName, label)
+	if findErr != nil {
+		return nil
+	}
+
+	owned, decidable := sr.ownedDownsampleTasks(found, taskScript, label)
+	if decidable && len(owned) == 0 {
+		if len(found) > 0 {
+			// the start after a web.influxdb.bucket rename, or a second deployment's first
+			// start: the tasks already there write somewhere else and are left running, so
+			// say it once here rather than on every start
+			sr.logger.Warnf("creating a %s downsample task while %d task(s) of that name write to another destination bucket", label, len(found))
+		}
+		if _, err := sr.influxTaskApi.CreateTaskByFlux(ctx, taskScript, orgID); err != nil {
+			return err
+		}
+		// a concurrent process may have created the same task: look again and prune now, rather
+		// than leaving the duplicate scheduled until some later startup
+		if found, findErr = sr.findDownsampleTasks(ctx, orgID, taskName, label); findErr != nil {
+			return nil
+		}
+		owned, _ = sr.ownedDownsampleTasks(found, taskScript, label)
+	}
+	if len(owned) == 0 {
+		return nil
+	}
+
+	sort.Slice(owned, func(i, j int) bool { return owned[i].Id < owned[j].Id })
+	keeper := owned[0]
+	if taskScript != keeper.Flux {
+		sr.logger.Infoln("updating " + label + " task script")
+		keeper.Flux = taskScript
+		if _, err := sr.influxTaskApi.UpdateTask(ctx, keeper); err != nil {
 			return err
 		}
 	}
+
+	for _, duplicate := range owned[1:] {
+		sr.logger.Warnf("deleting duplicate %s downsample task %s", label, duplicate.Id)
+		if err := sr.influxTaskApi.DeleteTaskWithID(ctx, duplicate.Id); err != nil {
+			// another process pruning the same duplicate gets here second, and a duplicate that
+			// is already gone is the wanted end state
+			sr.logger.Warnf("could not delete duplicate %s downsample task %s: %s", label, duplicate.Id, err.Error())
+		}
+	}
 	return nil
+}
+
+// ownedDownsampleTasks returns the tasks among found that write to the same destination bucket as
+// taskScript, which is what makes them this deployment's to update and to delete.
+//
+// Tasks are matched on the generated script's own destBucket assignment, so the marker cannot
+// drift from what DownsampleScript emits. A task carrying no destBucket assignment at all counts
+// as this deployment's: that is the placeholder the "Bring your own InfluxDB" setup in
+// docs/TROUBLESHOOTING_INFLUXDB.md has the operator pre-create, and the documented contract is
+// that Scrutiny replaces its script on startup. It cannot be a second configured deployment's,
+// because every configured deployment writes the assignment. Adopting it matters more than it
+// looks: the token that setup mints can only write the tasks it was scoped to by id, so creating
+// a replacement instead of updating that task is refused and the service fails to start.
+//
+// A generated script without that line is a defect in the template rather than a deployment
+// state, and the second return value reports that ownership could not be decided: the caller
+// then leaves whatever is there alone instead of deleting a task, or creating another, on a
+// guess. A lone task is still updated, which is what the code did before pruning existed.
+func (sr *scrutinyRepository) ownedDownsampleTasks(found []domain.Task, taskScript, label string) ([]*domain.Task, bool) {
+	marker := downsampleDestBucketLine(taskScript)
+	if marker == "" {
+		sr.logger.Errorf("the generated %s downsample script carries no destBucket assignment", label)
+		if len(found) == 1 {
+			return []*domain.Task{&found[0]}, false
+		}
+		return nil, false
+	}
+
+	owned := make([]*domain.Task, 0, len(found))
+	for i := range found {
+		if strings.Contains(found[i].Flux, marker) || downsampleDestBucketLine(found[i].Flux) == "" {
+			owned = append(owned, &found[i])
+		}
+	}
+	if len(owned) < len(found) {
+		// Debug, not a warning: the steady state is two Scrutiny deployments sharing an
+		// organization, which is supported and needs no operator attention, and every pkg/web
+		// and pkg/database test binary pair logs it too. The start that creates a task while
+		// foreign ones are present says so at warning level, in ensureDownsampleTask.
+		sr.logger.Debugf("leaving %d %s task(s) that write to another destination bucket in place", len(found)-len(owned), label)
+	}
+	return owned, true
+}
+
+// downsampleDestBucketLine returns the `destBucket = "..."` assignment from a generated
+// downsample script, or an empty string when the script does not carry one.
+func downsampleDestBucketLine(taskScript string) string {
+	for _, line := range strings.Split(taskScript, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, `destBucket = "`) {
+			return trimmed
+		}
+	}
+	return ""
+}
+
+// findDownsampleTasks lists the tasks named taskName in orgID. The filter is scoped to the
+// organization because task names are unique to neither it nor the task, and an unscoped query
+// matches by name across every organization the token can read.
+func (sr *scrutinyRepository) findDownsampleTasks(ctx context.Context, orgID, taskName, label string) ([]domain.Task, error) {
+	found, err := sr.influxTaskApi.FindTasks(ctx, &api.TaskFilter{Name: taskName, OrgID: orgID})
+	if err != nil {
+		// a lookup failure leaves the task alone, as it always has, but it is no longer silent
+		sr.logger.Warnf("could not look up the %s downsample task: %s", label, err.Error())
+		return nil, err
+	}
+	return found, nil
 }
 
 func (sr *scrutinyRepository) DownsampleScript(aggregationType string, name string, cron string) string {

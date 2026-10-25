@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
+	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +20,7 @@ func TestCompareDeviceSummariesKeepsHostsTogetherBeforeDeviceSort(t *testing.T) 
 	}
 
 	sort.SliceStable(summaries, func(i, j int) bool {
-		return compareDeviceSummaries(summaries[i], summaries[j], "title_asc", "name") < 0
+		return compareDeviceSummaries(summaries[i], summaries[j], "title_asc", "name", pkg.MetricsStatusThresholdBoth) < 0
 	})
 
 	require.Equal(t, []string{"a-1", "a-2", "b-2"}, []string{
@@ -28,18 +30,55 @@ func TestCompareDeviceSummariesKeepsHostsTogetherBeforeDeviceSort(t *testing.T) 
 	})
 }
 
-func TestCompareDeviceSummariesPreservesStatusSortSemantics(t *testing.T) {
-	passed := &models.DeviceSummary{
-		Device:       models.Device{DeviceID: "passed"},
-		SmartResults: &models.SmartSummary{},
+func TestCompareDeviceSummariesStatusSortOrdersBySeverity(t *testing.T) {
+	summary := func(id string, status pkg.DeviceStatus, forced bool, smart bool) *models.DeviceSummary {
+		s := &models.DeviceSummary{Device: models.Device{DeviceID: id, DeviceStatus: status, HasForcedFailure: forced}}
+		if smart {
+			s.SmartResults = &models.SmartSummary{}
+		}
+		return s
 	}
-	failed := &models.DeviceSummary{
-		Device:       models.Device{DeviceID: "failed", DeviceStatus: pkg.DeviceStatusFailedScrutiny},
-		SmartResults: &models.SmartSummary{},
+	newSummaries := func() []*models.DeviceSummary {
+		return []*models.DeviceSummary{
+			summary("passed", pkg.DeviceStatusPassed, false, true),
+			summary("both", pkg.DeviceStatusFailedSmart|pkg.DeviceStatusFailedScrutiny, false, true),
+			summary("unknown", pkg.DeviceStatusPassed, false, false),
+			summary("forced", pkg.DeviceStatusPassed, true, true),
+			summary("smart", pkg.DeviceStatusFailedSmart, false, true),
+			summary("scrutiny", pkg.DeviceStatusFailedScrutiny, false, true),
+		}
 	}
+	ids := func(summaries []*models.DeviceSummary) []string {
+		out := make([]string, len(summaries))
+		for i, s := range summaries {
+			out[i] = s.Device.DeviceID
+		}
+		return out
+	}
+	sortedWith := func(sortBy string, threshold pkg.MetricsStatusThreshold) []string {
+		summaries := newSummaries()
+		sort.SliceStable(summaries, func(i, j int) bool {
+			return compareDeviceSummaries(summaries[i], summaries[j], sortBy, "name", threshold) < 0
+		})
+		return ids(summaries)
+	}
+	sorted := func(sortBy string) []string { return sortedWith(sortBy, pkg.MetricsStatusThresholdBoth) }
 
-	require.Greater(t, compareDeviceSummaries(failed, passed, "status_desc", "name"), 0)
-	require.Less(t, compareDeviceSummaries(failed, passed, "status_asc", "name"), 0)
+	failedFirst := []string{"forced", "both", "scrutiny", "smart", "unknown", "passed"}
+	require.Equal(t, failedFirst, sorted("status_desc"))
+	require.Equal(t, failedFirst, sorted("status"))
+	require.Equal(t, failedFirst, sorted(""))
+	require.Equal(t, []string{"passed", "unknown", "smart", "scrutiny", "both", "forced"}, sorted("status_asc"))
+
+	// An unset threshold behaves like "both", the settings default.
+	require.Equal(t, failedFirst, sortedWith("status_desc", 0))
+
+	// With the SMART-only threshold the badge shows a Scrutiny-only failure as passed,
+	// so the sort ranks it with the passed drive and orders the tie by device ID.
+	require.Equal(t, []string{"forced", "both", "smart", "unknown", "passed", "scrutiny"},
+		sortedWith("status_desc", pkg.MetricsStatusThresholdSmart))
+	require.Equal(t, []string{"forced", "both", "scrutiny", "unknown", "passed", "smart"},
+		sortedWith("status_desc", pkg.MetricsStatusThresholdScrutiny))
 }
 
 func TestDeviceTitleForTypeFallsBackToDeviceName(t *testing.T) {
@@ -79,6 +118,40 @@ func TestBuildSummaryPageFiltersSlicesAndCountsAttention(t *testing.T) {
 	require.NotContains(t, page.Summary, "archived")
 	require.Contains(t, page.Summary, "device-026")
 	require.Contains(t, page.Summary, "device-050")
+}
+
+func TestBuildSummaryPageAttentionCountAppliesThresholdAndForcedFailure(t *testing.T) {
+	summaries := map[string]*models.DeviceSummary{
+		"passed":   {Device: models.Device{DeviceID: "passed"}},
+		"smart":    {Device: models.Device{DeviceID: "smart", DeviceStatus: pkg.DeviceStatusFailedSmart}},
+		"scrutiny": {Device: models.Device{DeviceID: "scrutiny", DeviceStatus: pkg.DeviceStatusFailedScrutiny}},
+		"forced":   {Device: models.Device{DeviceID: "forced", HasForcedFailure: true}},
+		"archived": {Device: models.Device{DeviceID: "archived", DeviceStatus: pkg.DeviceStatusFailedSmart, HasForcedFailure: true, Archived: true}},
+	}
+	attention := func(threshold pkg.MetricsStatusThreshold) int {
+		page := buildSummaryPage(summaries, models.DeviceSummaryPageOptions{Page: 1, PageSize: 25, StatusThreshold: threshold})
+		return page.Pagination.AttentionCount
+	}
+
+	require.Equal(t, 3, attention(0))
+	require.Equal(t, 3, attention(pkg.MetricsStatusThresholdBoth))
+	require.Equal(t, 2, attention(pkg.MetricsStatusThresholdSmart))
+	require.Equal(t, 2, attention(pkg.MetricsStatusThresholdScrutiny))
+}
+
+func TestNormalizeSummaryPageOptionsReadsStatusThresholdSetting(t *testing.T) {
+	appConfig := mock_config.NewMockInterface(gomock.NewController(t))
+	appConfig.EXPECT().GetInt("user.metrics.status_threshold").Return(int(pkg.MetricsStatusThresholdSmart)).Times(1)
+	sr := &scrutinyRepository{appConfig: appConfig}
+
+	options := models.DeviceSummaryPageOptions{Page: 1, PageSize: 25, Sort: "status_desc", Display: "name"}
+	normalizeSummaryPageOptions(sr, &options)
+	require.Equal(t, pkg.MetricsStatusThresholdSmart, options.StatusThreshold)
+
+	// A threshold already set on the options is kept, and the setting is not read again.
+	options = models.DeviceSummaryPageOptions{Page: 1, PageSize: 25, Sort: "status_desc", Display: "name", StatusThreshold: pkg.MetricsStatusThresholdScrutiny}
+	normalizeSummaryPageOptions(sr, &options)
+	require.Equal(t, pkg.MetricsStatusThresholdScrutiny, options.StatusThreshold)
 }
 
 func TestBuildSummaryPageFiltersHostsBeforePagination(t *testing.T) {

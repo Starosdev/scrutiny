@@ -510,6 +510,17 @@ docker run --restart unless-stopped \
 
 The collector requires direct device access (not virtualized). Running benchmarks will temporarily increase I/O on the target drives, so schedule accordingly.
 
+Write tests need a writable filesystem on the target device, because the
+benchmark writes a temporary file into it. Passing the device node alone yields
+read-only results: raw block device write tests are disabled so a benchmark can
+never overwrite data. Mount the device's filesystem into the container
+(`-v /data:/data`) to measure writes. Any filesystem the device backs is
+eligible, including the root filesystem on a single-disk host; set
+`performance.allow_direct_device_io: true` to keep read-only results, or name a
+specific filesystem with `performance.mount_points`. See
+[docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md](./docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md)
+when write tests are skipped.
+
 ### Viewing Results
 
 Performance data appears on the device detail page when benchmark results are available. The UI shows:
@@ -926,6 +937,14 @@ These environment variables are only available when running the collector in Doc
 | `COLLECTOR_RUN_STARTUP` | `false` | Run collector immediately on container start |
 | `COLLECTOR_RUN_STARTUP_SLEEP` | `1` | Delay in seconds before startup collection |
 
+> **Startup runs in the omnibus image.** The all-in-one omnibus image starts the collector once shortly after the web service reports healthy, so its effective default is `true` rather than the `false` shown above. Set `COLLECTOR_RUN_STARTUP` to `false` to suppress that run and leave `COLLECTOR_CRON_SCHEDULE` as the only trigger. The standalone collector and collector-omnibus images default to `false` and run at startup only when the variable is `true`.
+>
+> Values are read the same way `strconv.ParseBool` reads them, so `false`, `False`, `f`, and `0` all suppress the run, with surrounding quotes and whitespace ignored.
+>
+> `COLLECTOR_RUN_STARTUP_SLEEP` has no effect in the all-in-one image. That image waits for the web service and its `/api/health` endpoint instead of sleeping for a fixed interval. The variable applies to the standalone collector images.
+>
+> Unraid installs created from `docker/unraid/scrutiny-omnibus.xml` before this behavior was fixed have `COLLECTOR_RUN_STARTUP` explicitly set to `false`, because that was the template default. Those containers stop collecting at startup once they are updated. Change the field to `true` to keep the previous behavior. The template now ships `true`.
+
 ## Performance Collector
 
 The performance collector is a separate binary (`scrutiny-collector-performance`) that runs fio benchmarks. It can use its own config file (`collector-performance.yaml`) or fall back to the main `collector.yaml`.
@@ -954,6 +973,7 @@ The performance collector checks `COLLECTOR_PERF_` prefixed variables first, the
 | `performance.enabled` | `COLLECTOR_PERFORMANCE_ENABLED` | `false` |
 | `performance.allow_direct_device_io` | `COLLECTOR_PERFORMANCE_ALLOW_DIRECT_DEVICE_IO` | `false` |
 | `performance.temp_file_size` | `COLLECTOR_PERFORMANCE_TEMP_FILE_SIZE` | `256M` |
+| `performance.mount_points.<device>` | `COLLECTOR_PERFORMANCE_MOUNT_POINTS_<DEVICE>` | unset |
 | `commands.performance_fio_bin` | `COLLECTOR_COMMANDS_PERFORMANCE_FIO_BIN` | `fio` |
 | `log.level` | `COLLECTOR_LOG_LEVEL` | `INFO` |
 | `log.file` | `COLLECTOR_PERF_LOG_FILE` or `COLLECTOR_LOG_FILE` | `` |
@@ -965,6 +985,10 @@ The performance collector checks `COLLECTOR_PERF_` prefixed variables first, the
 | `COLLECTOR_PERF_CRON_SCHEDULE` | `0 2 * * 0` | Cron schedule (default: Sunday 2 AM) |
 | `COLLECTOR_PERF_RUN_STARTUP` | `false` | Run benchmark immediately on container start |
 | `COLLECTOR_PERF_RUN_STARTUP_SLEEP` | `1` | Delay in seconds before startup run |
+
+> **Startup runs in the omnibus image.** Setting `COLLECTOR_PERF_CRON_SCHEDULE` also enables a benchmark shortly after the all-in-one omnibus container starts. Set `COLLECTOR_PERF_RUN_STARTUP` to `false` to keep the schedule without the startup benchmark. The same applies to `COLLECTOR_ZFS_RUN_STARTUP`, `COLLECTOR_MDADM_RUN_STARTUP`, `COLLECTOR_BTRFS_RUN_STARTUP`, and `COLLECTOR_FILESYSTEM_RUN_STARTUP`.
+>
+> The matching `*_RUN_STARTUP_SLEEP` variables are likewise ignored by the all-in-one image.
 
 Example:
 
@@ -979,6 +1003,14 @@ docker run --restart unless-stopped \
   -e COLLECTOR_PERF_CRON_SCHEDULE="0 2 * * 0" \
   ghcr.io/starosdev/scrutiny:latest-collector-performance
 ```
+
+`performance.mount_points` maps a device name (`sdb`) or WWN
+(`0x5000cca7aae69487`) to the mount point the benchmark should write its test
+file into, as the collector sees it. The environment variable form uppercases
+the key and maps `-` to `_`, for example
+`COLLECTOR_PERFORMANCE_MOUNT_POINTS_SDB=/data`. Set it when the device's
+filesystem is reached through another layer such as LVM, mdadm, or ZFS. See
+[docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md](./docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md).
 
 ## MDADM Collector
 

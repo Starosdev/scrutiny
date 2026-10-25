@@ -46,7 +46,8 @@ type Filesystem struct {
 	Used               int64            `json:"used"`
 	FreeEstimated      int64            `json:"free_estimated"`
 	FreeMin            int64            `json:"free_min"`
-	FreeStatfs         int64            `json:"free_statfs"`
+	StatfsUsed         int64            `json:"statfs_used"`
+	StatfsAvailable    int64            `json:"statfs_available"` // statfs(2) Bavail read directly.
 	DataRatio          float64          `json:"data_ratio"`
 	MetadataRatio      float64          `json:"metadata_ratio"`
 	DataTotal          int64            `json:"data_total"`

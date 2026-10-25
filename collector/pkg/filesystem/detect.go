@@ -1,62 +1,19 @@
 package filesystem
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"time"
 
+	mountsPkg "github.com/analogj/scrutiny/collector/pkg/mounts"
+	"github.com/analogj/scrutiny/collector/pkg/statfs"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 )
 
-type mountEntry struct {
-	Source     string
-	MountPoint string
-	FSType     string
-}
-
-type statfsResult struct {
-	totalBytes     int64
-	availableBytes int64
-}
-
-var excludedFSTypes = map[string]struct{}{
-	"autofs":      {},
-	"binfmt_misc": {},
-	"bpf":         {},
-	"cgroup":      {},
-	"cgroup2":     {},
-	"configfs":    {},
-	"debugfs":     {},
-	"devpts":      {},
-	"devtmpfs":    {},
-	"fusectl":     {},
-	"hugetlbfs":   {},
-	"mqueue":      {},
-	"nsfs":        {},
-	"overlay":     {},
-	"proc":        {},
-	"pstore":      {},
-	"securityfs":  {},
-	"sysfs":       {},
-	"tmpfs":       {},
-	"tracefs":     {},
-	"zfs":         {},
-}
-
-var excludedMountPoints = map[string]struct{}{
-	"/etc/hostname":          {},
-	"/etc/hosts":             {},
-	"/etc/resolv.conf":       {},
-	"/opt/scrutiny/config":   {},
-	"/opt/scrutiny/influxdb": {},
-}
-
 // CollectLinuxSnapshots collects filesystem snapshots from /proc/mounts.
 func CollectLinuxSnapshots(hostID string, now time.Time) ([]models.FilesystemCapacity, models.FilesystemHostStatus, error) {
-	file, err := os.Open("/proc/mounts")
+	file, err := os.Open(mountsPkg.ProcMounts)
 	if err != nil {
 		return nil, models.FilesystemHostStatus{
 			HostID:          hostID,
@@ -68,11 +25,11 @@ func CollectLinuxSnapshots(hostID string, now time.Time) ([]models.FilesystemCap
 	}
 	defer file.Close()
 
-	return collectSnapshots(file, hostID, now, statfsForPath)
+	return collectSnapshots(file, hostID, now, statfs.Stat)
 }
 
-func collectSnapshots(reader io.Reader, hostID string, now time.Time, statfsFn func(string) (statfsResult, error)) ([]models.FilesystemCapacity, models.FilesystemHostStatus, error) {
-	mounts, err := parseMounts(reader)
+func collectSnapshots(reader io.Reader, hostID string, now time.Time, statfsFn func(string) (statfs.Result, error)) ([]models.FilesystemCapacity, models.FilesystemHostStatus, error) {
+	mountEntries, err := mountsPkg.Parse(reader)
 	if err != nil {
 		return nil, models.FilesystemHostStatus{}, err
 	}
@@ -81,8 +38,8 @@ func collectSnapshots(reader io.Reader, hostID string, now time.Time, statfsFn f
 	eligibleCount := 0
 	failedEligibleCount := 0
 
-	for _, mount := range mounts {
-		if isExcludedFilesystem(mount.FSType) || isExcludedMountPoint(mount.MountPoint) {
+	for _, mount := range mountEntries {
+		if mountsPkg.ExcludedCapacityFSType(mount.FSType) || mountsPkg.ExcludedMountPoint(mount.MountPoint) {
 			continue
 		}
 
@@ -93,14 +50,14 @@ func collectSnapshots(reader io.Reader, hostID string, now time.Time, statfsFn f
 			continue
 		}
 
-		usedBytes := stats.totalBytes - stats.availableBytes
+		usedBytes := stats.Total - stats.Available
 		if usedBytes < 0 {
 			usedBytes = 0
 		}
 
 		usedPercent := 0.0
-		if stats.totalBytes > 0 {
-			usedPercent = (float64(usedBytes) / float64(stats.totalBytes)) * 100
+		if stats.Total > 0 {
+			usedPercent = (float64(usedBytes) / float64(stats.Total)) * 100
 		}
 
 		snapshots = append(snapshots, models.FilesystemCapacity{
@@ -108,9 +65,9 @@ func collectSnapshots(reader io.Reader, hostID string, now time.Time, statfsFn f
 			MountPoint:     mount.MountPoint,
 			SourceDevice:   mount.Source,
 			FilesystemType: mount.FSType,
-			TotalBytes:     stats.totalBytes,
+			TotalBytes:     stats.Total,
 			UsedBytes:      usedBytes,
-			AvailableBytes: stats.availableBytes,
+			AvailableBytes: stats.Available,
 			UsedPercent:    usedPercent,
 			UpdatedAt:      now,
 		})
@@ -129,37 +86,4 @@ func collectSnapshots(reader io.Reader, hostID string, now time.Time, statfsFn f
 	}
 
 	return snapshots, status, nil
-}
-
-func parseMounts(reader io.Reader) ([]mountEntry, error) {
-	mounts := make([]mountEntry, 0)
-	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		fields := strings.Fields(scanner.Text())
-		if len(fields) < 3 {
-			continue
-		}
-
-		mounts = append(mounts, mountEntry{
-			Source:     fields[0],
-			MountPoint: fields[1],
-			FSType:     fields[2],
-		})
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-
-	return mounts, nil
-}
-
-func isExcludedFilesystem(fsType string) bool {
-	_, excluded := excludedFSTypes[fsType]
-	return excluded
-}
-
-func isExcludedMountPoint(mountPoint string) bool {
-	_, excluded := excludedMountPoints[mountPoint]
-	return excluded
 }

@@ -37,19 +37,26 @@ jobs:
             package-lock.json
             webapp/frontend/package-lock.json
 
+      - name: Test audit policy
+        run: node --test .github/scripts/audit-release-tooling.test.mjs
+
       - name: Install release tooling
         run: npm ci --ignore-scripts
 
+      # Allowlists advisories in npm's own bundled dependencies until a fixed npm
+      # release exists (issue 927). Every other finding still fails the step.
       - name: Audit release tooling
-        run: npm audit --audit-level=low
+        run: node .github/scripts/audit-release-tooling.mjs
 
       - name: Install frontend dependencies
         working-directory: webapp/frontend
         run: npm ci --ignore-scripts
 
+      # Same script and allowlist: only an advisory with no patched release
+      # (UNPATCHED_ADVISORIES) can pass here, since the frontend bundles no npm.
       - name: Audit frontend dependencies
         working-directory: webapp/frontend
-        run: npm audit --audit-level=low
+        run: node ../../.github/scripts/audit-release-tooling.mjs
 
   go-vulnerability:
     name: govulncheck

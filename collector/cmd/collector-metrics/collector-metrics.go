@@ -80,7 +80,7 @@ OPTIONS:
 				return nil
 			}
 
-			collectorMetrics := "AnalogJ/scrutiny/metrics"
+			collectorMetrics := "Staros-Labs/scrutiny/metrics"
 
 			var versionInfo string
 			if len(goos) > 0 && len(goarch) > 0 {
@@ -263,7 +263,7 @@ OPTIONS:
 
 					&cli.StringFlag{
 						Name:  "cron-schedule",
-						Usage: "Cron expression for scheduled collection (e.g. \"0 * * * *\"). If not set, the collector runs once and exits.",
+						Usage: "Cron expression for scheduled collection (e.g. \"0 * * * *\"). Pass --cron-schedule= to run once regardless of environment or config.",
 					},
 
 					&cli.BoolFlag{

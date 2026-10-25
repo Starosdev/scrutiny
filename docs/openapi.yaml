@@ -3699,7 +3699,10 @@ components:
         free_estimated:
           type: integer
           format: int64
-        free_statfs:
+        statfs_used:
+          type: integer
+          format: int64
+        statfs_available:
           type: integer
           format: int64
         scrub_read_errors:

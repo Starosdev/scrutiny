@@ -30,6 +30,14 @@ Last updated: 2026-09-10
 
 ## Security Status
 
+### Frontend tooling fixes (2026-10-21)
+
+The frontend overrides require `follow-redirects` 1.16.1 or later in the 1.x series and Vite 8.3.3 or later in the 8.x series. The lockfile resolves 1.16.1 and 8.3.5 respectively. Angular build tooling 22.2.2 pins Vite 8.3.0, so a lockfile refresh alone cannot replace that vulnerable version. Keep the Vite override until the Angular dependency pins a patched version.
+
+These updates address the credential-header leaks in `follow-redirects` and the editor-launch vulnerabilities bundled in Vite. Both packages are development dependencies. The production Docker image copies compiled frontend assets rather than frontend `node_modules`.
+
+Run `node ../../.github/scripts/audit-release-tooling.mjs` from `webapp/frontend` after dependency updates. The existing audit allowlist remains unchanged. A passing gate can still include the documented, temporary exception for the unpatched `braces` advisory. See issue #1022 and the related `follow-redirects` update in PR #1019.
+
 ### Current baseline (2026-09-10)
 
 - Root release tooling: `npm audit --audit-level=low` reports 0 vulnerabilities.
@@ -44,6 +52,37 @@ Last updated: 2026-09-10
 - **Approach:** Use security minimums in npm overrides, regenerate both lockfiles, replace legacy `go-util` helpers with tested standard-library code, add blocking npm and Go reachability checks, and require patched Go 1.26.8.
 - **Dead ends:** The latest `go-util` release still imports `golang.org/x/crypto/ssh/terminal`. Go 1.25.0 reports patched standard-library findings. The approved Go 1.26 expansion resolves fixed `x/crypto` findings while retaining one uncalled advisory with no fixed release.
 - **Rule:** Keep security overrides at patched version floors, run audits against committed lockfiles, and separate uncalled module findings from reachable vulnerabilities.
+
+### Release-tooling audit repair (2026-10-24)
+
+PR #1029 updates the root lockfile to Undici 6.29.1 and 7.30.1, within the
+existing dependency ranges. These versions fix the findings in the active
+release tooling. The npm override now requires at least 11.21.1, which also
+removes the older bundled brace-expansion, http-cache-semantics, and
+postcss-selector-parser findings.
+
+The [npm 11.21.1 release](https://github.com/npm/cli/releases/tag/v11.21.1)
+still bundles ip-address 10.7.2 and Undici 6.29.0. Root `npm audit` therefore
+still reports two vulnerable packages. The audit gate permits only these three
+advisories, only under `node_modules/npm/node_modules/`:
+
+- [GHSA-rxp7-6hxx-x8q5](https://github.com/advisories/GHSA-rxp7-6hxx-x8q5): ip-address zone parsing.
+- [GHSA-4qv8-2p9j-2685](https://github.com/advisories/GHSA-4qv8-2p9j-2685): Undici EventSource memory use.
+- [GHSA-xjj6-f33q-929c](https://github.com/advisories/GHSA-xjj6-f33q-929c): Undici content-encoding error handling.
+
+The bundled npm remains unused because `.releaserc.json` explicitly lists its
+plugins and excludes `@semantic-release/npm`. Overrides cannot replace bundled
+files. The existing expiry remains November 1, 2026; no exception applies to
+active Undici copies outside that bundle. Policy tests enforce the path and
+expiry boundaries and the plugin configuration. A passing gate does not mean
+that the bundled vulnerabilities are patched. Reassess the exception before
+its expiry and whenever the release plugin list changes.
+
+Once the root audit passes, the same CI job reaches the frontend audit. Patch
+updates to body-parser 1.20.9 and fast-uri 3.1.9 clear their findings. Angular
+CLI 22.2.3 from the target branch brings its pinned Zod dependency to the patched 4.6.6 release.
+The existing body-parser and fast-uri override floors match those patches.
+No frontend advisory exception is added.
 
 ### Known Reachable Vulnerabilities
 

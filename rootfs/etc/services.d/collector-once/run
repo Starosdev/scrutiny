@@ -4,6 +4,15 @@ log_info() {
   printf 'time="%s" level=info msg="%s" type=metrics\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$1"
 }
 
+. /etc/scrutiny/startup-gate.sh
+
+# An explicit false suppresses the startup collection only. Any configured cron schedule still applies.
+if scrutiny_startup_disabled "${COLLECTOR_RUN_STARTUP-}"; then
+  log_info "COLLECTOR_RUN_STARTUP is false, skipping startup collection (cron schedule still applies)"
+  s6-svc -D /run/service/collector-once
+  exit 0
+fi
+
 # ensure not run (successfully) before
 if [ -f /tmp/custom-init-performed ]; then
   log_info "custom init already performed"
@@ -18,7 +27,7 @@ s6-svwait -u /run/service/scrutiny
 until $(curl --output /dev/null --silent --head --fail http://localhost:8080/api/health); do log_info "scrutiny api not ready" && sleep 5; done
 
 log_info "starting scrutiny collector (run-once mode. subsequent calls will be triggered via cron service)"
-COLLECTOR_CRON_SCHEDULE= COLLECTOR_RUN_STARTUP= /opt/scrutiny/bin/scrutiny-collector-metrics run
+COLLECTOR_CRON_SCHEDULE= COLLECTOR_RUN_STARTUP= /opt/scrutiny/bin/scrutiny-collector-metrics run --cron-schedule=""
 
 # prevent script's core logic from running again
 touch /tmp/custom-init-performed

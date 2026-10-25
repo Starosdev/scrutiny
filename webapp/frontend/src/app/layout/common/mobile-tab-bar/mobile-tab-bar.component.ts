@@ -1,10 +1,10 @@
 import { Component, OnDestroy, OnInit, ViewEncapsulation, inject, ChangeDetectionStrategy } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
-import { Subject } from 'rxjs';
+import { combineLatest, Subject } from 'rxjs';
 import { filter, takeUntil } from 'rxjs/operators';
 import { DashboardService } from 'app/modules/dashboard/dashboard.service';
 import { MatIcon } from '@angular/material/icon';
-import { AppConfig } from 'app/core/config/app.config';
+import { AppConfig, MetricsStatusThreshold } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 
 interface TabItem {
@@ -81,17 +81,24 @@ export class MobileTabBarComponent implements OnInit, OnDestroy {
                 this.isDetailPage = this._isDetailRoute(event.urlAfterRedirects);
             });
 
-        this._dashboardService.data$.pipe(takeUntil(this._unsubscribeAll)).subscribe((data) => {
-            if (data) {
-                this.drivesNeedAttention = 0;
-                for (const wwn in data) {
-                    const status = data[wwn].device?.device_status;
-                    if (status && status > 0 && !data[wwn].device?.archived) {
-                        this.drivesNeedAttention++;
+        // The status threshold decides which failures count, so recount when either changes.
+        combineLatest([this._dashboardService.data$, this._configService.config$])
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(([data, config]) => {
+                if (data) {
+                    this.drivesNeedAttention = 0;
+                    // Mirrors summaryNeedsAttention in the backend summary page. Like it, a drive
+                    // with a failed stored status still counts when it has no SMART results.
+                    const threshold = config?.metrics?.status_threshold || MetricsStatusThreshold.Both;
+                    for (const wwn in data) {
+                        const device = data[wwn].device;
+                        // tslint:disable-next-line:no-bitwise
+                        if (device && !device.archived && (device.has_forced_failure || (device.device_status & threshold) !== 0)) {
+                            this.drivesNeedAttention++;
+                        }
                     }
                 }
-            }
-        });
+            });
 
         this._dashboardService.pageData$.pipe(takeUntil(this._unsubscribeAll)).subscribe((data) => {
             if (data) {

@@ -50,7 +50,7 @@ OPTIONS:
 		},
 		Before: func(c *cli.Context) error {
 
-			collectorSelfTest := "AnalogJ/scrutiny/selftest"
+			collectorSelfTest := "Staros-Labs/scrutiny/selftest"
 
 			var versionInfo string
 			if len(goos) > 0 && len(goarch) > 0 {

@@ -144,6 +144,10 @@ devices:
 #  metrics_scan_args: '--scan --json' # used to detect devices
 #  metrics_info_args: '--info --json' # used to determine device unique ID & register device with Scrutiny
 #  metrics_smart_args: '--xall --json' # used to retrieve smart data for each device.
+#                                      # To avoid waking sleeping drives, add '-n standby':
+#                                      #   metrics_smart_args: '--xall --json -n standby'
+#                                      # A drive in standby is skipped (logged at INFO, no collector
+#                                      # error or notification) and keeps its last collected data.
 #  metrics_smartctl_wait: 0 # time to wait in seconds between each disk's check
 #  metrics_api_retry_count: 2 # number of retries for transient API publish failures after the first attempt
 #  metrics_api_retry_delay: 2 # initial delay in seconds before retrying a transient API publish failure; later retries back off exponentially
@@ -165,6 +169,7 @@ devices:
 #   performance.enabled         -> COLLECTOR_PERFORMANCE_ENABLED
 #   performance.profile         -> COLLECTOR_PERFORMANCE_PROFILE
 #   performance.temp_file_size  -> COLLECTOR_PERFORMANCE_TEMP_FILE_SIZE
+#   performance.mount_points.sda -> COLLECTOR_PERFORMANCE_MOUNT_POINTS_SDA
 #   commands.performance_fio_bin -> COLLECTOR_COMMANDS_PERFORMANCE_FIO_BIN
 #
 ########################################################################################################################
@@ -174,6 +179,8 @@ devices:
 #  profile: 'quick'           # 'quick' (~60s per device) or 'comprehensive' (~300s per device)
 #  allow_direct_device_io: false  # Benchmark raw block device (/dev/sdX) directly. Read-only (write tests skipped for safety).
 #  temp_file_size: '256M'     # Size of temp file for benchmarks (used in quick profile)
+#  mount_points:              # Mount point per device, required for write tests in containers.
+#    sda: '/mnt/data'         # Key: device name or WWN. See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md
 
 #commands:
 #  performance_fio_bin: 'fio'  # Path to fio binary
