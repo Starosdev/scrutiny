@@ -66,17 +66,17 @@ for fn in log_info run_startup_collector; do
 done
 bash -n "$WORK/helper.sh" || fail "helper extraction: result is not valid bash"
 
-cat > "$WORK/fake-collector" <<'EOF'
+cat > "$WORK/scrutiny-collector-metrics" <<'EOF'
 #!/bin/bash
 echo "collector ran with: $*"
 EOF
-chmod +x "$WORK/fake-collector"
+chmod +x "$WORK/scrutiny-collector-metrics"
 
 run_helper() {
     # shellcheck source=/dev/null
     source "$WORK/helper.sh"
     run_startup_collector "COLLECTOR_RUN_STARTUP" "COLLECTOR_RUN_STARTUP_SLEEP" \
-        "$WORK/fake-collector" "scrutiny metrics" "metrics" \
+        "$WORK/scrutiny-collector-metrics" "scrutiny metrics" "metrics" \
         "COLLECTOR_CRON_SCHEDULE" "${1:-}" 2>&1
 }
 
@@ -105,8 +105,19 @@ assert_not_contains "$override" "0 0 * * *" "omnibus skip must not report the de
 # Startup enabled: run the binary, and do not log a skip.
 ran=$(COLLECTOR_RUN_STARTUP=true COLLECTOR_RUN_STARTUP_SLEEP=0 run_helper "0 0 * * *")
 assert_contains "$ran" "run-once mode" "omnibus run"
-assert_contains "$ran" "collector ran with" "omnibus run invokes the binary"
+assert_contains "$ran" "collector ran with: run --cron-schedule=" "omnibus run forces one collection"
 assert_not_contains "$ran" "startup collection is disabled" "omnibus run must not log a skip"
+
+# Exercise the SMART invocation from each Docker call site with the same stub.
+# The CLI tests cover environment/YAML precedence. These checks catch a missing
+# explicit override in a launcher without starting cron or accessing devices.
+for relative in docker/entrypoint-collector.sh rootfs/etc/services.d/collector-once/run rootfs/etc/cron.d/scrutiny; do
+    invocation=$(sed -n 's|.*\(/opt/scrutiny/bin/scrutiny-collector-metrics run[^>]*\).*|\1|p' "$ROOT/$relative")
+    [[ -n "$invocation" ]] || { fail "$relative: missing SMART invocation"; continue; }
+    invocation=${invocation/\/opt\/scrutiny\/bin\/scrutiny-collector-metrics/"$WORK\/scrutiny-collector-metrics"}
+    output=$(bash -c "$invocation")
+    assert_contains "$output" "collector ran with: run --cron-schedule=" "$relative forces one collection"
+done
 
 ########################################
 # Standalone entrypoints: every startup branch has a logged else
