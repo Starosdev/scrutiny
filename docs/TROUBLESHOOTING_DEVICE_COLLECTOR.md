@@ -280,6 +280,66 @@ instead of the block device (`/dev/nvme0n1`).
 >
 > In enterprise-grade hardware, there might be support for several namespaces, thin provisioning within namespaces and other features. For now, you could think namespaces as sort of meta-partitions with extra features for enterprise use.
 
+#### Using `device_cgroup_rules` for NVMe
+
+`device_cgroup_rules` helps when disk paths are not stable, for example in a hot-swap bay,
+because a rule can use a wildcard minor number instead of naming each device. It is not a
+replacement for `devices`.
+
+Read this first: `device_cgroup_rules` grants permission only. It does not create the
+device node inside the container, which `devices` does. Pair the rules with a `/dev:/dev`
+mount, or keep a `devices` entry for each disk. Rules on their own give a container with
+no `/dev/nvme*` at all, and then `smartctl --scan` finds nothing.
+
+A rule such as `b 259:* rwm` grants the NVMe namespace block devices (`/dev/nvme0n1`).
+Those cover the performance collector, which runs fio against a namespace, but they do not
+cover SMART. The collector reads NVMe SMART data from the controller character device
+(`/dev/nvme0`), which is a different device class, so a block rule never matches it. The
+NVMe driver takes its character major number from `alloc_chrdev_region()`, so the kernel
+assigns that number at module load. Do not hardcode it from memory: the value depends on
+module load order, and it differs between kernels and between boots.
+
+Mounting `/dev` does not grant the permission. The node becomes visible, but the device
+cgroup is enforced when a process opens the node, so the open of `/dev/nvme0` fails with
+`EPERM`, smartctl never reaches its admin passthrough command, and the drive is registered
+with no SMART values. Capabilities are a separate requirement: `SYS_RAWIO` and `SYS_ADMIN`
+are also needed, and granting them does not substitute for the character rule.
+
+Two options work. The first is recommended.
+
+1. Add a `devices` entry for each NVMe controller. Docker reads the real major and minor
+   numbers of the node and writes the matching `c <major>:<minor> rwm` rule for you, so
+   there is no number to maintain.
+
+   ```yaml
+   devices:
+     - /dev/nvme0:/dev/nvme0
+   ```
+
+   A `/dev:/dev` bind mount then hides the node that Docker created. That is harmless,
+   because the host node carries the same major and minor numbers, and the cgroup rule is
+   the part that was missing.
+
+2. Keep the `/dev:/dev` mount for the nodes, read the major number on the host, and write
+   the character rule yourself.
+
+   ```bash
+   ls -l /dev/nvme0
+   # crw------- 1 root root 240, 0 Jan  1 00:00 /dev/nvme0
+   ```
+
+   ```yaml
+   device_cgroup_rules:
+     - "c 240:* rwm"
+   ```
+
+   The `240` above is this host's value, not a constant. Read it again after a kernel
+   upgrade, and on every host you deploy to.
+
+Before you change the configuration, read the collector log with `docker logs <container>`.
+The collector reports the `smartctl` exit code when it cannot open a device, which tells
+you whether access is the actual cause.
+
 ### ATA
 
 ### USB Devices
@@ -505,3 +565,9 @@ You can force the collector to run on startup using the following env variables:
 - `-e COLLECTOR_RUN_STARTUP_SLEEP=10` - if `COLLECTOR_RUN_STARTUP` is enabled, you can use this env variable to
   configure the delay before the collector is run (default: `1` second). Used to ensure the web container has started
   successfully.  
+
+When startup collection is disabled, the container logs that it skipped the run and names
+the variable responsible, so `docker logs <container>` tells you whether a restart
+collected anything. This matters after a configuration change: with startup collection
+off, nothing is collected until the next cron tick, and until then the dashboard still
+shows the previous run's data.

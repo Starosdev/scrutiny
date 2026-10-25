@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -263,7 +264,7 @@ func (c *Collector) Benchmark(device *models.Device, profile string) (*models.Pe
 	if result.SeqReadBwBytes == 0 && result.RandReadIOPS == 0 {
 		hint := ""
 		if directIO {
-			hint = ". Hint: configure performance.mount_points in collector-performance.yaml to specify the filesystem mount point for this device, or ensure the container has sufficient capabilities for raw block device access"
+			hint = ". Hint: configure performance.mount_points in collector-performance.yaml to specify the filesystem mount point for this device, or ensure the container has sufficient capabilities for raw block device access. See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md"
 		}
 		return nil, fmt.Errorf("all read benchmarks produced zero results for %s -- skipping (device may be inaccessible%s)", device.DeviceName, hint)
 	}
@@ -327,50 +328,102 @@ func (c *Collector) resolveTargetPath(device *models.Device) (string, func(), bo
 
 	// Check for explicitly configured mount point (by device name, then by WWN)
 	if configuredMount := c.lookupConfiguredMountPoint(device); configuredMount != "" {
-		if _, statErr := os.Stat(configuredMount); statErr != nil {
-			c.logger.Warnf("Configured mount point %s for device %s does not exist: %v -- ignoring", configuredMount, device.DeviceName, statErr)
-		} else {
-			requiredSize := c.getRequiredTestFileSize()
-			suitable, reason := isMountPointSuitable(configuredMount, requiredSize)
-			if !suitable {
-				c.logger.Warnf("Configured mount point %s for device %s is not suitable: %s -- ignoring", configuredMount, device.DeviceName, reason)
+		// A configured path can be a symlink, unlike a mount point read from the
+		// mount table. Resolve it first, or the filesystem checks run against the
+		// symlink's own filesystem while the write lands on the target's.
+		resolvedMount := configuredMount
+		if resolved, err := filepath.EvalSymlinks(configuredMount); err != nil {
+			c.logger.Warnf("Could not resolve configured mount point %s for device %s: %v -- ignoring", configuredMount, device.DeviceName, err)
+			resolvedMount = ""
+		} else if resolved != configuredMount {
+			c.logger.Infof("Configured mount point %s for device %s resolves to %s", configuredMount, device.DeviceName, resolved)
+			resolvedMount = resolved
+		}
+
+		if resolvedMount != "" {
+			usable, reason := c.mountPointUsable(resolvedMount)
+			if !usable {
+				c.logger.Warnf("Configured mount point %s (resolved to %s) for device %s is not suitable: %s -- ignoring", configuredMount, resolvedMount, device.DeviceName, reason)
 			} else {
-				c.logger.Infof("Using configured mount point %s for device %s", configuredMount, device.DeviceName)
-				tempFile := fmt.Sprintf("%s/.scrutiny_perf_bench", configuredMount)
-				cleanup := func() {
-					os.Remove(tempFile)
-				}
-				return tempFile, cleanup, false, nil
+				c.logger.Infof("Using configured mount point %s for device %s", resolvedMount, device.DeviceName)
+				return benchmarkFileTarget(resolvedMount)
 			}
 		}
 	}
 
-	// Explicit opt-in takes precedence (now uses namespace device for NVMe)
+	// Opt in to raw device I/O, unless a mount point was configured for this
+	// device above (now uses namespace device for NVMe)
 	if c.config.GetBool("performance.allow_direct_device_io") {
 		c.logger.Infof("Direct device I/O enabled -- benchmarking %s (read-only, write tests skipped)", effectiveDevicePath)
 		return effectiveDevicePath, nil, true, nil
 	}
 
-	// Try to find mount point for the device
-	mountPoint, err := findMountPoint(effectiveDevicePath)
+	// Find the mount points this device backs, including its partitions
+	candidates, err := deviceMountCandidates(effectiveDevicePath)
 	if err != nil {
-		c.logger.Warnf("Could not find mount point for %s: %v -- falling back to direct device I/O (read-only)", effectiveDevicePath, err)
+		c.logger.Warnf("Could not find mount point for %s: %v -- falling back to direct device I/O (read-only, write tests skipped). See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md", effectiveDevicePath, err)
 		return effectiveDevicePath, nil, true, nil
 	}
 
-	// Validate the mount point is suitable for benchmarking
-	requiredSize := c.getRequiredTestFileSize()
-	suitable, reason := isMountPointSuitable(mountPoint, requiredSize)
-	if !suitable {
-		c.logger.Warnf("Mount point %s for device %s is not suitable: %s -- falling back to direct device I/O (read-only)", mountPoint, effectiveDevicePath, reason)
-		return effectiveDevicePath, nil, true, nil
+	// Take the first candidate the benchmark can actually use. A device can back
+	// several filesystems, and only some of them are writable with room to spare.
+	rejections := make([]string, 0, len(candidates))
+	for _, mountPoint := range candidates {
+		usable, reason := c.mountPointUsable(mountPoint)
+		if !usable {
+			c.logger.Debugf("Mount point %s for device %s is not suitable: %s", mountPoint, effectiveDevicePath, reason)
+			rejections = append(rejections, reason)
+			continue
+		}
+		c.logger.Infof("Using mount point %s for device %s", mountPoint, effectiveDevicePath)
+		return benchmarkFileTarget(mountPoint)
 	}
 
-	tempFile := fmt.Sprintf("%s/.scrutiny_perf_bench", mountPoint)
+	// Report why, not just that it failed: "no mount point found" sends a user
+	// looking for a missing bind mount when the real cause was a read-only one.
+	if len(rejections) == 0 {
+		c.logger.Warnf("No mount point found for %s or its partitions -- falling back to direct device I/O (read-only, write tests skipped). See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md", effectiveDevicePath)
+	} else {
+		c.logger.Warnf("No usable mount point for %s (%s) -- falling back to direct device I/O (read-only, write tests skipped). See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md", effectiveDevicePath, strings.Join(rejections, "; "))
+	}
+	return effectiveDevicePath, nil, true, nil
+}
+
+// mountPointUsable reports whether a benchmark can write its test file into a
+// mount point, and why not when it cannot.
+func (c *Collector) mountPointUsable(mountPoint string) (bool, string) {
+	if suitable, reason := isMountPointSuitable(mountPoint, c.getRequiredTestFileSize()); !suitable {
+		return false, reason
+	}
+	return canCreateFileIn(mountPoint)
+}
+
+// canCreateFileIn confirms the collector can actually create a file in a
+// directory. The mount table reports how a filesystem was mounted, not what
+// this process may do: a root-owned directory, an exhausted inode quota, or an
+// overlay the container cannot write passes every other check and fails inside
+// fio, where the failure is logged as a warning and published as a zero.
+//
+// The probe file is empty, so it does not detect a block quota. Catching that
+// would mean writing the whole test file twice.
+func canCreateFileIn(dir string) (bool, string) {
+	probe, err := os.CreateTemp(dir, ".scrutiny_perf_probe-*")
+	if err != nil {
+		return false, fmt.Sprintf("cannot create a file in %s: %v", dir, err)
+	}
+	probeName := probe.Name()
+	probe.Close()
+	os.Remove(probeName)
+	return true, ""
+}
+
+// benchmarkFileTarget returns the test file path inside a mount point, with the
+// cleanup that removes it.
+func benchmarkFileTarget(mountPoint string) (string, func(), bool, error) {
+	tempFile := filepath.Join(mountPoint, ".scrutiny_perf_bench")
 	cleanup := func() {
 		os.Remove(tempFile)
 	}
-
 	return tempFile, cleanup, false, nil
 }
 
@@ -503,27 +556,4 @@ func (c *Collector) runFio(fioBin string, args []string) ([]byte, error) {
 	}
 
 	return stdout.Bytes(), nil
-}
-
-// findMountPoint finds the mount point for a given device path
-func findMountPoint(devicePath string) (string, error) {
-	// Use df to find the mount point
-	cmd := exec.Command("df", devicePath)
-	output, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("df command failed for %s: %w", devicePath, err)
-	}
-
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	if len(lines) < 2 {
-		return "", fmt.Errorf("unexpected df output for %s", devicePath)
-	}
-
-	// The mount point is the last field in the second line
-	fields := strings.Fields(lines[1])
-	if len(fields) == 0 {
-		return "", fmt.Errorf("could not parse df output for %s", devicePath)
-	}
-
-	return fields[len(fields)-1], nil
 }

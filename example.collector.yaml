@@ -188,6 +188,7 @@ devices:
 #   performance.enabled         -> COLLECTOR_PERFORMANCE_ENABLED
 #   performance.profile         -> COLLECTOR_PERFORMANCE_PROFILE
 #   performance.temp_file_size  -> COLLECTOR_PERFORMANCE_TEMP_FILE_SIZE
+#   performance.mount_points.sda -> COLLECTOR_PERFORMANCE_MOUNT_POINTS_SDA
 #   commands.performance_fio_bin -> COLLECTOR_COMMANDS_PERFORMANCE_FIO_BIN
 #
 ########################################################################################################################
@@ -197,6 +198,8 @@ devices:
 #  profile: 'quick'           # 'quick' (~60s per device) or 'comprehensive' (~300s per device)
 #  allow_direct_device_io: false  # Benchmark raw block device (/dev/sdX) directly. Read-only (write tests skipped for safety).
 #  temp_file_size: '256M'     # Size of temp file for benchmarks (used in quick profile)
+#  mount_points:              # Mount point per device, required for write tests in containers.
+#    sda: '/mnt/data'         # Key: device name or WWN. See docs/TROUBLESHOOTING_PERFORMANCE_COLLECTOR.md
 
 #commands:
 #  performance_fio_bin: 'fio'  # Path to fio binary
