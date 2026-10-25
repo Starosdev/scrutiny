@@ -550,3 +550,17 @@ The dashboard's **Run collectors** action, the omnibus manager, and Docker SMART
 cron and startup jobs pass this override. Removing the environment variable alone
 does not disable a schedule in the YAML file. Standalone scheduled runs without
 this override retain their configured schedule.
+
+### Optional collectors in the dashboard
+
+The dashboard's **Run collectors** action runs SMART by default. It runs ZFS and
+MDADM only when their cron schedule is nonempty or their startup flag is true.
+These are the same enablement conditions used by the all-in-one image:
+
+- ZFS: `COLLECTOR_ZFS_CRON_SCHEDULE` or `COLLECTOR_ZFS_RUN_STARTUP`
+- MDADM: `COLLECTOR_MDADM_CRON_SCHEDULE` or `COLLECTOR_MDADM_RUN_STARTUP`
+
+A false startup flag prevents startup collection. It does not disable manual
+collection when a cron schedule is set. Installed binaries alone do not enable
+optional collectors. Disabled collectors log a skip message. Errors from enabled
+collectors remain failures, including missing access to `/dev/zfs` for ZFS.
