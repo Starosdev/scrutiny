@@ -24,23 +24,12 @@ import { execFileSync } from 'node:child_process';
 const ALLOWLIST_EXPIRES = '2026-11-01';
 const BUNDLED_NPM_PREFIX = 'node_modules/npm/node_modules/';
 const ALLOWED_ADVISORIES = new Set([
-  // brace-expansion
-  'GHSA-q2hr-2g5m-vwhr',
-  'GHSA-qhr7-859c-m2p7',
-  'GHSA-6j4f-fj2g-mc7p',
-  // ip-address
-  'GHSA-rpw4-54j3-4h4q',
-  'GHSA-2vr4-cq9g-pvrc',
-  'GHSA-j6r3-76f7-8jcv',
-  'GHSA-h3mg-xc3c-68pw',
-  // undici
-  'GHSA-3wwx-pv8p-q78v',
-  'GHSA-r53p-7pc4-xj5r',
-  'GHSA-rfgv-xxqx-mfg5',
-  // http-cache-semantics
-  'GHSA-ch52-4w7c-c8xp',
-  // postcss-selector-parser
-  'GHSA-rj75-hqrm-r3gf',
+  // npm 11.21.1 bundles ip-address 10.7.2 and undici 6.29.0. These copies
+  // cannot be overridden. The configured release plugins do not execute npm.
+  // See docs/DEPENDENCIES.md for the audit and upstream release evidence.
+  'GHSA-rxp7-6hxx-x8q5', // ip-address
+  'GHSA-4qv8-2p9j-2685', // undici EventSource parser
+  'GHSA-xjj6-f33q-929c', // undici content encodings
 ]);
 const UNPATCHED_ADVISORIES = new Map([
   // braces <= 3.0.3, the latest release: stack exhaustion from deeply nested brace
