@@ -80,7 +80,7 @@ its expiry and whenever the release plugin list changes.
 
 Once the root audit passes, the same CI job reaches the frontend audit. Patch
 updates to body-parser 1.20.9 and fast-uri 3.1.9 clear their findings. Angular
-CLI 22.2.4 brings its pinned Zod dependency to the patched 4.6.6 release.
+CLI 22.2.3 from the target branch brings its pinned Zod dependency to the patched 4.6.6 release.
 The existing body-parser and fast-uri override floors match those patches.
 No frontend advisory exception is added.
 
