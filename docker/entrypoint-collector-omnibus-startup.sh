@@ -33,7 +33,11 @@ run_startup_collector() {
 
     log_info "${component}" "starting ${label} collector (run-once mode)"
     sleep "${delay}"
-    "${binary}" run
+    local -a args=(run)
+    if [ "${binary##*/}" = "scrutiny-collector-metrics" ]; then
+        args+=(--cron-schedule=)
+    fi
+    "${binary}" "${args[@]}"
 }
 
 run_startup_collector "COLLECTOR_RUN_STARTUP" "COLLECTOR_RUN_STARTUP_SLEEP" \
