@@ -3,15 +3,19 @@ package handler
 import (
 	"context"
 	"net/http"
+	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/analogj/scrutiny/collector/pkg/omnibus"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
-// TriggerCollectors triggers all local collector binaries sequentially in the background
+// TriggerCollectors runs enabled local SMART, ZFS, and MDADM collectors sequentially.
 func TriggerCollectors(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 
@@ -36,6 +40,10 @@ func TriggerCollectors(c *gin.Context) {
 		logger.Info("Starting manual sequential collector run")
 
 		for _, bin := range collectors {
+			if !manualCollectorEnabled(bin) {
+				logger.Infof("Collector %s disabled, skipping manual run", bin)
+				continue
+			}
 			// Check if binary exists before trying to run it
 			path, err := exec.LookPath(bin)
 			if err != nil {
@@ -70,4 +78,29 @@ func TriggerCollectors(c *gin.Context) {
 		"success": true,
 		"message": "Collectors triggered successfully",
 	})
+}
+
+// manualCollectorEnabled follows the all-in-one image's optional collector gate.
+// A false startup flag suppresses startup only; a schedule still enables manual runs.
+func manualCollectorEnabled(binaryName string) bool {
+	for _, spec := range omnibus.CollectorSpecs {
+		if spec.BinaryName != binaryName {
+			continue
+		}
+		// Ignore env-file quoting and padding when checking for a schedule.
+		schedule := strings.Trim(os.Getenv(spec.ScheduleEnv), "\"' \t\r\n")
+		if spec.Name == "metrics" || schedule != "" {
+			return true
+		}
+		// Match /etc/scrutiny/startup-gate.sh, including quoted env-file values.
+		startup := strings.Map(func(r rune) rune {
+			if r == '\'' || r == '"' || unicode.IsSpace(r) {
+				return -1
+			}
+			return unicode.ToLower(r)
+		}, os.Getenv(spec.RunStartupEnv))
+		enabled, _ := strconv.ParseBool(startup)
+		return enabled
+	}
+	return false
 }
