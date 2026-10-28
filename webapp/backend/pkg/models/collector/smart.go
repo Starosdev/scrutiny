@@ -497,23 +497,30 @@ type NvmeSmartHealthInformationLog struct {
 	CriticalCompTime        int64 `json:"critical_comp_time"`
 }
 
+// ScsiErrorCounters holds one group of the SCSI Error Counter log pages
+// (read: 0x02, write: 0x03, verify: 0x05). All three pages report the same
+// seven counters, so they share one type.
+type ScsiErrorCounters struct {
+	// The string is declared first because govet's fieldalignment analyzer, which this repo
+	// runs with enable-all, reports the struct's leading pointer bytes: every pointer-bearing
+	// field belongs ahead of the plain integers.
+	GigabytesProcessed               string `json:"gigabytes_processed"`
+	ErrorsCorrectedByEccfast         int64  `json:"errors_corrected_by_eccfast"`
+	ErrorsCorrectedByEccdelayed      int64  `json:"errors_corrected_by_eccdelayed"`
+	ErrorsCorrectedByRereadsRewrites int64  `json:"errors_corrected_by_rereads_rewrites"`
+	TotalErrorsCorrected             int64  `json:"total_errors_corrected"`
+	CorrectionAlgorithmInvocations   int64  `json:"correction_algorithm_invocations"`
+	TotalUncorrectedErrors           int64  `json:"total_uncorrected_errors"`
+}
+
 type ScsiErrorCounterLog struct {
-	Read struct {
-		ErrorsCorrectedByEccfast         int64  `json:"errors_corrected_by_eccfast"`
-		ErrorsCorrectedByEccdelayed      int64  `json:"errors_corrected_by_eccdelayed"`
-		ErrorsCorrectedByRereadsRewrites int64  `json:"errors_corrected_by_rereads_rewrites"`
-		TotalErrorsCorrected             int64  `json:"total_errors_corrected"`
-		CorrectionAlgorithmInvocations   int64  `json:"correction_algorithm_invocations"`
-		GigabytesProcessed               string `json:"gigabytes_processed"`
-		TotalUncorrectedErrors           int64  `json:"total_uncorrected_errors"`
-	} `json:"read"`
-	Write struct {
-		ErrorsCorrectedByEccfast         int64  `json:"errors_corrected_by_eccfast"`
-		ErrorsCorrectedByEccdelayed      int64  `json:"errors_corrected_by_eccdelayed"`
-		ErrorsCorrectedByRereadsRewrites int64  `json:"errors_corrected_by_rereads_rewrites"`
-		TotalErrorsCorrected             int64  `json:"total_errors_corrected"`
-		CorrectionAlgorithmInvocations   int64  `json:"correction_algorithm_invocations"`
-		GigabytesProcessed               string `json:"gigabytes_processed"`
-		TotalUncorrectedErrors           int64  `json:"total_uncorrected_errors"`
-	} `json:"write"`
+	// Verify is the Verify Error Counter log page (0x05). It is a pointer because
+	// a drive that does not support the page reports no "verify" key at all, which
+	// a value type cannot tell apart from a drive reporting all-zero counters. Being
+	// the only pointer here it is also declared first, for the same fieldalignment
+	// reason as ScsiErrorCounters: the analyzer reports the leading pointer bytes.
+	Verify *ScsiErrorCounters `json:"verify"`
+
+	Read  ScsiErrorCounters `json:"read"`
+	Write ScsiErrorCounters `json:"write"`
 }

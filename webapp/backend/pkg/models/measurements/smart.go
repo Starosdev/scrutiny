@@ -540,42 +540,86 @@ func parseGigabytesProcessed(gigabytesProcessed string) (int64, bool) {
 	return int64(gb * 1e9), true
 }
 
-// buildScsiGigabytesProcessedAttributes builds the read/write cumulative byte-processed
-// attributes (the SAS analog to ATA LBAs written/read and NVMe data units) from the SCSI
-// error counter log's "gigabytes_processed" fields, when present and parseable.
-func buildScsiGigabytesProcessedAttributes(scsiErrorCounterLog *collector.ScsiErrorCounterLog) map[string]SmartAttribute {
-	attrs := map[string]SmartAttribute{}
-	if readBytes, ok := parseGigabytesProcessed(scsiErrorCounterLog.Read.GigabytesProcessed); ok {
-		attrs["read_gigabytes_processed"] = (&SmartScsiAttribute{AttributeId: "read_gigabytes_processed", Value: readBytes, Threshold: -1}).PopulateAttributeStatus()
+// scsiAttributeNoThreshold is the Threshold value that means "record this attribute but
+// never evaluate it", understood by SmartScsiAttribute.PopulateAttributeStatus.
+const scsiAttributeNoThreshold int64 = -1
+
+// scsiErrorCounterFields lists the counters every SCSI Error Counter log page reports,
+// with the threshold each is evaluated against, or scsiAttributeNoThreshold for the ones
+// Scrutiny records without judging. The attribute ID is the page prefix plus the suffix,
+// e.g. "read_total_uncorrected_errors".
+var scsiErrorCounterFields = []struct {
+	value     func(*collector.ScsiErrorCounters) int64
+	suffix    string
+	threshold int64
+}{
+	{suffix: "errors_corrected_by_eccfast", threshold: scsiAttributeNoThreshold, value: func(c *collector.ScsiErrorCounters) int64 { return c.ErrorsCorrectedByEccfast }},
+	{suffix: "errors_corrected_by_eccdelayed", threshold: scsiAttributeNoThreshold, value: func(c *collector.ScsiErrorCounters) int64 { return c.ErrorsCorrectedByEccdelayed }},
+	{suffix: "errors_corrected_by_rereads_rewrites", threshold: 0, value: func(c *collector.ScsiErrorCounters) int64 { return c.ErrorsCorrectedByRereadsRewrites }},
+	{suffix: "total_errors_corrected", threshold: scsiAttributeNoThreshold, value: func(c *collector.ScsiErrorCounters) int64 { return c.TotalErrorsCorrected }},
+	{suffix: "correction_algorithm_invocations", threshold: scsiAttributeNoThreshold, value: func(c *collector.ScsiErrorCounters) int64 { return c.CorrectionAlgorithmInvocations }},
+	{suffix: "total_uncorrected_errors", threshold: 0, value: func(c *collector.ScsiErrorCounters) int64 { return c.TotalUncorrectedErrors }},
+}
+
+// addScsiErrorCounterAttributes adds the attributes for one SCSI Error Counter log page
+// to attrs. The cumulative byte-processed attribute (the SAS analog to ATA LBAs written/read
+// and NVMe data units) is only added when the drive reports a parseable
+// "gigabytes_processed" value; some drives and vendors omit the field.
+//
+// evaluateThresholds=false records the counters without ever failing them, which is how
+// a page is exposed for history and graphing before Scrutiny can judge its trend.
+func addScsiErrorCounterAttributes(attrs map[string]SmartAttribute, prefix string, counters *collector.ScsiErrorCounters, evaluateThresholds bool) {
+	for _, field := range scsiErrorCounterFields {
+		attributeID := prefix + "_" + field.suffix
+		threshold := field.threshold
+		if !evaluateThresholds {
+			threshold = scsiAttributeNoThreshold
+		}
+		attrs[attributeID] = (&SmartScsiAttribute{AttributeId: attributeID, Value: field.value(counters), Threshold: threshold}).PopulateAttributeStatus()
 	}
-	if writeBytes, ok := parseGigabytesProcessed(scsiErrorCounterLog.Write.GigabytesProcessed); ok {
-		attrs["write_gigabytes_processed"] = (&SmartScsiAttribute{AttributeId: "write_gigabytes_processed", Value: writeBytes, Threshold: -1}).PopulateAttributeStatus()
+	if bytesProcessed, ok := parseGigabytesProcessed(counters.GigabytesProcessed); ok {
+		attributeID := prefix + "_gigabytes_processed"
+		attrs[attributeID] = (&SmartScsiAttribute{AttributeId: attributeID, Value: bytesProcessed, Threshold: scsiAttributeNoThreshold}).PopulateAttributeStatus()
 	}
+}
+
+// buildScsiAttributes builds every SCSI attribute from collector data. It is the single
+// source of truth for the SCSI attribute set, shared by ProcessScsiSmartInfo (legacy
+// InfluxDB migration path) and processScsiSmartInfoWithOverrides (ingestion path), which
+// differ only in how overrides are applied afterwards.
+func buildScsiAttributes(temperature int64, defectGrownList int64, scsiErrorCounterLog *collector.ScsiErrorCounterLog, enduranceUsed *collector.ScsiEnduranceUsed) map[string]SmartAttribute {
+	attrs := map[string]SmartAttribute{
+		"temperature":            (&SmartScsiAttribute{AttributeId: "temperature", Value: temperature, Threshold: scsiAttributeNoThreshold}).PopulateAttributeStatus(),
+		"scsi_grown_defect_list": (&SmartScsiAttribute{AttributeId: "scsi_grown_defect_list", Value: defectGrownList, Threshold: 0}).PopulateAttributeStatus(),
+	}
+
+	addScsiErrorCounterAttributes(attrs, "read", &scsiErrorCounterLog.Read, true)
+	addScsiErrorCounterAttributes(attrs, "write", &scsiErrorCounterLog.Write, true)
+
+	// Only drives that support the Verify Error Counter log page (0x05) report it, so its
+	// attributes are absent rather than zero on drives that do not. Verify counters are
+	// recorded without threshold evaluation: they are cumulative, and on many drives they
+	// are already nonzero on a healthy unit, so a nonzero value is not a failure. What
+	// matters is whether they climb, which needs the delta-based evaluation
+	// ApplyDeltaEvaluation performs for ATA cumulative counters today.
+	if scsiErrorCounterLog.Verify != nil {
+		addScsiErrorCounterAttributes(attrs, "verify", scsiErrorCounterLog.Verify, false)
+	}
+
+	// SAS SSD endurance indicator (Solid State Media log page 0x11). Reuses the "percentage_used"
+	// attribute ID shared with NVMe so downstream endurance/workload consumers require no
+	// protocol-specific branching. Only populated when the drive reports it (SAS SSDs only);
+	// enduranceUsed is nil for SAS/SATA HDDs and SSDs that don't support this log page.
+	if enduranceUsed != nil {
+		attrs["percentage_used"] = (&SmartScsiAttribute{AttributeId: "percentage_used", Value: enduranceUsed.CurrentPercent, Threshold: 100}).PopulateAttributeStatus()
+	}
+
 	return attrs
 }
 
 // generate SmartScsiAttribute entries from Scrutiny Collector Smart data.
 func (sm *Smart) ProcessScsiSmartInfo(cfg config.Interface, defectGrownList int64, scsiErrorCounterLog collector.ScsiErrorCounterLog, temperature map[string]collector.ScsiTemperatureData) {
-	sm.Attributes = map[string]SmartAttribute{
-		"temperature": (&SmartScsiAttribute{AttributeId: "temperature", Value: sm.Temp, Threshold: -1}).PopulateAttributeStatus(),
-
-		"scsi_grown_defect_list":                     (&SmartScsiAttribute{AttributeId: "scsi_grown_defect_list", Value: defectGrownList, Threshold: 0}).PopulateAttributeStatus(),
-		"read_errors_corrected_by_eccfast":           (&SmartScsiAttribute{AttributeId: "read_errors_corrected_by_eccfast", Value: scsiErrorCounterLog.Read.ErrorsCorrectedByEccfast, Threshold: -1}).PopulateAttributeStatus(),
-		"read_errors_corrected_by_eccdelayed":        (&SmartScsiAttribute{AttributeId: "read_errors_corrected_by_eccdelayed", Value: scsiErrorCounterLog.Read.ErrorsCorrectedByEccdelayed, Threshold: -1}).PopulateAttributeStatus(),
-		"read_errors_corrected_by_rereads_rewrites":  (&SmartScsiAttribute{AttributeId: "read_errors_corrected_by_rereads_rewrites", Value: scsiErrorCounterLog.Read.ErrorsCorrectedByRereadsRewrites, Threshold: 0}).PopulateAttributeStatus(),
-		"read_total_errors_corrected":                (&SmartScsiAttribute{AttributeId: "read_total_errors_corrected", Value: scsiErrorCounterLog.Read.TotalErrorsCorrected, Threshold: -1}).PopulateAttributeStatus(),
-		"read_correction_algorithm_invocations":      (&SmartScsiAttribute{AttributeId: "read_correction_algorithm_invocations", Value: scsiErrorCounterLog.Read.CorrectionAlgorithmInvocations, Threshold: -1}).PopulateAttributeStatus(),
-		"read_total_uncorrected_errors":              (&SmartScsiAttribute{AttributeId: "read_total_uncorrected_errors", Value: scsiErrorCounterLog.Read.TotalUncorrectedErrors, Threshold: 0}).PopulateAttributeStatus(),
-		"write_errors_corrected_by_eccfast":          (&SmartScsiAttribute{AttributeId: "write_errors_corrected_by_eccfast", Value: scsiErrorCounterLog.Write.ErrorsCorrectedByEccfast, Threshold: -1}).PopulateAttributeStatus(),
-		"write_errors_corrected_by_eccdelayed":       (&SmartScsiAttribute{AttributeId: "write_errors_corrected_by_eccdelayed", Value: scsiErrorCounterLog.Write.ErrorsCorrectedByEccdelayed, Threshold: -1}).PopulateAttributeStatus(),
-		"write_errors_corrected_by_rereads_rewrites": (&SmartScsiAttribute{AttributeId: "write_errors_corrected_by_rereads_rewrites", Value: scsiErrorCounterLog.Write.ErrorsCorrectedByRereadsRewrites, Threshold: 0}).PopulateAttributeStatus(),
-		"write_total_errors_corrected":               (&SmartScsiAttribute{AttributeId: "write_total_errors_corrected", Value: scsiErrorCounterLog.Write.TotalErrorsCorrected, Threshold: -1}).PopulateAttributeStatus(),
-		"write_correction_algorithm_invocations":     (&SmartScsiAttribute{AttributeId: "write_correction_algorithm_invocations", Value: scsiErrorCounterLog.Write.CorrectionAlgorithmInvocations, Threshold: -1}).PopulateAttributeStatus(),
-		"write_total_uncorrected_errors":             (&SmartScsiAttribute{AttributeId: "write_total_uncorrected_errors", Value: scsiErrorCounterLog.Write.TotalUncorrectedErrors, Threshold: 0}).PopulateAttributeStatus(),
-	}
-	for attrId, attr := range buildScsiGigabytesProcessedAttributes(&scsiErrorCounterLog) {
-		sm.Attributes[attrId] = attr
-	}
+	sm.Attributes = buildScsiAttributes(sm.Temp, defectGrownList, &scsiErrorCounterLog, nil)
 
 	// Apply overrides and find analyzed attribute status
 	for attrId, val := range sm.Attributes {
@@ -1030,33 +1074,7 @@ func (sm *Smart) rolloverReasonFromCrossCheck(currentPoH int64) string {
 
 // processScsiSmartInfoWithOverrides generates SmartScsiAttribute entries using pre-merged overrides.
 func (sm *Smart) processScsiSmartInfoWithOverrides(cfg config.Interface, defectGrownList int64, scsiErrorCounterLog *collector.ScsiErrorCounterLog, temperature map[string]collector.ScsiTemperatureData, enduranceUsed *collector.ScsiEnduranceUsed, mergedOverrides []overrides.AttributeOverride) {
-	sm.Attributes = map[string]SmartAttribute{
-		"temperature": (&SmartScsiAttribute{AttributeId: "temperature", Value: sm.Temp, Threshold: -1}).PopulateAttributeStatus(),
-
-		"scsi_grown_defect_list":                     (&SmartScsiAttribute{AttributeId: "scsi_grown_defect_list", Value: defectGrownList, Threshold: 0}).PopulateAttributeStatus(),
-		"read_errors_corrected_by_eccfast":           (&SmartScsiAttribute{AttributeId: "read_errors_corrected_by_eccfast", Value: scsiErrorCounterLog.Read.ErrorsCorrectedByEccfast, Threshold: -1}).PopulateAttributeStatus(),
-		"read_errors_corrected_by_eccdelayed":        (&SmartScsiAttribute{AttributeId: "read_errors_corrected_by_eccdelayed", Value: scsiErrorCounterLog.Read.ErrorsCorrectedByEccdelayed, Threshold: -1}).PopulateAttributeStatus(),
-		"read_errors_corrected_by_rereads_rewrites":  (&SmartScsiAttribute{AttributeId: "read_errors_corrected_by_rereads_rewrites", Value: scsiErrorCounterLog.Read.ErrorsCorrectedByRereadsRewrites, Threshold: 0}).PopulateAttributeStatus(),
-		"read_total_errors_corrected":                (&SmartScsiAttribute{AttributeId: "read_total_errors_corrected", Value: scsiErrorCounterLog.Read.TotalErrorsCorrected, Threshold: -1}).PopulateAttributeStatus(),
-		"read_correction_algorithm_invocations":      (&SmartScsiAttribute{AttributeId: "read_correction_algorithm_invocations", Value: scsiErrorCounterLog.Read.CorrectionAlgorithmInvocations, Threshold: -1}).PopulateAttributeStatus(),
-		"read_total_uncorrected_errors":              (&SmartScsiAttribute{AttributeId: "read_total_uncorrected_errors", Value: scsiErrorCounterLog.Read.TotalUncorrectedErrors, Threshold: 0}).PopulateAttributeStatus(),
-		"write_errors_corrected_by_eccfast":          (&SmartScsiAttribute{AttributeId: "write_errors_corrected_by_eccfast", Value: scsiErrorCounterLog.Write.ErrorsCorrectedByEccfast, Threshold: -1}).PopulateAttributeStatus(),
-		"write_errors_corrected_by_eccdelayed":       (&SmartScsiAttribute{AttributeId: "write_errors_corrected_by_eccdelayed", Value: scsiErrorCounterLog.Write.ErrorsCorrectedByEccdelayed, Threshold: -1}).PopulateAttributeStatus(),
-		"write_errors_corrected_by_rereads_rewrites": (&SmartScsiAttribute{AttributeId: "write_errors_corrected_by_rereads_rewrites", Value: scsiErrorCounterLog.Write.ErrorsCorrectedByRereadsRewrites, Threshold: 0}).PopulateAttributeStatus(),
-		"write_total_errors_corrected":               (&SmartScsiAttribute{AttributeId: "write_total_errors_corrected", Value: scsiErrorCounterLog.Write.TotalErrorsCorrected, Threshold: -1}).PopulateAttributeStatus(),
-		"write_correction_algorithm_invocations":     (&SmartScsiAttribute{AttributeId: "write_correction_algorithm_invocations", Value: scsiErrorCounterLog.Write.CorrectionAlgorithmInvocations, Threshold: -1}).PopulateAttributeStatus(),
-		"write_total_uncorrected_errors":             (&SmartScsiAttribute{AttributeId: "write_total_uncorrected_errors", Value: scsiErrorCounterLog.Write.TotalUncorrectedErrors, Threshold: 0}).PopulateAttributeStatus(),
-	}
-	for attrId, attr := range buildScsiGigabytesProcessedAttributes(scsiErrorCounterLog) {
-		sm.Attributes[attrId] = attr
-	}
-	// SAS SSD endurance indicator (Solid State Media log page 0x11). Reuses the "percentage_used"
-	// attribute ID shared with NVMe so downstream endurance/workload consumers require no
-	// protocol-specific branching. Only populated when the drive reports it (SAS SSDs only);
-	// enduranceUsed is nil for SAS/SATA HDDs and SSDs that don't support this log page.
-	if enduranceUsed != nil {
-		sm.Attributes["percentage_used"] = (&SmartScsiAttribute{AttributeId: "percentage_used", Value: enduranceUsed.CurrentPercent, Threshold: 100}).PopulateAttributeStatus()
-	}
+	sm.Attributes = buildScsiAttributes(sm.Temp, defectGrownList, scsiErrorCounterLog, enduranceUsed)
 
 	// Apply overrides and find analyzed attribute status
 	for attrId, val := range sm.Attributes {
