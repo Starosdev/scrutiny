@@ -253,9 +253,19 @@ func TestIsMountPointSuitable_RejectsMissingPath(t *testing.T) {
 }
 
 func TestIsMountPointSuitable_RequiresHeadroomAboveTestFile(t *testing.T) {
+	dir := t.TempDir()
+
+	// Some CI runners put the temporary directory on a tmpfs, which the mount
+	// entry checks reject before isMountPointSuitable reaches the space check.
+	// That is an environment difference, not a failure of the headroom logic
+	// under test, so skip rather than assert a reason that cannot be produced.
+	if suitable, reason := isMountPointSuitable(dir, 1); !suitable {
+		t.Skipf("temporary directory %s is not a benchmark target: %s", dir, reason)
+	}
+
 	// No filesystem has this much free, so the rejection must name the
 	// headroom the check adds on top of the test file size.
-	suitable, reason := isMountPointSuitable(t.TempDir(), 1<<60)
+	suitable, reason := isMountPointSuitable(dir, 1<<60)
 	require.False(t, suitable)
 	require.Contains(t, reason, "insufficient space")
 	require.Contains(t, reason, "headroom")
