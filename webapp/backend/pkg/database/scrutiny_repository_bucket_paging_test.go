@@ -17,26 +17,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// maxBucketPageRequests bounds the scripted organization so a non-advancing offset fails the
-// test instead of hanging it. Two requests serve the whole organization; a third means the walk
-// asked for a page it had already been given.
-const maxBucketPageRequests = 3
-
 // bucketPagingServer is a scripted /api/v2/buckets endpoint that records the paging each request
 // carries. The offset is only observable here: api.Paging's fields are unexported, so the stub
 // BucketsAPI the other bucket tests use cannot read what api.PagingWithOffset set, and a
 // regression to a constant offset leaves those tests green (#1015).
 type bucketPagingServer struct {
-	mu       sync.Mutex
-	offsets  []string
-	limits   []string
-	orgs     []string
-	requests int
+	mu      sync.Mutex
+	offsets []string
+	limits  []string
+	orgs    []string
 }
 
 // start serves one full page of unrelated buckets followed by a short page holding shortPageName,
-// which is the only layout that makes the second request necessary and the third request wrong.
-func (b *bucketPagingServer) start(t *testing.T, orgName, shortPageName string) *httptest.Server {
+// which is the layout that makes a second request necessary and a third request wrong.
+func (b *bucketPagingServer) start(t *testing.T, shortPageName string) *httptest.Server {
 	t.Helper()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,27 +40,22 @@ func (b *bucketPagingServer) start(t *testing.T, orgName, shortPageName string) 
 			return
 		}
 
-		b.mu.Lock()
-		b.offsets = append(b.offsets, r.URL.Query().Get("offset"))
-		b.limits = append(b.limits, r.URL.Query().Get("limit"))
-		b.orgs = append(b.orgs, r.URL.Query().Get("org"))
-		b.requests++
-		requests := b.requests
-		b.mu.Unlock()
+		requests := b.record(r)
 
 		listed := []domain.Bucket{}
 		switch requests {
 		case 1:
 			for i := 0; i < bucketPageSize; i++ {
-				name := fmt.Sprintf("unrelated_%d", i)
-				listed = append(listed, domain.Bucket{Name: name})
+				listed = append(listed, domain.Bucket{Name: fmt.Sprintf("unrelated_%d", i)})
 			}
 		case 2:
 			listed = append(listed, domain.Bucket{Name: shortPageName})
 		default:
-			// the walk is asking for a page it has already consumed, which is what a constant
-			// or non-advancing offset looks like from the server
-			t.Errorf("bucket paging made %d requests for a 2-page organization; offsets so far: %v", requests, b.snapshotOffsets())
+			// The walk is asking for a page it has already consumed, which is what a constant or
+			// non-advancing offset looks like from the server. The empty page below ends the walk,
+			// so the regression fails this test rather than hanging it.
+			offsets, _, _ := b.snapshot()
+			t.Errorf("bucket paging made %d requests for a 2-page organization; offsets so far: %v", requests, offsets)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -77,17 +66,38 @@ func (b *bucketPagingServer) start(t *testing.T, orgName, shortPageName string) 
 	return server
 }
 
-func (b *bucketPagingServer) snapshotOffsets() []string {
+// record stores the paging one request carried and returns how many requests have arrived. The
+// handler runs on the server's own goroutine, so every read of these slices takes the lock too.
+func (b *bucketPagingServer) record(r *http.Request) int {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	return append([]string(nil), b.offsets...)
+
+	b.offsets = append(b.offsets, r.URL.Query().Get("offset"))
+	b.limits = append(b.limits, r.URL.Query().Get("limit"))
+	b.orgs = append(b.orgs, r.URL.Query().Get("org"))
+
+	return len(b.offsets)
 }
 
-// expectedPaging is the paging a two-page walk has to put on the wire: the first page from
-// offset 0 and the second from offset bucketPageSize, both asking for bucketPageSize buckets.
-func expectedPaging() (offsets, limits []string) {
-	limit := fmt.Sprintf("%d", bucketPageSize)
-	return []string{"0", limit}, []string{limit, limit}
+func (b *bucketPagingServer) snapshot() (offsets, limits, orgs []string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return append([]string(nil), b.offsets...), append([]string(nil), b.limits...), append([]string(nil), b.orgs...)
+}
+
+// requireTwoPageWalk asserts the paging a two-page walk has to put on the wire: the first page
+// from offset 0 and the second from offset bucketPageSize, both asking for bucketPageSize
+// buckets, both scoped to this deployment's organization.
+func requireTwoPageWalk(t *testing.T, recorder *bucketPagingServer, orgName string) {
+	t.Helper()
+
+	offsets, limits, orgs := recorder.snapshot()
+	pageSize := fmt.Sprintf("%d", bucketPageSize)
+
+	require.Equal(t, []string{"0", pageSize}, offsets)
+	require.Equal(t, []string{pageSize, pageSize}, limits)
+	require.Equal(t, []string{orgName, orgName}, orgs, "every bucket lookup is scoped to this deployment's organization")
 }
 
 func newPagingTestRepository(t *testing.T, client influxdb2.Client, orgName string) *scrutinyRepository {
@@ -103,6 +113,15 @@ func newPagingTestRepository(t *testing.T, client influxdb2.Client, orgName stri
 	return &scrutinyRepository{appConfig: fakeConfig, logger: logger, influxClient: client}
 }
 
+func newPagingTestClient(t *testing.T, recorder *bucketPagingServer, shortPageName string) influxdb2.Client {
+	t.Helper()
+
+	client := influxdb2.NewClient(recorder.start(t, shortPageName).URL, "test-token")
+	t.Cleanup(client.Close)
+
+	return client
+}
+
 // findBucketInOrg runs during MigrateDatabase, so an offset that does not advance hangs startup
 // rather than returning a wrong answer. Drive the real client against an httptest server and
 // assert the offset it sends, which no stub can see.
@@ -111,27 +130,19 @@ func TestOrgBucketPagingAdvancesTheOffset(t *testing.T) {
 
 	t.Run("findBucketInOrg", func(t *testing.T) {
 		recorder := &bucketPagingServer{}
-		server := recorder.start(t, orgName, "metrics_yearly")
-		client := influxdb2.NewClient(server.URL, "test-token")
-		t.Cleanup(client.Close)
+		client := newPagingTestClient(t, recorder, "metrics_yearly")
 
 		found, err := findBucketInOrg(context.Background(), client.BucketsAPI(), orgName, "metrics_yearly")
 
 		require.NoError(t, err)
 		require.NotNil(t, found)
 		require.Equal(t, "metrics_yearly", found.Name)
-
-		offsets, limits := expectedPaging()
-		require.Equal(t, offsets, recorder.offsets)
-		require.Equal(t, limits, recorder.limits)
-		require.Equal(t, []string{orgName, orgName}, recorder.orgs, "every bucket lookup is scoped to this deployment's organization")
+		requireTwoPageWalk(t, recorder, orgName)
 	})
 
 	t.Run("GetAvailableInfluxDBBuckets", func(t *testing.T) {
 		recorder := &bucketPagingServer{}
-		server := recorder.start(t, orgName, "metrics_yearly")
-		client := influxdb2.NewClient(server.URL, "test-token")
-		t.Cleanup(client.Close)
+		client := newPagingTestClient(t, recorder, "metrics_yearly")
 
 		names, err := newPagingTestRepository(t, client, orgName).GetAvailableInfluxDBBuckets(context.Background())
 
@@ -139,10 +150,23 @@ func TestOrgBucketPagingAdvancesTheOffset(t *testing.T) {
 		require.Len(t, names, bucketPageSize+1, "the diagnostic reports buckets from every page, not just the first")
 		require.Equal(t, "unrelated_0", names[0])
 		require.Equal(t, "metrics_yearly", names[bucketPageSize])
+		requireTwoPageWalk(t, recorder, orgName)
+	})
 
-		offsets, limits := expectedPaging()
-		require.Equal(t, offsets, recorder.offsets)
-		require.Equal(t, limits, recorder.limits)
-		require.Equal(t, []string{orgName, orgName}, recorder.orgs)
+	// the match is on the full first page here, so a walk that does not stop on it asks for the
+	// second page and fails. Without this the early return is unbound: the other subtests put the
+	// match on the short page, which ends the walk whether or not the match does.
+	t.Run("findBucketInOrg stops on the page holding the match", func(t *testing.T) {
+		recorder := &bucketPagingServer{}
+		client := newPagingTestClient(t, recorder, "metrics_yearly")
+
+		found, err := findBucketInOrg(context.Background(), client.BucketsAPI(), orgName, "unrelated_7")
+
+		require.NoError(t, err)
+		require.NotNil(t, found)
+		require.Equal(t, "unrelated_7", found.Name)
+
+		offsets, _, _ := recorder.snapshot()
+		require.Equal(t, []string{"0"}, offsets, "a match on a full page ends the walk without asking for the next one")
 	})
 }
