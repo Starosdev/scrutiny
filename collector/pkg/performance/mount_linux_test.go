@@ -1,6 +1,7 @@
 package performance
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -252,14 +253,45 @@ func TestIsMountPointSuitable_RejectsMissingPath(t *testing.T) {
 	require.Contains(t, reason, "could not inspect")
 }
 
+// TestSpaceRejection covers the headroom rule directly. It takes no filesystem,
+// so unlike the integration test below it runs on every runner: the mount entry
+// checks reject a tmpfs before isMountPointSuitable reaches the space check, and
+// CI runners put the temporary directory on tmpfs.
+func TestSpaceRejection(t *testing.T) {
+	const headroom = uint64(spaceHeadroomBytes)
+
+	// Exactly enough, and one byte short of enough.
+	require.Empty(t, spaceRejection(headroom+10, 10))
+	require.NotEmpty(t, spaceRejection(headroom+9, 10))
+
+	// An empty filesystem cannot hold even a zero-byte test file, because the
+	// headroom is required on top of it.
+	require.NotEmpty(t, spaceRejection(0, 0))
+	require.Empty(t, spaceRejection(headroom, 0))
+
+	// The rejection has to name both the shortfall and the headroom, because
+	// that is what tells an operator the free space is not the whole budget.
+	// The required figure is asserted numerically: it has to be the test file
+	// plus the headroom, not the test file alone, or the message implies the
+	// free space is the entire budget.
+	const requested = uint64(1) << 60
+	reason := spaceRejection(1024, requested)
+	require.Contains(t, reason, "insufficient space")
+	require.Contains(t, reason, "1024 bytes available")
+	require.Contains(t, reason, fmt.Sprintf("%d bytes required", requested+headroom))
+	require.Contains(t, reason, fmt.Sprintf("plus %d bytes headroom", headroom))
+}
+
 func TestIsMountPointSuitable_RequiresHeadroomAboveTestFile(t *testing.T) {
 	dir := t.TempDir()
 
-	// Some CI runners put the temporary directory on a tmpfs, which the mount
-	// entry checks reject before isMountPointSuitable reaches the space check.
-	// That is an environment difference, not a failure of the headroom logic
-	// under test, so skip rather than assert a reason that cannot be produced.
-	if suitable, reason := isMountPointSuitable(dir, 1); !suitable {
+	// Confirm isMountPointSuitable actually consults the space rule. Some CI
+	// runners put the temporary directory on a tmpfs, which the mount entry
+	// checks reject first, and that is an environment difference rather than a
+	// failure of the rule; TestSpaceRejection covers the rule itself. An
+	// "insufficient space" rejection is not a reason to skip, because reaching
+	// it means the space check ran.
+	if suitable, reason := isMountPointSuitable(dir, 1); !suitable && !strings.Contains(reason, "insufficient space") {
 		t.Skipf("temporary directory %s is not a benchmark target: %s", dir, reason)
 	}
 
