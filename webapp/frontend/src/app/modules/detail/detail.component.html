@@ -264,7 +264,7 @@
                     (replacementRisk.consumer_drive_profile_applied) { Using consumer drive profile: {{ replacementRisk.consumer_drive_profile_family }}. } @else { Using generic
                     ATA rules. No vetted consumer drive profile matched this drive. }
                 </div>
-                <div class="mb-4"><ng-container *ngTemplateOutlet="failureRateAttribution"></ng-container></div>
+                <div class="mb-4" data-testid="risk-attribution"><ng-container *ngTemplateOutlet="failureRateAttribution"></ng-container></div>
                 }
 
                 <!-- Attribute contributions -->
@@ -1036,13 +1036,14 @@
             class="text-blue-500 underline hover:text-blue-700"
             >Backblaze Drive Stats</a
         >.
-        @if (consumerDriveProfileApplied) { Where a consumer drive profile matches, family thresholds come from the curated
+        @if (profileSuppliedFailureRateThresholds) { Where this drive's
         <a
             href="https://github.com/Staros-Labs/scrutiny/blob/master/docs/CONSUMER_DRIVE_PROFILES.md"
             target="_blank"
             rel="noopener noreferrer"
             class="text-blue-500 underline hover:text-blue-700"
-            >linuxhw/SMART catalog</a
-        >. }
+            >consumer drive profile</a
+        >
+        supplies thresholds, those come from the {{ replacementRisk?.consumer_drive_profile_source }}. }
     </div>
 </ng-template>

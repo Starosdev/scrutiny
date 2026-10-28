@@ -518,11 +518,13 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         return this.device?.device_protocol === 'ATA';
     }
 
-    // True when a vetted consumer drive profile matched this drive, so some observed
-    // failure-rate thresholds can come from the curated linuxhw/SMART catalog instead of
-    // the Backblaze-derived defaults. Drives the second half of the attribution line.
-    get consumerDriveProfileApplied(): boolean {
-        return this.replacementRisk?.consumer_drive_profile_applied === true;
+    // True only when the matched consumer drive profile carries observed-threshold
+    // buckets, which is what replaces the Backblaze-derived failure rates. Most profiles
+    // override counter severities alone and leave the failure rates untouched, so matching
+    // a profile is not on its own a reason to credit that profile's source.
+    get profileSuppliedFailureRateThresholds(): boolean {
+        const risk = this.replacementRisk;
+        return risk?.consumer_drive_profile_applied === true && risk?.consumer_drive_profile_observed_thresholds === true && !!risk?.consumer_drive_profile_source;
     }
 
     isScsi(): boolean {

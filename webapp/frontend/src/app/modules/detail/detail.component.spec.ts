@@ -216,18 +216,7 @@ describe('DetailComponent', () => {
             return fixture.nativeElement as HTMLElement;
         };
 
-        for (const mobile of [false, true]) {
-            it(`credits Backblaze Drive Stats beside ATA failure rates with mobile=${mobile}`, () => {
-                const host = render('ATA', mobile);
-
-                expect(host.textContent).toContain('Failure-rate baselines from');
-                expect(host.querySelector('a[href*="hard-drive-test-data"]')).toBeTruthy();
-                // No profile matched, so the catalog clause must stay out of the line.
-                expect(host.textContent).not.toContain('linuxhw/SMART catalog');
-            });
-        }
-
-        it('names the linuxhw/SMART catalog once a consumer drive profile applies', () => {
+        const riskWithProfile = (overrides: Record<string, unknown>): void => {
             component.replacementRisk = {
                 device_protocol: 'ATA',
                 score: 0,
@@ -236,13 +225,72 @@ describe('DetailComponent', () => {
                 consumer_drive_profiles_enabled: true,
                 consumer_drive_profile_applied: true,
                 consumer_drive_profile_family: 'Hitachi Deskstar 7K1000.D',
+                ...overrides,
             } as any;
+        };
+
+        for (const mobile of [false, true]) {
+            it(`credits Backblaze Drive Stats beside ATA failure rates with mobile=${mobile}`, () => {
+                const host = render('ATA', mobile);
+
+                expect(host.textContent).toContain('Failure-rate baselines from');
+                expect(host.querySelector('a[href*="hard-drive-test-data"]')).toBeTruthy();
+                // No profile matched, so the profile clause must stay out of the line.
+                expect(host.textContent).not.toContain('supplies thresholds');
+            });
+        }
+
+        it("names the profile's own source once it supplies failure-rate thresholds", () => {
+            riskWithProfile({
+                consumer_drive_profile_observed_thresholds: true,
+                consumer_drive_profile_source: 'linuxhw/SMART curated consumer HDD profile',
+            });
 
             const host = render('ATA', false);
 
-            expect(component.consumerDriveProfileApplied).toBeTrue();
-            expect(host.textContent).toContain('linuxhw/SMART catalog');
+            expect(component.profileSuppliedFailureRateThresholds).toBeTrue();
+            expect(host.textContent).toContain('linuxhw/SMART curated consumer HDD profile');
             expect(host.querySelector('a[href*="CONSUMER_DRIVE_PROFILES.md"]')).toBeTruthy();
+        });
+
+        it('does not hardcode one catalog for a profile from another source', () => {
+            riskWithProfile({
+                consumer_drive_profile_observed_thresholds: true,
+                consumer_drive_profile_source: 'scrutiny ATA SSD compatibility profile',
+            });
+
+            const host = render('ATA', false);
+
+            expect(host.textContent).toContain('scrutiny ATA SSD compatibility profile');
+            expect(host.textContent).not.toContain('linuxhw');
+        });
+
+        it('stays silent about the profile when it overrides severities only', () => {
+            // 25 of the 35 bundled profiles carry no observed thresholds, so the failure
+            // rates on screen are still Backblaze-derived and must not be re-credited.
+            riskWithProfile({
+                consumer_drive_profile_observed_thresholds: false,
+                consumer_drive_profile_source: 'linuxhw/SMART curated consumer SSD profile',
+            });
+
+            const host = render('ATA', false);
+
+            expect(component.profileSuppliedFailureRateThresholds).toBeFalse();
+            expect(host.textContent).toContain('Failure-rate baselines from');
+            expect(host.textContent).not.toContain('supplies thresholds');
+        });
+
+        it('renders the attribution inside the Replacement Risk card too', () => {
+            riskWithProfile({
+                consumer_drive_profile_observed_thresholds: true,
+                consumer_drive_profile_source: 'linuxhw/SMART curated consumer HDD profile',
+            });
+
+            const card = render('ATA', false).querySelector('[data-testid="risk-attribution"]');
+
+            expect(card).toBeTruthy();
+            expect(card.textContent).toContain('Failure-rate baselines from');
+            expect(card.querySelector('a[href*="hard-drive-test-data"]')).toBeTruthy();
         });
 
         it('omits the attribution for protocols that show no failure rate', () => {
