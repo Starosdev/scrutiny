@@ -2848,6 +2848,10 @@ components:
           $ref: "#/components/schemas/ScsiErrorCounterDirection"
         write:
           $ref: "#/components/schemas/ScsiErrorCounterDirection"
+        verify:
+          description: Verify Error Counter log page (0x05). Absent on drives that do not support the page.
+          allOf:
+            - $ref: "#/components/schemas/ScsiErrorCounterDirection"
     ScsiErrorCounterDirection:
       type: object
       properties:

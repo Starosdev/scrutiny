@@ -12,6 +12,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -787,6 +788,112 @@ func TestFromCollectorSmartInfo_Scsi_Fail_Scrutiny(t *testing.T) {
 		smartMdl.Attributes["read_total_uncorrected_errors"].(*measurements.SmartScsiAttribute).StatusReason,
 	)
 
+	require.Equal(t, 16, len(smartMdl.Attributes))
+}
+
+// TestFromCollectorSmartInfo_Scsi_Verify_ErrorCounters tests the SCSI Verify Error Counter
+// log page (0x05), requested in Starosdev/scrutiny#1024. Drives that report it get one
+// attribute per counter, recorded for history but never failed on an absolute value, because
+// background media scanning leaves these counters nonzero on a healthy drive.
+func TestFromCollectorSmartInfo_Scsi_Verify_ErrorCounters(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-scsi-sas-verify.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+
+	require.Equal(t, int64(0), smartMdl.Attributes["verify_errors_corrected_by_eccfast"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(12), smartMdl.Attributes["verify_errors_corrected_by_eccdelayed"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(3), smartMdl.Attributes["verify_errors_corrected_by_rereads_rewrites"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(15), smartMdl.Attributes["verify_total_errors_corrected"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(7054), smartMdl.Attributes["verify_correction_algorithm_invocations"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(0), smartMdl.Attributes["verify_total_uncorrected_errors"].(*measurements.SmartScsiAttribute).Value)
+	// verify gigabytes_processed is "0.000" on this drive: host verify commands are rare, so
+	// the counter stays 0 while the verify error counters rise from background scanning.
+	require.Equal(t, int64(0), smartMdl.Attributes["verify_gigabytes_processed"].(*measurements.SmartScsiAttribute).Value)
+
+	// Verify counters carry no threshold, so a nonzero rereads/rewrites count (3 here) must not
+	// fail the drive. Absolute verify values are not a verdict; only a rising trend is.
+	require.Equal(t, pkg.DeviceStatusPassed, smartMdl.Status)
+	for _, attributeID := range []string{
+		"verify_errors_corrected_by_rereads_rewrites",
+		"verify_total_uncorrected_errors",
+	} {
+		attribute := smartMdl.Attributes[attributeID].(*measurements.SmartScsiAttribute)
+		require.Equal(t, int64(-1), attribute.Threshold, attributeID)
+		require.Equal(t, pkg.AttributeStatusPassed, attribute.Status, attributeID)
+	}
+
+	// The read/write pages keep their existing thresholds and attribute IDs.
+	require.Equal(t, int64(0), smartMdl.Attributes["read_total_uncorrected_errors"].(*measurements.SmartScsiAttribute).Threshold)
+	require.Equal(t, int64(176987332000000), smartMdl.Attributes["read_gigabytes_processed"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, 23, len(smartMdl.Attributes))
+
+	// Every attribute the SCSI builder emits needs display metadata, or the UI renders
+	// "Unknown Attribute Name" for it.
+	for attributeID := range smartMdl.Attributes {
+		require.Contains(t, thresholds.ScsiMetadata, attributeID)
+	}
+}
+
+// TestFromCollectorSmartInfo_Scsi_Verify_Absent tests that a drive which does not support the
+// Verify Error Counter log page gets no verify attributes at all, rather than a set of
+// permanently-zero ones. smartctl omits the "verify" key entirely on those drives.
+func TestFromCollectorSmartInfo_Scsi_Verify_Absent(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-scsi.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+	require.Nil(t, smartJson.ScsiErrorCounterLog.Verify)
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+	for _, attributeID := range []string{
+		"verify_errors_corrected_by_eccfast",
+		"verify_total_uncorrected_errors",
+		"verify_gigabytes_processed",
+	} {
+		require.NotContains(t, smartMdl.Attributes, attributeID)
+	}
+	// The drive keeps exactly the attribute set it had before this change.
 	require.Equal(t, 16, len(smartMdl.Attributes))
 }
 

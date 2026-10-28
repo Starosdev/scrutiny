@@ -1111,26 +1111,7 @@ func buildLegacyNvmeHealthLog(preSmartResult *m20201107210306.Smart) collector.N
 // collector error-counter log.
 func buildLegacyScsiErrorLog(preSmartResult *m20201107210306.Smart) (int64, collector.ScsiErrorCounterLog) {
 	var postScsiGrownDefectList int64
-	postScsiErrorCounterLog := collector.ScsiErrorCounterLog{
-		Read: struct {
-			ErrorsCorrectedByEccfast         int64  `json:"errors_corrected_by_eccfast"`
-			ErrorsCorrectedByEccdelayed      int64  `json:"errors_corrected_by_eccdelayed"`
-			ErrorsCorrectedByRereadsRewrites int64  `json:"errors_corrected_by_rereads_rewrites"`
-			TotalErrorsCorrected             int64  `json:"total_errors_corrected"`
-			CorrectionAlgorithmInvocations   int64  `json:"correction_algorithm_invocations"`
-			GigabytesProcessed               string `json:"gigabytes_processed"`
-			TotalUncorrectedErrors           int64  `json:"total_uncorrected_errors"`
-		}{},
-		Write: struct {
-			ErrorsCorrectedByEccfast         int64  `json:"errors_corrected_by_eccfast"`
-			ErrorsCorrectedByEccdelayed      int64  `json:"errors_corrected_by_eccdelayed"`
-			ErrorsCorrectedByRereadsRewrites int64  `json:"errors_corrected_by_rereads_rewrites"`
-			TotalErrorsCorrected             int64  `json:"total_errors_corrected"`
-			CorrectionAlgorithmInvocations   int64  `json:"correction_algorithm_invocations"`
-			GigabytesProcessed               string `json:"gigabytes_processed"`
-			TotalUncorrectedErrors           int64  `json:"total_uncorrected_errors"`
-		}{},
-	}
+	var postScsiErrorCounterLog collector.ScsiErrorCounterLog
 
 	for _, preScsiAttribute := range preSmartResult.ScsiAttributes {
 		switch preScsiAttribute.AttributeId {
