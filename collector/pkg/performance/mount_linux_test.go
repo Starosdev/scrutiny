@@ -252,10 +252,46 @@ func TestIsMountPointSuitable_RejectsMissingPath(t *testing.T) {
 	require.Contains(t, reason, "could not inspect")
 }
 
+// TestSpaceRejection covers the headroom rule directly. It takes no filesystem,
+// so unlike the integration test below it runs on every runner: the mount entry
+// checks reject a tmpfs before isMountPointSuitable reaches the space check, and
+// CI runners put the temporary directory on tmpfs.
+func TestSpaceRejection(t *testing.T) {
+	const headroom = uint64(spaceHeadroomBytes)
+
+	// Exactly enough, and one byte short of enough.
+	require.Empty(t, spaceRejection(headroom+10, 10))
+	require.NotEmpty(t, spaceRejection(headroom+9, 10))
+
+	// An empty filesystem cannot hold even a zero-byte test file, because the
+	// headroom is required on top of it.
+	require.NotEmpty(t, spaceRejection(0, 0))
+	require.Empty(t, spaceRejection(headroom, 0))
+
+	// The rejection has to name both the shortfall and the headroom, because
+	// that is what tells an operator the free space is not the whole budget.
+	reason := spaceRejection(1024, 1<<60)
+	require.Contains(t, reason, "insufficient space")
+	require.Contains(t, reason, "headroom")
+	require.Contains(t, reason, "1024 bytes available")
+}
+
 func TestIsMountPointSuitable_RequiresHeadroomAboveTestFile(t *testing.T) {
+	dir := t.TempDir()
+
+	// Confirm isMountPointSuitable actually consults the space rule. Some CI
+	// runners put the temporary directory on a tmpfs, which the mount entry
+	// checks reject first, and that is an environment difference rather than a
+	// failure of the rule; TestSpaceRejection covers the rule itself. An
+	// "insufficient space" rejection is not a reason to skip, because reaching
+	// it means the space check ran.
+	if suitable, reason := isMountPointSuitable(dir, 1); !suitable && !strings.Contains(reason, "insufficient space") {
+		t.Skipf("temporary directory %s is not a benchmark target: %s", dir, reason)
+	}
+
 	// No filesystem has this much free, so the rejection must name the
 	// headroom the check adds on top of the test file size.
-	suitable, reason := isMountPointSuitable(t.TempDir(), 1<<60)
+	suitable, reason := isMountPointSuitable(dir, 1<<60)
 	require.False(t, suitable)
 	require.Contains(t, reason, "insufficient space")
 	require.Contains(t, reason, "headroom")
