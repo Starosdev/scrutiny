@@ -80,7 +80,23 @@ func (sr *scrutinyRepository) PurgeHosts(ctx context.Context, hostIDs []string) 
 			continue
 		}
 		if err := sr.gormClient.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			return tx.Where("host_id = ?", hostID).Delete(&models.Device{}).Error
+			if err := tx.Where("host_id = ?", hostID).Delete(&models.Device{}).Error; err != nil {
+				return err
+			}
+			// A purged host's filesystem rows outlive every device they could
+			// describe. Left behind, they attribute the old host's free space
+			// to whatever drive later registers under the same device name on
+			// the same host id.
+			for _, model := range []interface{}{
+				&models.FilesystemDevice{},
+				&models.FilesystemCapacity{},
+				&models.FilesystemHostStatus{},
+			} {
+				if err := tx.Where("host_id = ?", hostID).Delete(model).Error; err != nil {
+					return err
+				}
+			}
+			return nil
 		}); err != nil {
 			result.Error = fmt.Sprintf("could not delete host devices: %v", err)
 			results = append(results, result)

@@ -362,7 +362,14 @@
                                     <span>{{ filesystem.used_bytes | fileSize : config.file_size_si_units }} used ({{ filesystem.used_percent | number : '1.0-1' }}%)</span>
                                     <span>{{ filesystem.total_bytes | fileSize : config.file_size_si_units }} total</span>
                                 </div>
-                                <div class="h-2 w-full bg-gray-200 rounded overflow-hidden">
+                                <div
+                                    class="h-2 w-full bg-gray-200 rounded overflow-hidden"
+                                    role="progressbar"
+                                    aria-valuemin="0"
+                                    aria-valuemax="100"
+                                    [attr.aria-valuenow]="filesystem.used_percent | number : '1.0-1'"
+                                    [attr.aria-label]="filesystem.mount_point + ' usage'"
+                                >
                                     <div class="h-full" [ngClass]="filesystemUsageClass(filesystem)" [style.width.%]="filesystem.used_percent"></div>
                                 </div>
                             </div>

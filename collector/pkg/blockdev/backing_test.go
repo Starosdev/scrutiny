@@ -55,6 +55,13 @@ func fakeTree(t *testing.T) (sysBlock string, devRoot string) {
 		require.NoError(t, os.WriteFile(filepath.Join(devRoot, name), nil, 0o644))
 	}
 
+	// A snap mount: a loop device with no slaves and no partition file, which
+	// the walk would otherwise call a whole disk.
+	loop := filepath.Join(devices, "virtual", "block", "loop3")
+	require.NoError(t, os.MkdirAll(loop, 0o755))
+	link("loop3", loop)
+	require.NoError(t, os.WriteFile(filepath.Join(devRoot, "loop3"), nil, 0o644))
+
 	stacked("md0", "sda1", "sdb1")
 	stacked("dm-0", "md0")
 
@@ -91,6 +98,9 @@ func TestResolve(t *testing.T) {
 		// A hot spare holds none of the array's data, so the array's
 		// filesystem must not be attributed to it.
 		{name: "array skips its hot spare", source: "md1", want: []string{"sda", "sdb"}},
+		// Scrutiny registers drives, so a loop device can never match one and
+		// a link row naming it would be noise, one per snap package.
+		{name: "loop device is not a drive", source: "loop3", want: nil},
 	}
 
 	for _, test := range tests {
@@ -161,4 +171,13 @@ func TestIsSpareArrayMember(t *testing.T) {
 	// both kept: dropping a data-carrying disk hides its filesystems entirely.
 	require.False(t, isSpareArrayMember(root, "absent"))
 	require.False(t, isSpareArrayMember(filepath.Join(root, "not-an-array"), "sda1"))
+}
+
+func TestIsSyntheticDisk(t *testing.T) {
+	for _, name := range []string{"loop0", "loop12", "zram0", "ram15"} {
+		require.True(t, isSyntheticDisk(name), name)
+	}
+	for _, name := range []string{"sda", "nvme0n1", "md0", "dm-0", "mmcblk0", "sdram"} {
+		require.False(t, isSyntheticDisk(name), name)
+	}
 }

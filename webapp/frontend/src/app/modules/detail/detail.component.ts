@@ -560,7 +560,8 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         return (
             'No mounted filesystem is attributed to this drive. Attribution needs a filesystem collector new enough to report backing devices, ' +
-            'running on a Linux host where it can read sysfs. Otherwise this drive may hold no mounted filesystem.'
+            'running on a Linux host where it can read sysfs, and configured with the same host id as the SMART collector. ' +
+            'Otherwise this drive may hold no mounted filesystem.'
         );
     }
 

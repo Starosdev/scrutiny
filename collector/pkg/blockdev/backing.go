@@ -128,7 +128,26 @@ func walk(name string, sysBlock string, disks map[string]struct{}, visited map[s
 		return
 	}
 
+	if isSyntheticDisk(name) {
+		return
+	}
 	disks[name] = struct{}{}
+}
+
+// isSyntheticDisk reports whether a whole-disk name belongs to a kernel-
+// synthesised device rather than to a drive.
+//
+// loop devices back every snap package, and a snap-based host carries dozens of
+// them; zram and ram devices are memory. None is a drive Scrutiny can register,
+// so a link row naming one could never match a device and is pure noise
+// proportional to the host's snap count.
+func isSyntheticDisk(name string) bool {
+	for _, prefix := range []string{"loop", "zram", "ram"} {
+		if strings.HasPrefix(name, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // isSpareArrayMember reports whether a slave is an md array member holding none

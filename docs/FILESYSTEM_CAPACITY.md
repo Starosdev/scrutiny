@@ -78,6 +78,14 @@ mount and a set of btrfs subvolume mounts produce: the mounts share one block
 device, so they are one filesystem reported several times. The per-host capacity
 panel still lists every mount.
 
+Loop, zram and ram devices are not reported as backing devices. They are
+kernel-synthesized rather than drives, so Scrutiny never registers them and a
+link naming one could match nothing.
+
+Purging a SMART host deletes its filesystem capacity rows with its devices.
+Keeping them would attribute the purged host's free space to whichever drive
+later registers under the same device name on the same host id.
+
 ## Visibility Limits
 
 The collector reports filesystem capacity only when it can inspect host mounts.
