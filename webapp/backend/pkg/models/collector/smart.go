@@ -302,6 +302,12 @@ type SmartInfo struct {
 	// field. See SmartInfo.UnmarshalJSON, which extracts these keys manually.
 	ScsiSelfTests []ScsiSelfTestEntry `json:"-"`
 
+	// ScsiSasPhys captures the per-PHY counters of the SAS Protocol log page. smartctl
+	// reports one numbered top-level key per port ("scsi_sas_port_0", "scsi_sas_port_1",
+	// ...), each holding one numbered key per PHY ("phy_0", ...), so there is no field to
+	// decode into directly. See SmartInfo.UnmarshalJSON, which extracts them manually.
+	ScsiSasPhys []ScsiSasPhy `json:"-"`
+
 	// ScsiBackgroundScan captures the SAS Background Medium Scan status ("scsi_background_scan").
 	// It describes an in-progress/periodic scan rather than a discrete self-test result, so it
 	// is not folded into ScsiSelfTests/SelfTestEntries.
@@ -336,13 +342,84 @@ type ScsiBackgroundScan struct {
 	} `json:"status"`
 }
 
+// ScsiSasPhy represents one PHY of one SAS port, from the SAS Protocol log page
+// (e.g. the "scsi_sas_port_0" -> "phy_0" object in `smartctl --json -l sasphy`).
+// Port and Phy carry the indexes of the keys the PHY was found under, because the
+// counters of each PHY are tracked separately: a cable, backplane or HBA port fault
+// shows up on the PHY it affects, and folding them together would hide which.
+type ScsiSasPhy struct {
+	// The string leads for the same fieldalignment reason as ScsiErrorCounters.
+	NegotiatedLogicalLinkRate       string `json:"negotiated_logical_link_rate"`
+	Port                            int    `json:"-"`
+	Phy                             int    `json:"-"`
+	InvalidDwordCount               int64  `json:"invalid_dword_count"`
+	RunningDisparityErrorCount      int64  `json:"running_disparity_error_count"`
+	LossOfDwordSynchronizationCount int64  `json:"loss_of_dword_synchronization_count"`
+	PhyResetProblemCount            int64  `json:"phy_reset_problem_count"`
+}
+
+// scsiSasPortKeyPrefix is the prefix smartctl uses for each numbered SAS port key
+// (e.g. "scsi_sas_port_0", "scsi_sas_port_1", ...).
+const scsiSasPortKeyPrefix = "scsi_sas_port_"
+
+// scsiSasPhyKeyPrefix is the prefix smartctl uses for each numbered PHY key inside a
+// port object (e.g. "phy_0", ...).
+const scsiSasPhyKeyPrefix = "phy_"
+
+// parseScsiSasPhys collects every PHY of every SAS port from the raw smartctl object,
+// sorted by port then PHY so the slice order does not depend on map iteration order.
+func parseScsiSasPhys(raw map[string]json.RawMessage) []ScsiSasPhy {
+	var phys []ScsiSasPhy
+	for key, value := range raw {
+		if !strings.HasPrefix(key, scsiSasPortKeyPrefix) {
+			continue
+		}
+		portSuffix := strings.TrimPrefix(key, scsiSasPortKeyPrefix)
+		port, err := strconv.Atoi(portSuffix)
+		// Require the digits to round-trip, so "scsi_sas_port_0" and "scsi_sas_port_00" cannot
+		// both claim port 0 and leave which one wins up to map iteration order.
+		if err != nil || port < 0 || strconv.Itoa(port) != portSuffix {
+			continue
+		}
+		var rawPhys map[string]json.RawMessage
+		if err := json.Unmarshal(value, &rawPhys); err != nil {
+			continue
+		}
+		for phyKey, phyValue := range rawPhys {
+			if !strings.HasPrefix(phyKey, scsiSasPhyKeyPrefix) {
+				continue
+			}
+			phySuffix := strings.TrimPrefix(phyKey, scsiSasPhyKeyPrefix)
+			phyIndex, err := strconv.Atoi(phySuffix)
+			if err != nil || phyIndex < 0 || strconv.Itoa(phyIndex) != phySuffix {
+				continue
+			}
+			var phy ScsiSasPhy
+			if err := json.Unmarshal(phyValue, &phy); err != nil {
+				continue
+			}
+			phy.Port = port
+			phy.Phy = phyIndex
+			phys = append(phys, phy)
+		}
+	}
+	sort.Slice(phys, func(i, j int) bool {
+		if phys[i].Port != phys[j].Port {
+			return phys[i].Port < phys[j].Port
+		}
+		return phys[i].Phy < phys[j].Phy
+	})
+	return phys
+}
+
 // scsiSelfTestKeyPrefix is the prefix smartctl uses for each numbered SCSI
 // self-test log entry key (e.g. "scsi_self_test_0", "scsi_self_test_1", ...).
 const scsiSelfTestKeyPrefix = "scsi_self_test_"
 
-// UnmarshalJSON decodes the standard SmartInfo fields, then makes a second pass
-// over the raw object to collect the SCSI self-test log entries, which smartctl
-// reports as individually numbered top-level keys rather than a JSON array.
+// UnmarshalJSON decodes the standard SmartInfo fields, then makes a second pass over the
+// raw object to collect the SCSI structures smartctl reports as individually numbered
+// top-level keys rather than as arrays: the self-test log entries and the per-port SAS
+// PHY counters.
 func (s *SmartInfo) UnmarshalJSON(data []byte) error {
 	type smartInfoAlias SmartInfo
 	var alias smartInfoAlias
@@ -382,6 +459,8 @@ func (s *SmartInfo) UnmarshalJSON(data []byte) error {
 	for _, item := range indexed {
 		s.ScsiSelfTests = append(s.ScsiSelfTests, item.entry)
 	}
+
+	s.ScsiSasPhys = parseScsiSasPhys(raw)
 
 	return nil
 }

@@ -2,6 +2,8 @@ package measurements
 
 import (
 	"fmt"
+	"math"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +18,7 @@ import (
 
 // Custom threshold status reason strings (S1192: deduplicated string literals)
 const statusReasonWithinThreshold = "Within custom threshold"
+const statusReasonCumulativeCounterUnchanged = "Cumulative counter unchanged since last measurement"
 const statusReasonThresholdExceeded = "Custom threshold exceeded"
 const statusReasonAcknowledged = "Acknowledged at value %d"
 const statusReasonAcknowledgementStale = "Acknowledgement no longer applies: value changed from %d to %d"
@@ -336,7 +339,7 @@ func (sm *Smart) FromCollectorSmartInfoWithOverrides(cfg config.Interface, wwn s
 	} else if sm.DeviceProtocol == pkg.DeviceProtocolNvme {
 		sm.processNvmeSmartInfoWithOverrides(cfg, info.NvmeSmartHealthInformationLog, mergedOverrides)
 	} else if sm.DeviceProtocol == pkg.DeviceProtocolScsi {
-		sm.processScsiSmartInfoWithOverrides(cfg, info.ScsiGrownDefectList, &info.ScsiErrorCounterLog, info.ScsiEnvironmentalReports, info.ScsiEnduranceUsed, mergedOverrides)
+		sm.processScsiSmartInfoWithOverrides(&info, mergedOverrides)
 	}
 
 	return nil
@@ -565,17 +568,10 @@ var scsiErrorCounterFields = []struct {
 // to attrs. The cumulative byte-processed attribute (the SAS analog to ATA LBAs written/read
 // and NVMe data units) is only added when the drive reports a parseable
 // "gigabytes_processed" value; some drives and vendors omit the field.
-//
-// evaluateThresholds=false records the counters without ever failing them, which is how
-// a page is exposed for history and graphing before Scrutiny can judge its trend.
-func addScsiErrorCounterAttributes(attrs map[string]SmartAttribute, prefix string, counters *collector.ScsiErrorCounters, evaluateThresholds bool) {
+func addScsiErrorCounterAttributes(attrs map[string]SmartAttribute, prefix string, counters *collector.ScsiErrorCounters) {
 	for _, field := range scsiErrorCounterFields {
 		attributeID := prefix + "_" + field.suffix
-		threshold := field.threshold
-		if !evaluateThresholds {
-			threshold = scsiAttributeNoThreshold
-		}
-		attrs[attributeID] = (&SmartScsiAttribute{AttributeId: attributeID, Value: field.value(counters), Threshold: threshold}).PopulateAttributeStatus()
+		attrs[attributeID] = (&SmartScsiAttribute{AttributeId: attributeID, Value: field.value(counters), Threshold: field.threshold}).PopulateAttributeStatus()
 	}
 	if bytesProcessed, ok := parseGigabytesProcessed(counters.GigabytesProcessed); ok {
 		attributeID := prefix + "_gigabytes_processed"
@@ -583,27 +579,91 @@ func addScsiErrorCounterAttributes(attrs map[string]SmartAttribute, prefix strin
 	}
 }
 
+// scsiSasPhyFields lists the per-PHY error counters of the SAS Protocol log page. All
+// four are cumulative transport-error counters: a nonzero value can be years of history
+// (a cable reseated long ago), so they are evaluated by trend rather than by absolute
+// value, the same way ATA attribute 199 (UltraDMA CRC Error Count) is. The threshold of 0
+// is what makes a rising counter visible; ApplyDeltaEvaluation suppresses it again as soon
+// as the counter stops moving.
+var scsiSasPhyFields = []struct {
+	value  func(*collector.ScsiSasPhy) int64
+	suffix string
+}{
+	{suffix: "invalid_dword_count", value: func(p *collector.ScsiSasPhy) int64 { return p.InvalidDwordCount }},
+	{suffix: "running_disparity_error_count", value: func(p *collector.ScsiSasPhy) int64 { return p.RunningDisparityErrorCount }},
+	{suffix: "loss_of_dword_synchronization_count", value: func(p *collector.ScsiSasPhy) int64 { return p.LossOfDwordSynchronizationCount }},
+	{suffix: "phy_reset_problem_count", value: func(p *collector.ScsiSasPhy) int64 { return p.PhyResetProblemCount }},
+}
+
+// scsiSasPhyLinkRatePattern matches the link speed inside smartctl's
+// negotiated_logical_link_rate string, e.g. "phy enabled; 12 Gbps". The string also
+// carries non-numeric states ("phy enabled; unknown", "phy disabled"), which yield no
+// attribute rather than a misleading zero.
+var scsiSasPhyLinkRatePattern = regexp.MustCompile(`([0-9]+(?:\.[0-9]+)?)\s*Gbps`)
+
+// scsiSasPhyAttributePrefix returns the attribute ID prefix for one PHY, e.g.
+// "sas_port_0_phy_1". Attribute IDs are per PHY because that is what makes a single bad
+// cable, backplane slot or HBA port identifiable; combining ports would average the fault
+// away. The thresholds package matches these IDs with its own pattern to generate their
+// display metadata (ScsiMetadataFor); it cannot call this, because it is imported here.
+func scsiSasPhyAttributePrefix(port int, phy int) string {
+	return fmt.Sprintf("sas_port_%d_phy_%d", port, phy)
+}
+
+// ParseScsiSasPhyLinkRateMbps converts smartctl's negotiated_logical_link_rate string into
+// megabits per second, reporting false when the string carries no speed.
+func ParseScsiSasPhyLinkRateMbps(negotiatedLogicalLinkRate string) (int64, bool) {
+	match := scsiSasPhyLinkRatePattern.FindStringSubmatch(negotiatedLogicalLinkRate)
+	if match == nil {
+		return 0, false
+	}
+	gbps, err := strconv.ParseFloat(match[1], 64)
+	if err != nil {
+		return 0, false
+	}
+	return int64(math.Round(gbps * 1000)), true
+}
+
+// addScsiSasPhyAttributes adds the per-PHY SAS counters of one PHY to attrs.
+func addScsiSasPhyAttributes(attrs map[string]SmartAttribute, phy *collector.ScsiSasPhy) {
+	prefix := scsiSasPhyAttributePrefix(phy.Port, phy.Phy)
+	for _, field := range scsiSasPhyFields {
+		attributeID := prefix + "_" + field.suffix
+		attrs[attributeID] = (&SmartScsiAttribute{AttributeId: attributeID, Value: field.value(phy), Threshold: 0}).PopulateAttributeStatus()
+	}
+	if linkRateMbps, ok := ParseScsiSasPhyLinkRateMbps(phy.NegotiatedLogicalLinkRate); ok {
+		attributeID := prefix + "_negotiated_link_rate_mbps"
+		attrs[attributeID] = (&SmartScsiAttribute{AttributeId: attributeID, Value: linkRateMbps, Threshold: scsiAttributeNoThreshold}).PopulateAttributeStatus()
+	}
+}
+
 // buildScsiAttributes builds every SCSI attribute from collector data. It is the single
 // source of truth for the SCSI attribute set, shared by ProcessScsiSmartInfo (legacy
 // InfluxDB migration path) and processScsiSmartInfoWithOverrides (ingestion path), which
 // differ only in how overrides are applied afterwards.
-func buildScsiAttributes(temperature int64, defectGrownList int64, scsiErrorCounterLog *collector.ScsiErrorCounterLog, enduranceUsed *collector.ScsiEnduranceUsed) map[string]SmartAttribute {
+func buildScsiAttributes(temperature int64, defectGrownList int64, scsiErrorCounterLog *collector.ScsiErrorCounterLog, enduranceUsed *collector.ScsiEnduranceUsed, sasPhys []collector.ScsiSasPhy) map[string]SmartAttribute {
 	attrs := map[string]SmartAttribute{
 		"temperature":            (&SmartScsiAttribute{AttributeId: "temperature", Value: temperature, Threshold: scsiAttributeNoThreshold}).PopulateAttributeStatus(),
 		"scsi_grown_defect_list": (&SmartScsiAttribute{AttributeId: "scsi_grown_defect_list", Value: defectGrownList, Threshold: 0}).PopulateAttributeStatus(),
 	}
 
-	addScsiErrorCounterAttributes(attrs, "read", &scsiErrorCounterLog.Read, true)
-	addScsiErrorCounterAttributes(attrs, "write", &scsiErrorCounterLog.Write, true)
+	addScsiErrorCounterAttributes(attrs, "read", &scsiErrorCounterLog.Read)
+	addScsiErrorCounterAttributes(attrs, "write", &scsiErrorCounterLog.Write)
 
 	// Only drives that support the Verify Error Counter log page (0x05) report it, so its
-	// attributes are absent rather than zero on drives that do not. Verify counters are
-	// recorded without threshold evaluation: they are cumulative, and on many drives they
-	// are already nonzero on a healthy unit, so a nonzero value is not a failure. What
-	// matters is whether they climb, which needs the delta-based evaluation
-	// ApplyDeltaEvaluation performs for ATA cumulative counters today.
+	// attributes are absent rather than zero on drives that do not. Its counters carry the
+	// same thresholds as read and write, but their metadata asks for delta evaluation: they
+	// are cumulative and often already nonzero on a healthy drive, so ApplyDeltaEvaluation
+	// clears the warning again as soon as a counter stops moving.
 	if scsiErrorCounterLog.Verify != nil {
-		addScsiErrorCounterAttributes(attrs, "verify", scsiErrorCounterLog.Verify, false)
+		addScsiErrorCounterAttributes(attrs, "verify", scsiErrorCounterLog.Verify)
+	}
+
+	// One attribute set per PHY of per port. A drive reports a PHY whether or not anything
+	// is attached to it, and an unattached PHY has all-zero counters, so no filtering is
+	// needed here: its counters are real and simply never move.
+	for i := range sasPhys {
+		addScsiSasPhyAttributes(attrs, &sasPhys[i])
 	}
 
 	// SAS SSD endurance indicator (Solid State Media log page 0x11). Reuses the "percentage_used"
@@ -619,7 +679,7 @@ func buildScsiAttributes(temperature int64, defectGrownList int64, scsiErrorCoun
 
 // generate SmartScsiAttribute entries from Scrutiny Collector Smart data.
 func (sm *Smart) ProcessScsiSmartInfo(cfg config.Interface, defectGrownList int64, scsiErrorCounterLog collector.ScsiErrorCounterLog, temperature map[string]collector.ScsiTemperatureData) {
-	sm.Attributes = buildScsiAttributes(sm.Temp, defectGrownList, &scsiErrorCounterLog, nil)
+	sm.Attributes = buildScsiAttributes(sm.Temp, defectGrownList, &scsiErrorCounterLog, nil, nil)
 
 	// Apply overrides and find analyzed attribute status
 	for attrId, val := range sm.Attributes {
@@ -847,18 +907,19 @@ func (sm *Smart) processNvmeSmartInfoWithOverrides(cfg config.Interface, nvmeSma
 }
 
 // ApplyDeltaEvaluation suppresses warnings/failures for cumulative counter attributes
-// (like UltraDMA CRC Error Count) when the value hasn't increased since the previous measurement.
-// This prevents false positives from historical errors that are no longer actively occurring.
-// previousValues maps attribute ID strings to their previous raw values.
-// Only applies to ATA attributes with UseDeltaEvaluation=true in their metadata.
-func (sm *Smart) ApplyDeltaEvaluation(previousValues map[string]int64) {
-	if sm.DeviceProtocol != pkg.DeviceProtocolAta || len(previousValues) == 0 {
+// (like UltraDMA CRC Error Count, or the SAS PHY error counters) when the value hasn't
+// increased since the previous measurement. This prevents false positives from historical
+// errors that are no longer actively occurring.
+// previousValues maps attribute ID strings to their previous evaluated values.
+// Only applies to attributes with UseDeltaEvaluation=true in their protocol's metadata.
+func (sm *Smart) ApplyDeltaEvaluation(previousValues map[string]int64, mergedOverrides []overrides.AttributeOverride) {
+	if len(previousValues) == 0 {
 		return
 	}
 
 	deltaApplied := false
 	for _, attr := range sm.Attributes {
-		if suppressDeltaIfUnchanged(attr, previousValues) {
+		if sm.suppressDeltaIfUnchanged(attr, previousValues, mergedOverrides) {
 			deltaApplied = true
 		}
 	}
@@ -869,38 +930,88 @@ func (sm *Smart) ApplyDeltaEvaluation(previousValues map[string]int64) {
 	}
 }
 
-// suppressDeltaIfUnchanged downgrades a warning/failing cumulative-counter ATA attribute to
-// passed when its raw value is unchanged from the previous measurement. It returns true when a
+// suppressDeltaIfUnchanged downgrades a warning/failing cumulative-counter attribute to
+// passed when its value is unchanged from the previous measurement. It returns true when a
 // suppression was applied. Manufacturer SMART failures and non-delta attributes are left alone.
-func suppressDeltaIfUnchanged(attr SmartAttribute, previousValues map[string]int64) bool {
-	ataAttr, ok := attr.(*SmartAtaAttribute)
+func (sm *Smart) suppressDeltaIfUnchanged(attr SmartAttribute, previousValues map[string]int64, mergedOverrides []overrides.AttributeOverride) bool {
+	attributeID, useDelta := deltaEvaluatedAttributeID(attr)
+	if !useDelta {
+		return false
+	}
+
+	// A user rule on this attribute decides its status, not a trend heuristic: suppressing a
+	// fail_above, force_status or acknowledgement result here would silently undo what the
+	// user asked for. An override row that sets none of those does nothing, so it must not
+	// disable suppression either.
+	if overrides.ApplyWithOverrides(mergedOverrides, sm.DeviceProtocol, attributeID, sm.DeviceID, sm.DeviceWWN).IsLoadBearing() {
+		return false
+	}
+
+	currentValue, ok := AttributeThresholdValue(attr)
 	if !ok {
 		return false
 	}
 
-	metadata, ok := thresholds.AtaMetadata[ataAttr.AttributeId]
-	if !ok || !metadata.UseDeltaEvaluation {
-		return false
-	}
+	status := attr.GetStatus()
 
 	// Only suppress Scrutiny-evaluated warnings/failures, never manufacturer SMART failures
-	if pkg.AttributeStatusHas(ataAttr.Status, pkg.AttributeStatusFailedSmart) {
+	if pkg.AttributeStatusHas(status, pkg.AttributeStatusFailedSmart) {
 		return false
 	}
 
 	// Only act on attributes that are currently warning or failing
-	if ataAttr.Status == pkg.AttributeStatusPassed {
+	if status == pkg.AttributeStatusPassed {
 		return false
 	}
 
-	prevValue, hasPrevious := previousValues[strconv.Itoa(ataAttr.AttributeId)]
-	if !hasPrevious || ataAttr.RawValue != prevValue {
+	// A counter with no previous value carries no trend, but it is not suppressed: the
+	// previous submission can be missing the counter because the drive failed to report the
+	// log page for one collection, and on a marginal SAS link that is exactly when the page
+	// read times out. Suppressing it would let a counter climb unseen across alternating
+	// collections. The cost is that a counter arriving already nonzero fails once and clears
+	// on the next collection, the same as a newly added drive's first submission.
+	prevValue, hasPrevious := previousValues[attributeID]
+	if !hasPrevious || currentValue != prevValue {
 		return false
 	}
 
-	// The raw value hasn't changed, suppress the warning
-	ataAttr.Status = pkg.AttributeStatusPassed
-	ataAttr.StatusReason = "Cumulative counter unchanged since last measurement"
+	// The value hasn't changed, suppress the warning
+	return setAttributeStatus(attr, pkg.AttributeStatusPassed, statusReasonCumulativeCounterUnchanged)
+}
+
+// deltaEvaluatedAttributeID returns the key an attribute is tracked under in the previous
+// values map, and whether its protocol metadata asks for delta evaluation. ATA attributes
+// are keyed by their numeric ID rendered as a string; SCSI attributes by their ID directly.
+func deltaEvaluatedAttributeID(attr SmartAttribute) (string, bool) {
+	switch typed := attr.(type) {
+	case *SmartAtaAttribute:
+		metadata, ok := thresholds.AtaMetadata[typed.AttributeId]
+		return strconv.Itoa(typed.AttributeId), ok && metadata.UseDeltaEvaluation
+	case *SmartScsiAttribute:
+		metadata, ok := thresholds.ScsiMetadataFor(typed.AttributeId)
+		return typed.AttributeId, ok && metadata.UseDeltaEvaluation
+	default:
+		return "", false
+	}
+}
+
+// setAttributeStatus writes a status and reason onto any attribute type, reporting false for
+// a type it does not know, so a caller never treats an unwritten attribute as changed.
+func setAttributeStatus(attr SmartAttribute, status pkg.AttributeStatus, reason string) bool {
+	switch typed := attr.(type) {
+	case *SmartAtaAttribute:
+		typed.Status, typed.StatusReason = status, reason
+	case *SmartAtaDeviceStatAttribute:
+		typed.Status, typed.StatusReason = status, reason
+	case *SmartFarmAttribute:
+		typed.Status, typed.StatusReason = status, reason
+	case *SmartNvmeAttribute:
+		typed.Status, typed.StatusReason = status, reason
+	case *SmartScsiAttribute:
+		typed.Status, typed.StatusReason = status, reason
+	default:
+		return false
+	}
 	return true
 }
 
@@ -1073,8 +1184,8 @@ func (sm *Smart) rolloverReasonFromCrossCheck(currentPoH int64) string {
 }
 
 // processScsiSmartInfoWithOverrides generates SmartScsiAttribute entries using pre-merged overrides.
-func (sm *Smart) processScsiSmartInfoWithOverrides(cfg config.Interface, defectGrownList int64, scsiErrorCounterLog *collector.ScsiErrorCounterLog, temperature map[string]collector.ScsiTemperatureData, enduranceUsed *collector.ScsiEnduranceUsed, mergedOverrides []overrides.AttributeOverride) {
-	sm.Attributes = buildScsiAttributes(sm.Temp, defectGrownList, scsiErrorCounterLog, enduranceUsed)
+func (sm *Smart) processScsiSmartInfoWithOverrides(info *collector.SmartInfo, mergedOverrides []overrides.AttributeOverride) {
+	sm.Attributes = buildScsiAttributes(sm.Temp, info.ScsiGrownDefectList, &info.ScsiErrorCounterLog, info.ScsiEnduranceUsed, info.ScsiSasPhys)
 
 	// Apply overrides and find analyzed attribute status
 	for attrId, val := range sm.Attributes {

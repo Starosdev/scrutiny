@@ -832,17 +832,26 @@ func TestFromCollectorSmartInfo_Scsi_Verify_ErrorCounters(t *testing.T) {
 	// the counter stays 0 while the verify error counters rise from background scanning.
 	require.Equal(t, int64(0), smartMdl.Attributes["verify_gigabytes_processed"].(*measurements.SmartScsiAttribute).Value)
 
-	// Verify counters carry no threshold, so a nonzero rereads/rewrites count (3 here) must not
-	// fail the drive. Absolute verify values are not a verdict; only a rising trend is.
-	require.Equal(t, pkg.DeviceStatusPassed, smartMdl.Status)
-	for _, attributeID := range []string{
-		"verify_errors_corrected_by_rereads_rewrites",
-		"verify_total_uncorrected_errors",
-	} {
-		attribute := smartMdl.Attributes[attributeID].(*measurements.SmartScsiAttribute)
-		require.Equal(t, int64(-1), attribute.Threshold, attributeID)
-		require.Equal(t, pkg.AttributeStatusPassed, attribute.Status, attributeID)
-	}
+	// Verify counters carry the same thresholds as read and write, so this fixture's three
+	// recovered verify errors fail the drive here. Only the recovered counter is
+	// delta-evaluated, which is what clears it at ingestion once the counter stops moving
+	// (see TestApplyDeltaEvaluation_Scsi_SasPhy); FromCollectorSmartInfo has no previous
+	// submission to compare against, so it still reports the failure.
+	require.Equal(t, pkg.DeviceStatusFailedScrutiny, smartMdl.Status)
+	recoveredErrors := smartMdl.Attributes["verify_errors_corrected_by_rereads_rewrites"].(*measurements.SmartScsiAttribute)
+	require.Equal(t, int64(0), recoveredErrors.Threshold)
+	require.Equal(t, pkg.AttributeStatusFailedScrutiny, recoveredErrors.Status)
+	recoveredMetadata, ok := thresholds.ScsiMetadataFor("verify_errors_corrected_by_rereads_rewrites")
+	require.True(t, ok)
+	require.True(t, recoveredMetadata.UseDeltaEvaluation)
+
+	// Uncorrected verify errors are unreadable blocks the drive found itself, the same class
+	// of defect as read/write uncorrected errors, so they are judged on their absolute value
+	// and never cleared by a flat trend.
+	uncorrectedMetadata, ok := thresholds.ScsiMetadataFor("verify_total_uncorrected_errors")
+	require.True(t, ok)
+	require.False(t, uncorrectedMetadata.UseDeltaEvaluation)
+	require.Equal(t, int64(0), smartMdl.Attributes["verify_total_uncorrected_errors"].(*measurements.SmartScsiAttribute).Threshold)
 
 	// The read/write pages keep their existing thresholds and attribute IDs.
 	require.Equal(t, int64(0), smartMdl.Attributes["read_total_uncorrected_errors"].(*measurements.SmartScsiAttribute).Threshold)
@@ -852,7 +861,8 @@ func TestFromCollectorSmartInfo_Scsi_Verify_ErrorCounters(t *testing.T) {
 	// Every attribute the SCSI builder emits needs display metadata, or the UI renders
 	// "Unknown Attribute Name" for it.
 	for attributeID := range smartMdl.Attributes {
-		require.Contains(t, thresholds.ScsiMetadata, attributeID)
+		_, ok := thresholds.ScsiMetadataFor(attributeID)
+		require.True(t, ok, attributeID)
 	}
 }
 
@@ -895,6 +905,102 @@ func TestFromCollectorSmartInfo_Scsi_Verify_Absent(t *testing.T) {
 	}
 	// The drive keeps exactly the attribute set it had before this change.
 	require.Equal(t, 16, len(smartMdl.Attributes))
+}
+
+// TestFromCollectorSmartInfo_Scsi_SasPhy tests the per-PHY SAS Protocol log page counters
+// requested in Starosdev/scrutiny#1024. Each PHY of each port gets its own attribute set, so
+// a fault on one cable, backplane slot or HBA port stays identifiable.
+func TestFromCollectorSmartInfo_Scsi_SasPhy(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-scsi-sas-phy.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+
+	// Both ports are decoded from their numbered top-level keys, sorted by port then PHY.
+	require.Len(t, smartJson.ScsiSasPhys, 2)
+	require.Equal(t, 0, smartJson.ScsiSasPhys[0].Port)
+	require.Equal(t, 0, smartJson.ScsiSasPhys[0].Phy)
+	require.Equal(t, 1, smartJson.ScsiSasPhys[1].Port)
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+
+	require.Equal(t, int64(32), smartMdl.Attributes["sas_port_0_phy_0_invalid_dword_count"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(0), smartMdl.Attributes["sas_port_0_phy_0_running_disparity_error_count"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(8), smartMdl.Attributes["sas_port_0_phy_0_loss_of_dword_synchronization_count"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(8), smartMdl.Attributes["sas_port_0_phy_0_phy_reset_problem_count"].(*measurements.SmartScsiAttribute).Value)
+
+	// "phy enabled; 12 Gbps" -> 12000 Mbps.
+	require.Equal(t, int64(12000), smartMdl.Attributes["sas_port_0_phy_0_negotiated_link_rate_mbps"].(*measurements.SmartScsiAttribute).Value)
+
+	// Port 1 has nothing attached: its counters are real (and zero), but "phy enabled;
+	// unknown" carries no speed, so it gets no link rate attribute rather than a zero one.
+	require.Equal(t, int64(0), smartMdl.Attributes["sas_port_1_phy_0_invalid_dword_count"].(*measurements.SmartScsiAttribute).Value)
+	require.NotContains(t, smartMdl.Attributes, "sas_port_1_phy_0_negotiated_link_rate_mbps")
+
+	// Each port's counters stay separate; nothing is summed across ports.
+	require.Contains(t, smartMdl.Attributes, "sas_port_1_phy_0_phy_reset_problem_count")
+
+	// Every attribute needs resolvable display metadata, including the generated PHY IDs,
+	// or the UI renders "Unknown Attribute Name".
+	for attributeID := range smartMdl.Attributes {
+		metadata, ok := thresholds.ScsiMetadataFor(attributeID)
+		require.True(t, ok, attributeID)
+		require.NotEmpty(t, metadata.DisplayName, attributeID)
+	}
+	phyMetadata, ok := thresholds.ScsiMetadataFor("sas_port_1_phy_0_invalid_dword_count")
+	require.True(t, ok)
+	require.Equal(t, "Invalid DWORDs (Port 1 PHY 0)", phyMetadata.DisplayName)
+
+	// 23 SCSI attributes from the verify fixture, plus 4 counters for each of the two PHYs,
+	// plus one link rate for the only PHY reporting a speed.
+	require.Equal(t, 32, len(smartMdl.Attributes))
+
+	// Port 0's 32 invalid DWORDs exceed the counter's threshold of 0, so ingestion reports a
+	// failure. ApplyDeltaEvaluation is what clears it on the next collection if the counter
+	// has not moved; it needs a previous submission, which this path does not have.
+	require.Equal(t, pkg.DeviceStatusFailedScrutiny, smartMdl.Status)
+	require.Equal(t, pkg.AttributeStatusFailedScrutiny, smartMdl.Attributes["sas_port_0_phy_0_invalid_dword_count"].(*measurements.SmartScsiAttribute).Status)
+	require.Equal(t, pkg.AttributeStatusPassed, smartMdl.Attributes["sas_port_1_phy_0_invalid_dword_count"].(*measurements.SmartScsiAttribute).Status)
+}
+
+// TestParseScsiSasPhyLinkRateMbps covers the link rate strings smartctl emits, including the
+// non-numeric states that must not become a zero-speed attribute.
+func TestParseScsiSasPhyLinkRateMbps(t *testing.T) {
+	for _, testCase := range []struct {
+		raw      string
+		expected int64
+		ok       bool
+	}{
+		{"phy enabled; 12 Gbps", 12000, true},
+		{"phy enabled; 6 Gbps", 6000, true},
+		{"phy enabled; 1.5 Gbps", 1500, true},
+		{"phy enabled; unknown", 0, false},
+		{"phy disabled", 0, false},
+		{"", 0, false},
+	} {
+		mbps, ok := measurements.ParseScsiSasPhyLinkRateMbps(testCase.raw)
+		require.Equal(t, testCase.ok, ok, testCase.raw)
+		require.Equal(t, testCase.expected, mbps, testCase.raw)
+	}
 }
 
 // TestFromCollectorSmartInfo_Scsi_SAS_SSD_Endurance tests that SAS SSDs (which report the

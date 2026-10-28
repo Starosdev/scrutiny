@@ -423,6 +423,7 @@ curl -X POST -H "Content-Type: application/json" \
 | `smart-scsi-sas-env-temp.json` | SCSI | SCSI SAS drive with environment temp |
 | `smart-scsi-sas-ssd.json` | SCSI | SAS SSD with `endurance_used` and `gigabytes_processed` |
 | `smart-scsi-sas-verify.json` | SCSI | SAS drive reporting the Verify Error Counter log page (0x05) |
+| `smart-scsi-sas-phy.json` | SCSI | SAS drive with two ports, per-PHY counters from the SAS Protocol log page |
 | `smart-megaraid0.json` | ATA | MegaRAID virtual disk |
 | `smart-sat.json` | ATA | SAT (SCSI-to-ATA Translation) device |
 
