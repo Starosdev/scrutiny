@@ -1,6 +1,6 @@
 import humanizeDuration from 'humanize-duration';
 import { AfterViewInit, Component, LOCALE_ID, OnDestroy, OnInit, ViewChild, inject, ChangeDetectionStrategy } from '@angular/core';
-import { Location, formatDate, NgClass, UpperCasePipe, DecimalPipe, PercentPipe } from '@angular/common';
+import { Location, formatDate, NgClass, NgTemplateOutlet, UpperCasePipe, DecimalPipe, PercentPipe } from '@angular/common';
 import { ApexOptions, ChartComponent } from 'ng-apexcharts';
 import { AppConfig } from 'app/core/config/app.config';
 import { DeviceSelfTestModel } from 'app/core/models/device-selftest-model';
@@ -87,6 +87,7 @@ const AttributeStatusFailedScrutiny = 4;
         MatMenuItem,
         TreoCardComponent,
         NgClass,
+        NgTemplateOutlet,
         MatButtonToggleGroup,
         MatButtonToggle,
         ChartComponent,
@@ -515,6 +516,13 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     isAta(): boolean {
         return this.device?.device_protocol === 'ATA';
+    }
+
+    // True when a vetted consumer drive profile matched this drive, so some observed
+    // failure-rate thresholds can come from the curated linuxhw/SMART catalog instead of
+    // the Backblaze-derived defaults. Drives the second half of the attribution line.
+    get consumerDriveProfileApplied(): boolean {
+        return this.replacementRisk?.consumer_drive_profile_applied === true;
     }
 
     isScsi(): boolean {

@@ -264,6 +264,7 @@
                     (replacementRisk.consumer_drive_profile_applied) { Using consumer drive profile: {{ replacementRisk.consumer_drive_profile_family }}. } @else { Using generic
                     ATA rules. No vetted consumer drive profile matched this drive. }
                 </div>
+                <div class="mb-4"><ng-container *ngTemplateOutlet="failureRateAttribution"></ng-container></div>
                 }
 
                 <!-- Attribute contributions -->
@@ -512,6 +513,9 @@
                     @if (onlyCritical) { <span>Show all attributes</span> } @if (!onlyCritical) { <span>Show critical attributes</span> }
                 </button>
             </div>
+            @if (isAta()) {
+            <div class="mt-2"><ng-container *ngTemplateOutlet="failureRateAttribution"></ng-container></div>
+            }
         </div>
         } @else {
         <!-- Desktop: Table layout -->
@@ -643,7 +647,7 @@
                             <th class="bg-cool-gray-50 dark:bg-cool-gray-700 border-t" mat-header-cell mat-sort-header *matHeaderCellDef>
                                 <span
                                     class="whitespace-no-wrap"
-                                    matTooltip="Failure rate is based on data provided by BackBlaze. The current attribute value is matched against the observed failure categories and an annual failure rate is determined."
+                                    matTooltip="The current attribute value is matched against the observed failure categories and an annual failure rate is determined."
                                 >
                                     Failure Rate <mat-icon [svgIcon]="'info'"></mat-icon>
                                 </span>
@@ -812,6 +816,9 @@
                         <tr class="h-16" mat-footer-row *matFooterRowDef="['recentOrdersTableFooter']"></tr>
                     </table>
                 </div>
+                @if (isAta()) {
+                <div class="px-6 pb-4"><ng-container *ngTemplateOutlet="failureRateAttribution"></ng-container></div>
+                }
             </div>
         </div>
         }
@@ -1015,3 +1022,27 @@
         }
     </div>
 </div>
+
+<!-- Failure-rate data source attribution. Backblaze Drive Stats supplies the baseline
+     observed-threshold buckets and the protocol-level replacement-risk weights; a matched
+     consumer drive profile can replace the buckets with curated linuxhw/SMART values. -->
+<ng-template #failureRateAttribution>
+    <div class="text-xs text-hint">
+        Failure-rate baselines from
+        <a
+            href="https://www.backblaze.com/cloud-storage/resources/hard-drive-test-data"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-blue-500 underline hover:text-blue-700"
+            >Backblaze Drive Stats</a
+        >.
+        @if (consumerDriveProfileApplied) { Where a consumer drive profile matches, family thresholds come from the curated
+        <a
+            href="https://github.com/Staros-Labs/scrutiny/blob/master/docs/CONSUMER_DRIVE_PROFILES.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-blue-500 underline hover:text-blue-700"
+            >linuxhw/SMART catalog</a
+        >. }
+    </div>
+</ng-template>

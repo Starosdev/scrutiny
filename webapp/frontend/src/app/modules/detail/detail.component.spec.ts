@@ -206,6 +206,53 @@ describe('DetailComponent', () => {
         }
     });
 
+    describe('failure-rate attribution (#494)', () => {
+        const render = (protocol: string, mobile: boolean): HTMLElement => {
+            fixture.detectChanges();
+            component.isMobile = mobile;
+            component.device = { device_protocol: protocol } as DeviceModel;
+            fixture.changeDetectorRef.markForCheck();
+            fixture.detectChanges();
+            return fixture.nativeElement as HTMLElement;
+        };
+
+        for (const mobile of [false, true]) {
+            it(`credits Backblaze Drive Stats beside ATA failure rates with mobile=${mobile}`, () => {
+                const host = render('ATA', mobile);
+
+                expect(host.textContent).toContain('Failure-rate baselines from');
+                expect(host.querySelector('a[href*="hard-drive-test-data"]')).toBeTruthy();
+                // No profile matched, so the catalog clause must stay out of the line.
+                expect(host.textContent).not.toContain('linuxhw/SMART catalog');
+            });
+        }
+
+        it('names the linuxhw/SMART catalog once a consumer drive profile applies', () => {
+            component.replacementRisk = {
+                device_protocol: 'ATA',
+                score: 0,
+                category: 'healthy',
+                contributions: [],
+                consumer_drive_profiles_enabled: true,
+                consumer_drive_profile_applied: true,
+                consumer_drive_profile_family: 'Hitachi Deskstar 7K1000.D',
+            } as any;
+
+            const host = render('ATA', false);
+
+            expect(component.consumerDriveProfileApplied).toBeTrue();
+            expect(host.textContent).toContain('linuxhw/SMART catalog');
+            expect(host.querySelector('a[href*="CONSUMER_DRIVE_PROFILES.md"]')).toBeTruthy();
+        });
+
+        it('omits the attribution for protocols that show no failure rate', () => {
+            const host = render('NVMe', false);
+
+            expect(host.textContent).not.toContain('Failure-rate baselines from');
+            expect(host.querySelector('a[href*="hard-drive-test-data"]')).toBeNull();
+        });
+    });
+
     describe('displayedStatus', () => {
         const withThreshold = (status_threshold: number): void => {
             component.config = { ...component.config, metrics: { status_threshold } } as AppConfig;
