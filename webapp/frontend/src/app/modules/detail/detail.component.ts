@@ -46,6 +46,8 @@ import { angularLongDateTime, apexShortDateTime } from 'app/shared/time-format.u
 import { MatIconButton, MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
+import { FilesystemCapacityModel, FilesystemHostStatusModel } from 'app/core/models/filesystem-summary-model';
+import { filesystemUsageClass } from 'app/shared/filesystem-usage.utils';
 import { MatMenuTrigger, MatMenu, MatMenuItem } from '@angular/material/menu';
 import { MenuTriggerRestoreFocusDirective } from 'app/shared/menu-trigger-restore-focus.directive';
 import { TreoCardComponent } from '../../../@treo/components/card/card.component';
@@ -174,6 +176,13 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Replacement risk
     replacementRisk: ReplacementRiskModel | null = null;
+
+    // Filesystems backed by this drive, with the collector status for its host.
+    // The status is what separates "the filesystem collector never ran" from
+    // "this drive holds no mounted filesystem", which look identical otherwise.
+    filesystems: FilesystemCapacityModel[] = [];
+    filesystemStatus: FilesystemHostStatusModel | null = null;
+
     selfTests: DeviceSelfTestModel[] = [];
     selfTestsLoading = false;
     selfTestsLoaded = false;
@@ -241,6 +250,8 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             // Which overrides apply depends on the device, so rebuild once it is known.
             this._buildOverrideMap();
             this.smart_results = respWrapper.data.smart_results;
+            this.filesystems = respWrapper.data.filesystems ?? [];
+            this.filesystemStatus = respWrapper.data.filesystem_status ?? null;
             this.metadata = respWrapper.metadata;
 
             // Initialize display mode from device preference (default to 'scrutiny')
@@ -526,6 +537,36 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
      * (smartctl's numbered scsi_self_test_N log entries are normalized into
      * the same self-test rows as the ATA self-test log).
      */
+    filesystemUsageClass = filesystemUsageClass;
+
+    /**
+     * Explains an empty filesystem list.
+     *
+     * Three different facts produce no rows, and a user has to be able to tell
+     * them apart: the filesystem collector has never reported for this host,
+     * it reported but could not see the host's mounts, or it reported fine and
+     * nothing mounted is attributed to this drive. Showing "0 bytes free" for
+     * any of them would be a claim the collector never made.
+     */
+    filesystemEmptyMessage(): string {
+        if (!this.filesystemStatus) {
+            return 'No filesystem capacity has been reported for this host. Run the filesystem collector to see per-drive free space.';
+        }
+        if (this.filesystemStatus.status === 'unavailable') {
+            return this.filesystemStatus.reason || 'The collector could not inspect this host\'s mounts.';
+        }
+        return 'No mounted filesystem is attributed to this drive. A filesystem on LVM, mdadm or LUKS is attributed only when the collector can read the host\'s sysfs.';
+    }
+
+    /**
+     * The other drives a filesystem also sits on. A filesystem spanning several
+     * drives has free space that belongs to the set, not to this drive, so the
+     * panel names the others rather than implying the space is local.
+     */
+    filesystemSharedWith(filesystem: FilesystemCapacityModel): string[] {
+        return (filesystem.backing_devices ?? []).filter((deviceName) => deviceName !== this.device?.device_name);
+    }
+
     hasSelfTestSupport(): boolean {
         return this.isAta() || this.isScsi();
     }

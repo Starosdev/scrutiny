@@ -1951,6 +1951,14 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/SmartMeasurement"
+            filesystems:
+              type: array
+              description: Mounted filesystems backed by this drive.
+              items:
+                $ref: "#/components/schemas/FilesystemCapacity"
+            filesystem_status:
+              description: Filesystem collector status for this drive's host. Absent when the collector has never reported for the host, which is why an empty filesystems array is not the same as a drive with no mounted filesystem.
+              $ref: "#/components/schemas/FilesystemHostStatus"
         metadata:
           type: object
           additionalProperties: true
@@ -2372,6 +2380,11 @@ components:
         used_percent:
           type: number
           format: double
+        backing_devices:
+          type: array
+          description: Kernel device names of the whole disks backing this filesystem. Absent when the collector could not attribute it, which does not mean the filesystem has no disk behind it.
+          items:
+            type: string
       required: [host_id, mount_point]
     FilesystemHostStatus:
       type: object
@@ -3178,6 +3191,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SmartTemperature"
+        filesystems:
+          type: array
+          description: Mounted filesystems backed by this drive.
+          items:
+            $ref: "#/components/schemas/FilesystemCapacity"
     SmartSummary:
       type: object
       properties:

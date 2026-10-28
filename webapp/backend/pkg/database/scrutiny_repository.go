@@ -591,7 +591,36 @@ func (sr *scrutinyRepository) getSummary(ctx context.Context, includeTemperature
 		sr.attachTemperatureHistory(ctx, summaries)
 	}
 
+	sr.attachFilesystems(ctx, summaries)
+
 	return summaries, nil
+}
+
+// attachFilesystems adds each drive's mounted filesystems to its summary.
+//
+// A failure here is logged and dropped rather than returned: filesystem
+// capacity comes from an optional collector, and a dashboard that refuses to
+// render because that collector's table could not be read would be a worse
+// outcome than a dashboard without free-space figures.
+func (sr *scrutinyRepository) attachFilesystems(ctx context.Context, summaries map[string]*models.DeviceSummary) {
+	byHostDevice, err := sr.filesystemsByHostDevice(ctx)
+	if err != nil {
+		sr.logger.Errorln("could not attach filesystem capacity to device summaries", err)
+		return
+	}
+	if len(byHostDevice) == 0 {
+		return
+	}
+
+	for _, summary := range summaries {
+		byDevice, found := byHostDevice[summary.Device.HostId]
+		if !found {
+			continue
+		}
+		if filesystems, found := byDevice[summary.Device.DeviceName]; found {
+			summary.Filesystems = filesystems
+		}
+	}
 }
 
 // summaryFluxQuery builds the flux query that fetches the latest summary metrics (basic metrics +

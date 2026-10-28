@@ -16,7 +16,7 @@ func createFilesystemTestRepository(t *testing.T) *scrutinyRepository {
 
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.FilesystemCapacity{}, &models.FilesystemHostStatus{}))
+	require.NoError(t, db.AutoMigrate(&models.FilesystemCapacity{}, &models.FilesystemHostStatus{}, &models.FilesystemDevice{}))
 
 	return &scrutinyRepository{
 		gormClient: db,
@@ -108,4 +108,89 @@ func TestSaveFilesystemSummaryPersistsUnavailableHostStatus(t *testing.T) {
 	require.Len(t, filesystems["atlas"], 0)
 	require.Equal(t, models.FilesystemHostStatusUnavailable, hosts["atlas"].Status)
 	require.Equal(t, "collector could not inspect eligible host mounts", hosts["atlas"].Reason)
+}
+
+// filesystemUpload builds a one-host upload from mount point to backing disks.
+func filesystemUpload(hostID string, now time.Time, mounts map[string][]string) models.FilesystemSummaryUpload {
+	filesystems := make([]models.FilesystemCapacity, 0, len(mounts))
+	for mountPoint, backingDevices := range mounts {
+		filesystems = append(filesystems, models.FilesystemCapacity{
+			HostID:         hostID,
+			MountPoint:     mountPoint,
+			FilesystemType: "ext4",
+			TotalBytes:     100,
+			UsedBytes:      60,
+			AvailableBytes: 40,
+			UsedPercent:    60,
+			UpdatedAt:      now,
+			BackingDevices: backingDevices,
+		})
+	}
+	return models.FilesystemSummaryUpload{
+		Filesystems: filesystems,
+		Hosts: []models.FilesystemHostStatus{
+			{HostID: hostID, Status: models.FilesystemHostStatusAvailable, FilesystemCount: len(filesystems), UpdatedAt: now},
+		},
+	}
+}
+
+func TestFilesystemsByHostDeviceGroupsEveryBackingDisk(t *testing.T) {
+	repo := createFilesystemTestRepository(t)
+	ctx := context.Background()
+	now := time.Unix(100, 0).UTC()
+
+	require.NoError(t, repo.SaveFilesystemSummary(ctx, filesystemUpload("atlas", now, map[string][]string{
+		"/":       {"sda"},
+		"/array":  {"sdb", "sdc"},
+		"/remote": nil,
+	})))
+
+	byHostDevice, err := repo.filesystemsByHostDevice(ctx)
+	require.NoError(t, err)
+
+	// An md or LVM filesystem appears under every disk it spans, because each
+	// of those drives is one a user could be looking at.
+	require.Len(t, byHostDevice["atlas"]["sdb"], 1)
+	require.Equal(t, "/array", byHostDevice["atlas"]["sdb"][0].MountPoint)
+	require.Len(t, byHostDevice["atlas"]["sdc"], 1)
+	require.Equal(t, "/", byHostDevice["atlas"]["sda"][0].MountPoint)
+
+	// An unattributed filesystem is reported for the host and belongs to no
+	// drive. Inventing a key for it would credit its free space to a disk.
+	require.Len(t, byHostDevice["atlas"], 3)
+	filesystems, _, err := repo.GetFilesystemSummary(ctx)
+	require.NoError(t, err)
+	require.Len(t, filesystems["atlas"], 3)
+}
+
+func TestGetFilesystemSummaryReportsBackingDevices(t *testing.T) {
+	repo := createFilesystemTestRepository(t)
+	ctx := context.Background()
+	now := time.Unix(100, 0).UTC()
+
+	require.NoError(t, repo.SaveFilesystemSummary(ctx, filesystemUpload("atlas", now, map[string][]string{
+		// A collector that names one disk twice must not break the primary key.
+		"/array": {"sdb", "sdb", "sdc"},
+	})))
+
+	filesystems, _, err := repo.GetFilesystemSummary(ctx)
+	require.NoError(t, err)
+	require.Len(t, filesystems["atlas"], 1)
+	require.Equal(t, []string{"sdb", "sdc"}, filesystems["atlas"][0].BackingDevices)
+}
+
+func TestSaveFilesystemSummaryDropsStaleDeviceLinks(t *testing.T) {
+	repo := createFilesystemTestRepository(t)
+	ctx := context.Background()
+	now := time.Unix(100, 0).UTC()
+
+	require.NoError(t, repo.SaveFilesystemSummary(ctx, filesystemUpload("atlas", now, map[string][]string{"/data": {"sdb"}})))
+	// The mount moved to another disk. The old attribution must not survive,
+	// or sdb keeps reporting free space it no longer holds.
+	require.NoError(t, repo.SaveFilesystemSummary(ctx, filesystemUpload("atlas", now.Add(time.Minute), map[string][]string{"/data": {"sdz"}})))
+
+	byHostDevice, err := repo.filesystemsByHostDevice(ctx)
+	require.NoError(t, err)
+	require.NotContains(t, byHostDevice["atlas"], "sdb")
+	require.Len(t, byHostDevice["atlas"]["sdz"], 1)
 }
