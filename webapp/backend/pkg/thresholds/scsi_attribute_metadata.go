@@ -209,6 +209,55 @@ var ScsiMetadata = map[string]ScsiAttributeMetadata{
 		Critical:    false,
 		Description: "Cumulative amount of data processed by verify commands, taken from the SCSI Verify Error Counter log page's \"gigabytes processed\" field. It typically covers only host-issued verify commands, so a drive can report 0 here while its verify error counters still move, and VERIFY is rare in normal use. It is reported at ~1 GB granularity and is not part of host workload (read/write) totals.",
 	},
+	"background_scans_performed": {
+		ID:          "background_scans_performed",
+		DisplayName: "Background Scans Performed",
+		DisplayType: "",
+		Ideal:       "",
+		Critical:    false,
+		Description: "Number of background scans the drive has completed, from the Background Medium Scan status (log page 0x15). The drive runs this scan on its own schedule, independently of Scrutiny's self-tests, so this count is how you see whether it is still checking its own media. A count that stops rising means background scanning is disabled or never completing. The errors a scan finds are counted by the verify error counters, not here.",
+	},
+	"background_medium_scans_performed": {
+		ID:          "background_medium_scans_performed",
+		DisplayName: "Background Medium Scans Performed",
+		DisplayType: "",
+		Ideal:       "",
+		Critical:    false,
+		Description: "Number of background medium scans the drive has completed, from the Background Medium Scan status (log page 0x15). A medium scan reads the media itself, as opposed to the pre-scan the drive performs after a format, so on most drives this count tracks the total scan count closely.",
+	},
+	"background_scan_status": {
+		ID:          "background_scan_status",
+		DisplayName: "Background Scan Status",
+		DisplayType: "",
+		Ideal:       "",
+		Critical:    false,
+		Description: "Current state of the drive's background medium scan as a numeric status code from log page 0x15 (for example 8, waiting for the scan interval timer to expire). It is a state, not a measurement: a change in value means the drive moved between waiting, scanning, suspended and halted.",
+	},
+	"background_scan_progress_percent": {
+		ID:                 "background_scan_progress_percent",
+		DisplayName:        "Background Scan Progress",
+		DisplayType:        "",
+		Ideal:              "",
+		Critical:           false,
+		TransformValueUnit: "%",
+		Description:        "How far the drive is through its current background medium scan, in whole percent. It only means anything while a scan is running; between scans the drive reports 0.",
+	},
+	"start_stop_cycles": {
+		ID:          "start_stop_cycles",
+		DisplayName: "Start/Stop Cycles",
+		DisplayType: "",
+		Ideal:       "",
+		Critical:    false,
+		Description: "Number of times the drive's motor has spun up and down, from the Start-Stop Cycle Counter log page (0x0e). The threshold shown beside it is the manufacturer's rated count over the drive's lifetime, read from the same log page, so the pair is a mechanical wear figure. Passing the rating is not a failure and is not reported as one: a drive regularly outlives its rated cycle count, and the ATA equivalents of this counter are not failed either. Set a fail_above override on this attribute to be told when a drive passes a count you choose.",
+	},
+	"load_unload_cycles": {
+		ID:          "load_unload_cycles",
+		DisplayName: "Load/Unload Cycles",
+		DisplayType: "",
+		Ideal:       "",
+		Critical:    false,
+		Description: "Number of times the drive's heads have been loaded onto and unloaded from the platters, from the Start-Stop Cycle Counter log page (0x0e). Head loading happens far more often than a full spin-up, which is why drives are rated for an order of magnitude more of these cycles. The threshold shown beside it is the manufacturer's rated count over the drive's lifetime; as with start/stop cycles, passing it is not reported as a failure.",
+	},
 	"percentage_used": {
 		ID:          "percentage_used",
 		DisplayName: "Percentage Used",
@@ -266,31 +315,69 @@ var scsiSasPhyMetadataTemplates = map[string]ScsiAttributeMetadata{
 // the PHY number and the counter suffix.
 var scsiSasPhyAttributePattern = regexp.MustCompile(`^sas_port_([0-9]+)_phy_([0-9]+)_(.+)$`)
 
+// scsiEnvironmentalMetadataTemplates holds the display metadata of the per-sensor lifetime
+// temperature attributes, keyed by the attribute ID suffix. The full attribute ID carries the
+// sensor key smartctl reported ("temperature_1_lifetime_maximum"), and a drive can report
+// several sensors, so ScsiMetadataFor fills the sensor number in.
+var scsiEnvironmentalMetadataTemplates = map[string]ScsiAttributeMetadata{
+	"lifetime_maximum": {
+		DisplayName: "Lifetime Maximum Temperature",
+		Description: "Highest temperature this sensor has ever recorded, from the Environmental Reports log page. The drive tracks it itself, so it covers the whole life of the drive rather than the period Scrutiny has been watching it, and it survives any gap in collection. A value far above the drive's rated maximum points at past cooling or airflow problems even when the drive is cool now.",
+	},
+	"lifetime_minimum": {
+		DisplayName: "Lifetime Minimum Temperature",
+		Description: "Lowest temperature this sensor has ever recorded, from the Environmental Reports log page. Useful mainly as evidence the drive has been powered on below its rated operating range, for example in an unheated space.",
+	},
+	"maximum_since_power_on": {
+		DisplayName: "Maximum Temperature Since Power On",
+		Description: "Highest temperature this sensor has recorded since the drive was last powered on, from the Environmental Reports log page. Compared against the current temperature it shows whether the drive has run hotter earlier in this power cycle.",
+	},
+	"minimum_since_power_on": {
+		DisplayName: "Minimum Temperature Since Power On",
+		Description: "Lowest temperature this sensor has recorded since the drive was last powered on, from the Environmental Reports log page.",
+	},
+}
+
+// scsiEnvironmentalAttributePattern matches a per-sensor lifetime temperature attribute ID,
+// capturing the sensor number and the suffix.
+var scsiEnvironmentalAttributePattern = regexp.MustCompile(`^temperature_([0-9]+)_(.+)$`)
+
 // ScsiMetadataFor resolves the display metadata of a SCSI attribute ID. Prefer it over
-// indexing ScsiMetadata directly: the per-PHY SAS attributes are not in that map, because
-// their IDs depend on how many ports and PHYs the drive reports.
+// indexing ScsiMetadata directly: the per-PHY SAS counters and the per-sensor lifetime
+// temperatures are not in that map, because their IDs depend on how many ports, PHYs and
+// temperature sensors the drive reports.
 func ScsiMetadataFor(attributeID string) (ScsiAttributeMetadata, bool) {
 	if metadata, ok := ScsiMetadata[attributeID]; ok {
 		return metadata, true
 	}
 
-	match := scsiSasPhyAttributePattern.FindStringSubmatch(attributeID)
-	if match == nil {
-		return ScsiAttributeMetadata{}, false
+	if match := scsiSasPhyAttributePattern.FindStringSubmatch(attributeID); match != nil {
+		if metadata, ok := scsiSasPhyMetadataTemplates[match[3]]; ok {
+			metadata.ID = attributeID
+			metadata.DisplayName = fmt.Sprintf("%s (Port %s PHY %s)", metadata.DisplayName, match[1], match[2])
+			return metadata, true
+		}
 	}
-	metadata, ok := scsiSasPhyMetadataTemplates[match[3]]
-	if !ok {
-		return ScsiAttributeMetadata{}, false
+
+	if match := scsiEnvironmentalAttributePattern.FindStringSubmatch(attributeID); match != nil {
+		if metadata, ok := scsiEnvironmentalMetadataTemplates[match[2]]; ok {
+			metadata.ID = attributeID
+			// Always name the sensor. Suppressing it for sensor 1 would make the first row of a
+			// multi-sensor drive read as a drive-wide figure, and this function sees one
+			// attribute ID at a time, so it cannot tell how many sensors the drive reported.
+			metadata.DisplayName = fmt.Sprintf("%s (Sensor %s)", metadata.DisplayName, match[1])
+			return metadata, true
+		}
 	}
-	metadata.ID = attributeID
-	metadata.DisplayName = fmt.Sprintf("%s (Port %s PHY %s)", metadata.DisplayName, match[1], match[2])
-	return metadata, true
+
+	return ScsiAttributeMetadata{}, false
 }
 
 // ScsiMetadataForAttributes returns the metadata map to send to the UI for one device: every
 // statically known SCSI attribute, plus a resolved entry for each of the device's own
-// attribute IDs that is not in the static map (the per-PHY SAS counters). Without the
-// resolved entries the UI has no display name or description for them.
+// attribute IDs that is not in the static map (the per-PHY SAS counters and the per-sensor
+// lifetime temperatures). Without the resolved entries the UI has no display name or
+// description for them.
 func ScsiMetadataForAttributes(attributeIDs []string) map[string]ScsiAttributeMetadata {
 	metadataByID := make(map[string]ScsiAttributeMetadata, len(ScsiMetadata)+len(attributeIDs))
 	for attributeID, metadata := range ScsiMetadata {

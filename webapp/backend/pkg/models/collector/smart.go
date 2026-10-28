@@ -312,6 +312,12 @@ type SmartInfo struct {
 	// It describes an in-progress/periodic scan rather than a discrete self-test result, so it
 	// is not folded into ScsiSelfTests/SelfTestEntries.
 	ScsiBackgroundScan *ScsiBackgroundScan `json:"scsi_background_scan,omitempty"`
+
+	// ScsiStartStopCycleCounter captures the Start-Stop Cycle Counter log page (0x0e), which
+	// reports mechanical wear counters alongside the manufacturer's rated limit for each. It
+	// is a pointer because drives that do not support the page report no key at all, which a
+	// value type cannot tell apart from a drive reporting zero cycles.
+	ScsiStartStopCycleCounter *ScsiStartStopCycleCounter `json:"scsi_start_stop_cycle_counter,omitempty"`
 }
 
 // ScsiSelfTestEntry represents one entry of the SCSI/SAS self-test log
@@ -410,6 +416,19 @@ func parseScsiSasPhys(raw map[string]json.RawMessage) []ScsiSasPhy {
 		return phys[i].Phy < phys[j].Phy
 	})
 	return phys
+}
+
+// ScsiStartStopCycleCounter represents the SCSI Start-Stop Cycle Counter log page (0x0e).
+// Each accumulated counter comes with the count the manufacturer rates the drive for over
+// its lifetime, so the pair is a wear percentage rather than a bare number.
+type ScsiStartStopCycleCounter struct {
+	// Every field is a pointer because smartctl emits each parameter of the page only when
+	// the drive reports it: a drive can report start/stop cycles and omit load/unload
+	// entirely, and a value type would turn that absence into a permanent zero.
+	SpecifiedCycleCountOverDeviceLifetime      *int64 `json:"specified_cycle_count_over_device_lifetime"`
+	AccumulatedStartStopCycles                 *int64 `json:"accumulated_start_stop_cycles"`
+	SpecifiedLoadUnloadCountOverDeviceLifetime *int64 `json:"specified_load_unload_count_over_device_lifetime"`
+	AccumulatedLoadUnloadCycles                *int64 `json:"accumulated_load_unload_cycles"`
 }
 
 // scsiSelfTestKeyPrefix is the prefix smartctl uses for each numbered SCSI

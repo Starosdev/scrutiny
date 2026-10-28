@@ -1011,7 +1011,7 @@ func m20201107210306_FromPreInfluxDBSmartResultsCreatePostInfluxDBSmartResults(d
 
 	} else if preDevice.IsScsi() {
 		defectList, errorLog := buildLegacyScsiErrorLog(&preSmartResult)
-		postDeviceSmartData.ProcessScsiSmartInfo(nil, defectList, errorLog, nil)
+		postDeviceSmartData.ProcessScsiSmartInfo(nil, defectList, &errorLog)
 	} else {
 		return fmt.Errorf("unknown device protocol: %s", preDevice.DeviceProtocol), postDeviceSmartData
 	}
