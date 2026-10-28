@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"gorm.io/gorm"
@@ -128,7 +129,46 @@ func (sr *scrutinyRepository) filesystemsByHostDevice(ctx context.Context) (map[
 			}
 		}
 	}
+	for hostID := range byHostDevice {
+		for deviceName := range byHostDevice[hostID] {
+			byHostDevice[hostID][deviceName] = DedupeFilesystemsBySource(byHostDevice[hostID][deviceName])
+		}
+	}
 	return byHostDevice, nil
+}
+
+// DedupeFilesystemsBySource collapses the mounts of one filesystem into a
+// single entry, keeping the first, and preserves input order.
+//
+// A block device holds one filesystem, so two mounts reporting the same source
+// device are the same filesystem seen twice: a bind mount carries the
+// underlying device as its source, and each btrfs subvolume mount of one
+// filesystem repeats the device too. Both report that filesystem's full used
+// and free bytes. Listing them per drive would show the same free space several
+// times over, and would push a drive past the one-filesystem test that decides
+// whether a single free figure can be shown at all.
+//
+// Only sources naming a block device are collapsed. A source that is not a
+// device path carries no such guarantee: several distinct mounts legitimately
+// share a source string such as "none", and treating those as one filesystem
+// would hide real capacity.
+//
+// The per-host capacity panel deliberately does not use this: there, one row
+// per mount is the point.
+func DedupeFilesystemsBySource(filesystems []models.FilesystemCapacity) []models.FilesystemCapacity {
+	deduped := make([]models.FilesystemCapacity, 0, len(filesystems))
+	seen := make(map[string]struct{}, len(filesystems))
+	for i := range filesystems {
+		source := filesystems[i].SourceDevice
+		if strings.HasPrefix(source, "/dev/") {
+			if _, duplicate := seen[source]; duplicate {
+				continue
+			}
+			seen[source] = struct{}{}
+		}
+		deduped = append(deduped, filesystems[i])
+	}
+	return deduped
 }
 
 // filesystemDevicesByMount loads every link, grouped by the filesystem it

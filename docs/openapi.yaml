@@ -1958,7 +1958,8 @@ components:
                 $ref: "#/components/schemas/FilesystemCapacity"
             filesystem_status:
               description: Filesystem collector status for this drive's host. Absent when the collector has never reported for the host, which is why an empty filesystems array is not the same as a drive with no mounted filesystem.
-              $ref: "#/components/schemas/FilesystemHostStatus"
+              allOf:
+                - $ref: "#/components/schemas/FilesystemHostStatus"
         metadata:
           type: object
           additionalProperties: true

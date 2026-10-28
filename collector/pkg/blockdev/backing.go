@@ -115,6 +115,9 @@ func walk(name string, sysBlock string, disks map[string]struct{}, visited map[s
 
 	if slaves := readSlaves(devicePath); len(slaves) > 0 {
 		for _, slave := range slaves {
+			if isSpareArrayMember(devicePath, slave) {
+				continue
+			}
 			walk(slave, sysBlock, disks, visited, depth+1)
 		}
 		return
@@ -126,6 +129,33 @@ func walk(name string, sysBlock string, disks map[string]struct{}, visited map[s
 	}
 
 	disks[name] = struct{}{}
+}
+
+// isSpareArrayMember reports whether a slave is an md array member holding none
+// of the array's data.
+//
+// "slaves" lists every member of an array, and a hot spare is a member: it is
+// attached and idle until a disk fails. Attributing the array's filesystem to a
+// spare would tell a user that a disk holding nothing has the array's used and
+// free space on it. md records each member's role in
+// md/dev-<name>/state, so the spare is skipped and the data-carrying
+// members are not.
+//
+// A device with no md directory, and a member whose state cannot be read, are
+// both kept. The cost of wrongly keeping a member is one over-attributed drive;
+// the cost of wrongly dropping one is a drive whose filesystems vanish from the
+// UI, so the unreadable case resolves toward keeping.
+func isSpareArrayMember(devicePath string, slave string) bool {
+	state, err := os.ReadFile(filepath.Join(devicePath, "md", "dev-"+slave, "state"))
+	if err != nil {
+		return false
+	}
+	for _, flag := range strings.Split(strings.TrimSpace(string(state)), ",") {
+		if flag == "spare" {
+			return true
+		}
+	}
+	return false
 }
 
 // readSlaves lists the devices a stacked device is built from.

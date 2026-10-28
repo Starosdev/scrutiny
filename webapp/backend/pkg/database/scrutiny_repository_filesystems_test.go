@@ -194,3 +194,56 @@ func TestSaveFilesystemSummaryDropsStaleDeviceLinks(t *testing.T) {
 	require.NotContains(t, byHostDevice["atlas"], "sdb")
 	require.Len(t, byHostDevice["atlas"]["sdz"], 1)
 }
+
+func TestDedupeFilesystemsBySource(t *testing.T) {
+	// A btrfs filesystem mounted twice by subvolume, and a bind mount of a
+	// subdirectory: three mounts, one filesystem, one block device.
+	filesystems := []models.FilesystemCapacity{
+		{HostID: "atlas", MountPoint: "/", SourceDevice: "/dev/sda2", TotalBytes: 2000, AvailableBytes: 500},
+		{HostID: "atlas", MountPoint: "/home", SourceDevice: "/dev/sda2", TotalBytes: 2000, AvailableBytes: 500},
+		{HostID: "atlas", MountPoint: "/srv/export", SourceDevice: "/dev/sda2", TotalBytes: 2000, AvailableBytes: 500},
+		{HostID: "atlas", MountPoint: "/data", SourceDevice: "/dev/sdb1", TotalBytes: 100, AvailableBytes: 40},
+	}
+
+	deduped := DedupeFilesystemsBySource(filesystems)
+	require.Len(t, deduped, 2)
+	require.Equal(t, "/", deduped[0].MountPoint)
+	require.Equal(t, "/data", deduped[1].MountPoint)
+}
+
+func TestDedupeFilesystemsBySourceKeepsNonDeviceSources(t *testing.T) {
+	// Several distinct mounts legitimately share a non-device source string.
+	// Collapsing those would hide real capacity.
+	filesystems := []models.FilesystemCapacity{
+		{HostID: "atlas", MountPoint: "/mnt/a", SourceDevice: "none", TotalBytes: 100},
+		{HostID: "atlas", MountPoint: "/mnt/b", SourceDevice: "none", TotalBytes: 200},
+		{HostID: "atlas", MountPoint: "/mnt/c", SourceDevice: "", TotalBytes: 300},
+	}
+
+	require.Len(t, DedupeFilesystemsBySource(filesystems), 3)
+}
+
+func TestFilesystemsByHostDeviceCollapsesRepeatedMountsOfOneFilesystem(t *testing.T) {
+	repo := createFilesystemTestRepository(t)
+	ctx := context.Background()
+	now := time.Unix(100, 0).UTC()
+
+	upload := filesystemUpload("atlas", now, map[string][]string{"/": {"sda"}, "/home": {"sda"}})
+	for i := range upload.Filesystems {
+		// Both mounts are subvolumes of one btrfs filesystem on one partition.
+		upload.Filesystems[i].SourceDevice = "/dev/sda2"
+		upload.Filesystems[i].FilesystemType = "btrfs"
+	}
+	require.NoError(t, repo.SaveFilesystemSummary(ctx, upload))
+
+	byHostDevice, err := repo.filesystemsByHostDevice(ctx)
+	require.NoError(t, err)
+	// One filesystem on the drive, so the dashboard card can still report a
+	// single free figure instead of falling back to a mount count.
+	require.Len(t, byHostDevice["atlas"]["sda"], 1)
+
+	// The per-host capacity panel still reports every mount.
+	filesystems, _, err := repo.GetFilesystemSummary(ctx)
+	require.NoError(t, err)
+	require.Len(t, filesystems["atlas"], 2)
+}

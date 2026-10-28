@@ -5,7 +5,8 @@ Scrutiny can now collect logical filesystem capacity alongside existing SMART de
 ## Scope
 
 - Filesystem capacity is reported separately from physical drive SMART data.
-- Dashboard device cards and the device detail page report the free space of the filesystems a drive backs, in addition to the drive's physical capacity.
+- The device detail page reports the free space of every filesystem a drive backs, in addition to the drive's physical capacity.
+- Dashboard device cards report one free-space figure only when the attribution is unambiguous, and a mount count otherwise. See "Per-drive attribution" below.
 - ZFS pool capacity remains on the existing ZFS dashboard/API path.
 
 ## Collector
@@ -62,6 +63,20 @@ The walk reads sysfs and therefore produces attribution on Linux hosts only. A
 filesystem the collector cannot attribute is still reported for the host
 capacity panel, and the device detail page says why no filesystem is listed
 rather than showing zero free space.
+
+An md hot spare holds none of the array's data, so the walk reads each member's
+role from `md/dev-<name>/state` and skips a spare. A member whose state cannot
+be read is kept: over-attributing one drive is a smaller error than hiding a
+data-carrying drive's filesystems.
+
+A dm-cache or bcache cache device is not separated from the origin device this
+way, because the holder tree alone does not record which role a member plays.
+Such a cache device is attributed the filesystem it fronts.
+
+Per-drive views collapse repeated mounts of one filesystem, which is what a bind
+mount and a set of btrfs subvolume mounts produce: the mounts share one block
+device, so they are one filesystem reported several times. The per-host capacity
+panel still lists every mount.
 
 ## Visibility Limits
 

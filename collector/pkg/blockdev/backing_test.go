@@ -27,7 +27,7 @@ func fakeTree(t *testing.T) (sysBlock string, devRoot string) {
 		require.NoError(t, os.Symlink(target, filepath.Join(sysBlock, name)))
 	}
 
-	for _, disk := range []string{"sda", "sdb"} {
+	for _, disk := range []string{"sda", "sdb", "sdc"} {
 		partition := filepath.Join(devices, "pci", disk, disk+"1")
 		require.NoError(t, os.MkdirAll(partition, 0o755))
 		require.NoError(t, os.WriteFile(filepath.Join(partition, "partition"), []byte("1\n"), 0o644))
@@ -57,6 +57,16 @@ func fakeTree(t *testing.T) (sysBlock string, devRoot string) {
 
 	stacked("md0", "sda1", "sdb1")
 	stacked("dm-0", "md0")
+
+	// md1 is an array across sda1 and sdb1 with sdc1 attached as a hot spare.
+	// The kernel lists all three under slaves and records each member's role
+	// under md/dev-<name>/state.
+	stacked("md1", "sda1", "sdb1", "sdc1")
+	md1 := filepath.Join(devices, "virtual", "block", "md1", "md")
+	for member, state := range map[string]string{"sda1": "in_sync", "sdb1": "writemostly,in_sync", "sdc1": "spare"} {
+		require.NoError(t, os.MkdirAll(filepath.Join(md1, "dev-"+member), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(md1, "dev-"+member, "state"), []byte(state+"\n"), 0o644))
+	}
 	require.NoError(t, os.Symlink(filepath.Join(devRoot, "dm-0"), filepath.Join(devRoot, "mapper", "vg-root")))
 
 	return sysBlock, devRoot
@@ -78,6 +88,9 @@ func TestResolve(t *testing.T) {
 		{name: "md array spans both disks", source: "md0", want: []string{"sda", "sdb"}},
 		{name: "logical volume descends through the array", source: "dm-0", want: []string{"sda", "sdb"}},
 		{name: "mapper symlink resolves to its target", source: "mapper/vg-root", want: []string{"sda", "sdb"}},
+		// A hot spare holds none of the array's data, so the array's
+		// filesystem must not be attributed to it.
+		{name: "array skips its hot spare", source: "md1", want: []string{"sda", "sdb"}},
 	}
 
 	for _, test := range tests {
@@ -123,4 +136,29 @@ func TestWalk_StopsOnCycles(t *testing.T) {
 	disks := map[string]struct{}{}
 	walk("dm-0", sysBlock, disks, map[string]struct{}{}, 0)
 	require.Empty(t, disks)
+}
+
+func TestIsSpareArrayMember(t *testing.T) {
+	root := t.TempDir()
+	write := func(member string, state string) {
+		require.NoError(t, os.MkdirAll(filepath.Join(root, "md", "dev-"+member), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(root, "md", "dev-"+member, "state"), []byte(state), 0o644))
+	}
+
+	write("sda1", "in_sync\n")
+	write("sdb1", "writemostly,in_sync\n")
+	write("sdc1", "spare\n")
+	write("sdd1", "spare,write_error\n")
+	// A failed member still holds the array's data; only an idle spare does not.
+	write("sde1", "faulty\n")
+
+	require.False(t, isSpareArrayMember(root, "sda1"))
+	require.False(t, isSpareArrayMember(root, "sdb1"))
+	require.True(t, isSpareArrayMember(root, "sdc1"))
+	require.True(t, isSpareArrayMember(root, "sdd1"))
+	require.False(t, isSpareArrayMember(root, "sde1"))
+	// A device that is not an array, and a member with no readable state, are
+	// both kept: dropping a data-carrying disk hides its filesystems entirely.
+	require.False(t, isSpareArrayMember(root, "absent"))
+	require.False(t, isSpareArrayMember(filepath.Join(root, "not-an-array"), "sda1"))
 }

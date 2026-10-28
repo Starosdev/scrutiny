@@ -537,25 +537,31 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
      * (smartctl's numbered scsi_self_test_N log entries are normalized into
      * the same self-test rows as the ATA self-test log).
      */
+    hasSelfTestSupport(): boolean {
+        return this.isAta() || this.isScsi();
+    }
+
     filesystemUsageClass = filesystemUsageClass;
 
     /**
      * Explains an empty filesystem list.
      *
-     * Three different facts produce no rows, and a user has to be able to tell
-     * them apart: the filesystem collector has never reported for this host,
-     * it reported but could not see the host's mounts, or it reported fine and
-     * nothing mounted is attributed to this drive. Showing "0 bytes free" for
-     * any of them would be a claim the collector never made.
+     * Several different facts produce no rows and a user has to be able to tell
+     * them apart: the collector may be older than the backing-device field, it
+     * may not be able to read the host's sysfs, or the drive may genuinely hold
+     * no mounted filesystem. Showing "0 bytes free" for any of them would be a
+     * claim the collector never made. The panel is only rendered once a host
+     * status exists, so the never-reported case is handled by not rendering at
+     * all rather than by a message here.
      */
     filesystemEmptyMessage(): string {
-        if (!this.filesystemStatus) {
-            return 'No filesystem capacity has been reported for this host. Run the filesystem collector to see per-drive free space.';
-        }
-        if (this.filesystemStatus.status === 'unavailable') {
+        if (this.filesystemStatus?.status === 'unavailable') {
             return this.filesystemStatus.reason || 'The collector could not inspect this host\'s mounts.';
         }
-        return 'No mounted filesystem is attributed to this drive. A filesystem on LVM, mdadm or LUKS is attributed only when the collector can read the host\'s sysfs.';
+        return (
+            'No mounted filesystem is attributed to this drive. Attribution needs a filesystem collector new enough to report backing devices, ' +
+            'running on a Linux host where it can read sysfs. Otherwise this drive may hold no mounted filesystem.'
+        );
     }
 
     /**
@@ -565,10 +571,6 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     filesystemSharedWith(filesystem: FilesystemCapacityModel): string[] {
         return (filesystem.backing_devices ?? []).filter((deviceName) => deviceName !== this.device?.device_name);
-    }
-
-    hasSelfTestSupport(): boolean {
-        return this.isAta() || this.isScsi();
     }
 
     isNvme(): boolean {

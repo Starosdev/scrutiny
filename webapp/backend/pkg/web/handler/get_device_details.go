@@ -104,5 +104,5 @@ func deviceFilesystems(
 		}
 	}
 
-	return filesystems, hostStatuses[hostID]
+	return database.DedupeFilesystemsBySource(filesystems), hostStatuses[hostID]
 }
