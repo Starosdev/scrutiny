@@ -47,8 +47,8 @@ func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, deviceID 
 		sr.logger.Debugln("No previous SMART submission available for delta evaluation (expected for first submission)")
 	} else {
 		previousSmart = &previousSmartData[0]
-		previousValues := extractPreviousRawValues(previousSmart)
-		deviceSmartData.ApplyDeltaEvaluation(previousValues)
+		previousValues := extractPreviousEvaluatedValues(previousSmart)
+		deviceSmartData.ApplyDeltaEvaluation(previousValues, mergedOverrides)
 	}
 
 	// Flag Power-On Hours rollover (16-bit counter wrap) on attribute 9. Uses the previous
@@ -65,13 +65,15 @@ func (sr *scrutinyRepository) SaveSmartAttributes(ctx context.Context, deviceID 
 	return deviceSmartData, sr.saveDatapoint(sr.influxWriteApi, "smart", tags, fields, deviceSmartData.Date, ctx)
 }
 
-// extractPreviousRawValues extracts raw values from a previous SMART submission into a map
-// keyed by attribute ID string, for use in delta-based evaluation.
-func extractPreviousRawValues(previousSmart *measurements.Smart) map[string]int64 {
+// extractPreviousEvaluatedValues extracts the evaluated value of each attribute of a previous
+// SMART submission into a map keyed by attribute ID string, for use in delta-based
+// evaluation. It uses measurements.AttributeThresholdValue so the value compared across
+// submissions is the same one the attribute's threshold is applied to.
+func extractPreviousEvaluatedValues(previousSmart *measurements.Smart) map[string]int64 {
 	values := make(map[string]int64)
 	for attrId, attr := range previousSmart.Attributes {
-		if ataAttr, ok := attr.(*measurements.SmartAtaAttribute); ok {
-			values[attrId] = ataAttr.RawValue
+		if value, ok := measurements.AttributeThresholdValue(attr); ok {
+			values[attrId] = value
 		}
 	}
 	return values

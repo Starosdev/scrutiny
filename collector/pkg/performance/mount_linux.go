@@ -47,12 +47,26 @@ func isMountPointSuitable(mountPoint string, requiredBytes uint64) (bool, string
 		return false, fmt.Sprintf("unexpected block size %d for mount point %s", bsize, mountPoint)
 	}
 	availableBytes := stat.Bavail * uint64(bsize)
-	if availableBytes < requiredBytes+spaceHeadroomBytes {
-		return false, fmt.Sprintf("insufficient space: %d bytes available, %d bytes required (test file plus %d bytes headroom)",
-			availableBytes, requiredBytes+spaceHeadroomBytes, uint64(spaceHeadroomBytes))
+	if reason := spaceRejection(availableBytes, requiredBytes); reason != "" {
+		return false, reason
 	}
 
 	return true, ""
+}
+
+// spaceRejection reports why a mount point with availableBytes free cannot hold
+// a benchmark test file of requiredBytes, or "" when it can. It is separate from
+// isMountPointSuitable so the headroom rule can be tested without a filesystem
+// of a particular type: the mount entry checks above reject a tmpfs before
+// reaching this point, and CI runners put the temporary directory on tmpfs.
+func spaceRejection(availableBytes, requiredBytes uint64) string {
+	neededBytes := requiredBytes + spaceHeadroomBytes
+	if availableBytes >= neededBytes {
+		return ""
+	}
+
+	return fmt.Sprintf("insufficient space: %d bytes available, %d bytes required (test file plus %d bytes headroom)",
+		availableBytes, neededBytes, uint64(spaceHeadroomBytes))
 }
 
 // isMountEntrySuitable rejects mounts that cannot hold a benchmark test file:
