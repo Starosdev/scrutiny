@@ -291,6 +291,40 @@ func TestShouldNotify_NoRepeat(t *testing.T) {
 	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, false, "", &gin.Context{}, fakeDatabase, nil))
 }
 
+// TestShouldNotify_NoRepeat_AttributeAbsentFromPreviousSubmission covers a failing attribute
+// that the previous submission did not carry at all, which is what a release decoding a log
+// page it previously ignored produces on its first collection. Attributes is a map of
+// interfaces, so the missing key yields a nil SmartAttribute: reading a value off it would
+// panic rather than notify.
+func TestShouldNotify_NoRepeat_AttributeAbsentFromPreviousSubmission(t *testing.T) {
+	t.Parallel()
+	//setup
+	device := models.Device{
+		DeviceStatus: pkg.DeviceStatusFailedScrutiny,
+	}
+	smartAttrs := measurements.Smart{Attributes: map[string]measurements.SmartAttribute{
+		"sas_port_0_phy_0_invalid_dword_count": &measurements.SmartScsiAttribute{
+			AttributeId:      "sas_port_0_phy_0_invalid_dword_count",
+			Status:           pkg.AttributeStatusFailedScrutiny,
+			TransformedValue: 32,
+		},
+	}}
+	previousSmartAttrs := measurements.Smart{Attributes: map[string]measurements.SmartAttribute{
+		"read_total_uncorrected_errors": &measurements.SmartScsiAttribute{
+			AttributeId: "read_total_uncorrected_errors",
+		},
+	}}
+	statusThreshold := pkg.MetricsStatusThresholdBoth
+	notifyFilterAttributes := pkg.MetricsStatusFilterAttributesAll
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
+	fakeDatabase.EXPECT().GetPreviousSmartSubmission(&gin.Context{}, "").Return([]measurements.Smart{previousSmartAttrs}, nil).Times(1)
+
+	//assert
+	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, false, "", &gin.Context{}, fakeDatabase, nil))
+}
+
 func TestShouldNotify_WarnLevel_PassedDeviceWithWarnAttr(t *testing.T) {
 	t.Parallel()
 	//setup
