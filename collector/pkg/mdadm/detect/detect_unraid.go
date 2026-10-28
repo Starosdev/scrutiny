@@ -37,9 +37,14 @@ const (
 )
 
 // unraidSlot holds the per-slot fields of a single Unraid array slot.
-// Field order keeps the pointer-bearing strings first, for govet fieldalignment.
+// Field order keeps the pointer-bearing strings first, for govet fieldalignment,
+// and the struct stays under gocritic's hugeParam threshold so the predicates
+// below can take a value receiver.
+//
+// diskName is deliberately absent. Unraid exports the md device name for a data
+// disk only while the array is started, so it says nothing on a stopped array
+// and neither parity classification nor assignment may depend on it.
 type unraidSlot struct {
-	diskName   string // "mdNp1" while the array is started, else empty
 	deviceName string // rdevName, the live backing block device, e.g. "sda"
 	diskID     string // diskId, the serial recorded in the superblock
 	status     string // rdevStatus
@@ -244,8 +249,6 @@ func parseUnraidMdstat(content string) (map[string]string, []unraidSlot) {
 		}
 
 		switch name {
-		case "diskName":
-			slot.diskName = value
 		case "rdevName":
 			slot.deviceName = value
 		case "diskId":
