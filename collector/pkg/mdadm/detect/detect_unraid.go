@@ -8,7 +8,8 @@ package detect
 // whole host maps onto one MDADMArray.
 
 import (
-	"bufio"
+	"crypto/sha1" //nolint:gosec
+	"encoding/hex"
 	"fmt"
 	"io"
 	"sort"
@@ -28,41 +29,80 @@ const (
 	// most carry a DISK_NP* ("not present") status on a typical host.
 	diskStatusOK           = "DISK_OK"
 	diskStatusAbsentPrefix = "DISK_NP"
+
+	// Unraid's slot layout is fixed: slot 0 is parity, slot 29 is the optional
+	// second parity disk, and the slots between them are data disks.
+	unraidParitySlot  = 0
+	unraidParity2Slot = 29
 )
 
 // unraidSlot holds the per-slot fields of a single Unraid array slot.
 // Field order keeps the pointer-bearing strings first, for govet fieldalignment.
 type unraidSlot struct {
-	diskName   string // "mdNp1" for a data disk, empty for a parity disk
-	deviceName string // backing block device, e.g. "sda"
+	diskName   string // "mdNp1" while the array is started, else empty
+	deviceName string // rdevName, the live backing block device, e.g. "sda"
+	diskID     string // diskId, the serial recorded in the superblock
 	status     string // rdevStatus
 	sizeBlocks int64  // diskSize, in 1K blocks
 	index      int
 }
 
-// present reports whether a disk is actually assigned to this slot. Unraid
-// marks an empty slot DISK_NP, and an empty slot that once held a disk
-// DISK_NP_DSBL, which is why a prefix test is used rather than equality: the
-// second parity slot of a single-parity array reports DISK_NP_DSBL and must not
-// count as a failure.
-func (s unraidSlot) present() bool {
+// assigned reports whether the superblock has a disk in this slot. Unraid keeps
+// the recorded identity even when the disk itself is gone, which is what
+// separates a configured-but-absent disk from an empty slot. An unused slot
+// reports an empty diskId and a zero diskSize.
+func (s unraidSlot) assigned() bool {
+	return s.diskID != "" || s.sizeBlocks > 0
+}
+
+// attached reports whether the disk is physically there. Unraid prefixes every
+// absent status with DISK_NP, and its own webgui tests presence the same way
+// (ArrayOperation.page uses strpos(status, "DISK_NP") === 0).
+func (s unraidSlot) attached() bool {
 	return s.status != "" && !strings.HasPrefix(s.status, diskStatusAbsentPrefix)
 }
 
-// healthy reports whether a present disk is in service. Anything other than
-// DISK_OK (DISK_DSBL, DISK_INVALID, DISK_WRONG, ...) is treated as failed.
+// missing reports an assigned disk that is not attached. Unraid calls this
+// DISK_NP_MISSING and renders it as "Missing"; it is a failure, not an empty
+// slot, and it must never be skipped the way an unassigned slot is. An empty
+// second parity slot reports DISK_NP_DSBL with no recorded identity, so it is
+// absent rather than missing.
+func (s unraidSlot) missing() bool {
+	return s.assigned() && !s.attached()
+}
+
+// healthy reports whether an attached disk is in service. Anything other than
+// DISK_OK (DISK_DSBL, DISK_DSBL_NEW, DISK_INVALID, DISK_WRONG, DISK_TOO_SMALL,
+// DISK_NEW) is treated as failed.
 func (s unraidSlot) healthy() bool { return s.status == diskStatusOK }
 
-// isData distinguishes a data disk from a parity disk. Unraid exports an md
-// device for data disks only, so parity slots report an empty diskName.
-func (s unraidSlot) isData() bool { return s.diskName != "" }
+// isParity reports whether this slot holds a parity disk. The slot index is the
+// authority rather than diskName, because Unraid exports the md device for a
+// data disk only while the array is started, so diskName is empty for every
+// slot on a stopped array.
+func (s unraidSlot) isParity() bool {
+	return s.index == unraidParitySlot || s.index == unraidParity2Slot
+}
+
+// unraidLines iterates the trimmed lines of an mdstat already held in memory.
+// bufio.Scanner is deliberately avoided: it caps a token at 64KiB and reports
+// that through an error the callers here have no way to return, so an
+// unexpectedly long line would truncate the parse silently.
+func unraidLines(content string) func(func(string) bool) {
+	return func(yield func(string) bool) {
+		for _, line := range strings.Split(content, "\n") {
+			if !yield(strings.TrimSpace(line)) {
+				return
+			}
+		}
+	}
+}
 
 // isUnraidMdstat reports whether content is Unraid's key/value mdstat rather
 // than the standard Linux format.
 func isUnraidMdstat(content string) bool {
-	scanner := bufio.NewScanner(strings.NewReader(content))
-	for scanner.Scan() {
-		if strings.HasPrefix(scanner.Text(), unraidStateKey+"=") {
+	for line := range unraidLines(content) {
+		if strings.HasPrefix(line, unraidStateKey+"=") {
 			return true
 		}
 	}
@@ -115,15 +155,21 @@ func buildUnraidArray(content string) (models.MDADMArray, models.MDADMMetrics) {
 	array := models.MDADMArray{Name: unraidArrayName}
 	if label := strings.TrimSpace(arrayKeys["sbLabel"]); label != "" {
 		// sbLabel is the array GUID from the Unraid superblock, so it is stable
-		// across reboots and disk replacements.
-		array.UUID = unraidUUIDPrefix + label
+		// across reboots and disk replacements. It is derived from the flash
+		// drive GUID, which is the Unraid license identifier, and the UUID is
+		// rendered in the web UI and included in notification bodies, so the
+		// digest is stored rather than the value itself.
+		sum := sha1.Sum([]byte(label)) //nolint:gosec // digest is for a stable non-identifying key, not security
+		array.UUID = unraidUUIDPrefix + hex.EncodeToString(sum[:])
 	}
 
 	metrics := models.MDADMMetrics{RawMdstat: unraidRawSummary(content)}
 
 	parityDisks := 0
+	missingDisks := 0
 	for _, slot := range slots {
-		if !slot.present() {
+		if !slot.assigned() && !slot.attached() {
+			// An unused slot. Unraid reports all 30 of them on every host.
 			continue
 		}
 
@@ -131,17 +177,29 @@ func buildUnraidArray(content string) (models.MDADMArray, models.MDADMMetrics) {
 			array.Devices = append(array.Devices, "/dev/"+slot.deviceName)
 		}
 
-		if slot.isData() {
-			metrics.ArraySize += slot.sizeBlocks * 1024
-		} else {
+		if slot.isParity() {
 			parityDisks++
+		} else {
+			metrics.ArraySize += slot.sizeBlocks * 1024
 		}
 
-		if slot.healthy() {
+		switch {
+		case slot.missing():
+			missingDisks++
+			metrics.FailedDevices++
+		case slot.healthy():
 			metrics.ActiveDevices++
-		} else {
+		default:
 			metrics.FailedDevices++
 		}
+	}
+
+	// Cross-check against Unraid's own counter. If a future Unraid release stops
+	// recording the identity of a missing disk, the per-slot scan above would
+	// see an empty slot and report the array healthy, which is the one outcome
+	// this collector must never produce.
+	if reported := int(unraidInt(arrayKeys, "mdNumMissing")); reported > missingDisks {
+		metrics.FailedDevices += reported - missingDisks
 	}
 
 	// Unraid keeps no in-array spares, so every non-failed member is active.
@@ -162,9 +220,8 @@ func parseUnraidMdstat(content string) (map[string]string, []unraidSlot) {
 	arrayKeys := map[string]string{}
 	slotsByIndex := map[int]*unraidSlot{}
 
-	scanner := bufio.NewScanner(strings.NewReader(content))
-	for scanner.Scan() {
-		key, value, found := strings.Cut(strings.TrimSpace(scanner.Text()), "=")
+	for line := range unraidLines(content) {
+		key, value, found := strings.Cut(line, "=")
 		if !found {
 			continue
 		}
@@ -191,10 +248,16 @@ func parseUnraidMdstat(content string) (map[string]string, []unraidSlot) {
 			slot.diskName = value
 		case "rdevName":
 			slot.deviceName = value
+		case "diskId":
+			slot.diskID = value
 		case "rdevStatus":
 			slot.status = value
 		case "diskSize":
-			slot.sizeBlocks, _ = strconv.ParseInt(value, 10, 64)
+			// A negative or unparseable size contributes nothing rather than
+			// shrinking the reported array capacity.
+			if size, err := strconv.ParseInt(value, 10, 64); err == nil && size > 0 {
+				slot.sizeBlocks = size
+			}
 		}
 	}
 
@@ -284,7 +347,9 @@ func unraidSyncAction(arrayKeys map[string]string) string {
 		return "recovery"
 	case strings.Contains(action, "clear"):
 		return "resync"
-	case strings.Contains(action, "check"):
+	// "nocorrect" is a parity check that reports errors without writing
+	// corrections, so it is a check rather than a resync.
+	case strings.Contains(action, "check"), strings.Contains(action, "nocorrect"):
 		return "checking"
 	default:
 		return "resync"
@@ -305,11 +370,14 @@ func unraidSyncPaused(arrayKeys map[string]string) bool {
 func unraidRawSummary(content string) string {
 	var kept []string
 
-	scanner := bufio.NewScanner(strings.NewReader(content))
-	for scanner.Scan() {
-		line := scanner.Text()
+	for line := range unraidLines(content) {
 		key, _, found := strings.Cut(line, "=")
 		if !found || strings.Contains(key, ".") {
+			continue
+		}
+		// sbLabel is withheld: it is the Unraid license identifier, and this
+		// block is rendered verbatim on the array details page.
+		if key == "sbLabel" {
 			continue
 		}
 		kept = append(kept, line)

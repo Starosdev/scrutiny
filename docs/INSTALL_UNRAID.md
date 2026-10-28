@@ -57,6 +57,8 @@ detects its format separately:
 - Unraid ships no `mdadm` binary, so the collector reads everything it needs from `/proc/mdstat` alone
 - the whole Unraid array is one parity-protected set, so it is reported as a single array named `unraid-array`
 - the reported level is `unraid-parity1`, `unraid-parity2`, or `unraid-noparity`, depending on how many parity disks are assigned
+- a disabled, invalid, or missing disk is reported as a failed device and the array state reads `degraded`
+- the array identity is a digest of the Unraid array GUID, not the GUID itself, because that value is derived from the flash drive GUID; the raw `mdstat` block shown in the UI withholds it for the same reason
 
 Mount `/proc/mdstat` into the container as described in
 [MDADM_MONITORING.md](./MDADM_MONITORING.md). No `/dev` access or `SYS_ADMIN`

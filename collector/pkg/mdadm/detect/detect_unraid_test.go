@@ -1,6 +1,7 @@
 package detect
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -33,7 +34,7 @@ func TestIsUnraidMdstat(t *testing.T) {
 func TestBuildUnraidArray_Started(t *testing.T) {
 	array, metrics := buildUnraidArray(loadMdstatFixture(t, "mdstat_unraid_started.txt"))
 
-	assert.Equal(t, "unraid:0000-0000-0000-000000000000", array.UUID)
+	assert.Equal(t, "unraid:5aee7f08742c76a8b3ddab54750e383846b7ee9e", array.UUID)
 	assert.Equal(t, "unraid-array", array.Name)
 	assert.Equal(t, "unraid-parity1", array.Level)
 	assert.Equal(t, []string{
@@ -70,7 +71,7 @@ func TestBuildUnraidArray_EmptyParitySlotIsNotAFailure(t *testing.T) {
 func TestBuildUnraidArray_Degraded(t *testing.T) {
 	array, metrics := buildUnraidArray(loadMdstatFixture(t, "mdstat_unraid_degraded.txt"))
 
-	assert.Equal(t, "unraid:1111-2222-3333-444455556666", array.UUID)
+	assert.Equal(t, "unraid:1fdf355dcd74e04627ded844745d556f3f13d840", array.UUID)
 	assert.Equal(t, "unraid-parity1", array.Level)
 	assert.Equal(t, []string{"/dev/sda", "/dev/sdf", "/dev/sdg"}, array.Devices)
 
@@ -103,16 +104,28 @@ func TestBuildUnraidArray_CheckingPaused(t *testing.T) {
 	assert.InDelta(t, 40.0, metrics.SyncProgress, 0.001)
 }
 
+// TestBuildUnraidArray_Stopped covers a stopped array. Unraid exports the md
+// device for a data disk only while the array is started, so every diskName is
+// blanked here: classifying parity by diskName would make all 12 disks parity
+// and collapse ArraySize to zero.
 func TestBuildUnraidArray_Stopped(t *testing.T) {
 	content := strings.Replace(
 		loadMdstatFixture(t, "mdstat_unraid_started.txt"),
 		"mdState=STARTED", "mdState=STOPPED", 1)
+	for slot := 1; slot <= 11; slot++ {
+		content = strings.Replace(content,
+			fmt.Sprintf("diskName.%d=md%dp1", slot, slot),
+			fmt.Sprintf("diskName.%d=", slot), 1)
+	}
+	require.NotContains(t, content, "p1")
 
-	_, metrics := buildUnraidArray(content)
+	array, metrics := buildUnraidArray(content)
 
 	assert.Equal(t, "inactive (stopped)", metrics.State)
-	// Membership is still reported while the array is stopped.
+	// Membership, level and capacity survive the stop.
 	assert.Equal(t, 12, metrics.ActiveDevices)
+	assert.Equal(t, "unraid-parity1", array.Level)
+	assert.Equal(t, int64(104008147398656), metrics.ArraySize)
 }
 
 func TestBuildUnraidArray_MissingLabelLeavesUUIDEmptyForCallerFallback(t *testing.T) {
@@ -154,7 +167,7 @@ func TestUnraidSyncAction(t *testing.T) {
 		"check":       "checking",
 		"recon P":     "recovery",
 		"clear":       "resync",
-		"nocorrect P": "resync",
+		"nocorrect P": "checking",
 	}
 
 	for action, expected := range tests {
@@ -222,9 +235,121 @@ func TestParseUnraidMdstatSortsSlotsByIndex(t *testing.T) {
 	require.Len(t, slots, 4)
 	assert.Equal(t, []int{0, 1, 2, 29}, []int{slots[0].index, slots[1].index, slots[2].index, slots[3].index})
 
-	assert.False(t, slots[0].isData(), "slot 0 is parity and exports no md device")
-	assert.True(t, slots[1].isData())
-	assert.True(t, slots[2].present())
+	assert.True(t, slots[0].isParity(), "slot 0 is the parity slot")
+	assert.False(t, slots[1].isParity())
+	assert.True(t, slots[2].attached())
 	assert.False(t, slots[2].healthy())
-	assert.False(t, slots[3].present(), "an empty parity slot reports DISK_NP_DSBL")
+	assert.True(t, slots[2].assigned())
+	assert.False(t, slots[3].attached(), "an empty parity slot reports DISK_NP_DSBL")
+	assert.False(t, slots[3].assigned(), "an empty parity slot records no identity")
+	assert.False(t, slots[3].missing(), "an unassigned slot is absent, not missing")
+}
+
+// TestBuildUnraidArray_MissingDiskIsAFailure is the regression test for the
+// case the collector exists to report. A pulled data disk keeps its superblock
+// identity (diskId, diskSize) but reports rdevStatus=DISK_NP_MISSING with no
+// live device. Treating every DISK_NP* status as an empty slot skipped it
+// entirely, so the array read back "active" with zero failed devices and the
+// backend sent no notification.
+func TestBuildUnraidArray_MissingDiskIsAFailure(t *testing.T) {
+	content := loadMdstatFixture(t, "mdstat_unraid_missing.txt")
+	require.Contains(t, content, "rdevStatus.2=DISK_NP_MISSING")
+	require.Contains(t, content, "mdNumMissing=1")
+	require.Contains(t, content, "mdNumDisabled=0")
+
+	array, metrics := buildUnraidArray(content)
+
+	assert.Equal(t, 1, metrics.FailedDevices, "a missing disk must count as failed")
+	assert.Equal(t, "active, degraded", metrics.State, "the UI colors on the degraded substring")
+	assert.Equal(t, 2, metrics.ActiveDevices)
+	assert.Equal(t, 2, metrics.WorkingDevices)
+	// The absent disk has no live device name, so only the attached two appear.
+	assert.Equal(t, []string{"/dev/sda", "/dev/sdf"}, array.Devices)
+	// Its capacity is still part of the array as configured.
+	assert.Equal(t, int64(8001573953536), metrics.ArraySize)
+}
+
+// TestBuildUnraidArray_MdNumMissingBacksstopsSilentLoss covers the case where a
+// future Unraid release stops recording the identity of a missing disk. The
+// per-slot scan would then see an empty slot, so mdNumMissing is used as a
+// floor on the failure count rather than being ignored.
+func TestBuildUnraidArray_MdNumMissingBackstopsSilentLoss(t *testing.T) {
+	content := loadMdstatFixture(t, "mdstat_unraid_missing.txt")
+	// Strip every trace of the missing disk except Unraid's own counter.
+	for _, key := range []string{"diskName.2", "diskSize.2", "diskId.2"} {
+		content = strings.Replace(content, key+"=md2p1", key+"=", 1)
+		content = strings.Replace(content, key+"=3907018532", key+"=0", 1)
+		content = strings.Replace(content, key+"=TESTDISK02_SERIAL02", key+"=", 1)
+	}
+
+	_, metrics := buildUnraidArray(content)
+
+	assert.Equal(t, 1, metrics.FailedDevices, "mdNumMissing must still force a failure")
+	assert.Equal(t, "active, degraded", metrics.State)
+}
+
+// TestUnraidRawSummaryWithholdsTheLicenseIdentifier keeps sbLabel out of
+// raw_mdstat. It is derived from the Unraid flash GUID, and raw_mdstat is
+// rendered verbatim on the array details page.
+func TestUnraidRawSummaryWithholdsTheLicenseIdentifier(t *testing.T) {
+	content := loadMdstatFixture(t, "mdstat_unraid_started.txt")
+	require.Contains(t, content, "sbLabel=")
+
+	summary := unraidRawSummary(content)
+
+	assert.NotContains(t, summary, "sbLabel")
+	assert.NotContains(t, summary, "0000-0000-0000-000000000000")
+	// The rest of the array-level block is retained.
+	assert.Contains(t, summary, "mdState=STARTED")
+}
+
+// TestBuildUnraidArray_UUIDIsADigestNotTheLicenseIdentifier pins that the array
+// GUID never reaches the UUID, which the UI renders and notifications include.
+func TestBuildUnraidArray_UUIDIsADigestNotTheLicenseIdentifier(t *testing.T) {
+	array, _ := buildUnraidArray(loadMdstatFixture(t, "mdstat_unraid_started.txt"))
+
+	assert.NotContains(t, array.UUID, "0000-0000-0000-000000000000")
+	assert.Equal(t, "unraid:5aee7f08742c76a8b3ddab54750e383846b7ee9e", array.UUID)
+}
+
+// TestUnraidLinesHandlesLongLines covers what bufio.Scanner could not: a line
+// beyond its 64KiB token limit would have truncated the parse silently.
+func TestUnraidLinesHandlesLongLines(t *testing.T) {
+	content := "mdState=STARTED\nnoise=" + strings.Repeat("x", 128*1024) + "\nmdNumDisks=3\n"
+
+	arrayKeys, _ := parseUnraidMdstat(content)
+
+	assert.Equal(t, "STARTED", arrayKeys["mdState"])
+	assert.Equal(t, "3", arrayKeys["mdNumDisks"], "a key after an over-long line is still parsed")
+}
+
+// TestParseUnraidMdstatIgnoresMalformedInput covers lines the kernel would
+// never emit but a corrupted or truncated read might.
+func TestParseUnraidMdstatIgnoresMalformedInput(t *testing.T) {
+	content := strings.Join([]string{
+		"mdState=STARTED",
+		"no-equals-sign-at-all",
+		"",
+		"diskSize.notanumber=123",
+		"diskSize.1=-5",
+		"diskId.1=TESTDISK01",
+		"rdevStatus.1=DISK_OK",
+		"diskSize.2=abc",
+		"diskId.2=TESTDISK02",
+		"rdevStatus.2=DISK_OK",
+		"=emptykey",
+	}, "\n")
+
+	arrayKeys, slots := parseUnraidMdstat(content)
+
+	assert.Equal(t, "STARTED", arrayKeys["mdState"])
+	require.Len(t, slots, 2, "only well-formed slot indexes are kept")
+	// A negative or unparseable size contributes nothing rather than shrinking
+	// the array.
+	assert.Equal(t, int64(0), slots[0].sizeBlocks)
+	assert.Equal(t, int64(0), slots[1].sizeBlocks)
+
+	_, metrics := buildUnraidArray(content)
+	assert.Equal(t, int64(0), metrics.ArraySize)
+	assert.Equal(t, 2, metrics.ActiveDevices)
 }

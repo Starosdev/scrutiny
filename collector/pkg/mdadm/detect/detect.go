@@ -41,7 +41,11 @@ func openMdstat() (*os.File, error) {
 
 // Start detects all MDADM arrays on the system
 func (d *Detect) Start() ([]models.MDADMArray, []models.MDADMMetrics, error) {
-	hostID := d.Config.GetString("host.id")
+	// syntheticArrayID guards against a nil Config, so this path does too.
+	hostID := ""
+	if d.Config != nil {
+		hostID = d.Config.GetString("host.id")
+	}
 
 	// Unraid writes a key/value mdstat and ships no mdadm binary, so it is
 	// handled by its own parser before the standard Linux discovery path.
