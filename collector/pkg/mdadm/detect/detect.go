@@ -41,6 +41,15 @@ func openMdstat() (*os.File, error) {
 
 // Start detects all MDADM arrays on the system
 func (d *Detect) Start() ([]models.MDADMArray, []models.MDADMMetrics, error) {
+	hostID := d.Config.GetString("host.id")
+
+	// Unraid writes a key/value mdstat and ships no mdadm binary, so it is
+	// handled by its own parser before the standard Linux discovery path.
+	if array, metrics, ok := d.detectUnraidArray(); ok {
+		array.HostID = hostID
+		return []models.MDADMArray{array}, []models.MDADMMetrics{metrics}, nil
+	}
+
 	// 1. Discover arrays from /proc/mdstat
 	arrayNames, err := d.parseMdstat()
 	if err != nil {
@@ -54,8 +63,6 @@ func (d *Detect) Start() ([]models.MDADMArray, []models.MDADMMetrics, error) {
 
 	var arrays []models.MDADMArray
 	var metrics []models.MDADMMetrics
-
-	hostID := d.Config.GetString("host.id")
 
 	// 2. Get details for each array
 	for _, name := range arrayNames {

@@ -1,6 +1,6 @@
 # MDADM Monitoring
 
-Scrutiny supports Linux software RAID arrays managed by `mdadm`.
+Scrutiny supports Linux software RAID arrays managed by `mdadm`, and Unraid parity arrays.
 
 MDADM arrays appear on the dedicated MDADM page. The SMART dashboard contains SMART device cards only, so MDADM arrays do not affect SMART host search or host-count pagination.
 
@@ -13,14 +13,18 @@ This guide covers:
 
 ## Requirements
 
-The MDADM collector expects all of the following:
+On a standard Linux host, the MDADM collector expects all of the following:
 
-- a standard Linux host that exposes `mdadm` arrays through `/proc/mdstat`
+- a host that exposes `mdadm` arrays through `/proc/mdstat`
 - access to the array block devices under `/dev`
 - permission to run `mdadm --detail /dev/mdX`
 - an API endpoint that resolves to the Scrutiny web server from the collector's network namespace
 
-Platforms such as Unraid are useful for deployment-path smoke tests, but they are not reliable end-to-end validation targets because their `/proc/mdstat` output does not follow the standard Linux `mdadm` format that Scrutiny parses.
+On Unraid, only `/proc/mdstat` and the API endpoint are required. Unraid does not
+use Linux MD RAID: it writes `/proc/mdstat` as `key=value` metadata and ships no
+`mdadm` binary, so the collector detects that format separately and runs no
+commands. See [INSTALL_UNRAID.md](./INSTALL_UNRAID.md) for what Unraid reports
+and how it differs.
 
 ## Omnibus Deployment
 
@@ -95,6 +99,9 @@ docker exec -it scrutiny mdadm --detail /dev/md0
 
 For a standalone collector container, replace `scrutiny` with `collector-mdadm`.
 
+On Unraid, skip the `mdadm --detail` command. It is not installed and is not
+used; `cat /host/proc/mdstat` is the whole check.
+
 2. Run the collector manually with debug logging:
 
 ```bash
@@ -122,8 +129,8 @@ Upgrade note:
 Check:
 
 - `/host/proc/mdstat` is mounted and readable
-- the host is a standard Linux `mdadm` system, not Unraid
-- the host file contains lines like `md0 : active raid1 ...`
+- on a Linux host, the file contains lines like `md0 : active raid1 ...`
+- on Unraid, the file contains lines like `mdState=STARTED` and the collector logs `Detected Unraid-format /proc/mdstat`
 
 ### `failed to run mdadm --detail /dev/mdX`
 
