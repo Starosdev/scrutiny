@@ -51,11 +51,15 @@ func (b *bucketPagingServer) start(t *testing.T, shortPageName string) *httptest
 		case 2:
 			listed = append(listed, domain.Bucket{Name: shortPageName})
 		default:
-			// The walk is asking for a page it has already consumed, which is what a constant or
-			// non-advancing offset looks like from the server. The empty page below ends the walk,
-			// so the regression fails this test rather than hanging it.
+			// The walk is asking for a page it has already consumed, which is what a
+			// non-advancing offset looks like from the server. Answer with an error rather than
+			// another page: an error ends the walk whichever stop condition regressed, so the
+			// test fails here instead of looping until the go test timeout panics the package.
 			offsets, _, _ := b.snapshot()
 			t.Errorf("bucket paging made %d requests for a 2-page organization; offsets so far: %v", requests, offsets)
+			http.Error(w, "too many bucket page requests", http.StatusInternalServerError)
+
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
