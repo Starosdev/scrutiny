@@ -55,8 +55,8 @@ func GetDeviceDetails(c *gin.Context) {
 	} else if device.IsNvme() {
 		deviceMetadata = thresholds.NmveMetadata
 	} else if device.IsScsi() {
-		// The per-PHY SAS attribute IDs carry the port and PHY numbers the drive reported,
-		// so their metadata has to be resolved from the device's own attributes.
+		// The per-PHY SAS counters and the per-sensor lifetime temperatures carry numbers the
+		// drive reported, so their metadata has to be resolved from the device's own attributes.
 		deviceMetadata = thresholds.ScsiMetadataForAttributes(attributeIDsInHistory(smartResults))
 	}
 

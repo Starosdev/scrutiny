@@ -1934,9 +1934,54 @@ components:
             current_percent:
               type: integer
               format: int64
+        scsi_background_scan:
+          description: Background Medium Scan status (log page 0x15). Absent on drives that do not support the page.
+          type: object
+          properties:
+            status:
+              type: object
+              properties:
+                string:
+                  type: string
+                scan_progress:
+                  type: string
+                value:
+                  type: integer
+                number_scans_performed:
+                  type: integer
+                number_medium_scans_performed:
+                  type: integer
+        scsi_start_stop_cycle_counter:
+          description: >-
+            Start-Stop Cycle Counter log page (0x0e). Absent on drives that do not support the
+            page. Each counter is also individually optional: smartctl emits a parameter only
+            when the drive reports it.
+          type: object
+          properties:
+            year_of_manufacture:
+              type: string
+            week_of_manufacture:
+              type: string
+            specified_cycle_count_over_device_lifetime:
+              type: integer
+              format: int64
+            accumulated_start_stop_cycles:
+              type: integer
+              format: int64
+            specified_load_unload_count_over_device_lifetime:
+              type: integer
+              format: int64
+            accumulated_load_unload_cycles:
+              type: integer
+              format: int64
         seagate_farm_log:
           $ref: "#/components/schemas/SeagateFarmLog"
       additionalProperties: true
+      description: >-
+        smartctl --xall --json output. The numbered SCSI keys smartctl emits at the top level
+        (scsi_self_test_N, and scsi_sas_port_N holding one phy_M object per PHY) are collected
+        by the backend's custom decoder and so are covered by additionalProperties rather than
+        being listed here.
     DeviceDetailsResponse:
       type: object
       properties:

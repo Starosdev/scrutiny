@@ -637,11 +637,115 @@ func addScsiSasPhyAttributes(attrs map[string]SmartAttribute, phy *collector.Scs
 	}
 }
 
+// scsiEnvironmentalTemperatureFields lists the per-sensor lifetime temperature extremes of
+// the Environmental Reports log page. The attribute ID is the sensor key smartctl reported
+// plus the suffix, e.g. "temperature_1_lifetime_maximum", so a drive with several sensors
+// keeps them apart.
+var scsiEnvironmentalTemperatureFields = []struct {
+	value  func(*collector.ScsiTemperatureData) int64
+	suffix string
+}{
+	{suffix: "lifetime_maximum", value: func(t *collector.ScsiTemperatureData) int64 { return t.LifetimeMaximum }},
+	{suffix: "lifetime_minimum", value: func(t *collector.ScsiTemperatureData) int64 { return t.LifetimeMinimum }},
+	{suffix: "maximum_since_power_on", value: func(t *collector.ScsiTemperatureData) int64 { return t.MaximumSincePowerOn }},
+	{suffix: "minimum_since_power_on", value: func(t *collector.ScsiTemperatureData) int64 { return t.MinimumSincePowerOn }},
+}
+
+// scsiEnvironmentalSensorKeyPattern matches the sensor keys of the Environmental Reports log
+// page that this code understands, e.g. "temperature_1". The page can also report humidity
+// sensors, which are left alone.
+var scsiEnvironmentalSensorKeyPattern = regexp.MustCompile(`^temperature_[0-9]+$`)
+
+// addScsiEnvironmentalAttributes adds the lifetime and since-power-on temperature extremes
+// of every temperature sensor the drive reported. The drive tracks these itself, so they
+// survive Scrutiny downtime and reach further back than its own temperature history.
+func addScsiEnvironmentalAttributes(attrs map[string]SmartAttribute, environmentalReports map[string]collector.ScsiTemperatureData) {
+	for sensorKey, temperature := range environmentalReports {
+		if !scsiEnvironmentalSensorKeyPattern.MatchString(sensorKey) {
+			continue
+		}
+		for _, field := range scsiEnvironmentalTemperatureFields {
+			attributeID := sensorKey + "_" + field.suffix
+			attrs[attributeID] = (&SmartScsiAttribute{AttributeId: attributeID, Value: field.value(&temperature), Threshold: scsiAttributeNoThreshold}).PopulateAttributeStatus()
+		}
+	}
+}
+
+// scsiBackgroundScanProgressPattern matches smartctl's background scan progress string,
+// e.g. "0.00%".
+var scsiBackgroundScanProgressPattern = regexp.MustCompile(`^\s*([0-9]+(?:\.[0-9]+)?)\s*%`)
+
+// addScsiBackgroundScanAttributes adds the Background Medium Scan counters. The drive runs
+// this scan on its own schedule, independently of Scrutiny's self-tests, so the scan counts
+// are how a user sees whether the drive is still checking its own media. None of them are a
+// verdict on health: the errors a scan finds surface in the verify error counters.
+func addScsiBackgroundScanAttributes(attrs map[string]SmartAttribute, backgroundScan *collector.ScsiBackgroundScan) {
+	status := backgroundScan.Status
+	for _, counter := range []struct {
+		attributeID string
+		value       int64
+	}{
+		{"background_scans_performed", int64(status.NumberScansPerformed)},
+		{"background_medium_scans_performed", int64(status.NumberMediumScansPerformed)},
+		{"background_scan_status", int64(status.Value)},
+	} {
+		attrs[counter.attributeID] = (&SmartScsiAttribute{AttributeId: counter.attributeID, Value: counter.value, Threshold: scsiAttributeNoThreshold}).PopulateAttributeStatus()
+	}
+
+	// The drive's own wording for the current state ("waiting until BMS interval timer
+	// expires") cannot be an attribute value, which is an int64, so it rides in the status
+	// reason of the status attribute. That field is persisted, is carried through
+	// downsampling by fn: last, and reaches the API response; the web UI surfaces it as the
+	// tooltip on the attribute's status rather than as a column of its own. A user override
+	// on this attribute replaces the reason with the override's own, which is the cost of
+	// borrowing the field instead of adding one.
+	if status.String != "" {
+		if statusAttribute, ok := attrs["background_scan_status"].(*SmartScsiAttribute); ok {
+			statusAttribute.StatusReason = status.String
+		}
+	}
+
+	// Progress is only meaningful while a scan is running, and is reported as a percentage
+	// string. Rounded to whole percent: the attribute is an int64, and sub-percent progress
+	// of a scan that takes hours is noise.
+	if match := scsiBackgroundScanProgressPattern.FindStringSubmatch(status.ScanProgress); match != nil {
+		if progress, err := strconv.ParseFloat(match[1], 64); err == nil {
+			attrs["background_scan_progress_percent"] = (&SmartScsiAttribute{AttributeId: "background_scan_progress_percent", Value: int64(math.Round(progress)), Threshold: scsiAttributeNoThreshold}).PopulateAttributeStatus()
+		}
+	}
+}
+
+// addScsiStartStopCycleAttributes adds the mechanical wear counters of the Start-Stop Cycle
+// Counter log page. The threshold of each counter is the manufacturer's rated lifetime count
+// for it, which is what makes "44 of 50000 start/stop cycles" readable in the UI and fails
+// the attribute once the drive is used past what it was rated for. A drive that reports a
+// counter without its rated limit gets no threshold rather than a zero one.
+func addScsiStartStopCycleAttributes(attrs map[string]SmartAttribute, startStopCycleCounter *collector.ScsiStartStopCycleCounter) {
+	for _, counter := range []struct {
+		accumulated *int64
+		specified   *int64
+		attributeID string
+	}{
+		{startStopCycleCounter.AccumulatedStartStopCycles, startStopCycleCounter.SpecifiedCycleCountOverDeviceLifetime, "start_stop_cycles"},
+		{startStopCycleCounter.AccumulatedLoadUnloadCycles, startStopCycleCounter.SpecifiedLoadUnloadCountOverDeviceLifetime, "load_unload_cycles"},
+	} {
+		// A drive can support the page and still not report this particular counter.
+		if counter.accumulated == nil {
+			continue
+		}
+		threshold := scsiAttributeNoThreshold
+		if counter.specified != nil && *counter.specified > 0 {
+			threshold = *counter.specified
+		}
+		attrs[counter.attributeID] = (&SmartScsiAttribute{AttributeId: counter.attributeID, Value: *counter.accumulated, Threshold: threshold}).PopulateAttributeStatus()
+	}
+}
+
 // buildScsiAttributes builds every SCSI attribute from collector data. It is the single
 // source of truth for the SCSI attribute set, shared by ProcessScsiSmartInfo (legacy
 // InfluxDB migration path) and processScsiSmartInfoWithOverrides (ingestion path), which
 // differ only in how overrides are applied afterwards.
-func buildScsiAttributes(temperature int64, defectGrownList int64, scsiErrorCounterLog *collector.ScsiErrorCounterLog, enduranceUsed *collector.ScsiEnduranceUsed, sasPhys []collector.ScsiSasPhy) map[string]SmartAttribute {
+func buildScsiAttributes(temperature int64, defectGrownList int64, scsiErrorCounterLog *collector.ScsiErrorCounterLog, enduranceUsed *collector.ScsiEnduranceUsed, sasPhys []collector.ScsiSasPhy, environmentalReports map[string]collector.ScsiTemperatureData, backgroundScan *collector.ScsiBackgroundScan, startStopCycleCounter *collector.ScsiStartStopCycleCounter) map[string]SmartAttribute {
 	attrs := map[string]SmartAttribute{
 		"temperature":            (&SmartScsiAttribute{AttributeId: "temperature", Value: temperature, Threshold: scsiAttributeNoThreshold}).PopulateAttributeStatus(),
 		"scsi_grown_defect_list": (&SmartScsiAttribute{AttributeId: "scsi_grown_defect_list", Value: defectGrownList, Threshold: 0}).PopulateAttributeStatus(),
@@ -666,6 +770,16 @@ func buildScsiAttributes(temperature int64, defectGrownList int64, scsiErrorCoun
 		addScsiSasPhyAttributes(attrs, &sasPhys[i])
 	}
 
+	addScsiEnvironmentalAttributes(attrs, environmentalReports)
+
+	// Both log pages below are optional and reported only by drives that support them.
+	if backgroundScan != nil {
+		addScsiBackgroundScanAttributes(attrs, backgroundScan)
+	}
+	if startStopCycleCounter != nil {
+		addScsiStartStopCycleAttributes(attrs, startStopCycleCounter)
+	}
+
 	// SAS SSD endurance indicator (Solid State Media log page 0x11). Reuses the "percentage_used"
 	// attribute ID shared with NVMe so downstream endurance/workload consumers require no
 	// protocol-specific branching. Only populated when the drive reports it (SAS SSDs only);
@@ -677,9 +791,12 @@ func buildScsiAttributes(temperature int64, defectGrownList int64, scsiErrorCoun
 	return attrs
 }
 
-// generate SmartScsiAttribute entries from Scrutiny Collector Smart data.
-func (sm *Smart) ProcessScsiSmartInfo(cfg config.Interface, defectGrownList int64, scsiErrorCounterLog collector.ScsiErrorCounterLog, temperature map[string]collector.ScsiTemperatureData) {
-	sm.Attributes = buildScsiAttributes(sm.Temp, defectGrownList, &scsiErrorCounterLog, nil, nil)
+// ProcessScsiSmartInfo generates SmartScsiAttribute entries from Scrutiny Collector Smart
+// data. It is the InfluxDB migration path, which reconstructs attributes from pre-InfluxDB
+// records: those carry the grown defect count and the read/write error counters only, so
+// every later SCSI log page is absent by definition.
+func (sm *Smart) ProcessScsiSmartInfo(cfg config.Interface, defectGrownList int64, scsiErrorCounterLog *collector.ScsiErrorCounterLog) {
+	sm.Attributes = buildScsiAttributes(sm.Temp, defectGrownList, scsiErrorCounterLog, nil, nil, nil, nil, nil)
 
 	// Apply overrides and find analyzed attribute status
 	for attrId, val := range sm.Attributes {
@@ -1185,7 +1302,7 @@ func (sm *Smart) rolloverReasonFromCrossCheck(currentPoH int64) string {
 
 // processScsiSmartInfoWithOverrides generates SmartScsiAttribute entries using pre-merged overrides.
 func (sm *Smart) processScsiSmartInfoWithOverrides(info *collector.SmartInfo, mergedOverrides []overrides.AttributeOverride) {
-	sm.Attributes = buildScsiAttributes(sm.Temp, info.ScsiGrownDefectList, &info.ScsiErrorCounterLog, info.ScsiEnduranceUsed, info.ScsiSasPhys)
+	sm.Attributes = buildScsiAttributes(sm.Temp, info.ScsiGrownDefectList, &info.ScsiErrorCounterLog, info.ScsiEnduranceUsed, info.ScsiSasPhys, info.ScsiEnvironmentalReports, info.ScsiBackgroundScan, info.ScsiStartStopCycleCounter)
 
 	// Apply overrides and find analyzed attribute status
 	for attrId, val := range sm.Attributes {
