@@ -24,9 +24,10 @@ var assertFilesystemReadError = errors.New("filesystem_devices table is unreadab
 type deviceDetailsResponse struct {
 	Success bool `json:"success"`
 	Data    struct {
-		Device           models.Device                `json:"device"`
-		Filesystems      []models.FilesystemCapacity  `json:"filesystems"`
-		FilesystemStatus *models.FilesystemHostStatus `json:"filesystem_status"`
+		Device             models.Device                `json:"device"`
+		Filesystems        []models.FilesystemCapacity  `json:"filesystems"`
+		FilesystemStatus   *models.FilesystemHostStatus `json:"filesystem_status"`
+		CollectorReporting bool                         `json:"filesystem_collector_reporting"`
 	} `json:"data"`
 }
 
@@ -129,11 +130,38 @@ func TestGetDeviceDetailsOmitsFilesystemStatusWhenHostNeverReported(t *testing.T
 
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Empty(t, response.Data.Filesystems)
-	// Omitted rather than null: the detail page renders its panel only once a
-	// status exists, so an absent key and an empty list are different facts.
+	// Omitted rather than null: an absent key and an empty list are different
+	// facts, and the detail page's panel gate reads both.
 	require.Nil(t, response.Data.FilesystemStatus)
 	require.NotContains(t, w.Body.String(), `"filesystem_status"`)
 	require.Contains(t, w.Body.String(), `"filesystems":[]`)
+	// Nothing anywhere: the page renders no panel at all rather than a card
+	// explaining a mismatch that does not exist.
+	require.False(t, response.Data.CollectorReporting)
+}
+
+func TestGetDeviceDetailsReportsCollectorRunningUnderAnotherHostID(t *testing.T) {
+	// The collector is enabled and reporting, but under "default" rather than
+	// the empty host id this drive's host carries, so nothing attributes. The
+	// detail page needs to be able to say so, which it cannot do from an empty
+	// filesystems list alone.
+	filesystems := map[string][]models.FilesystemCapacity{
+		"default": {
+			{HostID: "default", MountPoint: "/", SourceDevice: "/dev/sda1", AvailableBytes: 40, BackingDevices: []string{"sda"}},
+		},
+	}
+	hostStatuses := map[string]*models.FilesystemHostStatus{
+		"default": {HostID: "default", Status: models.FilesystemHostStatusAvailable, FilesystemCount: 1},
+	}
+
+	device := testDevice()
+	device.HostId = ""
+
+	_, response := deviceDetailsRequest(t, device, filesystems, hostStatuses, nil)
+
+	require.Empty(t, response.Data.Filesystems)
+	require.Nil(t, response.Data.FilesystemStatus)
+	require.True(t, response.Data.CollectorReporting)
 }
 
 func TestGetDeviceDetailsStillServesSmartDataWhenFilesystemReadFails(t *testing.T) {

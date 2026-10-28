@@ -58,9 +58,14 @@ func GetDeviceDetails(c *gin.Context) {
 		deviceMetadata = thresholds.ScsiMetadata
 	}
 
-	filesystems, filesystemStatus := deviceFilesystems(c, logger, deviceRepo, device.HostId, device.DeviceName)
+	filesystems, filesystemStatus, collectorReporting := deviceFilesystems(c, logger, deviceRepo, device.HostId, device.DeviceName)
 
-	data := map[string]interface{}{"device": device, "smart_results": smartResults, "filesystems": filesystems}
+	data := map[string]interface{}{
+		"device":                         device,
+		"smart_results":                  smartResults,
+		"filesystems":                    filesystems,
+		"filesystem_collector_reporting": collectorReporting,
+	}
 	if filesystemStatus != nil {
 		data["filesystem_status"] = filesystemStatus
 	}
@@ -68,14 +73,22 @@ func GetDeviceDetails(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": data, "metadata": deviceMetadata})
 }
 
-// deviceFilesystems returns the filesystems backed by one drive, and the
-// collector status for its host.
+// deviceFilesystems returns the filesystems backed by one drive, the collector
+// status for its host, and whether the filesystem collector is reporting for
+// any host at all.
 //
-// The status travels with the filesystems because an empty list is ambiguous on
-// its own: the filesystem collector may never have run, it may have been unable
-// to see the host's mounts, or the drive may genuinely hold no mounted
-// filesystem. The UI needs to tell a user which of those it is looking at
-// rather than reporting zero free space for all three.
+// All three travel together because an empty list is ambiguous on its own: the
+// filesystem collector may never have run anywhere, it may be running but under
+// a host id this drive's host does not share, it may have been unable to see the
+// host's mounts, or the drive may genuinely hold no mounted filesystem. The UI
+// needs to tell a user which of those it is looking at rather than reporting
+// zero free space for all four.
+//
+// The fleet-wide flag is what separates the first two. A host status exists only
+// for a host that has reported, so without the flag a host id mismatch between
+// the filesystem and SMART collectors is indistinguishable from a deployment
+// that never enabled the collector, and the page would stay silent in the one
+// case where it has something specific to say.
 //
 // A read failure degrades to no filesystems: the device detail page is
 // primarily a SMART view, and failing the whole response over an optional
@@ -86,11 +99,11 @@ func deviceFilesystems(
 	deviceRepo database.DeviceRepo,
 	hostID string,
 	deviceName string,
-) ([]models.FilesystemCapacity, *models.FilesystemHostStatus) {
+) ([]models.FilesystemCapacity, *models.FilesystemHostStatus, bool) {
 	filesystemsByHost, hostStatuses, err := deviceRepo.GetFilesystemSummary(c)
 	if err != nil {
 		logger.Errorln("An error occurred while retrieving filesystem capacity", err)
-		return nil, nil
+		return nil, nil, false
 	}
 
 	hostFilesystems := filesystemsByHost[hostID]
@@ -104,5 +117,5 @@ func deviceFilesystems(
 		}
 	}
 
-	return database.DedupeFilesystemsBySource(filesystems), hostStatuses[hostID]
+	return database.DedupeFilesystemsBySource(filesystems), hostStatuses[hostID], len(hostStatuses) > 0
 }

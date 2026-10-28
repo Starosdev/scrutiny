@@ -832,6 +832,24 @@ describe('DetailComponent', () => {
             expect(component.filesystemEmptyMessage()).toContain('could not inspect');
         });
 
+        it('names the host id mismatch when the collector reports for other hosts only', () => {
+            component.device = { host_id: '' } as DeviceModel;
+            component.filesystemStatus = null;
+            component.filesystemCollectorReporting = true;
+
+            const message = component.filesystemEmptyMessage();
+            expect(message).toContain('other hosts');
+            expect(message).toContain('COLLECTOR_HOST_ID');
+        });
+
+        it('quotes the host id in the mismatch message when the drive has one', () => {
+            component.device = { host_id: 'atlas' } as DeviceModel;
+            component.filesystemStatus = null;
+            component.filesystemCollectorReporting = true;
+
+            expect(component.filesystemEmptyMessage()).toContain('"atlas"');
+        });
+
         it('names every cause when the host reported but this drive has nothing attributed', () => {
             component.filesystemStatus = { host_id: 'atlas', status: 'available', filesystem_count: 3, updated_at: '' };
 

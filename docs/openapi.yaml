@@ -1960,6 +1960,9 @@ components:
               description: Filesystem collector status for this drive's host. Absent when the collector has never reported for the host, which is why an empty filesystems array is not the same as a drive with no mounted filesystem.
               allOf:
                 - $ref: "#/components/schemas/FilesystemHostStatus"
+            filesystem_collector_reporting:
+              type: boolean
+              description: True when the filesystem collector has reported for any host. With filesystem_status absent, this separates a deployment that never enabled the collector from one running it under a host id this drive's host does not share.
         metadata:
           type: object
           additionalProperties: true

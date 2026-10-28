@@ -12,6 +12,10 @@ export interface DeviceDetailsResponseWrapper {
         smart_results: SmartModel[];
         filesystems?: FilesystemCapacityModel[];
         filesystem_status?: FilesystemHostStatusModel;
+        // True when the filesystem collector has reported for any host, which
+        // is what separates "never enabled" from "running under a host id this
+        // drive's host does not share".
+        filesystem_collector_reporting?: boolean;
     };
     metadata: { [key: string]: AttributeMetadataModel } | { [key: number]: AttributeMetadataModel };
 }

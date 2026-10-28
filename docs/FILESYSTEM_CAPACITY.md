@@ -82,6 +82,13 @@ Loop, zram and ram devices are not reported as backing devices. They are
 kernel-synthesized rather than drives, so Scrutiny never registers them and a
 link naming one could match nothing.
 
+The filesystem collector and the SMART collector must agree on `host.id`, which
+is how a filesystem is matched to a drive. They do not agree by default: with
+`COLLECTOR_HOST_ID` unset the SMART collector records an empty host id and the
+filesystem collector records `default`, so nothing is attributed. Set the same
+value for both. The device detail page names this case when it sees the
+collector reporting for other hosts but not for the drive's own host id.
+
 Purging a SMART host deletes its filesystem capacity rows with its devices.
 Keeping them would attribute the purged host's free space to whichever drive
 later registers under the same device name on the same host id.

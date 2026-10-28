@@ -324,9 +324,9 @@
         </div>
         }
 
-        <!-- Filesystems: rendered only once the filesystem collector has reported for this host, so
-             a deployment that never enabled it gains no empty card on every drive -->
-        @if (filesystemStatus || filesystems.length > 0) {
+        <!-- Filesystems: rendered once the filesystem collector has reported anywhere, so a deployment
+             that never enabled it gains no empty card, while a host id mismatch still gets explained -->
+        @if (filesystemStatus || filesystems.length > 0 || filesystemCollectorReporting) {
         <div class="flex flex-auto w-full p-4">
             <treo-card class="flex flex-auto p-4 flex-col">
                 <div class="flex items-center justify-between mb-4">
