@@ -22,7 +22,14 @@ func newHostManagementTestRepository(t *testing.T) *scrutinyRepository {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.Device{}))
+	// Purging a host removes its filesystem capacity rows alongside its
+	// devices, so those tables are part of this fixture's schema.
+	require.NoError(t, db.AutoMigrate(
+		&models.Device{},
+		&models.FilesystemCapacity{},
+		&models.FilesystemHostStatus{},
+		&models.FilesystemDevice{},
+	))
 	return &scrutinyRepository{gormClient: db}
 }
 
@@ -162,4 +169,43 @@ func TestPurgeHostsKeepsSQLiteRowsAfterInfluxFailureAndCanRetry(t *testing.T) {
 	require.True(t, second[0].Success)
 	require.NoError(t, repo.gormClient.Model(&models.Device{}).Where("host_id = ?", "alpha").Count(&count).Error)
 	require.Zero(t, count)
+}
+
+func TestPurgeHostsDeletesFilesystemRowsWithTheHost(t *testing.T) {
+	repo := newHostManagementTestRepository(t)
+	withInfluxDeleteRecorder(t, repo)
+	ctx := context.Background()
+	require.NoError(t, repo.gormClient.Create(&[]models.Device{
+		{DeviceID: "atlas-sda", HostId: "atlas", DeviceName: "sda"},
+		{DeviceID: "hermes-sda", HostId: "hermes", DeviceName: "sda"},
+	}).Error)
+	require.NoError(t, repo.SaveFilesystemSummary(ctx, models.FilesystemSummaryUpload{
+		Filesystems: []models.FilesystemCapacity{
+			{HostID: "atlas", MountPoint: "/data", SourceDevice: "/dev/sda1", TotalBytes: 100, BackingDevices: []string{"sda"}},
+			{HostID: "hermes", MountPoint: "/data", SourceDevice: "/dev/sda1", TotalBytes: 200, BackingDevices: []string{"sda"}},
+		},
+		Hosts: []models.FilesystemHostStatus{
+			{HostID: "atlas", Status: models.FilesystemHostStatusAvailable, FilesystemCount: 1},
+			{HostID: "hermes", Status: models.FilesystemHostStatusAvailable, FilesystemCount: 1},
+		},
+	}))
+
+	results, err := repo.PurgeHosts(ctx, []string{"atlas"})
+	require.NoError(t, err)
+	require.True(t, results[0].Success, results[0].Error)
+
+	// Nothing of the purged host survives to be attributed to a drive that
+	// later registers as atlas/sda.
+	filesystems, hosts, err := repo.GetFilesystemSummary(ctx)
+	require.NoError(t, err)
+	require.Empty(t, filesystems["atlas"])
+	require.Nil(t, hosts["atlas"])
+
+	byHostDevice, err := repo.filesystemsByHostDevice(ctx)
+	require.NoError(t, err)
+	require.NotContains(t, byHostDevice, "atlas")
+
+	// The host that was not selected keeps everything.
+	require.Len(t, filesystems["hermes"], 1)
+	require.Len(t, byHostDevice["hermes"]["sda"], 1)
 }

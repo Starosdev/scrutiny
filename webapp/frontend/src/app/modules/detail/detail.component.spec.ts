@@ -791,6 +791,81 @@ describe('DetailComponent', () => {
         });
     });
 
+    describe('filesystems', () => {
+        const filesystem = (mountPoint: string, backingDevices?: string[], usedPercent = 10) =>
+            ({
+                host_id: 'atlas',
+                mount_point: mountPoint,
+                source_device: '/dev/sda1',
+                filesystem_type: 'ext4',
+                total_bytes: 100,
+                used_bytes: 60,
+                available_bytes: 40,
+                used_percent: usedPercent,
+                updated_at: '',
+                backing_devices: backingDevices,
+            }) as never;
+
+        it('names the other drives a filesystem spans, never this one', () => {
+            component.device = { device_name: 'sda' } as DeviceModel;
+
+            expect(component.filesystemSharedWith(filesystem('/array', ['sda', 'sdb', 'sdc']))).toEqual(['sdb', 'sdc']);
+            expect(component.filesystemSharedWith(filesystem('/', ['sda']))).toEqual([]);
+            expect(component.filesystemSharedWith(filesystem('/', undefined))).toEqual([]);
+        });
+
+        it('reports the collector reason when the host mounts could not be read', () => {
+            component.filesystemStatus = {
+                host_id: 'atlas',
+                status: 'unavailable',
+                reason: 'collector could not inspect eligible host mounts',
+                filesystem_count: 0,
+                updated_at: '',
+            };
+
+            expect(component.filesystemEmptyMessage()).toBe('collector could not inspect eligible host mounts');
+        });
+
+        it('falls back to a generic reason when the collector gave none', () => {
+            component.filesystemStatus = { host_id: 'atlas', status: 'unavailable', filesystem_count: 0, updated_at: '' };
+
+            expect(component.filesystemEmptyMessage()).toContain('could not inspect');
+        });
+
+        it('names the host id mismatch when the collector reports for other hosts only', () => {
+            component.device = { host_id: '' } as DeviceModel;
+            component.filesystemStatus = null;
+            component.filesystemCollectorReporting = true;
+
+            const message = component.filesystemEmptyMessage();
+            expect(message).toContain('other hosts');
+            expect(message).toContain('COLLECTOR_HOST_ID');
+        });
+
+        it('quotes the host id in the mismatch message when the drive has one', () => {
+            component.device = { host_id: 'atlas' } as DeviceModel;
+            component.filesystemStatus = null;
+            component.filesystemCollectorReporting = true;
+
+            expect(component.filesystemEmptyMessage()).toContain('"atlas"');
+        });
+
+        it('names every cause when the host reported but this drive has nothing attributed', () => {
+            component.filesystemStatus = { host_id: 'atlas', status: 'available', filesystem_count: 3, updated_at: '' };
+
+            const message = component.filesystemEmptyMessage();
+            expect(message).toContain('backing devices');
+            expect(message).toContain('sysfs');
+            expect(message).toContain('host id');
+        });
+
+        it('colours the usage bar by how full the filesystem is', () => {
+            expect(component.filesystemUsageClass(filesystem('/', ['sda'], 10))).toBe('bg-green-500');
+            expect(component.filesystemUsageClass(filesystem('/', ['sda'], 85))).toBe('bg-yellow-500');
+            expect(component.filesystemUsageClass(filesystem('/', ['sda'], 95))).toBe('bg-red-500');
+        });
+    });
+
     describe('overrideDescription', () => {
         it('names the pinned value for an acknowledge override', () => {
             expect(component.overrideDescription({ protocol: 'NVMe', attribute_id: 'media_errors', action: 'acknowledge', pinned_value: 3 })).toBe('Acknowledged at 3');

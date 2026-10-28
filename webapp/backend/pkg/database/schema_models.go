@@ -21,6 +21,7 @@ func schemaModels() []interface{} {
 		&models.MDADMArray{},
 		&models.FilesystemCapacity{},
 		&models.FilesystemHostStatus{},
+		&models.FilesystemDevice{},
 		&models.BtrfsFilesystem{},
 		&models.BtrfsDevice{},
 		&models.DeviceEnduranceOverride{},

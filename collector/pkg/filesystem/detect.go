@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/analogj/scrutiny/collector/pkg/blockdev"
 	mountsPkg "github.com/analogj/scrutiny/collector/pkg/mounts"
 	"github.com/analogj/scrutiny/collector/pkg/statfs"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
@@ -25,10 +26,16 @@ func CollectLinuxSnapshots(hostID string, now time.Time) ([]models.FilesystemCap
 	}
 	defer file.Close()
 
-	return collectSnapshots(file, hostID, now, statfs.Stat)
+	return collectSnapshots(file, hostID, now, statfs.Stat, blockdev.Resolve)
 }
 
-func collectSnapshots(reader io.Reader, hostID string, now time.Time, statfsFn func(string) (statfs.Result, error)) ([]models.FilesystemCapacity, models.FilesystemHostStatus, error) {
+func collectSnapshots(
+	reader io.Reader,
+	hostID string,
+	now time.Time,
+	statfsFn func(string) (statfs.Result, error),
+	resolveFn func(string) []string,
+) ([]models.FilesystemCapacity, models.FilesystemHostStatus, error) {
 	mountEntries, err := mountsPkg.Parse(reader)
 	if err != nil {
 		return nil, models.FilesystemHostStatus{}, err
@@ -70,6 +77,10 @@ func collectSnapshots(reader io.Reader, hostID string, now time.Time, statfsFn f
 			AvailableBytes: stats.Available,
 			UsedPercent:    usedPercent,
 			UpdatedAt:      now,
+			// A source that resolves to no disk stays unattributed. The
+			// snapshot is still uploaded: the host capacity panel reports it,
+			// and only per-drive attribution is unavailable.
+			BackingDevices: resolveFn(mount.Source),
 		})
 	}
 
