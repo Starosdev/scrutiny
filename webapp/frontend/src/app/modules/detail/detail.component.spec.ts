@@ -293,11 +293,29 @@ describe('DetailComponent', () => {
             expect(card.querySelector('a[href*="hard-drive-test-data"]')).toBeTruthy();
         });
 
-        it('omits the attribution for protocols that show no failure rate', () => {
+        for (const mobile of [false, true]) {
+            it(`omits the attribution for protocols that show no failure rate with mobile=${mobile}`, () => {
+                const host = render('NVMe', mobile);
+
+                expect(host.textContent).not.toContain('Failure-rate baselines from');
+                expect(host.querySelector('a[href*="hard-drive-test-data"]')).toBeNull();
+            });
+        }
+
+        it('keeps the attribution out of a non-ATA Replacement Risk card', () => {
+            // The card gates on the payload's own protocol, not on the device, so a
+            // populated non-ATA score must not reach the attribution block either.
+            riskWithProfile({
+                device_protocol: 'NVMe',
+                consumer_drive_profile_applied: false,
+                consumer_drive_profile_observed_thresholds: false,
+                consumer_drive_profile_family: undefined,
+            });
+
             const host = render('NVMe', false);
 
+            expect(host.querySelector('[data-testid="risk-attribution"]')).toBeNull();
             expect(host.textContent).not.toContain('Failure-rate baselines from');
-            expect(host.querySelector('a[href*="hard-drive-test-data"]')).toBeNull();
         });
     });
 

@@ -114,7 +114,15 @@ On ATA drive detail pages, the replacement-risk card reports which path was used
 
 - `consumer_drive_profiles_enabled`
 - `consumer_drive_profile_applied`
+- `consumer_drive_profile_observed_thresholds`
 - `consumer_drive_profile_family`
+
+`consumer_drive_profile_applied` reports that a profile matched. It does not report that the
+profile changed any failure rate: most profiles override counter severities only. Use
+`consumer_drive_profile_observed_thresholds` for that question. It is true only when the applied
+profile carries `ata_observed_thresholds`, which replace the Backblaze-derived buckets for the
+attributes the profile covers. The web UI gates its failure-rate attribution on this field, so a
+drive matching a severity-only profile is still credited to Backblaze.
 
 When a profile is applied, the response also carries provenance fields (omitted when generic ATA logic is used):
 

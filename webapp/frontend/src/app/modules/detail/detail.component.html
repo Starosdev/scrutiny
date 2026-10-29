@@ -1024,8 +1024,10 @@
 </div>
 
 <!-- Failure-rate data source attribution. Backblaze Drive Stats supplies the baseline
-     observed-threshold buckets and the protocol-level replacement-risk weights; a matched
-     consumer drive profile can replace the buckets with curated linuxhw/SMART values. -->
+     observed-threshold buckets and the protocol-level replacement-risk weights. A matched
+     consumer drive profile can replace those buckets, in which case the second sentence names
+     that profile's own source rather than a fixed catalog, because the bundled profiles come
+     from more than one dataset. -->
 <ng-template #failureRateAttribution>
     <div class="text-xs text-hint">
         Failure-rate baselines from
