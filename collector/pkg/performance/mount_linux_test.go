@@ -1,6 +1,7 @@
 package performance
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -270,10 +271,15 @@ func TestSpaceRejection(t *testing.T) {
 
 	// The rejection has to name both the shortfall and the headroom, because
 	// that is what tells an operator the free space is not the whole budget.
-	reason := spaceRejection(1024, 1<<60)
+	// The required figure is asserted numerically: it has to be the test file
+	// plus the headroom, not the test file alone, or the message implies the
+	// free space is the entire budget.
+	const requested = uint64(1) << 60
+	reason := spaceRejection(1024, requested)
 	require.Contains(t, reason, "insufficient space")
-	require.Contains(t, reason, "headroom")
 	require.Contains(t, reason, "1024 bytes available")
+	require.Contains(t, reason, fmt.Sprintf("%d bytes required", requested+headroom))
+	require.Contains(t, reason, fmt.Sprintf("plus %d bytes headroom", headroom))
 }
 
 func TestIsMountPointSuitable_RequiresHeadroomAboveTestFile(t *testing.T) {
