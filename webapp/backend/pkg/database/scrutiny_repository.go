@@ -530,24 +530,54 @@ func ensureBucketExists(ctx context.Context, bucketsAPI api.BucketsAPI, org *dom
 // query would, and there is no cheaper call available: domain.GetBucketsParams carries both Name
 // and Org, but no BucketsAPI method sets both. Do not swap this back to FindBucketByName.
 func findBucketInOrg(ctx context.Context, bucketsAPI api.BucketsAPI, orgName, bucketName string) (*domain.Bucket, error) {
+	var found *domain.Bucket
+	err := forEachOrgBucket(ctx, bucketsAPI, orgName, func(bucket *domain.Bucket) bool {
+		if bucket.Name != bucketName {
+			return true
+		}
+		found = bucket
+		return false
+	})
+	if err != nil {
+		return nil, err
+	}
+	if found == nil {
+		return nil, fmt.Errorf("bucket '%s' not found in organization '%s'", bucketName, orgName)
+	}
+	return found, nil
+}
+
+// forEachOrgBucket calls visit for every bucket belonging to orgName, a page at a time, and stops
+// early when visit returns false. The API returns 20 buckets per page by default, which an
+// organization can exceed, so every walk of an organization's buckets has to page.
+//
+// Both callers route through here so the offset advances in exactly one place. That matters
+// because the offset is not observable from a stub: api.Paging's fields are unexported, so a
+// stub BucketsAPI sees opaque api.PagingOption values and cannot assert what they carry. A
+// second copy of this loop would therefore be untestable through the stubs the rest of the
+// bucket tests use. TestOrgBucketPagingAdvancesTheOffset drives the offset over the wire.
+//
+// A constant or non-advancing offset returns a full page forever rather than a wrong answer, and
+// findBucketInOrg runs during MigrateDatabase, so the symptom is a startup that never completes
+// and never errors (#1015).
+func forEachOrgBucket(ctx context.Context, bucketsAPI api.BucketsAPI, orgName string, visit func(bucket *domain.Bucket) bool) error {
 	for offset := 0; ; offset += bucketPageSize {
 		page, err := bucketsAPI.FindBucketsByOrgName(ctx, orgName, api.PagingWithOffset(offset), api.PagingWithLimit(bucketPageSize))
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if page == nil {
-			break
+			return nil
 		}
 		for i := range *page {
-			if (*page)[i].Name == bucketName {
-				return &(*page)[i], nil
+			if !visit(&(*page)[i]) {
+				return nil
 			}
 		}
 		if len(*page) < bucketPageSize {
-			break
+			return nil
 		}
 	}
-	return nil, fmt.Errorf("bucket '%s' not found in organization '%s'", bucketName, orgName)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -896,25 +926,13 @@ func applyLastSeenRecord(lastSeenTimes map[string]time.Time, owners historyOwner
 // GetAvailableInfluxDBBuckets returns a list of bucket names available in InfluxDB.
 // This is used for diagnostics to verify required buckets exist.
 func (sr *scrutinyRepository) GetAvailableInfluxDBBuckets(ctx context.Context) ([]string, error) {
-	org := sr.appConfig.GetString(cfgInfluxDBOrg)
-
-	// Query InfluxDB for all buckets in the organization, a page at a time: the API returns 20
-	// per page by default, which an organization can exceed
 	bucketNames := []string{}
-	for offset := 0; ; offset += bucketPageSize {
-		page, err := sr.influxClient.BucketsAPI().FindBucketsByOrgName(ctx, org, api.PagingWithOffset(offset), api.PagingWithLimit(bucketPageSize))
-		if err != nil {
-			return nil, fmt.Errorf("failed to query InfluxDB buckets: %w", err)
-		}
-		if page == nil {
-			break
-		}
-		for i := range *page {
-			bucketNames = append(bucketNames, (*page)[i].Name)
-		}
-		if len(*page) < bucketPageSize {
-			break
-		}
+	err := forEachOrgBucket(ctx, sr.influxClient.BucketsAPI(), sr.appConfig.GetString(cfgInfluxDBOrg), func(bucket *domain.Bucket) bool {
+		bucketNames = append(bucketNames, bucket.Name)
+		return true
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query InfluxDB buckets: %w", err)
 	}
 
 	return bucketNames, nil
