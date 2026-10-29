@@ -3829,6 +3829,14 @@ components:
             consumer_drive_profile_applied:
               type: boolean
               description: True when the device matched a vetted ATA consumer-drive profile and that profile was used instead of generic ATA rules.
+            consumer_drive_profile_observed_thresholds:
+              type: boolean
+              description: >-
+                True when the applied profile carries observed-threshold buckets, which replace the
+                Backblaze-derived failure-rate buckets for the attributes it covers. False when the
+                profile overrides counter severities only, in which case failure rates remain
+                Backblaze-derived. Always present. Attribution must use this field rather than
+                `consumer_drive_profile_applied`, which is true for any matched profile.
             consumer_drive_profile_family:
               type: string
               description: Matched ATA consumer-drive profile family when `consumer_drive_profile_applied` is true.

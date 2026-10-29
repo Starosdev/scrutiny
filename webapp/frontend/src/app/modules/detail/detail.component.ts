@@ -1,6 +1,6 @@
 import humanizeDuration from 'humanize-duration';
 import { AfterViewInit, Component, LOCALE_ID, OnDestroy, OnInit, ViewChild, inject, ChangeDetectionStrategy } from '@angular/core';
-import { Location, formatDate, NgClass, UpperCasePipe, DecimalPipe, PercentPipe } from '@angular/common';
+import { Location, formatDate, NgClass, NgTemplateOutlet, UpperCasePipe, DecimalPipe, PercentPipe } from '@angular/common';
 import { ApexOptions, ChartComponent } from 'ng-apexcharts';
 import { AppConfig } from 'app/core/config/app.config';
 import { DeviceSelfTestModel } from 'app/core/models/device-selftest-model';
@@ -89,6 +89,7 @@ const AttributeStatusFailedScrutiny = 4;
         MatMenuItem,
         TreoCardComponent,
         NgClass,
+        NgTemplateOutlet,
         MatButtonToggleGroup,
         MatButtonToggle,
         ChartComponent,
@@ -528,6 +529,15 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     isAta(): boolean {
         return this.device?.device_protocol === 'ATA';
+    }
+
+    // True only when the matched consumer drive profile carries observed-threshold
+    // buckets, which is what replaces the Backblaze-derived failure rates. Most profiles
+    // override counter severities alone and leave the failure rates untouched, so matching
+    // a profile is not on its own a reason to credit that profile's source.
+    get profileSuppliedFailureRateThresholds(): boolean {
+        const risk = this.replacementRisk;
+        return risk?.consumer_drive_profile_applied === true && risk?.consumer_drive_profile_observed_thresholds === true && !!risk?.consumer_drive_profile_source;
     }
 
     isScsi(): boolean {

@@ -113,6 +113,12 @@ type ReplacementRiskScore struct {
 	// ConsumerDriveProfileApplied reports whether this score used a matched consumer ATA profile instead of generic ATA rules.
 	ConsumerDriveProfileApplied bool `json:"consumer_drive_profile_applied"`
 
+	// ConsumerDriveProfileObservedThresholds reports whether the applied profile carries
+	// observed-threshold buckets. A profile that only overrides counter severities leaves
+	// the Backblaze-derived failure-rate buckets in place, so attribution must not credit
+	// the profile's own source for failure rates in that case.
+	ConsumerDriveProfileObservedThresholds bool `json:"consumer_drive_profile_observed_thresholds"`
+
 	// ConsumerDriveProfileFamily is the matched profile family when ConsumerDriveProfileApplied is true.
 	ConsumerDriveProfileFamily string `json:"consumer_drive_profile_family,omitempty"`
 
