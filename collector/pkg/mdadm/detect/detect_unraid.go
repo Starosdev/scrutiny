@@ -170,11 +170,19 @@ func buildUnraidArray(content string) (models.MDADMArray, models.MDADMMetrics) {
 
 	metrics := models.MDADMMetrics{RawMdstat: unraidRawSummary(content)}
 
+	// The rdev* fields describe the live md registration, which does not exist
+	// while the array is stopped, so absence is only evidence of a failed disk
+	// on a started array. Counting it unconditionally would report every disk as
+	// missing for the whole of a planned maintenance stop.
+	started := unraidArrayStarted(arrayKeys)
+
 	parityDisks := 0
 	missingDisks := 0
 	for _, slot := range slots {
-		if !slot.assigned() && !slot.attached() {
-			// An unused slot. Unraid reports all 30 of them on every host.
+		if !slot.assigned() {
+			// Not an array member: an unused slot (Unraid reports all 30 on
+			// every host) or a disk sitting in a slot without being configured
+			// into the array, which Unraid marks DISK_NEW. Neither is a failure.
 			continue
 		}
 
@@ -190,8 +198,10 @@ func buildUnraidArray(content string) (models.MDADMArray, models.MDADMMetrics) {
 
 		switch {
 		case slot.missing():
-			missingDisks++
-			metrics.FailedDevices++
+			if started {
+				missingDisks++
+				metrics.FailedDevices++
+			}
 		case slot.healthy():
 			metrics.ActiveDevices++
 		default:
@@ -203,7 +213,7 @@ func buildUnraidArray(content string) (models.MDADMArray, models.MDADMMetrics) {
 	// recording the identity of a missing disk, the per-slot scan above would
 	// see an empty slot and report the array healthy, which is the one outcome
 	// this collector must never produce.
-	if reported := int(unraidInt(arrayKeys, "mdNumMissing")); reported > missingDisks {
+	if reported := int(unraidInt(arrayKeys, "mdNumMissing")); started && reported > missingDisks {
 		metrics.FailedDevices += reported - missingDisks
 	}
 
@@ -313,9 +323,14 @@ func unraidInt(arrayKeys map[string]string, key string) int64 {
 // unraidState renders Unraid's array state using the vocabulary the rest of
 // Scrutiny already understands ("active", "degraded", "inactive", "checking",
 // "resync", "recovery"), so no backend or frontend mapping is needed.
+// unraidArrayStarted reports whether the array is running.
+func unraidArrayStarted(arrayKeys map[string]string) bool {
+	return strings.EqualFold(strings.TrimSpace(arrayKeys[unraidStateKey]), unraidStateStarted)
+}
+
 func unraidState(arrayKeys map[string]string, failedDevices int) string {
 	state := strings.TrimSpace(arrayKeys[unraidStateKey])
-	if !strings.EqualFold(state, unraidStateStarted) {
+	if !unraidArrayStarted(arrayKeys) {
 		if state == "" {
 			state = "unknown"
 		}

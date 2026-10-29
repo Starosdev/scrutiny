@@ -104,10 +104,11 @@ func TestBuildUnraidArray_CheckingPaused(t *testing.T) {
 	assert.InDelta(t, 40.0, metrics.SyncProgress, 0.001)
 }
 
-// TestBuildUnraidArray_Stopped covers a stopped array. Unraid exports the md
-// device for a data disk only while the array is started, so every diskName is
-// blanked here: classifying parity by diskName would make all 12 disks parity
-// and collapse ArraySize to zero.
+// TestBuildUnraidArray_Stopped covers a stopped array. diskName is blanked for
+// every slot, the way a stopped array reports it, because Unraid exports the md
+// device for a data disk only while the array is started. The parser does not
+// read diskName at all, so blanking it must change nothing: parity comes from
+// the slot index and capacity from the superblock.
 func TestBuildUnraidArray_Stopped(t *testing.T) {
 	content := strings.Replace(
 		loadMdstatFixture(t, "mdstat_unraid_started.txt"),
@@ -126,6 +127,65 @@ func TestBuildUnraidArray_Stopped(t *testing.T) {
 	assert.Equal(t, 12, metrics.ActiveDevices)
 	assert.Equal(t, "unraid-parity1", array.Level)
 	assert.Equal(t, int64(104008147398656), metrics.ArraySize)
+}
+
+// TestBuildUnraidArray_StoppedArrayReportsNoDiskFailures is the guard against
+// alerting through a planned maintenance stop. The rdev* fields describe the
+// live md registration, which does not exist while the array is stopped, so if
+// Unraid reports DISK_NP* for assigned slots then every disk would otherwise
+// look missing and the backend would email a failure on every poll
+// (webapp/backend/pkg/web/handler/mdadm_upload_metrics.go notifies on
+// FailedDevices > 0 alone, regardless of the state string).
+func TestBuildUnraidArray_StoppedArrayReportsNoDiskFailures(t *testing.T) {
+	content := strings.Replace(
+		loadMdstatFixture(t, "mdstat_unraid_started.txt"),
+		"mdState=STARTED", "mdState=STOPPED", 1)
+	// Every assigned slot loses its live registration.
+	content = strings.ReplaceAll(content, "=DISK_OK", "=DISK_NP_MISSING")
+	require.NotContains(t, content, "DISK_OK")
+
+	array, metrics := buildUnraidArray(content)
+
+	assert.Equal(t, 0, metrics.FailedDevices, "a stopped array reports no disk failures")
+	assert.Equal(t, 0, metrics.ActiveDevices)
+	assert.Equal(t, "inactive (stopped)", metrics.State)
+	// The array is still described from the superblock.
+	assert.Equal(t, "unraid-parity1", array.Level)
+	assert.Equal(t, int64(104008147398656), metrics.ArraySize)
+}
+
+// TestBuildUnraidArray_UnconfiguredDiskIsNotAFailure covers DISK_NEW: a disk
+// physically present in a slot but not configured into the array. Unraid
+// records no identity for it, so it is not an array member and must not be
+// counted as a failed device, which would notify on a brand-new blank drive.
+func TestBuildUnraidArray_UnconfiguredDiskIsNotAFailure(t *testing.T) {
+	content := strings.Join([]string{
+		"mdState=STARTED",
+		"mdNumMissing=0",
+		// Slot 0: a configured, healthy parity disk.
+		"diskId.0=TESTDISK00_SERIAL00",
+		"diskSize.0=15625879500",
+		"rdevStatus.0=DISK_OK",
+		"rdevName.0=sda",
+		// Slot 1: a configured, healthy data disk.
+		"diskId.1=TESTDISK01_SERIAL01",
+		"diskSize.1=3907018532",
+		"rdevStatus.1=DISK_OK",
+		"rdevName.1=sdf",
+		// Slot 2: present but never configured into the array.
+		"diskId.2=",
+		"diskSize.2=0",
+		"rdevStatus.2=DISK_NEW",
+		"rdevName.2=sdg",
+	}, "\n")
+
+	array, metrics := buildUnraidArray(content)
+
+	assert.Equal(t, 0, metrics.FailedDevices, "an unconfigured disk is not a failure")
+	assert.Equal(t, 2, metrics.ActiveDevices)
+	assert.Equal(t, "active", metrics.State)
+	// It is not a member, so it is not listed as one.
+	assert.Equal(t, []string{"/dev/sda", "/dev/sdf"}, array.Devices)
 }
 
 func TestBuildUnraidArray_MissingLabelLeavesUUIDEmptyForCallerFallback(t *testing.T) {
@@ -275,11 +335,26 @@ func TestBuildUnraidArray_MissingDiskIsAFailure(t *testing.T) {
 // floor on the failure count rather than being ignored.
 func TestBuildUnraidArray_MdNumMissingBackstopsSilentLoss(t *testing.T) {
 	content := loadMdstatFixture(t, "mdstat_unraid_missing.txt")
-	// Strip every trace of the missing disk except Unraid's own counter.
-	for _, key := range []string{"diskName.2", "diskSize.2", "diskId.2"} {
-		content = strings.Replace(content, key+"=md2p1", key+"=", 1)
-		content = strings.Replace(content, key+"=3907018532", key+"=0", 1)
-		content = strings.Replace(content, key+"=TESTDISK02_SERIAL02", key+"=", 1)
+
+	// Strip every trace of the missing disk except Unraid's own counter. Each
+	// literal is asserted before it is replaced: a silent no-op here would
+	// leave slot 2 assigned, so the ordinary missing() path would report the
+	// failure and the test would pass without exercising the backstop at all.
+	for _, literal := range []string{"diskSize.2=3907018532", "diskId.2=TESTDISK02_SERIAL02"} {
+		require.Contains(t, content, literal)
+		key, _, _ := strings.Cut(literal, "=")
+		content = strings.Replace(content, literal, key+"=", 1)
+	}
+	require.Contains(t, content, "mdNumMissing=1")
+
+	// With no recorded identity the slot is not an array member any more, so
+	// only mdNumMissing is left to report the loss.
+	_, slots := parseUnraidMdstat(content)
+	for _, slot := range slots {
+		if slot.index == 2 {
+			require.False(t, slot.assigned(), "the strip must leave slot 2 unassigned")
+			require.False(t, slot.missing(), "so the ordinary missing path cannot fire")
+		}
 	}
 
 	_, metrics := buildUnraidArray(content)
