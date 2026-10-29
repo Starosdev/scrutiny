@@ -8,6 +8,7 @@ import { MatDialog as MatDialog } from '@angular/material/dialog';
 import { DashboardDeviceDeleteDialogComponent } from 'app/layout/common/dashboard-device-delete-dialog/dashboard-device-delete-dialog.component';
 import { DeviceTitlePipe } from 'app/shared/device-title.pipe';
 import { DeviceSummaryModel } from 'app/core/models/device-summary-model';
+import { FilesystemCapacityModel } from 'app/core/models/filesystem-summary-model';
 import { DeviceStatusPipe } from 'app/shared/device-status.pipe';
 import { DashboardDeviceArchiveDialogComponent } from '../dashboard-device-archive-dialog/dashboard-device-archive-dialog.component';
 import { DashboardDeviceArchiveDialogService } from '../dashboard-device-archive-dialog/dashboard-device-archive-dialog.service';
@@ -16,6 +17,7 @@ import { MatIcon } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { MatIconButton } from '@angular/material/button';
 import { MatMenuTrigger, MatMenu, MatMenuItem } from '@angular/material/menu';
+import { MatTooltip } from '@angular/material/tooltip';
 import { MenuTriggerRestoreFocusDirective } from 'app/shared/menu-trigger-restore-focus.directive';
 import { FileSizePipe } from '../../../shared/file-size.pipe';
 import { TemperaturePipe } from '../../../shared/temperature.pipe';
@@ -35,6 +37,7 @@ import { DeviceHoursPipe } from '../../../shared/device-hours.pipe';
         MenuTriggerRestoreFocusDirective,
         MatMenu,
         MatMenuItem,
+        MatTooltip,
         TitleCasePipe,
         DatePipe,
         FileSizePipe,
@@ -206,5 +209,27 @@ export class DashboardDeviceComponent implements OnInit {
             return '--';
         }
         return `${health.value}%`;
+    }
+
+    /**
+     * The one filesystem whose free space belongs entirely to this drive, or
+     * null when there is no such filesystem.
+     *
+     * A single free-space figure is only honest in that case. A drive holding
+     * several filesystems has several free figures, and a filesystem spanning
+     * several drives (LVM, md) has free space that belongs to no single drive;
+     * dividing it up would invent a number the kernel never reported. Both of
+     * those are shown as a mount count here and broken down on the detail page.
+     */
+    exclusiveFilesystem(): FilesystemCapacityModel | null {
+        const filesystems = this.deviceSummary?.filesystems;
+        if (filesystems?.length !== 1) {
+            return null;
+        }
+        return filesystems[0].backing_devices?.length === 1 ? filesystems[0] : null;
+    }
+
+    filesystemMountCount(): number {
+        return this.deviceSummary?.filesystems?.length ?? 0;
     }
 }

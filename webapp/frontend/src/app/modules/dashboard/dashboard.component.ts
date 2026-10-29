@@ -12,6 +12,7 @@ import { TemperaturePipe } from 'app/shared/temperature.pipe';
 import { DeviceTitlePipe } from 'app/shared/device-title.pipe';
 import { DeviceSummaryModel } from 'app/core/models/device-summary-model';
 import { FilesystemCapacityModel, FilesystemHostStatusModel } from 'app/core/models/filesystem-summary-model';
+import { filesystemUsageClass } from 'app/shared/filesystem-usage.utils';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -439,15 +440,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         return this.filesystemHosts().length > 0;
     }
 
-    filesystemUsageClass(filesystem: FilesystemCapacityModel): string {
-        if (filesystem.used_percent >= 90) {
-            return 'bg-red-500';
-        }
-        if (filesystem.used_percent >= 80) {
-            return 'bg-yellow-500';
-        }
-        return 'bg-green-500';
-    }
+    filesystemUsageClass = filesystemUsageClass;
 
     getReleaseUrl(version: string): string | null {
         if (!/^\d+\.\d+\.\d+(?:-beta\.\d+)?$/.test(version)) {

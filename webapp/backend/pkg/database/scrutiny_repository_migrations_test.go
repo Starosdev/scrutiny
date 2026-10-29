@@ -661,6 +661,13 @@ func TestMigrateCreatesDeviceSelfTestsTable(t *testing.T) {
 	require.True(t, repo.gormClient.Migrator().HasTable(&models.DeviceSelfTest{}))
 }
 
+func TestMigrateCreatesFilesystemDevicesTable(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+
+	require.NoError(t, repo.Migrate(context.Background()))
+	require.True(t, repo.gormClient.Migrator().HasTable(&models.FilesystemDevice{}))
+}
+
 func TestMigrateAddsDashboardPageSizeSetting(t *testing.T) {
 	repo := createMigrationTestRepository(t)
 

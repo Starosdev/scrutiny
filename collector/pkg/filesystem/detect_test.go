@@ -38,7 +38,7 @@ func TestCollectSnapshotsFiltersPseudoFilesystemsAndZFS(t *testing.T) {
 		}
 	}
 
-	snapshots, status, err := collectSnapshots(reader, "host-a", now, statfsFn)
+	snapshots, status, err := collectSnapshots(reader, "host-a", now, statfsFn, fakeResolver)
 	require.NoError(t, err)
 	require.Len(t, snapshots, 2)
 	require.Equal(t, models.FilesystemHostStatusAvailable, status.Status)
@@ -63,7 +63,7 @@ shfs /mnt/user fuse.shfs rw 0 0
 			return statfs.Result{}, errors.New("excluded path should not be inspected")
 		}
 		return statfs.Result{Total: 1000, Available: 250}, nil
-	})
+	}, fakeResolver)
 	require.NoError(t, err)
 	require.Len(t, snapshots, 1)
 	require.Equal(t, "/mnt/user", snapshots[0].MountPoint)
@@ -77,7 +77,7 @@ func TestCollectSnapshotsMarksUnavailableWhenEligibleMountsCannotBeRead(t *testi
 
 	snapshots, status, err := collectSnapshots(reader, "host-a", now, func(path string) (statfs.Result, error) {
 		return statfs.Result{}, errors.New("permission denied")
-	})
+	}, fakeResolver)
 	require.NoError(t, err)
 	require.Len(t, snapshots, 0)
 	require.Equal(t, models.FilesystemHostStatusUnavailable, status.Status)
@@ -90,9 +90,45 @@ func TestCollectSnapshotsAllowsEmptyEligibleSet(t *testing.T) {
 
 	snapshots, status, err := collectSnapshots(reader, "host-a", now, func(path string) (statfs.Result, error) {
 		return statfs.Result{}, nil
-	})
+	}, fakeResolver)
 	require.NoError(t, err)
 	require.Len(t, snapshots, 0)
 	require.Equal(t, models.FilesystemHostStatusAvailable, status.Status)
 	require.Equal(t, 0, status.FilesystemCount)
+}
+
+// fakeResolver stands in for the sysfs holder walk, which has no fixture on a
+// test host. /dev/sda1 is a plain partition, /dev/md0 spans two disks, and
+// anything else is unattributed.
+func fakeResolver(source string) []string {
+	switch source {
+	case "/dev/sda1":
+		return []string{"sda"}
+	case "/dev/sdb1":
+		return []string{"sdb"}
+	case "/dev/md0":
+		return []string{"sdc", "sdd"}
+	default:
+		return nil
+	}
+}
+
+func TestCollectSnapshotsAttributesBackingDevices(t *testing.T) {
+	now := time.Unix(100, 0).UTC()
+	reader := strings.NewReader(`/dev/sda1 / ext4 rw 0 0
+/dev/md0 /array ext4 rw 0 0
+nas:/export /remote nfs rw 0 0
+`)
+
+	snapshots, _, err := collectSnapshots(reader, "host-a", now, func(path string) (statfs.Result, error) {
+		return statfs.Result{Total: 1000, Available: 250}, nil
+	}, fakeResolver)
+	require.NoError(t, err)
+	require.Len(t, snapshots, 3)
+	require.Equal(t, []string{"sda"}, snapshots[0].BackingDevices)
+	require.Equal(t, []string{"sdc", "sdd"}, snapshots[1].BackingDevices)
+	// A network mount has no disk behind it, and is still reported for the host
+	// capacity panel with no attribution.
+	require.Equal(t, "/remote", snapshots[2].MountPoint)
+	require.Empty(t, snapshots[2].BackingDevices)
 }
