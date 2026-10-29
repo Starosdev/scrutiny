@@ -111,7 +111,8 @@ func deviceProtocol(device *models.Device) string {
 func isCriticalAttribute(device *models.Device, attrId string) bool {
 	switch {
 	case device.IsScsi():
-		return thresholds.ScsiMetadata[attrId].Critical
+		metadata, _ := thresholds.ScsiMetadataFor(attrId)
+		return metadata.Critical
 	case device.IsNvme():
 		return thresholds.NmveMetadata[attrId].Critical
 	default:
@@ -215,8 +216,19 @@ func hasQualifyingFailure(failingAttributes []string, smartAttrs *measurements.S
 		if repeatNotifications {
 			return true
 		}
-		// Notify only when the failing value changed since the previous submission.
-		if !hasPrevious || lastPoints[0].Attributes[attrId].GetTransformedValue() != smartAttrs.Attributes[attrId].GetTransformedValue() {
+		// Notify only when the failing value changed since the previous submission. An
+		// attribute the previous submission did not carry counts as changed: Attributes is a
+		// map of interfaces, so a missing key yields a nil SmartAttribute and calling a method
+		// on it would panic. That happens whenever a release starts decoding a log page it
+		// previously ignored, which is the normal path on upgrade.
+		if !hasPrevious {
+			return true
+		}
+		previousAttribute, previousAttributeRecorded := lastPoints[0].Attributes[attrId]
+		if !previousAttributeRecorded {
+			return true
+		}
+		if previousAttribute.GetTransformedValue() != smartAttrs.Attributes[attrId].GetTransformedValue() {
 			return true
 		}
 	}

@@ -52,7 +52,11 @@ type TemperatureDeviceOption struct {
 type DeviceSummary struct {
 	SmartResults *SmartSummary                   `json:"smart,omitempty"`
 	TempHistory  []measurements.SmartTemperature `json:"temp_history,omitempty"`
-	Device       Device                          `json:"device"`
+	// Filesystems are the mounted filesystems this drive backs, as reported by
+	// the filesystem collector. Absent when nothing is attributed to the drive,
+	// which is a different fact from a drive whose filesystems are full.
+	Filesystems []FilesystemCapacity `json:"filesystems,omitempty"`
+	Device      Device               `json:"device"`
 }
 type SmartSummary struct {
 	CollectorDate  time.Time `json:"collector_date,omitempty"`
