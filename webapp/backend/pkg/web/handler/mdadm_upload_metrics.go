@@ -16,14 +16,15 @@ import (
 func UploadMdadmMetrics(c *gin.Context) {
 	dbRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
-	uuid := c.Param("uuid")
-	if uuid == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "errors": []string{"UUID is required"}})
+	// A series keyed by an identifier the other routes refuse would be a
+	// series nothing could later read or delete.
+	uuid, ok := mdadmArrayUUID(c, logger)
+	if !ok {
 		return
 	}
 
-	metrics, ok := bindMDADMMetrics(c)
-	if !ok {
+	metrics, bound := bindMDADMMetrics(c)
+	if !bound {
 		return
 	}
 
@@ -57,6 +58,13 @@ func handleMDADMNotification(c *gin.Context, dbRepo database.DeviceRepo, logger 
 	array, err := dbRepo.GetMdadmArrayDetails(c.Request.Context(), uuid)
 	if err != nil {
 		logger.Errorf("Failed to retrieve details for MDADM array %s during notification process: %v", uuid, err)
+		return
+	}
+	// Muting an array is what the mute route writes, and this is the only
+	// place that can honor it: the notification path is otherwise driven by
+	// metrics history alone.
+	if array.Muted {
+		logger.Debugf("Skipping notification for MDADM array %s: array is muted", uuid)
 		return
 	}
 	if !shouldSendMDADMNotification(c, dbRepo, uuid, metrics) {
