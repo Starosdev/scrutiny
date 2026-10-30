@@ -492,7 +492,7 @@ To move devices without deleting history:
 3. Run one collection from the new host.
 4. Confirm the device appears under the new host ID in the SMART dashboard.
 
-An empty host ID clears the stored assignment. If two collectors report the same device, the most recent registration wins. Devices with no model, serial number, or WWN use a device-name and host-ID fallback identity, so host migration cannot preserve their history reliably.
+An empty host ID clears the stored assignment, which now takes an explicitly empty value: an unconfigured collector derives one from the machine instead of sending nothing. If two collectors report the same device, the most recent registration wins. Devices with no model, serial number, or WWN use a device-name and host-ID fallback identity, so host migration cannot preserve their history reliably.
 
 ## Collector DEBUG mode
 

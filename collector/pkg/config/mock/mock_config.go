@@ -148,6 +148,20 @@ func (mr *MockInterfaceMockRecorder) GetDeviceOverrides() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeviceOverrides", reflect.TypeOf((*MockInterface)(nil).GetDeviceOverrides))
 }
 
+// GetHostID mocks base method.
+func (m *MockInterface) GetHostID() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetHostID")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetHostID indicates an expected call of GetHostID.
+func (mr *MockInterfaceMockRecorder) GetHostID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHostID", reflect.TypeOf((*MockInterface)(nil).GetHostID))
+}
+
 // GetInt mocks base method.
 func (m *MockInterface) GetInt(key string) int {
 	m.ctrl.T.Helper()

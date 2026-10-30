@@ -44,7 +44,7 @@ func (d *Detect) Start() ([]models.MDADMArray, []models.MDADMMetrics, error) {
 	// syntheticArrayID guards against a nil Config, so this path does too.
 	hostID := ""
 	if d.Config != nil {
-		hostID = d.Config.GetString("host.id")
+		hostID = d.Config.GetHostID()
 	}
 
 	// Unraid writes a key/value mdstat and ships no mdadm binary, so it is
@@ -386,7 +386,7 @@ func parseMdadmExportUUID(output string) string {
 func (d *Detect) syntheticArrayID(name string) string {
 	hostID := ""
 	if d.Config != nil {
-		hostID = strings.TrimSpace(d.Config.GetString("host.id"))
+		hostID = d.Config.GetHostID()
 	}
 	if hostID == "" {
 		hostID = "unknown-host"

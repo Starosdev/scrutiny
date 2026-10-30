@@ -902,7 +902,7 @@ Dots and dashes in key names become underscores.
 
 | Config Key | Environment Variable | Default Value |
 | --- | --- | --- |
-| `host.id` | `COLLECTOR_HOST_ID` | `` |
+| `host.id` | `COLLECTOR_HOST_ID` | hostname, else `/etc/machine-id`, else `/var/lib/dbus/machine-id` |
 | `api.endpoint` | `COLLECTOR_API_ENDPOINT` | `http://localhost:8080` |
 | `api.timeout` | `COLLECTOR_API_TIMEOUT` | `60` |
 | `api.token` | `COLLECTOR_API_TOKEN` | `` |
@@ -967,7 +967,7 @@ The performance collector checks `COLLECTOR_PERF_` prefixed variables first, the
 
 | Config Key | Environment Variable | Default Value |
 | --- | --- | --- |
-| `host.id` | `COLLECTOR_PERF_HOST_ID` or `COLLECTOR_HOST_ID` | `` |
+| `host.id` | `COLLECTOR_PERF_HOST_ID` or `COLLECTOR_HOST_ID` | hostname, else `/etc/machine-id`, else `/var/lib/dbus/machine-id` |
 | `api.endpoint` | `COLLECTOR_PERF_API_ENDPOINT` or `COLLECTOR_API_ENDPOINT` | `http://localhost:8080` |
 | `performance.profile` | `COLLECTOR_PERF_PROFILE` | `quick` |
 | `performance.enabled` | `COLLECTOR_PERFORMANCE_ENABLED` | `false` |

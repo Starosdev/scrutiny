@@ -9,7 +9,9 @@ import (
 	"testing"
 
 	collectorConfig "github.com/analogj/scrutiny/collector/pkg/config"
+	mock_config "github.com/analogj/scrutiny/collector/pkg/config/mock"
 	"github.com/analogj/scrutiny/collector/pkg/zfs/models"
+	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -72,8 +74,16 @@ func TestRunSendsEmptyInventoryWhenNoPoolsAreAvailable(t *testing.T) {
 }
 
 func TestRegisterPoolsUsesLegacyEnvelopeWithoutHostID(t *testing.T) {
-	config, err := collectorConfig.Create()
-	require.NoError(t, err)
+	// A real config always resolves a host id now, deriving one from the
+	// machine when none is configured, so the legacy envelope is reachable
+	// only when that derivation finds nothing. The mock is how that is staged.
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	config := mock_config.NewMockInterface(mockCtrl)
+	config.EXPECT().IsSet("api.timeout").AnyTimes().Return(false)
+	config.EXPECT().GetAPIToken().AnyTimes().Return("")
+	config.EXPECT().GetHostID().AnyTimes().Return("")
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var request models.ZFSPoolWrapper

@@ -209,3 +209,67 @@ func TestPurgeHostsDeletesFilesystemRowsWithTheHost(t *testing.T) {
 	require.Len(t, filesystems["hermes"], 1)
 	require.Len(t, byHostDevice["hermes"]["sda"], 1)
 }
+
+func TestGetHostsIncludesHostsKnownOnlyToTheFilesystemCollector(t *testing.T) {
+	repo := newHostManagementTestRepository(t)
+	ctx := context.Background()
+	require.NoError(t, repo.gormClient.Create(&[]models.Device{
+		{DeviceID: "atlas-sda", HostId: "atlas"},
+	}).Error)
+	require.NoError(t, repo.SaveFilesystemSummary(ctx, models.FilesystemSummaryUpload{
+		Filesystems: []models.FilesystemCapacity{
+			{HostID: "default", MountPoint: "/", SourceDevice: "/dev/sda1", TotalBytes: 100},
+		},
+		Hosts: []models.FilesystemHostStatus{
+			{HostID: "default", Status: models.FilesystemHostStatusAvailable, FilesystemCount: 1},
+		},
+	}))
+
+	hosts, err := repo.GetHosts(ctx)
+
+	require.NoError(t, err)
+	require.Equal(t, []models.HostSummary{
+		{HostID: "atlas", ActiveDevices: 1, TotalDevices: 1},
+		{HostID: "default"},
+	}, hosts)
+}
+
+func TestPurgeHostsRemovesAHostThatOnlyHasFilesystemRows(t *testing.T) {
+	repo := newHostManagementTestRepository(t)
+	withInfluxDeleteRecorder(t, repo)
+	ctx := context.Background()
+	require.NoError(t, repo.SaveFilesystemSummary(ctx, models.FilesystemSummaryUpload{
+		Filesystems: []models.FilesystemCapacity{
+			{HostID: "default", MountPoint: "/", SourceDevice: "/dev/sda1", TotalBytes: 100, BackingDevices: []string{"sda"}},
+		},
+		Hosts: []models.FilesystemHostStatus{
+			{HostID: "default", Status: models.FilesystemHostStatusAvailable, FilesystemCount: 1},
+		},
+	}))
+
+	results, err := repo.PurgeHosts(ctx, []string{"default"})
+
+	require.NoError(t, err)
+	require.True(t, results[0].Success, results[0].Error)
+
+	filesystems, hosts, err := repo.GetFilesystemSummary(ctx)
+	require.NoError(t, err)
+	require.Empty(t, filesystems["default"])
+	require.Nil(t, hosts["default"])
+
+	remaining, err := repo.GetHosts(ctx)
+	require.NoError(t, err)
+	require.Empty(t, remaining)
+}
+
+func TestPurgeHostsReportsNotFoundWhenNothingHoldsTheHostID(t *testing.T) {
+	repo := newHostManagementTestRepository(t)
+	withInfluxDeleteRecorder(t, repo)
+	ctx := context.Background()
+
+	results, err := repo.PurgeHosts(ctx, []string{"nobody"})
+
+	require.NoError(t, err)
+	require.False(t, results[0].Success)
+	require.Equal(t, "host not found", results[0].Error)
+}

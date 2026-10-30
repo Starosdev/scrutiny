@@ -105,11 +105,24 @@ kernel-synthesized rather than drives, so Scrutiny never registers them and a
 link naming one could match nothing.
 
 The filesystem collector and the SMART collector must agree on `host.id`, which
-is how a filesystem is matched to a drive. They do not agree by default: with
-`COLLECTOR_HOST_ID` unset the SMART collector records an empty host id and the
-filesystem collector records `default`, so nothing is attributed. Set the same
-value for both. The device detail page names this case when it sees the
-collector reporting for other hosts but not for the drive's own host id.
+is how a filesystem is matched to a drive. With `COLLECTOR_HOST_ID` unset both
+derive the same id from the machine, taking the hostname and falling back to
+`/etc/machine-id`, so two collectors on one machine agree and two machines do
+not collide. Set `COLLECTOR_HOST_ID` anyway when the collectors run in separate
+containers: each container has its own hostname, so they derive different ids
+and nothing is attributed. The device detail page names that case when it sees
+the collector reporting for other hosts but not for the drive's own host id.
+
+Collectors before this behavior uploaded an empty host id for drives and the
+literal `default` for filesystems. Those rows are not migrated: after the
+upgrade the host appears under its derived or configured id, and the old
+`default` heading keeps the figures it last held. Host management lists it,
+with no devices against it, so it can be purged there.
+
+A drive that reports no model, serial number and WWN takes its identity from
+its device name and host id, so changing the host id gives it a new identity
+and its SMART history stays under the old one. Drives that report any of the
+three keep their history.
 
 Purging a SMART host deletes its filesystem capacity rows with its devices.
 Keeping them would attribute the purged host's free space to whichever drive

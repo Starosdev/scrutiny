@@ -120,6 +120,7 @@ OPTIONS:
 					}
 					//override config with flags if set
 					if c.IsSet("host-id") {
+						// config.KeyHostID is unreachable here: the local variable shadows the package.
 						config.Set("host.id", c.String("host-id")) // set/override the host-id using CLI.
 					}
 
