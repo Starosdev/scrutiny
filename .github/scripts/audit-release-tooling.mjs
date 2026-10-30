@@ -21,15 +21,21 @@
 // own) is allowed when every dependency it is flagged through is allowed.
 import { execFileSync } from 'node:child_process';
 
-const ALLOWLIST_EXPIRES = '2026-11-01';
+const ALLOWLIST_EXPIRES = '2027-02-01';
 const BUNDLED_NPM_PREFIX = 'node_modules/npm/node_modules/';
 const ALLOWED_ADVISORIES = new Set([
-  // npm 11.21.1 bundles ip-address 10.7.2 and undici 6.29.0. These copies
-  // cannot be overridden. The configured release plugins do not execute npm.
+  // npm bundles ip-address 10.7.2 and undici 6.29.0, unchanged from 11.21.1
+  // through 12.2.1, the latest release as of 2026-10-30. These copies cannot be
+  // overridden, and bumping npm does not move them: verified by regenerating the
+  // lockfile against npm 12.2.1 and re-running this script, which reported the
+  // same two packages. The configured release plugins do not execute npm.
   // See docs/DEPENDENCIES.md for the audit and upstream release evidence.
   'GHSA-rxp7-6hxx-x8q5', // ip-address
   'GHSA-4qv8-2p9j-2685', // undici EventSource parser
   'GHSA-xjj6-f33q-929c', // undici content encodings
+  'GHSA-2m5v-pch6-74hx', // undici
+  'GHSA-qrxm-fqhp-jwvm', // undici
+  'GHSA-9fm3-97px-rjf6', // undici
 ]);
 const UNPATCHED_ADVISORIES = new Map([
   // braces <= 3.0.3, the latest release: stack exhaustion from deeply nested brace

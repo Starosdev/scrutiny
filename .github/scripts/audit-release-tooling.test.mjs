@@ -9,6 +9,9 @@ const advisories = [
   ['ip-address', 'GHSA-rxp7-6hxx-x8q5'],
   ['undici', 'GHSA-4qv8-2p9j-2685'],
   ['undici', 'GHSA-xjj6-f33q-929c'],
+  ['undici', 'GHSA-2m5v-pch6-74hx'],
+  ['undici', 'GHSA-qrxm-fqhp-jwvm'],
+  ['undici', 'GHSA-9fm3-97px-rjf6'],
 ];
 
 function audit(name, id, nodes, date = '2026-10-24') {
@@ -40,9 +43,9 @@ for (const [name, id] of advisories) {
 }
 
 test('bundled exceptions expire without extending the deadline', () => {
-  const result = audit('undici', advisories[1][1], [`${bundled}undici`], '2026-11-02');
+  const result = audit('undici', advisories[1][1], [`${bundled}undici`], '2027-02-02');
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /allowlist expired on 2026-11-01/);
+  assert.match(result.stderr, /allowlist expired on 2027-02-01/);
 });
 
 test('unknown bundled advisories still fail', () => {

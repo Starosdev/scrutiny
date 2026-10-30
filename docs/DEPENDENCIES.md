@@ -84,6 +84,35 @@ CLI 22.2.3 from the target branch brings its pinned Zod dependency to the patche
 The existing body-parser and fast-uri override floors match those patches.
 No frontend advisory exception is added.
 
+### Release-tooling audit allowlist review (2026-10-30)
+
+Three further Undici advisories reached the bundled npm copy after the previous
+review, so root `npm audit` blocked again on the same package and the same path:
+
+- [GHSA-2m5v-pch6-74hx](https://github.com/advisories/GHSA-2m5v-pch6-74hx)
+- [GHSA-qrxm-fqhp-jwvm](https://github.com/advisories/GHSA-qrxm-fqhp-jwvm)
+- [GHSA-9fm3-97px-rjf6](https://github.com/advisories/GHSA-9fm3-97px-rjf6)
+
+A newer npm does not fix them. npm 12.2.1, the latest release on this date,
+bundles ip-address 10.7.2 and Undici 6.29.0, the same versions npm 11.21.1
+bundles. This was measured rather than assumed: raising the npm override to
+`^12.2.1`, regenerating the root lockfile with `npm install --package-lock-only`
+and re-running the audit gate reported the identical two packages, so the
+override was reverted and the lockfile left unchanged. Overrides cannot replace
+files shipped inside a package tarball.
+
+The three advisories are added to the allowlist on the existing terms: every
+affected path stays under `node_modules/npm/node_modules/`, and `.releaserc.json`
+loads six plugins, none of which is `@semantic-release/npm`, so the bundled npm
+never executes. The expiry moves to February 1, 2027, which is the next point at
+which a patched npm may plausibly exist. A passing gate still does not mean the
+bundled copies are patched.
+
+The frontend audit, which only runs once the root audit passes, reported one
+finding: qs 6.16.0, [GHSA-6pq8-jhm2-2vcw](https://github.com/advisories/GHSA-6pq8-jhm2-2vcw).
+A lockfile-only update to qs 6.17.1 clears it. The body-parser, fast-uri and Zod
+findings from the previous review are already resolved and no longer appear.
+
 ### Known Reachable Vulnerabilities
 
 No known reachable vulnerabilities remain in current npm audit or Go vulnerability scans.
