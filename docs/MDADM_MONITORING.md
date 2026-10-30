@@ -170,6 +170,32 @@ Check:
 
 If older rows were created before `host_id` was persisted on re-registration, force one new collection on each affected host to backfill the stored `host_id`.
 
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/mdadm/summary` | Get summary of all MDADM arrays |
+| GET | `/api/mdadm/array/:uuid/details` | Get detailed array info and metrics history |
+| POST | `/api/mdadm/arrays/register` | Register arrays (used by collector) |
+| POST | `/api/mdadm/array/:uuid/metrics` | Upload metrics (used by collector) |
+| POST | `/api/mdadm/array/:uuid/archive` | Archive an array |
+| POST | `/api/mdadm/array/:uuid/unarchive` | Unarchive an array |
+| POST | `/api/mdadm/array/:uuid/mute` | Mute notifications for an array |
+| POST | `/api/mdadm/array/:uuid/unmute` | Unmute notifications |
+| POST | `/api/mdadm/array/:uuid/label` | Set a custom label for an array |
+| DELETE | `/api/mdadm/array/:uuid` | Delete an array and its metrics history |
+
+The identifier in the path is the array's UUID as mdadm reports it, or the
+`synthetic:<hash>` identifier Scrutiny assigns to an array that has none. It is
+not an RFC 4122 UUID, so these routes accept any non-empty identifier up to 256
+characters. Escape it before putting it in a URL: an mdadm UUID contains
+colons.
+
+Deleting an array removes its metadata and its metrics series from InfluxDB.
+An array the collector still finds is registered again on its next run, so
+delete is for an array that is gone: a retired host, or one left behind by
+testing. The arrays page offers archive, mute and delete per array.
+
 ## Related Docs
 
 - [INSTALL_UNRAID.md](./INSTALL_UNRAID.md)

@@ -7,6 +7,9 @@ import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { AppConfig } from 'app/core/config/app.config';
 import { getMdadmArrayStatusColorClass } from 'app/modules/mdadm/mdadm-status.util';
 import { MatIcon } from '@angular/material/icon';
+import { MatIconButton } from '@angular/material/button';
+import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
+import { MenuTriggerRestoreFocusDirective } from 'app/shared/menu-trigger-restore-focus.directive';
 import { RouterLink } from '@angular/router';
 import { NgClass, KeyValuePipe } from '@angular/common';
 import { FileSizePipe } from '../../shared/file-size.pipe';
@@ -17,7 +20,7 @@ import { FileSizePipe } from '../../shared/file-size.pipe';
     styleUrls: ['./mdadm.component.scss'],
     encapsulation: ViewEncapsulation.None,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [MatIcon, RouterLink, NgClass, FileSizePipe, KeyValuePipe],
+    imports: [MatIcon, MatIconButton, MatMenu, MatMenuItem, MatMenuTrigger, MenuTriggerRestoreFocusDirective, RouterLink, NgClass, FileSizePipe, KeyValuePipe],
 })
 export class MDADMComponent implements OnInit, OnDestroy {
     private readonly _mdadmService = inject(MDADMService);
@@ -70,5 +73,42 @@ export class MDADMComponent implements OnInit, OnDestroy {
 
     trackByFn(index: number, item: any): any {
         return item.uuid || index;
+    }
+
+    toggleArchived(array: MDADMArrayModel): void {
+        const request = array.archived ? this._mdadmService.unarchiveArray(array.uuid) : this._mdadmService.archiveArray(array.uuid);
+        request.pipe(takeUntil(this._unsubscribeAll)).subscribe(() => {
+            array.archived = !array.archived;
+            this._changeDetectorRef.markForCheck();
+        });
+    }
+
+    toggleMuted(array: MDADMArrayModel): void {
+        const request = array.muted ? this._mdadmService.unmuteArray(array.uuid) : this._mdadmService.muteArray(array.uuid);
+        request.pipe(takeUntil(this._unsubscribeAll)).subscribe(() => {
+            array.muted = !array.muted;
+            this._changeDetectorRef.markForCheck();
+        });
+    }
+
+    // Deleting drops the array's metrics history with its metadata. An array
+    // the collector still reports is registered again on its next run.
+    deleteArray(array: MDADMArrayModel): void {
+        if (!confirm(`Are you sure you want to delete array "${array.label || array.name}"? Its metrics history is deleted with it.`)) {
+            return;
+        }
+        this._mdadmService
+            .deleteArray(array.uuid)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(() => {
+                this.arrays = this.arrays.filter((candidate) => candidate.uuid !== array.uuid);
+                for (const hostId of Object.keys(this.hostGroups)) {
+                    this.hostGroups[hostId] = this.hostGroups[hostId].filter((uuid) => uuid !== array.uuid);
+                    if (this.hostGroups[hostId].length === 0) {
+                        delete this.hostGroups[hostId];
+                    }
+                }
+                this._changeDetectorRef.markForCheck();
+            });
     }
 }

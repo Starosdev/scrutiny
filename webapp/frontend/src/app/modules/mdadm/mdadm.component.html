@@ -40,6 +40,28 @@
                                 <div class="px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide" [ngClass]="getArrayStatusColorClass(array)">
                                     {{ array.state || 'UNKNOWN' }}
                                 </div>
+                                <!-- The whole card is a link to the array, so the menu button has to
+                                     keep its own clicks from navigating. -->
+                                <button
+                                    class="ml-2"
+                                    mat-icon-button
+                                    [matMenuTriggerFor]="arrayActions"
+                                    [attr.aria-label]="'Actions for ' + (array.label || array.name)"
+                                    (click)="$event.preventDefault(); $event.stopPropagation()"
+                                >
+                                    <mat-icon [svgIcon]="'more_vert'"></mat-icon>
+                                </button>
+                                <mat-menu #arrayActions="matMenu">
+                                    <button mat-menu-item (click)="toggleArchived(array)">
+                                        <span>{{ array.archived ? 'Unarchive' : 'Archive' }}</span>
+                                    </button>
+                                    <button mat-menu-item (click)="toggleMuted(array)">
+                                        <span>{{ array.muted ? 'Unmute' : 'Mute' }}</span>
+                                    </button>
+                                    <button mat-menu-item (click)="deleteArray(array)">
+                                        <span>Delete</span>
+                                    </button>
+                                </mat-menu>
                             </div>
                         </div>
 

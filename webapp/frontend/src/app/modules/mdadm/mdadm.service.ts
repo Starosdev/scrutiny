@@ -48,6 +48,27 @@ export class MDADMService {
         return this._httpClient.get<MDADMArrayDetailResponseWrapper>(getBasePath() + `/api/mdadm/array/${uuid}/details?duration=${duration}`);
     }
 
-    // Reuse ZFS-like actions if implemented in backend (placeholder for future expansion)
-    // archiveArray, muteArray, setLabel, deleteArray
+    archiveArray(uuid: string): Observable<any> {
+        return this._httpClient.post(getBasePath() + `/api/mdadm/array/${encodeURIComponent(uuid)}/archive`, {});
+    }
+
+    unarchiveArray(uuid: string): Observable<any> {
+        return this._httpClient.post(getBasePath() + `/api/mdadm/array/${encodeURIComponent(uuid)}/unarchive`, {});
+    }
+
+    muteArray(uuid: string): Observable<any> {
+        return this._httpClient.post(getBasePath() + `/api/mdadm/array/${encodeURIComponent(uuid)}/mute`, {});
+    }
+
+    unmuteArray(uuid: string): Observable<any> {
+        return this._httpClient.post(getBasePath() + `/api/mdadm/array/${encodeURIComponent(uuid)}/unmute`, {});
+    }
+
+    setLabel(uuid: string, label: string): Observable<any> {
+        return this._httpClient.post(getBasePath() + `/api/mdadm/array/${encodeURIComponent(uuid)}/label`, { label });
+    }
+
+    deleteArray(uuid: string): Observable<any> {
+        return this._httpClient.delete(getBasePath() + `/api/mdadm/array/${encodeURIComponent(uuid)}`);
+    }
 }

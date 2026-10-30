@@ -241,6 +241,12 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 				mdadm.GET(apiSummaryPath, handler.GetMdadmSummary)              // used by Dashboard
 				mdadm.POST("/array/:uuid/metrics", handler.UploadMdadmMetrics)  // used by Collector to upload metrics
 				mdadm.GET("/array/:uuid/details", handler.GetMdadmArrayDetails) // used by Array Details view
+				mdadm.POST("/array/:uuid/archive", handler.ArchiveMdadmArray)
+				mdadm.POST("/array/:uuid/unarchive", handler.UnarchiveMdadmArray)
+				mdadm.POST("/array/:uuid/mute", handler.MuteMdadmArray)
+				mdadm.POST("/array/:uuid/unmute", handler.UnmuteMdadmArray)
+				mdadm.POST("/array/:uuid/label", handler.UpdateMdadmArrayLabel)
+				mdadm.DELETE("/array/:uuid", handler.DeleteMdadmArray)
 			}
 		}
 	}
