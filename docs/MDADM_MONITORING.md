@@ -187,14 +187,19 @@ If older rows were created before `host_id` was persisted on re-registration, fo
 
 The identifier in the path is the array's UUID as mdadm reports it, or the
 `synthetic:<hash>` identifier Scrutiny assigns to an array that has none. It is
-not an RFC 4122 UUID, so these routes accept any non-empty identifier up to 256
-characters. Escape it before putting it in a URL: an mdadm UUID contains
-colons.
+not an RFC 4122 UUID, so these routes take any identifier of letters, digits,
+`:`, `.`, `_` and `-`, up to 256 characters. Escape it before putting it in a
+URL: an mdadm UUID contains colons.
 
 Deleting an array removes its metadata and its metrics series from InfluxDB.
 An array the collector still finds is registered again on its next run, so
 delete is for an array that is gone: a retired host, or one left behind by
-testing. The arrays page offers archive, mute and delete per array.
+testing.
+
+The arrays page offers archive, mute and delete per array. Archiving removes
+the array from that page, because `/api/mdadm/summary` returns unarchived
+arrays only; unarchiving is through the API until the page offers a way to
+list archived arrays.
 
 ## Related Docs
 

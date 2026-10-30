@@ -75,12 +75,15 @@ export class MDADMComponent implements OnInit, OnDestroy {
         return item.uuid || index;
     }
 
-    toggleArchived(array: MDADMArrayModel): void {
-        const request = array.archived ? this._mdadmService.unarchiveArray(array.uuid) : this._mdadmService.archiveArray(array.uuid);
-        request.pipe(takeUntil(this._unsubscribeAll)).subscribe(() => {
-            array.archived = !array.archived;
-            this._changeDetectorRef.markForCheck();
-        });
+    // The summary endpoint returns unarchived arrays only, so an archived array
+    // is gone from this page until it is unarchived through the API. Removing
+    // the card now shows what the next load will show, rather than leaving a
+    // card behind that disappears on refresh.
+    archiveArray(array: MDADMArrayModel): void {
+        this._mdadmService
+            .archiveArray(array.uuid)
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe(() => this._removeArrayFromView(array.uuid));
     }
 
     toggleMuted(array: MDADMArrayModel): void {
@@ -100,15 +103,17 @@ export class MDADMComponent implements OnInit, OnDestroy {
         this._mdadmService
             .deleteArray(array.uuid)
             .pipe(takeUntil(this._unsubscribeAll))
-            .subscribe(() => {
-                this.arrays = this.arrays.filter((candidate) => candidate.uuid !== array.uuid);
-                for (const hostId of Object.keys(this.hostGroups)) {
-                    this.hostGroups[hostId] = this.hostGroups[hostId].filter((uuid) => uuid !== array.uuid);
-                    if (this.hostGroups[hostId].length === 0) {
-                        delete this.hostGroups[hostId];
-                    }
-                }
-                this._changeDetectorRef.markForCheck();
-            });
+            .subscribe(() => this._removeArrayFromView(array.uuid));
+    }
+
+    private _removeArrayFromView(uuid: string): void {
+        this.arrays = this.arrays.filter((candidate) => candidate.uuid !== uuid);
+        for (const hostId of Object.keys(this.hostGroups)) {
+            this.hostGroups[hostId] = this.hostGroups[hostId].filter((candidate) => candidate !== uuid);
+            if (this.hostGroups[hostId].length === 0) {
+                delete this.hostGroups[hostId];
+            }
+        }
+        this._changeDetectorRef.markForCheck();
     }
 }

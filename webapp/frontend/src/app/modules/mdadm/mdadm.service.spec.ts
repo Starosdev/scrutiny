@@ -19,7 +19,25 @@ describe('MDADMService', () => {
         httpClientSpy.post.and.returnValue(of({ success: true }));
 
         service.archiveArray('synthetic:4b825dc6').subscribe(() => {
-            expect(httpClientSpy.post.calls.mostRecent().args[0]).toContain('/api/mdadm/array/synthetic%3A4b825dc6/archive');
+            expect(httpClientSpy.post.calls.mostRecent().args[0]).toMatch(/\/api\/mdadm\/array\/synthetic%3A4b825dc6\/archive$/);
+            done();
+        });
+    });
+
+    it('posts to the unarchive route', (done: DoneFn) => {
+        httpClientSpy.post.and.returnValue(of({ success: true }));
+
+        service.unarchiveArray('uuid-1').subscribe(() => {
+            expect(httpClientSpy.post.calls.mostRecent().args[0]).toMatch(/\/api\/mdadm\/array\/uuid-1\/unarchive$/);
+            done();
+        });
+    });
+
+    it('posts to the mute route', (done: DoneFn) => {
+        httpClientSpy.post.and.returnValue(of({ success: true }));
+
+        service.muteArray('uuid-1').subscribe(() => {
+            expect(httpClientSpy.post.calls.mostRecent().args[0]).toMatch(/\/api\/mdadm\/array\/uuid-1\/mute$/);
             done();
         });
     });
@@ -28,7 +46,7 @@ describe('MDADMService', () => {
         httpClientSpy.post.and.returnValue(of({ success: true }));
 
         service.unmuteArray('uuid-1').subscribe(() => {
-            expect(httpClientSpy.post.calls.mostRecent().args[0]).toContain('/api/mdadm/array/uuid-1/unmute');
+            expect(httpClientSpy.post.calls.mostRecent().args[0]).toMatch(/\/api\/mdadm\/array\/uuid-1\/unmute$/);
             done();
         });
     });
@@ -38,7 +56,7 @@ describe('MDADMService', () => {
 
         service.setLabel('uuid-1', 'Media array').subscribe(() => {
             const [url, body] = httpClientSpy.post.calls.mostRecent().args;
-            expect(url).toContain('/api/mdadm/array/uuid-1/label');
+            expect(url).toMatch(/\/api\/mdadm\/array\/uuid-1\/label$/);
             expect(body).toEqual({ label: 'Media array' });
             done();
         });
@@ -48,7 +66,7 @@ describe('MDADMService', () => {
         httpClientSpy.delete.and.returnValue(of({ success: true }));
 
         service.deleteArray('uuid-1').subscribe(() => {
-            expect(httpClientSpy.delete.calls.mostRecent().args[0]).toContain('/api/mdadm/array/uuid-1');
+            expect(httpClientSpy.delete.calls.mostRecent().args[0]).toMatch(/\/api\/mdadm\/array\/uuid-1$/);
             done();
         });
     });

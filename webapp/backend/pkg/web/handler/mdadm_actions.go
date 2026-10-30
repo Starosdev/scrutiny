@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
@@ -13,6 +14,14 @@ import (
 // any identifier the collector produces and keeps an unbounded string out of
 // the query.
 const maxMdadmUUIDLength = 256
+
+// mdadmUUIDPattern admits every identifier the collector produces: mdadm's own
+// four colon-separated words, the "synthetic:<sha1>" identifier an array with
+// no UUID is keyed by, and the free-form identifiers older rows carry. It
+// excludes the quote and backslash that would otherwise reach the InfluxDB
+// delete predicate, and the whitespace and control characters that no
+// identifier holds.
+var mdadmUUIDPattern = regexp.MustCompile(`^[A-Za-z0-9:._-]+$`)
 
 func ArchiveMdadmArray(c *gin.Context) {
 	updateMdadmArchived(c, true)
@@ -42,13 +51,15 @@ func UpdateMdadmArrayLabel(c *gin.Context) {
 	var payload struct {
 		Label string `json:"label"`
 	}
-	if err := c.BindJSON(&payload); err != nil {
+	// ShouldBindJSON, not BindJSON: BindJSON flushes its own 400 before the
+	// handler writes one, so the response loses its content type.
+	if err := c.ShouldBindJSON(&payload); err != nil {
 		logger.Errorln("Cannot parse MDADM label payload", err)
 		c.JSON(http.StatusBadRequest, gin.H{"success": false})
 		return
 	}
 
-	if err := deviceRepo.UpdateMdadmArrayLabel(c, uuid, payload.Label); err != nil {
+	if err := deviceRepo.UpdateMdadmArrayLabel(c.Request.Context(), uuid, payload.Label); err != nil {
 		logger.Errorln("An error occurred while updating MDADM array label", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
@@ -70,7 +81,7 @@ func DeleteMdadmArray(c *gin.Context) {
 		return
 	}
 
-	if err := deviceRepo.DeleteMdadmArray(c, uuid); err != nil {
+	if err := deviceRepo.DeleteMdadmArray(c.Request.Context(), uuid); err != nil {
 		logger.Errorln("An error occurred while deleting MDADM array", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
@@ -88,7 +99,7 @@ func updateMdadmArchived(c *gin.Context, archived bool) {
 		return
 	}
 
-	if err := deviceRepo.UpdateMdadmArrayArchived(c, uuid, archived); err != nil {
+	if err := deviceRepo.UpdateMdadmArrayArchived(c.Request.Context(), uuid, archived); err != nil {
 		logger.Errorln("An error occurred while updating MDADM archive state", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
@@ -106,7 +117,7 @@ func updateMdadmMuted(c *gin.Context, muted bool) {
 		return
 	}
 
-	if err := deviceRepo.UpdateMdadmArrayMuted(c, uuid, muted); err != nil {
+	if err := deviceRepo.UpdateMdadmArrayMuted(c.Request.Context(), uuid, muted); err != nil {
 		logger.Errorln("An error occurred while updating MDADM mute state", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
@@ -124,7 +135,7 @@ func updateMdadmMuted(c *gin.Context, muted bool) {
 // "synthetic:<sha1>" identifier, and an Unraid array carries neither form.
 func mdadmArrayUUID(c *gin.Context, logger *logrus.Entry) (string, bool) {
 	uuid := strings.TrimSpace(c.Param("uuid"))
-	if uuid == "" || len(uuid) > maxMdadmUUIDLength {
+	if uuid == "" || len(uuid) > maxMdadmUUIDLength || !mdadmUUIDPattern.MatchString(uuid) {
 		logger.Warnf("Invalid MDADM array identifier: %q", c.Param("uuid"))
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid MDADM array identifier"})
 		return "", false

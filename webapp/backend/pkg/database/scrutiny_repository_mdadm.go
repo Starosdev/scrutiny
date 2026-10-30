@@ -109,7 +109,9 @@ func (sr *scrutinyRepository) DeleteMdadmArray(ctx context.Context, uuid string)
 			bucket,
 			time.Now().AddDate(-10, 0, 0),
 			time.Now(),
-			fmt.Sprintf(`array_uuid="%s"`, uuid),
+			// %q, not %s: an identifier carrying a quote would otherwise end the
+			// predicate string and leave the metrics series behind.
+			fmt.Sprintf(`array_uuid=%q`, uuid),
 		); err != nil {
 			return err
 		}

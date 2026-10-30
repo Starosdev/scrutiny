@@ -1501,6 +1501,81 @@ paths:
                 $ref: "#/components/schemas/MDADMDetailsResponse"
         "404":
           $ref: "#/components/responses/ErrorResponse"
+  /api/mdadm/array/{uuid}/archive:
+    post:
+      tags: [MDADM]
+      summary: Archive an MDADM array
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/mdadm/array/{uuid}/unarchive:
+    post:
+      tags: [MDADM]
+      summary: Unarchive an MDADM array
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/mdadm/array/{uuid}/mute:
+    post:
+      tags: [MDADM]
+      summary: Mute notifications for an MDADM array
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/mdadm/array/{uuid}/unmute:
+    post:
+      tags: [MDADM]
+      summary: Unmute notifications for an MDADM array
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/mdadm/array/{uuid}/label:
+    post:
+      tags: [MDADM]
+      summary: Set a custom label for an MDADM array
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label:
+                  type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/mdadm/array/{uuid}:
+    delete:
+      tags: [MDADM]
+      summary: Delete an MDADM array and its metrics history
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
 components:
   securitySchemes:
     BearerAuth:

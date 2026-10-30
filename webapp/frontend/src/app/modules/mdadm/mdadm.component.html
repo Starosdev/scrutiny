@@ -21,10 +21,7 @@
             }
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
                 @for (array of arraysForHostGroup(hostId.value); track trackByFn($index, array)) {
-                <a
-                    class="flex flex-col h-96 shadow rounded-2xl overflow-hidden bg-card hover:bg-hover transition-colors duration-150 ease-in-out cursor-pointer"
-                    [routerLink]="['./', array.uuid]"
-                >
+                <div class="flex flex-col h-96 shadow rounded-2xl overflow-hidden bg-card transition-colors duration-150 ease-in-out">
                     <div class="flex flex-col p-6 space-y-6">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
@@ -32,7 +29,7 @@
                                     <mat-icon class="text-blue-600 dark:text-blue-400" [svgIcon]="'heroicons_outline:collection'"></mat-icon>
                                 </div>
                                 <div class="ml-4 truncate">
-                                    <div class="text-lg font-bold leading-none truncate">{{ array.label || array.name }}</div>
+                                    <a class="text-lg font-bold leading-none truncate hover:underline" [routerLink]="['./', array.uuid]">{{ array.label || array.name }}</a>
                                     <div class="text-md text-secondary mt-1">{{ array.level }}</div>
                                 </div>
                             </div>
@@ -40,20 +37,14 @@
                                 <div class="px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide" [ngClass]="getArrayStatusColorClass(array)">
                                     {{ array.state || 'UNKNOWN' }}
                                 </div>
-                                <!-- The whole card is a link to the array, so the menu button has to
-                                     keep its own clicks from navigating. -->
-                                <button
-                                    class="ml-2"
-                                    mat-icon-button
-                                    [matMenuTriggerFor]="arrayActions"
-                                    [attr.aria-label]="'Actions for ' + (array.label || array.name)"
-                                    (click)="$event.preventDefault(); $event.stopPropagation()"
-                                >
+                                <button class="ml-2" mat-icon-button [matMenuTriggerFor]="arrayActions" [attr.aria-label]="'Actions for ' + (array.label || array.name)">
                                     <mat-icon [svgIcon]="'more_vert'"></mat-icon>
                                 </button>
+                                <!-- Archive is not a toggle here: the summary returns only
+                                     unarchived arrays, so an archived one leaves this page. -->
                                 <mat-menu #arrayActions="matMenu">
-                                    <button mat-menu-item (click)="toggleArchived(array)">
-                                        <span>{{ array.archived ? 'Unarchive' : 'Archive' }}</span>
+                                    <button mat-menu-item (click)="archiveArray(array)">
+                                        <span>Archive</span>
                                     </button>
                                     <button mat-menu-item (click)="toggleMuted(array)">
                                         <span>{{ array.muted ? 'Unmute' : 'Mute' }}</span>
@@ -110,7 +101,7 @@
                         </div>
                         }
                     </div>
-                </a>
+                </div>
                 }
             </div>
         </div>

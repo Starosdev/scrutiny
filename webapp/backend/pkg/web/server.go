@@ -60,6 +60,23 @@ func (ae *AppEngine) isLeader() bool {
 	return ae.Leader == nil || ae.Leader.Held()
 }
 
+// registerMdadmRoutes is the MDADM route table. It is a function so that a test
+// can bind the same routes the server binds: a missing route is the defect this
+// set of routes was added to fix, and a test that declares its own copy cannot
+// see it.
+func registerMdadmRoutes(mdadm *gin.RouterGroup) {
+	mdadm.POST("/arrays/register", handler.RegisterMdadmArrays)     // used by Collector to register new arrays
+	mdadm.GET(apiSummaryPath, handler.GetMdadmSummary)              // used by Dashboard
+	mdadm.POST("/array/:uuid/metrics", handler.UploadMdadmMetrics)  // used by Collector to upload metrics
+	mdadm.GET("/array/:uuid/details", handler.GetMdadmArrayDetails) // used by Array Details view
+	mdadm.POST("/array/:uuid/archive", handler.ArchiveMdadmArray)
+	mdadm.POST("/array/:uuid/unarchive", handler.UnarchiveMdadmArray)
+	mdadm.POST("/array/:uuid/mute", handler.MuteMdadmArray)
+	mdadm.POST("/array/:uuid/unmute", handler.UnmuteMdadmArray)
+	mdadm.POST("/array/:uuid/label", handler.UpdateMdadmArrayLabel)
+	mdadm.DELETE("/array/:uuid", handler.DeleteMdadmArray)
+}
+
 func registerZFSPoolRoutes(zfs *gin.RouterGroup, allowPoolModifications bool) {
 	zfs.POST("/pools/register", handler.RegisterZFSPools)         // used by ZFS Collector to register pools
 	zfs.GET(apiSummaryPath, handler.GetZFSPoolsSummary)           // used by ZFS Dashboard
@@ -235,19 +252,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			}
 
 			// MDADM Array API endpoints
-			mdadm := api.Group("/mdadm")
-			{
-				mdadm.POST("/arrays/register", handler.RegisterMdadmArrays)     // used by Collector to register new arrays
-				mdadm.GET(apiSummaryPath, handler.GetMdadmSummary)              // used by Dashboard
-				mdadm.POST("/array/:uuid/metrics", handler.UploadMdadmMetrics)  // used by Collector to upload metrics
-				mdadm.GET("/array/:uuid/details", handler.GetMdadmArrayDetails) // used by Array Details view
-				mdadm.POST("/array/:uuid/archive", handler.ArchiveMdadmArray)
-				mdadm.POST("/array/:uuid/unarchive", handler.UnarchiveMdadmArray)
-				mdadm.POST("/array/:uuid/mute", handler.MuteMdadmArray)
-				mdadm.POST("/array/:uuid/unmute", handler.UnmuteMdadmArray)
-				mdadm.POST("/array/:uuid/label", handler.UpdateMdadmArrayLabel)
-				mdadm.DELETE("/array/:uuid", handler.DeleteMdadmArray)
-			}
+			registerMdadmRoutes(api.Group("/mdadm"))
 		}
 	}
 

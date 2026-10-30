@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	mock_database "github.com/analogj/scrutiny/webapp/backend/pkg/database/mock"
@@ -14,8 +15,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mdadmActionRouter wires the MDADM mutation routes the same way server.go
-// does, so a test exercises the route and its parameter, not the handler alone.
+// mdadmActionRouter binds the handlers under test with the same path parameter
+// the server uses. The server's own route table is bound and exercised by
+// TestRegisterMdadmRoutesBindsEveryMutation in the web package; this helper
+// covers the handler behavior that does not depend on it.
 func mdadmActionRouter(t *testing.T, configure func(*mock_database.MockDeviceRepo)) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
@@ -168,6 +171,73 @@ func TestMdadmDeleteRouteReportsARepositoryFailure(t *testing.T) {
 
 	require.Equal(t, http.StatusInternalServerError, response.Code)
 	require.JSONEq(t, `{"success":false}`, response.Body.String())
+}
+
+func TestMdadmRoutesRejectAnOversizedIdentifier(t *testing.T) {
+	router := mdadmActionRouter(t, nil)
+
+	response := mdadmRequest(t, router, http.MethodDelete, "/api/mdadm/array/"+strings.Repeat("a", 257), "")
+
+	require.Equal(t, http.StatusBadRequest, response.Code)
+}
+
+// An identifier carrying a quote would end the InfluxDB delete predicate the
+// repository builds, so it never reaches it.
+func TestMdadmRoutesRejectAnIdentifierOutsideTheAllowedCharacters(t *testing.T) {
+	for _, identifier := range []string{`a%22`, `a%5C`, `a%2Fb`, `a%0Ab`} {
+		t.Run(identifier, func(t *testing.T) {
+			router := mdadmActionRouter(t, nil)
+
+			response := mdadmRequest(t, router, http.MethodDelete, "/api/mdadm/array/"+identifier, "")
+
+			require.NotEqual(t, http.StatusOK, response.Code)
+		})
+	}
+}
+
+func TestMdadmStateRoutesReportARepositoryFailure(t *testing.T) {
+	tests := []struct {
+		name      string
+		path      string
+		configure func(*mock_database.MockDeviceRepo)
+	}{
+		{
+			name: "archive",
+			path: "/api/mdadm/array/md-1/archive",
+			configure: func(repo *mock_database.MockDeviceRepo) {
+				repo.EXPECT().UpdateMdadmArrayArchived(gomock.Any(), "md-1", true).Return(errors.New("database is locked"))
+			},
+		},
+		{
+			name: "mute",
+			path: "/api/mdadm/array/md-1/mute",
+			configure: func(repo *mock_database.MockDeviceRepo) {
+				repo.EXPECT().UpdateMdadmArrayMuted(gomock.Any(), "md-1", true).Return(errors.New("database is locked"))
+			},
+		},
+		{
+			name: "label",
+			path: "/api/mdadm/array/md-1/label",
+			configure: func(repo *mock_database.MockDeviceRepo) {
+				repo.EXPECT().UpdateMdadmArrayLabel(gomock.Any(), "md-1", "x").Return(errors.New("database is locked"))
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			router := mdadmActionRouter(t, test.configure)
+			body := ""
+			if test.name == "label" {
+				body = `{"label":"x"}`
+			}
+
+			response := mdadmRequest(t, router, http.MethodPost, test.path, body)
+
+			require.Equal(t, http.StatusInternalServerError, response.Code)
+			require.JSONEq(t, `{"success":false}`, response.Body.String())
+		})
+	}
 }
 
 // A whitespace-only identifier reaches the handler as an empty one, and must
