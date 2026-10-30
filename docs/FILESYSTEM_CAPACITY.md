@@ -116,8 +116,13 @@ the collector reporting for other hosts but not for the drive's own host id.
 Collectors before this behavior uploaded an empty host id for drives and the
 literal `default` for filesystems. Those rows are not migrated: after the
 upgrade the host appears under its derived or configured id, and the old
-`default` heading remains with the figures it last held until it is deleted
-from the dashboard.
+`default` heading keeps the figures it last held. Host management lists it,
+with no devices against it, so it can be purged there.
+
+A drive that reports no model, serial number and WWN takes its identity from
+its device name and host id, so changing the host id gives it a new identity
+and its SMART history stays under the old one. Drives that report any of the
+three keep their history.
 
 Purging a SMART host deletes its filesystem capacity rows with its devices.
 Keeping them would attribute the purged host's free space to whichever drive

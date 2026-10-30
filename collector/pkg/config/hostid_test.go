@@ -77,7 +77,9 @@ func TestGetHostIDPrefersExplicitConfig(t *testing.T) {
 // other unconfigured host would resolve to the same one and the server groups
 // uploads by this value.
 func TestGetHostIDDerivesWhenUnconfigured(t *testing.T) {
-	t.Parallel()
+	// Not parallel: t.Setenv forbids it, and the config reads COLLECTOR_HOST_ID
+	// from the environment, which a CI runner may well have set.
+	t.Setenv("COLLECTOR_HOST_ID", "")
 
 	testConfig, err := Create()
 	require.NoError(t, err)
