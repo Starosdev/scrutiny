@@ -23,7 +23,11 @@ import { execFileSync } from 'node:child_process';
 
 const ALLOWLIST_EXPIRES = '2026-12-15';
 const BUNDLED_NPM_PREFIX = 'node_modules/npm/node_modules/';
-const ALLOWED_ADVISORIES = new Set([
+// Keyed by advisory to the package it is allowed for, the same shape as
+// UNPATCHED_ADVISORIES below. A bare set of IDs would allow an advisory for any
+// package it is ever amended to list, provided that package's paths were all
+// bundled, which is wider than any evidence here supports.
+const ALLOWED_ADVISORIES = new Map([
   // npm bundles ip-address 10.7.2 and undici 6.29.0, unchanged from 11.21.1
   // through 12.2.1, the latest release as of 2026-10-30. No released npm fixes
   // them, and the nested copies cannot be overridden: raising the npm override
@@ -41,12 +45,12 @@ const ALLOWED_ADVISORIES = new Set([
   // that argument being wrong is now confidentiality, which argues for the
   // short expiry above. The configured release plugins do not execute npm.
   // See docs/DEPENDENCIES.md for the audit and upstream release evidence.
-  'GHSA-rxp7-6hxx-x8q5', // ip-address
-  'GHSA-4qv8-2p9j-2685', // undici EventSource parser
-  'GHSA-xjj6-f33q-929c', // undici content encodings
-  'GHSA-2m5v-pch6-74hx', // undici TLS certificate validation bypass
-  'GHSA-qrxm-fqhp-jwvm', // undici proxy authorization header leak
-  'GHSA-9fm3-97px-rjf6', // undici PONG frame memory use
+  ['GHSA-rxp7-6hxx-x8q5', 'ip-address'], // zone parsing
+  ['GHSA-4qv8-2p9j-2685', 'undici'], // EventSource parser
+  ['GHSA-xjj6-f33q-929c', 'undici'], // content encodings
+  ['GHSA-2m5v-pch6-74hx', 'undici'], // TLS certificate validation bypass
+  ['GHSA-qrxm-fqhp-jwvm', 'undici'], // proxy authorization header leak
+  ['GHSA-9fm3-97px-rjf6', 'undici'], // PONG frame memory use
 ]);
 const UNPATCHED_ADVISORIES = new Map([
   // Empty. The braces entry (GHSA-vfj7-8cjw-p6xm) was removed on 2026-10-30:
@@ -85,7 +89,7 @@ const ownAllowed = (name, vuln) => {
   // An entry that names neither an advisory nor a dependency carries no evidence either way; fail closed.
   if (vuln.via.length === 0) return false;
   const bundled = vuln.nodes.length > 0 && vuln.nodes.every((node) => node.startsWith(BUNDLED_NPM_PREFIX));
-  return advisoriesOf(vuln).every((id) => UNPATCHED_ADVISORIES.get(id)?.pkg === name || (bundled && ALLOWED_ADVISORIES.has(id)));
+  return advisoriesOf(vuln).every((id) => UNPATCHED_ADVISORIES.get(id)?.pkg === name || (bundled && ALLOWED_ADVISORIES.get(id) === name));
 };
 const blocked = new Set(Object.entries(vulnerabilities).filter(([name, vuln]) => !ownAllowed(name, vuln)).map(([name]) => name));
 for (let changed = true; changed; ) {

@@ -48,6 +48,18 @@ test('bundled exceptions expire without extending the deadline', () => {
   assert.match(result.stderr, /allowlist expired on 2026-12-15/);
 });
 
+test('an allowlisted advisory does not pass for a different package', () => {
+  // The allowlist is evidence about one package's bundled copy, not about the
+  // advisory in the abstract. An advisory later amended to list a second package
+  // must not inherit the exception, even entirely inside the bundled tree.
+  for (const [pkg, id] of advisories) {
+    const other = pkg === 'undici' ? 'ip-address' : 'undici';
+    const result = audit(other, id, [`${bundled}${other}`]);
+    assert.equal(result.status, 1, `${id} wrongly allowed for ${other}: ${result.stderr}`);
+    assert.match(result.stderr, /findings not covered by the allowlist/);
+  }
+});
+
 test('unknown bundled advisories still fail', () => {
   const result = audit('undici', 'GHSA-unknown', [`${bundled}undici`]);
   assert.equal(result.status, 1);
