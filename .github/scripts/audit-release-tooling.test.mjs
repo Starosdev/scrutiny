@@ -43,9 +43,9 @@ for (const [name, id] of advisories) {
 }
 
 test('bundled exceptions expire without extending the deadline', () => {
-  const result = audit('undici', advisories[1][1], [`${bundled}undici`], '2027-02-02');
+  const result = audit('undici', advisories[1][1], [`${bundled}undici`], '2026-12-16');
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /allowlist expired on 2027-02-01/);
+  assert.match(result.stderr, /allowlist expired on 2026-12-15/);
 });
 
 test('unknown bundled advisories still fail', () => {

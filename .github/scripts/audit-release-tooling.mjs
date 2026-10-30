@@ -21,29 +21,38 @@
 // own) is allowed when every dependency it is flagged through is allowed.
 import { execFileSync } from 'node:child_process';
 
-const ALLOWLIST_EXPIRES = '2027-02-01';
+const ALLOWLIST_EXPIRES = '2026-12-15';
 const BUNDLED_NPM_PREFIX = 'node_modules/npm/node_modules/';
 const ALLOWED_ADVISORIES = new Set([
   // npm bundles ip-address 10.7.2 and undici 6.29.0, unchanged from 11.21.1
-  // through 12.2.1, the latest release as of 2026-10-30. These copies cannot be
-  // overridden, and bumping npm does not move them: verified by regenerating the
-  // lockfile against npm 12.2.1 and re-running this script, which reported the
-  // same two packages. The configured release plugins do not execute npm.
+  // through 12.2.1, the latest release as of 2026-10-30. No released npm fixes
+  // them, and the nested copies cannot be overridden: raising the npm override
+  // to ^12.2.1 and regenerating the lockfile reported the same two packages.
+  //
+  // The fix is imminent rather than distant. npm/cli's default branch already
+  // bundles undici 6.29.1 and ip-address 10.7.5, which patch every advisory
+  // here, and npm ships every few weeks. That is why the expiry is December
+  // rather than months out, and why removal needs the npm override in
+  // package.json raised past 11.x once the release lands.
+  //
+  // GHSA-2m5v-pch6-74hx is a TLS certificate validation bypass, not the
+  // denial-of-service class every earlier entry in this list held. The
+  // exception rests entirely on the bundled npm never executing, so the cost of
+  // that argument being wrong is now confidentiality, which argues for the
+  // short expiry above. The configured release plugins do not execute npm.
   // See docs/DEPENDENCIES.md for the audit and upstream release evidence.
   'GHSA-rxp7-6hxx-x8q5', // ip-address
   'GHSA-4qv8-2p9j-2685', // undici EventSource parser
   'GHSA-xjj6-f33q-929c', // undici content encodings
-  'GHSA-2m5v-pch6-74hx', // undici
-  'GHSA-qrxm-fqhp-jwvm', // undici
-  'GHSA-9fm3-97px-rjf6', // undici
+  'GHSA-2m5v-pch6-74hx', // undici TLS certificate validation bypass
+  'GHSA-qrxm-fqhp-jwvm', // undici proxy authorization header leak
+  'GHSA-9fm3-97px-rjf6', // undici PONG frame memory use
 ]);
 const UNPATCHED_ADVISORIES = new Map([
-  // braces <= 3.0.3, the latest release: stack exhaustion from deeply nested brace
-  // patterns. It is reached only through Node tooling that expands globs from
-  // checked-in config: micromatch in semantic-release (.releaserc.json), and
-  // chokidar, fast-glob and micromatch in the frontend build and test tooling
-  // (Angular devkit, Tailwind, Karma). None of it ships in the browser bundle.
-  ['GHSA-vfj7-8cjw-p6xm', { pkg: 'braces', reason: 'no patched release; globs come only from checked-in tooling config' }],
+  // Empty. The braces entry (GHSA-vfj7-8cjw-p6xm) was removed on 2026-10-30:
+  // GitHub withdrew that advisory on 2026-10-23, and neither audit reports the
+  // package any more, so the exception covered nothing. Add an entry here only
+  // for an advisory with no patched release in any version.
 ]);
 
 if (new Date().toISOString().slice(0, 10) > ALLOWLIST_EXPIRES) {
