@@ -59,6 +59,14 @@ lists each filesystem with its own used, free and total bytes. Free space shared
 between drives is never divided between them: the kernel does not report a
 per-drive split, so any such number would be invented.
 
+Attribution needs sysfs, not device nodes. In a container `/dev` holds only the
+devices the deployment passes through, which are whole disks, while a mount
+source is usually a partition such as `/dev/md1p1` or `/dev/sdm1`. A source
+naming one segment under `/dev` is read as that kernel name whether or not the
+node exists, and sysfs decides whether the name is real. A nested source such as
+`/dev/mapper/vg-root` still needs its node, because only the symlink records
+what it points at.
+
 The walk reads sysfs and therefore produces attribution on Linux hosts only. A
 filesystem the collector cannot attribute is still reported for the host
 capacity panel, and the device detail page says why no filesystem is listed

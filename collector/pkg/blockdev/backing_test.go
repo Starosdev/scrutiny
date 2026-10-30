@@ -181,3 +181,45 @@ func TestIsSyntheticDisk(t *testing.T) {
 		require.False(t, isSyntheticDisk(name), name)
 	}
 }
+
+// TestResolve_WorksWithoutDeviceNodes is the container case: sysfs carries the
+// whole holder tree while /dev holds only the devices the deployment passed
+// through. Attribution has to work from sysfs alone, or the feature does
+// nothing in the one deployment shape that ships (#1054).
+func TestResolve_WorksWithoutDeviceNodes(t *testing.T) {
+	sysBlock, devRoot := fakeTree(t)
+
+	// Keep only the whole-disk nodes, the way a compose device list does, and
+	// remove the partition and array nodes a mount source actually names.
+	for _, name := range []string{"sda1", "sdb1", "sdc1", "nvme0n1p2", "md0", "md1", "dm-0", "loop3"} {
+		require.NoError(t, os.Remove(filepath.Join(devRoot, name)))
+	}
+	require.NoError(t, os.Remove(filepath.Join(devRoot, "mapper", "vg-root")))
+
+	tests := []struct {
+		name   string
+		source string
+		want   []string
+	}{
+		{name: "partition with no node", source: "sda1", want: []string{"sda"}},
+		{name: "nvme partition with no node", source: "nvme0n1p2", want: []string{"nvme0n1"}},
+		{name: "array with no node", source: "md0", want: []string{"sda", "sdb"}},
+		{name: "array skips its spare with no node", source: "md1", want: []string{"sda", "sdb"}},
+		{name: "logical volume with no node", source: "dm-0", want: []string{"sda", "sdb"}},
+		{name: "loop device is still not a drive", source: "loop3", want: nil},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.Equal(t, test.want, resolve(filepath.Join(devRoot, test.source), sysBlock, devRoot))
+		})
+	}
+
+	// A nested source cannot be read without its symlink: only the link says
+	// what it points at, and "mapper" is not a device name.
+	require.Nil(t, resolve(filepath.Join(devRoot, "mapper", "vg-root"), sysBlock, devRoot))
+
+	// The fallback is a claim about a name, not a licence to invent a device.
+	// sysfs still decides.
+	require.Nil(t, resolve(filepath.Join(devRoot, "sdz9"), sysBlock, devRoot))
+}
