@@ -40,6 +40,7 @@ import (
 	m20260925000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260925000000"
 	m20260930000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260930000000"
 	m20261002000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20261002000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20261027000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -1011,7 +1012,7 @@ func m20201107210306_FromPreInfluxDBSmartResultsCreatePostInfluxDBSmartResults(d
 
 	} else if preDevice.IsScsi() {
 		defectList, errorLog := buildLegacyScsiErrorLog(&preSmartResult)
-		postDeviceSmartData.ProcessScsiSmartInfo(nil, defectList, errorLog, nil)
+		postDeviceSmartData.ProcessScsiSmartInfo(nil, defectList, &errorLog)
 	} else {
 		return fmt.Errorf("unknown device protocol: %s", preDevice.DeviceProtocol), postDeviceSmartData
 	}
@@ -1111,26 +1112,7 @@ func buildLegacyNvmeHealthLog(preSmartResult *m20201107210306.Smart) collector.N
 // collector error-counter log.
 func buildLegacyScsiErrorLog(preSmartResult *m20201107210306.Smart) (int64, collector.ScsiErrorCounterLog) {
 	var postScsiGrownDefectList int64
-	postScsiErrorCounterLog := collector.ScsiErrorCounterLog{
-		Read: struct {
-			ErrorsCorrectedByEccfast         int64  `json:"errors_corrected_by_eccfast"`
-			ErrorsCorrectedByEccdelayed      int64  `json:"errors_corrected_by_eccdelayed"`
-			ErrorsCorrectedByRereadsRewrites int64  `json:"errors_corrected_by_rereads_rewrites"`
-			TotalErrorsCorrected             int64  `json:"total_errors_corrected"`
-			CorrectionAlgorithmInvocations   int64  `json:"correction_algorithm_invocations"`
-			GigabytesProcessed               string `json:"gigabytes_processed"`
-			TotalUncorrectedErrors           int64  `json:"total_uncorrected_errors"`
-		}{},
-		Write: struct {
-			ErrorsCorrectedByEccfast         int64  `json:"errors_corrected_by_eccfast"`
-			ErrorsCorrectedByEccdelayed      int64  `json:"errors_corrected_by_eccdelayed"`
-			ErrorsCorrectedByRereadsRewrites int64  `json:"errors_corrected_by_rereads_rewrites"`
-			TotalErrorsCorrected             int64  `json:"total_errors_corrected"`
-			CorrectionAlgorithmInvocations   int64  `json:"correction_algorithm_invocations"`
-			GigabytesProcessed               string `json:"gigabytes_processed"`
-			TotalUncorrectedErrors           int64  `json:"total_uncorrected_errors"`
-		}{},
-	}
+	var postScsiErrorCounterLog collector.ScsiErrorCounterLog
 
 	for _, preScsiAttribute := range preSmartResult.ScsiAttributes {
 		switch preScsiAttribute.AttributeId {
@@ -1708,6 +1690,7 @@ func (sr *scrutinyRepository) schemaMigrations(ctx context.Context) []*gormigrat
 		{ID: "m20260926000000", Migrate: migrateSettingsUniqueKey}, // one settings row per key, unique key (#889)
 		{ID: "m20260930000000", Migrate: m20260930000000.Migrate},  // add btrfs statfs used/available columns
 		{ID: "m20261002000000", Migrate: m20261002000000.Migrate},  // drop btrfs free_statfs column (#929)
+		{ID: "m20261027000000", Migrate: m20261027000000.Migrate},  // add filesystem_devices table (#470)
 	}
 }
 

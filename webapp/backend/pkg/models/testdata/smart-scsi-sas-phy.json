@@ -1,0 +1,93 @@
+{
+  "device": {
+    "name": "/dev/sdg",
+    "info_name": "/dev/sdg",
+    "type": "scsi",
+    "protocol": "SCSI"
+  },
+  "vendor": "SEAGATE",
+  "product": "ST4000NM0043",
+  "model_name": "SEAGATE ST4000NM0043",
+  "revision": "MS03",
+  "scsi_version": "SPC-4",
+  "user_capacity": {
+    "blocks": 7814037168,
+    "bytes": 4000787030016
+  },
+  "logical_block_size": 512,
+  "rotation_rate": 7200,
+  "form_factor": {
+    "scsi_value": 2,
+    "name": "3.5 inches"
+  },
+  "serial_number": "Z1Z5DWJK0000XXXXXXXX",
+  "device_type": {
+    "scsi_value": 0,
+    "name": "disk"
+  },
+  "local_time": {
+    "time_t": 1637039918,
+    "asctime": "Fri Aug 21 22:27:02 2020 UTC"
+  },
+  "smart_status": {
+    "passed": true
+  },
+  "temperature": {
+    "current": 34,
+    "drive_trip": 68
+  },
+  "scsi_grown_defect_list": 0,
+  "power_on_time": {
+    "hours": 43549,
+    "minutes": 33
+  },
+  "scsi_error_counter_log": {
+    "read": {
+      "errors_corrected_by_eccfast": 300357663,
+      "errors_corrected_by_eccdelayed": 0,
+      "errors_corrected_by_rereads_rewrites": 0,
+      "total_errors_corrected": 300357663,
+      "correction_algorithm_invocations": 0,
+      "gigabytes_processed": "176987.332",
+      "total_uncorrected_errors": 0
+    },
+    "write": {
+      "errors_corrected_by_eccfast": 0,
+      "errors_corrected_by_eccdelayed": 0,
+      "errors_corrected_by_rereads_rewrites": 0,
+      "total_errors_corrected": 0,
+      "correction_algorithm_invocations": 0,
+      "gigabytes_processed": "86472.611",
+      "total_uncorrected_errors": 0
+    },
+    "verify": {
+      "errors_corrected_by_eccfast": 0,
+      "errors_corrected_by_eccdelayed": 12,
+      "errors_corrected_by_rereads_rewrites": 3,
+      "total_errors_corrected": 15,
+      "correction_algorithm_invocations": 7054,
+      "gigabytes_processed": "0.000",
+      "total_uncorrected_errors": 0
+    }
+  },
+  "scsi_sas_port_0": {
+    "phy_0": {
+      "attached_device_type": "SAS or SATA device",
+      "negotiated_logical_link_rate": "phy enabled; 12 Gbps",
+      "invalid_dword_count": 32,
+      "running_disparity_error_count": 0,
+      "loss_of_dword_synchronization_count": 8,
+      "phy_reset_problem_count": 8
+    }
+  },
+  "scsi_sas_port_1": {
+    "phy_0": {
+      "attached_device_type": "no device attached",
+      "negotiated_logical_link_rate": "phy enabled; unknown",
+      "invalid_dword_count": 0,
+      "running_disparity_error_count": 0,
+      "loss_of_dword_synchronization_count": 0,
+      "phy_reset_problem_count": 0
+    }
+  }
+}

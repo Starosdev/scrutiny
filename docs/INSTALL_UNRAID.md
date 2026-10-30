@@ -50,16 +50,27 @@ See [Hub/Spoke Installation](INSTALL_HUB_SPOKE.md) for architecture details.
 
 For the general Linux deployment and troubleshooting guide, see [MDADM_MONITORING.md](./MDADM_MONITORING.md).
 
-Unraid is not a good end-to-end validation target for the Linux MDADM feature in this repository.
+Unraid arrays are supported. Unraid does not use Linux MD RAID, so the collector
+detects its format separately:
 
-- you can still mount `/proc/mdstat` into the container for smoke testing
-- that validates deploy wiring and confirms the container can read the host file
-- but Unraid exposes array information in a different format than the standard Linux `mdadm` layout
-- the current MDADM detector expects standard lines such as `md0 : active ...`
+- Unraid writes `/proc/mdstat` as `key=value` metadata (`mdState=STARTED`, `rdevStatus.3=DISK_OK`) instead of the standard `md0 : active raid1 ...` lines
+- Unraid ships no `mdadm` binary, so the collector reads everything it needs from `/proc/mdstat` alone
+- the whole Unraid array is one parity-protected set, so it is reported as a single array named `unraid-array`
+- the reported level is `unraid-parity1`, `unraid-parity2`, or `unraid-noparity`, depending on how many parity disks are assigned
+- a disabled, invalid, or missing disk is reported as a failed device and the array state reads `degraded`
+- the array identity is a digest of the Unraid array GUID, not the GUID itself, because that value is derived from the flash drive GUID; the raw `mdstat` block shown in the UI withholds it for the same reason
 
-Because of that, an Unraid host can still return an empty MDADM summary even when `/host/proc/mdstat` is mounted correctly.
+Mount `/proc/mdstat` into the container as described in
+[MDADM_MONITORING.md](./MDADM_MONITORING.md). No `/dev` access or `SYS_ADMIN`
+capability is needed for Unraid detection, because no `mdadm` command is run.
 
-For real MDADM array-ingestion validation, use a standard Linux host with actual `mdadm` arrays.
+Two differences from a Linux `mdadm` host are expected:
+
+- the array's used space reads as zero, because every Unraid data disk carries its own filesystem and there is no single mount point to measure
+- the raw `mdstat` shown on the array details page lists the array-level keys only; the per-disk slots are omitted because Unraid reports all 30 slots on every run
+
+For standard Linux MDADM array-ingestion validation, use a host with actual
+`mdadm` arrays.
 
 ## Third-Party Docker Images
 

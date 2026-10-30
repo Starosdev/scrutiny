@@ -1,6 +1,6 @@
 import humanizeDuration from 'humanize-duration';
 import { AfterViewInit, Component, LOCALE_ID, OnDestroy, OnInit, ViewChild, inject, ChangeDetectionStrategy } from '@angular/core';
-import { Location, formatDate, NgClass, UpperCasePipe, DecimalPipe, PercentPipe } from '@angular/common';
+import { Location, formatDate, NgClass, NgTemplateOutlet, UpperCasePipe, DecimalPipe, PercentPipe } from '@angular/common';
 import { ApexOptions, ChartComponent } from 'ng-apexcharts';
 import { AppConfig } from 'app/core/config/app.config';
 import { DeviceSelfTestModel } from 'app/core/models/device-selftest-model';
@@ -46,6 +46,8 @@ import { angularLongDateTime, apexShortDateTime } from 'app/shared/time-format.u
 import { MatIconButton, MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
+import { FilesystemCapacityModel, FilesystemHostStatusModel } from 'app/core/models/filesystem-summary-model';
+import { filesystemUsageClass } from 'app/shared/filesystem-usage.utils';
 import { MatMenuTrigger, MatMenu, MatMenuItem } from '@angular/material/menu';
 import { MenuTriggerRestoreFocusDirective } from 'app/shared/menu-trigger-restore-focus.directive';
 import { TreoCardComponent } from '../../../@treo/components/card/card.component';
@@ -87,6 +89,7 @@ const AttributeStatusFailedScrutiny = 4;
         MatMenuItem,
         TreoCardComponent,
         NgClass,
+        NgTemplateOutlet,
         MatButtonToggleGroup,
         MatButtonToggle,
         ChartComponent,
@@ -174,6 +177,14 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Replacement risk
     replacementRisk: ReplacementRiskModel | null = null;
+
+    // Filesystems backed by this drive, with the collector status for its host.
+    // The status is what separates "the filesystem collector never ran" from
+    // "this drive holds no mounted filesystem", which look identical otherwise.
+    filesystems: FilesystemCapacityModel[] = [];
+    filesystemStatus: FilesystemHostStatusModel | null = null;
+    filesystemCollectorReporting = false;
+
     selfTests: DeviceSelfTestModel[] = [];
     selfTestsLoading = false;
     selfTestsLoaded = false;
@@ -241,6 +252,9 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
             // Which overrides apply depends on the device, so rebuild once it is known.
             this._buildOverrideMap();
             this.smart_results = respWrapper.data.smart_results;
+            this.filesystems = respWrapper.data.filesystems ?? [];
+            this.filesystemStatus = respWrapper.data.filesystem_status ?? null;
+            this.filesystemCollectorReporting = respWrapper.data.filesystem_collector_reporting ?? false;
             this.metadata = respWrapper.metadata;
 
             // Initialize display mode from device preference (default to 'scrutiny')
@@ -517,6 +531,19 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         return this.device?.device_protocol === 'ATA';
     }
 
+    // True only when the matched consumer drive profile carries observed-threshold
+    // buckets, which is what replaces the Backblaze-derived failure rates. Most profiles
+    // override counter severities alone and leave the failure rates untouched, so matching
+    // a profile is not on its own a reason to credit that profile's source.
+    //
+    // The source check is a guard, not a live case: addConsumerDriveProfile rejects a blank
+    // source when the catalog loads, so a profile reaching here always has one. It stays
+    // because dropping the sentence is the safe failure if that ever changes.
+    get profileSuppliedFailureRateThresholds(): boolean {
+        const risk = this.replacementRisk;
+        return risk?.consumer_drive_profile_applied === true && risk?.consumer_drive_profile_observed_thresholds === true && !!risk?.consumer_drive_profile_source;
+    }
+
     isScsi(): boolean {
         return this.device?.device_protocol === 'SCSI';
     }
@@ -528,6 +555,52 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     hasSelfTestSupport(): boolean {
         return this.isAta() || this.isScsi();
+    }
+
+    filesystemUsageClass = filesystemUsageClass;
+
+    /**
+     * Explains an empty filesystem list.
+     *
+     * Several different facts produce no rows and a user has to be able to tell
+     * them apart: the collector may be reporting under a host id this drive's
+     * host does not share, it may not be able to read the host's sysfs, it may
+     * be older than the backing-device field, or the drive may genuinely hold
+     * no mounted filesystem. Showing "0 bytes free" for any of them would be a
+     * claim the collector never made.
+     *
+     * The panel is not rendered at all when the collector has reported nowhere,
+     * so a deployment that never enabled it gains no empty card. That is the one
+     * case with no message, because there is nothing drive-specific to say.
+     */
+    filesystemEmptyMessage(): string {
+        if (this.filesystemStatus?.status === 'unavailable') {
+            return this.filesystemStatus.reason || 'The collector could not inspect this host\'s mounts.';
+        }
+        if (!this.filesystemStatus) {
+            // The collector reports somewhere, just not under this host id.
+            // Naming the mismatch is the whole point of this branch: without
+            // it the page would say nothing in the one case it can diagnose.
+            return (
+                'The filesystem collector is reporting for other hosts but not for this drive\'s host id' +
+                (this.device?.host_id ? ` ("${this.device.host_id}")` : '') +
+                '. Give the filesystem collector and the SMART collector the same COLLECTOR_HOST_ID.'
+            );
+        }
+        return (
+            'No mounted filesystem is attributed to this drive. Attribution needs a filesystem collector new enough to report backing devices, ' +
+            'running on a Linux host where it can read sysfs, and configured with the same host id as the SMART collector. ' +
+            'Otherwise this drive may hold no mounted filesystem.'
+        );
+    }
+
+    /**
+     * The other drives a filesystem also sits on. A filesystem spanning several
+     * drives has free space that belongs to the set, not to this drive, so the
+     * panel names the others rather than implying the space is local.
+     */
+    filesystemSharedWith(filesystem: FilesystemCapacityModel): string[] {
+        return (filesystem.backing_devices ?? []).filter((deviceName) => deviceName !== this.device?.device_name);
     }
 
     isNvme(): boolean {

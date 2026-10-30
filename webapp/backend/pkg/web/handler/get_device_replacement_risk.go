@@ -103,6 +103,7 @@ func GetDeviceReplacementRisk(c *gin.Context) {
 		ConsumerDriveProfileApplied:  profile != nil,
 	}
 	if profile != nil {
+		riskScore.ConsumerDriveProfileObservedThresholds = len(profile.AtaObservedThresholds) > 0
 		riskScore.ConsumerDriveProfileFamily = profile.ModelFamily
 		riskScore.ConsumerDriveProfileSource = profile.Source
 		riskScore.ConsumerDriveProfileSampleCount = profile.SampleCount

@@ -12,6 +12,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/overrides"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -788,6 +789,440 @@ func TestFromCollectorSmartInfo_Scsi_Fail_Scrutiny(t *testing.T) {
 	)
 
 	require.Equal(t, 16, len(smartMdl.Attributes))
+}
+
+// TestFromCollectorSmartInfo_Scsi_Verify_ErrorCounters tests the SCSI Verify Error Counter
+// log page (0x05), requested in Starosdev/scrutiny#1024. Drives that report it get one
+// attribute per counter, recorded for history but never failed on an absolute value, because
+// background media scanning leaves these counters nonzero on a healthy drive.
+func TestFromCollectorSmartInfo_Scsi_Verify_ErrorCounters(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-scsi-sas-verify.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+
+	require.Equal(t, int64(0), smartMdl.Attributes["verify_errors_corrected_by_eccfast"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(12), smartMdl.Attributes["verify_errors_corrected_by_eccdelayed"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(3), smartMdl.Attributes["verify_errors_corrected_by_rereads_rewrites"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(15), smartMdl.Attributes["verify_total_errors_corrected"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(7054), smartMdl.Attributes["verify_correction_algorithm_invocations"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(0), smartMdl.Attributes["verify_total_uncorrected_errors"].(*measurements.SmartScsiAttribute).Value)
+	// verify gigabytes_processed is "0.000" on this drive: host verify commands are rare, so
+	// the counter stays 0 while the verify error counters rise from background scanning.
+	require.Equal(t, int64(0), smartMdl.Attributes["verify_gigabytes_processed"].(*measurements.SmartScsiAttribute).Value)
+
+	// Verify counters carry the same thresholds as read and write, so this fixture's three
+	// recovered verify errors fail the drive here. Only the recovered counter is
+	// delta-evaluated, which is what clears it at ingestion once the counter stops moving
+	// (see TestApplyDeltaEvaluation_Scsi_SasPhy); FromCollectorSmartInfo has no previous
+	// submission to compare against, so it still reports the failure.
+	require.Equal(t, pkg.DeviceStatusFailedScrutiny, smartMdl.Status)
+	recoveredErrors := smartMdl.Attributes["verify_errors_corrected_by_rereads_rewrites"].(*measurements.SmartScsiAttribute)
+	require.Equal(t, int64(0), recoveredErrors.Threshold)
+	require.Equal(t, pkg.AttributeStatusFailedScrutiny, recoveredErrors.Status)
+	recoveredMetadata, ok := thresholds.ScsiMetadataFor("verify_errors_corrected_by_rereads_rewrites")
+	require.True(t, ok)
+	require.True(t, recoveredMetadata.UseDeltaEvaluation)
+
+	// Uncorrected verify errors are unreadable blocks the drive found itself, the same class
+	// of defect as read/write uncorrected errors, so they are judged on their absolute value
+	// and never cleared by a flat trend.
+	uncorrectedMetadata, ok := thresholds.ScsiMetadataFor("verify_total_uncorrected_errors")
+	require.True(t, ok)
+	require.False(t, uncorrectedMetadata.UseDeltaEvaluation)
+	require.Equal(t, int64(0), smartMdl.Attributes["verify_total_uncorrected_errors"].(*measurements.SmartScsiAttribute).Threshold)
+
+	// The read/write pages keep their existing thresholds and attribute IDs.
+	require.Equal(t, int64(0), smartMdl.Attributes["read_total_uncorrected_errors"].(*measurements.SmartScsiAttribute).Threshold)
+	require.Equal(t, int64(176987332000000), smartMdl.Attributes["read_gigabytes_processed"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, 23, len(smartMdl.Attributes))
+
+	// Every attribute the SCSI builder emits needs display metadata, or the UI renders
+	// "Unknown Attribute Name" for it.
+	for attributeID := range smartMdl.Attributes {
+		_, ok := thresholds.ScsiMetadataFor(attributeID)
+		require.True(t, ok, attributeID)
+	}
+}
+
+// TestFromCollectorSmartInfo_Scsi_Verify_Absent tests that a drive which does not support the
+// Verify Error Counter log page gets no verify attributes at all, rather than a set of
+// permanently-zero ones. smartctl omits the "verify" key entirely on those drives.
+func TestFromCollectorSmartInfo_Scsi_Verify_Absent(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-scsi.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+	require.Nil(t, smartJson.ScsiErrorCounterLog.Verify)
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+	for _, attributeID := range []string{
+		"verify_errors_corrected_by_eccfast",
+		"verify_total_uncorrected_errors",
+		"verify_gigabytes_processed",
+	} {
+		require.NotContains(t, smartMdl.Attributes, attributeID)
+	}
+	// The drive keeps exactly the attribute set it had before this change.
+	require.Equal(t, 16, len(smartMdl.Attributes))
+}
+
+// TestFromCollectorSmartInfo_Scsi_SasPhy tests the per-PHY SAS Protocol log page counters
+// requested in Starosdev/scrutiny#1024. Each PHY of each port gets its own attribute set, so
+// a fault on one cable, backplane slot or HBA port stays identifiable.
+func TestFromCollectorSmartInfo_Scsi_SasPhy(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-scsi-sas-phy.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+
+	// Both ports are decoded from their numbered top-level keys, sorted by port then PHY.
+	require.Len(t, smartJson.ScsiSasPhys, 2)
+	require.Equal(t, 0, smartJson.ScsiSasPhys[0].Port)
+	require.Equal(t, 0, smartJson.ScsiSasPhys[0].Phy)
+	require.Equal(t, 1, smartJson.ScsiSasPhys[1].Port)
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+
+	require.Equal(t, int64(32), smartMdl.Attributes["sas_port_0_phy_0_invalid_dword_count"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(0), smartMdl.Attributes["sas_port_0_phy_0_running_disparity_error_count"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(8), smartMdl.Attributes["sas_port_0_phy_0_loss_of_dword_synchronization_count"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(8), smartMdl.Attributes["sas_port_0_phy_0_phy_reset_problem_count"].(*measurements.SmartScsiAttribute).Value)
+
+	// "phy enabled; 12 Gbps" -> 12000 Mbps.
+	require.Equal(t, int64(12000), smartMdl.Attributes["sas_port_0_phy_0_negotiated_link_rate_mbps"].(*measurements.SmartScsiAttribute).Value)
+
+	// Port 1 has nothing attached: its counters are real (and zero), but "phy enabled;
+	// unknown" carries no speed, so it gets no link rate attribute rather than a zero one.
+	require.Equal(t, int64(0), smartMdl.Attributes["sas_port_1_phy_0_invalid_dword_count"].(*measurements.SmartScsiAttribute).Value)
+	require.NotContains(t, smartMdl.Attributes, "sas_port_1_phy_0_negotiated_link_rate_mbps")
+
+	// Each port's counters stay separate; nothing is summed across ports.
+	require.Contains(t, smartMdl.Attributes, "sas_port_1_phy_0_phy_reset_problem_count")
+
+	// Every attribute needs resolvable display metadata, including the generated PHY IDs,
+	// or the UI renders "Unknown Attribute Name".
+	for attributeID := range smartMdl.Attributes {
+		metadata, ok := thresholds.ScsiMetadataFor(attributeID)
+		require.True(t, ok, attributeID)
+		require.NotEmpty(t, metadata.DisplayName, attributeID)
+	}
+	phyMetadata, ok := thresholds.ScsiMetadataFor("sas_port_1_phy_0_invalid_dword_count")
+	require.True(t, ok)
+	require.Equal(t, "Invalid DWORDs (Port 1 PHY 0)", phyMetadata.DisplayName)
+
+	// 23 SCSI attributes from the verify fixture, plus 4 counters for each of the two PHYs,
+	// plus one link rate for the only PHY reporting a speed.
+	require.Equal(t, 32, len(smartMdl.Attributes))
+
+	// Port 0's 32 invalid DWORDs exceed the counter's threshold of 0, so ingestion reports a
+	// failure. ApplyDeltaEvaluation is what clears it on the next collection if the counter
+	// has not moved; it needs a previous submission, which this path does not have.
+	require.Equal(t, pkg.DeviceStatusFailedScrutiny, smartMdl.Status)
+	require.Equal(t, pkg.AttributeStatusFailedScrutiny, smartMdl.Attributes["sas_port_0_phy_0_invalid_dword_count"].(*measurements.SmartScsiAttribute).Status)
+	require.Equal(t, pkg.AttributeStatusPassed, smartMdl.Attributes["sas_port_1_phy_0_invalid_dword_count"].(*measurements.SmartScsiAttribute).Status)
+}
+
+// TestParseScsiSasPhyLinkRateMbps covers the link rate strings smartctl emits, including the
+// non-numeric states that must not become a zero-speed attribute.
+func TestParseScsiSasPhyLinkRateMbps(t *testing.T) {
+	for _, testCase := range []struct {
+		raw      string
+		expected int64
+		ok       bool
+	}{
+		{"phy enabled; 12 Gbps", 12000, true},
+		{"phy enabled; 6 Gbps", 6000, true},
+		{"phy enabled; 1.5 Gbps", 1500, true},
+		{"phy enabled; unknown", 0, false},
+		{"phy disabled", 0, false},
+		{"", 0, false},
+	} {
+		mbps, ok := measurements.ParseScsiSasPhyLinkRateMbps(testCase.raw)
+		require.Equal(t, testCase.ok, ok, testCase.raw)
+		require.Equal(t, testCase.expected, mbps, testCase.raw)
+	}
+}
+
+// TestFromCollectorSmartInfo_Scsi_LifetimeCounters tests the remaining SCSI log pages
+// requested in Starosdev/scrutiny#1024: Background Medium Scan status, the Environmental
+// Reports lifetime temperature extremes, and the Start-Stop Cycle Counter wear counters.
+func TestFromCollectorSmartInfo_Scsi_LifetimeCounters(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataFile, err := os.Open("../testdata/smart-scsi-sas-full.json")
+	require.NoError(t, err)
+	defer smartDataFile.Close()
+
+	var smartJson collector.SmartInfo
+
+	smartDataBytes, err := ioutil.ReadAll(smartDataFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(smartDataBytes, &smartJson)
+	require.NoError(t, err)
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+
+	// Background medium scan: the drive's own media checking, on its own schedule.
+	require.Equal(t, int64(10), smartMdl.Attributes["background_scans_performed"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(10), smartMdl.Attributes["background_medium_scans_performed"].(*measurements.SmartScsiAttribute).Value)
+	backgroundScanStatus := smartMdl.Attributes["background_scan_status"].(*measurements.SmartScsiAttribute)
+	require.Equal(t, int64(8), backgroundScanStatus.Value)
+	// The drive's own wording for the state rides in the status reason, which the UI shows
+	// next to the value: the attribute value itself is an int64 and cannot carry it.
+	require.Equal(t, "waiting until BMS interval timer expires", backgroundScanStatus.StatusReason)
+	// "0.00%" -> 0; no scan is running.
+	require.Equal(t, int64(0), smartMdl.Attributes["background_scan_progress_percent"].(*measurements.SmartScsiAttribute).Value)
+
+	// Lifetime temperature extremes the drive tracks itself, which reach further back than
+	// Scrutiny's own history. The single-sensor key keeps its plain display name.
+	require.Equal(t, int64(35), smartMdl.Attributes["temperature_1_lifetime_maximum"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(24), smartMdl.Attributes["temperature_1_lifetime_minimum"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(34), smartMdl.Attributes["temperature_1_maximum_since_power_on"].(*measurements.SmartScsiAttribute).Value)
+	require.Equal(t, int64(28), smartMdl.Attributes["temperature_1_minimum_since_power_on"].(*measurements.SmartScsiAttribute).Value)
+	// Every sensor is named, including the first: a drive can report several, and a row that
+	// says only "Lifetime Maximum Temperature" would read as a drive-wide figure.
+	lifetimeMaxMetadata, ok := thresholds.ScsiMetadataFor("temperature_1_lifetime_maximum")
+	require.True(t, ok)
+	require.Equal(t, "Lifetime Maximum Temperature (Sensor 1)", lifetimeMaxMetadata.DisplayName)
+	secondSensorMetadata, ok := thresholds.ScsiMetadataFor("temperature_2_lifetime_maximum")
+	require.True(t, ok)
+	require.Equal(t, "Lifetime Maximum Temperature (Sensor 2)", secondSensorMetadata.DisplayName)
+
+	// Mechanical wear: the value is the accumulated count, the threshold is the count the
+	// manufacturer rates the drive for, so the pair reads as 44 of 50000.
+	startStopCycles := smartMdl.Attributes["start_stop_cycles"].(*measurements.SmartScsiAttribute)
+	require.Equal(t, int64(44), startStopCycles.Value)
+	require.Equal(t, int64(50000), startStopCycles.Threshold)
+	require.Equal(t, pkg.AttributeStatusPassed, startStopCycles.Status)
+	loadUnloadCycles := smartMdl.Attributes["load_unload_cycles"].(*measurements.SmartScsiAttribute)
+	require.Equal(t, int64(224), loadUnloadCycles.Value)
+	require.Equal(t, int64(600000), loadUnloadCycles.Threshold)
+	require.Equal(t, pkg.AttributeStatusPassed, loadUnloadCycles.Status)
+
+	// 32 attributes from the SAS PHY fixture, plus 4 temperature extremes, 4 background scan
+	// attributes and 2 wear counters.
+	require.Equal(t, 42, len(smartMdl.Attributes))
+
+	for attributeID := range smartMdl.Attributes {
+		metadata, ok := thresholds.ScsiMetadataFor(attributeID)
+		require.True(t, ok, attributeID)
+		require.NotEmpty(t, metadata.DisplayName, attributeID)
+	}
+}
+
+// TestFromCollectorSmartInfo_Scsi_StartStopCyclesPastRating tests a drive used past the
+// start/stop count it was rated for. The rating is recorded as the attribute's threshold so
+// the UI can show wear against it, but passing it is not reported as a failure: drives
+// routinely outlive their rated cycle count, and the ATA equivalents (attributes 4, 193 and
+// 225) are not failed either. It also tests that a counter reported without a rated limit
+// gets no threshold rather than a zero one it would always exceed.
+func TestFromCollectorSmartInfo_Scsi_StartStopCyclesPastRating(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	var smartJson collector.SmartInfo
+	err := json.Unmarshal([]byte(`{
+		"device": {"name": "/dev/sdg", "type": "scsi", "protocol": "SCSI"},
+		"model_name": "SEAGATE ST4000NM0043",
+		"serial_number": "test-serial",
+		"smart_status": {"passed": true},
+		"temperature": {"current": 30},
+		"scsi_start_stop_cycle_counter": {
+			"specified_cycle_count_over_device_lifetime": 10000,
+			"accumulated_start_stop_cycles": 10001,
+			"accumulated_load_unload_cycles": 1200
+		}
+	}`), &smartJson)
+	require.NoError(t, err)
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+
+	startStopCycles := smartMdl.Attributes["start_stop_cycles"].(*measurements.SmartScsiAttribute)
+	require.Equal(t, int64(10001), startStopCycles.Value)
+	require.Equal(t, int64(10000), startStopCycles.Threshold)
+	require.Equal(t, pkg.AttributeStatusPassed, startStopCycles.Status)
+
+	// The drive reports load/unload cycles but not the count it is rated for, so that counter
+	// is recorded without a threshold rather than with a zero one it would always exceed.
+	loadUnloadCycles := smartMdl.Attributes["load_unload_cycles"].(*measurements.SmartScsiAttribute)
+	require.Equal(t, int64(1200), loadUnloadCycles.Value)
+	require.Equal(t, int64(-1), loadUnloadCycles.Threshold)
+	require.Equal(t, pkg.AttributeStatusPassed, loadUnloadCycles.Status)
+
+	// A worn drive is still a healthy drive.
+	require.Equal(t, pkg.DeviceStatusPassed, smartMdl.Status)
+
+	// Neither counter is marked critical, and neither can raise a notification on its own,
+	// which is what keeps an old drive from going red for being old. They do still appear in
+	// the UI's default attribute view: its filter admits any attribute whose value is below
+	// its threshold, which is true of a healthy wear counter, and also of any attribute whose
+	// value is negative, since "no threshold" is -1. A drive stored below freezing shows its
+	// lifetime temperature minimum there for the same reason.
+	for _, attributeID := range []string{"start_stop_cycles", "load_unload_cycles"} {
+		metadata, ok := thresholds.ScsiMetadataFor(attributeID)
+		require.True(t, ok, attributeID)
+		require.False(t, metadata.Critical, attributeID)
+		require.Empty(t, metadata.Ideal, attributeID)
+	}
+}
+
+// TestFromCollectorSmartInfo_Scsi_StartStopCounterPartiallyReported tests a drive that
+// supports the Start-Stop Cycle Counter log page but reports only some of its counters.
+// smartctl omits a counter the drive does not report, so the absent one must produce no
+// attribute at all rather than a permanently-zero one.
+func TestFromCollectorSmartInfo_Scsi_StartStopCounterPartiallyReported(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	var smartJson collector.SmartInfo
+	err := json.Unmarshal([]byte(`{
+		"device": {"name": "/dev/sdg", "type": "scsi", "protocol": "SCSI"},
+		"model_name": "SEAGATE ST4000NM0043",
+		"serial_number": "test-serial",
+		"smart_status": {"passed": true},
+		"temperature": {"current": 30},
+		"scsi_start_stop_cycle_counter": {
+			"year_of_manufacture": "2025",
+			"week_of_manufacture": "04",
+			"specified_cycle_count_over_device_lifetime": 10000,
+			"accumulated_start_stop_cycles": 44
+		}
+	}`), &smartJson)
+	require.NoError(t, err)
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+	require.Equal(t, int64(44), smartMdl.Attributes["start_stop_cycles"].(*measurements.SmartScsiAttribute).Value)
+	require.NotContains(t, smartMdl.Attributes, "load_unload_cycles")
+	require.Equal(t, pkg.DeviceStatusPassed, smartMdl.Status)
+}
+
+// TestFromCollectorSmartInfo_Scsi_StartStopCounterReportedZero is the other half of the
+// pointer decision: a counter the drive reports as zero is a fact about a drive that has
+// never spun down, and must still produce an attribute. Only an absent counter is skipped.
+func TestFromCollectorSmartInfo_Scsi_StartStopCounterReportedZero(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	var smartJson collector.SmartInfo
+	err := json.Unmarshal([]byte(`{
+		"device": {"name": "/dev/sdg", "type": "scsi", "protocol": "SCSI"},
+		"model_name": "SEAGATE ST4000NM0043",
+		"serial_number": "test-serial",
+		"smart_status": {"passed": true},
+		"temperature": {"current": 30},
+		"scsi_start_stop_cycle_counter": {
+			"specified_load_unload_count_over_device_lifetime": 600000,
+			"accumulated_load_unload_cycles": 0
+		}
+	}`), &smartJson)
+	require.NoError(t, err)
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+	loadUnloadCycles := smartMdl.Attributes["load_unload_cycles"].(*measurements.SmartScsiAttribute)
+	require.Equal(t, int64(0), loadUnloadCycles.Value)
+	require.Equal(t, int64(600000), loadUnloadCycles.Threshold)
+	require.NotContains(t, smartMdl.Attributes, "start_stop_cycles")
 }
 
 // TestFromCollectorSmartInfo_Scsi_SAS_SSD_Endurance tests that SAS SSDs (which report the

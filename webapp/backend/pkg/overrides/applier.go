@@ -131,6 +131,22 @@ type Result struct {
 	AcknowledgedValue *int64
 }
 
+// IsLoadBearing reports whether this result changes an attribute's evaluation. An override
+// row that sets no action and no threshold parses into a Result that does nothing, and
+// callers must be able to tell that apart from a rule the user meant. The fields checked here
+// are exactly the ones applyOverrideResult acts on, so adding a field to that switch means
+// adding it here too.
+func (r *Result) IsLoadBearing() bool {
+	if r == nil {
+		return false
+	}
+	return r.ShouldIgnore ||
+		r.Status != nil ||
+		r.WarnAbove != nil ||
+		r.FailAbove != nil ||
+		r.AcknowledgedValue != nil
+}
+
 // ParseOverrides converts raw config data to typed AttributeOverride slice
 func ParseOverrides(cfg config.Interface) []AttributeOverride {
 	var result []AttributeOverride
