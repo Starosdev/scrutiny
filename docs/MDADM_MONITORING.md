@@ -185,8 +185,9 @@ If older rows were created before `host_id` was persisted on re-registration, fo
 | POST | `/api/mdadm/array/:uuid/label` | Set a custom label for an array |
 | DELETE | `/api/mdadm/array/:uuid` | Delete an array and its metrics history |
 
-The identifier in the path is the array's UUID as mdadm reports it, or the
-`synthetic:<hash>` identifier Scrutiny assigns to an array that has none. It is
+The identifier in the path is the array's UUID as mdadm reports it, the
+`synthetic:<hash>` identifier Scrutiny assigns to an array that has none, or
+the `unraid:<hash>` identifier an Unraid array carries. It is
 not an RFC 4122 UUID, so these routes take any identifier of letters, digits,
 `:`, `.`, `_` and `-`, up to 256 characters. Escape it before putting it in a
 URL: an mdadm UUID contains colons.

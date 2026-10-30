@@ -8,7 +8,6 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/notify"
-	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -17,16 +16,15 @@ import (
 func UploadMdadmMetrics(c *gin.Context) {
 	dbRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
-	uuid := c.Param("uuid")
 	// A series keyed by an identifier the other routes refuse would be a
 	// series nothing could later read or delete.
-	if err := validation.ValidateMdadmArrayID(uuid); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "errors": []string{err.Error()}})
+	uuid, ok := mdadmArrayUUID(c, logger)
+	if !ok {
 		return
 	}
 
-	metrics, ok := bindMDADMMetrics(c)
-	if !ok {
+	metrics, bound := bindMDADMMetrics(c)
+	if !bound {
 		return
 	}
 

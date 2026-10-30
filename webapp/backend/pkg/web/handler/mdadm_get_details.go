@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
-	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -13,12 +12,12 @@ import (
 func GetMdadmArrayDetails(c *gin.Context) {
 	dbRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
-	uuid := c.Param("uuid")
 	// The identifier is interpolated into a Flux predicate, so an unchecked
 	// one would let a caller close the string and append pipeline stages.
-	if err := validation.ValidateMdadmArrayID(uuid); err != nil {
-		logger.Warnf("Invalid MDADM array identifier %q: %v", uuid, err)
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "errors": []string{err.Error()}})
+	// mdadmArrayUUID is the same check the six mutation routes apply, which
+	// keeps the trimming and the error shape identical across the group.
+	uuid, ok := mdadmArrayUUID(c, logger)
+	if !ok {
 		return
 	}
 

@@ -24,6 +24,15 @@ describe('MDADMService', () => {
         });
     });
 
+    it('escapes the identifier when fetching details', (done: DoneFn) => {
+        httpClientSpy.get.and.returnValue(of({ success: true, data: {} } as any));
+
+        service.getDetails('synthetic:4b825dc6').subscribe(() => {
+            expect(httpClientSpy.get.calls.mostRecent().args[0]).toMatch(/\/api\/mdadm\/array\/synthetic%3A4b825dc6\/details\?duration=week$/);
+            done();
+        });
+    });
+
     it('posts to the unarchive route', (done: DoneFn) => {
         httpClientSpy.post.and.returnValue(of({ success: true }));
 

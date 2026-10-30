@@ -1499,6 +1499,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MDADMDetailsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/ErrorResponse"
   /api/mdadm/array/{uuid}/archive:

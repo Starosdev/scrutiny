@@ -8,6 +8,7 @@ import (
 
 	mock_database "github.com/analogj/scrutiny/webapp/backend/pkg/database/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
@@ -40,6 +41,44 @@ func TestUploadMdadmMetricsSkipsNotificationForAMutedArray(t *testing.T) {
 
 	// A degraded array with a failed device is what would otherwise notify.
 	body := `{"state":"degraded","failed_devices":1,"active_devices":1,"total_devices":2}`
+	request := httptest.NewRequest(http.MethodPost, "/api/mdadm/array/"+uuid+"/metrics", bytes.NewReader([]byte(body)))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+
+	router.ServeHTTP(response, request)
+
+	require.Equal(t, http.StatusOK, response.Code)
+}
+
+// The other direction of the same guard. Without this, replacing the muted
+// check with an unconditional return leaves the suite green and silences every
+// MDADM notification.
+func TestUploadMdadmMetricsEntersTheNotificationPathForAnUnmutedArray(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	const uuid = "ad005595:61305895:4de01d37:669bf162"
+	repo := mock_database.NewMockDeviceRepo(ctrl)
+	repo.EXPECT().SaveMdadmMetrics(gomock.Any(), uuid, gomock.Any()).Return(nil)
+	repo.EXPECT().GetMdadmArrayDetails(gomock.Any(), uuid).Return(models.MDADMArray{UUID: uuid, Muted: false}, nil)
+	// Reached only past the mute check. The history says the array was already
+	// degraded at the previous collection, so the notification is suppressed as
+	// a repeat and the handler returns before it needs any config.
+	repo.EXPECT().GetMdadmMetricsHistory(gomock.Any(), uuid, "day").Times(1).Return([]measurements.MDADMMetrics{
+		{ArrayUUID: uuid, State: "degraded", FailedDevices: 1},
+		{ArrayUUID: uuid, State: "degraded", FailedDevices: 1},
+	}, nil)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("DEVICE_REPOSITORY", repo)
+		c.Set("LOGGER", logrus.WithField("test", t.Name()))
+		c.Next()
+	})
+	router.POST("/api/mdadm/array/:uuid/metrics", UploadMdadmMetrics)
+
+	body := `{"state":"degraded","failed_devices":1,"active_devices":1}`
 	request := httptest.NewRequest(http.MethodPost, "/api/mdadm/array/"+uuid+"/metrics", bytes.NewReader([]byte(body)))
 	request.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
