@@ -388,8 +388,9 @@ func TestValidateMdadmArrayID(t *testing.T) {
 	invalid := []string{
 		"",
 		" ",
-		`a"`, // would end the InfluxDB delete predicate
-		`a\\`,
+		`a"`,  // would end the InfluxDB delete predicate
+		"a\\", // one backslash
+		`a\\`, // two
 		"a b",
 		"a\nb",
 		"md#0",

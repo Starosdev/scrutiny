@@ -1576,6 +1576,8 @@ paths:
           $ref: "#/components/responses/SuccessResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
 components:
   securitySchemes:
     BearerAuth:

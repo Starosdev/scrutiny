@@ -45,7 +45,7 @@ export class MDADMService {
     }
 
     getDetails(uuid: string, duration: string = 'week'): Observable<MDADMArrayDetailResponseWrapper> {
-        return this._httpClient.get<MDADMArrayDetailResponseWrapper>(getBasePath() + `/api/mdadm/array/${uuid}/details?duration=${duration}`);
+        return this._httpClient.get<MDADMArrayDetailResponseWrapper>(getBasePath() + `/api/mdadm/array/${encodeURIComponent(uuid)}/details?duration=${duration}`);
     }
 
     archiveArray(uuid: string): Observable<any> {
