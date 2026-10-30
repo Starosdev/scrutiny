@@ -64,21 +64,45 @@ func resolve(source string, sysBlock string, devRoot string) []string {
 //
 // The source is frequently a symlink: /dev/mapper/vg-root points at /dev/dm-0,
 // and a fstab using /dev/disk/by-uuid/... points at a partition node. sysfs only
-// knows the target's name, so the link is followed first. A source that is not
-// under the device root is not a block device and has no kernel name.
+// knows the target's name, so the link is followed when the node is there. A
+// source that is not under the device root is not a block device and has no
+// kernel name.
+//
+// The node is often not there. In the omnibus container /dev holds only the
+// devices the deployment passes through, which are whole disks, while a mount
+// source is usually a partition (/dev/md1p1, /dev/sdm1) or an array the
+// container was never given. Requiring the node made attribution impossible in
+// the one deployment shape that matters, because sysfs carries the whole holder
+// tree regardless (#1054). So a flat source falls back to its own last segment,
+// which is the kernel name by construction: /dev/md1p1 is the node for md1p1
+// whether or not that node was created here.
+//
+// A nested source still needs the node, because only the symlink says what it
+// points at, and guessing "mapper" or a by-uuid string as a device name would be
+// worse than reporting nothing. Either way the name is a claim, not a fact:
+// walk() looks it up under sysfs and drops anything the kernel does not know.
 func kernelName(source string, devRoot string) string {
 	if source == "" || !strings.HasPrefix(source, devRoot+"/") {
 		return ""
 	}
+
 	resolved, err := filepath.EvalSymlinks(source)
 	if err != nil {
-		return ""
+		// No node to follow. Only a source naming one segment under the device
+		// root can be read without it.
+		name := strings.TrimPrefix(source, devRoot+"/")
+		if name == "" || strings.Contains(name, "/") {
+			return ""
+		}
+		return name
 	}
+
 	// The device root is resolved too, so a symlinked path to it does not make
-	// every node under it look like it sits somewhere else.
-	resolvedRoot, err := filepath.EvalSymlinks(devRoot)
-	if err != nil {
-		return ""
+	// every node under it look like it sits somewhere else. A root that cannot
+	// be resolved is compared as written rather than abandoning the lookup.
+	resolvedRoot, rootErr := filepath.EvalSymlinks(devRoot)
+	if rootErr != nil {
+		resolvedRoot = devRoot
 	}
 	// A device node sits directly under the device root and is named by its
 	// base. A node resolving to anywhere else is not a block device node, so it
