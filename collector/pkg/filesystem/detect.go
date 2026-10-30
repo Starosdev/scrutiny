@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/analogj/scrutiny/collector/pkg/blockdev"
+	mdadmdetect "github.com/analogj/scrutiny/collector/pkg/mdadm/detect"
 	mountsPkg "github.com/analogj/scrutiny/collector/pkg/mounts"
 	"github.com/analogj/scrutiny/collector/pkg/statfs"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
@@ -26,7 +27,14 @@ func CollectLinuxSnapshots(hostID string, now time.Time) ([]models.FilesystemCap
 	}
 	defer file.Close()
 
-	return collectSnapshots(file, hostID, now, statfs.Stat, blockdev.Resolve)
+	// The Unraid pairing is read once per run: it is one small file, and a
+	// per-mount read would parse it for every filesystem on the host.
+	unraidArrayDisks := mdadmdetect.UnraidArrayDeviceMap()
+	resolve := func(source string) []string {
+		return translateDeviceNames(blockdev.Resolve(source), unraidArrayDisks)
+	}
+
+	return collectSnapshots(file, hostID, now, statfs.Stat, resolve)
 }
 
 func collectSnapshots(

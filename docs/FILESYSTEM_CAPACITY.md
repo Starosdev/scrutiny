@@ -67,6 +67,20 @@ node exists, and sysfs decides whether the name is real. A nested source such as
 `/dev/mapper/vg-root` still needs its node, because only the symlink records
 what it points at.
 
+Two names the kernel reports are translated before upload, because the drive
+Scrutiny registers is not the block device the walk finds:
+
+- An NVMe filesystem resolves to a namespace, `nvme0n1`, while the SMART
+  collector registers the controller, `nvme0`. The namespace is reduced to its
+  controller, and several namespaces on one controller collapse to that one
+  drive.
+- An Unraid array device, `md1p1`, is a top-level virtual block device with no
+  `partition` file and an empty `slaves` directory, so the holder tree cannot
+  reach the disk beneath it. The pairing is read from Unraid's own mdstat,
+  `diskName` against `rdevName`, which is the only place it exists. It is
+  published only while the array is started, so a stopped array attributes
+  nothing rather than guessing.
+
 The walk reads sysfs and therefore produces attribution on Linux hosts only. A
 filesystem the collector cannot attribute is still reported for the host
 capacity panel, and the device detail page says why no filesystem is listed
