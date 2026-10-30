@@ -67,12 +67,13 @@ func fakeTree(t *testing.T) (sysBlock string, devRoot string) {
 
 	// md1 is an array across sda1 and sdb1 with sdc1 attached as a hot spare.
 	// The kernel lists all three under slaves and records each member's role
-	// under md/dev-<name>/state.
+	// under md/dev-<name>/slot: a slot number for a member of the array, and
+	// "none" for a member holding no slot in it.
 	stacked("md1", "sda1", "sdb1", "sdc1")
 	md1 := filepath.Join(devices, "virtual", "block", "md1", "md")
-	for member, state := range map[string]string{"sda1": "in_sync", "sdb1": "writemostly,in_sync", "sdc1": "spare"} {
+	for member, slot := range map[string]string{"sda1": "0", "sdb1": "1", "sdc1": "none"} {
 		require.NoError(t, os.MkdirAll(filepath.Join(md1, "dev-"+member), 0o755))
-		require.NoError(t, os.WriteFile(filepath.Join(md1, "dev-"+member, "state"), []byte(state+"\n"), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(md1, "dev-"+member, "slot"), []byte(slot+"\n"), 0o644))
 	}
 	require.NoError(t, os.Symlink(filepath.Join(devRoot, "dm-0"), filepath.Join(devRoot, "mapper", "vg-root")))
 
@@ -148,29 +149,32 @@ func TestWalk_StopsOnCycles(t *testing.T) {
 	require.Empty(t, disks)
 }
 
-func TestIsSpareArrayMember(t *testing.T) {
+func TestIsUnattributedArrayMember(t *testing.T) {
 	root := t.TempDir()
-	write := func(member string, state string) {
+	write := func(member string, slot string) {
 		require.NoError(t, os.MkdirAll(filepath.Join(root, "md", "dev-"+member), 0o755))
-		require.NoError(t, os.WriteFile(filepath.Join(root, "md", "dev-"+member, "state"), []byte(state), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(root, "md", "dev-"+member, "slot"), []byte(slot), 0o644))
 	}
 
-	write("sda1", "in_sync\n")
-	write("sdb1", "writemostly,in_sync\n")
-	write("sdc1", "spare\n")
-	write("sdd1", "spare,write_error\n")
-	// A failed member still holds the array's data; only an idle spare does not.
-	write("sde1", "faulty\n")
+	// Members of the array, by slot number. sdd1 is mid-rebuild: it holds its
+	// slot before it is in sync, and its state would read "spare" throughout.
+	write("sda1", "0\n")
+	write("sdb1", "1\n")
+	write("sdd1", "2\n")
+	// An idle hot spare holds no slot, and a write-journal member holds the
+	// journal rather than any of the array's data.
+	write("sdc1", "none\n")
+	write("sde1", "journal\n")
 
-	require.False(t, isSpareArrayMember(root, "sda1"))
-	require.False(t, isSpareArrayMember(root, "sdb1"))
-	require.True(t, isSpareArrayMember(root, "sdc1"))
-	require.True(t, isSpareArrayMember(root, "sdd1"))
-	require.False(t, isSpareArrayMember(root, "sde1"))
-	// A device that is not an array, and a member with no readable state, are
+	require.False(t, isUnattributedArrayMember(root, "sda1"))
+	require.False(t, isUnattributedArrayMember(root, "sdb1"))
+	require.False(t, isUnattributedArrayMember(root, "sdd1"))
+	require.True(t, isUnattributedArrayMember(root, "sdc1"))
+	require.True(t, isUnattributedArrayMember(root, "sde1"))
+	// A device that is not an array, and a member with no readable slot, are
 	// both kept: dropping a data-carrying disk hides its filesystems entirely.
-	require.False(t, isSpareArrayMember(root, "absent"))
-	require.False(t, isSpareArrayMember(filepath.Join(root, "not-an-array"), "sda1"))
+	require.False(t, isUnattributedArrayMember(root, "absent"))
+	require.False(t, isUnattributedArrayMember(filepath.Join(root, "not-an-array"), "sda1"))
 }
 
 func TestIsSyntheticDisk(t *testing.T) {
