@@ -195,21 +195,45 @@ func isSyntheticDisk(name string) bool {
 // recovery_start cannot either: it prints "none" both for an idle spare and
 // for a healthy in-sync member.
 //
-// A device with no md directory, and a member whose slot cannot be read, are
-// both kept. The cost of wrongly keeping a member is one over-attributed
+// A failed member is the exception to reading the slot alone. The kernel
+// releases its slot as soon as the array drops it, so it reads "none" like an
+// idle spare, and it stays attached until mdadm removes it: the only call that
+// unbinds a member, md_kick_rdev_from_array, runs from the "remove" state_store
+// command and from stopping the array. A failed disk still holds the array's
+// data and is still in the chassis, so it keeps its filesystems.
+//
+// A device with no md directory, and a member whose files cannot be read, are
+// all kept. The cost of wrongly keeping a member is one over-attributed
 // drive; the cost of wrongly dropping one is a drive whose filesystems vanish
-// from the UI, so the unreadable case resolves toward keeping.
+// from the UI, so every unreadable case resolves toward keeping.
 func isUnattributedArrayMember(devicePath string, slave string) bool {
 	slot, err := os.ReadFile(filepath.Join(devicePath, "md", "dev-"+slave, "slot"))
 	if err != nil {
 		return false
 	}
 	switch strings.TrimSpace(string(slot)) {
-	case "journal", "none":
+	case "journal":
 		return true
+	case "none":
+		return !isFailedArrayMember(devicePath, slave)
 	default:
 		return false
 	}
+}
+
+// isFailedArrayMember reports whether a member that holds no slot holds it
+// because the array failed it, rather than because it is an idle hot spare.
+func isFailedArrayMember(devicePath string, slave string) bool {
+	state, err := os.ReadFile(filepath.Join(devicePath, "md", "dev-"+slave, "state"))
+	if err != nil {
+		return true
+	}
+	for _, flag := range strings.Split(strings.TrimSpace(string(state)), ",") {
+		if flag == "faulty" {
+			return true
+		}
+	}
+	return false
 }
 
 // readSlaves lists the devices a stacked device is built from.

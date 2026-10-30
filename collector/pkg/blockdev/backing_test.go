@@ -27,7 +27,7 @@ func fakeTree(t *testing.T) (sysBlock string, devRoot string) {
 		require.NoError(t, os.Symlink(target, filepath.Join(sysBlock, name)))
 	}
 
-	for _, disk := range []string{"sda", "sdb", "sdc"} {
+	for _, disk := range []string{"sda", "sdb", "sdc", "sdd"} {
 		partition := filepath.Join(devices, "pci", disk, disk+"1")
 		require.NoError(t, os.MkdirAll(partition, 0o755))
 		require.NoError(t, os.WriteFile(filepath.Join(partition, "partition"), []byte("1\n"), 0o644))
@@ -69,9 +69,11 @@ func fakeTree(t *testing.T) (sysBlock string, devRoot string) {
 	// The kernel lists all three under slaves and records each member's role
 	// under md/dev-<name>/slot: a slot number for a member of the array, and
 	// "none" for a member holding no slot in it.
-	stacked("md1", "sda1", "sdb1", "sdc1")
+	// sdd1 is a write-journal member: it holds the journal and none of the
+	// array's data, and the kernel names that role in the slot itself.
+	stacked("md1", "sda1", "sdb1", "sdc1", "sdd1")
 	md1 := filepath.Join(devices, "virtual", "block", "md1", "md")
-	for member, slot := range map[string]string{"sda1": "0", "sdb1": "1", "sdc1": "none"} {
+	for member, slot := range map[string]string{"sda1": "0", "sdb1": "1", "sdc1": "none", "sdd1": "journal"} {
 		require.NoError(t, os.MkdirAll(filepath.Join(md1, "dev-"+member), 0o755))
 		require.NoError(t, os.WriteFile(filepath.Join(md1, "dev-"+member, "slot"), []byte(slot+"\n"), 0o644))
 	}
@@ -96,9 +98,9 @@ func TestResolve(t *testing.T) {
 		{name: "md array spans both disks", source: "md0", want: []string{"sda", "sdb"}},
 		{name: "logical volume descends through the array", source: "dm-0", want: []string{"sda", "sdb"}},
 		{name: "mapper symlink resolves to its target", source: "mapper/vg-root", want: []string{"sda", "sdb"}},
-		// A hot spare holds none of the array's data, so the array's
-		// filesystem must not be attributed to it.
-		{name: "array skips its hot spare", source: "md1", want: []string{"sda", "sdb"}},
+		// A hot spare and a write-journal member hold none of the array's
+		// data, so the array's filesystem must not be attributed to either.
+		{name: "array skips its hot spare and its journal", source: "md1", want: []string{"sda", "sdb"}},
 		// Scrutiny registers drives, so a loop device can never match one and
 		// a link row naming it would be noise, one per snap package.
 		{name: "loop device is not a drive", source: "loop3", want: nil},
@@ -155,6 +157,9 @@ func TestIsUnattributedArrayMember(t *testing.T) {
 		require.NoError(t, os.MkdirAll(filepath.Join(root, "md", "dev-"+member), 0o755))
 		require.NoError(t, os.WriteFile(filepath.Join(root, "md", "dev-"+member, "slot"), []byte(slot), 0o644))
 	}
+	writeState := func(member string, state string) {
+		require.NoError(t, os.WriteFile(filepath.Join(root, "md", "dev-"+member, "state"), []byte(state), 0o644))
+	}
 
 	// Members of the array, by slot number. sdd1 is mid-rebuild: it holds its
 	// slot before it is in sync, and its state would read "spare" throughout.
@@ -165,12 +170,21 @@ func TestIsUnattributedArrayMember(t *testing.T) {
 	// journal rather than any of the array's data.
 	write("sdc1", "none\n")
 	write("sde1", "journal\n")
+	// A failed member also reads "none": md releases its slot and leaves it
+	// attached until mdadm removes it. It still holds the array's data.
+	write("sdf1", "none\n")
+	writeState("sdf1", "faulty\n")
+	// A member whose slot says "none" and whose state cannot be read is kept,
+	// because hiding a data-carrying drive costs more than over-attributing.
+	write("sdg1", "none\n")
 
 	require.False(t, isUnattributedArrayMember(root, "sda1"))
 	require.False(t, isUnattributedArrayMember(root, "sdb1"))
 	require.False(t, isUnattributedArrayMember(root, "sdd1"))
 	require.True(t, isUnattributedArrayMember(root, "sdc1"))
 	require.True(t, isUnattributedArrayMember(root, "sde1"))
+	require.False(t, isUnattributedArrayMember(root, "sdf1"))
+	require.False(t, isUnattributedArrayMember(root, "sdg1"))
 	// A device that is not an array, and a member with no readable slot, are
 	// both kept: dropping a data-carrying disk hides its filesystems entirely.
 	require.False(t, isUnattributedArrayMember(root, "absent"))

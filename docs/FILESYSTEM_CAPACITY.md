@@ -97,6 +97,12 @@ holds its slot, so it keeps its filesystems through the resync.
 instead: the kernel prints `spare` for any member that is not in sync, faulty
 or a journal, so a member mid-recovery reads exactly like an idle spare.
 
+A failed member is the exception to reading the slot alone. md releases its
+slot as soon as the array drops it, so it reads `none` like an idle spare, and
+it stays attached until `mdadm --remove` takes it out. It still holds the
+array's data, so a member whose slot is `none` and whose state carries
+`faulty` keeps its filesystems through the degraded window.
+
 A member whose slot cannot be read is kept: over-attributing one drive is a
 smaller error than hiding a data-carrying drive's filesystems.
 
