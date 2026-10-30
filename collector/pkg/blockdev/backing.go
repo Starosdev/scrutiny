@@ -139,7 +139,7 @@ func walk(name string, sysBlock string, disks map[string]struct{}, visited map[s
 
 	if slaves := readSlaves(devicePath); len(slaves) > 0 {
 		for _, slave := range slaves {
-			if isSpareArrayMember(devicePath, slave) {
+			if isUnattributedArrayMember(devicePath, slave) {
 				continue
 			}
 			walk(slave, sysBlock, disks, visited, depth+1)
@@ -174,27 +174,62 @@ func isSyntheticDisk(name string) bool {
 	return false
 }
 
-// isSpareArrayMember reports whether a slave is an md array member holding none
-// of the array's data.
+// isUnattributedArrayMember reports whether a slave is an md array member
+// holding none of the array's data.
 //
-// "slaves" lists every member of an array, and a hot spare is a member: it is
-// attached and idle until a disk fails. Attributing the array's filesystem to a
-// spare would tell a user that a disk holding nothing has the array's used and
-// free space on it. md records each member's role in
-// md/dev-<name>/state, so the spare is skipped and the data-carrying
-// members are not.
+// "slaves" lists every member of an array, and an idle hot spare is a member:
+// it is attached and doing nothing until a disk fails. So is a write-journal
+// member, which holds the array's journal and none of its data. Attributing
+// the array's filesystem to either would tell a user that a disk holding
+// nothing has the array's used and free space on it.
 //
-// A device with no md directory, and a member whose state cannot be read, are
-// both kept. The cost of wrongly keeping a member is one over-attributed drive;
-// the cost of wrongly dropping one is a drive whose filesystems vanish from the
-// UI, so the unreadable case resolves toward keeping.
-func isSpareArrayMember(devicePath string, slave string) bool {
-	state, err := os.ReadFile(filepath.Join(devicePath, "md", "dev-"+slave, "state"))
+// The role comes from md/dev-<name>/slot, which the kernel answers with
+// "journal" for a journal member, "none" for a member holding no slot in the
+// array, and the slot number otherwise (drivers/md/md.c, slot_show). A member
+// being rebuilt already holds its slot, so it keeps its filesystems through
+// the resync, which is when a user is most likely to be looking at that drive.
+//
+// md/dev-<name>/state cannot answer this. The kernel prints "spare" whenever
+// In_sync, Faulty and Journal are all clear, so a member mid-recovery reads
+// exactly like an idle spare, and a journal member never reads "spare" at all.
+// recovery_start cannot either: it prints "none" both for an idle spare and
+// for a healthy in-sync member.
+//
+// A failed member is the exception to reading the slot alone. The kernel
+// releases its slot as soon as the array drops it, so it reads "none" like an
+// idle spare, and it stays attached until mdadm removes it: the only call that
+// unbinds a member, md_kick_rdev_from_array, runs from the "remove" state_store
+// command and from stopping the array. A failed disk still holds the array's
+// data and is still in the chassis, so it keeps its filesystems.
+//
+// A device with no md directory, and a member whose files cannot be read, are
+// all kept. The cost of wrongly keeping a member is one over-attributed
+// drive; the cost of wrongly dropping one is a drive whose filesystems vanish
+// from the UI, so every unreadable case resolves toward keeping.
+func isUnattributedArrayMember(devicePath string, slave string) bool {
+	slot, err := os.ReadFile(filepath.Join(devicePath, "md", "dev-"+slave, "slot"))
 	if err != nil {
 		return false
 	}
+	switch strings.TrimSpace(string(slot)) {
+	case "journal":
+		return true
+	case "none":
+		return !isFailedArrayMember(devicePath, slave)
+	default:
+		return false
+	}
+}
+
+// isFailedArrayMember reports whether a member that holds no slot holds it
+// because the array failed it, rather than because it is an idle hot spare.
+func isFailedArrayMember(devicePath string, slave string) bool {
+	state, err := os.ReadFile(filepath.Join(devicePath, "md", "dev-"+slave, "state"))
+	if err != nil {
+		return true
+	}
 	for _, flag := range strings.Split(strings.TrimSpace(string(state)), ",") {
-		if flag == "spare" {
+		if flag == "faulty" {
 			return true
 		}
 	}
