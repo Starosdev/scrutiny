@@ -174,8 +174,9 @@ func TestIsUnattributedArrayMember(t *testing.T) {
 	// attached until mdadm removes it. It still holds the array's data.
 	write("sdf1", "none\n")
 	writeState("sdf1", "faulty\n")
-	// A member whose slot says "none" and whose state cannot be read is kept,
-	// because hiding a data-carrying drive costs more than over-attributing.
+	// A member whose slot says "none" with no state beside it is not one md
+	// is tracking: the kernel publishes both for every member. The slot is
+	// believed, so it is skipped like the idle spare it describes.
 	write("sdg1", "none\n")
 
 	require.False(t, isUnattributedArrayMember(root, "sda1"))
@@ -184,7 +185,7 @@ func TestIsUnattributedArrayMember(t *testing.T) {
 	require.True(t, isUnattributedArrayMember(root, "sdc1"))
 	require.True(t, isUnattributedArrayMember(root, "sde1"))
 	require.False(t, isUnattributedArrayMember(root, "sdf1"))
-	require.False(t, isUnattributedArrayMember(root, "sdg1"))
+	require.True(t, isUnattributedArrayMember(root, "sdg1"))
 	// A device that is not an array, and a member with no readable slot, are
 	// both kept: dropping a data-carrying disk hides its filesystems entirely.
 	require.False(t, isUnattributedArrayMember(root, "absent"))

@@ -202,10 +202,12 @@ func isSyntheticDisk(name string) bool {
 // command and from stopping the array. A failed disk still holds the array's
 // data and is still in the chassis, so it keeps its filesystems.
 //
-// A device with no md directory, and a member whose files cannot be read, are
-// all kept. The cost of wrongly keeping a member is one over-attributed
+// A device with no md directory, and a member whose slot cannot be read, are
+// both kept. The cost of wrongly keeping a member is one over-attributed
 // drive; the cost of wrongly dropping one is a drive whose filesystems vanish
-// from the UI, so every unreadable case resolves toward keeping.
+// from the UI, so an unreadable slot resolves toward keeping. A readable slot
+// is positive information and is believed: "none" with no state file beside
+// it is a member holding no part of the array.
 func isUnattributedArrayMember(devicePath string, slave string) bool {
 	slot, err := os.ReadFile(filepath.Join(devicePath, "md", "dev-"+slave, "slot"))
 	if err != nil {
@@ -226,7 +228,11 @@ func isUnattributedArrayMember(devicePath string, slave string) bool {
 func isFailedArrayMember(devicePath string, slave string) bool {
 	state, err := os.ReadFile(filepath.Join(devicePath, "md", "dev-"+slave, "state"))
 	if err != nil {
-		return true
+		// The kernel registers state alongside slot for every member, so a
+		// readable slot with no state beside it is not a member md is
+		// tracking. The slot has already said this one holds no part of the
+		// array, which is what an idle hot spare is.
+		return false
 	}
 	for _, flag := range strings.Split(strings.TrimSpace(string(state)), ",") {
 		if flag == "faulty" {
