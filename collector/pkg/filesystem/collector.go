@@ -53,10 +53,7 @@ func CreateCollector(appConfig config.Interface, logger *logrus.Entry, apiEndpoi
 func (c *Collector) Run() error {
 	c.logger.Infoln("Starting filesystem capacity collection")
 
-	hostID := c.config.GetString("host.id")
-	if hostID == "" {
-		hostID = "default"
-	}
+	hostID := c.config.GetHostID()
 
 	snapshots, hostStatus, err := CollectLinuxSnapshots(hostID, c.now())
 	if err != nil {

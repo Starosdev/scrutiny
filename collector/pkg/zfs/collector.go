@@ -144,7 +144,7 @@ func (c *Collector) hostID() string {
 	if c.config == nil {
 		return ""
 	}
-	return strings.TrimSpace(c.config.GetString("host.id"))
+	return c.config.GetHostID()
 }
 
 // UploadMetrics uploads metrics for a specific pool

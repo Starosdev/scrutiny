@@ -192,7 +192,7 @@ func applyCollectorOverrides(c *cli.Context, cfg config.Interface) {
 		cfg.Set("api.token", c.String(flagApiToken))
 	}
 	if c.IsSet(flagHostId) {
-		cfg.Set("host.id", c.String(flagHostId))
+		cfg.Set(config.KeyHostID, c.String(flagHostId))
 	}
 }
 
