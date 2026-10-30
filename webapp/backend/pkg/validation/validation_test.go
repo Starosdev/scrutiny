@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -369,5 +370,32 @@ func TestValidateUUID(t *testing.T) {
 				assert.NoError(t, err)
 			}
 		})
+	}
+}
+
+func TestValidateMdadmArrayID(t *testing.T) {
+	valid := []string{
+		"ad005595:61305895:4de01d37:669bf162",                // mdadm's own UUID
+		"synthetic:4b825dc642cb6eb9a060e54bf8d69288fbee4904", // an array with no UUID
+		"unraid:4b825dc642cb6eb9a060e54bf8d69288fbee4904",    // an Unraid array
+		"codex-issue-640-1783489348",                         // a free-form identifier an older row carries
+		"md0.backup_1",
+	}
+	for _, id := range valid {
+		assert.NoError(t, ValidateMdadmArrayID(id), id)
+	}
+
+	invalid := []string{
+		"",
+		" ",
+		`a"`, // would end the InfluxDB delete predicate
+		`a\\`,
+		"a b",
+		"a\nb",
+		"md#0",
+		strings.Repeat("a", 257),
+	}
+	for _, id := range invalid {
+		assert.ErrorIs(t, ValidateMdadmArrayID(id), ErrInvalidMdadmArrayID, id)
 	}
 }

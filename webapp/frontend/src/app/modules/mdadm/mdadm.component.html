@@ -43,6 +43,9 @@
                                 <!-- Archive is not a toggle here: the summary returns only
                                      unarchived arrays, so an archived one leaves this page. -->
                                 <mat-menu #arrayActions="matMenu">
+                                    <a mat-menu-item [routerLink]="['./', array.uuid]">
+                                        <span>View Details</span>
+                                    </a>
                                     <button mat-menu-item (click)="archiveArray(array)">
                                         <span>Archive</span>
                                     </button>

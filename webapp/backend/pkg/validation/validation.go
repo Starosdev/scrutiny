@@ -16,6 +16,14 @@ var (
 	// uuidRegex matches standard UUID format: 8-4-4-4-12 lowercase hex with dashes
 	uuidRegex = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
+	// mdadmArrayIDRegex validates an MDADM array identifier, which is not an
+	// RFC 4122 UUID: mdadm reports four colon-separated hex words, an array
+	// with no UUID of its own is keyed by "synthetic:<sha1>", an Unraid array
+	// by "unraid:<sha1>", and older rows carry free-form identifiers. The set
+	// excludes the quote and backslash that would otherwise reach the InfluxDB
+	// delete predicate, and the whitespace no identifier holds.
+	mdadmArrayIDRegex = regexp.MustCompile(`^[A-Za-z0-9:._-]{1,256}$`)
+
 	// guidRegex validates ZFS pool GUID format: either decimal (up to 20 digits) or hex (0x prefix)
 	// Examples: 12345678901234567890, 0xABCD1234
 	guidRegex = regexp.MustCompile(`^(0x[0-9a-fA-F]{1,16}|[0-9]{1,20})$`)
@@ -26,6 +34,10 @@ var (
 	// ErrInvalidGUID is returned when GUID format validation fails
 	ErrInvalidGUID = errors.New("invalid GUID format: must be a decimal number or hexadecimal with 0x prefix")
 	ErrInvalidUUID = errors.New("invalid UUID format: must be lowercase UUID 8-4-4-4-12")
+
+	// ErrInvalidMdadmArrayID is returned when an MDADM array identifier holds
+	// a character no identifier uses, or is longer than any of them
+	ErrInvalidMdadmArrayID = errors.New("invalid MDADM array identifier: must be 1-256 characters of letters, digits, ':', '.', '_' or '-'")
 )
 
 // ValidateWWN validates that a WWN (World Wide Name) follows the expected format.
@@ -75,6 +87,19 @@ func ValidateUUID(id string) error {
 func ValidateGUID(guid string) error {
 	if !guidRegex.MatchString(guid) {
 		return ErrInvalidGUID
+	}
+	return nil
+}
+
+// ValidateMdadmArrayID validates an MDADM array identifier. Registration and
+// every route that addresses an array share it, so an array cannot be stored
+// under an identifier the other routes refuse to accept.
+//
+// This validation prevents Flux and InfluxDB predicate injection by ensuring
+// only safe characters.
+func ValidateMdadmArrayID(id string) error {
+	if !mdadmArrayIDRegex.MatchString(id) {
+		return ErrInvalidMdadmArrayID
 	}
 	return nil
 }

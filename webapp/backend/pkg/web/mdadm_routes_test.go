@@ -53,6 +53,29 @@ func TestRegisterMdadmRoutesBindsEveryMutation(t *testing.T) {
 		{name: "delete", method: http.MethodDelete, path: "/api/mdadm/array/md-1"},
 	}
 
+	// The whole table, so a route deleted from registerMdadmRoutes fails here
+	// whether or not this test exercises it. The group prefix is part of what
+	// is asserted: a renamed group breaks every client path.
+	bound := map[string]struct{}{}
+	for _, route := range router.Routes() {
+		bound[route.Method+" "+route.Path] = struct{}{}
+	}
+	for _, expected := range []string{
+		"POST /api/mdadm/arrays/register",
+		"GET /api/mdadm/summary",
+		"POST /api/mdadm/array/:uuid/metrics",
+		"GET /api/mdadm/array/:uuid/details",
+		"POST /api/mdadm/array/:uuid/archive",
+		"POST /api/mdadm/array/:uuid/unarchive",
+		"POST /api/mdadm/array/:uuid/mute",
+		"POST /api/mdadm/array/:uuid/unmute",
+		"POST /api/mdadm/array/:uuid/label",
+		"DELETE /api/mdadm/array/:uuid",
+	} {
+		require.Contains(t, bound, expected)
+	}
+	require.Len(t, bound, 10)
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var request *http.Request

@@ -184,13 +184,15 @@ func TestMdadmRoutesRejectAnOversizedIdentifier(t *testing.T) {
 // An identifier carrying a quote would end the InfluxDB delete predicate the
 // repository builds, so it never reaches it.
 func TestMdadmRoutesRejectAnIdentifierOutsideTheAllowedCharacters(t *testing.T) {
-	for _, identifier := range []string{`a%22`, `a%5C`, `a%2Fb`, `a%0Ab`} {
+	// Not a%2Fb: the decoded slash splits the path, so the router answers 404
+	// and the identifier check is never reached.
+	for _, identifier := range []string{`a%22`, `a%5C`, `a%0Ab`, `a+b`} {
 		t.Run(identifier, func(t *testing.T) {
 			router := mdadmActionRouter(t, nil)
 
 			response := mdadmRequest(t, router, http.MethodDelete, "/api/mdadm/array/"+identifier, "")
 
-			require.NotEqual(t, http.StatusOK, response.Code)
+			require.Equal(t, http.StatusBadRequest, response.Code)
 		})
 	}
 }

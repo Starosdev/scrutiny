@@ -59,6 +59,13 @@ func handleMDADMNotification(c *gin.Context, dbRepo database.DeviceRepo, logger 
 		logger.Errorf("Failed to retrieve details for MDADM array %s during notification process: %v", uuid, err)
 		return
 	}
+	// Muting an array is what the mute route writes, and this is the only
+	// place that can honor it: the notification path is otherwise driven by
+	// metrics history alone.
+	if array.Muted {
+		logger.Debugf("Skipping notification for MDADM array %s: array is muted", uuid)
+		return
+	}
 	if !shouldSendMDADMNotification(c, dbRepo, uuid, metrics) {
 		return
 	}

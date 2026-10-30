@@ -9,6 +9,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"gorm.io/gorm"
 )
 
@@ -89,12 +90,16 @@ func (sr *scrutinyRepository) UpdateMdadmArrayLabel(ctx context.Context, uuid st
 
 // DeleteMdadmArray deletes an MDADM array and its associated data
 func (sr *scrutinyRepository) DeleteMdadmArray(ctx context.Context, uuid string) error {
-	// Delete relational metadata
-	if err := sr.gormClient.WithContext(ctx).Where(mdadmUUIDFilter, uuid).Delete(&models.MDADMArray{}).Error; err != nil {
-		return err
+	if err := validation.ValidateMdadmArrayID(uuid); err != nil {
+		return fmt.Errorf("invalid MDADM array identifier: %w", err)
 	}
 
-	// Delete data from InfluxDB
+	// The metrics series go first. The caller's context is cancelled when its
+	// client disconnects, and an InfluxDB delete across four buckets is the
+	// slow half of this, so deleting the row first would leave an array with
+	// no metadata and ten years of orphaned series, which no API call could
+	// then reach. Failing here instead leaves the array whole and the delete
+	// worth retrying.
 	buckets := []string{
 		sr.appConfig.GetString(cfgInfluxDBBucket),
 		sr.appConfig.GetString(cfgInfluxDBBucket) + "_weekly",
@@ -115,6 +120,11 @@ func (sr *scrutinyRepository) DeleteMdadmArray(ctx context.Context, uuid string)
 		); err != nil {
 			return err
 		}
+	}
+
+	// Delete relational metadata
+	if err := sr.gormClient.WithContext(ctx).Where(mdadmUUIDFilter, uuid).Delete(&models.MDADMArray{}).Error; err != nil {
+		return err
 	}
 
 	return nil
