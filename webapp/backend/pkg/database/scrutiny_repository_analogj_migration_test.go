@@ -435,11 +435,17 @@ func TestMergeAnalogJWWNDuplicatesKeepsDistinctSerials(t *testing.T) {
 
 	wwn := "0x600508b1001039343720202020200016"
 	model := "HITACHI HUC106060CSS600"
-	for _, serial := range []string{"PPKJA1ZB", "PPK4ZTUB"} {
+	// one row carries the 0.9.x blank model name, so the differing serials are the only
+	// thing keeping these two drives apart
+	for i, serial := range []string{"PPKJA1ZB", "PPK4ZTUB"} {
+		rowModel := model
+		if i == 0 {
+			rowModel = ""
+		}
 		require.NoError(t, db.Create(&models.Device{
-			DeviceID:     deviceid.Generate(model, serial, wwn),
+			DeviceID:     deviceid.Generate(rowModel, serial, wwn),
 			WWN:          wwn,
-			ModelName:    model,
+			ModelName:    rowModel,
 			SerialNumber: serial,
 			HostId:       "nas-1",
 		}).Error)
@@ -450,6 +456,30 @@ func TestMergeAnalogJWWNDuplicatesKeepsDistinctSerials(t *testing.T) {
 	var devices []models.Device
 	require.NoError(t, db.Unscoped().Find(&devices).Error)
 	require.Len(t, devices, 2)
+}
+
+// A drive whose reported model string changed twice leaves three rows in one group.
+// Nothing says which model-bearing row the blank one belongs to, so refuse the group
+// rather than merging an arbitrary pair of it.
+func TestMergeAnalogJWWNDuplicatesKeepsGroupsLargerThanAPair(t *testing.T) {
+	repo, db := newWWNDuplicateTestRepository(t)
+
+	serial := "48L0A0ZXFVNE"
+	wwn := "0x5000039xxxxxxxx1"
+	for _, model := range []string{"", "TOSHIBA AL13SEB300", "TOSHIBA AL13SEB300A"} {
+		require.NoError(t, db.Create(&models.Device{
+			DeviceID:     deviceid.Generate(model, serial, wwn),
+			WWN:          wwn,
+			ModelName:    model,
+			SerialNumber: serial,
+		}).Error)
+	}
+
+	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db, map[string]analogJHistoryTarget{}))
+
+	var devices []models.Device
+	require.NoError(t, db.Unscoped().Find(&devices).Error)
+	require.Len(t, devices, 3)
 }
 
 // Two collectors reporting one drive is not a duplicated row, so the migration leaves

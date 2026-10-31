@@ -163,9 +163,12 @@ func prepareAnalogJDeviceRepair(ctx context.Context, tx *gorm.DB) (map[string]an
 //   - Rows disagreeing on a non-empty host_id are two collectors reporting one drive, and
 //     rows disagreeing on a non-zero capacity are two drives.
 //
-// device_id is derived from the lowercased, trimmed triple, so two rows in one group
-// always differ in model name and at most one can have it blank, which bounds a group to
-// one pair. Anything declined here is left to the /api/device/{id}/merge_into endpoint.
+// device_id is derived from the lowercased, trimmed triple, so rows in one group always
+// differ in model name and, when their device_id came from that triple, at most one can
+// have it blank. That does not bound the group: a drive whose model string changed twice
+// leaves three rows. Those are refused rather than merged, because nothing here says which
+// of two model-bearing rows the blank one belongs to. Anything declined is left to the
+// /api/device/{id}/merge_into endpoint.
 func (sr *scrutinyRepository) mergeAnalogJWWNDuplicates(ctx context.Context, tx *gorm.DB, mapping map[string]analogJHistoryTarget) error {
 	var devices []models.Device
 	if err := tx.WithContext(ctx).Unscoped().Order("device_id ASC").Find(&devices).Error; err != nil {
@@ -238,9 +241,16 @@ func analogJDuplicatePair(devices []models.Device, indexes []int) (legacyIndex, 
 	}
 	blank := -1
 	for _, i := range indexes {
-		if strings.TrimSpace(devices[i].ModelName) == "" {
-			blank = i
+		if strings.TrimSpace(devices[i].ModelName) != "" {
+			continue
 		}
+		if blank >= 0 {
+			// Unreachable while every device_id comes from the lowercased, trimmed triple,
+			// because two blank-model rows would collide on the primary key. RegisterDevice
+			// honours a caller-supplied device_id, so do not rely on that.
+			return 0, 0, "neither row reports a model name"
+		}
+		blank = i
 	}
 	if blank < 0 {
 		return 0, 0, "both rows report a model name"

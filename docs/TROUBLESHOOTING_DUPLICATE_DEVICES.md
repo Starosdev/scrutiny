@@ -41,8 +41,12 @@ and nothing restores it. These are left alone:
 - rows that agree on WWN and serial but name different non-empty `host_id`
   values. That is two collectors reporting one drive.
 - rows that agree on WWN and serial but report different non-zero capacities.
+- a group of three or more rows, which a drive whose reported model string
+  changed twice produces. Nothing says which model-bearing row the blank one
+  belongs to.
 
-Merge any of these on request with the endpoint below.
+Each refusal is logged with the serial and the reason. Merge any of these on
+request with the endpoint below.
 
 History rewritten out of 0.9.x is tagged with both `device_id` and `device_wwn`.
 A WWN alone does not identify a device, and history queries fall back to the
