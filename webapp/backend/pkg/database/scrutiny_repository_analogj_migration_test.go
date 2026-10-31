@@ -348,9 +348,11 @@ func TestMergeAnalogJWWNDuplicatesKeepsConflictingHosts(t *testing.T) {
 	serial := "WD-CA2XZ08L"
 	wwn := "0x50014ee2c06ce3c3"
 	model := "WDC WD80EFZZ-68BTXN0"
+	// Two collectors register one drive under distinct device ids because each adds its
+	// own host to the identity; deviceid.Generate ignores the host when a WWN exists.
 	for _, host := range []string{"nas-1", "nas-2"} {
 		require.NoError(t, db.Create(&models.Device{
-			DeviceID:     deviceid.GenerateWithFallback(model, serial, wwn, "sda", host),
+			DeviceID:     deviceid.Generate(model, serial, wwn+"-"+host),
 			WWN:          wwn,
 			ModelName:    model,
 			SerialNumber: serial,

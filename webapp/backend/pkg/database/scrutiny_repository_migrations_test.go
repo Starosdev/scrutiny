@@ -110,6 +110,14 @@ func TestMigrateBackfillsDistinctDeviceIDsForLegacyDevicesWithMissingWWN(t *test
 func TestMigrateKeepsDevicesSharingAWWNAndSerial(t *testing.T) {
 	repo := createMigrationTestRepository(t)
 
+	// The Staros schema before m20260401000000 keys devices by wwn, so the duplicate
+	// can only arrive from AnalogJ 0.9.x, which keyed them by its own UUID instead.
+	// CREATE TABLE AS SELECT copies the columns and drops the primary key, which is
+	// the shape the import actually presents.
+	require.NoError(t, repo.gormClient.Exec(`CREATE TABLE devices_analogj AS SELECT * FROM devices`).Error)
+	require.NoError(t, repo.gormClient.Exec(`DROP TABLE devices`).Error)
+	require.NoError(t, repo.gormClient.Exec(`ALTER TABLE devices_analogj RENAME TO devices`).Error)
+
 	require.NoError(t, repo.gormClient.Exec(`
 		INSERT INTO devices (wwn, model_name, serial_number, smart_display_mode)
 		VALUES
