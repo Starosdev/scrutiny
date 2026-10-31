@@ -164,11 +164,14 @@ ranges.
 `node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch`
 (10.2.6), and 15 further packages flagged only through it: eslint,
 typescript-eslint, angular-eslint, karma, karma-coverage, glob, rimraf and their
-dependencies. No consumer supports minimatch 11. eslint 10.14.0 declares
-`^10.2.6`, `@typescript-eslint/typescript-estree` 8.72.1 declares `^10.2.2`, and
-karma 6.4.4, karma-coverage 2.2.1 and `@eslint/eslintrc` 3.3.7 declare `^3.0.4`,
-whose v3 call style minimatch 11 no longer exports. Forcing the major through an
-override would break the test runner without fixing the finding.
+dependencies. No consumer in the committed lockfile supports minimatch 11:
+eslint 9.39.5, `@eslint/eslintrc` 3.3.6 and `@eslint/config-array` 0.21.2 declare
+`minimatch ^3.1.5`, karma 6.4.4 and karma-coverage 2.2.1 declare `^3.0.4`, and
+`@typescript-eslint/typescript-estree` 8.72.0 declares `^10.2.2`. Registry-latest
+is no better: eslint 10.14.0 declares `^10.2.6` and typescript-estree 8.72.1
+declares `^10.2.2`, so upgrading the tooling would not help either. minimatch 11
+no longer exports the v3 call style the karma chain uses, so forcing the major
+through an override would break the test runner without fixing the finding.
 
 Every flagged path is build and test tooling, and `npm audit --omit=dev` on the
 frontend reports no findings. That is the condition the new exception enforces:
@@ -179,16 +182,30 @@ decide dev-only status rather than taking it on trust. A package that becomes a
 production dependency loses the exception without anyone editing the allowlist.
 The residual exposure is a CI job processing its own repository's glob patterns.
 
+The exception is capped at moderate severity. Unlike the bundled npm, build and
+test tooling does execute, in CI, with repository credentials, which is why this
+gate audits devDependencies at all instead of running `npm audit --omit=dev`. A
+high or critical advisory in dev tooling therefore still fails the gate and gets
+an explicit decision rather than an allowlist line. The exception also fails
+closed if the production audit returns no vulnerabilities object, so a malformed
+second audit cannot mark the whole tree dev-only.
+
 The exception shares the existing `2026-12-15` expiry, which is when the
 ecosystem gets re-checked for a non-breaking upgrade path. Policy tests cover the
-production-tree boundary, the package boundary, and the expiry.
+production-tree boundary, the package boundary, the severity cap, the expiry, the
+fail-closed path, and that a bundled-only advisory cannot reach the dev-only
+branch.
 
-Two unrelated frontend findings published in the same window are fixed by raising
-override floors, with no exception: follow-redirects to 1.16.2
-([GHSA-mrwp-f3q8-3g9p](https://github.com/advisories/GHSA-mrwp-f3q8-3g9p), high)
-and qs to 6.16.1
-([GHSA-6pq8-jhm2-2vcw](https://github.com/advisories/GHSA-6pq8-jhm2-2vcw),
-moderate). The regenerated lockfile resolves them to 1.16.2 and 6.17.1.
+One unrelated frontend finding published in the same window is fixed by raising
+an override floor, with no exception: follow-redirects to 1.16.2 for
+[GHSA-mrwp-f3q8-3g9p](https://github.com/advisories/GHSA-mrwp-f3q8-3g9p) (high),
+which the regenerated lockfile resolves from 1.16.1 to 1.16.2.
+
+The qs floor is raised from `^6.15.4` to `^6.16.1` in the same commit for
+[GHSA-6pq8-jhm2-2vcw](https://github.com/advisories/GHSA-6pq8-jhm2-2vcw)
+(moderate, affects `>= 6.7.0, <= 6.16.0`). That one cleared no finding: the
+lockfile already resolved qs to 6.17.1 and the installed version does not change.
+The raise only stops a future resolution from falling back below the patch.
 
 ### Known Reachable Vulnerabilities
 

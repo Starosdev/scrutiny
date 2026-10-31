@@ -15,7 +15,8 @@
 //
 // UNPATCHED_ADVISORIES is the second, narrower exception: an advisory with no
 // patched release at all, so neither a lockfile update nor an override can fix it.
-// Each entry names the one package it applies to, shares the same expiry, and
+// Its values are objects read as `.pkg`, not bare strings like the two maps
+// around it. Each entry names the one package it applies to, shares the same expiry, and
 // records why the release tooling's use of that package is not exposed. A package that npm audit
 // flags only because a dependency is vulnerable (via names, no advisory of its
 // own) is allowed when every dependency it is flagged through is allowed.
@@ -28,14 +29,23 @@
 // becomes a production dependency loses the exception automatically. These
 // entries share ALLOWLIST_EXPIRES, which is the point at which the ecosystem is
 // re-checked for a non-breaking upgrade path.
+//
+// Unlike the bundled npm, build and test tooling does execute, in CI, with
+// repository credentials. That is the whole reason this gate audits
+// devDependencies at all instead of running `npm audit --omit=dev`. So the
+// exception is capped at DEV_ONLY_MAX_SEVERITY: a high or critical advisory in
+// dev tooling fails the gate however awkward the upgrade, and gets an explicit
+// decision rather than a one-line allowlist entry.
 import { execFileSync } from 'node:child_process';
 
 const ALLOWLIST_EXPIRES = '2026-12-15';
 const BUNDLED_NPM_PREFIX = 'node_modules/npm/node_modules/';
-// Keyed by advisory to the package it is allowed for, the same shape as
-// UNPATCHED_ADVISORIES below. A bare set of IDs would allow an advisory for any
-// package it is ever amended to list, provided that package's paths were all
-// bundled, which is wider than any evidence here supports.
+// Keyed by advisory to the bare package name it is allowed for, as
+// DEV_ONLY_ADVISORIES is. UNPATCHED_ADVISORIES below keys to an object read as
+// `.pkg`, so do not copy an entry between them unchanged. A bare set of IDs
+// would allow an advisory for any package it is ever amended to list, provided
+// that package's paths were all bundled, which is wider than any evidence here
+// supports.
 const ALLOWED_ADVISORIES = new Map([
   // npm bundles ip-address 10.7.2 and undici 6.29.0, unchanged from 11.21.1
   // through 12.2.1, the latest release as of 2026-10-30. No released npm fixes
@@ -69,6 +79,7 @@ const ALLOWED_ADVISORIES = new Map([
   ['GHSA-3g3m-2fjr-6pw4', 'glob'], // AbortSignal cancellation bypass
   ['GHSA-g3hv-75wg-m249', 'minimatch'], // globparts amplification
 ]);
+const DEV_ONLY_SEVERITIES = new Set(['info', 'low', 'moderate']);
 const DEV_ONLY_ADVISORIES = new Map([
   // minimatch is patched only in 11.0.1 (published 2026-10-27), a major release.
   // No consumer has moved: eslint 10.14.0 declares ^10.2.6, @typescript-eslint
@@ -117,8 +128,16 @@ const report = runAudit([]);
 // A package the production-only audit does not report reaches the tree through
 // devDependencies alone. npm resolves that, so DEV_ONLY_ADVISORIES does not have
 // to be told which packages are build-time.
-const productionVulnerabilities = runAudit(['--omit=dev']).vulnerabilities ?? {};
-const isDevOnly = (name) => !(name in productionVulnerabilities);
+//
+// This one must not default to an empty object the way the full report may: a
+// missing key here would mark every package dev-only and wave the whole dev tree
+// through. An unrecognized shape is a failure, not an empty result.
+const productionReport = runAudit(['--omit=dev']);
+if (typeof productionReport.vulnerabilities !== 'object' || productionReport.vulnerabilities === null) {
+  console.error('npm audit --omit=dev returned no vulnerabilities object; cannot establish which packages are dev-only.');
+  process.exit(1);
+}
+const isDevOnly = (name) => !(name in productionReport.vulnerabilities);
 
 const vulnerabilities = report.vulnerabilities ?? {};
 const advisoriesOf = (vuln) => vuln.via.filter((via) => typeof via === 'object').map((via) => via.url.split('/').pop());
@@ -132,7 +151,7 @@ const ownAllowed = (name, vuln) => {
   // An entry that names neither an advisory nor a dependency carries no evidence either way; fail closed.
   if (vuln.via.length === 0) return false;
   const bundled = vuln.nodes.length > 0 && vuln.nodes.every((node) => node.startsWith(BUNDLED_NPM_PREFIX));
-  const devOnly = vuln.nodes.length > 0 && isDevOnly(name);
+  const devOnly = vuln.nodes.length > 0 && DEV_ONLY_SEVERITIES.has(vuln.severity) && isDevOnly(name);
   return advisoriesOf(vuln).every((id) => UNPATCHED_ADVISORIES.get(id)?.pkg === name
     || (bundled && ALLOWED_ADVISORIES.get(id) === name)
     || (devOnly && DEV_ONLY_ADVISORIES.get(id) === name));
