@@ -17,6 +17,8 @@ func TestMatchConsumerDriveProfileMethods(t *testing.T) {
 		{"exact family", "Samsung based SSDs", "", "Samsung based SSDs", ProfileMatchMethodModelFamily},
 		{"exact model alias", "", "Hitachi HDS721050DLE630", "Hitachi Deskstar 7K1000.D", ProfileMatchMethodModelName},
 		{"capacity variant via vendor normalization", "", "Samsung SSD 870 EVO 2TB", "Samsung SSD 870 EVO", ProfileMatchMethodModelNameNormalized},
+		{"family alias bridges smartctl naming generations", "Toshiba N300/MN NAS HDD", "", "Toshiba N300", ProfileMatchMethodModelFamilyAlias},
+		{"model identity outranks a vendor-wide catch-all family", "Samsung based SSDs", "Samsung SSD 870 EVO 4TB", "Samsung SSD 870 EVO", ProfileMatchMethodModelNameNormalized},
 		{"regex pattern fallback", "", "ST2000DM001-9YN164", "Seagate Barracuda 7200.12", ProfileMatchMethodModelPattern},
 	}
 
@@ -232,6 +234,20 @@ func TestParseConsumerDriveProfilesValidationRules(t *testing.T) {
 				{"protocol":"ATA","source":"t","model_family":"family a","sample_count":25}],"aliases":{}}`,
 			"duplicate profile family",
 		},
+		{
+			"family alias to unknown family",
+			`{"profiles":[{"protocol":"ATA","source":"t","model_family":"Family A","sample_count":25}],
+				"aliases":{},"family_aliases":{"Legacy Name":"Family Z"}}`,
+			"points to unknown family",
+		},
+		{
+			"family alias collides with a real family",
+			`{"profiles":[
+				{"protocol":"ATA","source":"t","model_family":"Family A","sample_count":25},
+				{"protocol":"ATA","source":"t","model_family":"Family B","sample_count":25}],
+				"aliases":{},"family_aliases":{"family a":"Family B"}}`,
+			"collides with the catalog family",
+		},
 	}
 
 	for _, tt := range tests {
@@ -254,6 +270,9 @@ func TestLintConsumerDriveProfileCatalogWarnings(t *testing.T) {
 		"aliases": {
 			"Family A": "Family A",
 			"MODEL-9": "Family A"
+		},
+		"family_aliases": {
+			"MODEL-9": "Family B"
 		}
 	}`
 
@@ -268,6 +287,7 @@ func TestLintConsumerDriveProfileCatalogWarnings(t *testing.T) {
 		"redundant alias",
 		"duplicate pattern",
 		"pattern shadowing",
+		"is also a model alias",
 	}
 	joined := strings.Join(result.Warnings, "\n")
 	for _, expected := range expectWarnings {

@@ -3933,7 +3933,7 @@ components:
               description: Sample size behind the applied profile. Omitted when generic ATA logic is used.
             consumer_drive_profile_match_method:
               type: string
-              enum: [model_family, model_name, model_name_normalized, model_pattern]
+              enum: [model_name, model_name_normalized, model_family, model_family_alias, model_pattern]
               description: Lookup stage that matched the drive, strongest-first. Omitted when generic ATA logic is used.
             consumer_drive_profile_catalog_version:
               type: string
@@ -3991,7 +3991,7 @@ components:
               description: True when the matched profile is actually used for SMART status evaluation and replacement-risk scoring.
             match_method:
               type: string
-              enum: [model_family, model_name, model_name_normalized, model_pattern]
+              enum: [model_name, model_name_normalized, model_family, model_family_alias, model_pattern]
               description: Lookup stage that matched the drive.
             matched_value:
               type: string

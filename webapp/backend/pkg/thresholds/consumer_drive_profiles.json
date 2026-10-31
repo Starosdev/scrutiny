@@ -1,5 +1,5 @@
 {
-  "version": "2026.08.0",
+  "version": "2026.10.0",
   "profiles": [
     {
       "protocol": "ATA",
@@ -190,7 +190,7 @@
           "critical": 24
         }
       },
-      "model_pattern": "^(WDC[_ ]WD(80EFAX|60EFRX|30EFRX).*)$",
+      "model_pattern": "^(WDC[_ ]WD(80EFAX|60EFRX|40EFRX|30EFRX).*)$",
       "sample_count": 44
     },
     {
@@ -270,7 +270,7 @@
           "critical": 28
         }
       },
-      "model_pattern": "^(WDC[_ ]WD140EDFZ.*)$",
+      "model_pattern": "^(WDC[_ ]WD(140EDFZ|80EFZZ).*)$",
       "sample_count": 147
     },
     {
@@ -1600,7 +1600,7 @@
           "critical": 10
         }
       },
-      "model_pattern": "^TOSHIBA[_ ]HDWG(11A|160|180|21C|21E|440|460|480).*$",
+      "model_pattern": "^TOSHIBA[_ ]HDWG(11A|160|180|21C|21E|31G|440|460|480).*$",
       "sample_count": 73
     },
     {
@@ -1693,9 +1693,14 @@
     "WDC WD30EFRX-68AX9N0": "WDC Red",
     "WDC WD60EFRX-68MYMN1": "WDC Red",
     "WDC WD80EFAX-68LHPN0": "WDC Red",
+    "WDC WD80EFZZ": "WDC Red Plus",
     "WDC_WD140EDFZ-11A0VA0": "WDC Red Plus",
     "WDC_WD60EFRX-68MYMN1": "WDC Red",
     "WDC_WD80EFAX-68LHPN0": "WDC Red",
     "X SSD 850 PRO 128GB": "Samsung SSD 850 PRO"
+  },
+  "family_aliases": {
+    "Toshiba N300/MN NAS HDD": "Toshiba N300",
+    "Western Digital Red (CMR)": "WDC Red"
   }
 }

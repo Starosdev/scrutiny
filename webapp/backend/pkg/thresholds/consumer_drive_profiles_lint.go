@@ -20,8 +20,8 @@ type ConsumerDriveProfileLintResult struct {
 // catalog document. A non-nil error means the catalog is structurally invalid
 // and would fail to load at startup. Warnings flag quality issues: dead entries
 // that can never pass their confidence gate, regex patterns that shadow aliases
-// of other families, duplicate patterns, redundant aliases, and a missing
-// catalog version.
+// of other families, duplicate patterns, redundant aliases, family aliases that
+// duplicate a model alias, and a missing catalog version.
 func LintConsumerDriveProfileCatalog(data []byte) (*ConsumerDriveProfileLintResult, error) {
 	// Hard validation first: same path as startup loading.
 	if _, err := parseConsumerDriveProfiles(data); err != nil {
@@ -40,6 +40,7 @@ func LintConsumerDriveProfileCatalog(data []byte) (*ConsumerDriveProfileLintResu
 
 	lintDeadEntries(&catalog, result)
 	lintRedundantAliases(&catalog, result)
+	lintFamilyAliases(&catalog, result)
 	lintPatterns(&catalog, result)
 
 	sort.Strings(result.Warnings)
@@ -66,6 +67,23 @@ func lintRedundantAliases(catalog *consumerDriveProfileCatalog, result *Consumer
 		if normalizeConsumerDriveKey(alias) == normalizeConsumerDriveKey(family) {
 			result.Warnings = append(result.Warnings, fmt.Sprintf(
 				"redundant alias: %q normalizes to the same key as its family %q", alias, family))
+		}
+	}
+}
+
+// lintFamilyAliases flags family aliases that overlap the model alias table. A
+// family alias is a family-to-family bridge; a key that is also a model alias
+// means one of the two tables has the entry in the wrong place.
+func lintFamilyAliases(catalog *consumerDriveProfileCatalog, result *ConsumerDriveProfileLintResult) {
+	modelAliasKeys := make(map[string]string, len(catalog.Aliases))
+	for alias, family := range catalog.Aliases {
+		modelAliasKeys[normalizeConsumerDriveKey(alias)] = family
+	}
+	for familyAlias, family := range catalog.FamilyAliases {
+		if modelFamily, exists := modelAliasKeys[normalizeConsumerDriveKey(familyAlias)]; exists {
+			result.Warnings = append(result.Warnings, fmt.Sprintf(
+				"family alias %q (-> %q) is also a model alias (-> %q); keep it in one table only",
+				familyAlias, family, modelFamily))
 		}
 	}
 }

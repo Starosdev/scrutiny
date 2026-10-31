@@ -19,12 +19,15 @@ Scrutiny tries to match profiles in this order, strongest first. The stage that 
 
 | Order | Match method | Meaning |
 | ----- | ------------- | ------- |
-| 1 | `model_family` | Exact match on the `model_family` reported by `smartctl` |
-| 2 | `model_name` | Exact match on the normalized `model_name` (alias table) |
-| 3 | `model_name_normalized` | Exact match after vendor-aware normalization (see below) |
-| 4 | `model_pattern` | Regex `model_pattern` fallback |
+| 1 | `model_name` | Exact match on the normalized `model_name` (alias table) |
+| 2 | `model_name_normalized` | Exact match after vendor-aware normalization (see below) |
+| 3 | `model_family` | Exact match on the `model_family` reported by `smartctl` |
+| 4 | `model_family_alias` | Exact match on a family name the catalog maps to one of its own families (see below) |
+| 5 | `model_pattern` | Regex `model_pattern` fallback |
 
-Exact hits (`model_family`, `model_name`) are the strongest signals; `model_name_normalized` is nearly as strong because it still resolves to an exact catalog entry; `model_pattern` is the weakest because a regex can overreach.
+Model identity ranks above family identity. A model number is stable hardware identity and its catalog entry is curated one to one, while `model_family` is `smartctl`'s own classification: it varies with the collector's `drivedb`, and some families (`Samsung based SSDs`, for example) are vendor-wide catch-alls that would otherwise shadow a specific profile for the same drive.
+
+Within each pair, exact beats derived: an alias hit beats a normalized one, and a declared family beats an aliased family. `model_pattern` stays last because a regex can overreach.
 
 If no vetted profile matches, Scrutiny falls back to the existing generic ATA rules.
 
@@ -37,6 +40,23 @@ The `model_name_normalized` stage strips well-known decorations from real-world 
 - Seagate firmware suffixes: `ST4000DM000-1F2168` -> `ST4000DM000`
 
 This catches common variants (new capacity sizes, new firmware revisions) without broad regex rules that could create false positives.
+
+### Family aliases
+
+`smartctl` renames model families between `drivedb` generations. A catalog keyed only to the name current when a profile was derived stops matching the drives it was written for: `smartctl` now reports `Western Digital Red (CMR)` where the catalog carries `WDC Red`, and `Toshiba N300/MN NAS HDD` where it carries `Toshiba N300`.
+
+The `family_aliases` table maps a reported family name onto the catalog family that covers the same drive population:
+
+```json
+"family_aliases": {
+  "Toshiba N300/MN NAS HDD": "Toshiba N300",
+  "Western Digital Red (CMR)": "WDC Red"
+}
+```
+
+It is a different table from `aliases`, which maps model names. A family alias asserts that two names describe one population, so it needs the same justification as any other catalog change: `Seagate BarraCuda 3.5 (SMR)` is not an alias of `Seagate Barracuda 7200.14 (AF)`, because SMR and CMR drives fail differently and the thresholds were derived from the CMR population.
+
+A family alias is a coarse bridge. When one drive inside the aliased family belongs to a different profile, give that drive a model entry: `WDC WD80EFZZ` is an 8TB Red Plus that `smartctl` reports under the Red CMR family, and its model alias to `WDC Red Plus` outranks the family bridge.
 
 ### Catalog source
 
@@ -153,12 +173,14 @@ The pipeline enforces three layers:
 1. **Hard validation** (also runs at startup; a violation prevents the backend from booting):
    - profiles must declare `model_family`, a non-empty `source`, a positive `sample_count`, and protocol `ATA`
    - duplicate families, conflicting aliases, aliases pointing at unknown families, and invalid regex patterns are rejected
+   - family aliases pointing at unknown families are rejected, as is a family alias whose name is already a catalog family (the family stage would always win, so the alias could never be reached)
    - counter severity overrides must satisfy `low <= moderate <= high <= critical`
    - observed-threshold buckets must have `low <= high`, an `annual_failure_rate` in `[0, 1]`, and an ordered two-value `error_interval`
 2. **Lint warnings** (fail `make catalog-lint`, which runs in strict mode):
    - dead entries that can never pass their own confidence gate
    - regex patterns that shadow aliases or family names belonging to a different family
    - duplicate patterns and redundant aliases
+   - a family alias that is also a model alias, which means one of the two tables has the entry in the wrong place
    - a missing catalog `version`
 3. **Expected-match fixtures** ([testdata/consumer_drive_profile_fixtures.json](../webapp/backend/pkg/thresholds/testdata/consumer_drive_profile_fixtures.json)):
    - representative real-world model strings pinned to their expected family and match method
@@ -167,7 +189,7 @@ The pipeline enforces three layers:
 
 To add or update catalog entries:
 
-1. Edit `consumer_drive_profiles.json` (add the profile, aliases, and optionally a narrow `model_pattern`).
+1. Edit `consumer_drive_profiles.json` (add the profile, aliases, any `family_aliases` bridges, and optionally a narrow `model_pattern`).
 2. Bump the catalog `version` field.
 3. Add expected-match fixtures for the new entries, including at least one near-miss that must stay unmatched.
 4. Run `make catalog-fix` to normalize formatting, then `make catalog-lint` until clean.
