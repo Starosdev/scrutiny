@@ -33,7 +33,7 @@
 // Unlike the bundled npm, build and test tooling does execute, in CI, with
 // repository credentials. That is the whole reason this gate audits
 // devDependencies at all instead of running `npm audit --omit=dev`. So the
-// exception is capped at DEV_ONLY_MAX_SEVERITY: a high or critical advisory in
+// exception is capped at DEV_ONLY_SEVERITIES: a high or critical advisory in
 // dev tooling fails the gate however awkward the upgrade, and gets an explicit
 // decision rather than a one-line allowlist entry.
 import { execFileSync } from 'node:child_process';
