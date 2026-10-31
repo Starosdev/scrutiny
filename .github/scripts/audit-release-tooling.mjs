@@ -19,6 +19,15 @@
 // records why the release tooling's use of that package is not exposed. A package that npm audit
 // flags only because a dependency is vulnerable (via names, no advisory of its
 // own) is allowed when every dependency it is flagged through is allowed.
+//
+// DEV_ONLY_ADVISORIES is the third exception: an advisory whose only patched
+// release is a breaking major that no consumer supports yet, for a package that
+// nothing in the published artifact depends on. The dev-only condition is not
+// taken on trust: the script runs a second `npm audit --omit=dev`, and an entry
+// applies only to a package that audit does not report, so a package that
+// becomes a production dependency loses the exception automatically. These
+// entries share ALLOWLIST_EXPIRES, which is the point at which the ecosystem is
+// re-checked for a non-breaking upgrade path.
 import { execFileSync } from 'node:child_process';
 
 const ALLOWLIST_EXPIRES = '2026-12-15';
@@ -51,6 +60,30 @@ const ALLOWED_ADVISORIES = new Map([
   ['GHSA-2m5v-pch6-74hx', 'undici'], // TLS certificate validation bypass
   ['GHSA-qrxm-fqhp-jwvm', 'undici'], // proxy authorization header leak
   ['GHSA-9fm3-97px-rjf6', 'undici'], // PONG frame memory use
+  // npm bundles glob 13.x and minimatch 10.x. Both advisories below are patched
+  // only in a major the bundled range cannot reach: glob 14.0.2 and minimatch
+  // 11.0.1, both published 2026-10-27. npm 11.21.1 and 12.2.1, the latest
+  // release, both still declare `glob ^13.0.6` and `minimatch ^10.2.5`, so no
+  // released npm fixes either, and bundled files cannot be overridden. Removing
+  // these needs an npm release that bumps those ranges.
+  ['GHSA-3g3m-2fjr-6pw4', 'glob'], // AbortSignal cancellation bypass
+  ['GHSA-g3hv-75wg-m249', 'minimatch'], // globparts amplification
+]);
+const DEV_ONLY_ADVISORIES = new Map([
+  // minimatch is patched only in 11.0.1 (published 2026-10-27), a major release.
+  // No consumer has moved: eslint 10.14.0 declares ^10.2.6, @typescript-eslint
+  // 8.72.1 declares ^10.2.2, and karma 6.4.4, karma-coverage 2.2.1 and
+  // @eslint/eslintrc 3.3.7 all declare ^3.0.4, whose v3 call style minimatch 11
+  // no longer exports. Forcing the major through an override would break the
+  // test runner rather than fix anything, and 15 of the 17 packages the frontend
+  // audit reports are flagged only through this one.
+  //
+  // Every flagged path is build and test tooling: eslint, typescript-eslint,
+  // angular-eslint, karma and their dependencies. `npm audit --omit=dev` on the
+  // frontend reports no findings at all, which is the condition enforced below.
+  // The advisory is a denial of service through glob-pattern amplification, so
+  // the exposure is a CI job processing its own repository's patterns.
+  ['GHSA-g3hv-75wg-m249', 'minimatch'], // globparts amplification
 ]);
 const UNPATCHED_ADVISORIES = new Map([
   // Empty. The braces entry (GHSA-vfj7-8cjw-p6xm) was removed on 2026-10-30:
@@ -64,18 +97,28 @@ if (new Date().toISOString().slice(0, 10) > ALLOWLIST_EXPIRES) {
   process.exit(1);
 }
 
-let output;
-try {
-  output = execFileSync('npm', ['audit', '--json'], { encoding: 'utf8' });
-} catch (err) {
-  // npm audit exits non-zero when it finds anything; the JSON is still on stdout.
-  output = err.stdout;
-}
-const report = JSON.parse(output);
-if (report.error) {
-  console.error('npm audit failed:', JSON.stringify(report.error));
-  process.exit(1);
-}
+const runAudit = (args) => {
+  let output;
+  try {
+    output = execFileSync('npm', ['audit', '--json', ...args], { encoding: 'utf8' });
+  } catch (err) {
+    // npm audit exits non-zero when it finds anything; the JSON is still on stdout.
+    output = err.stdout;
+  }
+  const parsed = JSON.parse(output);
+  if (parsed.error) {
+    console.error(`npm audit ${args.join(' ')} failed:`, JSON.stringify(parsed.error));
+    process.exit(1);
+  }
+  return parsed;
+};
+
+const report = runAudit([]);
+// A package the production-only audit does not report reaches the tree through
+// devDependencies alone. npm resolves that, so DEV_ONLY_ADVISORIES does not have
+// to be told which packages are build-time.
+const productionVulnerabilities = runAudit(['--omit=dev']).vulnerabilities ?? {};
+const isDevOnly = (name) => !(name in productionVulnerabilities);
 
 const vulnerabilities = report.vulnerabilities ?? {};
 const advisoriesOf = (vuln) => vuln.via.filter((via) => typeof via === 'object').map((via) => via.url.split('/').pop());
@@ -89,7 +132,10 @@ const ownAllowed = (name, vuln) => {
   // An entry that names neither an advisory nor a dependency carries no evidence either way; fail closed.
   if (vuln.via.length === 0) return false;
   const bundled = vuln.nodes.length > 0 && vuln.nodes.every((node) => node.startsWith(BUNDLED_NPM_PREFIX));
-  return advisoriesOf(vuln).every((id) => UNPATCHED_ADVISORIES.get(id)?.pkg === name || (bundled && ALLOWED_ADVISORIES.get(id) === name));
+  const devOnly = vuln.nodes.length > 0 && isDevOnly(name);
+  return advisoriesOf(vuln).every((id) => UNPATCHED_ADVISORIES.get(id)?.pkg === name
+    || (bundled && ALLOWED_ADVISORIES.get(id) === name)
+    || (devOnly && DEV_ONLY_ADVISORIES.get(id) === name));
 };
 const blocked = new Set(Object.entries(vulnerabilities).filter(([name, vuln]) => !ownAllowed(name, vuln)).map(([name]) => name));
 for (let changed = true; changed; ) {

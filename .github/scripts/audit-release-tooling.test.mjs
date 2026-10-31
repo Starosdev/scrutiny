@@ -12,18 +12,32 @@ const advisories = [
   ['undici', 'GHSA-2m5v-pch6-74hx'],
   ['undici', 'GHSA-qrxm-fqhp-jwvm'],
   ['undici', 'GHSA-9fm3-97px-rjf6'],
+  ['glob', 'GHSA-3g3m-2fjr-6pw4'],
+  ['minimatch', 'GHSA-g3hv-75wg-m249'],
+];
+const devOnly = [
+  ['minimatch', 'GHSA-g3hv-75wg-m249'],
 ];
 
-function audit(name, id, nodes, date = '2026-10-24') {
+// production: whether the package is also reachable without devDependencies.
+// The script decides dev-only status from a second `npm audit --omit=dev`, so the
+// stub answers that invocation separately. Defaulting to true keeps every other
+// test on the pre-existing behavior.
+function audit(name, id, nodes, date = '2026-10-24', production = true) {
   const report = { vulnerabilities: {
     [name]: { severity: 'high', via: [{ url: `https://github.com/advisories/${id}` }], nodes },
   } };
+  const productionReport = production ? report : { vulnerabilities: {} };
   // Run the real entrypoint with a deterministic audit response and clock.
   // Throwing stdout reproduces npm audit's nonzero vulnerability exit.
   return spawnSync(process.execPath, ['--input-type=module', '-e', `
     import childProcess from 'node:child_process';
     import { syncBuiltinESMExports } from 'node:module';
-    childProcess.execFileSync = () => { throw { stdout: ${JSON.stringify(JSON.stringify(report))} }; };
+    const full = ${JSON.stringify(JSON.stringify(report))};
+    const production = ${JSON.stringify(JSON.stringify(productionReport))};
+    childProcess.execFileSync = (cmd, args) => {
+      throw { stdout: args.includes('--omit=dev') ? production : full };
+    };
     syncBuiltinESMExports();
     globalThis.Date = class extends Date { constructor() { super(${JSON.stringify(date)}); } };
     await import(${JSON.stringify(script)});
@@ -59,6 +73,31 @@ test('an allowlisted advisory does not pass for a different package', () => {
     assert.match(result.stderr, /findings not covered by the allowlist/);
   }
 });
+
+for (const [name, id] of devOnly) {
+  test(`${id}: passes for ${name} outside the production tree`, () => {
+    const allowed = audit(name, id, [`node_modules/${name}`], '2026-10-24', false);
+    assert.equal(allowed.status, 0, allowed.stderr);
+  });
+
+  test(`${id}: still fails for ${name} inside the production tree`, () => {
+    const blocked = audit(name, id, [`node_modules/${name}`], '2026-10-24', true);
+    assert.equal(blocked.status, 1, blocked.stderr);
+    assert.match(blocked.stderr, /findings not covered by the allowlist/);
+  });
+
+  test(`${id}: the dev-only exception does not transfer to another package`, () => {
+    const blocked = audit('eslint', id, ['node_modules/eslint'], '2026-10-24', false);
+    assert.equal(blocked.status, 1, blocked.stderr);
+    assert.match(blocked.stderr, /findings not covered by the allowlist/);
+  });
+
+  test(`${id}: the dev-only exception expires with the allowlist`, () => {
+    const expired = audit(name, id, [`node_modules/${name}`], '2026-12-16', false);
+    assert.equal(expired.status, 1);
+    assert.match(expired.stderr, /allowlist expired on 2026-12-15/);
+  });
+}
 
 test('unknown bundled advisories still fail', () => {
   const result = audit('undici', 'GHSA-unknown', [`${bundled}undici`]);
