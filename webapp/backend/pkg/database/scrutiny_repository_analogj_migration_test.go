@@ -376,30 +376,21 @@ func TestMergeAnalogJWWNDuplicatesRepointsHistoryAndSelfTests(t *testing.T) {
 	require.Equal(t, canonicalID, selfTests[0].DeviceIdentity)
 }
 
-// With three rows the canonical struct has to be reloaded between merges, or each guard in
-// mergeAnalogJDeviceRows reads pre-merge state and the oldest row's metadata wins.
-func TestMergeAnalogJWWNDuplicatesPrefersNewestMetadataAcrossThreeRows(t *testing.T) {
+// Two rows that each report a model name are two drives as far as anything here can
+// tell. 0.9.x blanked the model name on the row that stopped updating, so a blank on
+// exactly one row is what identifies the pair; without it the hard delete is a guess.
+func TestMergeAnalogJWWNDuplicatesKeepsRowsThatBothReportAModel(t *testing.T) {
 	repo, db := newWWNDuplicateTestRepository(t)
 
-	serial := "48L0A0ZXFVNE"
-	wwn := "0x5000039xxxxxxxx1"
-	rows := []struct {
-		model   string
-		label   string
-		updated time.Time
-	}{
-		{"TOSHIBA AL13SEB300", "", time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)},
-		{"TOSHIBA AL13SEB300 v2", "Bay 3", time.Date(2026, 4, 23, 0, 0, 0, 0, time.UTC)},
-		{"TOSHIBA", "old-bay", time.Date(2024, 12, 25, 0, 0, 0, 0, time.UTC)},
-	}
-	for _, row := range rows {
+	serial := "00000000000000000000"
+	wwn := "0x0000000000000000"
+	for _, model := range []string{"WDC WD40EFZX", "WDC WD40EPFX"} {
 		require.NoError(t, db.Create(&models.Device{
-			DeviceID:     deviceid.Generate(row.model, serial, wwn),
+			DeviceID:     deviceid.Generate(model, serial, wwn),
 			WWN:          wwn,
-			ModelName:    row.model,
+			ModelName:    model,
 			SerialNumber: serial,
-			Label:        row.label,
-			UpdatedAt:    row.updated,
+			Capacity:     4000787030016,
 		}).Error)
 	}
 
@@ -407,8 +398,7 @@ func TestMergeAnalogJWWNDuplicatesPrefersNewestMetadataAcrossThreeRows(t *testin
 
 	var devices []models.Device
 	require.NoError(t, db.Unscoped().Find(&devices).Error)
-	require.Len(t, devices, 1)
-	require.Equal(t, "Bay 3", devices[0].Label)
+	require.Len(t, devices, 2)
 }
 
 // Enclosure firmware that fabricates a WWN can fabricate a serial too, so a capacity
@@ -421,7 +411,7 @@ func TestMergeAnalogJWWNDuplicatesKeepsDifferentCapacities(t *testing.T) {
 	for _, row := range []struct {
 		model    string
 		capacity int64
-	}{{"WDC WD40EFZX", 4000787030016}, {"ST8000VN004", 8001563222016}} {
+	}{{"", 4000787030016}, {"ST8000VN004", 8001563222016}} {
 		require.NoError(t, db.Create(&models.Device{
 			DeviceID:     deviceid.Generate(row.model, serial, wwn),
 			WWN:          wwn,
@@ -472,14 +462,17 @@ func TestMergeAnalogJWWNDuplicatesKeepsConflictingHosts(t *testing.T) {
 	model := "WDC WD80EFZZ-68BTXN0"
 	// Two collectors register one drive under distinct device ids because each adds its
 	// own host to the identity; deviceid.Generate ignores the host when a WWN exists.
-	for _, host := range []string{"nas-1", "nas-2"} {
+	for _, row := range []struct {
+		model string
+		host  string
+	}{{"", "nas-1"}, {model, "nas-2"}} {
 		require.NoError(t, db.Create(&models.Device{
-			DeviceID:     deviceid.Generate(model, serial, wwn+"-"+host),
+			DeviceID:     deviceid.Generate(row.model, serial, wwn+"-"+row.host),
 			WWN:          wwn,
-			ModelName:    model,
+			ModelName:    row.model,
 			SerialNumber: serial,
 			DeviceName:   "sda",
-			HostId:       host,
+			HostId:       row.host,
 		}).Error)
 	}
 

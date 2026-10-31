@@ -22,24 +22,27 @@ Migration `m20260803000000` repairs this state automatically when the SQLite
 an unambiguous duplicate while preserving user metadata, and rewrites
 `smart`/`temp` history in the daily, weekly, monthly, and yearly buckets.
 
-0.9.x also forked a single drive into two rows of its own when the drive's
-reported model name changed, because it keyed devices by a UUID over
-`model + serial + WWN`. Both rows carry the same WWN and the same serial. The
-migration merges those too, keeping the most recently updated row and carrying
-the older `created_at` and any user metadata onto it. Two cases are left alone
-because they are not one duplicated row:
+0.9.x also forked a single drive into two rows of its own. It keyed devices by a
+UUID over `model + serial + WWN` and blanked the model name on the row that
+stopped updating, so the drive ends up as one row with a blank model name and
+one carrying it, sharing a WWN and a serial. The migration merges that pair,
+keeping the row that reports a model name and carrying the older `created_at`,
+any user metadata, and the self-test history onto it.
 
+Only that exact shape is merged, because the dropped row is deleted outright
+and nothing restores it. These are left alone:
+
+- rows that each report a model name. Two of those are two drives as far as the
+  migration can tell, and an enclosure that fabricates a WWN can fabricate a
+  serial too.
 - rows that share a WWN but report different serials. Drives behind one
-  controller, or reporting a vendor-default WWN such as
-  `0x0000000000000000`, legitimately share it (#851).
+  controller, or reporting a vendor-default WWN such as `0x0000000000000000`,
+  legitimately share it (#851).
 - rows that agree on WWN and serial but name different non-empty `host_id`
   values. That is two collectors reporting one drive.
 - rows that agree on WWN and serial but report different non-zero capacities.
-  Enclosure firmware that fabricates a WWN can fabricate a serial too, and
-  capacity is the cheapest evidence that two rows are two drives.
 
-Each check covers the whole group, so one disagreeing row leaves every row in
-place. Merge any of these cases on request with the endpoint below.
+Merge any of these on request with the endpoint below.
 
 History rewritten out of 0.9.x is tagged with both `device_id` and `device_wwn`.
 A WWN alone does not identify a device, and history queries fall back to the

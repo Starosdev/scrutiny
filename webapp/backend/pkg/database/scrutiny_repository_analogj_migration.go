@@ -145,31 +145,30 @@ func prepareAnalogJDeviceRepair(ctx context.Context, tx *gorm.DB) (map[string]an
 	return mapping, nil
 }
 
-// mergeAnalogJWWNDuplicates collapses the rows AnalogJ/scrutiny 0.9.x created for a
-// single drive. 0.9.x keyed devices by a UUID over model + serial + WWN, so a drive
-// whose reported model name changed forked into a second row carrying the same WWN and
-// the same serial (#1056). Both rows survive into Staros, where device_id is derived
-// from the same three fields, and the drive then appears twice with its history split.
+// mergeAnalogJWWNDuplicates collapses the row pair AnalogJ/scrutiny 0.9.x created for a
+// single drive. 0.9.x keyed devices by a UUID over model + serial + WWN and blanked the
+// model name on the row that stopped updating, so one drive ends up as a row with a blank
+// model name and a row carrying it, sharing a WWN and a serial (#1056). Both survive into
+// Staros, where device_id is derived from the same three fields, so the drive appears
+// twice with its history split.
 //
-// Rows that only share a WWN are left alone. Drives behind one controller, or reporting
-// a vendor-default WWN, legitimately share it and are told apart by their serials
-// (#851), so serial equality is what identifies one physical drive here. A group whose
-// rows disagree on a non-empty host_id is also left alone, because that is two
-// collectors reporting the drive rather than one duplicated row, and so is a group whose
-// rows disagree on a non-zero capacity, because enclosure firmware that fabricates a WWN
-// can fabricate a serial too and capacity is the cheapest evidence that two rows are two
-// drives. Both checks cover the whole group: one disagreeing row leaves every row in
-// place, and the /api/device/{id}/merge_into endpoint handles those on request.
+// Only that exact shape is merged, because the row the merge drops is hard-deleted inside
+// a migration and nothing restores it:
 //
-// Rows can only reach a group with differing model names, because device_id is the primary
-// key and is derived from model + serial + WWN, so an identical triple is one row already.
+//   - A blank model name on exactly one of the two rows is the 0.9.x signature. Two rows
+//     that each report a model name are two drives as far as anything here can tell, and
+//     an enclosure that fabricates a WWN can fabricate a serial too.
+//   - Rows sharing a WWN with different serials are the legitimate case where drives
+//     behind one controller, or with a vendor-default WWN, share it (#851).
+//   - Rows disagreeing on a non-empty host_id are two collectors reporting one drive, and
+//     rows disagreeing on a non-zero capacity are two drives.
+//
+// device_id is derived from the lowercased, trimmed triple, so two rows in one group
+// always differ in model name and at most one can have it blank, which bounds a group to
+// one pair. Anything declined here is left to the /api/device/{id}/merge_into endpoint.
 func (sr *scrutinyRepository) mergeAnalogJWWNDuplicates(ctx context.Context, tx *gorm.DB, mapping map[string]analogJHistoryTarget) error {
-	// Newest row first, and on a tie the row that still reports a model name: 0.9.x
-	// blanked the model name on the row that stopped updating.
-	const canonicalOrder = "updated_at DESC, (model_name IS NULL OR model_name = '') ASC, device_id ASC"
-
 	var devices []models.Device
-	if err := tx.WithContext(ctx).Unscoped().Order(canonicalOrder).Find(&devices).Error; err != nil {
+	if err := tx.WithContext(ctx).Unscoped().Order("device_id ASC").Find(&devices).Error; err != nil {
 		return fmt.Errorf("could not load devices for AnalogJ duplicate merge: %w", err)
 	}
 
@@ -193,48 +192,67 @@ func (sr *scrutinyRepository) mergeAnalogJWWNDuplicates(ctx context.Context, tx 
 		if len(indexes) < 2 {
 			continue
 		}
-		canonical := &devices[indexes[0]]
-		if reason := analogJUnmergeableReason(devices, indexes); reason != "" {
+		legacyIndex, canonicalIndex, reason := analogJDuplicatePair(devices, indexes)
+		if reason != "" {
 			sr.logger.Warnf(
 				"leaving %d AnalogJ device rows for serial %s unmerged: %s",
 				len(indexes),
-				canonical.SerialNumber,
+				devices[indexes[0]].SerialNumber,
 				reason,
 			)
 			continue
 		}
-		for _, legacyIndex := range indexes[1:] {
-			legacy := &devices[legacyIndex]
-			sr.logger.Infof(
-				"Merging duplicate AnalogJ device row %s into %s (serial %s)",
-				legacy.DeviceID,
-				canonical.DeviceID,
-				canonical.SerialNumber,
-			)
-			if err := mergeAnalogJDeviceRows(ctx, tx, legacy, canonical); err != nil {
-				return err
-			}
-			// The merge writes through to the row, and a third duplicate is compared against
-			// what the row now holds rather than what it held before the first merge, so an
-			// older legacy cannot overwrite a newer one's metadata.
-			if err := tx.WithContext(ctx).Unscoped().Where(queryDeviceID, canonical.DeviceID).First(canonical).Error; err != nil {
-				return fmt.Errorf("could not reload merged AnalogJ device %s: %w", canonical.DeviceID, err)
-			}
-			// The mapping was built before the merge, so entries naming the deleted row still
-			// point at it. Repoint them, or its 0.9.x history is rewritten onto a device_id
-			// that no longer exists.
-			for legacyUUID, target := range mapping {
-				if target.DeviceID == legacy.DeviceID {
-					mapping[legacyUUID] = analogJHistoryTarget{
-						DeviceID: canonical.DeviceID,
-						WWN:      strings.ToLower(strings.TrimSpace(canonical.WWN)),
-					}
+
+		legacy := &devices[legacyIndex]
+		canonical := &devices[canonicalIndex]
+		sr.logger.Infof(
+			"Merging duplicate AnalogJ device row %s into %s (serial %s)",
+			legacy.DeviceID,
+			canonical.DeviceID,
+			canonical.SerialNumber,
+		)
+		if err := mergeAnalogJDeviceRows(ctx, tx, legacy, canonical); err != nil {
+			return err
+		}
+		// The mapping was built before the merge, so entries naming the deleted row still
+		// point at it. Repoint them, or its 0.9.x history is rewritten onto a device_id that
+		// no longer exists and becomes unreadable.
+		for legacyUUID, target := range mapping {
+			if target.DeviceID == legacy.DeviceID {
+				mapping[legacyUUID] = analogJHistoryTarget{
+					DeviceID: canonical.DeviceID,
+					WWN:      strings.ToLower(strings.TrimSpace(canonical.WWN)),
 				}
 			}
 		}
 	}
 
 	return nil
+}
+
+// analogJDuplicatePair picks the row to drop and the row to keep out of a group sharing a
+// WWN and serial, or reports why the group is not one drive.
+func analogJDuplicatePair(devices []models.Device, indexes []int) (legacyIndex, canonicalIndex int, reason string) {
+	if len(indexes) != 2 {
+		return 0, 0, fmt.Sprintf("the group holds %d rows rather than one 0.9.x pair", len(indexes))
+	}
+	blank := -1
+	for _, i := range indexes {
+		if strings.TrimSpace(devices[i].ModelName) == "" {
+			blank = i
+		}
+	}
+	if blank < 0 {
+		return 0, 0, "both rows report a model name"
+	}
+	if reason := analogJUnmergeableReason(devices, indexes); reason != "" {
+		return 0, 0, reason
+	}
+	keep := indexes[0]
+	if keep == blank {
+		keep = indexes[1]
+	}
+	return blank, keep, ""
 }
 
 // analogJUnmergeableReason reports why a group of rows sharing a WWN and serial is not one
