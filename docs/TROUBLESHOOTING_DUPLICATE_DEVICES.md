@@ -50,6 +50,14 @@ and nothing restores it. These are left alone:
 Each refusal is logged with the serial and the reason. Merge any of these on
 request with the endpoint below.
 
+0.9.x also cleared serial-based fallback WWNs, and the migration restores them.
+When one cleared row's serial matches two rows that already hold a WWN, nothing
+says which it belongs to, so that row is left exactly as it was and the reason is
+logged. The migration records as applied and does not run again, and nothing
+outside it reads the 0.9.x `scrutiny_uuid` tag, so the endpoint below collapses
+the duplicate row but does not recover that row's pre-import history. The log
+line names the `scrutiny_uuid` holding it, which is what a manual recovery needs.
+
 A drive hit by both 0.9.x bugs has its WWN cleared on both rows and its model
 name blanked on one of them. The row keeping its model name survives, for the
 same reason: identity reconciliation at registration requires equal model names,

@@ -75,10 +75,12 @@ func legacyScrutinyUUID(modelName, serialNumber, wwn string) string {
 // model names, so the next collector run created a fresh duplicate rather than
 // reconciling. Keeping the model-bearing row matches mergeAnalogJWWNDuplicates.
 func (sr *scrutinyRepository) prepareAnalogJDeviceRepair(ctx context.Context, tx *gorm.DB) (map[string]analogJHistoryTarget, error) {
-	// TRIM, because every Go predicate deciding the same question uses strings.TrimSpace:
-	// a model name of one space would otherwise sort with the model-bearing rows and then
-	// read as blank everywhere else.
-	const repairOrder = "(model_name IS NULL OR TRIM(model_name) = '') ASC, created_at ASC, device_id ASC"
+	// Trim the same bytes strings.TrimSpace does, because every Go predicate deciding the
+	// same question uses it: a model name of one space or one tab would otherwise sort with
+	// the model-bearing rows and then read as blank everywhere else. SQLite TRIM with one
+	// argument strips spaces only.
+	const blankModel = "model_name IS NULL OR TRIM(model_name, ' ' || char(9) || char(10) || char(11) || char(12) || char(13)) = ''"
+	const repairOrder = "(" + blankModel + ") ASC, created_at ASC, device_id ASC"
 
 	var devices []models.Device
 	if err := tx.WithContext(ctx).Unscoped().Order(repairOrder).Find(&devices).Error; err != nil {
@@ -128,11 +130,20 @@ func (sr *scrutinyRepository) prepareAnalogJDeviceRepair(ctx context.Context, tx
 				// Returning an error here rolled back the whole migration and left the web
 				// service restarting every second, which is the #1056 symptom reached by
 				// another route. mergeAnalogJWWNDuplicates declines its ambiguous groups the
-				// same way, and /api/device/{id}/merge_into resolves them on request.
+				// same way.
+				//
+				// This row gets no mapping entry, so its 0.9.x history is neither rewritten
+				// nor deleted: it stays under its scrutiny_uuid tag. Nothing shipped reads
+				// that tag outside this migration, and the migration records as applied and
+				// never runs again, so merge_into collapses the duplicate row but cannot
+				// reach the history. Log the tag value, because recovering it by hand is
+				// what the operator is left with.
 				sr.logger.Warnf(
-					"leaving AnalogJ device %s unrepaired: its serial matches %d rows with a non-empty WWN",
+					"leaving AnalogJ device %s unrepaired: its serial matches %d rows with a non-empty WWN. "+
+						"Its 0.9.x history stays under scrutiny_uuid %s and is not deleted",
 					device.DeviceID,
 					len(candidateIndexes),
+					legacyScrutinyUUID(device.ModelName, device.SerialNumber, ""),
 				)
 			}
 			continue
