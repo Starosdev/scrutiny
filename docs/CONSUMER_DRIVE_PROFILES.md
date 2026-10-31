@@ -56,6 +56,14 @@ The bundled catalog is validated at startup and loaded from:
 
 The catalog is shipped in-repo and embedded into the backend binary. Scrutiny does not fetch profile data at runtime. The catalog carries a `version` string that is reported through the API for provenance.
 
+### What `source` has to say
+
+A profile's thresholds are only as good as the population they were derived from, so `source` is the field a later editor has to be able to check a decision against. For a new or edited profile it must name both the dataset and the population: which models the aggregate covers, and at what capacities, for example `linuxhw/SMART aggregate, WD Red CMR 3-8TB (WD30EFRX, WD60EFRX, WD80EFAX, WD80EFZZ)`.
+
+The 35 profiles bundled today predate that rule and all carry the same placeholder, `linuxhw/SMART curated consumer HDD profile` or its SSD equivalent. That is a known gap, not a pattern to copy: it is why a question like "does the WD Red aggregate cover the 8TB models or only the 3-6TB ones" cannot be answered from this repo. There is no lint rule forcing the convention, because it would fail on all 35 existing entries at once.
+
+The rule binds whenever a profile's thresholds are added or changed, since that is when the population is the claim being made. Adding a model number to an existing profile's aliases or pattern does not re-derive anything, so it does not require filling the placeholder in; it does require the product-line argument for that model to be in the commit message.
+
 ## Confidence Gate
 
 Profiles only apply when the catalog entry meets the minimum confidence threshold.
@@ -169,15 +177,18 @@ The pipeline enforces three layers:
    - dead entries that can never pass their own confidence gate
    - regex patterns that shadow aliases or family names belonging to a different family
    - duplicate patterns and redundant aliases
+   - two families whose patterns both match one model string, tested against every alias key and every fixture model name
    - a missing catalog `version`
 3. **Expected-match fixtures** ([testdata/consumer_drive_profile_fixtures.json](../webapp/backend/pkg/thresholds/testdata/consumer_drive_profile_fixtures.json)):
    - representative real-world model strings pinned to their expected family and match method
    - matched and unmatched cases both covered, so catalog edits that unintentionally change existing matches fail fast
    - the same fixtures run in `go test ./webapp/backend/pkg/thresholds/`
 
+Pattern overlap is the one failure mode a reviewer is unlikely to spot by eye. The matcher collects every pattern that matches a model string and applies the first, in catalog declaration order, so two overlapping patterns from different families resolve by their position in the file. Regex intersection cannot be decided in general, so the lint tests every pattern against a corpus of concrete strings instead: every alias key in the catalog, plus every model name in the fixtures. Adding a model to a second family's pattern therefore fails the lint as soon as that model appears in a fixture, which is a reason to add the fixture in the same commit as the pattern.
+
 To add or update catalog entries:
 
-1. Edit `consumer_drive_profiles.json` (add the profile, aliases, and optionally a narrow `model_pattern`).
+1. Edit `consumer_drive_profiles.json` (add the profile, aliases, and optionally a narrow `model_pattern`). A profile whose thresholds you add or change needs a `source` that names its population, per the rule above. Add a model number to exactly one family: an alias or a pattern alternative, not both.
 2. Bump the catalog `version` field.
 3. Add expected-match fixtures for the new entries, including at least one near-miss that must stay unmatched.
 4. Run `make catalog-fix` to normalize formatting, then `make catalog-lint` until clean.
