@@ -11,14 +11,14 @@ import (
 const MinConsumerDriveProfileSamples = 20
 
 // ProfileMatchMethod identifies which lookup stage produced a consumer drive
-// profile match. Stages are listed strongest-first: an exact model_family hit
-// is more trustworthy than a regex pattern fallback.
+// profile match. Stages are listed strongest-first. Every model-identity stage
+// ranks above the model_family stage: a model number is stable hardware
+// identity, while a model family is smartctl's own classification, varies with
+// the collector's drivedb, and can be a vendor-wide catch-all that would
+// otherwise shadow a specific profile for the same drive.
 type ProfileMatchMethod string
 
 const (
-	// ProfileMatchMethodModelFamily is an exact match on the smartctl-reported model family.
-	ProfileMatchMethodModelFamily ProfileMatchMethod = "model_family"
-
 	// ProfileMatchMethodModelName is an exact match on the normalized model name (alias table).
 	ProfileMatchMethodModelName ProfileMatchMethod = "model_name"
 
@@ -26,8 +26,11 @@ const (
 	// normalization (capacity suffix or firmware suffix stripped).
 	ProfileMatchMethodModelNameNormalized ProfileMatchMethod = "model_name_normalized"
 
-	// ProfileMatchMethodModelPattern is a regex model_pattern fallback match.
+	// ProfileMatchMethodModelPattern is a regex model_pattern match on the model name.
 	ProfileMatchMethodModelPattern ProfileMatchMethod = "model_pattern"
+
+	// ProfileMatchMethodModelFamily is an exact match on the smartctl-reported model family.
+	ProfileMatchMethodModelFamily ProfileMatchMethod = "model_family"
 )
 
 // Skip reasons reported on a ConsumerDriveProfileMatch that was found in the
@@ -288,8 +291,8 @@ type consumerDriveProfileCandidate struct {
 // catalog and reports full match metadata. deniedFamilies contains normalized
 // family keys (see ParseConsumerDriveProfileDenylist) that must not be applied.
 //
-// Lookup stages run strongest-first: exact model_family, exact model_name
-// (alias table), vendor-normalized model_name, then regex model_pattern.
+// Lookup stages run strongest-first: exact model_name (alias table),
+// vendor-normalized model_name, regex model_pattern, then exact model_family.
 // A candidate that fails the confidence gate or is denylisted is skipped and
 // weaker stages are still consulted. When no candidate can be applied, the
 // first skipped candidate is returned (Applied=false) so callers can explain
@@ -357,11 +360,8 @@ func (lc *loadedConsumerDriveCatalog) match(protocol, modelFamily, modelName str
 
 // candidates returns raw catalog hits ordered strongest-first.
 func (lc *loadedConsumerDriveCatalog) candidates(modelFamily, modelName string) []consumerDriveProfileCandidate {
-	candidates := make([]consumerDriveProfileCandidate, 0, 2)
+	candidates := make([]consumerDriveProfileCandidate, 0, 3)
 
-	if profile, ok := lc.byFamily[normalizeConsumerDriveKey(modelFamily)]; ok {
-		candidates = append(candidates, consumerDriveProfileCandidate{&profile, ProfileMatchMethodModelFamily, modelFamily})
-	}
 	if profile, ok := lc.byModel[normalizeConsumerDriveKey(modelName)]; ok {
 		candidates = append(candidates, consumerDriveProfileCandidate{&profile, ProfileMatchMethodModelName, modelName})
 	}
@@ -379,6 +379,9 @@ func (lc *loadedConsumerDriveCatalog) candidates(modelFamily, modelName string) 
 		if profile.compiledPattern != nil && profile.compiledPattern.MatchString(modelName) {
 			candidates = append(candidates, consumerDriveProfileCandidate{&profile, ProfileMatchMethodModelPattern, modelName})
 		}
+	}
+	if profile, ok := lc.byFamily[normalizeConsumerDriveKey(modelFamily)]; ok {
+		candidates = append(candidates, consumerDriveProfileCandidate{&profile, ProfileMatchMethodModelFamily, modelFamily})
 	}
 	return candidates
 }

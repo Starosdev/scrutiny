@@ -21,8 +21,8 @@ type DriveProfileInspection struct {
 	// CatalogVersion is the version of the bundled profile catalog.
 	CatalogVersion string `json:"catalog_version,omitempty"`
 
-	// MatchMethod is the lookup stage that matched: "model_family",
-	// "model_name", "model_name_normalized", or "model_pattern".
+	// MatchMethod is the lookup stage that matched: "model_name",
+	// "model_name_normalized", "model_pattern", or "model_family".
 	MatchMethod string `json:"match_method,omitempty"`
 
 	// MatchedValue is the input value (family or model name) that matched.

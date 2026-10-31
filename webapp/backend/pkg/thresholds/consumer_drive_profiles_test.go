@@ -178,10 +178,10 @@ func TestLookupConsumerDriveProfileBySanDisk3dRegex(t *testing.T) {
 	}
 }
 
-func TestLookupConsumerDriveProfileByRegexFallback(t *testing.T) {
+func TestLookupConsumerDriveProfileByModelAlias(t *testing.T) {
 	profile, ok := LookupConsumerDriveProfile("ATA", "", "ST3000DM001-1ER166")
 	if !ok || profile == nil {
-		t.Fatalf("expected regex-backed profile match")
+		t.Fatalf("expected alias-backed profile match")
 	}
 	if profile.ModelFamily != "Seagate Desktop HDD.15" {
 		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
