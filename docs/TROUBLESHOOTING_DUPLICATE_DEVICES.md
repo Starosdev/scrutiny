@@ -35,6 +35,8 @@ and nothing restores it. These are left alone:
 - rows that each report a model name. Two of those are two drives as far as the
   migration can tell, and an enclosure that fabricates a WWN can fabricate a
   serial too.
+- rows where neither reports a model name, which leaves nothing to say which row
+  is the live one.
 - rows that share a WWN but report different serials. Drives behind one
   controller, or reporting a vendor-default WWN such as `0x0000000000000000`,
   legitimately share it (#851).

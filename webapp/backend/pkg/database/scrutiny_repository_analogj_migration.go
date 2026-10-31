@@ -41,7 +41,7 @@ func (sr *scrutinyRepository) migrateM20260803000000(ctx context.Context, tx *go
 		return nil
 	}
 
-	mapping, err := prepareAnalogJDeviceRepair(ctx, tx)
+	mapping, err := sr.prepareAnalogJDeviceRepair(ctx, tx)
 	if err != nil {
 		return err
 	}
@@ -74,8 +74,11 @@ func legacyScrutinyUUID(modelName, serialNumber, wwn string) string {
 // surviving row then carried no model name, and isLegacyIdentityCandidate requires equal
 // model names, so the next collector run created a fresh duplicate rather than
 // reconciling. Keeping the model-bearing row matches mergeAnalogJWWNDuplicates.
-func prepareAnalogJDeviceRepair(ctx context.Context, tx *gorm.DB) (map[string]analogJHistoryTarget, error) {
-	const repairOrder = "(model_name IS NULL OR model_name = '') ASC, created_at ASC, device_id ASC"
+func (sr *scrutinyRepository) prepareAnalogJDeviceRepair(ctx context.Context, tx *gorm.DB) (map[string]analogJHistoryTarget, error) {
+	// TRIM, because every Go predicate deciding the same question uses strings.TrimSpace:
+	// a model name of one space would otherwise sort with the model-bearing rows and then
+	// read as blank everywhere else.
+	const repairOrder = "(model_name IS NULL OR TRIM(model_name) = '') ASC, created_at ASC, device_id ASC"
 
 	var devices []models.Device
 	if err := tx.WithContext(ctx).Unscoped().Order(repairOrder).Find(&devices).Error; err != nil {
@@ -121,8 +124,13 @@ func prepareAnalogJDeviceRepair(ctx context.Context, tx *gorm.DB) (map[string]an
 					return nil, err
 				}
 			default:
-				return nil, fmt.Errorf(
-					"cannot safely repair AnalogJ device %s: found %d matching non-empty WWNs",
+				// Ambiguous, so leave every row in place rather than aborting the chain.
+				// Returning an error here rolled back the whole migration and left the web
+				// service restarting every second, which is the #1056 symptom reached by
+				// another route. mergeAnalogJWWNDuplicates declines its ambiguous groups the
+				// same way, and /api/device/{id}/merge_into resolves them on request.
+				sr.logger.Warnf(
+					"leaving AnalogJ device %s unrepaired: its serial matches %d rows with a non-empty WWN",
 					device.DeviceID,
 					len(candidateIndexes),
 				)

@@ -140,9 +140,7 @@ func TestAnalogJHistoryRewritePreservesSourceOnFailureAndRetries(t *testing.T) {
 }
 
 func TestPrepareAnalogJDeviceRepairRestoresNVMeIdentityAndMergesDuplicate(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.Device{}))
+	repo, db := newWWNDuplicateTestRepository(t)
 
 	legacyCreatedAt := time.Date(2024, time.January, 2, 3, 4, 5, 0, time.UTC)
 	model := "Samsung SSD 980 PRO 2TB"
@@ -186,7 +184,7 @@ func TestPrepareAnalogJDeviceRepairRestoresNVMeIdentityAndMergesDuplicate(t *tes
 		SerialNumber: sataSerial,
 	}).Error)
 
-	mapping, err := prepareAnalogJDeviceRepair(context.Background(), db)
+	mapping, err := repo.prepareAnalogJDeviceRepair(context.Background(), db)
 	require.NoError(t, err)
 	require.Equal(t, map[string]analogJHistoryTarget{
 		"9027cd65-fe19-562d-ac5d-0bb05818087f": {DeviceID: canonicalID, WWN: canonicalWWN},
@@ -211,7 +209,7 @@ func TestPrepareAnalogJDeviceRepairRestoresNVMeIdentityAndMergesDuplicate(t *tes
 	require.Equal(t, pkg.DeviceStatusFailedScrutiny, repaired.DeviceStatus)
 	require.Equal(t, legacyCreatedAt, repaired.CreatedAt.UTC())
 
-	secondMapping, err := prepareAnalogJDeviceRepair(context.Background(), db)
+	secondMapping, err := repo.prepareAnalogJDeviceRepair(context.Background(), db)
 	require.NoError(t, err)
 	require.Equal(t, mapping, secondMapping)
 	require.NoError(t, db.Find(&devices).Error)
@@ -224,9 +222,7 @@ func TestPrepareAnalogJDeviceRepairRestoresNVMeIdentityAndMergesDuplicate(t *tes
 // isLegacyIdentityCandidate requires equal model names, so a blank-model survivor leaves
 // the next collector run creating a fresh duplicate instead of reconciling.
 func TestPrepareAnalogJDeviceRepairKeepsTheModelBearingRowWhenBothWWNsWereCleared(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.Device{}))
+	repo, db := newWWNDuplicateTestRepository(t)
 
 	model := "Samsung SSD 980 PRO 2TB"
 	serial := "NVME123"
@@ -249,7 +245,7 @@ func TestPrepareAnalogJDeviceRepairKeepsTheModelBearingRowWhenBothWWNsWereCleare
 		CreatedAt:    time.Date(2026, 4, 26, 0, 0, 0, 0, time.UTC),
 	}).Error)
 
-	mapping, err := prepareAnalogJDeviceRepair(context.Background(), db)
+	mapping, err := repo.prepareAnalogJDeviceRepair(context.Background(), db)
 	require.NoError(t, err)
 
 	var devices []models.Device
@@ -267,10 +263,48 @@ func TestPrepareAnalogJDeviceRepairKeepsTheModelBearingRowWhenBothWWNsWereCleare
 	require.Equal(t, survivor, mapping[legacyScrutinyUUID(model, serial, "")])
 }
 
-func TestPrepareAnalogJDeviceRepairUsesCollectorDiscoveredWWN(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+// An ambiguous serial must not abort the migration. Two cleared-WWN rows reporting
+// different hosts each keep their own row, because analogJRepairCandidates excludes a
+// candidate on a host disagreement, and a third row then matches both. Returning an error
+// there rolled the whole chain back and left the web service restarting every second,
+// which is the #1056 symptom reached by another route.
+func TestPrepareAnalogJDeviceRepairLeavesAnAmbiguousSerialUnrepaired(t *testing.T) {
+	repo, db := newWWNDuplicateTestRepository(t)
+
+	serial := "S4000ABC"
+	for _, row := range []struct {
+		model string
+		host  string
+	}{
+		{"ST4000VN008", "nas-1"},
+		{"ST4000VN008-2DR166", "nas-2"},
+		{"", ""},
+	} {
+		require.NoError(t, db.Create(&models.Device{
+			DeviceID:     deviceid.Generate(row.model, serial, ""),
+			SerialNumber: serial,
+			ModelName:    row.model,
+			HostId:       row.host,
+		}).Error)
+	}
+
+	_, err := repo.prepareAnalogJDeviceRepair(context.Background(), db)
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.Device{}))
+
+	// the two model-bearing rows each recovered a serial-fallback WWN; the ambiguous row is
+	// left exactly as it was, for /api/device/{id}/merge_into to resolve
+	var devices []models.Device
+	require.NoError(t, db.Unscoped().Order("model_name ASC").Find(&devices).Error)
+	require.Len(t, devices, 3)
+	require.Empty(t, devices[0].ModelName)
+	require.Empty(t, devices[0].WWN)
+	for _, device := range devices[1:] {
+		require.Equal(t, strings.ToLower(serial), device.WWN)
+	}
+}
+
+func TestPrepareAnalogJDeviceRepairUsesCollectorDiscoveredWWN(t *testing.T) {
+	repo, db := newWWNDuplicateTestRepository(t)
 
 	model := "Micron NVMe"
 	canonicalModel := model + " Gen4"
@@ -295,7 +329,7 @@ func TestPrepareAnalogJDeviceRepairUsesCollectorDiscoveredWWN(t *testing.T) {
 		DeletedAt:    &deletedAt,
 	}).Error)
 
-	mapping, err := prepareAnalogJDeviceRepair(context.Background(), db)
+	mapping, err := repo.prepareAnalogJDeviceRepair(context.Background(), db)
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -452,6 +486,29 @@ func TestMergeAnalogJWWNDuplicatesKeepsRowsThatBothReportAModel(t *testing.T) {
 
 // Enclosure firmware that fabricates a WWN can fabricate a serial too, so a capacity
 // disagreement is treated as two drives rather than one duplicated row.
+// Two blank-model rows cannot come from deviceid.Generate, which would collide on the
+// primary key, but RegisterDevice honours a caller-supplied device_id. Nothing then says
+// which row is the live one, so refuse rather than hard-delete an arbitrary half.
+func TestMergeAnalogJWWNDuplicatesKeepsRowsWhenNeitherReportsAModel(t *testing.T) {
+	repo, db := newWWNDuplicateTestRepository(t)
+
+	serial := "48L0A0ZXFVNE"
+	wwn := "0x5000039xxxxxxxx1"
+	for _, deviceID := range []string{"caller-supplied-a", "caller-supplied-b"} {
+		require.NoError(t, db.Create(&models.Device{
+			DeviceID:     deviceID,
+			WWN:          wwn,
+			SerialNumber: serial,
+		}).Error)
+	}
+
+	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db, map[string]analogJHistoryTarget{}))
+
+	var devices []models.Device
+	require.NoError(t, db.Unscoped().Find(&devices).Error)
+	require.Len(t, devices, 2)
+}
+
 func TestMergeAnalogJWWNDuplicatesKeepsDifferentCapacities(t *testing.T) {
 	repo, db := newWWNDuplicateTestRepository(t)
 
@@ -605,9 +662,7 @@ func TestMigrateM20260803000000MergesDuplicatesAndRewritesHistoryOnce(t *testing
 	fakeConfig.EXPECT().GetString(cfgInfluxDBBucket).Return("metrics").AnyTimes()
 	fakeConfig.EXPECT().GetString(cfgInfluxDBOrg).Return("scrutiny").AnyTimes()
 
-	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.Device{}))
+	_, db := newWWNDuplicateTestRepository(t)
 	require.NoError(t, db.Exec(`CREATE TABLE migrations (id TEXT NOT NULL PRIMARY KEY)`).Error)
 	require.NoError(t, db.Exec(`INSERT INTO migrations (id) VALUES (?)`, analogJScrutinyUUIDMigrationID).Error)
 
@@ -771,6 +826,9 @@ func TestAnalogJMigrationIntegration(t *testing.T) {
 			expectedFields = 6
 		}
 		require.Equal(t, expectedFields, influxRecordCount(t, repo, bucket, "device_wwn", targetWWN))
+		// device_wwn alone is unreadable once a second device holds that WWN, so the
+		// rewrite has to land device_id as a filterable tag too
+		require.Equal(t, expectedFields, influxRecordCount(t, repo, bucket, "device_id", currentDeviceID))
 		require.Zero(t, influxRecordCount(t, repo, bucket, "scrutiny_uuid", legacyUUID))
 	}
 
