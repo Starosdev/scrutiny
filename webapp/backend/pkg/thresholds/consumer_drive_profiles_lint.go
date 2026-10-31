@@ -130,7 +130,10 @@ func lintPatternShadowsAliases(catalog *consumerDriveProfileCatalog, cp compiled
 }
 
 // lintPatternShadowsFamilies warns when a pattern matches another profile's
-// family name.
+// family name. A family name is reachable as a lookup key only through the
+// model_name_normalized stage, which runs above the pattern stage, so this rule
+// covers that narrow collision and not the broader case of a pattern matching
+// another family's models, which a regex comparison cannot decide.
 func lintPatternShadowsFamilies(catalog *consumerDriveProfileCatalog, cp compiledLintPattern, result *ConsumerDriveProfileLintResult) {
 	patternFamilyKey := normalizeConsumerDriveKey(cp.family)
 	for i := range catalog.Profiles {

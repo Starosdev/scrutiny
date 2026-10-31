@@ -46,6 +46,8 @@ This catches common variants (new capacity sizes, new firmware revisions) withou
 
 That is why a new drive is added to a profile by model number, through an alias or the profile's `model_pattern`, rather than by adding the family name `smartctl` currently reports. A reported family name is also coarser than the profile it would point at: the WD Red CMR family spans both `WDC Red` and `WDC Red Plus`, and `Toshiba N300/MN NAS HDD` merges two product lines, so mapping either onto a single profile would apply thresholds derived from a different population.
 
+Which profile a model number joins follows the models already in that profile, not the drive's current marketing name. `WDC WD80EFZZ` is sold as Red Plus, but its sibling SKU `WDC WD80EFAX` is the same 8TB CMR drive from before WD's 2020 rebrand and sits in `WDC Red`, so `WD80EFZZ` joins it there. Splitting one product line across two profiles would give two drives in the same array different verdicts at the same reallocated-sector count.
+
 ### Catalog source
 
 The bundled catalog is validated at startup and loaded from:

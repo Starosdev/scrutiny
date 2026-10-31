@@ -190,7 +190,7 @@
           "critical": 24
         }
       },
-      "model_pattern": "^(WDC[_ ]WD(80EFAX|60EFRX|40EFRX|30EFRX).*)$",
+      "model_pattern": "^(WDC[_ ]WD(80EFAX|80EFZZ|60EFRX|40EFRX|30EFRX).*)$",
       "sample_count": 44
     },
     {
@@ -270,7 +270,7 @@
           "critical": 28
         }
       },
-      "model_pattern": "^(WDC[_ ]WD(140EDFZ|80EFZZ).*)$",
+      "model_pattern": "^(WDC[_ ]WD140EDFZ.*)$",
       "sample_count": 147
     },
     {
@@ -1693,7 +1693,6 @@
     "WDC WD30EFRX-68AX9N0": "WDC Red",
     "WDC WD60EFRX-68MYMN1": "WDC Red",
     "WDC WD80EFAX-68LHPN0": "WDC Red",
-    "WDC WD80EFZZ": "WDC Red Plus",
     "WDC_WD140EDFZ-11A0VA0": "WDC Red Plus",
     "WDC_WD60EFRX-68MYMN1": "WDC Red",
     "WDC_WD80EFAX-68LHPN0": "WDC Red",

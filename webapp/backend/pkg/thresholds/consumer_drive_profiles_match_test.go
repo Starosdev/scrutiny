@@ -19,7 +19,7 @@ func TestMatchConsumerDriveProfileMethods(t *testing.T) {
 		{"capacity variant via vendor normalization", "", "Samsung SSD 870 EVO 2TB", "Samsung SSD 870 EVO", ProfileMatchMethodModelNameNormalized},
 		{"model identity outranks a vendor-wide catch-all family", "Samsung based SSDs", "Samsung SSD 870 EVO 4TB", "Samsung SSD 870 EVO", ProfileMatchMethodModelNameNormalized},
 		{"regex pattern fallback", "", "ST2000DM001-9YN164", "Seagate Barracuda 7200.12", ProfileMatchMethodModelPattern},
-		{"model pattern outranks the reported family", "Western Digital Red (CMR)", "WDC WD140EDFZ-11A0VA2", "WDC Red Plus", ProfileMatchMethodModelPattern},
+		{"model pattern outranks the reported family", "Seagate Barracuda 7200.14 (AF)", "ST3000DM001-9YN166", "Seagate Desktop HDD.15", ProfileMatchMethodModelPattern},
 	}
 
 	for _, tt := range tests {
@@ -84,16 +84,30 @@ func TestMatchConsumerDriveProfileDenylistFallsThroughToOtherFamily(t *testing.T
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	denied := ParseConsumerDriveProfileDenylist("Family A")
+	denied := ParseConsumerDriveProfileDenylist("Family B")
 	match := handle.Match("ATA", "Family A", "MODEL-1", denied)
 	if match == nil || !match.Applied {
-		t.Fatalf("expected fallthrough match to Family B to be applied")
+		t.Fatalf("expected fallthrough match to Family A to be applied")
 	}
-	if match.Profile.ModelFamily != "Family B" {
-		t.Fatalf("expected Family B, got %q", match.Profile.ModelFamily)
+	if match.Profile.ModelFamily != "Family A" {
+		t.Fatalf("expected Family A, got %q", match.Profile.ModelFamily)
 	}
-	if match.Method != ProfileMatchMethodModelName {
-		t.Fatalf("expected model_name method, got %q", match.Method)
+	if match.Method != ProfileMatchMethodModelFamily {
+		t.Fatalf("expected model_family method, got %q", match.Method)
+	}
+
+	// Denying both leaves nothing appliable, and the reported match must be the
+	// strongest candidate with its skip reason rather than a silent nil.
+	bothDenied := ParseConsumerDriveProfileDenylist("Family A, Family B")
+	skipped := handle.Match("ATA", "Family A", "MODEL-1", bothDenied)
+	if skipped == nil || skipped.Applied {
+		t.Fatalf("expected an unapplied match, got %+v", skipped)
+	}
+	if skipped.Profile.ModelFamily != "Family B" || skipped.Method != ProfileMatchMethodModelName {
+		t.Fatalf("expected the model_name candidate to be reported, got %q via %q", skipped.Profile.ModelFamily, skipped.Method)
+	}
+	if skipped.SkipReason != ProfileSkipReasonFamilyDenylisted {
+		t.Fatalf("expected denylist skip reason, got %q", skipped.SkipReason)
 	}
 }
 

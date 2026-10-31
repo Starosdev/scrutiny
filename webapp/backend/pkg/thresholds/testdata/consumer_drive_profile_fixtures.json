@@ -160,14 +160,14 @@
     "expect_applied": false
   },
   {
-    "description": "issue #1053: 8TB Red Plus resolves to Red Plus, not the Red family bridge",
+    "description": "issue #1053: 8TB Red CMR resolves alongside its WD80EFAX sibling",
     "protocol": "ATA",
     "model_family": "Western Digital Red (CMR)",
     "model_name": "WDC WD80EFZZ-68BTXN0",
     "expect_matched": true,
     "expect_applied": true,
-    "expect_family": "WDC Red Plus",
-    "expect_method": "model_name_normalized"
+    "expect_family": "WDC Red",
+    "expect_method": "model_pattern"
   },
   {
     "description": "issue #1053: WD Red CMR 4TB resolves through the widened Red pattern",
