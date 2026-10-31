@@ -170,24 +170,24 @@
     "expect_method": "model_name_normalized"
   },
   {
-    "description": "issue #1053: modern WD Red CMR family name bridges to the WDC Red profile",
+    "description": "issue #1053: WD Red CMR 4TB resolves through the widened Red pattern",
     "protocol": "ATA",
     "model_family": "Western Digital Red (CMR)",
     "model_name": "WDC WD40EFRX-68N32N0",
     "expect_matched": true,
     "expect_applied": true,
     "expect_family": "WDC Red",
-    "expect_method": "model_family_alias"
+    "expect_method": "model_pattern"
   },
   {
-    "description": "issue #1053: modern Toshiba NAS family name bridges to the N300 profile",
+    "description": "issue #1053: N300 16TB resolves through the widened N300 pattern",
     "protocol": "ATA",
     "model_family": "Toshiba N300/MN NAS HDD",
     "model_name": "TOSHIBA HDWG31G",
     "expect_matched": true,
     "expect_applied": true,
     "expect_family": "Toshiba N300",
-    "expect_method": "model_family_alias"
+    "expect_method": "model_pattern"
   },
   {
     "description": "issue #1053: specific 870 EVO profile outranks the Samsung catch-all family",
@@ -286,6 +286,44 @@
     "protocol": "ATA",
     "model_family": "Seagate Exos X16",
     "model_name": "ST12000NM001G-2MV103",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
+    "description": "model pattern outranks the family stage for an unaliased Red Plus firmware",
+    "protocol": "ATA",
+    "model_family": "Western Digital Red (CMR)",
+    "model_name": "WDC WD140EDFZ-11A0VA2",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "WDC Red Plus",
+    "expect_method": "model_pattern"
+  },
+  {
+    "description": "model alias beats the reported family for a 3TB Seagate",
+    "protocol": "ATA",
+    "model_family": "Seagate Barracuda 7200.14 (AF)",
+    "model_name": "ST3000DM001-1ER166",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Seagate Desktop HDD.15",
+    "expect_method": "model_name"
+  },
+  {
+    "description": "model alias beats the reported family for a 2TB Seagate",
+    "protocol": "ATA",
+    "model_family": "Seagate Barracuda 7200.14 (AF)",
+    "model_name": "ST2000DM001-1ER164",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Seagate Barracuda 7200.12",
+    "expect_method": "model_name"
+  },
+  {
+    "description": "Toshiba MN series stays unmatched despite sharing the N300 family name",
+    "protocol": "ATA",
+    "model_family": "Toshiba N300/MN NAS HDD",
+    "model_name": "TOSHIBA MN08ACA14T",
     "expect_matched": false,
     "expect_applied": false
   }

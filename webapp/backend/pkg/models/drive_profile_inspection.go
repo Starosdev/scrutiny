@@ -22,8 +22,7 @@ type DriveProfileInspection struct {
 	CatalogVersion string `json:"catalog_version,omitempty"`
 
 	// MatchMethod is the lookup stage that matched: "model_name",
-	// "model_name_normalized", "model_family", "model_family_alias", or
-	// "model_pattern".
+	// "model_name_normalized", "model_pattern", or "model_family".
 	MatchMethod string `json:"match_method,omitempty"`
 
 	// MatchedValue is the input value (family or model name) that matched.

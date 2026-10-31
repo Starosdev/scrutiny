@@ -78,9 +78,9 @@ func checkConsumerDriveProfileFixture(handle *ConsumerDriveCatalogHandle, fixtur
 
 // CanonicalizeConsumerDriveProfileCatalog re-emits a catalog document in the
 // canonical bundled format: 2-space indentation, version first, profiles in
-// declared order, then aliases and family aliases sorted by key (Go's JSON
-// encoder sorts map keys). The output is the exact byte form that should be
-// committed as the embedded runtime catalog.
+// declared order, aliases sorted by key (Go's JSON encoder sorts map keys).
+// The output is the exact byte form that should be committed as the embedded
+// runtime catalog.
 func CanonicalizeConsumerDriveProfileCatalog(data []byte) ([]byte, error) {
 	if err := ValidateConsumerDriveProfileCatalog(data); err != nil {
 		return nil, err
@@ -92,15 +92,13 @@ func CanonicalizeConsumerDriveProfileCatalog(data []byte) ([]byte, error) {
 
 	//nolint:govet // field order defines the canonical JSON layout of the catalog file
 	ordered := struct {
-		Version       string                 `json:"version,omitempty"`
-		Profiles      []ConsumerDriveProfile `json:"profiles"`
-		Aliases       map[string]string      `json:"aliases"`
-		FamilyAliases map[string]string      `json:"family_aliases,omitempty"`
+		Version  string                 `json:"version,omitempty"`
+		Profiles []ConsumerDriveProfile `json:"profiles"`
+		Aliases  map[string]string      `json:"aliases"`
 	}{
-		Version:       catalog.Version,
-		Profiles:      catalog.Profiles,
-		Aliases:       catalog.Aliases,
-		FamilyAliases: catalog.FamilyAliases,
+		Version:  catalog.Version,
+		Profiles: catalog.Profiles,
+		Aliases:  catalog.Aliases,
 	}
 
 	out, err := json.MarshalIndent(ordered, "", "  ")

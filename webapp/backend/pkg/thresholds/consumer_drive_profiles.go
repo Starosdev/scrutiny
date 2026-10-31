@@ -11,11 +11,11 @@ import (
 const MinConsumerDriveProfileSamples = 20
 
 // ProfileMatchMethod identifies which lookup stage produced a consumer drive
-// profile match. Stages are listed strongest-first. Model identity ranks above
-// family identity: a model number is stable hardware identity and its catalog
-// entry is curated one-to-one, while a model family is smartctl's own
-// classification, varies with the collector's drivedb, and can be a vendor-wide
-// catch-all that would otherwise shadow a specific profile.
+// profile match. Stages are listed strongest-first. Every model-identity stage
+// ranks above the model_family stage: a model number is stable hardware
+// identity, while a model family is smartctl's own classification, varies with
+// the collector's drivedb, and can be a vendor-wide catch-all that would
+// otherwise shadow a specific profile for the same drive.
 type ProfileMatchMethod string
 
 const (
@@ -26,16 +26,11 @@ const (
 	// normalization (capacity suffix or firmware suffix stripped).
 	ProfileMatchMethodModelNameNormalized ProfileMatchMethod = "model_name_normalized"
 
+	// ProfileMatchMethodModelPattern is a regex model_pattern match on the model name.
+	ProfileMatchMethodModelPattern ProfileMatchMethod = "model_pattern"
+
 	// ProfileMatchMethodModelFamily is an exact match on the smartctl-reported model family.
 	ProfileMatchMethodModelFamily ProfileMatchMethod = "model_family"
-
-	// ProfileMatchMethodModelFamilyAlias is an exact match on a family name that
-	// the catalog maps to one of its own families, bridging smartctl naming
-	// generations (for example "Toshiba N300/MN NAS HDD" to "Toshiba N300").
-	ProfileMatchMethodModelFamilyAlias ProfileMatchMethod = "model_family_alias"
-
-	// ProfileMatchMethodModelPattern is a regex model_pattern fallback match.
-	ProfileMatchMethodModelPattern ProfileMatchMethod = "model_pattern"
 )
 
 // Skip reasons reported on a ConsumerDriveProfileMatch that was found in the
@@ -67,10 +62,9 @@ type ConsumerDriveProfile struct {
 }
 
 type consumerDriveProfileCatalog struct {
-	Version       string                 `json:"version,omitempty"`
-	Aliases       map[string]string      `json:"aliases"`
-	FamilyAliases map[string]string      `json:"family_aliases,omitempty"`
-	Profiles      []ConsumerDriveProfile `json:"profiles"`
+	Version  string                 `json:"version,omitempty"`
+	Aliases  map[string]string      `json:"aliases"`
+	Profiles []ConsumerDriveProfile `json:"profiles"`
 }
 
 // ConsumerDriveProfileMatch describes the outcome of matching a device against
@@ -116,11 +110,10 @@ func (p *ConsumerDriveProfile) EffectiveMinSamples() int {
 var consumerDriveProfilesJSON []byte
 
 type loadedConsumerDriveCatalog struct {
-	version       string
-	byFamily      map[string]ConsumerDriveProfile
-	byFamilyAlias map[string]ConsumerDriveProfile
-	byModel       map[string]ConsumerDriveProfile
-	byRegex       []ConsumerDriveProfile
+	version  string
+	byFamily map[string]ConsumerDriveProfile
+	byModel  map[string]ConsumerDriveProfile
+	byRegex  []ConsumerDriveProfile
 }
 
 var consumerDriveCatalog *loadedConsumerDriveCatalog
@@ -150,11 +143,10 @@ func parseConsumerDriveProfiles(data []byte) (*loadedConsumerDriveCatalog, error
 	}
 
 	loaded := &loadedConsumerDriveCatalog{
-		version:       catalog.Version,
-		byFamily:      make(map[string]ConsumerDriveProfile, len(catalog.Profiles)),
-		byFamilyAlias: make(map[string]ConsumerDriveProfile, len(catalog.FamilyAliases)),
-		byModel:       make(map[string]ConsumerDriveProfile, len(catalog.Aliases)),
-		byRegex:       make([]ConsumerDriveProfile, 0),
+		version:  catalog.Version,
+		byFamily: make(map[string]ConsumerDriveProfile, len(catalog.Profiles)),
+		byModel:  make(map[string]ConsumerDriveProfile, len(catalog.Aliases)),
+		byRegex:  make([]ConsumerDriveProfile, 0),
 	}
 	for i := range catalog.Profiles {
 		if err := addConsumerDriveProfile(&catalog.Profiles[i], loaded.byFamily, &loaded.byRegex); err != nil {
@@ -164,12 +156,6 @@ func parseConsumerDriveProfiles(data []byte) (*loadedConsumerDriveCatalog, error
 
 	for modelAlias, family := range catalog.Aliases {
 		if err := addConsumerDriveAlias(modelAlias, family, loaded.byFamily, loaded.byModel); err != nil {
-			return nil, err
-		}
-	}
-
-	for familyAlias, family := range catalog.FamilyAliases {
-		if err := addConsumerDriveFamilyAlias(familyAlias, family, loaded.byFamily, loaded.byFamilyAlias); err != nil {
 			return nil, err
 		}
 	}
@@ -273,32 +259,6 @@ func addConsumerDriveAlias(modelAlias, family string, byFamily, byModel map[stri
 	return nil
 }
 
-// addConsumerDriveFamilyAlias resolves a smartctl family name to the catalog family
-// that covers the same drive population and registers it under the normalized family
-// key. A family alias that collides with a real family name is rejected: the
-// family stage would always win, so the alias could never be reached.
-func addConsumerDriveFamilyAlias(familyAlias, family string, byFamily, byFamilyAlias map[string]ConsumerDriveProfile) error {
-	profile, ok := byFamily[normalizeConsumerDriveKey(family)]
-	if !ok {
-		return fmt.Errorf("family alias %q points to unknown family %q", familyAlias, family)
-	}
-	aliasKey := normalizeConsumerDriveKey(familyAlias)
-	if aliasKey == "" {
-		return fmt.Errorf("family alias %q normalizes to empty key", familyAlias)
-	}
-	if _, exists := byFamily[aliasKey]; exists {
-		return fmt.Errorf("family alias %q collides with the catalog family of the same name", familyAlias)
-	}
-	if existing, exists := byFamilyAlias[aliasKey]; exists {
-		if normalizeConsumerDriveKey(existing.ModelFamily) != normalizeConsumerDriveKey(profile.ModelFamily) {
-			return fmt.Errorf("duplicate family alias %q", familyAlias)
-		}
-		return nil
-	}
-	byFamilyAlias[aliasKey] = profile
-	return nil
-}
-
 // ParseConsumerDriveProfileDenylist converts a comma-separated list of family
 // names into a set of normalized family keys. Empty entries are ignored.
 func ParseConsumerDriveProfileDenylist(csv string) map[string]struct{} {
@@ -332,8 +292,7 @@ type consumerDriveProfileCandidate struct {
 // family keys (see ParseConsumerDriveProfileDenylist) that must not be applied.
 //
 // Lookup stages run strongest-first: exact model_name (alias table),
-// vendor-normalized model_name, exact model_family, aliased model_family, then
-// regex model_pattern.
+// vendor-normalized model_name, regex model_pattern, then exact model_family.
 // A candidate that fails the confidence gate or is denylisted is skipped and
 // weaker stages are still consulted. When no candidate can be applied, the
 // first skipped candidate is returned (Applied=false) so callers can explain
@@ -401,7 +360,7 @@ func (lc *loadedConsumerDriveCatalog) match(protocol, modelFamily, modelName str
 
 // candidates returns raw catalog hits ordered strongest-first.
 func (lc *loadedConsumerDriveCatalog) candidates(modelFamily, modelName string) []consumerDriveProfileCandidate {
-	candidates := make([]consumerDriveProfileCandidate, 0, 2)
+	candidates := make([]consumerDriveProfileCandidate, 0, 3)
 
 	if profile, ok := lc.byModel[normalizeConsumerDriveKey(modelName)]; ok {
 		candidates = append(candidates, consumerDriveProfileCandidate{&profile, ProfileMatchMethodModelName, modelName})
@@ -415,17 +374,14 @@ func (lc *loadedConsumerDriveCatalog) candidates(modelFamily, modelName string) 
 			candidates = append(candidates, consumerDriveProfileCandidate{&profile, ProfileMatchMethodModelNameNormalized, modelName})
 		}
 	}
-	if profile, ok := lc.byFamily[normalizeConsumerDriveKey(modelFamily)]; ok {
-		candidates = append(candidates, consumerDriveProfileCandidate{&profile, ProfileMatchMethodModelFamily, modelFamily})
-	}
-	if profile, ok := lc.byFamilyAlias[normalizeConsumerDriveKey(modelFamily)]; ok {
-		candidates = append(candidates, consumerDriveProfileCandidate{&profile, ProfileMatchMethodModelFamilyAlias, modelFamily})
-	}
 	for i := range lc.byRegex {
 		profile := lc.byRegex[i]
 		if profile.compiledPattern != nil && profile.compiledPattern.MatchString(modelName) {
 			candidates = append(candidates, consumerDriveProfileCandidate{&profile, ProfileMatchMethodModelPattern, modelName})
 		}
+	}
+	if profile, ok := lc.byFamily[normalizeConsumerDriveKey(modelFamily)]; ok {
+		candidates = append(candidates, consumerDriveProfileCandidate{&profile, ProfileMatchMethodModelFamily, modelFamily})
 	}
 	return candidates
 }
