@@ -64,10 +64,21 @@ func legacyScrutinyUUID(modelName, serialNumber, wwn string) string {
 
 // prepareAnalogJDeviceRepair restores serial-fallback WWNs cleared by AnalogJ/scrutiny
 // 0.9.x and merges any duplicate row created by a Staros collector after migration.
-// It returns legacy scrutiny_uuid -> current device_wwn mappings for InfluxDB repair.
+// It returns legacy scrutiny_uuid -> history target mappings for InfluxDB repair.
+//
+// Rows reporting a model name are processed first. Among rows whose WWN 0.9.x cleared,
+// the first one processed takes the case 0 branch and keeps its row, and every later row
+// for that serial is merged into it, so processing order decides which row survives. A
+// drive hit by both 0.9.x bugs has its WWN cleared on both rows and its model name
+// blanked on one of them, and created_at order alone kept the blank-model row: the
+// surviving row then carried no model name, and isLegacyIdentityCandidate requires equal
+// model names, so the next collector run created a fresh duplicate rather than
+// reconciling. Keeping the model-bearing row matches mergeAnalogJWWNDuplicates.
 func prepareAnalogJDeviceRepair(ctx context.Context, tx *gorm.DB) (map[string]analogJHistoryTarget, error) {
+	const repairOrder = "(model_name IS NULL OR model_name = '') ASC, created_at ASC, device_id ASC"
+
 	var devices []models.Device
-	if err := tx.WithContext(ctx).Unscoped().Order("created_at ASC, device_id ASC").Find(&devices).Error; err != nil {
+	if err := tx.WithContext(ctx).Unscoped().Order(repairOrder).Find(&devices).Error; err != nil {
 		return nil, fmt.Errorf("could not load devices for AnalogJ migration repair: %w", err)
 	}
 

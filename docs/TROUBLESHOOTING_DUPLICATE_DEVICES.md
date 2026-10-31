@@ -48,6 +48,12 @@ and nothing restores it. These are left alone:
 Each refusal is logged with the serial and the reason. Merge any of these on
 request with the endpoint below.
 
+A drive hit by both 0.9.x bugs has its WWN cleared on both rows and its model
+name blanked on one of them. The row keeping its model name survives, for the
+same reason: identity reconciliation at registration requires equal model names,
+so a blank-model survivor would leave the next collector run creating a fresh
+duplicate instead of reconciling.
+
 History rewritten out of 0.9.x is tagged with both `device_id` and `device_wwn`.
 A WWN alone does not identify a device, and history queries fall back to the
 `device_wwn` tag only while a single device holds that WWN, so WWN-only tags

@@ -218,6 +218,55 @@ func TestPrepareAnalogJDeviceRepairRestoresNVMeIdentityAndMergesDuplicate(t *tes
 	require.Len(t, devices, 2)
 }
 
+// A drive hit by both 0.9.x bugs has its WWN cleared on both rows and its model name
+// blanked on one of them. The row that keeps its model name has to survive: the repair
+// merges every later row for a serial into the first one it processes, and
+// isLegacyIdentityCandidate requires equal model names, so a blank-model survivor leaves
+// the next collector run creating a fresh duplicate instead of reconciling.
+func TestPrepareAnalogJDeviceRepairKeepsTheModelBearingRowWhenBothWWNsWereCleared(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&models.Device{}))
+
+	model := "Samsung SSD 980 PRO 2TB"
+	serial := "NVME123"
+	staleCreatedAt := time.Date(2024, 12, 25, 0, 0, 0, 0, time.UTC)
+	// the blank-model row is the older one, so created_at order alone would keep it
+	require.NoError(t, db.Create(&models.Device{
+		DeviceID:     deviceid.Generate("", serial, ""),
+		SerialNumber: serial,
+		DeviceName:   "nvme0",
+		HostId:       "nas-1",
+		Label:        "Cache",
+		CreatedAt:    staleCreatedAt,
+	}).Error)
+	require.NoError(t, db.Create(&models.Device{
+		DeviceID:     deviceid.Generate(model, serial, ""),
+		ModelName:    model,
+		SerialNumber: serial,
+		DeviceName:   "nvme0",
+		HostId:       "nas-1",
+		CreatedAt:    time.Date(2026, 4, 26, 0, 0, 0, 0, time.UTC),
+	}).Error)
+
+	mapping, err := prepareAnalogJDeviceRepair(context.Background(), db)
+	require.NoError(t, err)
+
+	var devices []models.Device
+	require.NoError(t, db.Unscoped().Find(&devices).Error)
+	require.Len(t, devices, 1)
+	require.Equal(t, model, devices[0].ModelName)
+	require.Equal(t, strings.ToLower(serial), devices[0].WWN)
+	require.Equal(t, "Cache", devices[0].Label)
+	require.Equal(t, staleCreatedAt, devices[0].CreatedAt.UTC())
+
+	// both 0.9.x identities have to reach the surviving row, or the blank-model row's
+	// history is orphaned
+	survivor := analogJHistoryTarget{DeviceID: devices[0].DeviceID, WWN: devices[0].WWN}
+	require.Equal(t, survivor, mapping[legacyScrutinyUUID("", serial, "")])
+	require.Equal(t, survivor, mapping[legacyScrutinyUUID(model, serial, "")])
+}
+
 func TestPrepareAnalogJDeviceRepairUsesCollectorDiscoveredWWN(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
 	require.NoError(t, err)
