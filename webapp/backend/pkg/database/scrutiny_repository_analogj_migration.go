@@ -35,6 +35,9 @@ func (sr *scrutinyRepository) migrateM20260803000000(ctx context.Context, tx *go
 	if err != nil {
 		return err
 	}
+	if err := sr.mergeAnalogJWWNDuplicates(ctx, tx); err != nil {
+		return err
+	}
 	if len(mapping) == 0 {
 		return nil
 	}
@@ -127,6 +130,93 @@ func prepareAnalogJDeviceRepair(ctx context.Context, tx *gorm.DB) (map[string]st
 	}
 
 	return mapping, nil
+}
+
+// mergeAnalogJWWNDuplicates collapses the rows AnalogJ/scrutiny 0.9.x created for a
+// single drive. 0.9.x keyed devices by a UUID over model + serial + WWN, so a drive
+// whose reported model name changed forked into a second row carrying the same WWN and
+// the same serial (#1056). Both rows survive into Staros, where device_id is derived
+// from the same three fields, and the drive then appears twice with its history split.
+//
+// Rows that only share a WWN are left alone. Drives behind one controller, or reporting
+// a vendor-default WWN, legitimately share it and are told apart by their serials
+// (#851), so serial equality is what identifies one physical drive here. A group whose
+// rows disagree on a non-empty host_id is also left alone, because that is two
+// collectors reporting the drive rather than one duplicated row; the
+// /api/device/{id}/merge_into endpoint handles those on request.
+func (sr *scrutinyRepository) mergeAnalogJWWNDuplicates(ctx context.Context, tx *gorm.DB) error {
+	// Newest row first, and on a tie the row that still reports a model name: 0.9.x
+	// blanked the model name on the row that stopped updating.
+	const canonicalOrder = "updated_at DESC, (model_name IS NULL OR model_name = '') ASC, device_id ASC"
+
+	var devices []models.Device
+	if err := tx.WithContext(ctx).Unscoped().Order(canonicalOrder).Find(&devices).Error; err != nil {
+		return fmt.Errorf("could not load devices for AnalogJ duplicate merge: %w", err)
+	}
+
+	groupKeys := make([]string, 0, len(devices))
+	groups := make(map[string][]int, len(devices))
+	for i := range devices {
+		wwn := strings.ToLower(strings.TrimSpace(devices[i].WWN))
+		serial := strings.ToLower(strings.TrimSpace(devices[i].SerialNumber))
+		if wwn == "" || serial == "" {
+			continue
+		}
+		key := wwn + "\x00" + serial
+		if _, seen := groups[key]; !seen {
+			groupKeys = append(groupKeys, key)
+		}
+		groups[key] = append(groups[key], i)
+	}
+
+	for _, key := range groupKeys {
+		indexes := groups[key]
+		if len(indexes) < 2 {
+			continue
+		}
+		canonical := &devices[indexes[0]]
+		if conflictingHostIDs(devices, indexes) {
+			sr.logger.Warnf(
+				"leaving %d AnalogJ device rows for serial %s unmerged: they report different host ids",
+				len(indexes),
+				canonical.SerialNumber,
+			)
+			continue
+		}
+		for _, legacyIndex := range indexes[1:] {
+			legacy := &devices[legacyIndex]
+			sr.logger.Infof(
+				"Merging duplicate AnalogJ device row %s into %s (serial %s)",
+				legacy.DeviceID,
+				canonical.DeviceID,
+				canonical.SerialNumber,
+			)
+			if err := mergeAnalogJDeviceRows(ctx, tx, legacy, canonical); err != nil {
+				return err
+			}
+			if legacy.CreatedAt.Before(canonical.CreatedAt) {
+				canonical.CreatedAt = legacy.CreatedAt
+			}
+		}
+	}
+
+	return nil
+}
+
+// conflictingHostIDs reports whether the grouped rows name more than one non-empty host.
+func conflictingHostIDs(devices []models.Device, indexes []int) bool {
+	hostID := ""
+	for _, i := range indexes {
+		current := strings.TrimSpace(devices[i].HostId)
+		if current == "" {
+			continue
+		}
+		if hostID != "" && hostID != current {
+			return true
+		}
+		hostID = current
+	}
+	return false
 }
 
 func analogJRepairCandidates(devices []models.Device, legacyIndex int) []int {

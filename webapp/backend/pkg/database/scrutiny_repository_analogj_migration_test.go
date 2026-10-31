@@ -247,6 +247,125 @@ func TestPrepareAnalogJDeviceRepairUsesCollectorDiscoveredWWN(t *testing.T) {
 	require.Equal(t, "Cache", devices[0].Label)
 }
 
+func newWWNDuplicateTestRepository(t *testing.T) (*scrutinyRepository, *gorm.DB) {
+	t.Helper()
+
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&models.Device{}))
+
+	return &scrutinyRepository{gormClient: db, logger: logrus.New()}, db
+}
+
+// fixes #1056: AnalogJ/scrutiny 0.9.x forked one drive into two rows when its reported
+// model name changed, because 0.9.x keyed devices by a UUID over model + serial + WWN.
+// Both rows carry the same WWN and serial, so the drive appeared twice with its history
+// split across the two device IDs.
+func TestMergeAnalogJWWNDuplicatesCollapsesOneDrive(t *testing.T) {
+	repo, db := newWWNDuplicateTestRepository(t)
+
+	serial := "48L0A0ZXFVNE"
+	wwn := "0x5000039xxxxxxxx1"
+	model := "TOSHIBA AL13SEB300"
+	staleCreatedAt := time.Date(2024, 12, 25, 0, 0, 0, 0, time.UTC)
+	staleUpdatedAt := time.Date(2026, 4, 23, 0, 0, 0, 0, time.UTC)
+	staleID := deviceid.Generate("", serial, wwn)
+	canonicalID := deviceid.Generate(model, serial, wwn)
+
+	require.NoError(t, db.Create(&models.Device{
+		DeviceID:                  staleID,
+		WWN:                       wwn,
+		SerialNumber:              serial,
+		HostId:                    "truenas",
+		Label:                     "Array Bay 3",
+		Archived:                  true,
+		Muted:                     true,
+		MissedPingTimeoutOverride: 90,
+		SmartDisplayMode:          "raw",
+		CreatedAt:                 staleCreatedAt,
+		UpdatedAt:                 staleUpdatedAt,
+	}).Error)
+	require.NoError(t, db.Create(&models.Device{
+		DeviceID:     canonicalID,
+		WWN:          wwn,
+		ModelName:    model,
+		SerialNumber: serial,
+		HostId:       "truenas",
+		DeviceStatus: pkg.DeviceStatusFailedScrutiny,
+		CreatedAt:    time.Date(2026, 4, 26, 0, 0, 0, 0, time.UTC),
+		UpdatedAt:    time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC),
+	}).Error)
+
+	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db))
+
+	var devices []models.Device
+	require.NoError(t, db.Unscoped().Find(&devices).Error)
+	require.Len(t, devices, 1)
+	require.Equal(t, canonicalID, devices[0].DeviceID)
+	require.Equal(t, model, devices[0].ModelName)
+	require.Equal(t, pkg.DeviceStatusFailedScrutiny, devices[0].DeviceStatus)
+	require.Equal(t, staleCreatedAt, devices[0].CreatedAt.UTC())
+	require.Equal(t, "Array Bay 3", devices[0].Label)
+	require.True(t, devices[0].Archived)
+	require.True(t, devices[0].Muted)
+	require.Equal(t, 90, devices[0].MissedPingTimeoutOverride)
+	require.Equal(t, "raw", devices[0].SmartDisplayMode)
+
+	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db))
+	require.NoError(t, db.Unscoped().Find(&devices).Error)
+	require.Len(t, devices, 1)
+}
+
+// #851: drives behind one controller, or reporting a vendor-default WWN, share the WWN
+// and are told apart by their serials. Those are two drives, not a duplicated row.
+func TestMergeAnalogJWWNDuplicatesKeepsDistinctSerials(t *testing.T) {
+	repo, db := newWWNDuplicateTestRepository(t)
+
+	wwn := "0x600508b1001039343720202020200016"
+	model := "HITACHI HUC106060CSS600"
+	for _, serial := range []string{"PPKJA1ZB", "PPK4ZTUB"} {
+		require.NoError(t, db.Create(&models.Device{
+			DeviceID:     deviceid.Generate(model, serial, wwn),
+			WWN:          wwn,
+			ModelName:    model,
+			SerialNumber: serial,
+			HostId:       "nas-1",
+		}).Error)
+	}
+
+	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db))
+
+	var devices []models.Device
+	require.NoError(t, db.Unscoped().Find(&devices).Error)
+	require.Len(t, devices, 2)
+}
+
+// Two collectors reporting one drive is not a duplicated row, so the migration leaves
+// the choice to the /api/device/{id}/merge_into endpoint.
+func TestMergeAnalogJWWNDuplicatesKeepsConflictingHosts(t *testing.T) {
+	repo, db := newWWNDuplicateTestRepository(t)
+
+	serial := "WD-CA2XZ08L"
+	wwn := "0x50014ee2c06ce3c3"
+	model := "WDC WD80EFZZ-68BTXN0"
+	for _, host := range []string{"nas-1", "nas-2"} {
+		require.NoError(t, db.Create(&models.Device{
+			DeviceID:     deviceid.GenerateWithFallback(model, serial, wwn, "sda", host),
+			WWN:          wwn,
+			ModelName:    model,
+			SerialNumber: serial,
+			DeviceName:   "sda",
+			HostId:       host,
+		}).Error)
+	}
+
+	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db))
+
+	var devices []models.Device
+	require.NoError(t, db.Unscoped().Find(&devices).Error)
+	require.Len(t, devices, 2)
+}
+
 func TestAnalogJMigrationIntegration(t *testing.T) {
 	ResetMigrationGuardForTests()
 

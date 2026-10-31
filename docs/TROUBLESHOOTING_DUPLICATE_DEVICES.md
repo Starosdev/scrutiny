@@ -22,8 +22,28 @@ Migration `m20260803000000` repairs this state automatically when the SQLite
 an unambiguous duplicate while preserving user metadata, and rewrites
 `smart`/`temp` history in the daily, weekly, monthly, and yearly buckets.
 
+0.9.x also forked a single drive into two rows of its own when the drive's
+reported model name changed, because it keyed devices by a UUID over
+`model + serial + WWN`. Both rows carry the same WWN and the same serial. The
+migration merges those too, keeping the most recently updated row and carrying
+the older `created_at` and any user metadata onto it. Two cases are left alone
+because they are not one duplicated row:
+
+- rows that share a WWN but report different serials. Drives behind one
+  controller, or reporting a vendor-default WWN such as
+  `0x0000000000000000`, legitimately share it (#851).
+- rows that agree on WWN and serial but name different non-empty `host_id`
+  values. That is two collectors reporting one drive.
+
+Merge either case on request with the endpoint below.
+
 Do not change either legacy UUID namespace or its `model + serial + WWN`
 formula. Existing 0.9.x history cannot be matched after either value changes.
+
+`idx_devices_wwn` is a plain index, never unique. `device_id` is the device
+identity, and a 0.9.x import can present duplicate WWNs before the repair
+migration runs, so a unique index aborts the migration chain (#314, #851,
+#1056).
 
 ## How to find the device IDs
 

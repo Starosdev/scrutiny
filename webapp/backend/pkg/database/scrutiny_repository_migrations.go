@@ -644,9 +644,11 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 		return fmt.Errorf("failed to rename devices_new: %w", err)
 	}
 
-	// Step 5: Partial unique index on wwn (allows multiple empty/NULL values)
-	if err := tx.Exec("CREATE UNIQUE INDEX idx_devices_wwn ON devices(wwn) WHERE wwn IS NOT NULL AND wwn != ''").Error; err != nil {
-		return fmt.Errorf("failed to create wwn unique index: %w", err)
+	// Step 5: Plain index on wwn. Drives can share a WWN (#314, #851), and an
+	// AnalogJ 0.9.x database can already hold two rows for one drive (#1056), so a
+	// unique index here aborts the whole migration chain.
+	if err := tx.Exec("CREATE INDEX idx_devices_wwn ON devices(wwn)").Error; err != nil {
+		return fmt.Errorf("failed to create wwn index: %w", err)
 	}
 
 	// Step 6: Index on deleted_at (GORM soft-delete convention)
@@ -858,7 +860,8 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 	if err := tx.Exec("ALTER TABLE devices_new RENAME TO devices").Error; err != nil {
 		return fmt.Errorf("failed to rename devices during smart_support migration: %w", err)
 	}
-	if err := tx.Exec("CREATE UNIQUE INDEX idx_devices_wwn ON devices(wwn) WHERE wwn IS NOT NULL AND wwn != ''").Error; err != nil {
+	// Plain, not unique: see m20260401000000 step 5 and m20260914000000.
+	if err := tx.Exec("CREATE INDEX idx_devices_wwn ON devices(wwn)").Error; err != nil {
 		return fmt.Errorf("failed to recreate idx_devices_wwn: %w", err)
 	}
 	if err := tx.Exec("CREATE INDEX idx_devices_deleted_at ON devices(deleted_at)").Error; err != nil {
@@ -1460,13 +1463,15 @@ func (sr *scrutinyRepository) schemaMigrations(ctx context.Context) []*gormigrat
 				return sr.migrateM20260401000000(tx)
 			},
 		},
-		// Drop unique constraint on wwn, replace with regular index.
-		// The unique index caused INSERT failures for devices sharing the same
-		// non-empty WWN (e.g. multiple disks reporting 0x0000000000000000).
-		// Since device_id is now the primary key, wwn uniqueness is no longer needed.
+		// Rebuild idx_devices_wwn as a plain index. m20260401000000 and
+		// m20260508000000 once created it UNIQUE, which made INSERT fail for devices
+		// sharing a non-empty WWN (e.g. multiple disks reporting
+		// 0x0000000000000000) and aborted the chain on an AnalogJ 0.9.x database that
+		// already held two rows for one drive. Both now create the plain index, so
+		// this entry and m20260914000000 are no-ops for a fresh run and still repair
+		// a database that applied the earlier UNIQUE definition.
 		// Fixes: https://github.com/Staros-Labs/scrutiny/issues/314
-		// m20260508000000 later rebuilt the devices table and recreated the index as
-		// UNIQUE; m20260914000000 restores the plain index (#851).
+		// Fixes: https://github.com/Starosdev/scrutiny/issues/1056
 		{
 			ID: "m20260402000000",
 			Migrate: func(tx *gorm.DB) error {
@@ -1667,10 +1672,11 @@ func (sr *scrutinyRepository) schemaMigrations(ctx context.Context) []*gormigrat
 		{ID: "m20260908000000", Migrate: migrateTemperatureStorageKey},
 		{ID: "m20260908000001", Migrate: migrateTemperatureNotificationSettings},
 		{ID: "m20260910000000", Migrate: m20260910000000.Migrate},
-		// m20260508000000 recreated idx_devices_wwn as UNIQUE while rebuilding the devices
-		// table, undoing m20260402000000. device_id is the identity, and drives behind one
-		// controller or with vendor-default WWNs can share a WWN (#851), so restore the
-		// plain index with the same statements m20260402000000 used.
+		// device_id is the identity, and drives behind one controller or with
+		// vendor-default WWNs can share a WWN (#851). m20260508000000 recreated
+		// idx_devices_wwn as UNIQUE while rebuilding the devices table, undoing
+		// m20260402000000; it now creates the plain index, so this entry only repairs
+		// a database that applied that earlier definition.
 		{ID: "m20260914000000", Migrate: func(tx *gorm.DB) error {
 			return sr.migrateM20260402000000(tx)
 		}},
