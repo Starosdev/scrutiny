@@ -1,13 +1,13 @@
 [
   {
-    "description": "exact model_family hit wins over model name stages",
+    "description": "exact model alias outranks the model family stage",
     "protocol": "ATA",
     "model_family": "Seagate Barracuda 7200.14 (AF)",
     "model_name": "ST4000DM000-1F2168",
     "expect_matched": true,
     "expect_applied": true,
     "expect_family": "Seagate Barracuda 7200.14 (AF)",
-    "expect_method": "model_family"
+    "expect_method": "model_name"
   },
   {
     "description": "exact model_family hit for Samsung based SSDs",
@@ -156,6 +156,174 @@
     "protocol": "NVMe",
     "model_family": "Samsung based SSDs",
     "model_name": "Samsung SSD 860 EVO 500GB",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
+    "description": "issue #1053: 8TB Red CMR resolves alongside its WD80EFAX sibling",
+    "protocol": "ATA",
+    "model_family": "Western Digital Red (CMR)",
+    "model_name": "WDC WD80EFZZ-68BTXN0",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "WDC Red",
+    "expect_method": "model_pattern"
+  },
+  {
+    "description": "issue #1053: WD Red CMR 4TB resolves through the widened Red pattern",
+    "protocol": "ATA",
+    "model_family": "Western Digital Red (CMR)",
+    "model_name": "WDC WD40EFRX-68N32N0",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "WDC Red",
+    "expect_method": "model_pattern"
+  },
+  {
+    "description": "issue #1053: N300 16TB resolves through the widened N300 pattern",
+    "protocol": "ATA",
+    "model_family": "Toshiba N300/MN NAS HDD",
+    "model_name": "TOSHIBA HDWG31G",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Toshiba N300",
+    "expect_method": "model_pattern"
+  },
+  {
+    "description": "issue #1053: specific 870 EVO profile outranks the Samsung catch-all family",
+    "protocol": "ATA",
+    "model_family": "Samsung based SSDs",
+    "model_name": "Samsung SSD 870 EVO 4TB",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Samsung SSD 870 EVO",
+    "expect_method": "model_name_normalized"
+  },
+  {
+    "description": "issue #1053: Crucial client SSD family resolves through its model alias",
+    "protocol": "ATA",
+    "model_family": "Crucial/Micron Client SSDs",
+    "model_name": "CT1000MX500SSD1",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Crucial MX500",
+    "expect_method": "model_name"
+  },
+  {
+    "description": "issue #1053 coverage gap: Toshiba X300 has no catalog profile",
+    "protocol": "ATA",
+    "model_family": "Toshiba X300",
+    "model_name": "TOSHIBA HDWE160",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
+    "description": "issue #1053 coverage gap: SMR Barracuda must not borrow CMR Barracuda thresholds",
+    "protocol": "ATA",
+    "model_family": "Seagate BarraCuda 3.5 (SMR)",
+    "model_name": "ST4000DM004-2CV104",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
+    "description": "issue #1053 coverage gap: SMR Barracuda ST4000DM005 stays unmatched",
+    "protocol": "ATA",
+    "model_family": "Seagate BarraCuda 3.5 (SMR)",
+    "model_name": "ST4000DM005-2DP166",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
+    "description": "issue #1053 coverage gap: SMR Barracuda ST6000DM003 stays unmatched",
+    "protocol": "ATA",
+    "model_family": "Seagate BarraCuda 3.5 (SMR)",
+    "model_name": "ST6000DM003-2CY186",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
+    "description": "issue #1053 coverage gap: Seagate IronWolf has no catalog profile",
+    "protocol": "ATA",
+    "model_family": "Seagate IronWolf",
+    "model_name": "ST10000VN0008-2PJ103",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
+    "description": "issue #1053 coverage gap: Seagate IronWolf ST12000VN0008 stays unmatched",
+    "protocol": "ATA",
+    "model_family": "Seagate IronWolf",
+    "model_name": "ST12000VN0008-2PH103",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
+    "description": "issue #1053 coverage gap: Seagate IronWolf Pro has no catalog profile",
+    "protocol": "ATA",
+    "model_family": "Seagate IronWolf Pro",
+    "model_name": "ST16000NT001-3LV101",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
+    "description": "issue #1053 coverage gap: Seagate IronWolf Pro ST16000NE000 stays unmatched",
+    "protocol": "ATA",
+    "model_family": "Seagate IronWolf Pro",
+    "model_name": "ST16000NE000-2KK103",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
+    "description": "issue #1053 coverage gap: Seagate Exos X14 has no catalog profile",
+    "protocol": "ATA",
+    "model_family": "Seagate Exos X14",
+    "model_name": "ST12000NM0538-2K2101",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
+    "description": "issue #1053 coverage gap: Seagate Exos X16 has no catalog profile",
+    "protocol": "ATA",
+    "model_family": "Seagate Exos X16",
+    "model_name": "ST12000NM001G-2MV103",
+    "expect_matched": false,
+    "expect_applied": false
+  },
+  {
+    "description": "model pattern outranks the family stage for an unaliased Red Plus firmware",
+    "protocol": "ATA",
+    "model_family": "Western Digital Red (CMR)",
+    "model_name": "WDC WD140EDFZ-11A0VA2",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "WDC Red Plus",
+    "expect_method": "model_pattern"
+  },
+  {
+    "description": "model alias beats the reported family for a 3TB Seagate",
+    "protocol": "ATA",
+    "model_family": "Seagate Barracuda 7200.14 (AF)",
+    "model_name": "ST3000DM001-1ER166",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Seagate Desktop HDD.15",
+    "expect_method": "model_name"
+  },
+  {
+    "description": "model alias beats the reported family for a 2TB Seagate",
+    "protocol": "ATA",
+    "model_family": "Seagate Barracuda 7200.14 (AF)",
+    "model_name": "ST2000DM001-1ER164",
+    "expect_matched": true,
+    "expect_applied": true,
+    "expect_family": "Seagate Barracuda 7200.12",
+    "expect_method": "model_name"
+  },
+  {
+    "description": "Toshiba MN series stays unmatched despite sharing the N300 family name",
+    "protocol": "ATA",
+    "model_family": "Toshiba N300/MN NAS HDD",
+    "model_name": "TOSHIBA MN08ACA14T",
     "expect_matched": false,
     "expect_applied": false
   }

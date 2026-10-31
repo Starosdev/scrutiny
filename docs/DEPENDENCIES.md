@@ -84,6 +84,129 @@ CLI 22.2.3 from the target branch brings its pinned Zod dependency to the patche
 The existing body-parser and fast-uri override floors match those patches.
 No frontend advisory exception is added.
 
+### Release-tooling audit allowlist review (2026-10-30)
+
+Three further Undici advisories reached the bundled npm copy after the previous
+review, so root `npm audit` blocked again on the same package and the same path:
+
+- [GHSA-2m5v-pch6-74hx](https://github.com/advisories/GHSA-2m5v-pch6-74hx)
+- [GHSA-qrxm-fqhp-jwvm](https://github.com/advisories/GHSA-qrxm-fqhp-jwvm)
+- [GHSA-9fm3-97px-rjf6](https://github.com/advisories/GHSA-9fm3-97px-rjf6)
+
+A newer npm does not fix them. npm 12.2.1, the latest release on this date,
+bundles ip-address 10.7.2 and Undici 6.29.0, the same versions npm 11.21.1
+bundles. This was measured rather than assumed: raising the npm override to
+`^12.2.1`, regenerating the root lockfile with `npm install --package-lock-only`
+and re-running the audit gate reported the identical two packages, so the
+override was reverted and the lockfile left unchanged. Overrides cannot replace
+files shipped inside a package tarball.
+
+The three advisories are added to the allowlist on the existing terms: every
+affected path stays under `node_modules/npm/node_modules/`, and `.releaserc.json`
+loads six plugins, none of which is `@semantic-release/npm`, so the bundled npm
+never executes.
+
+The fix is close, not distant. npm/cli's default branch already bundles Undici
+6.29.1 and ip-address 10.7.5, which patch every advisory listed here, and npm
+ships every few weeks. The expiry therefore moves only to December 15, 2026.
+Removing the exception then needs the `npm` override in the root `package.json`
+raised past the 11.x floor, because the fix lands in npm 12.x; that override is
+the knob, even though it cannot reach the nested copies directly.
+
+One of the three changes the risk class of this exception.
+[GHSA-2m5v-pch6-74hx](https://github.com/advisories/GHSA-2m5v-pch6-74hx) is a TLS
+certificate validation bypass, where every earlier entry was a denial of service.
+The exception still rests on the bundled npm never executing, but the cost of
+that argument being wrong is now confidentiality rather than availability, which
+is the reason for the short expiry rather than a longer one.
+
+A passing gate still does not mean the bundled copies are patched.
+
+The frontend audit, which only runs once the root audit passes, reported one
+finding: qs 6.16.0, [GHSA-6pq8-jhm2-2vcw](https://github.com/advisories/GHSA-6pq8-jhm2-2vcw).
+A lockfile-only update to qs 6.17.1 clears it. The body-parser, fast-uri and Zod
+findings from the previous review are already resolved and no longer appear.
+
+The `braces` entry in `UNPATCHED_ADVISORIES`
+([GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)) is
+removed. GitHub withdrew that advisory on October 23, 2026, and neither audit
+reports the package, so the exception covered nothing and the shared expiry had
+been carrying it forward. `UNPATCHED_ADVISORIES` is now empty.
+
+### glob and minimatch advisories (2026-10-30)
+
+GitHub published two advisories on 2026-10-30 that broke the audit gate on every
+branch at once:
+
+- [GHSA-3g3m-2fjr-6pw4](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4):
+  glob AbortSignal cancellation bypass. Affects `>= 9.0.0, <= 14.0.1`, patched in
+  14.0.2.
+- [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249):
+  minimatch denial of service through globparts amplification. Affects
+  `< 11.0.1`, patched in 11.0.1.
+
+Both patches are major releases published on 2026-10-27, and both packages reach
+this repository only as transitive dependencies. The gate now carries two
+separate exceptions for them.
+
+**Release tooling: bundled npm.** Root `npm audit` reports each package at one
+path, `node_modules/npm/node_modules/glob` and
+`node_modules/npm/node_modules/minimatch`. npm 11.21.1, the override floor, and
+npm 12.2.1, the latest release, both declare `glob ^13.0.6` and
+`minimatch ^10.2.5`, so neither range can reach a patched version and bundled
+files cannot be replaced by an override. Both advisories are therefore added to
+the existing bundled-npm allowlist, which applies only while every reported path
+stays inside that tree. Removing them needs an npm release that bumps those two
+ranges.
+
+**Frontend: dev-only exception.** The frontend reports minimatch at
+`node_modules/minimatch` (3.1.5) and
+`node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch`
+(10.2.6), and 15 further packages flagged only through it: eslint,
+typescript-eslint, angular-eslint, karma, karma-coverage, glob, rimraf and their
+dependencies. No consumer in the committed lockfile supports minimatch 11:
+eslint 9.39.5, `@eslint/eslintrc` 3.3.6 and `@eslint/config-array` 0.21.2 declare
+`minimatch ^3.1.5`, karma 6.4.4 and karma-coverage 2.2.1 declare `^3.0.4`, and
+`@typescript-eslint/typescript-estree` 8.72.0 declares `^10.2.2`. Registry-latest
+is no better: eslint 10.14.0 declares `^10.2.6` and typescript-estree 8.72.1
+declares `^10.2.2`, so upgrading the tooling would not help either. minimatch 11
+no longer exports the v3 call style the karma chain uses, so forcing the major
+through an override would break the test runner without fixing the finding.
+
+Every flagged path is build and test tooling, and `npm audit --omit=dev` on the
+frontend reports no findings. That is the condition the new exception enforces:
+`DEV_ONLY_ADVISORIES` in
+[audit-release-tooling.mjs](../.github/scripts/audit-release-tooling.mjs) names
+one package per advisory, and the script runs a second production-only audit to
+decide dev-only status rather than taking it on trust. A package that becomes a
+production dependency loses the exception without anyone editing the allowlist.
+The residual exposure is a CI job processing its own repository's glob patterns.
+
+The exception is capped at moderate severity. Unlike the bundled npm, build and
+test tooling does execute, in CI, with repository credentials, which is why this
+gate audits devDependencies at all instead of running `npm audit --omit=dev`. A
+high or critical advisory in dev tooling therefore still fails the gate and gets
+an explicit decision rather than an allowlist line. The exception also fails
+closed if the production audit returns no vulnerabilities object, so a malformed
+second audit cannot mark the whole tree dev-only.
+
+The exception shares the existing `2026-12-15` expiry, which is when the
+ecosystem gets re-checked for a non-breaking upgrade path. Policy tests cover the
+production-tree boundary, the package boundary, the severity cap, the expiry, the
+fail-closed path, and that a bundled-only advisory cannot reach the dev-only
+branch.
+
+One unrelated frontend finding published in the same window is fixed by raising
+an override floor, with no exception: follow-redirects to 1.16.2 for
+[GHSA-mrwp-f3q8-3g9p](https://github.com/advisories/GHSA-mrwp-f3q8-3g9p) (high),
+which the regenerated lockfile resolves from 1.16.1 to 1.16.2.
+
+The qs floor is raised from `^6.15.4` to `^6.16.1` in the same commit for
+[GHSA-6pq8-jhm2-2vcw](https://github.com/advisories/GHSA-6pq8-jhm2-2vcw)
+(moderate, affects `>= 6.7.0, <= 6.16.0`). That one cleared no finding: the
+lockfile already resolved qs to 6.17.1 and the installed version does not change.
+The raise only stops a future resolution from falling back below the patch.
+
 ### Known Reachable Vulnerabilities
 
 No known reachable vulnerabilities remain in current npm audit or Go vulnerability scans.

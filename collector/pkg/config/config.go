@@ -40,7 +40,7 @@ type configuration struct {
 func (c *configuration) Init() error {
 	c.Viper = viper.New()
 	//set defaults
-	c.SetDefault("host.id", "")
+	c.SetDefault(KeyHostID, "")
 
 	c.SetDefault("devices", []string{})
 

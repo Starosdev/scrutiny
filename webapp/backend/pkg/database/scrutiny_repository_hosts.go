@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
@@ -26,7 +27,58 @@ func (sr *scrutinyRepository) GetHosts(ctx context.Context) ([]models.HostSummar
 	if err != nil {
 		return nil, fmt.Errorf("could not list SMART hosts: %w", err)
 	}
+
+	// A host that uploaded filesystem capacity but no SMART device has no row
+	// in the devices table. Listing only devices hid it, and because purging
+	// works from this list, nothing could ever remove it. Collectors older
+	// than the derived host id filed every unconfigured machine's filesystems
+	// under the literal "default", so an upgrade leaves exactly such a host.
+	filesystemHosts, err := sr.filesystemOnlyHostIDs(ctx, hosts)
+	if err != nil {
+		return nil, err
+	}
+	for _, hostID := range filesystemHosts {
+		hosts = append(hosts, models.HostSummary{HostID: hostID})
+	}
+	sort.Slice(hosts, func(i, j int) bool {
+		left, right := strings.ToLower(hosts[i].HostID), strings.ToLower(hosts[j].HostID)
+		if left != right {
+			return left < right
+		}
+		return hosts[i].HostID < hosts[j].HostID
+	})
+
 	return hosts, nil
+}
+
+// filesystemOnlyHostIDs returns the host ids that the filesystem collector
+// reported and the SMART collector did not.
+func (sr *scrutinyRepository) filesystemOnlyHostIDs(ctx context.Context, smartHosts []models.HostSummary) ([]string, error) {
+	known := make(map[string]struct{}, len(smartHosts))
+	for i := range smartHosts {
+		known[smartHosts[i].HostID] = struct{}{}
+	}
+
+	found := []string{}
+	for _, model := range []interface{}{&models.FilesystemHostStatus{}, &models.FilesystemCapacity{}} {
+		hostIDs := []string{}
+		if err := sr.gormClient.WithContext(ctx).
+			Model(model).
+			Distinct().
+			Where("TRIM(host_id) <> ''").
+			Pluck("host_id", &hostIDs).Error; err != nil {
+			return nil, fmt.Errorf("could not list filesystem hosts: %w", err)
+		}
+		for _, hostID := range hostIDs {
+			if _, seen := known[hostID]; seen {
+				continue
+			}
+			known[hostID] = struct{}{}
+			found = append(found, hostID)
+		}
+	}
+
+	return found, nil
 }
 
 func (sr *scrutinyRepository) UpdateHostArchived(ctx context.Context, hostID string, archived bool) (int64, error) {
@@ -69,7 +121,16 @@ func (sr *scrutinyRepository) PurgeHosts(ctx context.Context, hostIDs []string) 
 			HostID:      hostID,
 			DeviceCount: int64(len(hostDevices)),
 		}
-		if len(hostDevices) == 0 {
+		// A host with no devices can still hold filesystem rows, and those are
+		// the only thing left to purge for it. Reporting "host not found" and
+		// stopping, as this did, made those rows unreachable.
+		hasFilesystems, err := sr.hostHasFilesystemRows(ctx, hostID)
+		if err != nil {
+			result.Error = err.Error()
+			results = append(results, result)
+			continue
+		}
+		if len(hostDevices) == 0 && !hasFilesystems {
 			result.Error = "host not found"
 			results = append(results, result)
 			continue
@@ -107,6 +168,28 @@ func (sr *scrutinyRepository) PurgeHosts(ctx context.Context, hostIDs []string) 
 		results = append(results, result)
 	}
 	return results, nil
+}
+
+// hostHasFilesystemRows reports whether any filesystem table still holds rows
+// for this host.
+func (sr *scrutinyRepository) hostHasFilesystemRows(ctx context.Context, hostID string) (bool, error) {
+	for _, model := range []interface{}{
+		&models.FilesystemHostStatus{},
+		&models.FilesystemCapacity{},
+		&models.FilesystemDevice{},
+	} {
+		var count int64
+		if err := sr.gormClient.WithContext(ctx).
+			Model(model).
+			Where("host_id = ?", hostID).
+			Count(&count).Error; err != nil {
+			return false, fmt.Errorf("could not count filesystem rows for host %q: %w", hostID, err)
+		}
+		if count > 0 {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // wwnsHeldOnlyBySelectedHosts returns the WWNs whose every holder belongs to a selected host. Purging

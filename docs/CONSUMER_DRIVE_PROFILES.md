@@ -19,12 +19,14 @@ Scrutiny tries to match profiles in this order, strongest first. The stage that 
 
 | Order | Match method | Meaning |
 | ----- | ------------- | ------- |
-| 1 | `model_family` | Exact match on the `model_family` reported by `smartctl` |
-| 2 | `model_name` | Exact match on the normalized `model_name` (alias table) |
-| 3 | `model_name_normalized` | Exact match after vendor-aware normalization (see below) |
-| 4 | `model_pattern` | Regex `model_pattern` fallback |
+| 1 | `model_name` | Exact match on the normalized `model_name` (alias table) |
+| 2 | `model_name_normalized` | Exact match after vendor-aware normalization (see below) |
+| 3 | `model_pattern` | Regex `model_pattern` match on the model name |
+| 4 | `model_family` | Exact match on the `model_family` reported by `smartctl` |
 
-Exact hits (`model_family`, `model_name`) are the strongest signals; `model_name_normalized` is nearly as strong because it still resolves to an exact catalog entry; `model_pattern` is the weakest because a regex can overreach.
+All three model-identity stages rank above the family stage. A model number is stable hardware identity, while `model_family` is `smartctl`'s own classification: it varies with the collector's `drivedb`, it is renamed between `drivedb` generations, and some families (`Samsung based SSDs`, for example) are vendor-wide catch-alls that would otherwise shadow a specific profile for the same drive.
+
+Among the model stages, exact beats derived: an alias hit beats a normalized one, and both beat a regex, because a regex can overreach. The family stage runs last and is the fallback for a drive whose model number the catalog does not list at all.
 
 If no vetted profile matches, Scrutiny falls back to the existing generic ATA rules.
 
@@ -38,6 +40,14 @@ The `model_name_normalized` stage strips well-known decorations from real-world 
 
 This catches common variants (new capacity sizes, new firmware revisions) without broad regex rules that could create false positives.
 
+### Why family names are the fallback and not the key
+
+`smartctl` renames model families between `drivedb` generations, so a catalog keyed to the name current when a profile was derived stops matching the drives it was written for. `smartctl` reports `Western Digital Red (CMR)` where the catalog carries `WDC Red`, and `Toshiba N300/MN NAS HDD` where it carries `Toshiba N300`. Neither reported name is in the catalog, and both of those drives are covered: they match on their model number instead.
+
+That is why a new drive is added to a profile by model number, through an alias or the profile's `model_pattern`, rather than by adding the family name `smartctl` currently reports. A reported family name is also coarser than the profile it would point at: the WD Red CMR family spans both `WDC Red` and `WDC Red Plus`, and `Toshiba N300/MN NAS HDD` merges two product lines, so mapping either onto a single profile would apply thresholds derived from a different population.
+
+Which profile a model number joins follows the models already in that profile, not the drive's current marketing name. `WDC WD80EFZZ` is sold as Red Plus, but its sibling SKU `WDC WD80EFAX` is the same 8TB CMR drive from before WD's 2020 rebrand and sits in `WDC Red`, so `WD80EFZZ` joins it there. Splitting one product line across two profiles would give two drives in the same array different verdicts at the same reallocated-sector count.
+
 ### Catalog source
 
 The bundled catalog is validated at startup and loaded from:
@@ -45,6 +55,14 @@ The bundled catalog is validated at startup and loaded from:
 - [consumer_drive_profiles.json](../webapp/backend/pkg/thresholds/consumer_drive_profiles.json)
 
 The catalog is shipped in-repo and embedded into the backend binary. Scrutiny does not fetch profile data at runtime. The catalog carries a `version` string that is reported through the API for provenance.
+
+### What `source` has to say
+
+A profile's thresholds are only as good as the population they were derived from, so `source` is the field a later editor has to be able to check a decision against. For a new or edited profile it must name both the dataset and the population: which models the aggregate covers, and at what capacities, for example `linuxhw/SMART aggregate, WD Red CMR 3-8TB (WD30EFRX, WD60EFRX, WD80EFAX, WD80EFZZ)`.
+
+The 35 profiles bundled today predate that rule and all carry the same placeholder, `linuxhw/SMART curated consumer HDD profile` or its SSD equivalent. That is a known gap, not a pattern to copy: it is why a question like "does the WD Red aggregate cover the 8TB models or only the 3-6TB ones" cannot be answered from this repo. There is no lint rule forcing the convention, because it would fail on all 35 existing entries at once.
+
+The rule binds whenever a profile's thresholds are added or changed, since that is when the population is the claim being made. Adding a model number to an existing profile's aliases or pattern does not re-derive anything, so it does not require filling the placeholder in; it does require the product-line argument for that model to be in the commit message.
 
 ## Confidence Gate
 
@@ -85,7 +103,7 @@ The value is a comma-separated list of family names (for example `Seagate Barrac
 
 1. If the global toggle is off, no profiles are applied. The denylist is irrelevant.
 2. If the global toggle is on, a matched profile is applied unless its family is denylisted or it fails its confidence gate.
-3. A denylisted or low-confidence match does not end the lookup: weaker match stages are still consulted, so a drive whose family is denylisted can still match a different (allowed) family through its model name. In practice the stages almost always resolve to the same family.
+3. A denylisted or low-confidence match does not end the lookup: weaker match stages are still consulted, so a drive whose profile is denylisted can still match a different (allowed) family through a weaker stage. The stages do not always agree: a model number can resolve to a different profile than the family `smartctl` reports, and when they disagree the model number wins. Denylisting a family therefore moves a drive onto the next stage's family rather than onto generic ATA rules.
 4. If nothing survives, the drive uses generic ATA rules.
 
 ## Debug and Inspection Surface
@@ -159,15 +177,18 @@ The pipeline enforces three layers:
    - dead entries that can never pass their own confidence gate
    - regex patterns that shadow aliases or family names belonging to a different family
    - duplicate patterns and redundant aliases
+   - two families whose patterns both match one model string, tested against every alias key and every fixture model name
    - a missing catalog `version`
 3. **Expected-match fixtures** ([testdata/consumer_drive_profile_fixtures.json](../webapp/backend/pkg/thresholds/testdata/consumer_drive_profile_fixtures.json)):
    - representative real-world model strings pinned to their expected family and match method
    - matched and unmatched cases both covered, so catalog edits that unintentionally change existing matches fail fast
    - the same fixtures run in `go test ./webapp/backend/pkg/thresholds/`
 
+Pattern overlap is the one failure mode a reviewer is unlikely to spot by eye. The matcher collects every pattern that matches a model string and applies the first, in catalog declaration order, so two overlapping patterns from different families resolve by their position in the file. Regex intersection cannot be decided in general, so the lint tests every pattern against a corpus of concrete strings instead: every alias key in the catalog, plus every model name in the fixtures. Adding a model to a second family's pattern therefore fails the lint as soon as that model appears in a fixture, which is a reason to add the fixture in the same commit as the pattern.
+
 To add or update catalog entries:
 
-1. Edit `consumer_drive_profiles.json` (add the profile, aliases, and optionally a narrow `model_pattern`).
+1. Edit `consumer_drive_profiles.json` (add the profile, aliases, and optionally a narrow `model_pattern`). A profile whose thresholds you add or change needs a `source` that names its population, per the rule above. Add a model number to exactly one family: an alias or a pattern alternative, not both.
 2. Bump the catalog `version` field.
 3. Add expected-match fixtures for the new entries, including at least one near-miss that must stay unmatched.
 4. Run `make catalog-fix` to normalize formatting, then `make catalog-lint` until clean.

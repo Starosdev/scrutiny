@@ -136,7 +136,8 @@ type ReplacementRiskScore struct {
 	ConsumerDriveProfileSampleCount int `json:"consumer_drive_profile_sample_count,omitempty"`
 
 	// ConsumerDriveProfileMatchMethod reports which lookup stage matched the drive:
-	// "model_family", "model_name", "model_name_normalized", or "model_pattern".
+	// "model_name", "model_name_normalized", "model_pattern", or
+	// "model_family".
 	// Omitted when generic ATA logic is used.
 	ConsumerDriveProfileMatchMethod string `json:"consumer_drive_profile_match_method,omitempty"`
 

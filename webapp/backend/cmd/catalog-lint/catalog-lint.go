@@ -12,6 +12,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -43,8 +44,15 @@ func run(catalogPath, fixturesPath string, write, strict bool) error {
 		return fmt.Errorf("read catalog: %w", err)
 	}
 
+	// The fixture model names are the pattern-overlap probe corpus, so they are
+	// read before linting even though the fixtures themselves run further down.
+	probes, err := fixtureModelNames(fixturesPath)
+	if err != nil {
+		return err
+	}
+
 	// Hard validation + lint warnings.
-	lintResult, err := thresholds.LintConsumerDriveProfileCatalog(data)
+	lintResult, err := thresholds.LintConsumerDriveProfileCatalog(data, probes...)
 	if err != nil {
 		return fmt.Errorf("catalog validation failed: %w", err)
 	}
@@ -104,6 +112,28 @@ func checkCanonicalForm(catalogPath string, data []byte, write, strict bool) err
 		return fmt.Errorf("catalog is not in canonical form")
 	}
 	return nil
+}
+
+// fixtureModelNames reads the model strings out of the fixtures document so the
+// lint pass can test every pattern against them. A missing fixtures path is not
+// an error: the lint still runs against the catalog's own alias keys.
+func fixtureModelNames(fixturesPath string) ([]string, error) {
+	if fixturesPath == "" {
+		return nil, nil
+	}
+	fixtureData, err := os.ReadFile(fixturesPath)
+	if err != nil {
+		return nil, fmt.Errorf("read fixtures: %w", err)
+	}
+	var fixtures []thresholds.ConsumerDriveProfileFixture
+	if unmarshalErr := json.Unmarshal(fixtureData, &fixtures); unmarshalErr != nil {
+		return nil, fmt.Errorf("unmarshal fixtures: %w", unmarshalErr)
+	}
+	models := make([]string, 0, len(fixtures))
+	for i := range fixtures {
+		models = append(models, fixtures[i].ModelName)
+	}
+	return models, nil
 }
 
 func runFixtures(handle *thresholds.ConsumerDriveCatalogHandle, fixturesPath string) error {

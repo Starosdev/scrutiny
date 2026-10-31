@@ -52,8 +52,10 @@ jobs:
         working-directory: webapp/frontend
         run: npm ci --ignore-scripts
 
-      # Same script and allowlist: only an advisory with no patched release
-      # (UNPATCHED_ADVISORIES) can pass here, since the frontend bundles no npm.
+      # Same script and allowlist. The frontend bundles no npm, so the bundled
+      # exception cannot apply here: only an advisory with no patched release
+      # (UNPATCHED_ADVISORIES), or a moderate-or-lower one on a dev-only package
+      # (DEV_ONLY_ADVISORIES), can pass.
       - name: Audit frontend dependencies
         working-directory: webapp/frontend
         run: node ../../.github/scripts/audit-release-tooling.mjs

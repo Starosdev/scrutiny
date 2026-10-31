@@ -1,10 +1,15 @@
 package thresholds
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
 )
+
+// bundledFixturesPath is the expected-match fixtures document, shared by the
+// fixture run and the pattern-overlap probe corpus.
+const bundledFixturesPath = "testdata/consumer_drive_profile_fixtures.json"
 
 func TestMatchConsumerDriveProfileMethods(t *testing.T) {
 	tests := []struct {
@@ -17,7 +22,9 @@ func TestMatchConsumerDriveProfileMethods(t *testing.T) {
 		{"exact family", "Samsung based SSDs", "", "Samsung based SSDs", ProfileMatchMethodModelFamily},
 		{"exact model alias", "", "Hitachi HDS721050DLE630", "Hitachi Deskstar 7K1000.D", ProfileMatchMethodModelName},
 		{"capacity variant via vendor normalization", "", "Samsung SSD 870 EVO 2TB", "Samsung SSD 870 EVO", ProfileMatchMethodModelNameNormalized},
+		{"model identity outranks a vendor-wide catch-all family", "Samsung based SSDs", "Samsung SSD 870 EVO 4TB", "Samsung SSD 870 EVO", ProfileMatchMethodModelNameNormalized},
 		{"regex pattern fallback", "", "ST2000DM001-9YN164", "Seagate Barracuda 7200.12", ProfileMatchMethodModelPattern},
+		{"model pattern outranks the reported family", "Seagate Barracuda 7200.14 (AF)", "ST3000DM001-9YN166", "Seagate Desktop HDD.15", ProfileMatchMethodModelPattern},
 	}
 
 	for _, tt := range tests {
@@ -82,16 +89,30 @@ func TestMatchConsumerDriveProfileDenylistFallsThroughToOtherFamily(t *testing.T
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	denied := ParseConsumerDriveProfileDenylist("Family A")
+	denied := ParseConsumerDriveProfileDenylist("Family B")
 	match := handle.Match("ATA", "Family A", "MODEL-1", denied)
 	if match == nil || !match.Applied {
-		t.Fatalf("expected fallthrough match to Family B to be applied")
+		t.Fatalf("expected fallthrough match to Family A to be applied")
 	}
-	if match.Profile.ModelFamily != "Family B" {
-		t.Fatalf("expected Family B, got %q", match.Profile.ModelFamily)
+	if match.Profile.ModelFamily != "Family A" {
+		t.Fatalf("expected Family A, got %q", match.Profile.ModelFamily)
 	}
-	if match.Method != ProfileMatchMethodModelName {
-		t.Fatalf("expected model_name method, got %q", match.Method)
+	if match.Method != ProfileMatchMethodModelFamily {
+		t.Fatalf("expected model_family method, got %q", match.Method)
+	}
+
+	// Denying both leaves nothing appliable, and the reported match must be the
+	// strongest candidate with its skip reason rather than a silent nil.
+	bothDenied := ParseConsumerDriveProfileDenylist("Family A, Family B")
+	skipped := handle.Match("ATA", "Family A", "MODEL-1", bothDenied)
+	if skipped == nil || skipped.Applied {
+		t.Fatalf("expected an unapplied match, got %+v", skipped)
+	}
+	if skipped.Profile.ModelFamily != "Family B" || skipped.Method != ProfileMatchMethodModelName {
+		t.Fatalf("expected the model_name candidate to be reported, got %q via %q", skipped.Profile.ModelFamily, skipped.Method)
+	}
+	if skipped.SkipReason != ProfileSkipReasonFamilyDenylisted {
+		t.Fatalf("expected denylist skip reason, got %q", skipped.SkipReason)
 	}
 }
 
@@ -277,8 +298,63 @@ func TestLintConsumerDriveProfileCatalogWarnings(t *testing.T) {
 	}
 }
 
+// bundledFixtureModels is the pattern-overlap probe corpus: the same model
+// strings catalog-lint feeds the lint pass, so `go test` and `make catalog-lint`
+// evaluate the bundled catalog against identical inputs.
+func bundledFixtureModels(t *testing.T) []string {
+	t.Helper()
+	fixtureData, err := os.ReadFile(bundledFixturesPath)
+	if err != nil {
+		t.Fatalf("read fixtures: %v", err)
+	}
+	var fixtures []ConsumerDriveProfileFixture
+	if unmarshalErr := json.Unmarshal(fixtureData, &fixtures); unmarshalErr != nil {
+		t.Fatalf("unmarshal fixtures: %v", unmarshalErr)
+	}
+	models := make([]string, 0, len(fixtures))
+	for i := range fixtures {
+		models = append(models, fixtures[i].ModelName)
+	}
+	return models
+}
+
+func TestLintConsumerDriveProfilePatternOverlap(t *testing.T) {
+	// Two families whose patterns both match MODEL-9. Which one wins depends on
+	// their order in the catalog file, which is exactly what the rule objects to.
+	catalogJSON := `{
+		"version": "test",
+		"profiles": [
+			{"protocol":"ATA","source":"t","model_family":"Family A","sample_count":25,"model_pattern":"^MODEL-[0-9]$"},
+			{"protocol":"ATA","source":"t","model_family":"Family B","sample_count":25,"model_pattern":"^MODEL-9.*$"}
+		],
+		"aliases": {}
+	}`
+
+	clean, err := LintConsumerDriveProfileCatalog([]byte(catalogJSON))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, warning := range clean.Warnings {
+		if strings.Contains(warning, "pattern overlap") {
+			t.Fatalf("overlap reported without a probe that reaches it: %q", warning)
+		}
+	}
+
+	result, err := LintConsumerDriveProfileCatalog([]byte(catalogJSON), "MODEL-9")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	joined := strings.Join(result.Warnings, "\n")
+	if !strings.Contains(joined, "pattern overlap") {
+		t.Fatalf("expected a pattern overlap warning, got:\n%s", joined)
+	}
+	if !strings.Contains(joined, `"Family A"`) || !strings.Contains(joined, `"Family B"`) {
+		t.Fatalf("expected both families named in the warning, got:\n%s", joined)
+	}
+}
+
 func TestBundledCatalogLintClean(t *testing.T) {
-	result, err := LintConsumerDriveProfileCatalog(consumerDriveProfilesJSON)
+	result, err := LintConsumerDriveProfileCatalog(consumerDriveProfilesJSON, bundledFixtureModels(t)...)
 	if err != nil {
 		t.Fatalf("bundled catalog failed validation: %v", err)
 	}
@@ -298,7 +374,7 @@ func TestBundledCatalogIsCanonical(t *testing.T) {
 }
 
 func TestBundledCatalogExpectedMatchFixtures(t *testing.T) {
-	fixtureData, err := os.ReadFile("testdata/consumer_drive_profile_fixtures.json")
+	fixtureData, err := os.ReadFile(bundledFixturesPath)
 	if err != nil {
 		t.Fatalf("read fixtures: %v", err)
 	}

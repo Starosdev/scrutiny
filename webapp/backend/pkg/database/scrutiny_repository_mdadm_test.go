@@ -93,3 +93,46 @@ func TestGetMdadmArraysExcludesLegacyBlankUUIDRows(t *testing.T) {
 	require.Equal(t, "md2", arrays[0].Name)
 	require.Equal(t, "ad005595:61305895:4de01d37:669bf162", arrays[0].UUID)
 }
+
+func TestMdadmArrayActionsPersistEachFlag(t *testing.T) {
+	repo := createMdadmTestRepository(t)
+	ctx := context.Background()
+
+	array := models.MDADMArray{
+		UUID:    "synthetic:4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+		Name:    "md4",
+		Level:   "raid1",
+		Devices: []string{"/dev/sda", "/dev/sdb"},
+	}
+	require.NoError(t, repo.RegisterMdadmArray(ctx, array))
+
+	require.NoError(t, repo.UpdateMdadmArrayArchived(ctx, array.UUID, true))
+	require.NoError(t, repo.UpdateMdadmArrayMuted(ctx, array.UUID, true))
+	require.NoError(t, repo.UpdateMdadmArrayLabel(ctx, array.UUID, "Media array"))
+
+	loaded, err := repo.GetMdadmArrayDetails(ctx, array.UUID)
+	require.NoError(t, err)
+	require.True(t, loaded.Archived)
+	require.True(t, loaded.Muted)
+	require.Equal(t, "Media array", loaded.Label)
+
+	// Archiving takes the array out of the summary, which is why the arrays
+	// page cannot offer an unarchive.
+	summary, err := repo.GetMdadmArraysSummary(ctx)
+	require.NoError(t, err)
+	require.NotContains(t, summary, array.UUID)
+
+	require.NoError(t, repo.UpdateMdadmArrayArchived(ctx, array.UUID, false))
+	summary, err = repo.GetMdadmArraysSummary(ctx)
+	require.NoError(t, err)
+	require.Contains(t, summary, array.UUID)
+}
+
+// The identifier reaches an InfluxDB delete predicate, so the repository
+// rejects an unusable one itself rather than relying on its caller.
+func TestDeleteMdadmArrayRejectsAnInvalidIdentifier(t *testing.T) {
+	repo := createMdadmTestRepository(t)
+
+	require.Error(t, repo.DeleteMdadmArray(context.Background(), `a" or array_uuid!="a`))
+	require.Error(t, repo.DeleteMdadmArray(context.Background(), ""))
+}

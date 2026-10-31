@@ -42,6 +42,12 @@ services:
       # - /volume1:/volume1:ro
       # - /volume2:/volume2:ro
     environment:
+      # Identifies this machine. Every collector in this container uses it, and
+      # it is what the dashboard groups drives and filesystems by. Unset, the
+      # collectors derive an id from the container hostname, which Docker
+      # changes when the container is recreated. Give each machine its own
+      # value when more than one reports to the same Scrutiny.
+      COLLECTOR_HOST_ID: 'scrutiny'
       # Existing Omnibus installs: stop Scrutiny, back up the complete
       # ./influxdb directory, then set this to "true" for the 2.9 upgrade.
       SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED: "${SCRUTINY_INFLUXDB_29_BACKUP_CONFIRMED:-false}"
