@@ -34,8 +34,17 @@ because they are not one duplicated row:
   `0x0000000000000000`, legitimately share it (#851).
 - rows that agree on WWN and serial but name different non-empty `host_id`
   values. That is two collectors reporting one drive.
+- rows that agree on WWN and serial but report different non-zero capacities.
+  Enclosure firmware that fabricates a WWN can fabricate a serial too, and
+  capacity is the cheapest evidence that two rows are two drives.
 
-Merge either case on request with the endpoint below.
+Each check covers the whole group, so one disagreeing row leaves every row in
+place. Merge any of these cases on request with the endpoint below.
+
+History rewritten out of 0.9.x is tagged with both `device_id` and `device_wwn`.
+A WWN alone does not identify a device, and history queries fall back to the
+`device_wwn` tag only while a single device holds that WWN, so WWN-only tags
+would be unreadable for every holder of a shared WWN.
 
 Do not change either legacy UUID namespace or its `model + serial + WWN`
 formula. Existing 0.9.x history cannot be matched after either value changes.

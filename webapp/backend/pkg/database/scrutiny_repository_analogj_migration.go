@@ -17,6 +17,16 @@ const analogJScrutinyUUIDMigrationID = "m20260216155600"
 
 var legacyScrutinyNamespace = uuid.MustParse("3ea22b35-682b-49fb-a655-abffed108e48")
 
+// analogJHistoryTarget is the device that 0.9.x history keyed by one legacy scrutiny_uuid
+// belongs to. Both tags are needed. A WWN alone does not identify a device: drives behind
+// one controller can share one, and deviceHistoryPredicate admits the device_wwn branch
+// only while a single device holds that WWN, so history rewritten with a WWN tag alone is
+// unreadable for every holder once the WWN is shared.
+type analogJHistoryTarget struct {
+	DeviceID string
+	WWN      string
+}
+
 // migrateM20260803000000 repairs databases imported from AnalogJ/scrutiny 0.9.x.
 // That release replaced device_wwn InfluxDB tags with scrutiny_uuid tags and
 // cleared serial-fallback WWNs. Staros retained device_wwn as its history key.
@@ -35,7 +45,7 @@ func (sr *scrutinyRepository) migrateM20260803000000(ctx context.Context, tx *go
 	if err != nil {
 		return err
 	}
-	if err := sr.mergeAnalogJWWNDuplicates(ctx, tx); err != nil {
+	if err := sr.mergeAnalogJWWNDuplicates(ctx, tx, mapping); err != nil {
 		return err
 	}
 	if len(mapping) == 0 {
@@ -55,13 +65,13 @@ func legacyScrutinyUUID(modelName, serialNumber, wwn string) string {
 // prepareAnalogJDeviceRepair restores serial-fallback WWNs cleared by AnalogJ/scrutiny
 // 0.9.x and merges any duplicate row created by a Staros collector after migration.
 // It returns legacy scrutiny_uuid -> current device_wwn mappings for InfluxDB repair.
-func prepareAnalogJDeviceRepair(ctx context.Context, tx *gorm.DB) (map[string]string, error) {
+func prepareAnalogJDeviceRepair(ctx context.Context, tx *gorm.DB) (map[string]analogJHistoryTarget, error) {
 	var devices []models.Device
 	if err := tx.WithContext(ctx).Unscoped().Order("created_at ASC, device_id ASC").Find(&devices).Error; err != nil {
 		return nil, fmt.Errorf("could not load devices for AnalogJ migration repair: %w", err)
 	}
 
-	mapping := make(map[string]string, len(devices))
+	mapping := make(map[string]analogJHistoryTarget, len(devices))
 	for i := range devices {
 		device := &devices[i]
 		originalWWN := strings.TrimSpace(device.WWN)
@@ -86,7 +96,8 @@ func prepareAnalogJDeviceRepair(ctx context.Context, tx *gorm.DB) (map[string]st
 				}
 				device.DeviceID = targetID
 				device.WWN = targetWWN
-				if err := addAnalogJLegacyMapping(mapping, legacyScrutinyUUID(device.ModelName, device.SerialNumber, ""), targetWWN); err != nil {
+				target := analogJHistoryTarget{DeviceID: targetID, WWN: targetWWN}
+				if err := addAnalogJLegacyMapping(mapping, legacyScrutinyUUID(device.ModelName, device.SerialNumber, ""), target); err != nil {
 					return nil, err
 				}
 			case 1:
@@ -94,7 +105,8 @@ func prepareAnalogJDeviceRepair(ctx context.Context, tx *gorm.DB) (map[string]st
 				if err := mergeAnalogJDeviceRows(ctx, tx, device, canonical); err != nil {
 					return nil, err
 				}
-				if err := addAnalogJLegacyMapping(mapping, legacyScrutinyUUID(device.ModelName, device.SerialNumber, ""), strings.ToLower(strings.TrimSpace(canonical.WWN))); err != nil {
+				target := analogJHistoryTarget{DeviceID: canonical.DeviceID, WWN: strings.ToLower(strings.TrimSpace(canonical.WWN))}
+				if err := addAnalogJLegacyMapping(mapping, legacyScrutinyUUID(device.ModelName, device.SerialNumber, ""), target); err != nil {
 					return nil, err
 				}
 			default:
@@ -116,7 +128,8 @@ func prepareAnalogJDeviceRepair(ctx context.Context, tx *gorm.DB) (map[string]st
 		if serial != "" && strings.EqualFold(originalWWN, serial) {
 			legacyWWN = ""
 		}
-		if err := addAnalogJLegacyMapping(mapping, legacyScrutinyUUID(device.ModelName, device.SerialNumber, legacyWWN), targetWWN); err != nil {
+		target := analogJHistoryTarget{DeviceID: device.DeviceID, WWN: targetWWN}
+		if err := addAnalogJLegacyMapping(mapping, legacyScrutinyUUID(device.ModelName, device.SerialNumber, legacyWWN), target); err != nil {
 			return nil, err
 		}
 
@@ -142,9 +155,15 @@ func prepareAnalogJDeviceRepair(ctx context.Context, tx *gorm.DB) (map[string]st
 // a vendor-default WWN, legitimately share it and are told apart by their serials
 // (#851), so serial equality is what identifies one physical drive here. A group whose
 // rows disagree on a non-empty host_id is also left alone, because that is two
-// collectors reporting the drive rather than one duplicated row; the
-// /api/device/{id}/merge_into endpoint handles those on request.
-func (sr *scrutinyRepository) mergeAnalogJWWNDuplicates(ctx context.Context, tx *gorm.DB) error {
+// collectors reporting the drive rather than one duplicated row, and so is a group whose
+// rows disagree on a non-zero capacity, because enclosure firmware that fabricates a WWN
+// can fabricate a serial too and capacity is the cheapest evidence that two rows are two
+// drives. Both checks cover the whole group: one disagreeing row leaves every row in
+// place, and the /api/device/{id}/merge_into endpoint handles those on request.
+//
+// Rows can only reach a group with differing model names, because device_id is the primary
+// key and is derived from model + serial + WWN, so an identical triple is one row already.
+func (sr *scrutinyRepository) mergeAnalogJWWNDuplicates(ctx context.Context, tx *gorm.DB, mapping map[string]analogJHistoryTarget) error {
 	// Newest row first, and on a tie the row that still reports a model name: 0.9.x
 	// blanked the model name on the row that stopped updating.
 	const canonicalOrder = "updated_at DESC, (model_name IS NULL OR model_name = '') ASC, device_id ASC"
@@ -175,11 +194,12 @@ func (sr *scrutinyRepository) mergeAnalogJWWNDuplicates(ctx context.Context, tx 
 			continue
 		}
 		canonical := &devices[indexes[0]]
-		if conflictingHostIDs(devices, indexes) {
+		if reason := analogJUnmergeableReason(devices, indexes); reason != "" {
 			sr.logger.Warnf(
-				"leaving %d AnalogJ device rows for serial %s unmerged: they report different host ids",
+				"leaving %d AnalogJ device rows for serial %s unmerged: %s",
 				len(indexes),
 				canonical.SerialNumber,
+				reason,
 			)
 			continue
 		}
@@ -194,8 +214,22 @@ func (sr *scrutinyRepository) mergeAnalogJWWNDuplicates(ctx context.Context, tx 
 			if err := mergeAnalogJDeviceRows(ctx, tx, legacy, canonical); err != nil {
 				return err
 			}
-			if legacy.CreatedAt.Before(canonical.CreatedAt) {
-				canonical.CreatedAt = legacy.CreatedAt
+			// The merge writes through to the row, and a third duplicate is compared against
+			// what the row now holds rather than what it held before the first merge, so an
+			// older legacy cannot overwrite a newer one's metadata.
+			if err := tx.WithContext(ctx).Unscoped().Where(queryDeviceID, canonical.DeviceID).First(canonical).Error; err != nil {
+				return fmt.Errorf("could not reload merged AnalogJ device %s: %w", canonical.DeviceID, err)
+			}
+			// The mapping was built before the merge, so entries naming the deleted row still
+			// point at it. Repoint them, or its 0.9.x history is rewritten onto a device_id
+			// that no longer exists.
+			for legacyUUID, target := range mapping {
+				if target.DeviceID == legacy.DeviceID {
+					mapping[legacyUUID] = analogJHistoryTarget{
+						DeviceID: canonical.DeviceID,
+						WWN:      strings.ToLower(strings.TrimSpace(canonical.WWN)),
+					}
+				}
 			}
 		}
 	}
@@ -203,20 +237,26 @@ func (sr *scrutinyRepository) mergeAnalogJWWNDuplicates(ctx context.Context, tx 
 	return nil
 }
 
-// conflictingHostIDs reports whether the grouped rows name more than one non-empty host.
-func conflictingHostIDs(devices []models.Device, indexes []int) bool {
+// analogJUnmergeableReason reports why a group of rows sharing a WWN and serial is not one
+// drive, or an empty string when nothing argues against merging them.
+func analogJUnmergeableReason(devices []models.Device, indexes []int) string {
 	hostID := ""
+	var capacity int64
 	for _, i := range indexes {
-		current := strings.TrimSpace(devices[i].HostId)
-		if current == "" {
-			continue
+		if current := strings.TrimSpace(devices[i].HostId); current != "" {
+			if hostID != "" && hostID != current {
+				return "they report different host ids"
+			}
+			hostID = current
 		}
-		if hostID != "" && hostID != current {
-			return true
+		if current := devices[i].Capacity; current != 0 {
+			if capacity != 0 && capacity != current {
+				return "they report different capacities"
+			}
+			capacity = current
 		}
-		hostID = current
 	}
-	return false
+	return ""
 }
 
 func analogJRepairCandidates(devices []models.Device, legacyIndex int) []int {
@@ -279,21 +319,37 @@ func mergeAnalogJDeviceRows(ctx context.Context, tx *gorm.DB, legacy, canonical 
 			return fmt.Errorf("could not preserve metadata while merging AnalogJ device %s: %w", legacy.DeviceID, err)
 		}
 	}
+	// Self-test history is keyed by device_id, so carry it to the surviving identity, as
+	// mergeLegacyDevice does at registration time. m20260914000001 later re-keys
+	// device_identity from device_id, which would cement an orphan left here.
+	if tx.Migrator().HasTable(&models.DeviceSelfTest{}) {
+		if err := tx.WithContext(ctx).Model(&models.DeviceSelfTest{}).
+			Where("device_id = ?", legacy.DeviceID).
+			Updates(map[string]interface{}{
+				"device_id":       canonical.DeviceID,
+				"device_identity": canonical.DeviceID,
+			}).Error; err != nil {
+			return fmt.Errorf("could not move self-test history off AnalogJ device %s: %w", legacy.DeviceID, err)
+		}
+	}
 	if err := tx.WithContext(ctx).Unscoped().Where(queryDeviceID, legacy.DeviceID).Delete(&models.Device{}).Error; err != nil {
 		return fmt.Errorf("could not remove duplicate AnalogJ device %s: %w", legacy.DeviceID, err)
 	}
 	return nil
 }
 
-func addAnalogJLegacyMapping(mapping map[string]string, legacyUUID, targetWWN string) error {
-	if existing, ok := mapping[legacyUUID]; ok && existing != targetWWN {
-		return fmt.Errorf("legacy scrutiny_uuid %s maps to conflicting WWNs %q and %q", legacyUUID, existing, targetWWN)
+func addAnalogJLegacyMapping(mapping map[string]analogJHistoryTarget, legacyUUID string, target analogJHistoryTarget) error {
+	if existing, ok := mapping[legacyUUID]; ok && existing != target {
+		return fmt.Errorf(
+			"legacy scrutiny_uuid %s maps to conflicting devices %q/%q and %q/%q",
+			legacyUUID, existing.DeviceID, existing.WWN, target.DeviceID, target.WWN,
+		)
 	}
-	mapping[legacyUUID] = targetWWN
+	mapping[legacyUUID] = target
 	return nil
 }
 
-func (sr *scrutinyRepository) rewriteAnalogJInfluxHistory(ctx context.Context, mapping map[string]string) error {
+func (sr *scrutinyRepository) rewriteAnalogJInfluxHistory(ctx context.Context, mapping map[string]analogJHistoryTarget) error {
 	if sr.appConfig == nil || sr.influxQueryApi == nil || sr.influxClient == nil {
 		return fmt.Errorf("InfluxDB client unavailable for AnalogJ history migration")
 	}
@@ -319,9 +375,12 @@ func (sr *scrutinyRepository) rewriteAnalogJInfluxHistory(ctx context.Context, m
 			retentionSeconds = bucketInfo.RetentionRules[0].EverySeconds
 		}
 		for _, legacyUUID := range legacyUUIDs {
-			targetWWN := mapping[legacyUUID]
-			sr.logger.Debugf("Rewriting AnalogJ history in bucket %s from scrutiny_uuid %s to device_wwn %s", bucket, legacyUUID, targetWWN)
-			query := analogJInfluxMigrationQuery(bucket, org, legacyUUID, targetWWN, retentionSeconds)
+			target := mapping[legacyUUID]
+			sr.logger.Debugf(
+				"Rewriting AnalogJ history in bucket %s from scrutiny_uuid %s to device_id %s, device_wwn %s",
+				bucket, legacyUUID, target.DeviceID, target.WWN,
+			)
+			query := analogJInfluxMigrationQuery(bucket, org, legacyUUID, target.DeviceID, target.WWN, retentionSeconds)
 			result, err := sr.influxQueryApi.Query(ctx, query)
 			if err != nil {
 				return fmt.Errorf("could not rewrite AnalogJ history in bucket %s for %s: %w", bucket, legacyUUID, err)
@@ -351,7 +410,7 @@ func (sr *scrutinyRepository) rewriteAnalogJInfluxHistory(ctx context.Context, m
 	return nil
 }
 
-func analogJInfluxMigrationQuery(bucket, org, legacyUUID, targetWWN string, retentionSeconds int64) string {
+func analogJInfluxMigrationQuery(bucket, org, legacyUUID, targetDeviceID, targetWWN string, retentionSeconds int64) string {
 	// Expired shards can remain queryable even though their points can no longer
 	// be written. Use the server's retention window, including custom durations.
 	start := "0"
@@ -363,6 +422,7 @@ func analogJInfluxMigrationQuery(bucket, org, legacyUUID, targetWWN string, rete
 |> filter(fn: (r) => r["_measurement"] == "smart" or r["_measurement"] == "temp")
 |> filter(fn: (r) => exists r["scrutiny_uuid"] and r["scrutiny_uuid"] == %q)
 |> drop(columns: ["scrutiny_uuid"])
+|> set(key: "device_id", value: %q)
 |> set(key: "device_wwn", value: %q)
-|> to(bucket: %q, org: %q)`, bucket, start, legacyUUID, targetWWN, bucket, org)
+|> to(bucket: %q, org: %q)`, bucket, start, legacyUUID, targetDeviceID, targetWWN, bucket, org)
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -31,6 +32,7 @@ func TestAnalogJInfluxMigrationQueryRewritesOnlyLegacySmartData(t *testing.T) {
 		"metrics_weekly",
 		"scrutiny",
 		"9027cd65-fe19-562d-ac5d-0bb05818087f",
+		"24e0a1be-6f0e-5c6f-9d4a-1b2c3d4e5f60",
 		"nvme123",
 		0,
 	)
@@ -39,6 +41,9 @@ func TestAnalogJInfluxMigrationQueryRewritesOnlyLegacySmartData(t *testing.T) {
 	require.Contains(t, query, `r["_measurement"] == "smart" or r["_measurement"] == "temp"`)
 	require.Contains(t, query, `exists r["scrutiny_uuid"] and r["scrutiny_uuid"] == "9027cd65-fe19-562d-ac5d-0bb05818087f"`)
 	require.Contains(t, query, `drop(columns: ["scrutiny_uuid"])`)
+	// the device_wwn tag alone is not enough: deviceHistoryPredicate admits it only while
+	// one device holds that WWN, so rewritten history must carry device_id too
+	require.Contains(t, query, `set(key: "device_id", value: "24e0a1be-6f0e-5c6f-9d4a-1b2c3d4e5f60")`)
 	require.Contains(t, query, `set(key: "device_wwn", value: "nvme123")`)
 	require.Contains(t, query, `to(bucket: "metrics_weekly", org: "scrutiny")`)
 	require.Equal(t, 1, strings.Count(query, `to(bucket:`))
@@ -121,7 +126,9 @@ func TestAnalogJHistoryRewritePreservesSourceOnFailureAndRetries(t *testing.T) {
 				appConfig: fakeConfig, influxClient: client,
 				influxQueryApi: client.QueryAPI("scrutiny"), logger: logrus.New(),
 			}
-			mapping := map[string]string{"legacy-uuid": "current-wwn"}
+			mapping := map[string]analogJHistoryTarget{
+				"legacy-uuid": {DeviceID: "current-device-id", WWN: "current-wwn"},
+			}
 			err := repo.rewriteAnalogJInfluxHistory(context.Background(), mapping)
 			require.Error(t, err)
 			require.Zero(t, deletes.Load(), "failed rewrites must not delete source history")
@@ -181,9 +188,12 @@ func TestPrepareAnalogJDeviceRepairRestoresNVMeIdentityAndMergesDuplicate(t *tes
 
 	mapping, err := prepareAnalogJDeviceRepair(context.Background(), db)
 	require.NoError(t, err)
-	require.Equal(t, map[string]string{
-		"9027cd65-fe19-562d-ac5d-0bb05818087f": canonicalWWN,
-		"7a14ef35-ed3a-552a-9980-46291bd986e3": sataWWN,
+	require.Equal(t, map[string]analogJHistoryTarget{
+		"9027cd65-fe19-562d-ac5d-0bb05818087f": {DeviceID: canonicalID, WWN: canonicalWWN},
+		"7a14ef35-ed3a-552a-9980-46291bd986e3": {
+			DeviceID: deviceid.Generate(sataModel, sataSerial, sataWWN),
+			WWN:      sataWWN,
+		},
 	}, mapping)
 
 	var devices []models.Device
@@ -238,7 +248,11 @@ func TestPrepareAnalogJDeviceRepairUsesCollectorDiscoveredWWN(t *testing.T) {
 
 	mapping, err := prepareAnalogJDeviceRepair(context.Background(), db)
 	require.NoError(t, err)
-	require.Equal(t, canonicalWWN, mapping[legacyScrutinyUUID(model, serial, "")])
+	require.Equal(
+		t,
+		analogJHistoryTarget{DeviceID: canonicalID, WWN: canonicalWWN},
+		mapping[legacyScrutinyUUID(model, serial, "")],
+	)
 
 	var devices []models.Device
 	require.NoError(t, db.Find(&devices).Error)
@@ -296,7 +310,7 @@ func TestMergeAnalogJWWNDuplicatesCollapsesOneDrive(t *testing.T) {
 		UpdatedAt:    time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC),
 	}).Error)
 
-	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db))
+	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db, map[string]analogJHistoryTarget{}))
 
 	var devices []models.Device
 	require.NoError(t, db.Unscoped().Find(&devices).Error)
@@ -311,9 +325,117 @@ func TestMergeAnalogJWWNDuplicatesCollapsesOneDrive(t *testing.T) {
 	require.Equal(t, 90, devices[0].MissedPingTimeoutOverride)
 	require.Equal(t, "raw", devices[0].SmartDisplayMode)
 
-	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db))
+	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db, map[string]analogJHistoryTarget{}))
 	require.NoError(t, db.Unscoped().Find(&devices).Error)
 	require.Len(t, devices, 1)
+}
+
+// The legacy scrutiny_uuid mapping is built before the merge, so an entry naming the
+// deleted row has to be repointed or its 0.9.x history is rewritten onto a device_id that
+// no longer exists. Self-test history keyed by the deleted device_id has to move too.
+func TestMergeAnalogJWWNDuplicatesRepointsHistoryAndSelfTests(t *testing.T) {
+	repo, db := newWWNDuplicateTestRepository(t)
+	require.NoError(t, db.AutoMigrate(&models.DeviceSelfTest{}))
+
+	serial := "48L0A0ZXFVNE"
+	wwn := "0x5000039xxxxxxxx1"
+	model := "TOSHIBA AL13SEB300"
+	staleID := deviceid.Generate("", serial, wwn)
+	canonicalID := deviceid.Generate(model, serial, wwn)
+
+	require.NoError(t, db.Create(&models.Device{
+		DeviceID: staleID, WWN: wwn, SerialNumber: serial,
+		UpdatedAt: time.Date(2026, 4, 23, 0, 0, 0, 0, time.UTC),
+	}).Error)
+	require.NoError(t, db.Create(&models.Device{
+		DeviceID: canonicalID, WWN: wwn, ModelName: model, SerialNumber: serial,
+		UpdatedAt: time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC),
+	}).Error)
+	require.NoError(t, db.Create(&models.DeviceSelfTest{
+		DeviceID: staleID, DeviceIdentity: staleID, DeviceWWN: wwn, TypeString: "short",
+	}).Error)
+
+	staleUUID := legacyScrutinyUUID("", serial, wwn)
+	canonicalUUID := legacyScrutinyUUID(model, serial, wwn)
+	mapping := map[string]analogJHistoryTarget{
+		staleUUID:     {DeviceID: staleID, WWN: wwn},
+		canonicalUUID: {DeviceID: canonicalID, WWN: wwn},
+	}
+
+	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db, mapping))
+
+	require.Equal(t, map[string]analogJHistoryTarget{
+		staleUUID:     {DeviceID: canonicalID, WWN: wwn},
+		canonicalUUID: {DeviceID: canonicalID, WWN: wwn},
+	}, mapping)
+
+	var selfTests []models.DeviceSelfTest
+	require.NoError(t, db.Find(&selfTests).Error)
+	require.Len(t, selfTests, 1)
+	require.Equal(t, canonicalID, selfTests[0].DeviceID)
+	require.Equal(t, canonicalID, selfTests[0].DeviceIdentity)
+}
+
+// With three rows the canonical struct has to be reloaded between merges, or each guard in
+// mergeAnalogJDeviceRows reads pre-merge state and the oldest row's metadata wins.
+func TestMergeAnalogJWWNDuplicatesPrefersNewestMetadataAcrossThreeRows(t *testing.T) {
+	repo, db := newWWNDuplicateTestRepository(t)
+
+	serial := "48L0A0ZXFVNE"
+	wwn := "0x5000039xxxxxxxx1"
+	rows := []struct {
+		model   string
+		label   string
+		updated time.Time
+	}{
+		{"TOSHIBA AL13SEB300", "", time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)},
+		{"TOSHIBA AL13SEB300 v2", "Bay 3", time.Date(2026, 4, 23, 0, 0, 0, 0, time.UTC)},
+		{"TOSHIBA", "old-bay", time.Date(2024, 12, 25, 0, 0, 0, 0, time.UTC)},
+	}
+	for _, row := range rows {
+		require.NoError(t, db.Create(&models.Device{
+			DeviceID:     deviceid.Generate(row.model, serial, wwn),
+			WWN:          wwn,
+			ModelName:    row.model,
+			SerialNumber: serial,
+			Label:        row.label,
+			UpdatedAt:    row.updated,
+		}).Error)
+	}
+
+	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db, map[string]analogJHistoryTarget{}))
+
+	var devices []models.Device
+	require.NoError(t, db.Unscoped().Find(&devices).Error)
+	require.Len(t, devices, 1)
+	require.Equal(t, "Bay 3", devices[0].Label)
+}
+
+// Enclosure firmware that fabricates a WWN can fabricate a serial too, so a capacity
+// disagreement is treated as two drives rather than one duplicated row.
+func TestMergeAnalogJWWNDuplicatesKeepsDifferentCapacities(t *testing.T) {
+	repo, db := newWWNDuplicateTestRepository(t)
+
+	serial := "00000000000000000000"
+	wwn := "0x0000000000000000"
+	for _, row := range []struct {
+		model    string
+		capacity int64
+	}{{"WDC WD40EFZX", 4000787030016}, {"ST8000VN004", 8001563222016}} {
+		require.NoError(t, db.Create(&models.Device{
+			DeviceID:     deviceid.Generate(row.model, serial, wwn),
+			WWN:          wwn,
+			ModelName:    row.model,
+			SerialNumber: serial,
+			Capacity:     row.capacity,
+		}).Error)
+	}
+
+	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db, map[string]analogJHistoryTarget{}))
+
+	var devices []models.Device
+	require.NoError(t, db.Unscoped().Find(&devices).Error)
+	require.Len(t, devices, 2)
 }
 
 // #851: drives behind one controller, or reporting a vendor-default WWN, share the WWN
@@ -333,7 +455,7 @@ func TestMergeAnalogJWWNDuplicatesKeepsDistinctSerials(t *testing.T) {
 		}).Error)
 	}
 
-	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db))
+	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db, map[string]analogJHistoryTarget{}))
 
 	var devices []models.Device
 	require.NoError(t, db.Unscoped().Find(&devices).Error)
@@ -361,11 +483,108 @@ func TestMergeAnalogJWWNDuplicatesKeepsConflictingHosts(t *testing.T) {
 		}).Error)
 	}
 
-	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db))
+	require.NoError(t, repo.mergeAnalogJWWNDuplicates(context.Background(), db, map[string]analogJHistoryTarget{}))
 
 	var devices []models.Device
 	require.NoError(t, db.Unscoped().Find(&devices).Error)
 	require.Len(t, devices, 2)
+}
+
+// The merge is reached only through the m20260216155600 lineage gate, and only after
+// prepareAnalogJDeviceRepair has built the history mapping, so exercise it through
+// migrateM20260803000000 rather than calling the merge directly.
+func TestMigrateM20260803000000MergesDuplicatesAndRewritesHistoryOnce(t *testing.T) {
+	var rewritten []string
+	var deletes []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v2/buckets":
+			w.Header().Set("Content-Type", "application/json")
+			listed := make([]domain.Bucket, 0, 4)
+			for _, name := range []string{"metrics", "metrics_weekly", "metrics_monthly", "metrics_yearly"} {
+				listed = append(listed, domain.Bucket{Name: name})
+			}
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"buckets": listed})
+		case "/api/v2/query":
+			// the client posts the Flux as a JSON field, so compare the decoded query
+			var payload struct {
+				Query string `json:"query"`
+			}
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+			rewritten = append(rewritten, payload.Query)
+			w.Header().Set("Content-Type", "text/csv")
+		case "/api/v2/delete":
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			deletes = append(deletes, string(body))
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL)
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+	client := influxdb2.NewClient(server.URL, "test-token")
+	t.Cleanup(client.Close)
+
+	mockCtrl := gomock.NewController(t)
+	t.Cleanup(mockCtrl.Finish)
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	fakeConfig.EXPECT().GetString(cfgInfluxDBBucket).Return("metrics").AnyTimes()
+	fakeConfig.EXPECT().GetString(cfgInfluxDBOrg).Return("scrutiny").AnyTimes()
+
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&models.Device{}))
+	require.NoError(t, db.Exec(`CREATE TABLE migrations (id TEXT NOT NULL PRIMARY KEY)`).Error)
+	require.NoError(t, db.Exec(`INSERT INTO migrations (id) VALUES (?)`, analogJScrutinyUUIDMigrationID).Error)
+
+	serial := "48L0A0ZXFVNE"
+	wwn := "0x5000039xxxxxxxx1"
+	model := "TOSHIBA AL13SEB300"
+	staleID := deviceid.Generate("", serial, wwn)
+	canonicalID := deviceid.Generate(model, serial, wwn)
+	require.NoError(t, db.Create(&models.Device{
+		DeviceID: staleID, WWN: wwn, SerialNumber: serial, Label: "Bay 3",
+		CreatedAt: time.Date(2024, 12, 25, 0, 0, 0, 0, time.UTC),
+		UpdatedAt: time.Date(2026, 4, 23, 0, 0, 0, 0, time.UTC),
+	}).Error)
+	require.NoError(t, db.Create(&models.Device{
+		DeviceID: canonicalID, WWN: wwn, ModelName: model, SerialNumber: serial,
+		CreatedAt: time.Date(2026, 4, 26, 0, 0, 0, 0, time.UTC),
+		UpdatedAt: time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC),
+	}).Error)
+
+	repo := &scrutinyRepository{
+		appConfig: fakeConfig, influxClient: client,
+		influxQueryApi: client.QueryAPI("scrutiny"), gormClient: db, logger: logrus.New(),
+	}
+	require.NoError(t, repo.migrateM20260803000000(context.Background(), db))
+
+	var devices []models.Device
+	require.NoError(t, db.Unscoped().Find(&devices).Error)
+	require.Len(t, devices, 1)
+	require.Equal(t, canonicalID, devices[0].DeviceID)
+	require.Equal(t, "Bay 3", devices[0].Label)
+	require.Equal(t, time.Date(2024, 12, 25, 0, 0, 0, 0, time.UTC), devices[0].CreatedAt.UTC())
+
+	// Two legacy identities across four buckets, and every rewrite lands on the surviving
+	// device_id rather than the deleted one.
+	require.Len(t, rewritten, 8)
+	require.Len(t, deletes, 8)
+	for _, query := range rewritten {
+		require.Contains(t, query, `set(key: "device_id", value: "`+canonicalID+`")`)
+		require.NotContains(t, query, staleID)
+	}
+	for _, uuid := range []string{legacyScrutinyUUID("", serial, wwn), legacyScrutinyUUID(model, serial, wwn)} {
+		found := false
+		for _, query := range rewritten {
+			if strings.Contains(query, uuid) {
+				found = true
+			}
+		}
+		require.True(t, found, "no rewrite covered legacy scrutiny_uuid %s", uuid)
+	}
 }
 
 func TestAnalogJMigrationIntegration(t *testing.T) {
