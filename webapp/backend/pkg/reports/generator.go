@@ -7,6 +7,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
 )
 
 // SummaryProvider is the subset of database.DeviceRepo needed by the generator.
@@ -89,9 +90,12 @@ func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, device
 			continue
 		}
 
+		name, value, threshold := alertAttributeDetails(attrID, attr)
 		entry := AlertEntry{
-			AttributeID: attrID,
-			Value:       attr.GetTransformedValue(),
+			AttributeID:   attrID,
+			AttributeName: name,
+			Value:         value,
+			Threshold:     threshold,
 		}
 
 		switch {
@@ -109,6 +113,50 @@ func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, device
 			dr.ActiveFailures = append(dr.ActiveFailures, entry)
 		}
 	}
+}
+
+// alertAttributeDetails returns the display name, the value the attribute is evaluated on and the
+// manufacturer threshold for one SMART attribute. TransformedValue is not used: it is 0 for most
+// attributes. ATA attributes report the normalized value when their metadata is evaluated on it
+// (so it lines up with the threshold) and the raw value otherwise; other protocols report Value.
+func alertAttributeDetails(attrID string, attribute measurements.SmartAttribute) (name string, value int64, threshold int64) {
+	switch attr := attribute.(type) {
+	case *measurements.SmartAtaAttribute:
+		name = attr.Name
+		value = attr.RawValue
+		threshold = attr.Threshold
+		if metadata, ok := thresholds.AtaMetadata[attr.AttributeId]; ok {
+			if name == "" {
+				name = metadata.DisplayName
+			}
+			if metadata.DisplayType == thresholds.AtaSmartAttributeDisplayTypeNormalized {
+				value = attr.Value
+			}
+		}
+	case *measurements.SmartAtaDeviceStatAttribute:
+		name, value, threshold = attr.AttributeId, attr.Value, attr.Threshold
+		if metadata, ok := thresholds.AtaDeviceStatsMetadata[attr.AttributeId]; ok {
+			name = metadata.DisplayName
+		}
+	case *measurements.SmartFarmAttribute:
+		name, value, threshold = attr.AttributeId, attr.Value, attr.Threshold
+		if metadata, ok := thresholds.FarmMetadata[attr.AttributeId]; ok {
+			name = metadata.DisplayName
+		}
+	case *measurements.SmartNvmeAttribute:
+		name, value, threshold = attr.AttributeId, attr.Value, attr.Threshold
+		if metadata, ok := thresholds.NmveMetadata[attr.AttributeId]; ok {
+			name = metadata.DisplayName
+		}
+	case *measurements.SmartScsiAttribute:
+		name, value, threshold = attr.AttributeId, attr.Value, attr.Threshold
+		if metadata, ok := thresholds.ScsiMetadataFor(attr.AttributeId); ok {
+			name = metadata.DisplayName
+		}
+	default:
+		name = attrID
+	}
+	return name, value, threshold
 }
 
 func (g *Generator) populateZFSPools(ctx context.Context, report *ReportData) {

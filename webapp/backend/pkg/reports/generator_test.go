@@ -201,3 +201,66 @@ func TestGenerateReport_ZFSPoolsPopulated(t *testing.T) {
 	assert.Equal(t, "completed", pool.ScrubStatus)
 	assert.NotNil(t, pool.LastScrubDate)
 }
+
+func TestGenerateReport_AlertEntriesCarryNameValueAndThreshold(t *testing.T) {
+	now := time.Now()
+	mock := &mockSummaryProvider{
+		summary: map[string]*models.DeviceSummary{
+			"devid-1": {
+				Device: models.Device{
+					DeviceID: "devid-1", WWN: "wwn1", DeviceName: "/dev/sda",
+					DeviceProtocol: "ATA", DeviceStatus: pkg.DeviceStatusFailedScrutiny,
+				},
+			},
+			"devid-2": {
+				Device: models.Device{
+					DeviceID: "devid-2", WWN: "wwn2", DeviceName: "/dev/nvme0",
+					DeviceProtocol: "NVMe", DeviceStatus: pkg.DeviceStatusFailedScrutiny,
+				},
+			},
+		},
+		tempHistory: map[string][]measurements.SmartTemperature{},
+		smartHistory: map[string][]measurements.Smart{
+			"devid-1": {{Attributes: map[string]measurements.SmartAttribute{
+				// normalized display type: report Value, with the manufacturer threshold
+				"3": &measurements.SmartAtaAttribute{
+					AttributeId: 3, Name: "Spin_Up_Time", Value: 83, Threshold: 1, RawValue: 349,
+					Status: pkg.AttributeStatusWarningScrutiny,
+				},
+				// raw display type: report RawValue; no Name from smartctl, so use the metadata name
+				"4": &measurements.SmartAtaAttribute{
+					AttributeId: 4, Value: 100, RawValue: 69,
+					Status: pkg.AttributeStatusWarningScrutiny,
+				},
+			}}},
+			"devid-2": {{Attributes: map[string]measurements.SmartAttribute{
+				"media_errors": &measurements.SmartNvmeAttribute{
+					AttributeId: "media_errors", Value: 7,
+					Status: pkg.AttributeStatusFailedScrutiny,
+				},
+			}}},
+		},
+	}
+
+	report, err := NewGenerator(mock).Generate(context.Background(), "weekly", now.Add(-7*24*time.Hour), now)
+	require.NoError(t, err)
+
+	byID := map[string]AlertEntry{}
+	for _, dev := range report.Devices {
+		for _, alert := range dev.ActiveFailures {
+			byID[alert.AttributeID] = alert
+		}
+	}
+	require.Len(t, byID, 3)
+
+	assert.Equal(t, "Spin_Up_Time", byID["3"].AttributeName)
+	assert.Equal(t, int64(83), byID["3"].Value)
+	assert.Equal(t, int64(1), byID["3"].Threshold)
+
+	assert.Equal(t, "Start/Stop Count", byID["4"].AttributeName)
+	assert.Equal(t, int64(69), byID["4"].Value)
+
+	assert.NotEmpty(t, byID["media_errors"].AttributeName)
+	assert.Equal(t, int64(7), byID["media_errors"].Value)
+	assert.Equal(t, "failed", byID["media_errors"].Status)
+}
