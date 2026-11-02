@@ -206,7 +206,7 @@ func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *
 }
 
 // hasQualifyingFailure reports whether any failing attribute meets the required status and,
-// when repeat notifications are disabled, has a transformed value that changed from the previous
+// when repeat notifications are disabled, has a status or evaluated value that changed from the previous
 // submission (lastPoints). A missing previous submission (hasPrevious=false) is treated as a change.
 func hasQualifyingFailure(failingAttributes []string, smartAttrs *measurements.Smart, lastPoints []measurements.Smart, requiredAttrStatus pkg.AttributeStatus, repeatNotifications bool, hasPrevious bool) bool {
 	for _, attrId := range failingAttributes {
@@ -228,11 +228,26 @@ func hasQualifyingFailure(failingAttributes []string, smartAttrs *measurements.S
 		if !previousAttributeRecorded {
 			return true
 		}
-		if previousAttribute.GetTransformedValue() != smartAttrs.Attributes[attrId].GetTransformedValue() {
+		currentAttribute := smartAttrs.Attributes[attrId]
+		if previousAttribute.GetStatus() != currentAttribute.GetStatus() {
+			return true
+		}
+		if comparableValue(previousAttribute) != comparableValue(currentAttribute) {
 			return true
 		}
 	}
 	return false
+}
+
+// comparableValue returns the value an attribute's status is evaluated on, so a change in it
+// is a change the user can act on. GetTransformedValue is not used first because it is 0 for
+// most ATA attributes and all NVMe attributes, which made every submission look unchanged.
+// Attribute types AttributeThresholdValue does not know fall back to the transformed value.
+func comparableValue(attribute measurements.SmartAttribute) int64 {
+	if value, ok := measurements.AttributeThresholdValue(attribute); ok {
+		return value
+	}
+	return attribute.GetTransformedValue()
 }
 
 type Payload struct {

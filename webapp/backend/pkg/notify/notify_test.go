@@ -291,6 +291,78 @@ func TestShouldNotify_NoRepeat(t *testing.T) {
 	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, false, "", &gin.Context{}, fakeDatabase, nil))
 }
 
+// shouldNotifyNoRepeat runs ShouldNotify with repeat notifications off against a previous
+// submission, so each case below only has to describe the two attribute sets.
+func shouldNotifyNoRepeat(t *testing.T, previous, current map[string]measurements.SmartAttribute) bool {
+	t.Helper()
+	device := models.Device{DeviceStatus: pkg.DeviceStatusFailedScrutiny}
+	smartAttrs := measurements.Smart{Attributes: current}
+	previousSmart := measurements.Smart{Attributes: previous}
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
+	fakeDatabase.EXPECT().GetPreviousSmartSubmission(&gin.Context{}, "").Return([]measurements.Smart{previousSmart}, nil).Times(1)
+	return ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, pkg.MetricsStatusThresholdBoth, pkg.MetricsStatusFilterAttributesAll, false, "", &gin.Context{}, fakeDatabase, nil)
+}
+
+// ATA attributes without a Transform function have TransformedValue 0 on every submission, so
+// the repeat check must compare the raw value the attribute is evaluated on.
+func TestShouldNotify_NoRepeat_AtaPassedToFailedWithoutTransform(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{Status: pkg.AttributeStatusPassed, RawValue: 0},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{Status: pkg.AttributeStatusFailedScrutiny, RawValue: 8},
+	}
+	require.True(t, shouldNotifyNoRepeat(t, previous, current))
+}
+
+func TestShouldNotify_NoRepeat_AtaFailingValueChanged(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{Status: pkg.AttributeStatusFailedScrutiny, RawValue: 8},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{Status: pkg.AttributeStatusFailedScrutiny, RawValue: 12},
+	}
+	require.True(t, shouldNotifyNoRepeat(t, previous, current))
+}
+
+func TestShouldNotify_NoRepeat_AtaFailingValueUnchanged(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{Status: pkg.AttributeStatusFailedScrutiny, RawValue: 8},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{Status: pkg.AttributeStatusFailedScrutiny, RawValue: 8},
+	}
+	require.False(t, shouldNotifyNoRepeat(t, previous, current))
+}
+
+// NVMe attributes never set TransformedValue, so media_errors going 0 -> 3 was invisible.
+func TestShouldNotify_NoRepeat_NvmeMediaErrorsChanged(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"media_errors": &measurements.SmartNvmeAttribute{AttributeId: "media_errors", Status: pkg.AttributeStatusFailedScrutiny, Value: 3},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"media_errors": &measurements.SmartNvmeAttribute{AttributeId: "media_errors", Status: pkg.AttributeStatusFailedScrutiny, Value: 5},
+	}
+	require.True(t, shouldNotifyNoRepeat(t, previous, current))
+}
+
+func TestShouldNotify_NoRepeat_NvmeMediaErrorsUnchanged(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"media_errors": &measurements.SmartNvmeAttribute{AttributeId: "media_errors", Status: pkg.AttributeStatusFailedScrutiny, Value: 3},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"media_errors": &measurements.SmartNvmeAttribute{AttributeId: "media_errors", Status: pkg.AttributeStatusFailedScrutiny, Value: 3},
+	}
+	require.False(t, shouldNotifyNoRepeat(t, previous, current))
+}
+
 // TestShouldNotify_NoRepeat_AttributeAbsentFromPreviousSubmission covers a failing attribute
 // that the previous submission did not carry at all, which is what a release decoding a log
 // page it previously ignored produces on its first collection. Attributes is a map of
