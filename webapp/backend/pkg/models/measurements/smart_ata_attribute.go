@@ -271,11 +271,13 @@ func observedThresholdReachedBy(obsThresh thresholds.ObservedThreshold, ideal st
 		return value <= obsThresh.High
 	}
 
-	floor := obsThresh.Low + 1
 	if obsThresh.Low == obsThresh.High {
-		floor = obsThresh.Low
+		return value >= obsThresh.Low
 	}
-	return value >= floor
+	// a span bucket's lowest covered value is Low+1, compared as a strict inequality so a bucket
+	// declaring math.MaxInt64 as its floor does not overflow into one that every value reaches.
+	// The bundled catalog already carries math.MaxInt64 as a ceiling.
+	return value > obsThresh.Low
 }
 
 // thresholdValue returns the attribute value to compare against observed thresholds, selected by

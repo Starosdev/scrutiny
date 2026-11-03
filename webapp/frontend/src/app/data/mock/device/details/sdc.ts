@@ -77,7 +77,9 @@ export const sdc = {
                         raw_string: '6244',
                         when_failed: '',
                         transformed_value: 0,
-                        status: 0,
+                        status: 2,
+                        status_reason: 'Observed Failure Rate for Non-Critical Attribute is greater than 10%',
+                        failure_rate: 0.11970378206823593,
                     },
                     '193': {
                         attribute_id: 193,
@@ -123,9 +125,9 @@ export const sdc = {
                         raw_string: '8',
                         when_failed: '',
                         transformed_value: 0,
-                        status: 1,
+                        status: 4,
                         status_reason: 'Observed Failure Rate for Critical Attribute is greater than 10%',
-                        failure_rate: 0.6108100007493069,
+                        failure_rate: 0.6823772508117681,
                     },
                     '198': {
                         attribute_id: 198,
@@ -171,7 +173,6 @@ export const sdc = {
                         when_failed: '',
                         transformed_value: 0,
                         status: 0,
-                        failure_rate: 0.009100406705780476,
                     },
                     '4': {
                         attribute_id: 4,
@@ -183,8 +184,8 @@ export const sdc = {
                         when_failed: '',
                         transformed_value: 0,
                         status: 2,
-                        status_reason: 'Observed Failure Rate for Attribute is greater than 10%',
-                        failure_rate: 0.12262136155304391,
+                        status_reason: 'Observed Failure Rate for Non-Critical Attribute is greater than 10%',
+                        failure_rate: 0.19358212432279714,
                     },
                     '5': {
                         attribute_id: 5,
