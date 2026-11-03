@@ -340,6 +340,69 @@ func TestShouldNotify_NoRepeat_AtaFailingValueUnchanged(t *testing.T) {
 	require.False(t, shouldNotifyNoRepeat(t, previous, current))
 }
 
+// Same value, status moved from passed to failed (for example WhenFailed on a steady raw
+// value): only the status comparison can see this one.
+func TestShouldNotify_NoRepeat_AtaStatusChangedValueUnchanged(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{AttributeId: 5, Status: pkg.AttributeStatusPassed, RawValue: 8},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{AttributeId: 5, Status: pkg.AttributeStatusFailedSmart, RawValue: 8, WhenFailed: "FAILING_NOW"},
+	}
+	require.True(t, shouldNotifyNoRepeat(t, previous, current))
+}
+
+// A warning bit appearing next to an already-set failure bit is not a new failure.
+func TestShouldNotify_NoRepeat_AtaExtraWarningBitIsNotChange(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{AttributeId: 5, Status: pkg.AttributeStatusFailedScrutiny, RawValue: 8},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{AttributeId: 5, Status: pkg.AttributeStatusFailedScrutiny | pkg.AttributeStatusWarningScrutiny, RawValue: 8},
+	}
+	require.False(t, shouldNotifyNoRepeat(t, previous, current))
+}
+
+// Attribute 195 is evaluated on its normalized value. The raw counter climbing every poll
+// must not count as a change.
+func TestShouldNotify_NoRepeat_AtaNormalizedAttributeRawChurnIsNotChange(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"195": &measurements.SmartAtaAttribute{AttributeId: 195, Status: pkg.AttributeStatusFailedScrutiny, Value: 100, RawValue: 1000},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"195": &measurements.SmartAtaAttribute{AttributeId: 195, Status: pkg.AttributeStatusFailedScrutiny, Value: 100, RawValue: 1500},
+	}
+	require.False(t, shouldNotifyNoRepeat(t, previous, current))
+}
+
+// ...and a normalized value that moves while the raw value is static is a change.
+func TestShouldNotify_NoRepeat_AtaNormalizedAttributeValueChanged(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"195": &measurements.SmartAtaAttribute{AttributeId: 195, Status: pkg.AttributeStatusFailedScrutiny, Value: 100, RawValue: 1000},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"195": &measurements.SmartAtaAttribute{AttributeId: 195, Status: pkg.AttributeStatusFailedScrutiny, Value: 80, RawValue: 1000},
+	}
+	require.True(t, shouldNotifyNoRepeat(t, previous, current))
+}
+
+// Attribute 194 is evaluated on the transformed (current temperature) value; the raw value also
+// packs min/max, which can change at a constant temperature.
+func TestShouldNotify_NoRepeat_AtaTemperatureMinMaxChurnIsNotChange(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"194": &measurements.SmartAtaAttribute{AttributeId: 194, Status: pkg.AttributeStatusFailedScrutiny, TransformedValue: 60, RawValue: 0x1001E3C},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"194": &measurements.SmartAtaAttribute{AttributeId: 194, Status: pkg.AttributeStatusFailedScrutiny, TransformedValue: 60, RawValue: 0x2001E3C},
+	}
+	require.False(t, shouldNotifyNoRepeat(t, previous, current))
+}
+
 // NVMe attributes never set TransformedValue, so media_errors going 0 -> 3 was invisible.
 func TestShouldNotify_NoRepeat_NvmeMediaErrorsChanged(t *testing.T) {
 	t.Parallel()

@@ -92,6 +92,18 @@ func AttributeThresholdValue(attribute SmartAttribute) (int64, bool) {
 	}
 }
 
+// AttributeEvaluatedValue returns the value an attribute's built-in status is evaluated on.
+// For ATA that is the normalized, transformed or raw value chosen by the attribute's
+// DisplayType in AtaMetadata (raw when the attribute has no metadata); NVMe, SCSI, FARM and
+// device statistics use Value. Unlike AttributeThresholdValue, which is the value overrides
+// pin, this follows SmartAtaAttribute.ValidateThreshold, so a change in it can change the status.
+func AttributeEvaluatedValue(attribute SmartAttribute) (int64, bool) {
+	if attr, ok := attribute.(*SmartAtaAttribute); ok {
+		return attr.thresholdValue(thresholds.AtaMetadata[attr.AttributeId].DisplayType), true
+	}
+	return AttributeThresholdValue(attribute)
+}
+
 // ApplyOverrideToAttribute applies an override to one in-memory attribute.
 // It is used for ingestion and read-time projection without rewriting history.
 func ApplyOverrideToAttribute(attribute SmartAttribute, result *overrides.Result) (ignored bool, forcedFailure bool) {
