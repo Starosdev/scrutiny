@@ -110,8 +110,9 @@ export const sdc = {
                         raw_string: '3831',
                         when_failed: '',
                         transformed_value: 0,
-                        status: 2,
-                        status_reason: 'Could not determine Observed Failure Rate for Critical Attribute',
+                        status: 4,
+                        failure_rate: 0.24701105346266636,
+                        status_reason: 'Observed Failure Rate for Critical Attribute is greater than 10%',
                     },
                     '197': {
                         attribute_id: 197,

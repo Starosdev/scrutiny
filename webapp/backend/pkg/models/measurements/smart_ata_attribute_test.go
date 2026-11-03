@@ -1,6 +1,7 @@
 package measurements
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
@@ -290,4 +291,164 @@ func TestPopulateAttributeStatus_SkipsGenericObservedThresholdsForVendorSpecific
 	require.Equal(t, pkg.AttributeStatusPassed, sa.Status)
 	require.Equal(t, ataSsdVendorSpecificThresholdSkipReason, sa.StatusReason)
 	require.Zero(t, sa.FailureRate)
+}
+
+// Observed-threshold envelope tests (#1078)
+
+// ataSeverityRank orders the statuses observed-threshold scoring can produce, so a sweep can
+// assert severity never drops.
+func ataSeverityRank(status pkg.AttributeStatus) int {
+	switch {
+	case pkg.AttributeStatusHas(status, pkg.AttributeStatusFailedScrutiny):
+		return 2
+	case pkg.AttributeStatusHas(status, pkg.AttributeStatusWarningScrutiny):
+		return 1
+	default:
+		return 0
+	}
+}
+
+// ataAttributeWithThresholdValue builds an attribute carrying value in the field the metadata's
+// display type is scored against.
+func ataAttributeWithThresholdValue(attributeID int, metadata thresholds.AtaAttributeMetadata, value int64) SmartAtaAttribute {
+	sa := SmartAtaAttribute{AttributeId: attributeID}
+	switch metadata.DisplayType {
+	case thresholds.AtaSmartAttributeDisplayTypeNormalized:
+		sa.Value = value
+	case thresholds.AtaSmartAttributeDisplayTypeTransformed:
+		sa.TransformedValue = value
+	default:
+		sa.RawValue = value
+	}
+	return sa
+}
+
+// ataThresholdProbeValues returns the values worth scoring for a bucket list, ascending: every
+// bucket edge, one value either side of it, and zero. A non-monotonic table shows up at an edge.
+func ataThresholdProbeValues(obsThresholds []thresholds.ObservedThreshold) []int64 {
+	seen := map[int64]struct{}{0: {}}
+	for _, obsThresh := range obsThresholds {
+		for _, candidate := range []int64{
+			obsThresh.Low - 1, obsThresh.Low, obsThresh.Low + 1,
+			obsThresh.High, obsThresh.High + 1,
+		} {
+			seen[candidate] = struct{}{}
+		}
+	}
+
+	values := make([]int64, 0, len(seen))
+	for value := range seen {
+		values = append(values, value)
+	}
+	sort.Slice(values, func(i, j int) bool { return values[i] < values[j] })
+	return values
+}
+
+func TestValidateThreshold_ObservedSeverityNeverImprovesAsAttributeWorsens(t *testing.T) {
+	for attributeID, metadata := range thresholds.AtaMetadata {
+		if len(metadata.ObservedThresholds) == 0 {
+			continue
+		}
+
+		// walk the probes from the healthiest value to the worst one, whichever direction that is
+		values := ataThresholdProbeValues(metadata.ObservedThresholds)
+		if metadata.Ideal == thresholds.ObservedThresholdIdealHigh {
+			for i, j := 0, len(values)-1; i < j; i, j = i+1, j-1 {
+				values[i], values[j] = values[j], values[i]
+			}
+		}
+
+		worstSoFar := 0
+		for _, value := range values {
+			sa := ataAttributeWithThresholdValue(attributeID, metadata, value)
+			sa.ValidateThreshold(metadata)
+
+			rank := ataSeverityRank(sa.Status)
+			require.GreaterOrEqual(t, rank, worstSoFar,
+				"attribute %d (%s) reports a milder status at %d than at a healthier value",
+				attributeID, metadata.DisplayName, value)
+			worstSoFar = rank
+		}
+	}
+}
+
+func TestAtaMetadata_BucketedAttributesDeclareAnIdealDirection(t *testing.T) {
+	for attributeID, metadata := range thresholds.AtaMetadata {
+		if len(metadata.ObservedThresholds) == 0 {
+			continue
+		}
+
+		require.Contains(t,
+			[]string{thresholds.ObservedThresholdIdealLow, thresholds.ObservedThresholdIdealHigh},
+			metadata.Ideal,
+			"attribute %d (%s) carries observed thresholds but declares no Ideal, so its buckets are scored one at a time",
+			attributeID, metadata.DisplayName)
+	}
+}
+
+func TestValidateThreshold_Attr198_BeyondLastBucket_Fails(t *testing.T) {
+	// seventeen offline uncorrectable sectors is past the last bucket, and used to be scored
+	// milder than one sector (#1078).
+	sa := SmartAtaAttribute{AttributeId: 198, RawValue: 17}
+
+	sa.ValidateThreshold(thresholds.AtaMetadata[198])
+
+	require.True(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusFailedScrutiny))
+	require.False(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusWarningScrutiny))
+}
+
+func TestValidateThreshold_Attr198_ZeroSectors_Passes(t *testing.T) {
+	sa := SmartAtaAttribute{AttributeId: 198, RawValue: 0}
+
+	sa.ValidateThreshold(thresholds.AtaMetadata[198])
+
+	require.Equal(t, pkg.AttributeStatusPassed, sa.Status)
+}
+
+func TestValidateThreshold_Attr5_BucketEdgeUnchanged(t *testing.T) {
+	// the envelope must not move an existing edge: the 23.6% bucket still starts at 17.
+	passing := SmartAtaAttribute{AttributeId: 5, RawValue: 16}
+	passing.ValidateThreshold(thresholds.AtaMetadata[5])
+	require.Equal(t, pkg.AttributeStatusPassed, passing.Status)
+
+	failing := SmartAtaAttribute{AttributeId: 5, RawValue: 17}
+	failing.ValidateThreshold(thresholds.AtaMetadata[5])
+	require.True(t, pkg.AttributeStatusHas(failing.Status, pkg.AttributeStatusFailedScrutiny))
+}
+
+func TestValidateThreshold_Attr4_HigherCycleCountNeverScoresMilder(t *testing.T) {
+	// 69 cycles warned while 95 and 500 passed before the envelope (#1078).
+	for _, value := range []int64{69, 95, 500} {
+		sa := SmartAtaAttribute{AttributeId: 4, RawValue: value}
+
+		sa.ValidateThreshold(thresholds.AtaMetadata[4])
+
+		require.True(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusWarningScrutiny),
+			"start/stop count %d", value)
+	}
+}
+
+func TestValidateThreshold_Attr4_ZeroCycles_Passes(t *testing.T) {
+	sa := SmartAtaAttribute{AttributeId: 4, RawValue: 0}
+
+	sa.ValidateThreshold(thresholds.AtaMetadata[4])
+
+	require.Equal(t, pkg.AttributeStatusPassed, sa.Status)
+}
+
+func TestAtaMetadata_VendorScaledNormalizedAttributesCarryNoBuckets(t *testing.T) {
+	// 3, 184 and 195 are bucketed on the normalized value, which every vendor scales itself.
+	for _, attributeID := range []int{3, 184, 195} {
+		require.Empty(t, thresholds.AtaMetadata[attributeID].ObservedThresholds,
+			"attribute %d", attributeID)
+	}
+}
+
+func TestValidateThreshold_Attr3_VendorNormalizedSpinUpTime_Passes(t *testing.T) {
+	// a healthy WD Ultrastar DC HC550 reports normalized 83 for 349ms spin-up (#1078).
+	sa := SmartAtaAttribute{AttributeId: 3, Value: 83, RawValue: 349}
+
+	sa.ValidateThreshold(thresholds.AtaMetadata[3])
+
+	require.Equal(t, pkg.AttributeStatusPassed, sa.Status)
 }
