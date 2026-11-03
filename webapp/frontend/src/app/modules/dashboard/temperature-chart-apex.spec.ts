@@ -83,6 +83,61 @@ describe('dashboard temperature ApexCharts integration', () => {
         expect(dynamicMarkerPaths(host).every((path) => path.getAttribute('d'))).toBeTrue();
         expect({ left: tooltip?.style.left, top: tooltip?.style.top }).toEqual(initialPosition);
     });
+
+    it('reports an interpolated value for a series sampled less often than its neighbour', async () => {
+        // #1076: a padded slot used to read as "--" for every series sampled less
+        // often than its neighbours. It now carries an interpolated reading, so this
+        // pins what the shared tooltip shows there.
+        const timestamp = (hour: number) => new Date(Date.UTC(2026, 7, 1, hour));
+        const series = alignTemperatureChartSeries([
+            { name: 'Hourly drive', data: [0, 1, 2, 3, 4].map((hour) => ({ x: timestamp(hour), y: 40 })) },
+            {
+                name: 'Sparse drive',
+                data: [
+                    { x: timestamp(0), y: 30 },
+                    { x: timestamp(2), y: 34 },
+                    { x: timestamp(4), y: 38 },
+                ],
+            },
+        ]);
+
+        expect(series[1].data.map((point) => point.y)).toEqual([30, 32, 34, 36, 38]);
+
+        chart = new ApexCharts(host, {
+            chart: {
+                type: 'area',
+                width: 700,
+                height: 320,
+                animations: { enabled: false },
+                toolbar: { show: false },
+            },
+            series,
+            markers: {
+                size: 0,
+                hover: { sizeOffset: 4 },
+            },
+            tooltip: {
+                shared: true,
+                intersect: false,
+                custom: createTemperatureChartTooltip(document, 'celsius', '24'),
+                fixed: {
+                    enabled: true,
+                    position: 'topLeft',
+                    offsetX: 12,
+                    offsetY: 12,
+                },
+            },
+            xaxis: { type: 'datetime' },
+        });
+        await chart.render();
+
+        await hoverPoint(chart, host, 0, 1);
+
+        const rows = visibleTooltipRows(host);
+        expect(rows.length).toBe(series.length);
+        expect(rows[1].textContent).toMatch(/Sparse drive:\s*32/);
+        expect(rows.some((row) => /--/.test(row.textContent ?? ''))).toBeFalse();
+    });
 });
 
 async function hoverPoint(chart: ApexCharts, host: HTMLElement, seriesIndex: number, dataPointIndex: number): Promise<void> {

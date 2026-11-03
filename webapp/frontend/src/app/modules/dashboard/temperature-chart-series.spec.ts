@@ -184,4 +184,63 @@ describe('alignTemperatureChartSeries', () => {
         expect(result[1].data[7].y).toBe(0);
         expect(result[1].data.some((point) => point.y === null)).toBeFalse();
     });
+
+    it('fills a gap of exactly MAX_FILL_INTERVALS and leaves a wider one alone', () => {
+        const timestamp = (minute: number) => new Date(Date.UTC(2026, 7, 1, 0, minute));
+        const dense = (count: number) => Array.from({ length: count }, (_, minute) => ({ x: timestamp(minute), y: 40 }));
+        const sparse = (last: number) => [0, 10, 20, last].map((minute) => ({ x: timestamp(minute), y: 33 }));
+
+        // Median interval 10 minutes, so the bound is 15 minutes.
+        const atBound = alignTemperatureChartSeries([
+            { name: 'Dense drive', data: dense(36) },
+            { name: 'Sparse drive', data: sparse(35) },
+        ]);
+        expect(atBound[1].data.slice(20, 36).every((point) => point.y === 33)).toBeTrue();
+
+        const pastBound = alignTemperatureChartSeries([
+            { name: 'Dense drive', data: dense(37) },
+            { name: 'Sparse drive', data: sparse(36) },
+        ]);
+        expect(pastBound[1].data[20].y).toBe(33);
+        expect(pastBound[1].data.slice(21, 36).every((point) => point.y === null)).toBeTrue();
+        expect(pastBound[1].data[36].y).toBe(33);
+    });
+
+    it('keeps a single missed collector run visible as a gap at a long cadence', () => {
+        // The default collector cron is daily, and a long interval must not buy a
+        // wider fill: one missed run is a gap at every cadence.
+        const hours = (hour: number) => new Date(Date.UTC(2026, 7, 1, hour));
+
+        const result = alignTemperatureChartSeries([
+            { name: 'Dense drive', data: Array.from({ length: 25 }, (_, hour) => ({ x: hours(hour), y: 40 })) },
+            { name: 'Eight hourly drive', data: [0, 8, 24].map((hour) => ({ x: hours(hour), y: 33 })) },
+        ]);
+
+        expect(result[1].data[8].y).toBe(33);
+        expect(result[1].data.slice(9, 24).every((point) => point.y === null)).toBeTrue();
+    });
+
+    it('interpolates on elapsed time, not on the number of padded slots', () => {
+        // The shared index is irregular, so a slot's position in the array says
+        // nothing about where it falls between two readings.
+        const timestamp = (minute: number) => new Date(Date.UTC(2026, 7, 1, 0, minute));
+
+        const result = alignTemperatureChartSeries([
+            { name: 'Irregular dense drive', data: [0, 2, 6, 8, 10, 14, 16].map((minute) => ({ x: timestamp(minute), y: 40 })) },
+            {
+                name: 'Sparse drive',
+                data: [
+                    { x: timestamp(0), y: 30 },
+                    { x: timestamp(8), y: 38 },
+                    { x: timestamp(16), y: 46 },
+                ],
+            },
+        ]);
+
+        expect(result[1].data.map((point) => point.x.getTime())).toEqual([0, 2, 6, 8, 10, 14, 16].map((minute) => timestamp(minute).getTime()));
+        expect(result[1].data[1].y).toBe(32);
+        expect(result[1].data[2].y).toBe(36);
+        expect(result[1].data[4].y).toBe(40);
+        expect(result[1].data[5].y).toBe(44);
+    });
 });

@@ -12,11 +12,19 @@ const MAX_SNAP_TOLERANCE_MS = 15 * 60 * 1000;
 
 /**
  * A gap wider than this many of a series' own median sampling intervals is a real
- * outage and stays null. Anything narrower is a padding artifact of alignment.
+ * outage and stays null; anything narrower is a padding artifact of alignment. Below
+ * two deliberately, so a single missed collector run, which leaves a gap of two
+ * intervals, stays a gap at every cadence rather than only at long ones. The
+ * remaining half interval is headroom for collector jitter.
  */
-const MAX_FILL_INTERVALS = 2;
+const MAX_FILL_INTERVALS = 1.5;
 
-/** A median needs more than one sample, so a series with two readings has no usable cadence. */
+/**
+ * Padding is filled only for a series with at least this many of its own intervals.
+ * One interval cannot distinguish a cadence from an outage: a series holding two
+ * readings a day apart would otherwise be drawn as a straight line across the whole
+ * day view, which is the fabrication this bounding exists to prevent.
+ */
 const MIN_INTERVALS_FOR_CADENCE = 2;
 
 interface IndexedTemperaturePoint {
@@ -66,11 +74,17 @@ function hasReading(point: TemperatureChartPoint): boolean {
 /**
  * Alignment pads every series onto the shared index, so a series sampled less often
  * than its neighbours is null in most slots: ApexCharts draws no line through null
- * and the shared tooltip reports no value (#1076). Interpolate those padded slots
- * between the series' own readings, which is the segment the chart already draws
- * between them, and only across gaps within MAX_FILL_INTERVALS of this series' own
- * median sampling interval. Wider gaps are a real outage and stay visible as gaps,
- * as do the slots before its first and after its last reading.
+ * and the shared tooltip reports no value (#1076). ApexCharts 8 has no option to
+ * connect a line across null, so the padded slots have to carry a value; interpolate
+ * them linearly between the series' own readings, and only across gaps within
+ * MAX_FILL_INTERVALS of this series' own median sampling interval. Wider gaps are a
+ * real outage and stay visible as gaps, as do the slots before its first and after
+ * its last reading.
+ *
+ * An interpolated slot reports a temperature the drive never sent, which is why the
+ * bound is narrow. It is not the value the rendered line shows either: the stroke
+ * curve is a user setting and defaults to 'smooth', so the drawn curve between two
+ * readings is a spline rather than this straight segment.
  */
 function interpolatePaddedReadings(points: TemperatureChartPoint[], maxGapMs: number): TemperatureChartPoint[] {
     if (maxGapMs <= 0) {
