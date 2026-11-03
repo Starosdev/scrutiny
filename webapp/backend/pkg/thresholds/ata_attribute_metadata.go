@@ -954,8 +954,12 @@ var AtaMetadata = map[int]AtaAttributeMetadata{
 		Description: "(Vendor-specific raw value.) The raw value has different structure for different vendors and is often not meaningful as a decimal number.",
 		// No observed-threshold buckets: this attribute is reported as a vendor-scaled
 		// normalized value, so buckets derived from a mixed-drive population are not
-		// comparable across vendors. The manufacturer threshold decides it instead, and a
-		// matched consumer drive profile can still supply buckets for the models it covers.
+		// comparable across vendors. The manufacturer threshold decides it instead.
+		//
+		// Unlike attributes 3 and 184, this one declares no Ideal, because which direction is
+		// healthier depends on how the vendor scales it. A consumer drive profile supplying
+		// buckets here would therefore be scored one bucket at a time rather than ordered by
+		// severity; give the attribute a direction before relying on profile buckets for it.
 	},
 	196: {
 		ID:          196,
