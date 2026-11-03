@@ -204,7 +204,7 @@ func (sa *SmartAtaAttribute) ValidateThreshold(smartMetadata thresholds.AtaAttri
 	// 		- if failure rate is above 10 but below 20 - set to warn
 
 	//update the smart attribute status based on Observed thresholds.
-	value := sa.thresholdValue(smartMetadata.DisplayType)
+	value := sa.ThresholdValue(smartMetadata.DisplayType)
 
 	for _, obsThresh := range smartMetadata.ObservedThresholds {
 		// check if "value" is in this bucket
@@ -224,9 +224,9 @@ func (sa *SmartAtaAttribute) ValidateThreshold(smartMetadata thresholds.AtaAttri
 	}
 }
 
-// thresholdValue returns the attribute value to compare against observed thresholds, selected by
+// ThresholdValue returns the attribute value to compare against observed thresholds, selected by
 // the metadata display type (normalized, transformed, or raw).
-func (sa *SmartAtaAttribute) thresholdValue(displayType string) int64 {
+func (sa *SmartAtaAttribute) ThresholdValue(displayType string) int64 {
 	switch displayType {
 	case thresholds.AtaSmartAttributeDisplayTypeNormalized:
 		return int64(sa.Value)

@@ -116,32 +116,36 @@ func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, device
 }
 
 // alertAttributeDetails returns the display name, the value the attribute is evaluated on and the
-// manufacturer threshold for one SMART attribute. TransformedValue is not used: it is 0 for most
-// attributes. ATA attributes report the normalized value when their metadata is evaluated on it
-// (so it lines up with the threshold) and the raw value otherwise; other protocols report Value.
+// manufacturer threshold for one SMART attribute. It follows the detail page: ATA attributes use the
+// metadata display name and ThresholdValue (normalized, transformed or raw), and show the threshold
+// only for normalized values or attributes without metadata. Device-statistics and FARM attributes
+// prefer the metadata threshold over the drive-reported one.
 func alertAttributeDetails(attrID string, attribute measurements.SmartAttribute) (name string, value int64, threshold int64) {
 	switch attr := attribute.(type) {
 	case *measurements.SmartAtaAttribute:
-		name = attr.Name
-		value = attr.RawValue
-		threshold = attr.Threshold
+		name, value, threshold = attr.Name, int64(attr.Value), attr.Threshold
 		if metadata, ok := thresholds.AtaMetadata[attr.AttributeId]; ok {
-			if name == "" {
-				name = metadata.DisplayName
-			}
-			if metadata.DisplayType == thresholds.AtaSmartAttributeDisplayTypeNormalized {
-				value = attr.Value
+			name = metadata.DisplayName
+			value = attr.ThresholdValue(metadata.DisplayType)
+			if metadata.DisplayType != thresholds.AtaSmartAttributeDisplayTypeNormalized {
+				threshold = 0
 			}
 		}
 	case *measurements.SmartAtaDeviceStatAttribute:
 		name, value, threshold = attr.AttributeId, attr.Value, attr.Threshold
 		if metadata, ok := thresholds.AtaDeviceStatsMetadata[attr.AttributeId]; ok {
 			name = metadata.DisplayName
+			if metadata.Threshold != 0 {
+				threshold = metadata.Threshold
+			}
 		}
 	case *measurements.SmartFarmAttribute:
 		name, value, threshold = attr.AttributeId, attr.Value, attr.Threshold
 		if metadata, ok := thresholds.FarmMetadata[attr.AttributeId]; ok {
 			name = metadata.DisplayName
+			if metadata.Threshold != 0 {
+				threshold = metadata.Threshold
+			}
 		}
 	case *measurements.SmartNvmeAttribute:
 		name, value, threshold = attr.AttributeId, attr.Value, attr.Threshold
@@ -153,7 +157,8 @@ func alertAttributeDetails(attrID string, attribute measurements.SmartAttribute)
 		if metadata, ok := thresholds.ScsiMetadataFor(attr.AttributeId); ok {
 			name = metadata.DisplayName
 		}
-	default:
+	}
+	if name == "" {
 		name = attrID
 	}
 	return name, value, threshold
