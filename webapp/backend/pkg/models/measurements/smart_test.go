@@ -417,7 +417,10 @@ func TestFromCollectorSmartInfo(t *testing.T) {
 	require.Equal(t, int64(1730), smartMdl.Attributes["9"].(*measurements.SmartAtaAttribute).TransformedValue)
 
 	//ensure that Scrutiny warning for a non critical attribute does not set device status to failed.
-	require.Equal(t, pkg.AttributeStatusWarningScrutiny, smartMdl.Attributes["3"].GetStatus())
+	//attribute 192 holds 329 power-off retracts, which carries the 11.97% rate observed in the 6-16
+	//retract bucket. attribute 3 used to stand here, and no longer carries observed thresholds.
+	require.Equal(t, pkg.AttributeStatusWarningScrutiny, smartMdl.Attributes["192"].GetStatus())
+	require.Equal(t, pkg.AttributeStatusPassed, smartMdl.Attributes["3"].GetStatus())
 
 }
 

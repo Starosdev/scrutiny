@@ -205,7 +205,7 @@ func (sa *SmartAtaAttribute) ValidateThreshold(smartMetadata thresholds.AtaAttri
 	//update the smart attribute status based on Observed thresholds.
 	value := sa.thresholdValue(smartMetadata.DisplayType)
 
-	rate, found := observedFailureRateAt(smartMetadata, value)
+	rate, found := observedFailureRateAt(&smartMetadata, value)
 	if !found {
 		// the attribute is better than every bucket, or carries no buckets at all: there is no
 		// observed failure rate to score, and the manufacturer threshold has already been checked.
@@ -228,7 +228,7 @@ func (sa *SmartAtaAttribute) ValidateThreshold(smartMetadata thresholds.AtaAttri
 // the time the attribute has degraded to value, which never improves as the attribute worsens and
 // carries the worst rate in the covered range out past the last bucket. Without an Ideal there is
 // no worsening direction to accumulate along, so the bucket containing value is scored alone.
-func observedFailureRateAt(smartMetadata thresholds.AtaAttributeMetadata, value int64) (float64, bool) {
+func observedFailureRateAt(smartMetadata *thresholds.AtaAttributeMetadata, value int64) (float64, bool) {
 	switch smartMetadata.Ideal {
 	case thresholds.ObservedThresholdIdealLow, thresholds.ObservedThresholdIdealHigh:
 		return worstObservedFailureRate(smartMetadata.ObservedThresholds, smartMetadata.Ideal, value)
