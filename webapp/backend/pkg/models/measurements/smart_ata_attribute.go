@@ -198,7 +198,6 @@ func orderedSubsequence(shorter []string, longer []string) bool {
 func (sa *SmartAtaAttribute) ValidateThreshold(smartMetadata thresholds.AtaAttributeMetadata) {
 	// - if the attribute is critical
 	//		- the failure rate is over 10 - set to failed
-	//		- the attribute does not match any threshold, set to warn
 	// - if the attribute is not critical
 	//		- if failure rate is above 20 - set to failed
 	// 		- if failure rate is above 10 but below 20 - set to warn
@@ -206,22 +205,79 @@ func (sa *SmartAtaAttribute) ValidateThreshold(smartMetadata thresholds.AtaAttri
 	//update the smart attribute status based on Observed thresholds.
 	value := sa.thresholdValue(smartMetadata.DisplayType)
 
-	for _, obsThresh := range smartMetadata.ObservedThresholds {
-		// check if "value" is in this bucket
-		if !observedThresholdContains(obsThresh, value) {
-			continue
-		}
-		sa.FailureRate = observedFailureRate(obsThresh)
-		sa.applyFailureRateStatus(smartMetadata.Critical)
-		// we've found the correct bucket, we can drop out of this loop
+	rate, found := observedFailureRateAt(&smartMetadata, value)
+	if !found {
+		// the attribute is better than every bucket, or carries no buckets at all: there is no
+		// observed failure rate to score, and the manufacturer threshold has already been checked.
 		return
 	}
 
-	// no bucket found
-	if smartMetadata.Critical {
-		sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusWarningScrutiny)
-		sa.StatusReason = "Could not determine Observed Failure Rate for Critical Attribute"
+	sa.FailureRate = rate
+	sa.applyFailureRateStatus(smartMetadata.Critical)
+}
+
+// observedFailureRateAt returns the failure rate to score for value, and whether any bucket
+// applied.
+//
+// The buckets are annual failure rates measured over a mixed-drive population, not an ordinal
+// severity scale. Sparse buckets are non-monotonic, and the covered range stops well short of the
+// worst value a drive can report, so scoring only the bucket a value lands in let a worse value
+// earn a milder status than a better one and let a value past the last bucket go unscored.
+//
+// When the metadata declares an Ideal direction, the rate is therefore the worst rate observed by
+// the time the attribute has degraded to value, which never improves as the attribute worsens and
+// carries the worst rate in the covered range out past the last bucket. Without an Ideal there is
+// no worsening direction to accumulate along, so the bucket containing value is scored alone.
+func observedFailureRateAt(smartMetadata *thresholds.AtaAttributeMetadata, value int64) (float64, bool) {
+	switch smartMetadata.Ideal {
+	case thresholds.ObservedThresholdIdealLow, thresholds.ObservedThresholdIdealHigh:
+		return worstObservedFailureRate(smartMetadata.ObservedThresholds, smartMetadata.Ideal, value)
 	}
+
+	for _, obsThresh := range smartMetadata.ObservedThresholds {
+		if observedThresholdContains(obsThresh, value) {
+			return observedFailureRate(obsThresh), true
+		}
+	}
+	return 0, false
+}
+
+// worstObservedFailureRate returns the highest failure rate among the buckets reached by value.
+func worstObservedFailureRate(obsThresholds []thresholds.ObservedThreshold, ideal string, value int64) (float64, bool) {
+	worst := 0.0
+	found := false
+	for _, obsThresh := range obsThresholds {
+		if !observedThresholdReachedBy(obsThresh, ideal, value) {
+			continue
+		}
+		if rate := observedFailureRate(obsThresh); !found || rate > worst {
+			worst = rate
+		}
+		found = true
+	}
+	return worst, found
+}
+
+// observedThresholdReachedBy reports whether an attribute degrading to value has passed through
+// this bucket: for an ideal-low attribute the value has climbed to at least the lowest value the
+// bucket covers, and for an ideal-high one it has dropped to at most the highest.
+//
+// The edges match observedThresholdContains exactly, so no value changes which bucket it scores
+// against; the envelope only adds the buckets already passed. A value no bucket covers, such as one
+// sitting between a singleton zero bucket and a span that starts above it, carries the rate from
+// below it, because the population the buckets came from holds no observation of that value.
+func observedThresholdReachedBy(obsThresh thresholds.ObservedThreshold, ideal string, value int64) bool {
+	if ideal == thresholds.ObservedThresholdIdealHigh {
+		return value <= obsThresh.High
+	}
+
+	if obsThresh.Low == obsThresh.High {
+		return value >= obsThresh.Low
+	}
+	// a span bucket's lowest covered value is Low+1, compared as a strict inequality so a bucket
+	// declaring math.MaxInt64 as its floor does not overflow into one that every value reaches.
+	// The bundled catalog already carries math.MaxInt64 as a ceiling.
+	return value > obsThresh.Low
 }
 
 // thresholdValue returns the attribute value to compare against observed thresholds, selected by
@@ -235,6 +291,18 @@ func (sa *SmartAtaAttribute) thresholdValue(displayType string) int64 {
 	default:
 		return sa.RawValue
 	}
+}
+
+// DisplayValue returns the value the UI plots for this attribute, selected by its
+// metadata display type. Callers that report a value beside a status-derived
+// judgement use it so the number they show is the number the charts show.
+// Unknown attributes fall back to the raw value.
+func (sa *SmartAtaAttribute) DisplayValue() int64 {
+	metadata, ok := thresholds.AtaMetadata[sa.AttributeId]
+	if !ok {
+		return sa.RawValue
+	}
+	return sa.thresholdValue(metadata.DisplayType)
 }
 
 // observedThresholdContains reports whether value falls within an observed-threshold bucket.
