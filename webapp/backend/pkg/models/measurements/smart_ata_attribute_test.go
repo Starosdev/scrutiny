@@ -452,3 +452,57 @@ func TestValidateThreshold_Attr3_VendorNormalizedSpinUpTime_Passes(t *testing.T)
 
 	require.Equal(t, pkg.AttributeStatusPassed, sa.Status)
 }
+
+// Profile-supplied buckets replace the bundled ones for the drives a profile matches, so they are
+// scored by the same envelope. This sweeps every bundled profile that overrides buckets through
+// PopulateAttributeStatus, which is the path a real drive takes, rather than calling
+// ValidateThreshold with hand-built metadata.
+func TestPopulateAttributeStatus_ProfileBucketsNeverScoreMilderAsAttributeWorsens(t *testing.T) {
+	families := []string{
+		"Hitachi Deskstar 7K1000.D",
+		"WDC Red",
+		"WDC Red Plus",
+		"Seagate Desktop SSHD",
+		"Seagate Barracuda 7200.14 (AF)",
+		"WDC Caviar Blue",
+		"WDC Caviar Green",
+		"Seagate Barracuda 7200.12",
+		"Seagate Desktop HDD.15",
+		"Crucial/Micron RealSSD m4/C400/P400",
+	}
+
+	swept := 0
+	for _, family := range families {
+		profile, ok := thresholds.LookupConsumerDriveProfile("ATA", family, "")
+		require.True(t, ok, "profile %q is no longer in the bundled catalog", family)
+		require.NotEmpty(t, profile.AtaObservedThresholds, "profile %q no longer overrides buckets", family)
+
+		for attributeID, obsThresholds := range profile.AtaObservedThresholds {
+			metadata := thresholds.AtaMetadata[attributeID]
+
+			// walk the probes from the healthiest value to the worst one, whichever direction that is
+			values := ataThresholdProbeValues(obsThresholds)
+			if metadata.Ideal == thresholds.ObservedThresholdIdealHigh {
+				for i, j := 0, len(values)-1; i < j; i, j = i+1, j-1 {
+					values[i], values[j] = values[j], values[i]
+				}
+			}
+
+			worstSoFar := 0
+			for _, value := range values {
+				sa := ataAttributeWithThresholdValue(attributeID, metadata, value)
+				sa.PopulateAttributeStatus(profile, false)
+
+				rank := ataSeverityRank(sa.Status)
+				require.GreaterOrEqual(t, rank, worstSoFar,
+					"profile %q attribute %d (%s) reports a milder status at %d than at a healthier value",
+					family, attributeID, metadata.DisplayName, value)
+				worstSoFar = rank
+			}
+			swept++
+		}
+	}
+
+	require.GreaterOrEqual(t, swept, len(families),
+		"every bundled profile that overrides buckets must be swept")
+}

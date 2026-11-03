@@ -819,56 +819,6 @@ export const sdb = {
             critical: true,
             description:
                 'This attribute is a part of Hewlett-Packard"s SMART IV technology, as well as part of other vendors" IO Error Detection and Correction schemas, and it contains a count of parity errors which occur in the data path to the media via the drive"s cache RAM',
-            observed_thresholds: [
-                {
-                    low: 93,
-                    high: 94,
-                    annual_failure_rate: 1.631212012870933,
-                    error_interval: [1.055634407303844, 2.407990716767714],
-                },
-                {
-                    low: 94,
-                    high: 95,
-                    annual_failure_rate: 0,
-                    error_interval: [0, 0],
-                },
-                {
-                    low: 95,
-                    high: 96,
-                    annual_failure_rate: 0,
-                    error_interval: [0, 0],
-                },
-                {
-                    low: 96,
-                    high: 97,
-                    annual_failure_rate: 0,
-                    error_interval: [0, 0],
-                },
-                {
-                    low: 97,
-                    high: 97,
-                    annual_failure_rate: 0,
-                    error_interval: [0, 0],
-                },
-                {
-                    low: 97,
-                    high: 98,
-                    annual_failure_rate: 1.8069306930693072,
-                    error_interval: [0.04574752432804858, 10.067573453924245],
-                },
-                {
-                    low: 98,
-                    high: 99,
-                    annual_failure_rate: 0.8371559633027523,
-                    error_interval: [0.10138347095016888, 3.0240951820174824],
-                },
-                {
-                    low: 99,
-                    high: 100,
-                    annual_failure_rate: 0.09334816849865138,
-                    error_interval: [0.08689499010435861, 0.10015372448181788],
-                },
-            ],
             display_type: 'normalized',
         },
         '185': {
@@ -1162,56 +1112,6 @@ export const sdb = {
             ideal: '',
             critical: false,
             description: '(Vendor-specific raw value.) The raw value has different structure for different vendors and is often not meaningful as a decimal number.',
-            observed_thresholds: [
-                {
-                    low: 12,
-                    high: 24,
-                    annual_failure_rate: 0.31472916829975706,
-                    error_interval: [0.15711166685282174, 0.5631374192486645],
-                },
-                {
-                    low: 24,
-                    high: 36,
-                    annual_failure_rate: 0.15250310197260136,
-                    error_interval: [0.10497611828070175, 0.21417105521823687],
-                },
-                {
-                    low: 36,
-                    high: 48,
-                    annual_failure_rate: 0.2193119102723874,
-                    error_interval: [0.16475385681835103, 0.28615447006525274],
-                },
-                {
-                    low: 48,
-                    high: 60,
-                    annual_failure_rate: 0.05672658497265746,
-                    error_interval: [0.043182904776447234, 0.07317316161437043],
-                },
-                {
-                    low: 60,
-                    high: 72,
-                    annual_failure_rate: 0,
-                    error_interval: [0, 0],
-                },
-                {
-                    low: 72,
-                    high: 84,
-                    annual_failure_rate: 0,
-                    error_interval: [0, 0],
-                },
-                {
-                    low: 84,
-                    high: 96,
-                    annual_failure_rate: 0,
-                    error_interval: [0, 0],
-                },
-                {
-                    low: 96,
-                    high: 108,
-                    annual_failure_rate: 0.04074570216566197,
-                    error_interval: [0.001031591863615295, 0.22702052218047528],
-                },
-            ],
             display_type: 'normalized',
         },
         '196': {
@@ -1760,61 +1660,11 @@ export const sdb = {
             ideal: 'low',
             critical: false,
             description: 'Average time of spindle spin up (from zero RPM to fully operational [milliseconds]).',
-            observed_thresholds: [
-                {
-                    low: 78,
-                    high: 96,
-                    annual_failure_rate: 0.11452195377351217,
-                    error_interval: [0.10591837762295722, 0.12363823501915781],
-                },
-                {
-                    low: 96,
-                    high: 114,
-                    annual_failure_rate: 0.040274562840558074,
-                    error_interval: [0.03465055611002801, 0.046551312468303144],
-                },
-                {
-                    low: 114,
-                    high: 132,
-                    annual_failure_rate: 0.009100406705780476,
-                    error_interval: [0.006530608971356785, 0.012345729280075591],
-                },
-                {
-                    low: 132,
-                    high: 150,
-                    annual_failure_rate: 0.008561351734020232,
-                    error_interval: [0.004273795939256936, 0.015318623141355509],
-                },
-                {
-                    low: 150,
-                    high: 168,
-                    annual_failure_rate: 0.015780508262068848,
-                    error_interval: [0.005123888078524015, 0.03682644215646287],
-                },
-                {
-                    low: 168,
-                    high: 186,
-                    annual_failure_rate: 0.05262688124794024,
-                    error_interval: [0.0325768689524594, 0.08044577830285578],
-                },
-                {
-                    low: 186,
-                    high: 204,
-                    annual_failure_rate: 0.01957419424036038,
-                    error_interval: [0.0023705257325185624, 0.0707087198669825],
-                },
-                {
-                    low: 204,
-                    high: 222,
-                    annual_failure_rate: 0.026050959960031404,
-                    error_interval: [0.0006595532020744994, 0.1451466588889228],
-                },
-            ],
             display_type: 'normalized',
         },
         '4': {
             display_name: 'Start/Stop Count',
-            ideal: '',
+            ideal: 'low',
             critical: false,
             description:
                 'A tally of spindle start/stop cycles. The spindle turns on, and hence the count is increased, both when the hard disk is turned on after having before been turned entirely off (disconnected from power source) and when the hard disk returns from having previously been put to sleep mode.',
