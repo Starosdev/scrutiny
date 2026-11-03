@@ -10,6 +10,15 @@ export interface TemperatureChartSeries {
 
 const MAX_SNAP_TOLERANCE_MS = 15 * 60 * 1000;
 
+/**
+ * A gap wider than this many of a series' own median sampling intervals is a real
+ * outage and stays null. Anything narrower is a padding artifact of alignment.
+ */
+const MAX_FILL_INTERVALS = 2;
+
+/** A median needs more than one sample, so a series with two readings has no usable cadence. */
+const MIN_INTERVALS_FOR_CADENCE = 2;
+
 interface IndexedTemperaturePoint {
     seriesIndex: number;
     timestamp: number;
@@ -26,24 +35,80 @@ function median(values: number[]): number {
     return sorted[Math.floor((sorted.length - 1) / 2)];
 }
 
-function snapTolerance(series: TemperatureChartSeries[]): number {
+/** Gaps between one series' own consecutive readings, in milliseconds. */
+function seriesIntervals(entry: TemperatureChartSeries): number[] {
+    const timestamps = entry.data
+        .map((point) => point.x.getTime())
+        .filter(Number.isFinite)
+        .sort((left, right) => left - right);
+
     const intervals: number[] = [];
+    for (let index = 1; index < timestamps.length; index++) {
+        const interval = timestamps[index] - timestamps[index - 1];
+        if (interval > 0) {
+            intervals.push(interval);
+        }
+    }
+    return intervals;
+}
 
-    for (const entry of series) {
-        const timestamps = entry.data
-            .map((point) => point.x.getTime())
-            .filter(Number.isFinite)
-            .sort((left, right) => left - right);
+function snapTolerance(series: TemperatureChartSeries[]): number {
+    const intervals = series.flatMap(seriesIntervals);
 
-        for (let index = 1; index < timestamps.length; index++) {
-            const interval = timestamps[index] - timestamps[index - 1];
-            if (interval > 0) {
-                intervals.push(interval);
-            }
+    return intervals.length > 0 ? Math.min(median(intervals) / 2, MAX_SNAP_TOLERANCE_MS) : 0;
+}
+
+function hasReading(point: TemperatureChartPoint): boolean {
+    // Guard like the temperature pipe: a valid 0 degree reading is a reading.
+    return point.y !== null && Number.isFinite(point.y);
+}
+
+/**
+ * Alignment pads every series onto the shared index, so a series sampled less often
+ * than its neighbours is null in most slots: ApexCharts draws no line through null
+ * and the shared tooltip reports no value (#1076). Interpolate those padded slots
+ * between the series' own readings, which is the segment the chart already draws
+ * between them, and only across gaps within MAX_FILL_INTERVALS of this series' own
+ * median sampling interval. Wider gaps are a real outage and stay visible as gaps,
+ * as do the slots before its first and after its last reading.
+ */
+function interpolatePaddedReadings(points: TemperatureChartPoint[], maxGapMs: number): TemperatureChartPoint[] {
+    if (maxGapMs <= 0) {
+        return points;
+    }
+
+    const filled = [...points];
+    let previous = -1;
+
+    for (let index = 0; index < filled.length; index++) {
+        if (!hasReading(filled[index])) {
+            continue;
+        }
+
+        const gapStart = previous;
+        previous = index;
+
+        if (gapStart < 0 || index - gapStart < 2) {
+            continue;
+        }
+
+        const startTime = filled[gapStart].x.getTime();
+        const endTime = filled[index].x.getTime();
+        if (endTime - startTime > maxGapMs) {
+            continue;
+        }
+
+        const startValue = filled[gapStart].y as number;
+        const endValue = filled[index].y as number;
+        const span = endTime - startTime;
+
+        for (let padded = gapStart + 1; padded < index; padded++) {
+            const progress = span > 0 ? (filled[padded].x.getTime() - startTime) / span : 0;
+            filled[padded] = { x: filled[padded].x, y: startValue + (endValue - startValue) * progress };
         }
     }
 
-    return intervals.length > 0 ? Math.min(median(intervals) / 2, MAX_SNAP_TOLERANCE_MS) : 0;
+    return filled;
 }
 
 /**
@@ -88,12 +153,17 @@ export function alignTemperatureChartSeries(series: TemperatureChartSeries[]): T
     }
 
     return series.map((entry, seriesIndex) => {
+        const aligned = clusters.map((cluster) => ({
+            x: new Date(median(cluster.timestamps)),
+            y: cluster.valuesBySeries.get(seriesIndex) ?? null,
+        }));
+
+        const intervals = seriesIntervals(entry);
+        const maxGapMs = intervals.length >= MIN_INTERVALS_FOR_CADENCE ? median(intervals) * MAX_FILL_INTERVALS : 0;
+
         return {
             name: entry.name,
-            data: clusters.map((cluster) => ({
-                x: new Date(median(cluster.timestamps)),
-                y: cluster.valuesBySeries.get(seriesIndex) ?? null,
-            })),
+            data: interpolatePaddedReadings(aligned, maxGapMs),
         };
     });
 }

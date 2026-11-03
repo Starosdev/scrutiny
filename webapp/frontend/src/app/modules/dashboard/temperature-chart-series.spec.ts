@@ -98,4 +98,90 @@ describe('alignTemperatureChartSeries', () => {
         expect(result[0].data.map((point) => point.y)).toEqual([40, null, 42]);
         expect(result[1].data.map((point) => point.y)).toEqual([null, 50, null]);
     });
+
+    it('draws a continuous line for a series sampled less often than its neighbour', () => {
+        // #1076: SATA drives contribute an SCT history table (one point per minute) and
+        // dominate the shared snap tolerance, so every NVMe reading landed in its own
+        // cluster and was null in all the others.
+        const minutes = (count: number, step: number) => Array.from({ length: Math.floor(count / step) + 1 }, (_, index) => index * step);
+        const series = (name: string, step: number, temp: number) => ({
+            name,
+            data: minutes(120, step).map((minute) => ({ x: new Date(Date.UTC(2026, 7, 1, 0, minute)), y: temp })),
+        });
+
+        const result = alignTemperatureChartSeries([series('SCT drive', 1, 40), series('NVMe drive', 15, 33)]);
+
+        expect(result[1].data.length).toBe(121);
+        expect(result[1].data.filter((point) => point.y === null).length).toBe(0);
+        expect(result[1].data.every((point) => point.y === 33)).toBeTrue();
+    });
+
+    it('interpolates padded readings linearly between the series own readings', () => {
+        const timestamp = (minute: number) => new Date(Date.UTC(2026, 7, 1, 0, minute));
+
+        const result = alignTemperatureChartSeries([
+            { name: 'Dense drive', data: Array.from({ length: 21 }, (_, minute) => ({ x: timestamp(minute), y: 40 })) },
+            {
+                name: 'Sparse drive',
+                data: [
+                    { x: timestamp(0), y: 30 },
+                    { x: timestamp(10), y: 34 },
+                    { x: timestamp(20), y: 38 },
+                ],
+            },
+        ]);
+
+        expect(result[1].data[0].y).toBe(30);
+        expect(result[1].data[10].y).toBe(34);
+        expect(result[1].data[5].y).toBe(32);
+        expect(result[1].data[15].y).toBe(36);
+    });
+
+    it('keeps a collector outage visible as a gap', () => {
+        const timestamp = (minute: number) => new Date(Date.UTC(2026, 7, 1, 0, minute));
+
+        const result = alignTemperatureChartSeries([
+            { name: 'Dense drive', data: Array.from({ length: 271 }, (_, minute) => ({ x: timestamp(minute), y: 40 })) },
+            {
+                name: 'Interrupted drive',
+                data: [0, 15, 30, 45, 240, 255, 270].map((minute) => ({ x: timestamp(minute), y: 33 })),
+            },
+        ]);
+
+        expect(result[1].data[45].y).toBe(33);
+        expect(result[1].data[240].y).toBe(33);
+        expect(result[1].data.slice(46, 240).every((point) => point.y === null)).toBeTrue();
+    });
+
+    it('does not pad before the first or after the last reading of a series', () => {
+        const timestamp = (minute: number) => new Date(Date.UTC(2026, 7, 1, 0, minute));
+
+        const result = alignTemperatureChartSeries([
+            { name: 'Dense drive', data: Array.from({ length: 31 }, (_, minute) => ({ x: timestamp(minute), y: 40 })) },
+            {
+                name: 'Late drive',
+                data: [10, 15, 20].map((minute) => ({ x: timestamp(minute), y: 33 })),
+            },
+        ]);
+
+        expect(result[1].data.slice(0, 10).every((point) => point.y === null)).toBeTrue();
+        expect(result[1].data.slice(10, 21).every((point) => point.y === 33)).toBeTrue();
+        expect(result[1].data.slice(21).every((point) => point.y === null)).toBeTrue();
+    });
+
+    it('treats a zero degree reading as a reading when padding', () => {
+        const timestamp = (minute: number) => new Date(Date.UTC(2026, 7, 1, 0, minute));
+
+        const result = alignTemperatureChartSeries([
+            { name: 'Dense drive', data: Array.from({ length: 31 }, (_, minute) => ({ x: timestamp(minute), y: 10 })) },
+            {
+                name: 'Freezing drive',
+                data: [0, 15, 30].map((minute) => ({ x: timestamp(minute), y: 0 })),
+            },
+        ]);
+
+        expect(result[1].data[15].y).toBe(0);
+        expect(result[1].data[7].y).toBe(0);
+        expect(result[1].data.some((point) => point.y === null)).toBeFalse();
+    });
 });
