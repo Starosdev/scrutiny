@@ -65,62 +65,18 @@ var AtaMetadata = map[int]AtaAttributeMetadata{
 		Ideal:       ObservedThresholdIdealLow,
 		Critical:    false,
 		Description: "Average time of spindle spin up (from zero RPM to fully operational [milliseconds]).",
-		ObservedThresholds: []ObservedThreshold{
-			{
-				Low:               78,
-				High:              96,
-				AnnualFailureRate: 0.11452195377351217,
-				ErrorInterval:     []float64{0.10591837762295722, 0.12363823501915781},
-			},
-			{
-				Low:               96,
-				High:              114,
-				AnnualFailureRate: 0.040274562840558074,
-				ErrorInterval:     []float64{0.03465055611002801, 0.046551312468303144},
-			},
-			{
-				Low:               114,
-				High:              132,
-				AnnualFailureRate: 0.009100406705780476,
-				ErrorInterval:     []float64{0.006530608971356785, 0.012345729280075591},
-			},
-			{
-				Low:               132,
-				High:              150,
-				AnnualFailureRate: 0.008561351734020232,
-				ErrorInterval:     []float64{0.004273795939256936, 0.015318623141355509},
-			},
-			{
-				Low:               150,
-				High:              168,
-				AnnualFailureRate: 0.015780508262068848,
-				ErrorInterval:     []float64{0.005123888078524015, 0.03682644215646287},
-			},
-			{
-				Low:               168,
-				High:              186,
-				AnnualFailureRate: 0.05262688124794024,
-				ErrorInterval:     []float64{0.0325768689524594, 0.08044577830285578},
-			},
-			{
-				Low:               186,
-				High:              204,
-				AnnualFailureRate: 0.01957419424036038,
-				ErrorInterval:     []float64{0.0023705257325185624, 0.0707087198669825},
-			},
-			{
-				Low:               204,
-				High:              222,
-				AnnualFailureRate: 0.026050959960031404,
-				ErrorInterval:     []float64{0.0006595532020744994, 0.1451466588889228},
-			},
-		},
+		// No observed-threshold buckets: this attribute is reported as a vendor-scaled
+		// normalized value, so buckets derived from a mixed-drive population are not
+		// comparable across vendors. The manufacturer threshold decides it instead, and a
+		// matched consumer drive profile can still supply buckets for the models it covers.
 	},
 	4: {
 		ID:          4,
 		DisplayName: "Start/Stop Count",
 		DisplayType: AtaSmartAttributeDisplayTypeRaw,
-		Ideal:       "",
+		// A start/stop cycle is wear, so a higher tally is never the healthier reading. The
+		// direction is what orders this attribute's observed-threshold buckets by severity.
+		Ideal:       ObservedThresholdIdealLow,
 		Critical:    false,
 		Description: "A tally of spindle start/stop cycles. The spindle turns on, and hence the count is increased, both when the hard disk is turned on after having before been turned entirely off (disconnected from power source) and when the hard disk returns from having previously been put to sleep mode.",
 		ObservedThresholds: []ObservedThreshold{
@@ -648,56 +604,10 @@ var AtaMetadata = map[int]AtaAttributeMetadata{
 		Ideal:       ObservedThresholdIdealLow,
 		Critical:    true,
 		Description: "This attribute is a part of Hewlett-Packard\"s SMART IV technology, as well as part of other vendors\" IO Error Detection and Correction schemas, and it contains a count of parity errors which occur in the data path to the media via the drive\"s cache RAM",
-		ObservedThresholds: []ObservedThreshold{
-			{
-				Low:               93,
-				High:              94,
-				AnnualFailureRate: 1.631212012870933,
-				ErrorInterval:     []float64{1.055634407303844, 2.407990716767714},
-			},
-			{
-				Low:               94,
-				High:              95,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-			{
-				Low:               95,
-				High:              96,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-			{
-				Low:               96,
-				High:              97,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-			{
-				Low:               97,
-				High:              97,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-			{
-				Low:               97,
-				High:              98,
-				AnnualFailureRate: 1.8069306930693072,
-				ErrorInterval:     []float64{0.04574752432804858, 10.067573453924245},
-			},
-			{
-				Low:               98,
-				High:              99,
-				AnnualFailureRate: 0.8371559633027523,
-				ErrorInterval:     []float64{0.10138347095016888, 3.0240951820174824},
-			},
-			{
-				Low:               99,
-				High:              100,
-				AnnualFailureRate: 0.09334816849865138,
-				ErrorInterval:     []float64{0.08689499010435861, 0.10015372448181788},
-			},
-		},
+		// No observed-threshold buckets: this attribute is reported as a vendor-scaled
+		// normalized value, so buckets derived from a mixed-drive population are not
+		// comparable across vendors. The manufacturer threshold decides it instead, and a
+		// matched consumer drive profile can still supply buckets for the models it covers.
 	},
 	185: {
 		ID:          185,
@@ -1042,56 +952,14 @@ var AtaMetadata = map[int]AtaAttributeMetadata{
 		Ideal:       "",
 		Critical:    false,
 		Description: "(Vendor-specific raw value.) The raw value has different structure for different vendors and is often not meaningful as a decimal number.",
-		ObservedThresholds: []ObservedThreshold{
-			{
-				Low:               12,
-				High:              24,
-				AnnualFailureRate: 0.31472916829975706,
-				ErrorInterval:     []float64{0.15711166685282174, 0.5631374192486645},
-			},
-			{
-				Low:               24,
-				High:              36,
-				AnnualFailureRate: 0.15250310197260136,
-				ErrorInterval:     []float64{0.10497611828070175, 0.21417105521823687},
-			},
-			{
-				Low:               36,
-				High:              48,
-				AnnualFailureRate: 0.2193119102723874,
-				ErrorInterval:     []float64{0.16475385681835103, 0.28615447006525274},
-			},
-			{
-				Low:               48,
-				High:              60,
-				AnnualFailureRate: 0.05672658497265746,
-				ErrorInterval:     []float64{0.043182904776447234, 0.07317316161437043},
-			},
-			{
-				Low:               60,
-				High:              72,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-			{
-				Low:               72,
-				High:              84,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-			{
-				Low:               84,
-				High:              96,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-			{
-				Low:               96,
-				High:              108,
-				AnnualFailureRate: 0.04074570216566197,
-				ErrorInterval:     []float64{0.001031591863615295, 0.22702052218047528},
-			},
-		},
+		// No observed-threshold buckets: this attribute is reported as a vendor-scaled
+		// normalized value, so buckets derived from a mixed-drive population are not
+		// comparable across vendors. The manufacturer threshold decides it instead.
+		//
+		// Unlike attributes 3 and 184, this one declares no Ideal, because which direction is
+		// healthier depends on how the vendor scales it. A consumer drive profile supplying
+		// buckets here would therefore be scored one bucket at a time rather than ordered by
+		// severity; give the attribute a direction before relying on profile buckets for it.
 	},
 	196: {
 		ID:          196,

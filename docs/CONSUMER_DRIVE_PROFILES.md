@@ -13,6 +13,13 @@ When enabled, Scrutiny can match an ATA drive to a bundled profile catalog and u
 
 This applies only to ATA devices. NVMe and SCSI devices continue to use their existing generic logic.
 
+Overridden buckets are scored the same way the bundled ones are: an attribute is rated at the worst
+annual failure rate observed by the time it has degraded to its current value, in the direction its
+`Ideal` declares. A profile's buckets therefore do not have to be monotonic to be safe, and a value
+past the profile's last bucket keeps the worst rate inside it instead of going unscored. An attribute
+that declares no `Ideal` has no direction to accumulate along and is scored one bucket at a time, so
+a profile cannot order its severity.
+
 ## Matching Behavior
 
 Scrutiny tries to match profiles in this order, strongest first. The stage that matched is reported as the machine-readable `match_method`:
