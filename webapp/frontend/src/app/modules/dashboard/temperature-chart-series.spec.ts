@@ -1,4 +1,4 @@
-import { alignTemperatureChartSeries, estimatedTemperaturePoints } from './temperature-chart-series';
+import { alignTemperatureChartSeries, temperatureSlotProvenance } from './temperature-chart-series';
 
 describe('alignTemperatureChartSeries', () => {
     it('aligns irregular series to one timestamp index without moving readings', () => {
@@ -244,7 +244,7 @@ describe('alignTemperatureChartSeries', () => {
         expect(result[1].data[5].y).toBe(44);
     });
 
-    it('marks an interpolated slot as estimated and a reading as measured', () => {
+    it('classifies a reading as measured and an interpolated slot as estimated', () => {
         const timestamp = (minute: number) => new Date(Date.UTC(2026, 7, 1, 0, minute));
 
         const result = alignTemperatureChartSeries([
@@ -260,24 +260,104 @@ describe('alignTemperatureChartSeries', () => {
         ]);
 
         expect(result[1].data[0].estimated).toBeUndefined();
-        expect(result[1].data[10].estimated).toBeUndefined();
         expect(result[1].data[5].estimated).toBeTrue();
 
-        const estimated = estimatedTemperaturePoints(result);
-        expect(estimated[0].some((flag) => flag)).toBeFalse();
-        expect(estimated[1].filter((flag) => flag).length).toBe(18);
-        expect([estimated[1][0], estimated[1][10], estimated[1][20]]).toEqual([false, false, false]);
+        const provenance = temperatureSlotProvenance(result);
+        expect(provenance[0].every((slot) => slot.kind === 'measured')).toBeTrue();
+        expect([provenance[1][0].kind, provenance[1][10].kind, provenance[1][20].kind]).toEqual(['measured', 'measured', 'measured']);
+        expect([provenance[1][5].kind, provenance[1][15].kind]).toEqual(['estimated', 'estimated']);
     });
 
-    it('does not mark a slot left null as estimated', () => {
+    it('names the nearest real reading for a slot left null', () => {
+        // The shipped default collector schedule is `0 0 * * *`, so a drive without an SCT
+        // temperature history table contributes two readings a day apart. Interpolating
+        // across that is fabrication, but the tooltip can still answer with a measurement.
         const hours = (hour: number) => new Date(Date.UTC(2026, 7, 1, hour));
 
         const result = alignTemperatureChartSeries([
-            { name: 'Dense drive', data: Array.from({ length: 25 }, (_, hour) => ({ x: hours(hour), y: 40 })) },
-            { name: 'Eight hourly drive', data: [0, 8, 24].map((hour) => ({ x: hours(hour), y: 33 })) },
+            { name: 'SCT drive', data: Array.from({ length: 25 }, (_, hour) => ({ x: hours(hour), y: 40 })) },
+            {
+                name: 'Daily drive',
+                data: [
+                    { x: hours(0), y: 33 },
+                    { x: hours(24), y: 35 },
+                ],
+            },
         ]);
 
         expect(result[1].data[12].y).toBeNull();
-        expect(estimatedTemperaturePoints(result)[1][12]).toBeFalse();
+        expect(result[1].data.slice(1, 24).every((point) => point.estimated === undefined)).toBeTrue();
+
+        const daily = temperatureSlotProvenance(result)[1];
+        expect(daily.filter((slot) => slot.kind === 'stale').length).toBe(23);
+        expect(daily[1]).toEqual({ kind: 'stale', value: 33, at: hours(0) });
+        expect(daily[23]).toEqual({ kind: 'stale', value: 35, at: hours(24) });
+        expect([daily[0].kind, daily[24].kind]).toEqual(['measured', 'measured']);
+    });
+
+    it('keeps naming a reading through a collector outage', () => {
+        const timestamp = (minute: number) => new Date(Date.UTC(2026, 7, 1, 0, minute));
+
+        const result = alignTemperatureChartSeries([
+            { name: 'Dense drive', data: Array.from({ length: 271 }, (_, minute) => ({ x: timestamp(minute), y: 40 })) },
+            { name: 'Interrupted drive', data: [0, 15, 30, 45, 240, 255, 270].map((minute) => ({ x: timestamp(minute), y: 33 })) },
+        ]);
+
+        const interrupted = temperatureSlotProvenance(result)[1];
+        expect(result[1].data.slice(46, 240).every((point) => point.y === null)).toBeTrue();
+        expect(interrupted.slice(46, 240).every((slot) => slot.kind === 'stale')).toBeTrue();
+        expect(interrupted[50]).toEqual({ kind: 'stale', value: 33, at: timestamp(45) });
+    });
+
+    it('says nothing for a series with no readings at all', () => {
+        const timestamp = (minute: number) => new Date(Date.UTC(2026, 7, 1, 0, minute));
+
+        const result = alignTemperatureChartSeries([
+            {
+                name: 'Dense drive',
+                data: [
+                    { x: timestamp(0), y: 40 },
+                    { x: timestamp(1), y: 41 },
+                ],
+            },
+            { name: 'No readings drive', data: [] },
+        ]);
+
+        expect(temperatureSlotProvenance(result)[1].map((slot) => slot.kind)).toEqual(['measured', 'measured']);
+    });
+
+    it('treats a zero degree reading as a valid nearest reading', () => {
+        const timestamp = (minute: number) => new Date(Date.UTC(2026, 7, 1, 0, minute));
+
+        const result = alignTemperatureChartSeries([
+            { name: 'Dense drive', data: Array.from({ length: 31 }, (_, minute) => ({ x: timestamp(minute), y: 10 })) },
+            {
+                name: 'Freezing drive',
+                data: [
+                    { x: timestamp(0), y: 0 },
+                    { x: timestamp(30), y: 0 },
+                ],
+            },
+        ]);
+
+        expect(temperatureSlotProvenance(result)[1][15]).toEqual({ kind: 'stale', value: 0, at: timestamp(0) });
+    });
+
+    it('keeps the earlier reading for a slot exactly between two', () => {
+        // Never answer a hovered time with a measurement taken after it.
+        const hours = (hour: number) => new Date(Date.UTC(2026, 7, 1, hour));
+
+        const result = alignTemperatureChartSeries([
+            { name: 'Dense drive', data: [0, 1, 2].map((hour) => ({ x: hours(hour), y: 40 })) },
+            {
+                name: 'Two reading drive',
+                data: [
+                    { x: hours(0), y: 33 },
+                    { x: hours(2), y: 35 },
+                ],
+            },
+        ]);
+
+        expect(temperatureSlotProvenance(result)[1][1]).toEqual({ kind: 'stale', value: 33, at: hours(0) });
     });
 });

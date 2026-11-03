@@ -185,10 +185,52 @@ export function alignTemperatureChartSeries(series: TemperatureChartSeries[]): T
 }
 
 /**
- * Which slots of each aligned series carry an interpolated value rather than a reading.
- * The shared tooltip renders by series index and data-point index, so this is the shape
- * it needs to tell an estimate from a measurement.
+ * What a slot of an aligned series actually represents.
+ *
+ * `stale` carries the series' nearest real reading and the time it was taken. Padding
+ * outside the interpolation bound keeps a null y, so the line correctly shows a gap, but
+ * the shared tooltip can still answer with a true statement about a real measurement
+ * instead of "--". That is the only honest answer available for a series whose readings
+ * are too far apart to interpolate, which on the default `0 0 * * *` collector schedule
+ * is every drive without an SCT temperature history table.
  */
-export function estimatedTemperaturePoints(series: TemperatureChartSeries[]): boolean[][] {
-    return series.map((entry) => entry.data.map((point) => point.estimated === true));
+export type TemperatureSlotProvenance = { kind: 'measured' } | { kind: 'estimated' } | { kind: 'stale'; value: number; at: Date };
+
+const MEASURED: TemperatureSlotProvenance = { kind: 'measured' };
+
+/**
+ * Classify every slot of every aligned series. The shared tooltip renders by series index
+ * and data-point index, so that is the shape returned.
+ */
+export function temperatureSlotProvenance(series: TemperatureChartSeries[]): TemperatureSlotProvenance[][] {
+    return series.map((entry) => {
+        const readings = entry.data.filter((point) => hasReading(point) && point.estimated !== true);
+
+        if (readings.length === 0) {
+            return entry.data.map(() => MEASURED);
+        }
+
+        // Slots and readings are both in time order, so one forward pointer finds the
+        // nearest reading for every slot in a single pass. The comparison below is strict,
+        // so a slot exactly between two readings keeps the earlier one: the honest answer
+        // is the last measurement taken, never one taken after the hovered time.
+        let next = 0;
+
+        return entry.data.map((point) => {
+            if (point.estimated === true) {
+                return { kind: 'estimated' } as TemperatureSlotProvenance;
+            }
+            if (hasReading(point)) {
+                return MEASURED;
+            }
+
+            const slotTime = point.x.getTime();
+            while (next + 1 < readings.length && Math.abs(readings[next + 1].x.getTime() - slotTime) < Math.abs(readings[next].x.getTime() - slotTime)) {
+                next++;
+            }
+
+            const nearest = readings[next];
+            return { kind: 'stale', value: nearest.y as number, at: nearest.x } as TemperatureSlotProvenance;
+        });
+    });
 }

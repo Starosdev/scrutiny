@@ -32,7 +32,7 @@ import { SmartTemperatureModel } from 'app/core/models/measurements/smart-temper
 import { MatInput } from '@angular/material/input';
 import { MatFormField, MatLabel, MatPrefix } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
-import { alignTemperatureChartSeries, estimatedTemperaturePoints, TemperatureChartSeries } from './temperature-chart-series';
+import { alignTemperatureChartSeries, TemperatureChartSeries, temperatureSlotProvenance, TemperatureSlotProvenance } from './temperature-chart-series';
 import { createTemperatureChartTooltip } from './temperature-chart-tooltip';
 
 const DASHBOARD_SHELL_WIDTHS: Record<DashboardColumns, string> = {
@@ -89,8 +89,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     hostGroups: { [hostId: string]: string[] } = {};
     filesystemSummaryData: { filesystems: Record<string, FilesystemCapacityModel[]>; hosts: Record<string, FilesystemHostStatusModel> } | null = null;
     temperatureOptions: ApexOptions;
-    /** Interpolated slots of the series currently on the chart, by series index then data-point index. */
-    private _estimatedTemperaturePoints: boolean[][] = [];
+    /** What each slot of the series currently on the chart represents, by series index then data-point index. */
+    private _temperatureSlotProvenance: TemperatureSlotProvenance[][] = [];
     tempDurationKey = 'week';
     config: AppConfig;
     showArchived: boolean = false;
@@ -267,7 +267,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         const aligned = alignTemperatureChartSeries(deviceTemperatureSeries);
         // Recorded here, the one place aligned series are produced, so the tooltip can never
         // read provenance for a set of series that is no longer on the chart.
-        this._estimatedTemperaturePoints = estimatedTemperaturePoints(aligned);
+        this._temperatureSlotProvenance = temperatureSlotProvenance(aligned);
         return aligned;
     }
 
@@ -357,7 +357,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
                     this._document,
                     this.config.temperature_unit,
                     this.config.time_format,
-                    (seriesIndex, dataPointIndex) => this._estimatedTemperaturePoints[seriesIndex]?.[dataPointIndex] === true
+                    (seriesIndex, dataPointIndex) => this._temperatureSlotProvenance[seriesIndex]?.[dataPointIndex]
                 ),
             },
             xaxis: {

@@ -2,6 +2,7 @@ import { formatDate } from '@angular/common';
 import { TemperatureUnit, TimeFormat } from 'app/core/config/app.config';
 import { TemperaturePipe } from 'app/shared/temperature.pipe';
 import { angularDateFormat } from 'app/shared/time-format.utils';
+import { TemperatureSlotProvenance } from './temperature-chart-series';
 
 interface TemperatureTooltipChartContext {
     globals: {
@@ -20,15 +21,17 @@ interface TemperatureTooltipOptions {
 }
 
 /**
- * isEstimated reports whether a slot was interpolated by alignTemperatureChartSeries. It is a
- * callback rather than a captured array because _updateTemperatureChartSeries replaces the
- * series without rebuilding this closure, so a snapshot would go stale on every refresh.
+ * provenanceFor reports what a slot represents: a reading, a value interpolated by
+ * alignTemperatureChartSeries, or a null slot that can still name the series' nearest real
+ * reading. It is a callback rather than a captured array because _updateTemperatureChartSeries
+ * replaces the series without rebuilding this closure, so a snapshot would go stale on every
+ * refresh.
  */
 export function createTemperatureChartTooltip(
     document: Document,
     temperatureUnit: TemperatureUnit,
     timeFormat: TimeFormat,
-    isEstimated: (seriesIndex: number, dataPointIndex: number) => boolean = () => false
+    provenanceFor: (seriesIndex: number, dataPointIndex: number) => TemperatureSlotProvenance | undefined = () => undefined
 ): (options: TemperatureTooltipOptions) => Element {
     return ({ dataPointIndex, series, w }) => {
         const content = document.createElement('div');
@@ -70,13 +73,21 @@ export function createTemperatureChartTooltip(
 
             const value = document.createElement('span');
             value.className = 'apexcharts-tooltip-text-y-value';
-            // formatTemperature formats only, it never converts: the prefix is added to its output
-            // so an interpolated slot is not presented as a reading the drive sent.
-            const formatted = String(TemperaturePipe.formatTemperature(series[seriesIndex]?.[dataPointIndex], temperatureUnit, true));
-            const estimated = isEstimated(seriesIndex, dataPointIndex);
-            value.textContent = estimated ? `~${formatted}` : formatted;
-            if (estimated) {
-                value.title = 'Estimated between readings';
+            // Series reaching alignment are already in the display unit, so formatTemperature
+            // only formats here and never converts. Markers are added to its output.
+            const provenance = provenanceFor(seriesIndex, dataPointIndex);
+
+            if (provenance?.kind === 'stale') {
+                const readingTime = formatDate(provenance.at, angularDateFormat('', timeFormat), 'en-US');
+                value.textContent = `${TemperaturePipe.formatTemperature(provenance.value, temperatureUnit, true)} @ ${readingTime}`;
+                value.title = `No reading at this time. Nearest reading was taken at ${readingTime}.`;
+            } else {
+                const formatted = String(TemperaturePipe.formatTemperature(series[seriesIndex]?.[dataPointIndex], temperatureUnit, true));
+                const estimated = provenance?.kind === 'estimated';
+                value.textContent = estimated ? `~${formatted}` : formatted;
+                if (estimated) {
+                    value.title = 'Estimated between readings';
+                }
             }
             valueGroup.appendChild(value);
 

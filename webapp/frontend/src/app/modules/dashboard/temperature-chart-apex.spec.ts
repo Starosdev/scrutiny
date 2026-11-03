@@ -1,5 +1,5 @@
 import ApexCharts from 'apexcharts';
-import { alignTemperatureChartSeries, estimatedTemperaturePoints } from './temperature-chart-series';
+import { alignTemperatureChartSeries, temperatureSlotProvenance } from './temperature-chart-series';
 import { createTemperatureChartTooltip } from './temperature-chart-tooltip';
 
 describe('dashboard temperature ApexCharts integration', () => {
@@ -103,9 +103,9 @@ describe('dashboard temperature ApexCharts integration', () => {
 
         expect(series[1].data.map((point) => point.y)).toEqual([30, 32, 34, 36, 38]);
 
-        const estimated = estimatedTemperaturePoints(series);
-        expect(estimated[0]).toEqual([false, false, false, false, false]);
-        expect(estimated[1]).toEqual([false, true, false, true, false]);
+        const provenance = temperatureSlotProvenance(series);
+        expect(provenance[0].map((slot) => slot.kind)).toEqual(['measured', 'measured', 'measured', 'measured', 'measured']);
+        expect(provenance[1].map((slot) => slot.kind)).toEqual(['measured', 'estimated', 'measured', 'estimated', 'measured']);
 
         chart = new ApexCharts(host, {
             chart: {
@@ -123,7 +123,7 @@ describe('dashboard temperature ApexCharts integration', () => {
             tooltip: {
                 shared: true,
                 intersect: false,
-                custom: createTemperatureChartTooltip(document, 'celsius', '24', (seriesIndex, dataPointIndex) => estimated[seriesIndex]?.[dataPointIndex] === true),
+                custom: createTemperatureChartTooltip(document, 'celsius', '24', (seriesIndex, dataPointIndex) => provenance[seriesIndex]?.[dataPointIndex]),
                 fixed: {
                     enabled: true,
                     position: 'topLeft',
@@ -149,6 +149,64 @@ describe('dashboard temperature ApexCharts integration', () => {
         expect(rows[1].textContent).toMatch(/Sparse drive:\s*~32/);
         expect(rows[0].textContent).not.toMatch(/~/);
         expect(rows.some((row) => /--/.test(row.textContent ?? ''))).toBeFalse();
+    });
+
+    it('reports the nearest real reading where a series has no value', async () => {
+        // The shipped default collector schedule leaves a drive without SCT history two
+        // readings a day apart. The line correctly shows a gap; the tooltip must still
+        // answer with a measurement rather than "--". The rendered time is formatted in the
+        // runtime's own zone, so only the value and the presence of a time are asserted.
+        const hours = (hour: number) => new Date(Date.UTC(2026, 7, 1, hour));
+        const series = alignTemperatureChartSeries([
+            { name: 'SCT drive', data: [0, 1, 2].map((hour) => ({ x: hours(hour), y: 40 })) },
+            {
+                name: 'Daily drive',
+                data: [
+                    { x: hours(0), y: 33 },
+                    { x: hours(2), y: 35 },
+                ],
+            },
+        ]);
+
+        const provenance = temperatureSlotProvenance(series);
+        expect(series[1].data[1].y).toBeNull();
+        expect(provenance[1][1].kind).toBe('stale');
+
+        chart = new ApexCharts(host, {
+            chart: {
+                type: 'area',
+                width: 700,
+                height: 320,
+                animations: { enabled: false },
+                toolbar: { show: false },
+            },
+            series,
+            markers: {
+                size: 0,
+                hover: { sizeOffset: 4 },
+            },
+            tooltip: {
+                shared: true,
+                intersect: false,
+                custom: createTemperatureChartTooltip(document, 'celsius', '24', (seriesIndex, dataPointIndex) => provenance[seriesIndex]?.[dataPointIndex]),
+                fixed: {
+                    enabled: true,
+                    position: 'topLeft',
+                    offsetX: 12,
+                    offsetY: 12,
+                },
+            },
+            xaxis: { type: 'datetime' },
+        });
+        await chart.render();
+
+        await hoverPoint(chart, host, 0, 1);
+
+        const rows = visibleTooltipRows(host);
+        expect(rows.length).toBe(series.length);
+        expect(rows[1].textContent).toMatch(/Daily drive:\s*33\s*°C @ \d/);
+        expect(rows[1].textContent).not.toMatch(/--/);
+        expect(rows[1].textContent).not.toMatch(/~/);
     });
 });
 
