@@ -506,3 +506,20 @@ func TestPopulateAttributeStatus_ProfileBucketsNeverScoreMilderAsAttributeWorsen
 	require.GreaterOrEqual(t, swept, len(families),
 		"every bundled profile that overrides buckets must be swept")
 }
+
+func TestValidateThreshold_CriticalWithoutObservedThresholds_StaysPassed(t *testing.T) {
+	// Issue #1091: replacement-risk scoring now weights critical attributes that
+	// carry no observed thresholds, which is only safe while a missing bucket set
+	// leaves the status alone. Restoring an unconditional warning here would mark
+	// every drive reporting attribute 201 as degraded and charge it risk points.
+	sa := SmartAtaAttribute{AttributeId: 201, Value: 23, RawValue: 23}
+	metadata := thresholds.AtaMetadata[201]
+	require.True(t, metadata.Critical)
+	require.Empty(t, metadata.ObservedThresholds)
+
+	sa.ValidateThreshold(metadata)
+
+	require.Equal(t, pkg.AttributeStatusPassed, sa.Status)
+	require.Zero(t, sa.FailureRate)
+	require.Empty(t, sa.StatusReason)
+}

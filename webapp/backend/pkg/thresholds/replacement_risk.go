@@ -123,17 +123,19 @@ const AtaCriticalResidualWeight = 3
 const AtaCriticalResidualTrendMultiplier = 1.0
 
 // AtaReplacementRiskWeights is the curated ATA table plus a residual weight for
-// every attribute that AtaMetadata marks critical, carries observed thresholds,
-// and the curated table omits. Deriving the remainder from metadata means a
-// critical attribute can never again be invisible to replacement-risk scoring
-// just because nobody added it here by hand.
+// every attribute that AtaMetadata marks critical and the curated table omits.
+// Deriving the remainder from metadata means a critical attribute can never
+// again be invisible to replacement-risk scoring just because nobody added it
+// here by hand.
 //
-// The observed-threshold requirement is not cosmetic. ValidateThreshold warns
-// unconditionally on a critical attribute whose value matches no bucket, so a
-// critical attribute with no buckets at all (attribute 201) is WARN on every
-// drive that reports it, whatever its value. Weighting that warning would add
-// points to healthy drives and move some of them into a worse risk category for
-// a metadata gap rather than a drive signal.
+// Residuals used to require observed thresholds. That gate existed because
+// ValidateThreshold warned on any critical attribute whose value matched no
+// bucket, which made a bucketless critical attribute WARN on every drive that
+// reported it; weighting that warning would have charged healthy drives for a
+// metadata gap. ValidateThreshold now returns without setting a status when no
+// bucket applies, so the false warning is gone and the gate only suppressed
+// real signals: a manufacturer FAILING_NOW on attribute 184 or 201 scored
+// nothing.
 var AtaReplacementRiskWeights = ataReplacementRiskWeights()
 
 func ataReplacementRiskWeights() []ReplacementRiskWeight {
@@ -147,9 +149,6 @@ func ataReplacementRiskWeights() []ReplacementRiskWeight {
 	residualIDs := []int{}
 	for attributeID := range AtaMetadata {
 		if !AtaMetadata[attributeID].Critical {
-			continue
-		}
-		if len(AtaMetadata[attributeID].ObservedThresholds) == 0 {
 			continue
 		}
 		if _, ok := curated[strconv.Itoa(attributeID)]; ok {
