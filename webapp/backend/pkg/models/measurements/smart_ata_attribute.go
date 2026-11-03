@@ -237,6 +237,18 @@ func (sa *SmartAtaAttribute) thresholdValue(displayType string) int64 {
 	}
 }
 
+// DisplayValue returns the value the UI plots for this attribute, selected by its
+// metadata display type. Callers that report a value beside a status-derived
+// judgement use it so the number they show is the number the charts show.
+// Unknown attributes fall back to the raw value.
+func (sa *SmartAtaAttribute) DisplayValue() int64 {
+	metadata, ok := thresholds.AtaMetadata[sa.AttributeId]
+	if !ok {
+		return sa.RawValue
+	}
+	return sa.thresholdValue(metadata.DisplayType)
+}
+
 // observedThresholdContains reports whether value falls within an observed-threshold bucket.
 func observedThresholdContains(obsThresh thresholds.ObservedThreshold, value int64) bool {
 	return ((obsThresh.Low == obsThresh.High) && value == obsThresh.Low) ||

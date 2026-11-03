@@ -3954,8 +3954,15 @@ components:
                   value:
                     type: integer
                     format: int64
+                    description: >-
+                      Attribute value the score was derived from: the raw counter for
+                      counter-scored attributes, and the charted value (raw, normalized or
+                      transformed, per attribute metadata) for attributes scored from status.
                   trend_score:
                     type: number
+                    description: >-
+                      Extra points from the attribute worsening between the oldest and newest
+                      snapshot inside trend_window.
     DriveProfileInspectionResponse:
       type: object
       properties:

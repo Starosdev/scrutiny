@@ -40,10 +40,7 @@ func maybeNotifyReplacementRisk(
 		logger.Warnf("Could not retrieve SMART history for replacement risk notification: %v", err)
 	}
 
-	var oldestAttrs map[string]measurements.SmartAttribute
-	if len(history) > 0 {
-		oldestAttrs = history[0].Attributes
-	}
+	oldestAttrs := oldestAttributesFromHistory(history)
 
 	weights := thresholds.ReplacementRiskWeightsForProtocol(device.DeviceProtocol)
 	var profile *thresholds.ConsumerDriveProfile

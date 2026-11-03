@@ -1,5 +1,10 @@
 package thresholds
 
+import (
+	"sort"
+	"strconv"
+)
+
 // ReplacementRiskWeight defines how much a single SMART attribute can contribute
 // to the overall replacement risk score. The weight is a fraction of 100; the
 // scorer multiplies it by the attribute's normalized severity (0.0-1.0) to get
@@ -23,60 +28,78 @@ type ReplacementRiskWeight struct {
 	TrendMultiplier float64
 }
 
-// AtaReplacementRiskWeights defines attribute weights for ATA/SATA hard drives
-// and SSDs. Weights are informed by Backblaze failure correlation research
-// (https://www.backblaze.com/cloud-storage/resources/hard-drive-test-data).
+// ataCuratedReplacementRiskWeights defines the hand-tuned attribute weights for
+// ATA/SATA hard drives and SSDs. Weights are informed by Backblaze failure
+// correlation research
+// (https://www.backblaze.com/cloud-storage/resources/hard-drive-test-data),
+// whose five key SMART stats (5, 187, 188, 197, 198) all carry weight here.
 //
 // Attributes with direct failure correlation receive higher weights. Attributes
 // that are noisy or vendor-specific (Raw Read Error Rate, Seek Error Rate)
 // receive lower weights and rely more on trend analysis.
-var AtaReplacementRiskWeights = []ReplacementRiskWeight{
+//
+// These weights sum to 100. AtaReplacementRiskWeights appends a residual weight
+// for every remaining critical attribute, so the ATA table's theoretical maximum
+// exceeds 100; the scorer clamps the final score to 100.
+var ataCuratedReplacementRiskWeights = []ReplacementRiskWeight{
 	{
 		AttributeID:     "5",
 		DisplayName:     "Reallocated Sector Count",
-		Weight:          25,
+		Weight:          22,
 		TrendMultiplier: 1.5,
 	},
 	{
 		AttributeID:     "197",
 		DisplayName:     "Current Pending Sector Count",
-		Weight:          20,
+		Weight:          18,
 		TrendMultiplier: 1.5,
 	},
 	{
 		AttributeID:     "198",
 		DisplayName:     "Offline Uncorrectable",
-		Weight:          20,
+		Weight:          15,
 		TrendMultiplier: 1.2,
+	},
+	{
+		AttributeID:     "187",
+		DisplayName:     "Reported Uncorrectable Errors",
+		Weight:          15,
+		TrendMultiplier: 1.5,
+	},
+	{
+		AttributeID:     "188",
+		DisplayName:     "Command Timeout",
+		Weight:          7,
+		TrendMultiplier: 1.0,
 	},
 	{
 		AttributeID:     "196",
 		DisplayName:     "Reallocated Event Count",
-		Weight:          10,
+		Weight:          7,
 		TrendMultiplier: 1.0,
 	},
 	{
 		AttributeID:     "10",
 		DisplayName:     "Spin Retry Count",
-		Weight:          10,
+		Weight:          5,
 		TrendMultiplier: 1.0,
 	},
 	{
 		AttributeID:     "199",
 		DisplayName:     "UDMA CRC Error Count",
-		Weight:          5,
+		Weight:          4,
 		TrendMultiplier: 0.5,
 	},
 	{
 		AttributeID:     "1",
 		DisplayName:     "Raw Read Error Rate",
-		Weight:          5,
+		Weight:          3,
 		TrendMultiplier: 0.8,
 	},
 	{
 		AttributeID:     "7",
 		DisplayName:     "Seek Error Rate",
-		Weight:          3,
+		Weight:          2,
 		TrendMultiplier: 0.8,
 	},
 	{
@@ -85,6 +108,55 @@ var AtaReplacementRiskWeights = []ReplacementRiskWeight{
 		Weight:          2,
 		TrendMultiplier: 0.3,
 	},
+}
+
+// AtaCriticalResidualWeight is the weight given to an ATA attribute that metadata
+// marks critical but the curated table does not cover. It is small on purpose:
+// enough that a warning or failure on the attribute reaches the score and the
+// contributions table, not enough to rival a Backblaze-correlated signal.
+const AtaCriticalResidualWeight = 3
+
+// AtaCriticalResidualTrendMultiplier is the trend multiplier for residual critical
+// attributes. They are scored from status, so their trend score comes from a
+// status regression over the window rather than from a counter delta.
+const AtaCriticalResidualTrendMultiplier = 1.0
+
+// AtaReplacementRiskWeights is the curated ATA table plus a residual weight for
+// every attribute that AtaMetadata marks critical and the curated table omits.
+// Deriving the remainder from metadata means a critical attribute can never
+// again be invisible to replacement-risk scoring just because nobody added it
+// here by hand.
+var AtaReplacementRiskWeights = ataReplacementRiskWeights()
+
+func ataReplacementRiskWeights() []ReplacementRiskWeight {
+	curated := make(map[string]struct{}, len(ataCuratedReplacementRiskWeights))
+	for _, weight := range ataCuratedReplacementRiskWeights {
+		curated[weight.AttributeID] = struct{}{}
+	}
+
+	residualIDs := []int{}
+	for attributeID, metadata := range AtaMetadata {
+		if !metadata.Critical {
+			continue
+		}
+		if _, ok := curated[strconv.Itoa(attributeID)]; ok {
+			continue
+		}
+		residualIDs = append(residualIDs, attributeID)
+	}
+	sort.Ints(residualIDs)
+
+	weights := make([]ReplacementRiskWeight, 0, len(ataCuratedReplacementRiskWeights)+len(residualIDs))
+	weights = append(weights, ataCuratedReplacementRiskWeights...)
+	for _, attributeID := range residualIDs {
+		weights = append(weights, ReplacementRiskWeight{
+			AttributeID:     strconv.Itoa(attributeID),
+			DisplayName:     AtaMetadata[attributeID].DisplayName,
+			Weight:          AtaCriticalResidualWeight,
+			TrendMultiplier: AtaCriticalResidualTrendMultiplier,
+		})
+	}
+	return weights
 }
 
 // NvmeReplacementRiskWeights defines attribute weights for NVMe drives.

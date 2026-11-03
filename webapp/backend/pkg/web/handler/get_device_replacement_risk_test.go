@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	mock_config "github.com/analogj/scrutiny/webapp/backend/pkg/config/mock"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
 	"github.com/golang/mock/gomock"
@@ -141,4 +143,95 @@ func TestConsumerDriveProfilesEnabledUsesStoredValue(t *testing.T) {
 	cfg.EXPECT().GetBool(key).Return(false)
 
 	require.False(t, consumerDriveProfilesEnabled(cfg))
+}
+
+func TestOldestAttributesFromHistoryReadsTheLastEntry(t *testing.T) {
+	// GetSmartAttributeHistory returns newest-first. Reading the first entry
+	// compares the latest submission against itself, which zeroes every trend.
+	history := []measurements.Smart{
+		{Attributes: map[string]measurements.SmartAttribute{
+			"5": &measurements.SmartAtaAttribute{AttributeId: 5, RawValue: 18},
+		}},
+		{Attributes: map[string]measurements.SmartAttribute{
+			"5": &measurements.SmartAtaAttribute{AttributeId: 5, RawValue: 1},
+		}},
+	}
+
+	oldest := oldestAttributesFromHistory(history)
+
+	require.NotNil(t, oldest)
+	require.Equal(t, int64(1), oldest["5"].(*measurements.SmartAtaAttribute).RawValue)
+	require.Nil(t, oldestAttributesFromHistory(nil))
+}
+
+func TestComputeRiskContributionsScoresTheTrendOverTheWindow(t *testing.T) {
+	// Issue #1084: a drive whose reallocated sector count climbed 1 -> 18 over the
+	// window reported no trend at all, because the oldest snapshot was the newest one.
+	weights := []thresholds.ReplacementRiskWeight{
+		{AttributeID: "5", DisplayName: "Reallocated Sector Count", Weight: 25, TrendMultiplier: 1.5},
+	}
+	history := []measurements.Smart{
+		{Attributes: map[string]measurements.SmartAttribute{
+			"5": &measurements.SmartAtaAttribute{AttributeId: 5, RawValue: 18},
+		}},
+		{Attributes: map[string]measurements.SmartAttribute{
+			"5": &measurements.SmartAtaAttribute{AttributeId: 5, RawValue: 1},
+		}},
+	}
+	latest := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{AttributeId: 5, RawValue: 18},
+	}
+
+	contributions, totalScore, totalTrendBonus := computeRiskContributions(
+		weights, latest, oldestAttributesFromHistory(history), nil)
+
+	require.Len(t, contributions, 1)
+	require.Equal(t, 12.5, contributions[0].Score)
+	require.Equal(t, 18.75, contributions[0].TrendScore)
+	require.Equal(t, 31.25, totalScore)
+	require.Equal(t, 18.75, totalTrendBonus)
+}
+
+func TestComputeRiskContributionsReportsTheValueItScored(t *testing.T) {
+	// Issue #1084: the contributions table read TransformedValue, which is zero for
+	// every attribute without a metadata transform, so a score of 12.5 was reported
+	// next to a value of 0.
+	weights := []thresholds.ReplacementRiskWeight{
+		{AttributeID: "5", DisplayName: "Reallocated Sector Count", Weight: 25, TrendMultiplier: 1.5},
+	}
+	latest := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{AttributeId: 5, RawValue: 18, TransformedValue: 0},
+	}
+
+	contributions, _, _ := computeRiskContributions(weights, latest, nil, nil)
+
+	require.Len(t, contributions, 1)
+	require.Equal(t, int64(18), contributions[0].Value)
+	require.Equal(t, 12.5, contributions[0].Score)
+}
+
+func TestComputeRiskContributionsReportsChartedValueForStatusScoredAttributes(t *testing.T) {
+	// Attribute 201 is scored from its status and charted from its normalized value.
+	weights := thresholds.ReplacementRiskWeightsForProtocol("ATA")
+	latest := map[string]measurements.SmartAttribute{
+		"201": &measurements.SmartAtaAttribute{
+			AttributeId: 201,
+			Value:       23,
+			RawValue:    4096,
+			Status:      pkg.AttributeStatusWarningScrutiny,
+		},
+	}
+
+	contributions, _, _ := computeRiskContributions(weights, latest, nil, nil)
+
+	var soft *models.AttributeContribution
+	for index := range contributions {
+		if contributions[index].AttributeID == "201" {
+			soft = &contributions[index]
+		}
+	}
+
+	require.NotNil(t, soft, "attribute 201 must carry a replacement-risk weight")
+	require.Equal(t, int64(23), soft.Value)
+	require.Greater(t, soft.Score, 0.0)
 }
