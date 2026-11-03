@@ -15,15 +15,11 @@ func TestAtaCuratedReplacementRiskWeightsSumTo100(t *testing.T) {
 	require.Equal(t, 100.0, total)
 }
 
-func TestAtaReplacementRiskWeightsCoverEveryCriticalAttribute(t *testing.T) {
+func TestAtaReplacementRiskWeightsCoverEveryScoreableCriticalAttribute(t *testing.T) {
 	// Issue #1084: attributes marked critical in metadata carried no weight, so they
 	// could not reach the score or the contributions table. Residual weights are
 	// derived from metadata to keep that from recurring when a new critical
 	// attribute is added.
-	//
-	// Observed thresholds are not part of the condition. #1088 stopped a bucket-less
-	// critical attribute from warning unconditionally, so every critical attribute is
-	// scoreable and must carry a weight.
 	weighted := make(map[string]struct{}, len(AtaReplacementRiskWeights))
 	for _, weight := range AtaReplacementRiskWeights {
 		weighted[weight.AttributeID] = struct{}{}
@@ -31,7 +27,7 @@ func TestAtaReplacementRiskWeightsCoverEveryCriticalAttribute(t *testing.T) {
 
 	for attributeID := range AtaMetadata {
 		metadata := AtaMetadata[attributeID]
-		if !metadata.Critical {
+		if !metadata.Critical || len(metadata.ObservedThresholds) == 0 {
 			continue
 		}
 		_, ok := weighted[strconv.Itoa(attributeID)]
@@ -39,30 +35,17 @@ func TestAtaReplacementRiskWeightsCoverEveryCriticalAttribute(t *testing.T) {
 	}
 }
 
-func TestAtaReplacementRiskWeightsScoreCriticalAttributesWithoutObservedThresholds(t *testing.T) {
-	// This test used to assert the opposite. ValidateThreshold once warned on any
-	// critical attribute whose value matched no bucket, so an attribute with no
-	// buckets at all warned on every drive that reported it, and weighting that
-	// warning would have charged healthy drives for a metadata gap. #1088 removed
-	// that unconditional warning, so a bucket-less critical attribute now leaves the
-	// status untouched and the manufacturer threshold decides it. It therefore
-	// contributes only when a drive actually fails that threshold, which is a drive
-	// signal and belongs in the score.
-	//
-	// Attributes 184 and 201 are the live cases. They were silently unscored between
-	// #1088 and this fix.
-	weighted := map[string]float64{}
+func TestAtaReplacementRiskWeightsSkipCriticalAttributesWithoutObservedThresholds(t *testing.T) {
+	// ValidateThreshold warns on any critical attribute whose value matches no
+	// bucket, so an attribute with no buckets at all warns on every drive that
+	// reports it. Weighting that warning would charge healthy drives risk points
+	// for a metadata gap. Attribute 201 is the live case.
+	require.True(t, AtaMetadata[201].Critical)
+	require.Empty(t, AtaMetadata[201].ObservedThresholds)
+
 	for _, weight := range AtaReplacementRiskWeights {
-		weighted[weight.AttributeID] = weight.Weight
-	}
-
-	for _, attributeID := range []int{184, 201} {
-		require.True(t, AtaMetadata[attributeID].Critical)
-		require.Empty(t, AtaMetadata[attributeID].ObservedThresholds)
-
-		weight, ok := weighted[strconv.Itoa(attributeID)]
-		require.True(t, ok, "critical attribute %d must be scored from its manufacturer threshold", attributeID)
-		require.Equal(t, float64(AtaCriticalResidualWeight), weight, "attribute %d is a residual critical attribute", attributeID)
+		require.NotEqual(t, "201", weight.AttributeID,
+			"attribute 201 has no observed thresholds, so its warning is unconditional and must not be scored")
 	}
 }
 

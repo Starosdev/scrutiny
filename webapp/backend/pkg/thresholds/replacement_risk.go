@@ -123,20 +123,17 @@ const AtaCriticalResidualWeight = 3
 const AtaCriticalResidualTrendMultiplier = 1.0
 
 // AtaReplacementRiskWeights is the curated ATA table plus a residual weight for
-// every attribute that AtaMetadata marks critical and the curated table omits.
-// Deriving the remainder from metadata means a critical attribute can never again
-// be invisible to replacement-risk scoring just because nobody added it here by
-// hand.
+// every attribute that AtaMetadata marks critical, carries observed thresholds,
+// and the curated table omits. Deriving the remainder from metadata means a
+// critical attribute can never again be invisible to replacement-risk scoring
+// just because nobody added it here by hand.
 //
-// Observed thresholds are deliberately not required. They were, because
-// ValidateThreshold used to warn on any critical attribute whose value matched no
-// bucket, so a critical attribute with no buckets at all was WARN on every drive
-// that reported it and weighting that warning would have charged healthy drives
-// for a metadata gap. #1088 removed that unconditional warning: a bucket-less
-// attribute now leaves the status untouched and the manufacturer threshold decides
-// it, which TestValidateThreshold_Attr177_NoBucketWarning_Eliminated pins. Keeping
-// the requirement after that change silently dropped attributes 184 and 201, both
-// critical, from scoring altogether.
+// The observed-threshold requirement is not cosmetic. ValidateThreshold warns
+// unconditionally on a critical attribute whose value matches no bucket, so a
+// critical attribute with no buckets at all (attribute 201) is WARN on every
+// drive that reports it, whatever its value. Weighting that warning would add
+// points to healthy drives and move some of them into a worse risk category for
+// a metadata gap rather than a drive signal.
 var AtaReplacementRiskWeights = ataReplacementRiskWeights()
 
 func ataReplacementRiskWeights() []ReplacementRiskWeight {
@@ -150,6 +147,9 @@ func ataReplacementRiskWeights() []ReplacementRiskWeight {
 	residualIDs := []int{}
 	for attributeID := range AtaMetadata {
 		if !AtaMetadata[attributeID].Critical {
+			continue
+		}
+		if len(AtaMetadata[attributeID].ObservedThresholds) == 0 {
 			continue
 		}
 		if _, ok := curated[strconv.Itoa(attributeID)]; ok {
