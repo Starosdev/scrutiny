@@ -1,6 +1,18 @@
 name: CI
-# This workflow is triggered on pushes & pull requests
-on: [pull_request]
+on:
+  pull_request:
+  # Also on every push to develop, which is the only way the post-merge state of
+  # develop gets tested. Pull-request runs build the merge of one branch with the
+  # develop of the moment, so two pull requests that are each green can still break
+  # develop in combination, and nothing on a push to develop runs either test suite:
+  # Docker builds the webapp and would catch a compile error, but a failing test
+  # reaches nobody. #1088 and #1089 landed that way, left the Go suite red on
+  # develop, and the next pull request to open was the first to see it (#1091).
+  # Pushes to master need no entry here: SonarQube Analysis already runs both suites
+  # there, and master is only ever reached through a promotion pull request.
+  push:
+    branches:
+      - develop
 
 jobs:
   test-frontend:
@@ -115,6 +127,13 @@ jobs:
   lint-backend:
     name: Lint Backend (Go)
     runs-on: ubuntu-latest
+    # Pull requests only. This lint reports findings new relative to the base branch,
+    # and a push has no base to be new against: github.base_ref is empty there, which
+    # would leave --new-from-rev as a bare "origin/". Every line that reaches develop
+    # was already linted in the pull request that brought it, and the failure this
+    # workflow now catches on a push is two green changes interacting, which produces
+    # no new findings in changed lines.
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
