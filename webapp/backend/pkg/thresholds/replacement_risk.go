@@ -39,8 +39,9 @@ type ReplacementRiskWeight struct {
 // receive lower weights and rely more on trend analysis.
 //
 // These weights sum to 100. AtaReplacementRiskWeights appends a residual weight
-// for every remaining critical attribute, so the ATA table's theoretical maximum
-// exceeds 100; the scorer clamps the final score to 100.
+// for every remaining critical attribute that carries observed thresholds, so
+// the ATA table's theoretical maximum exceeds 100; the scorer clamps the final
+// score, and the trend bonus it reports, to 100.
 var ataCuratedReplacementRiskWeights = []ReplacementRiskWeight{
 	{
 		AttributeID:     "5",
@@ -122,10 +123,17 @@ const AtaCriticalResidualWeight = 3
 const AtaCriticalResidualTrendMultiplier = 1.0
 
 // AtaReplacementRiskWeights is the curated ATA table plus a residual weight for
-// every attribute that AtaMetadata marks critical and the curated table omits.
-// Deriving the remainder from metadata means a critical attribute can never
-// again be invisible to replacement-risk scoring just because nobody added it
-// here by hand.
+// every attribute that AtaMetadata marks critical, carries observed thresholds,
+// and the curated table omits. Deriving the remainder from metadata means a
+// critical attribute can never again be invisible to replacement-risk scoring
+// just because nobody added it here by hand.
+//
+// The observed-threshold requirement is not cosmetic. ValidateThreshold warns
+// unconditionally on a critical attribute whose value matches no bucket, so a
+// critical attribute with no buckets at all (attribute 201) is WARN on every
+// drive that reports it, whatever its value. Weighting that warning would add
+// points to healthy drives and move some of them into a worse risk category for
+// a metadata gap rather than a drive signal.
 var AtaReplacementRiskWeights = ataReplacementRiskWeights()
 
 func ataReplacementRiskWeights() []ReplacementRiskWeight {
@@ -139,6 +147,9 @@ func ataReplacementRiskWeights() []ReplacementRiskWeight {
 	residualIDs := []int{}
 	for attributeID := range AtaMetadata {
 		if !AtaMetadata[attributeID].Critical {
+			continue
+		}
+		if len(AtaMetadata[attributeID].ObservedThresholds) == 0 {
 			continue
 		}
 		if _, ok := curated[strconv.Itoa(attributeID)]; ok {
@@ -245,4 +256,17 @@ func ReplacementRiskWeightsForProtocol(protocol string) []ReplacementRiskWeight 
 	default:
 		return nil
 	}
+}
+
+// ReplacementRiskWeightFor returns the weight a protocol's table gives one
+// attribute. Callers that score a subset of attributes use it instead of
+// repeating the numbers, which is how the dashboard summary scorer fell out of
+// step with the ATA table.
+func ReplacementRiskWeightFor(protocol string, attributeID string) (float64, bool) {
+	for _, weight := range ReplacementRiskWeightsForProtocol(protocol) {
+		if weight.AttributeID == attributeID {
+			return weight.Weight, true
+		}
+	}
+	return 0, false
 }

@@ -80,6 +80,8 @@ func extractPreviousEvaluatedValues(previousSmart *measurements.Smart) map[strin
 }
 
 // GetSmartAttributeHistory MUST return in sorted order, where newest entries are at the beginning of the list, and oldest are at the end.
+// The attributes argument is accepted but not yet applied: aggregateSmartAttributesQuery never narrows the
+// field set, so every caller receives whole rows. Callers that need a subset filter in Go.
 // When selectEntries is > 0, only the most recent selectEntries database entries are returned, starting from the selectEntriesOffset entry.
 // For example, with selectEntries = 5, selectEntries = 0, the most recent 5 are returned. With selectEntries = 3, selectEntries = 2, entries
 // 2 to 4 are returned (2 being the third newest, since it is zero-indexed)

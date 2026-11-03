@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
@@ -157,11 +158,51 @@ func TestOldestAttributesFromHistoryReadsTheLastEntry(t *testing.T) {
 		}},
 	}
 
-	oldest := oldestAttributesFromHistory(history)
+	oldest := oldestAttributesFromHistory(history, time.Now().UTC().AddDate(0, 0, -30))
 
 	require.NotNil(t, oldest)
 	require.Equal(t, int64(1), oldest["5"].(*measurements.SmartAtaAttribute).RawValue)
-	require.Nil(t, oldestAttributesFromHistory(nil))
+	require.Nil(t, oldestAttributesFromHistory(nil, time.Now().UTC()))
+}
+
+func TestOldestAttributesFromHistorySkipsEntriesOlderThanTheWindow(t *testing.T) {
+	// A 90-day window queries the "year" duration key, whose range reaches back a
+	// full year, so the last entry in the slice can predate the window by months.
+	now := time.Now().UTC()
+	history := []measurements.Smart{
+		{Date: now, Attributes: map[string]measurements.SmartAttribute{
+			"5": &measurements.SmartAtaAttribute{AttributeId: 5, RawValue: 18},
+		}},
+		{Date: now.AddDate(0, 0, -80), Attributes: map[string]measurements.SmartAttribute{
+			"5": &measurements.SmartAtaAttribute{AttributeId: 5, RawValue: 9},
+		}},
+		{Date: now.AddDate(0, 0, -300), Attributes: map[string]measurements.SmartAttribute{
+			"5": &measurements.SmartAtaAttribute{AttributeId: 5, RawValue: 1},
+		}},
+	}
+
+	oldest := oldestAttributesFromHistory(history, trendWindowCutoff(models.TrendWindow90Days, now))
+	require.Equal(t, int64(9), oldest["5"].(*measurements.SmartAtaAttribute).RawValue)
+
+	oldest = oldestAttributesFromHistory(history, trendWindowCutoff(models.TrendWindow7Days, now))
+	require.Equal(t, int64(18), oldest["5"].(*measurements.SmartAtaAttribute).RawValue)
+}
+
+func TestClampRiskTotalsKeepsTheBonusUnderTheCeiling(t *testing.T) {
+	// The score clamps to 100, so reporting the raw bonus beside it lets a card
+	// read "100 /100 +118 trend".
+	score, bonus := clampRiskTotals(218, 118)
+	require.Equal(t, 100, score)
+	require.Equal(t, 0.0, bonus)
+
+	score, bonus = clampRiskTotals(130, 60)
+	require.Equal(t, 100, score)
+	require.Equal(t, 30.0, bonus)
+
+	// Under the ceiling, both pass through, rounded for display.
+	score, bonus = clampRiskTotals(31.25, 18.75)
+	require.Equal(t, 31, score)
+	require.Equal(t, 18.75, bonus)
 }
 
 func TestComputeRiskContributionsScoresTheTrendOverTheWindow(t *testing.T) {
@@ -183,7 +224,7 @@ func TestComputeRiskContributionsScoresTheTrendOverTheWindow(t *testing.T) {
 	}
 
 	contributions, totalScore, totalTrendBonus := computeRiskContributions(
-		weights, latest, oldestAttributesFromHistory(history), nil)
+		weights, latest, oldestAttributesFromHistory(history, time.Now().UTC().AddDate(0, 0, -30)), nil)
 
 	require.Len(t, contributions, 1)
 	require.Equal(t, 12.5, contributions[0].Score)
@@ -211,12 +252,13 @@ func TestComputeRiskContributionsReportsTheValueItScored(t *testing.T) {
 }
 
 func TestComputeRiskContributionsReportsChartedValueForStatusScoredAttributes(t *testing.T) {
-	// Attribute 201 is scored from its status and charted from its normalized value.
+	// Attribute 184 is a residual critical attribute: scored from its status, and
+	// charted from its normalized value rather than its raw value.
 	weights := thresholds.ReplacementRiskWeightsForProtocol("ATA")
 	latest := map[string]measurements.SmartAttribute{
-		"201": &measurements.SmartAtaAttribute{
-			AttributeId: 201,
-			Value:       23,
+		"184": &measurements.SmartAtaAttribute{
+			AttributeId: 184,
+			Value:       92,
 			RawValue:    4096,
 			Status:      pkg.AttributeStatusWarningScrutiny,
 		},
@@ -224,14 +266,14 @@ func TestComputeRiskContributionsReportsChartedValueForStatusScoredAttributes(t 
 
 	contributions, _, _ := computeRiskContributions(weights, latest, nil, nil)
 
-	var soft *models.AttributeContribution
+	var endToEnd *models.AttributeContribution
 	for index := range contributions {
-		if contributions[index].AttributeID == "201" {
-			soft = &contributions[index]
+		if contributions[index].AttributeID == "184" {
+			endToEnd = &contributions[index]
 		}
 	}
 
-	require.NotNil(t, soft, "attribute 201 must carry a replacement-risk weight")
-	require.Equal(t, int64(23), soft.Value)
-	require.Greater(t, soft.Score, 0.0)
+	require.NotNil(t, endToEnd, "attribute 184 must carry a replacement-risk weight")
+	require.Equal(t, int64(92), endToEnd.Value, "normalized value, not the raw value")
+	require.Equal(t, 1.5, endToEnd.Score)
 }

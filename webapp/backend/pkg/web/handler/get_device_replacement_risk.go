@@ -66,7 +66,7 @@ func GetDeviceReplacementRisk(c *gin.Context) {
 		history = nil
 	}
 
-	oldestAttrs := oldestAttributesFromHistory(history)
+	oldestAttrs := oldestAttributesFromHistory(history, trendWindowCutoff(trendWindow, time.Now().UTC()))
 
 	weights := thresholds.ReplacementRiskWeightsForProtocol(device.DeviceProtocol)
 	profilesEnabled := consumerDriveProfilesEnabled(appConfig)
@@ -80,10 +80,7 @@ func GetDeviceReplacementRisk(c *gin.Context) {
 	}
 	contributions, totalScore, totalTrendBonus := computeRiskContributions(weights, latestAttrs, oldestAttrs, profile)
 
-	score := int(math.Round(totalScore))
-	if score > 100 {
-		score = 100
-	}
+	score, trendBonus := clampRiskTotals(totalScore, totalTrendBonus)
 
 	riskScore := models.ReplacementRiskScore{
 		DeviceWWN:                    device.WWN,
@@ -92,7 +89,7 @@ func GetDeviceReplacementRisk(c *gin.Context) {
 		Category:                     models.ScoreToRiskCategory(score),
 		Contributions:                contributions,
 		TrendWindow:                  trendWindow,
-		TrendBonus:                   math.Round(totalTrendBonus*100) / 100,
+		TrendBonus:                   trendBonus,
 		ComputedAt:                   time.Now().UTC(),
 		ConsumerDriveProfilesEnabled: profilesEnabled,
 		ConsumerDriveProfileApplied:  profile != nil,
@@ -192,16 +189,59 @@ func computeSingleContribution(
 	return contrib
 }
 
-// oldestAttributesFromHistory returns the attributes of the oldest entry in a
-// SMART history slice, or nil when the slice is empty. GetSmartAttributeHistory
-// returns entries newest-first, so the oldest entry is the last one; reading
-// history[0] instead compares the latest submission against itself and makes
-// every trend score zero.
-func oldestAttributesFromHistory(history []measurements.Smart) map[string]measurements.SmartAttribute {
-	if len(history) == 0 {
-		return nil
+// oldestAttributesFromHistory returns the attributes of the oldest entry that
+// still falls inside the trend window, or nil when the slice holds none.
+//
+// Two things make this more than an index. GetSmartAttributeHistory returns
+// entries newest-first, so the oldest entry is the last one; reading history[0]
+// instead compares the latest submission against itself and makes every trend
+// score zero. And the InfluxDB duration keys are coarser than the advertised
+// windows - a 90-day window queries the "year" key, which reaches back a full
+// year - so the last entry can be far older than the window the caller asked
+// for. Entries with no timestamp are kept; only a stored row predating the
+// cutoff is skipped.
+func oldestAttributesFromHistory(history []measurements.Smart, cutoff time.Time) map[string]measurements.SmartAttribute {
+	for index := len(history) - 1; index >= 0; index-- {
+		entry := history[index]
+		if !entry.Date.IsZero() && entry.Date.Before(cutoff) {
+			continue
+		}
+		return entry.Attributes
 	}
-	return history[len(history)-1].Attributes
+	return nil
+}
+
+// trendWindowCutoff returns the earliest timestamp that belongs to a trend
+// window, so rate-of-change is measured over the window the caller asked for
+// rather than over whatever range the backing bucket happens to cover.
+func trendWindowCutoff(trendWindow models.TrendWindow, now time.Time) time.Time {
+	switch trendWindow {
+	case models.TrendWindow7Days:
+		return now.AddDate(0, 0, -7)
+	case models.TrendWindow90Days:
+		return now.AddDate(0, 0, -90)
+	default: // TrendWindow30Days
+		return now.AddDate(0, 0, -30)
+	}
+}
+
+// clampRiskTotals converts a raw score and trend bonus into the reported pair.
+// The score ceiling is 100, and the reported bonus is the part of the trend
+// that fits under that ceiling: reporting the raw bonus beside a clamped score
+// lets a card read "100 /100 +118 trend", and lets one attribute row show more
+// trend points than the score it sits next to.
+func clampRiskTotals(totalScore float64, totalTrendBonus float64) (int, float64) {
+	staticScore := totalScore - totalTrendBonus
+	bonus := totalTrendBonus
+	if headroom := 100 - staticScore; bonus > headroom {
+		bonus = math.Max(0, headroom)
+	}
+
+	score := int(math.Round(staticScore + bonus))
+	if score > 100 {
+		score = 100
+	}
+	return score, math.Round(bonus*100) / 100
 }
 
 // trendWindowToDurationKey maps a TrendWindow constant to the InfluxDB duration
@@ -334,6 +374,10 @@ func replacementRiskSeverity(attr measurements.SmartAttribute, attributeID strin
 	case *measurements.SmartScsiAttribute:
 		return scsiAttributeSeverity(a, attributeID)
 	}
+	// Unreachable for every weighted attribute: the remaining implementations
+	// (device statistics, FARM) key as devstat_*/farm_* and no weight table
+	// carries those IDs. Both set TransformedValue from their own value, so the
+	// pair stays consistent if a weight is ever added.
 	return attributeStatusSeverity(attr.GetStatus()), attr.GetTransformedValue()
 }
 
