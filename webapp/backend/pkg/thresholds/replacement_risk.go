@@ -134,9 +134,11 @@ func ataReplacementRiskWeights() []ReplacementRiskWeight {
 		curated[weight.AttributeID] = struct{}{}
 	}
 
+	// Ranged by key: AtaAttributeMetadata is large enough that copying one per
+	// iteration trips gocritic's rangeValCopy.
 	residualIDs := []int{}
-	for attributeID, metadata := range AtaMetadata {
-		if !metadata.Critical {
+	for attributeID := range AtaMetadata {
+		if !AtaMetadata[attributeID].Critical {
 			continue
 		}
 		if _, ok := curated[strconv.Itoa(attributeID)]; ok {
