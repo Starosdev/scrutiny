@@ -775,6 +775,10 @@ paths:
         - $ref: "#/components/parameters/DeviceId"
         - name: trend_window
           in: query
+          description: >-
+            Window for rate-of-change analysis. History rows are daily aggregates timestamped
+            at the end of their UTC day, so the window boundary resolves to a day: a sample
+            taken shortly before the cutoff is included when its day ends after it.
           schema:
             type: string
             enum: [7d, 30d, 90d]
@@ -3904,7 +3908,10 @@ components:
               type: number
               description: >-
                 Points inside `score` that came from rate-of-change analysis, clamped so it
-                never exceeds the headroom left under the score ceiling of 100.
+                never exceeds the headroom left under the score ceiling of 100. On a drive
+                that hits the ceiling, the per-attribute `trend_score` values can sum past
+                this number: contributions report what each attribute contributed, and only
+                the totals carry the clamp.
             consumer_drive_profiles_enabled:
               type: boolean
               description: Reports whether ATA consumer-drive profile overrides were enabled when this score was computed.
@@ -3968,7 +3975,9 @@ components:
                     type: number
                     description: >-
                       Extra points from the attribute worsening between the newest snapshot
-                      and the oldest one still inside trend_window.
+                      and the oldest one still inside trend_window. Pre-clamp, like `score`
+                      on the same row: on a drive at the ceiling these sum past the
+                      response's `score` and `trend_bonus`.
     DriveProfileInspectionResponse:
       type: object
       properties:

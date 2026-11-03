@@ -277,3 +277,103 @@ func TestComputeRiskContributionsReportsChartedValueForStatusScoredAttributes(t 
 	require.Equal(t, int64(92), endToEnd.Value, "normalized value, not the raw value")
 	require.Equal(t, 1.5, endToEnd.Score)
 }
+
+func TestContributionsStayPreClampWhileTotalsCarryTheCeiling(t *testing.T) {
+	// Documented relationship: rows report per-attribute contributions, the
+	// response totals carry the clamp, so on a saturated drive the rows sum past
+	// the reported score and trend bonus.
+	weights := []thresholds.ReplacementRiskWeight{
+		{AttributeID: "percentage_used", DisplayName: "Percentage Used", Weight: 40, TrendMultiplier: 1.0},
+		{AttributeID: "media_errors", DisplayName: "Media and Data Integrity Errors", Weight: 20, TrendMultiplier: 1.5},
+	}
+	oldest := map[string]measurements.SmartAttribute{
+		"percentage_used": &measurements.SmartNvmeAttribute{AttributeId: "percentage_used", Value: 90},
+		"media_errors":    &measurements.SmartNvmeAttribute{AttributeId: "media_errors", Value: 0},
+	}
+	latest := map[string]measurements.SmartAttribute{
+		"percentage_used": &measurements.SmartNvmeAttribute{AttributeId: "percentage_used", Value: 100},
+		"media_errors":    &measurements.SmartNvmeAttribute{AttributeId: "media_errors", Value: 100},
+	}
+
+	contributions, totalScore, totalTrendBonus := computeRiskContributions(weights, latest, oldest, nil)
+	score, reportedBonus := clampRiskTotals(totalScore, totalTrendBonus)
+
+	var rowScore, rowTrend float64
+	for _, contrib := range contributions {
+		rowScore += contrib.Score
+		rowTrend += contrib.TrendScore
+	}
+
+	require.Equal(t, 100, score)
+	require.Equal(t, rowTrend, totalTrendBonus, "the raw bonus is the sum of the rows")
+	require.Less(t, reportedBonus, rowTrend, "the reported bonus is clamped below the row total")
+	require.Greater(t, rowScore+rowTrend, float64(score), "rows are pre-clamp by design")
+}
+
+func TestComputeRiskContributionsReportsNvmeAndScsiValues(t *testing.T) {
+	nvmeWeights := []thresholds.ReplacementRiskWeight{
+		{AttributeID: "percentage_used", DisplayName: "Percentage Used", Weight: 40},
+		{AttributeID: "available_spare", DisplayName: "Available Spare", Weight: 30},
+		{AttributeID: "media_errors", DisplayName: "Media and Data Integrity Errors", Weight: 20},
+		{AttributeID: "critical_warning", DisplayName: "Critical Warning", Weight: 7},
+	}
+	nvmeLatest := map[string]measurements.SmartAttribute{
+		"percentage_used":  &measurements.SmartNvmeAttribute{AttributeId: "percentage_used", Value: 42},
+		"available_spare":  &measurements.SmartNvmeAttribute{AttributeId: "available_spare", Value: 7, Status: pkg.AttributeStatusFailedScrutiny},
+		"media_errors":     &measurements.SmartNvmeAttribute{AttributeId: "media_errors", Value: 9},
+		"critical_warning": &measurements.SmartNvmeAttribute{AttributeId: "critical_warning", Value: 1},
+	}
+
+	contributions, _, _ := computeRiskContributions(nvmeWeights, nvmeLatest, nil, nil)
+	values := map[string]int64{}
+	for _, contrib := range contributions {
+		values[contrib.AttributeID] = contrib.Value
+	}
+	require.Equal(t, int64(42), values["percentage_used"])
+	require.Equal(t, int64(7), values["available_spare"], "status-scored, still reports its own value")
+	require.Equal(t, int64(9), values["media_errors"])
+	require.Equal(t, int64(1), values["critical_warning"])
+
+	scsiWeights := []thresholds.ReplacementRiskWeight{
+		{AttributeID: "scsi_grown_defect_list", DisplayName: "Grown Defect List", Weight: 40},
+		{AttributeID: "read_errors_corrected_by_eccdelayed", DisplayName: "Read Errors Corrected by ECC (Delayed)", Weight: 5},
+	}
+	scsiLatest := map[string]measurements.SmartAttribute{
+		"scsi_grown_defect_list":              &measurements.SmartScsiAttribute{AttributeId: "scsi_grown_defect_list", Value: 21},
+		"read_errors_corrected_by_eccdelayed": &measurements.SmartScsiAttribute{AttributeId: "read_errors_corrected_by_eccdelayed", Value: 3, Status: pkg.AttributeStatusWarningScrutiny},
+	}
+
+	contributions, _, _ = computeRiskContributions(scsiWeights, scsiLatest, nil, nil)
+	values = map[string]int64{}
+	for _, contrib := range contributions {
+		values[contrib.AttributeID] = contrib.Value
+	}
+	require.Equal(t, int64(21), values["scsi_grown_defect_list"])
+	require.Equal(t, int64(3), values["read_errors_corrected_by_eccdelayed"], "status-scored, still reports its own value")
+}
+
+func TestAttribute187IsCounterScoredNotStatusScored(t *testing.T) {
+	// 187 Reported Uncorrectable Errors is a Backblaze key stat with a raw counter.
+	// Scoring it from status would leave a PASSED drive with 40 reported errors at
+	// zero risk points.
+	require.True(t, isAtaCounterAttribute("187"))
+	require.False(t, isAtaCounterAttribute("188"), "188 raw is a packed transform, so it stays status-scored")
+
+	weights := thresholds.ReplacementRiskWeightsForProtocol("ATA")
+	latest := map[string]measurements.SmartAttribute{
+		"187": &measurements.SmartAtaAttribute{AttributeId: 187, RawValue: 40, Status: pkg.AttributeStatusPassed},
+	}
+
+	contributions, totalScore, _ := computeRiskContributions(weights, latest, nil, nil)
+
+	var reported *models.AttributeContribution
+	for index := range contributions {
+		if contributions[index].AttributeID == "187" {
+			reported = &contributions[index]
+		}
+	}
+	require.NotNil(t, reported)
+	require.Equal(t, int64(40), reported.Value)
+	require.Equal(t, 11.25, reported.Score, "counterSeverity(40)=0.75 against weight 15")
+	require.Equal(t, 11.25, totalScore)
+}

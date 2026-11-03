@@ -132,6 +132,12 @@ func consumerDriveProfileDenylist(cfg config.Interface) map[string]struct{} {
 
 // computeRiskContributions builds the per-attribute contribution list and returns
 // the total score and total trend bonus.
+//
+// Contributions are per-attribute and pre-clamp: each row reports what that one
+// attribute contributed, so the rows can sum past the response's clamped score
+// and clamped trend bonus on a badly degraded drive. Scaling the rows down to
+// match the clamped totals would make every row misreport its own attribute, so
+// the rows stay truthful and the totals carry the ceiling.
 func computeRiskContributions(
 	weights []thresholds.ReplacementRiskWeight,
 	latestAttrs map[string]measurements.SmartAttribute,
@@ -200,6 +206,13 @@ func computeSingleContribution(
 // year - so the last entry can be far older than the window the caller asked
 // for. Entries with no timestamp are kept; only a stored row predating the
 // cutoff is skipped.
+//
+// The cutoff resolves to one day, not to the instant. History rows are daily
+// aggregates whose timestamp is the end of their UTC day
+// (`duplicate(column: "_stop", as: "_time")` in generateSmartAttributesSubquery),
+// so a sample taken hours before the cutoff is kept when its day ends after it.
+// Narrowing that further means filtering inside the history query, which is a
+// wire contract shared with every other history caller.
 func oldestAttributesFromHistory(history []measurements.Smart, cutoff time.Time) map[string]measurements.SmartAttribute {
 	for index := len(history) - 1; index >= 0; index-- {
 		entry := history[index]
@@ -228,8 +241,10 @@ func trendWindowCutoff(trendWindow models.TrendWindow, now time.Time) time.Time 
 // clampRiskTotals converts a raw score and trend bonus into the reported pair.
 // The score ceiling is 100, and the reported bonus is the part of the trend
 // that fits under that ceiling: reporting the raw bonus beside a clamped score
-// lets a card read "100 /100 +118 trend", and lets one attribute row show more
-// trend points than the score it sits next to.
+// lets a card read "100 /100 +118 trend".
+//
+// It clamps the totals only. Per-attribute contributions stay at their own
+// values, so on a clamped drive the rows can sum past what this reports.
 func clampRiskTotals(totalScore float64, totalTrendBonus float64) (int, float64) {
 	staticScore := totalScore - totalTrendBonus
 	bonus := totalTrendBonus
