@@ -19,7 +19,17 @@ interface TemperatureTooltipOptions {
     w: TemperatureTooltipChartContext;
 }
 
-export function createTemperatureChartTooltip(document: Document, temperatureUnit: TemperatureUnit, timeFormat: TimeFormat): (options: TemperatureTooltipOptions) => Element {
+/**
+ * isEstimated reports whether a slot was interpolated by alignTemperatureChartSeries. It is a
+ * callback rather than a captured array because _updateTemperatureChartSeries replaces the
+ * series without rebuilding this closure, so a snapshot would go stale on every refresh.
+ */
+export function createTemperatureChartTooltip(
+    document: Document,
+    temperatureUnit: TemperatureUnit,
+    timeFormat: TimeFormat,
+    isEstimated: (seriesIndex: number, dataPointIndex: number) => boolean = () => false
+): (options: TemperatureTooltipOptions) => Element {
     return ({ dataPointIndex, series, w }) => {
         const content = document.createElement('div');
         const hiddenSeries = new Set([...(w.globals.collapsedSeriesIndices ?? []), ...(w.globals.ancillaryCollapsedSeriesIndices ?? [])]);
@@ -60,7 +70,14 @@ export function createTemperatureChartTooltip(document: Document, temperatureUni
 
             const value = document.createElement('span');
             value.className = 'apexcharts-tooltip-text-y-value';
-            value.textContent = String(TemperaturePipe.formatTemperature(series[seriesIndex]?.[dataPointIndex], temperatureUnit, true));
+            // formatTemperature formats only, it never converts: the prefix is added to its output
+            // so an interpolated slot is not presented as a reading the drive sent.
+            const formatted = String(TemperaturePipe.formatTemperature(series[seriesIndex]?.[dataPointIndex], temperatureUnit, true));
+            const estimated = isEstimated(seriesIndex, dataPointIndex);
+            value.textContent = estimated ? `~${formatted}` : formatted;
+            if (estimated) {
+                value.title = 'Estimated between readings';
+            }
             valueGroup.appendChild(value);
 
             text.appendChild(valueGroup);

@@ -1,6 +1,8 @@
 export interface TemperatureChartPoint {
     x: Date;
     y: number | null;
+    /** True when y was interpolated by alignTemperatureChartSeries rather than reported by the drive. */
+    estimated?: boolean;
 }
 
 export interface TemperatureChartSeries {
@@ -118,7 +120,7 @@ function interpolatePaddedReadings(points: TemperatureChartPoint[], maxGapMs: nu
 
         for (let padded = gapStart + 1; padded < index; padded++) {
             const progress = span > 0 ? (filled[padded].x.getTime() - startTime) / span : 0;
-            filled[padded] = { x: filled[padded].x, y: startValue + (endValue - startValue) * progress };
+            filled[padded] = { x: filled[padded].x, y: startValue + (endValue - startValue) * progress, estimated: true };
         }
     }
 
@@ -180,4 +182,13 @@ export function alignTemperatureChartSeries(series: TemperatureChartSeries[]): T
             data: interpolatePaddedReadings(aligned, maxGapMs),
         };
     });
+}
+
+/**
+ * Which slots of each aligned series carry an interpolated value rather than a reading.
+ * The shared tooltip renders by series index and data-point index, so this is the shape
+ * it needs to tell an estimate from a measurement.
+ */
+export function estimatedTemperaturePoints(series: TemperatureChartSeries[]): boolean[][] {
+    return series.map((entry) => entry.data.map((point) => point.estimated === true));
 }

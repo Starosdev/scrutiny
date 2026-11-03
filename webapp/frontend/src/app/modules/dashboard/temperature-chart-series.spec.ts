@@ -1,4 +1,4 @@
-import { alignTemperatureChartSeries } from './temperature-chart-series';
+import { alignTemperatureChartSeries, estimatedTemperaturePoints } from './temperature-chart-series';
 
 describe('alignTemperatureChartSeries', () => {
     it('aligns irregular series to one timestamp index without moving readings', () => {
@@ -242,5 +242,42 @@ describe('alignTemperatureChartSeries', () => {
         expect(result[1].data[2].y).toBe(36);
         expect(result[1].data[4].y).toBe(40);
         expect(result[1].data[5].y).toBe(44);
+    });
+
+    it('marks an interpolated slot as estimated and a reading as measured', () => {
+        const timestamp = (minute: number) => new Date(Date.UTC(2026, 7, 1, 0, minute));
+
+        const result = alignTemperatureChartSeries([
+            { name: 'Dense drive', data: Array.from({ length: 21 }, (_, minute) => ({ x: timestamp(minute), y: 40 })) },
+            {
+                name: 'Sparse drive',
+                data: [
+                    { x: timestamp(0), y: 30 },
+                    { x: timestamp(10), y: 34 },
+                    { x: timestamp(20), y: 38 },
+                ],
+            },
+        ]);
+
+        expect(result[1].data[0].estimated).toBeUndefined();
+        expect(result[1].data[10].estimated).toBeUndefined();
+        expect(result[1].data[5].estimated).toBeTrue();
+
+        const estimated = estimatedTemperaturePoints(result);
+        expect(estimated[0].some((flag) => flag)).toBeFalse();
+        expect(estimated[1].filter((flag) => flag).length).toBe(18);
+        expect([estimated[1][0], estimated[1][10], estimated[1][20]]).toEqual([false, false, false]);
+    });
+
+    it('does not mark a slot left null as estimated', () => {
+        const hours = (hour: number) => new Date(Date.UTC(2026, 7, 1, hour));
+
+        const result = alignTemperatureChartSeries([
+            { name: 'Dense drive', data: Array.from({ length: 25 }, (_, hour) => ({ x: hours(hour), y: 40 })) },
+            { name: 'Eight hourly drive', data: [0, 8, 24].map((hour) => ({ x: hours(hour), y: 33 })) },
+        ]);
+
+        expect(result[1].data[12].y).toBeNull();
+        expect(estimatedTemperaturePoints(result)[1][12]).toBeFalse();
     });
 });

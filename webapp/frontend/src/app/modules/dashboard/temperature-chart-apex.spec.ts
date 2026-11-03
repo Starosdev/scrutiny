@@ -1,5 +1,5 @@
 import ApexCharts from 'apexcharts';
-import { alignTemperatureChartSeries } from './temperature-chart-series';
+import { alignTemperatureChartSeries, estimatedTemperaturePoints } from './temperature-chart-series';
 import { createTemperatureChartTooltip } from './temperature-chart-tooltip';
 
 describe('dashboard temperature ApexCharts integration', () => {
@@ -103,6 +103,10 @@ describe('dashboard temperature ApexCharts integration', () => {
 
         expect(series[1].data.map((point) => point.y)).toEqual([30, 32, 34, 36, 38]);
 
+        const estimated = estimatedTemperaturePoints(series);
+        expect(estimated[0]).toEqual([false, false, false, false, false]);
+        expect(estimated[1]).toEqual([false, true, false, true, false]);
+
         chart = new ApexCharts(host, {
             chart: {
                 type: 'area',
@@ -119,7 +123,7 @@ describe('dashboard temperature ApexCharts integration', () => {
             tooltip: {
                 shared: true,
                 intersect: false,
-                custom: createTemperatureChartTooltip(document, 'celsius', '24'),
+                custom: createTemperatureChartTooltip(document, 'celsius', '24', (seriesIndex, dataPointIndex) => estimated[seriesIndex]?.[dataPointIndex] === true),
                 fixed: {
                     enabled: true,
                     position: 'topLeft',
@@ -131,11 +135,19 @@ describe('dashboard temperature ApexCharts integration', () => {
         });
         await chart.render();
 
-        await hoverPoint(chart, host, 0, 1);
-
-        const rows = visibleTooltipRows(host);
+        // Hovering a slot the sparse drive did report: no marker, it is a measurement.
+        await hoverPoint(chart, host, 0, 2);
+        let rows = visibleTooltipRows(host);
         expect(rows.length).toBe(series.length);
-        expect(rows[1].textContent).toMatch(/Sparse drive:\s*32/);
+        expect(rows[1].textContent).toMatch(/Sparse drive:\s*34/);
+        expect(rows[1].textContent).not.toMatch(/~/);
+
+        // Hovering a padded slot: the value is interpolated and must be marked as such.
+        await hoverPoint(chart, host, 0, 1);
+        rows = visibleTooltipRows(host);
+        expect(rows.length).toBe(series.length);
+        expect(rows[1].textContent).toMatch(/Sparse drive:\s*~32/);
+        expect(rows[0].textContent).not.toMatch(/~/);
         expect(rows.some((row) => /--/.test(row.textContent ?? ''))).toBeFalse();
     });
 });
