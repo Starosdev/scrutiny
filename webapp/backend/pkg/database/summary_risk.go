@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
 )
 
 // summaryRiskScore computes a simplified 0-100 replacement risk score using the
@@ -12,21 +13,26 @@ import (
 // This is less precise than the full /api/device/:id/replacement-risk endpoint
 // (no trend analysis, fewer attributes) but is fast and suitable for dashboard badges.
 //
-// Covered attributes per protocol (partial weights, scaled to 0-100):
+// Covered attributes per protocol, each weighted exactly as the full scorer
+// weights it and rescaled to 0-100 over the covered subset:
 //
-//	ATA (max covered weight 65): attr 5 (25pt), attr 197 (20pt), attr 198 (20pt)
-//	NVMe (max covered weight 60): percentage_used (40pt), media_errors (20pt)
-//	SCSI (max covered weight 40): scsi_grown_defect_list (40pt)
+//	ATA:  attr 5, attr 197, attr 198
+//	NVMe: percentage_used, media_errors
+//	SCSI: scsi_grown_defect_list
+//
+// The weights come from thresholds.ReplacementRiskWeightFor rather than from
+// literals here, so a rebalance of the full table cannot leave the badge
+// scoring an attribute at a weight the detail view no longer uses.
 func summaryRiskScore(protocol string, values map[string]interface{}) (int, models.RiskCategory) {
 	var raw, maxRaw float64
 
 	switch {
 	case strings.EqualFold(protocol, "NVMe"):
-		maxRaw, raw = 60.0, nvmeRiskRaw(values)
+		maxRaw, raw = summaryMaxWeight("NVMe", nvmeSummaryAttributes), nvmeRiskRaw(values)
 	case strings.EqualFold(protocol, "SCSI"):
-		maxRaw, raw = 40.0, scsiRiskRaw(values)
+		maxRaw, raw = summaryMaxWeight("SCSI", scsiSummaryAttributes), scsiRiskRaw(values)
 	default: // ATA
-		maxRaw, raw = 65.0, ataRiskRaw(values)
+		maxRaw, raw = summaryMaxWeight("ATA", ataSummaryAttributes), ataRiskRaw(values)
 	}
 
 	if maxRaw == 0 || raw == 0 {
@@ -40,37 +46,62 @@ func summaryRiskScore(protocol string, values map[string]interface{}) (int, mode
 	return scaled, models.ScoreToRiskCategory(scaled)
 }
 
-// nvmeRiskRaw sums the NVMe partial risk weights (percentage_used 40pt, media_errors 20pt).
+// Attributes each protocol's summary query can score, in the order they are
+// summed. These are attribute IDs in the full replacement-risk tables.
+var (
+	ataSummaryAttributes  = []string{"5", "197", "198"}
+	nvmeSummaryAttributes = []string{"percentage_used", "media_errors"}
+	scsiSummaryAttributes = []string{"scsi_grown_defect_list"}
+)
+
+// summaryMaxWeight is the total weight of the attributes the summary query can
+// see, which is what a fully-degraded covered set would score.
+func summaryMaxWeight(protocol string, attributeIDs []string) float64 {
+	var total float64
+	for _, attributeID := range attributeIDs {
+		weight, _ := thresholds.ReplacementRiskWeightFor(protocol, attributeID)
+		total += weight
+	}
+	return total
+}
+
+// summaryWeight is the full scorer's weight for one attribute. A missing
+// attribute returns 0, which drops it from the badge rather than scoring it at
+// an invented weight.
+func summaryWeight(protocol string, attributeID string) float64 {
+	weight, _ := thresholds.ReplacementRiskWeightFor(protocol, attributeID)
+	return weight
+}
+
+// nvmeRiskRaw sums the NVMe partial risk weights.
 func nvmeRiskRaw(values map[string]interface{}) float64 {
 	var raw float64
 	if val := summaryInt64(values, "attr.percentage_used.value"); val > 0 {
-		raw += math.Min(float64(val)/100.0, 1.0) * 40.0
+		raw += math.Min(float64(val)/100.0, 1.0) * summaryWeight("NVMe", "percentage_used")
 	}
 	if val := summaryInt64(values, "attr.media_errors.value"); val > 0 {
-		raw += summaryCounterSeverity(val) * 20.0
+		raw += summaryCounterSeverity(val) * summaryWeight("NVMe", "media_errors")
 	}
 	return raw
 }
 
-// scsiRiskRaw returns the SCSI partial risk weight (scsi_grown_defect_list 40pt).
+// scsiRiskRaw returns the SCSI partial risk weight.
 func scsiRiskRaw(values map[string]interface{}) float64 {
 	if val := summaryInt64(values, "attr.scsi_grown_defect_list.value"); val > 0 {
-		return summaryCounterSeverity(val) * 40.0
+		return summaryCounterSeverity(val) * summaryWeight("SCSI", "scsi_grown_defect_list")
 	}
 	return 0
 }
 
-// ataRiskRaw sums the ATA partial risk weights (attr 5 25pt, attr 197 20pt, attr 198 20pt).
+// ataRiskRaw sums the ATA partial risk weights.
 func ataRiskRaw(values map[string]interface{}) float64 {
 	var raw float64
-	if val := summaryInt64(values, "attr.5.raw_value"); val > 0 {
-		raw += summaryCounterSeverity(val) * 25.0
-	}
-	if val := summaryInt64(values, "attr.197.raw_value"); val > 0 {
-		raw += summaryCounterSeverity(val) * 20.0
-	}
-	if val := summaryInt64(values, "attr.198.raw_value"); val > 0 {
-		raw += summaryCounterSeverity(val) * 20.0
+	for _, attributeID := range ataSummaryAttributes {
+		val := summaryInt64(values, "attr."+attributeID+".raw_value")
+		if val <= 0 {
+			continue
+		}
+		raw += summaryCounterSeverity(val) * summaryWeight("ATA", attributeID)
 	}
 	return raw
 }
