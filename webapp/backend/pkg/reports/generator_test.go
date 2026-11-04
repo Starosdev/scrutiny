@@ -8,6 +8,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -266,6 +267,12 @@ func TestGenerateReport_AlertEntriesCarryNameValueAndThreshold(t *testing.T) {
 }
 
 func TestAlertAttributeDetails(t *testing.T) {
+	// No built-in FARM entry has a metadata threshold, so add one for this test.
+	thresholds.FarmMetadata["farm_test_threshold"] = thresholds.AtaDeviceStatisticsMetadata{
+		DisplayName: "Test FARM", Threshold: 80,
+	}
+	defer delete(thresholds.FarmMetadata, "farm_test_threshold")
+
 	tests := []struct {
 		name          string
 		attrID        string
@@ -311,6 +318,30 @@ func TestAlertAttributeDetails(t *testing.T) {
 				AttributeId: "devstat_7_8", Value: 100,
 			},
 			wantName: "Percentage Used Endurance Indicator", wantValue: 100, wantThreshold: 100,
+		},
+		{
+			name:   "FARM uses the metadata threshold when the drive reports none",
+			attrID: "farm_test_threshold",
+			attr: &measurements.SmartFarmAttribute{
+				AttributeId: "farm_test_threshold", Value: 90,
+			},
+			wantName: "Test FARM", wantValue: 90, wantThreshold: 80,
+		},
+		{
+			name:   "NVMe no-threshold sentinel -1 becomes 0",
+			attrID: "power_on_hours",
+			attr: &measurements.SmartNvmeAttribute{
+				AttributeId: "power_on_hours", Value: 500, Threshold: -1,
+			},
+			wantName: "Power on Hours", wantValue: 500, wantThreshold: 0,
+		},
+		{
+			name:   "SCSI no-threshold sentinel -1 becomes 0",
+			attrID: "scsi_grown_defect_list",
+			attr: &measurements.SmartScsiAttribute{
+				AttributeId: "scsi_grown_defect_list", Value: 12, Threshold: -1,
+			},
+			wantName: "Grown Defect List", wantValue: 12, wantThreshold: 0,
 		},
 		{
 			name:   "SCSI reports Value and the drive threshold",

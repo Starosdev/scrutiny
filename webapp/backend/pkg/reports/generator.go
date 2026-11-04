@@ -120,6 +120,17 @@ func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, device
 // metadata display name and ThresholdValue (normalized, transformed or raw), and show the threshold
 // only for normalized values or attributes without metadata. Device-statistics and FARM attributes
 // prefer the metadata threshold over the drive-reported one.
+//
+// The threshold is 0 when there is nothing to show. NVMe and SCSI attributes store -1 for "no
+// threshold"; it is mapped to 0 here so every formatter (text, HTML, PDF) sees the same thing.
+//
+// ATA value rule: when the attribute has metadata, the value is the one the status is evaluated on.
+// That choice belongs to measurements.AttributeEvaluatedValue (#1086); until it is merged this
+// calls ThresholdValue, which has the same result. The rule kept here is only for an ATA attribute
+// with no metadata: it reports the normalized Value, as the detail page does, whereas the helper
+// would fall through to RawValue. ATA attributes 174, 204, 227 and 228 have metadata without a
+// display type, so they report RawValue; that is deliberate, because an override pins the raw
+// value and the status reason refers to it.
 func alertAttributeDetails(attrID string, attribute measurements.SmartAttribute) (name string, value int64, threshold int64) {
 	switch attr := attribute.(type) {
 	case *measurements.SmartAtaAttribute:
@@ -157,6 +168,9 @@ func alertAttributeDetails(attrID string, attribute measurements.SmartAttribute)
 		if metadata, ok := thresholds.ScsiMetadataFor(attr.AttributeId); ok {
 			name = metadata.DisplayName
 		}
+	}
+	if threshold < 0 {
+		threshold = 0
 	}
 	if name == "" {
 		name = attrID
