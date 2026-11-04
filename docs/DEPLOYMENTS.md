@@ -60,7 +60,8 @@ package.json and package-lock.json together when changing release tooling.
 - Raw release notes are generated deterministically from `master` PR merge commits reachable between the previous tag and the new tag.
 - The generator uses merged PR metadata as the source of truth. Master promotion PRs must contain `## Product changes` followed by `## Summary`. Only non-`None.` summaries are user-facing; their linked issues supply release-note content.
 - Validation checks that extracted summary content survives note formatting before it emits notes.
-- If note generation fails, the release workflow fails for manual repair instead of silently completing with semantic-release defaults.
+- If note generation fails, the step fails visibly and the run continues: the tag and release already exist at that point, and the binary build and asset upload must not be skipped. Repair the notes afterwards with `.github/scripts/generate-release-notes.sh <prev-tag> <tag>` and `gh release edit <tag> --notes-file`.
+- A release left without binaries can be repaired without tagging a new version: run the workflow with `rebuild_tag` set to the existing tag (for example `v1.79.1`) and `release_type` left at `auto`. That skips semantic-release and release notes, verifies the release exists, and re-runs the build and upload jobs for that tag with `--clobber`.
 - Each release adds a `chore(release)` commit to `master` that `develop` does not have. `master` requires branches to be up to date, so a promotion PR first reports `BEHIND`. Run `gh pr update-branch <pr>` on the promotion PR to merge `master` into `develop`. Nothing syncs `develop` automatically: its ruleset requires a pull request, and a squash merge would not make `master` an ancestor of `develop`.
 
 ## Loop Pilot Workflows
