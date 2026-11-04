@@ -377,3 +377,32 @@ func TestAttribute187IsCounterScoredNotStatusScored(t *testing.T) {
 	require.Equal(t, 11.25, reported.Score, "counterSeverity(40)=0.75 against weight 15")
 	require.Equal(t, 11.25, totalScore)
 }
+
+func TestComputeRiskContributionsSurfacesWarnedNonCriticalAttributes(t *testing.T) {
+	// Issue #1095: attribute 189 is non-critical, carries observed thresholds, and
+	// so can be marked WARN. Before the residual weight it showed amber on the
+	// detail page and never appeared in the replacement-risk table.
+	weights := thresholds.ReplacementRiskWeightsForProtocol("ATA")
+	latest := map[string]measurements.SmartAttribute{
+		"189": &measurements.SmartAtaAttribute{
+			AttributeId: 189,
+			RawValue:    37,
+			Value:       100,
+			Status:      pkg.AttributeStatusWarningScrutiny,
+		},
+	}
+
+	contributions, totalScore, _ := computeRiskContributions(weights, latest, nil, nil)
+
+	var highFly *models.AttributeContribution
+	for index := range contributions {
+		if contributions[index].AttributeID == "189" {
+			highFly = &contributions[index]
+		}
+	}
+
+	require.NotNil(t, highFly, "a warnable attribute must carry a weight")
+	require.Equal(t, int64(37), highFly.Value, "raw display type, so the raw value")
+	require.Equal(t, 1.0, highFly.Score, "warn severity 0.5 against the non-critical residual weight 2")
+	require.Equal(t, 1.0, totalScore)
+}

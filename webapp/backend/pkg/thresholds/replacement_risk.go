@@ -117,16 +117,25 @@ var ataCuratedReplacementRiskWeights = []ReplacementRiskWeight{
 // contributions table, not enough to rival a Backblaze-correlated signal.
 const AtaCriticalResidualWeight = 3
 
+// AtaObservedThresholdResidualWeight is the weight given to a non-critical ATA
+// attribute that carries observed thresholds and the curated table does not
+// cover. Scrutiny can raise WARN or FAILED on such an attribute, so it has to be
+// able to reach the score; it is weighted below a critical residual because the
+// non-critical cutoffs are looser, warning where a critical attribute would
+// already have failed.
+const AtaObservedThresholdResidualWeight = 2
+
 // AtaCriticalResidualTrendMultiplier is the trend multiplier for residual critical
 // attributes. They are scored from status, so their trend score comes from a
 // status regression over the window rather than from a counter delta.
 const AtaCriticalResidualTrendMultiplier = 1.0
 
 // AtaReplacementRiskWeights is the curated ATA table plus a residual weight for
-// every attribute that AtaMetadata marks critical and the curated table omits.
-// Deriving the remainder from metadata means a critical attribute can never
-// again be invisible to replacement-risk scoring just because nobody added it
-// here by hand.
+// every attribute the curated table omits that Scrutiny can act on: one marked
+// critical, or one carrying observed thresholds, which is the input that lets
+// ValidateThreshold raise WARN or FAILED. Deriving the remainder from metadata
+// means an attribute can never again show a status on the detail page while
+// being absent from the replacement-risk score and its contributions table.
 //
 // Residuals used to require observed thresholds. That gate existed because
 // ValidateThreshold warned on any critical attribute whose value matched no
@@ -148,7 +157,7 @@ func ataReplacementRiskWeights() []ReplacementRiskWeight {
 	// iteration trips gocritic's rangeValCopy.
 	residualIDs := []int{}
 	for attributeID := range AtaMetadata {
-		if !AtaMetadata[attributeID].Critical {
+		if !AtaMetadata[attributeID].Critical && len(AtaMetadata[attributeID].ObservedThresholds) == 0 {
 			continue
 		}
 		if _, ok := curated[strconv.Itoa(attributeID)]; ok {
@@ -164,7 +173,7 @@ func ataReplacementRiskWeights() []ReplacementRiskWeight {
 		weights = append(weights, ReplacementRiskWeight{
 			AttributeID:     strconv.Itoa(attributeID),
 			DisplayName:     AtaMetadata[attributeID].DisplayName,
-			Weight:          AtaCriticalResidualWeight,
+			Weight:          residualWeightFor(AtaMetadata[attributeID]),
 			TrendMultiplier: AtaCriticalResidualTrendMultiplier,
 		})
 	}
@@ -255,6 +264,14 @@ func ReplacementRiskWeightsForProtocol(protocol string) []ReplacementRiskWeight 
 	default:
 		return nil
 	}
+}
+
+// residualWeightFor returns the residual weight for one uncurated attribute.
+func residualWeightFor(metadata AtaAttributeMetadata) float64 {
+	if metadata.Critical {
+		return AtaCriticalResidualWeight
+	}
+	return AtaObservedThresholdResidualWeight
 }
 
 // ReplacementRiskWeightFor returns the weight a protocol's table gives one
