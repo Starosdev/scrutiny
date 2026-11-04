@@ -170,9 +170,9 @@ jobs:
           - { on: ubuntu-latest,  goos: linux,      goarch: arm,    goarm: 6 }
           - { on: ubuntu-latest,  goos: linux,      goarch: arm,    goarm: 7 }
           - { on: ubuntu-latest,  goos: linux,      goarch: arm64 }
-          - { on: macos-latest,   goos: darwin,     goarch: amd64 }
-          - { on: macos-latest,   goos: darwin,     goarch: arm64 }
-          - { on: macos-latest,   goos: freebsd,    goarch: amd64 }
+          - { on: ubuntu-latest,  goos: darwin,     goarch: amd64 }
+          - { on: ubuntu-latest,  goos: darwin,     goarch: arm64 }
+          - { on: ubuntu-latest,  goos: freebsd,    goarch: amd64 }
           - { on: windows-latest, goos: windows,    goarch: amd64 }
           - { on: windows-latest, goos: windows,    goarch: arm64 }
     steps:
