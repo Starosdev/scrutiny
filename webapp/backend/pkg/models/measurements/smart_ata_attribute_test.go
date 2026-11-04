@@ -416,24 +416,41 @@ func TestValidateThreshold_Attr5_BucketEdgeUnchanged(t *testing.T) {
 	require.True(t, pkg.AttributeStatusHas(failing.Status, pkg.AttributeStatusFailedScrutiny))
 }
 
-func TestValidateThreshold_Attr4_HigherCycleCountNeverScoresMilder(t *testing.T) {
-	// 69 cycles warned while 95 and 500 passed before the envelope (#1078).
-	for _, value := range []int64{69, 95, 500} {
+func TestValidateThreshold_Attr4_UsageCounterNeverScoresAVerdict(t *testing.T) {
+	// 69 cycles on two healthy WD Ultrastar DC HC550 drives warned on every collector run, which
+	// is the real-world effect reported in #1078. Monotonic scoring spread that warning to every
+	// count from 27 upward rather than ending it, so #1093 removed the buckets.
+	for _, value := range []int64{0, 9, 27, 69, 95, 500, 1860} {
 		sa := SmartAtaAttribute{AttributeId: 4, RawValue: value}
 
 		sa.ValidateThreshold(thresholds.AtaMetadata[4])
 
-		require.True(t, pkg.AttributeStatusHas(sa.Status, pkg.AttributeStatusWarningScrutiny),
-			"start/stop count %d", value)
+		require.Equal(t, pkg.AttributeStatusPassed, sa.Status, "start/stop count %d", value)
+		require.Zero(t, sa.FailureRate, "start/stop count %d", value)
 	}
 }
 
-func TestValidateThreshold_Attr4_ZeroCycles_Passes(t *testing.T) {
-	sa := SmartAtaAttribute{AttributeId: 4, RawValue: 0}
+func TestValidateThreshold_Attr192_UsageCounterNeverScoresAVerdict(t *testing.T) {
+	// 7 retracts upward all scored the 6-16 bucket's 11.97% once severity became monotonic, while
+	// the 650-1600 bucket reads 0.52%. The rate described the fleet, not the drive (#1093).
+	for _, value := range []int64{0, 7, 17, 234, 909, 1600, 5000} {
+		sa := SmartAtaAttribute{AttributeId: 192, RawValue: value}
 
-	sa.ValidateThreshold(thresholds.AtaMetadata[4])
+		sa.ValidateThreshold(thresholds.AtaMetadata[192])
 
-	require.Equal(t, pkg.AttributeStatusPassed, sa.Status)
+		require.Equal(t, pkg.AttributeStatusPassed, sa.Status, "power-off retract count %d", value)
+		require.Zero(t, sa.FailureRate, "power-off retract count %d", value)
+	}
+}
+
+func TestAtaMetadata_UsageCountersCarryNoBuckets(t *testing.T) {
+	// A start/stop cycle and a power-off retract are normal operation, so a population failure
+	// rate for them measures fleet age. Attributes 3, 184 and 195 are excluded for a different
+	// reason and have their own test.
+	for _, attributeID := range []int{4, 192} {
+		require.Empty(t, thresholds.AtaMetadata[attributeID].ObservedThresholds,
+			"attribute %d", attributeID)
+	}
 }
 
 func TestAtaMetadata_VendorScaledNormalizedAttributesCarryNoBuckets(t *testing.T) {
