@@ -362,3 +362,16 @@ func TestAlertAttributeDetails(t *testing.T) {
 		})
 	}
 }
+
+// For every ATA attribute with metadata, the value in an alert line is the one the status is
+// evaluated on. Each field gets a different number so a wrong pick is visible.
+func TestAlertAttributeDetails_ATAValueMatchesEvaluatedValue(t *testing.T) {
+	for id := range thresholds.AtaMetadata {
+		attr := &measurements.SmartAtaAttribute{AttributeId: id, Value: 11, RawValue: 22, TransformedValue: 33}
+		want, ok := measurements.AttributeEvaluatedValue(attr)
+		require.True(t, ok)
+
+		_, got, _ := alertAttributeDetails("x", attr)
+		assert.Equal(t, want, got, "attribute %d", id)
+	}
+}
