@@ -229,7 +229,11 @@ func hasQualifyingFailure(failingAttributes []string, smartAttrs *measurements.S
 			return true
 		}
 		currentAttribute := smartAttrs.Attributes[attrId]
-		if !pkg.AttributeStatusHas(previousAttribute.GetStatus(), requiredAttrStatus) {
+		// Compare the required bits themselves, not "any required bit set", so a warning that
+		// becomes a failure at warn level counts as new, while an extra bit that was already
+		// covered by a required bit does not.
+		required := currentAttribute.GetStatus() & requiredAttrStatus
+		if required&^(previousAttribute.GetStatus()&requiredAttrStatus) != 0 {
 			return true
 		}
 		if comparableValue(previousAttribute) != comparableValue(currentAttribute) {
