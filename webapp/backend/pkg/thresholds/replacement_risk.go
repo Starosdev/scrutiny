@@ -173,7 +173,7 @@ func ataReplacementRiskWeights() []ReplacementRiskWeight {
 		weights = append(weights, ReplacementRiskWeight{
 			AttributeID:     strconv.Itoa(attributeID),
 			DisplayName:     AtaMetadata[attributeID].DisplayName,
-			Weight:          residualWeightFor(AtaMetadata[attributeID]),
+			Weight:          residualWeightFor(AtaMetadata[attributeID].Critical),
 			TrendMultiplier: AtaCriticalResidualTrendMultiplier,
 		})
 	}
@@ -267,8 +267,11 @@ func ReplacementRiskWeightsForProtocol(protocol string) []ReplacementRiskWeight 
 }
 
 // residualWeightFor returns the residual weight for one uncurated attribute.
-func residualWeightFor(metadata AtaAttributeMetadata) float64 {
-	if metadata.Critical {
+// It takes the critical flag rather than the metadata struct, which gocritic
+// rejects as a heavy parameter and a map value cannot be addressed to pass by
+// pointer.
+func residualWeightFor(critical bool) float64 {
+	if critical {
 		return AtaCriticalResidualWeight
 	}
 	return AtaObservedThresholdResidualWeight
