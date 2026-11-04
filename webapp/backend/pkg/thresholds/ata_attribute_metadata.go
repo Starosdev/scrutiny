@@ -75,60 +75,17 @@ var AtaMetadata = map[int]AtaAttributeMetadata{
 		DisplayName: "Start/Stop Count",
 		DisplayType: AtaSmartAttributeDisplayTypeRaw,
 		// A start/stop cycle is wear, so a higher tally is never the healthier reading. The
-		// direction is what orders this attribute's observed-threshold buckets by severity.
+		// direction is reported through the API and orders any buckets a consumer drive profile
+		// supplies; the bundled table carries none, for the reason below.
 		Ideal:       ObservedThresholdIdealLow,
 		Critical:    false,
 		Description: "A tally of spindle start/stop cycles. The spindle turns on, and hence the count is increased, both when the hard disk is turned on after having before been turned entirely off (disconnected from power source) and when the hard disk returns from having previously been put to sleep mode.",
-		ObservedThresholds: []ObservedThreshold{
-			{
-				Low:               0,
-				High:              13,
-				AnnualFailureRate: 0.01989335424860646,
-				ErrorInterval:     []float64{0.016596548909440657, 0.023653263230617408},
-			},
-			{
-				Low:               13,
-				High:              26,
-				AnnualFailureRate: 0.03776935438256488,
-				ErrorInterval:     []float64{0.03310396052098642, 0.04290806173460437},
-			},
-			{
-				Low:               26,
-				High:              39,
-				AnnualFailureRate: 0.11022223828187004,
-				ErrorInterval:     []float64{0.09655110535164119, 0.12528657238811672},
-			},
-			{
-				Low:               39,
-				High:              52,
-				AnnualFailureRate: 0.16289995457762474,
-				ErrorInterval:     []float64{0.13926541653588131, 0.18939614504497515},
-			},
-			{
-				Low:               52,
-				High:              65,
-				AnnualFailureRate: 0.19358212432279714,
-				ErrorInterval:     []float64{0.15864522253849073, 0.23392418181765526},
-			},
-			{
-				Low:               65,
-				High:              78,
-				AnnualFailureRate: 0.1157094940074447,
-				ErrorInterval:     []float64{0.07861898732346269, 0.16424039052527728},
-			},
-			{
-				Low:               78,
-				High:              91,
-				AnnualFailureRate: 0.12262136155304391,
-				ErrorInterval:     []float64{0.0670382394080032, 0.20573780888032978},
-			},
-			{
-				Low:               91,
-				High:              104,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-		},
+		// No observed-threshold buckets: a start/stop cycle is normal operation, not an error, so
+		// the population failure rates for it tracked fleet age rather than damage. The source
+		// table was non-monotonic to match: the 52-65 bucket read 19.4 percent while 91-104 read
+		// 0 percent. Once severity became monotonic in #1088 every spinning drive scored the same
+		// 19.4 percent from 27 cycles upward. The manufacturer threshold decides it instead.
+		// See scrutiny #1093.
 	},
 	5: {
 		ID:          5,
@@ -874,56 +831,12 @@ var AtaMetadata = map[int]AtaAttributeMetadata{
 		Ideal:       ObservedThresholdIdealLow,
 		Critical:    false,
 		Description: "Number of power-off or emergency retract cycles.",
-		ObservedThresholds: []ObservedThreshold{
-			{
-				Low:               1,
-				High:              2,
-				AnnualFailureRate: 0.02861098445412803,
-				ErrorInterval:     []float64{0.022345416230915037, 0.036088863823297186},
-			},
-			{
-				Low:               2,
-				High:              6,
-				AnnualFailureRate: 0.0738571777154862,
-				ErrorInterval:     []float64{0.06406927746420421, 0.0847175264009771},
-			},
-			{
-				Low:               6,
-				High:              16,
-				AnnualFailureRate: 0.11970378206823593,
-				ErrorInterval:     []float64{0.10830059875098269, 0.13198105985656441},
-			},
-			{
-				Low:               16,
-				High:              40,
-				AnnualFailureRate: 0.027266868552620425,
-				ErrorInterval:     []float64{0.021131448605713823, 0.03462795920968522},
-			},
-			{
-				Low:               40,
-				High:              100,
-				AnnualFailureRate: 0.011741682974559688,
-				ErrorInterval:     []float64{0.00430899071133239, 0.025556700631152028},
-			},
-			{
-				Low:               100,
-				High:              250,
-				AnnualFailureRate: 0.012659940134091309,
-				ErrorInterval:     []float64{0.00607093338127348, 0.023282080653656938},
-			},
-			{
-				Low:               250,
-				High:              650,
-				AnnualFailureRate: 0.01634692899031039,
-				ErrorInterval:     []float64{0.009522688540043157, 0.026173016865409605},
-			},
-			{
-				Low:               650,
-				High:              1600,
-				AnnualFailureRate: 0.005190074354440066,
-				ErrorInterval:     []float64{0.0025908664180103293, 0.009286476666453648},
-			},
-		},
+		// No observed-threshold buckets: a power-off retract is normal operation, not an error, so
+		// the population failure rates for it tracked fleet age rather than damage. A drive at
+		// 1600 retracts inherited 11.97 percent from the 6-16 bucket while its own bucket read
+		// 0.52 percent, and after #1088 made severity monotonic every drive scored that same
+		// 11.97 percent from 7 retracts upward. The manufacturer threshold decides it instead.
+		// See scrutiny #1093.
 	},
 	193: {
 		ID:          193,

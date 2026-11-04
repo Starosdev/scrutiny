@@ -76,9 +76,7 @@ export const sdb = {
                         raw_string: '329',
                         when_failed: '',
                         transformed_value: 0,
-                        status: 2,
-                        status_reason: 'Observed Failure Rate for Non-Critical Attribute is greater than 10%',
-                        failure_rate: 0.11970378206823593,
+                        status: 0,
                     },
                     '193': {
                         attribute_id: 193,
@@ -192,7 +190,6 @@ export const sdb = {
                         when_failed: '',
                         transformed_value: 0,
                         status: 0,
-                        failure_rate: 0.01989335424860646,
                     },
                     '5': {
                         attribute_id: 5,
@@ -296,9 +293,7 @@ export const sdb = {
                         raw_string: '329',
                         when_failed: '',
                         transformed_value: 0,
-                        status: 2,
-                        status_reason: 'Observed Failure Rate for Non-Critical Attribute is greater than 10%',
-                        failure_rate: 0.11970378206823593,
+                        status: 0,
                     },
                     '193': {
                         attribute_id: 193,
@@ -412,7 +407,6 @@ export const sdb = {
                         when_failed: '',
                         transformed_value: 0,
                         status: 0,
-                        failure_rate: 0.01989335424860646,
                     },
                     '5': {
                         attribute_id: 5,
@@ -1039,56 +1033,6 @@ export const sdb = {
             ideal: 'low',
             critical: false,
             description: 'Number of power-off or emergency retract cycles.',
-            observed_thresholds: [
-                {
-                    low: 1,
-                    high: 2,
-                    annual_failure_rate: 0.02861098445412803,
-                    error_interval: [0.022345416230915037, 0.036088863823297186],
-                },
-                {
-                    low: 2,
-                    high: 6,
-                    annual_failure_rate: 0.0738571777154862,
-                    error_interval: [0.06406927746420421, 0.0847175264009771],
-                },
-                {
-                    low: 6,
-                    high: 16,
-                    annual_failure_rate: 0.11970378206823593,
-                    error_interval: [0.10830059875098269, 0.13198105985656441],
-                },
-                {
-                    low: 16,
-                    high: 40,
-                    annual_failure_rate: 0.027266868552620425,
-                    error_interval: [0.021131448605713823, 0.03462795920968522],
-                },
-                {
-                    low: 40,
-                    high: 100,
-                    annual_failure_rate: 0.011741682974559688,
-                    error_interval: [0.00430899071133239, 0.025556700631152028],
-                },
-                {
-                    low: 100,
-                    high: 250,
-                    annual_failure_rate: 0.012659940134091309,
-                    error_interval: [0.00607093338127348, 0.023282080653656938],
-                },
-                {
-                    low: 250,
-                    high: 650,
-                    annual_failure_rate: 0.01634692899031039,
-                    error_interval: [0.009522688540043157, 0.026173016865409605],
-                },
-                {
-                    low: 650,
-                    high: 1600,
-                    annual_failure_rate: 0.005190074354440066,
-                    error_interval: [0.0025908664180103293, 0.009286476666453648],
-                },
-            ],
             display_type: 'raw',
         },
         '193': {
@@ -1668,56 +1612,6 @@ export const sdb = {
             critical: false,
             description:
                 'A tally of spindle start/stop cycles. The spindle turns on, and hence the count is increased, both when the hard disk is turned on after having before been turned entirely off (disconnected from power source) and when the hard disk returns from having previously been put to sleep mode.',
-            observed_thresholds: [
-                {
-                    low: 0,
-                    high: 13,
-                    annual_failure_rate: 0.01989335424860646,
-                    error_interval: [0.016596548909440657, 0.023653263230617408],
-                },
-                {
-                    low: 13,
-                    high: 26,
-                    annual_failure_rate: 0.03776935438256488,
-                    error_interval: [0.03310396052098642, 0.04290806173460437],
-                },
-                {
-                    low: 26,
-                    high: 39,
-                    annual_failure_rate: 0.11022223828187004,
-                    error_interval: [0.09655110535164119, 0.12528657238811672],
-                },
-                {
-                    low: 39,
-                    high: 52,
-                    annual_failure_rate: 0.16289995457762474,
-                    error_interval: [0.13926541653588131, 0.18939614504497515],
-                },
-                {
-                    low: 52,
-                    high: 65,
-                    annual_failure_rate: 0.19358212432279714,
-                    error_interval: [0.15864522253849073, 0.23392418181765526],
-                },
-                {
-                    low: 65,
-                    high: 78,
-                    annual_failure_rate: 0.1157094940074447,
-                    error_interval: [0.07861898732346269, 0.16424039052527728],
-                },
-                {
-                    low: 78,
-                    high: 91,
-                    annual_failure_rate: 0.12262136155304391,
-                    error_interval: [0.0670382394080032, 0.20573780888032978],
-                },
-                {
-                    low: 91,
-                    high: 104,
-                    annual_failure_rate: 0,
-                    error_interval: [0, 0],
-                },
-            ],
             display_type: 'raw',
         },
         '5': {
