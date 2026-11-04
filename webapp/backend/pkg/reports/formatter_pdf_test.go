@@ -94,3 +94,11 @@ func TestPDFFilename(t *testing.T) {
 	assert.Equal(t, "weekly-2026-02-17.pdf", PDFFilename("weekly", ts))
 	assert.Equal(t, "monthly-2026-02-01.pdf", PDFFilename("monthly", time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)))
 }
+
+func TestAlertThresholdText(t *testing.T) {
+	zero := int64(0)
+	five := int64(5)
+	assert.Equal(t, "", alertThresholdText(nil))
+	assert.Equal(t, "0", alertThresholdText(&zero))
+	assert.Equal(t, "5", alertThresholdText(&five))
+}

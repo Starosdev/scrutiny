@@ -256,7 +256,7 @@ func TestGenerateReport_AlertEntriesCarryNameValueAndThreshold(t *testing.T) {
 
 	assert.Equal(t, "Spin-Up Time", byID["3"].AttributeName)
 	assert.Equal(t, int64(83), byID["3"].Value)
-	assert.Equal(t, int64(1), byID["3"].Threshold)
+	assert.Equal(t, i64(1), byID["3"].Threshold)
 
 	assert.Equal(t, "Start/Stop Count", byID["4"].AttributeName)
 	assert.Equal(t, int64(69), byID["4"].Value)
@@ -279,7 +279,7 @@ func TestAlertAttributeDetails(t *testing.T) {
 		attr          measurements.SmartAttribute
 		wantName      string
 		wantValue     int64
-		wantThreshold int64
+		wantThreshold *int64
 	}{
 		{
 			name:   "ATA transformed attribute reports the transformed value, not the packed raw bytes",
@@ -287,7 +287,7 @@ func TestAlertAttributeDetails(t *testing.T) {
 			attr: &measurements.SmartAtaAttribute{
 				AttributeId: 194, Value: 60, Threshold: 0, RawValue: 65576, TransformedValue: 40,
 			},
-			wantName: "Temperature", wantValue: 40, wantThreshold: 0,
+			wantName: "Temperature", wantValue: 40, wantThreshold: nil,
 		},
 		{
 			name:   "ATA raw attribute drops the normalized-scale threshold",
@@ -295,7 +295,7 @@ func TestAlertAttributeDetails(t *testing.T) {
 			attr: &measurements.SmartAtaAttribute{
 				AttributeId: 10, Value: 100, Threshold: 97, RawValue: 2,
 			},
-			wantName: "Spin Retry Count", wantValue: 2, wantThreshold: 0,
+			wantName: "Spin Retry Count", wantValue: 2, wantThreshold: nil,
 		},
 		{
 			name:   "ATA attribute without metadata falls back to the normalized value, smartctl name and threshold",
@@ -303,13 +303,13 @@ func TestAlertAttributeDetails(t *testing.T) {
 			attr: &measurements.SmartAtaAttribute{
 				AttributeId: 999, Name: "Vendor_Thing", Value: 77, Threshold: 5, RawValue: 123456,
 			},
-			wantName: "Vendor_Thing", wantValue: 77, wantThreshold: 5,
+			wantName: "Vendor_Thing", wantValue: 77, wantThreshold: i64(5),
 		},
 		{
 			name:     "ATA attribute without metadata or name uses the attribute id",
 			attrID:   "999",
 			attr:     &measurements.SmartAtaAttribute{AttributeId: 999, Value: 77},
-			wantName: "999", wantValue: 77, wantThreshold: 0,
+			wantName: "999", wantValue: 77, wantThreshold: i64(0),
 		},
 		{
 			name:   "devstat uses the metadata threshold when the drive reports none",
@@ -317,7 +317,7 @@ func TestAlertAttributeDetails(t *testing.T) {
 			attr: &measurements.SmartAtaDeviceStatAttribute{
 				AttributeId: "devstat_7_8", Value: 100,
 			},
-			wantName: "Percentage Used Endurance Indicator", wantValue: 100, wantThreshold: 100,
+			wantName: "Percentage Used Endurance Indicator", wantValue: 100, wantThreshold: i64(100),
 		},
 		{
 			name:   "FARM uses the metadata threshold when the drive reports none",
@@ -325,23 +325,23 @@ func TestAlertAttributeDetails(t *testing.T) {
 			attr: &measurements.SmartFarmAttribute{
 				AttributeId: "farm_test_threshold", Value: 90,
 			},
-			wantName: "Test FARM", wantValue: 90, wantThreshold: 80,
+			wantName: "Test FARM", wantValue: 90, wantThreshold: i64(80),
 		},
 		{
-			name:   "NVMe no-threshold sentinel -1 becomes 0",
+			name:   "NVMe no-threshold sentinel -1 becomes nil",
 			attrID: "power_on_hours",
 			attr: &measurements.SmartNvmeAttribute{
 				AttributeId: "power_on_hours", Value: 500, Threshold: -1,
 			},
-			wantName: "Power on Hours", wantValue: 500, wantThreshold: 0,
+			wantName: "Power on Hours", wantValue: 500, wantThreshold: nil,
 		},
 		{
-			name:   "SCSI no-threshold sentinel -1 becomes 0",
+			name:   "SCSI no-threshold sentinel -1 becomes nil",
 			attrID: "scsi_grown_defect_list",
 			attr: &measurements.SmartScsiAttribute{
 				AttributeId: "scsi_grown_defect_list", Value: 12, Threshold: -1,
 			},
-			wantName: "Grown Defect List", wantValue: 12, wantThreshold: 0,
+			wantName: "Grown Defect List", wantValue: 12, wantThreshold: nil,
 		},
 		{
 			name:   "SCSI reports Value and the drive threshold",
@@ -349,7 +349,31 @@ func TestAlertAttributeDetails(t *testing.T) {
 			attr: &measurements.SmartScsiAttribute{
 				AttributeId: "scsi_grown_defect_list", Value: 12, Threshold: 3,
 			},
-			wantName: "Grown Defect List", wantValue: 12, wantThreshold: 3,
+			wantName: "Grown Defect List", wantValue: 12, wantThreshold: i64(3),
+		},
+		{
+			name:   "ATA normalized attribute keeps a real threshold of 0",
+			attrID: "1",
+			attr: &measurements.SmartAtaAttribute{
+				AttributeId: 1, Value: 90, Threshold: 0, RawValue: 12,
+			},
+			wantName: "Read Error Rate", wantValue: 90, wantThreshold: i64(0),
+		},
+		{
+			name:   "NVMe keeps a real threshold of 0",
+			attrID: "critical_warning",
+			attr: &measurements.SmartNvmeAttribute{
+				AttributeId: "critical_warning", Value: 1, Threshold: 0,
+			},
+			wantName: "Critical Warning", wantValue: 1, wantThreshold: i64(0),
+		},
+		{
+			name:   "devstat threshold of 0 means none",
+			attrID: "devstat_unknown",
+			attr: &measurements.SmartAtaDeviceStatAttribute{
+				AttributeId: "devstat_unknown", Value: 5, Threshold: 0,
+			},
+			wantName: "devstat_unknown", wantValue: 5, wantThreshold: nil,
 		},
 	}
 
@@ -362,3 +386,5 @@ func TestAlertAttributeDetails(t *testing.T) {
 		})
 	}
 }
+
+func i64(v int64) *int64 { return &v }

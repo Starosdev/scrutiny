@@ -50,7 +50,7 @@ func TestFormatTextReport_WithFailures(t *testing.T) {
 			{
 				Name: "/dev/sdb", Model: "Samsung 860", Status: 2, TempCurrent: tempPtr(32),
 				ActiveFailures: []AlertEntry{
-					{AttributeID: "5", AttributeName: "Reallocated Sectors", Status: "failed", Value: 10, Threshold: 5, StatusReason: "scrutiny"},
+					{AttributeID: "5", AttributeName: "Reallocated Sectors", Status: "failed", Value: 10, Threshold: i64(5), StatusReason: "scrutiny"},
 				},
 			},
 			{
@@ -131,4 +131,24 @@ func TestFormatTextReport_TemperatureSummary(t *testing.T) {
 	assert.Contains(t, message, "Temperature Summary")
 	assert.Contains(t, message, "52")
 	assert.Contains(t, message, "28")
+}
+
+func TestFormatTextReport_ThresholdZeroVersusNone(t *testing.T) {
+	report := &ReportData{
+		GeneratedAt: time.Date(2026, 2, 17, 8, 0, 0, 0, time.UTC),
+		PeriodType:  "daily",
+		Devices: []DeviceReport{{
+			Name: "/dev/sda", Model: "WDC",
+			ActiveFailures: []AlertEntry{
+				{AttributeID: "4", AttributeName: "Start Stop", Status: "failed", Value: 9, Threshold: i64(0)},
+				{AttributeID: "194", AttributeName: "Temperature", Status: "failed", Value: 40, Threshold: nil},
+			},
+		}},
+	}
+
+	_, message := FormatTextReport(report)
+
+	assert.Contains(t, message, "Attribute 4 (Start Stop) = 9 [threshold: 0]")
+	assert.Contains(t, message, "Attribute 194 (Temperature) = 40")
+	assert.NotContains(t, message, "Attribute 194 (Temperature) = 40 [threshold")
 }

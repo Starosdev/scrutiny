@@ -107,7 +107,7 @@ type AlertEntry struct {
 	Status        string `json:"status"`        // "warning", "failed"
 	StatusReason  string `json:"status_reason"` // "smart" or "scrutiny"
 	Value         int64  `json:"value"`
-	Threshold     int64  `json:"threshold"`
+	Threshold     *int64 `json:"threshold"` // nil (null) when the attribute has no threshold
 }
 
 // PerformanceSummary contains benchmark results for a device
