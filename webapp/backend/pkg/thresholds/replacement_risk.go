@@ -1,5 +1,10 @@
 package thresholds
 
+import (
+	"sort"
+	"strconv"
+)
+
 // ReplacementRiskWeight defines how much a single SMART attribute can contribute
 // to the overall replacement risk score. The weight is a fraction of 100; the
 // scorer multiplies it by the attribute's normalized severity (0.0-1.0) to get
@@ -23,60 +28,79 @@ type ReplacementRiskWeight struct {
 	TrendMultiplier float64
 }
 
-// AtaReplacementRiskWeights defines attribute weights for ATA/SATA hard drives
-// and SSDs. Weights are informed by Backblaze failure correlation research
-// (https://www.backblaze.com/cloud-storage/resources/hard-drive-test-data).
+// ataCuratedReplacementRiskWeights defines the hand-tuned attribute weights for
+// ATA/SATA hard drives and SSDs. Weights are informed by Backblaze failure
+// correlation research
+// (https://www.backblaze.com/cloud-storage/resources/hard-drive-test-data),
+// whose five key SMART stats (5, 187, 188, 197, 198) all carry weight here.
 //
 // Attributes with direct failure correlation receive higher weights. Attributes
 // that are noisy or vendor-specific (Raw Read Error Rate, Seek Error Rate)
 // receive lower weights and rely more on trend analysis.
-var AtaReplacementRiskWeights = []ReplacementRiskWeight{
+//
+// These weights sum to 100. AtaReplacementRiskWeights appends a residual weight
+// for every remaining critical attribute that carries observed thresholds, so
+// the ATA table's theoretical maximum exceeds 100; the scorer clamps the final
+// score, and the trend bonus it reports, to 100.
+var ataCuratedReplacementRiskWeights = []ReplacementRiskWeight{
 	{
 		AttributeID:     "5",
 		DisplayName:     "Reallocated Sector Count",
-		Weight:          25,
+		Weight:          22,
 		TrendMultiplier: 1.5,
 	},
 	{
 		AttributeID:     "197",
 		DisplayName:     "Current Pending Sector Count",
-		Weight:          20,
+		Weight:          18,
 		TrendMultiplier: 1.5,
 	},
 	{
 		AttributeID:     "198",
 		DisplayName:     "Offline Uncorrectable",
-		Weight:          20,
+		Weight:          15,
 		TrendMultiplier: 1.2,
+	},
+	{
+		AttributeID:     "187",
+		DisplayName:     "Reported Uncorrectable Errors",
+		Weight:          15,
+		TrendMultiplier: 1.5,
+	},
+	{
+		AttributeID:     "188",
+		DisplayName:     "Command Timeout",
+		Weight:          7,
+		TrendMultiplier: 1.0,
 	},
 	{
 		AttributeID:     "196",
 		DisplayName:     "Reallocated Event Count",
-		Weight:          10,
+		Weight:          7,
 		TrendMultiplier: 1.0,
 	},
 	{
 		AttributeID:     "10",
 		DisplayName:     "Spin Retry Count",
-		Weight:          10,
+		Weight:          5,
 		TrendMultiplier: 1.0,
 	},
 	{
 		AttributeID:     "199",
 		DisplayName:     "UDMA CRC Error Count",
-		Weight:          5,
+		Weight:          4,
 		TrendMultiplier: 0.5,
 	},
 	{
 		AttributeID:     "1",
 		DisplayName:     "Raw Read Error Rate",
-		Weight:          5,
+		Weight:          3,
 		TrendMultiplier: 0.8,
 	},
 	{
 		AttributeID:     "7",
 		DisplayName:     "Seek Error Rate",
-		Weight:          3,
+		Weight:          2,
 		TrendMultiplier: 0.8,
 	},
 	{
@@ -85,6 +109,75 @@ var AtaReplacementRiskWeights = []ReplacementRiskWeight{
 		Weight:          2,
 		TrendMultiplier: 0.3,
 	},
+}
+
+// AtaCriticalResidualWeight is the weight given to an ATA attribute that metadata
+// marks critical but the curated table does not cover. It is small on purpose:
+// enough that a warning or failure on the attribute reaches the score and the
+// contributions table, not enough to rival a Backblaze-correlated signal.
+const AtaCriticalResidualWeight = 3
+
+// AtaObservedThresholdResidualWeight is the weight given to a non-critical ATA
+// attribute that carries observed thresholds and the curated table does not
+// cover. Scrutiny can raise WARN or FAILED on such an attribute, so it has to be
+// able to reach the score; it is weighted below a critical residual because the
+// non-critical cutoffs are looser, warning where a critical attribute would
+// already have failed.
+const AtaObservedThresholdResidualWeight = 2
+
+// AtaCriticalResidualTrendMultiplier is the trend multiplier for residual critical
+// attributes. They are scored from status, so their trend score comes from a
+// status regression over the window rather than from a counter delta.
+const AtaCriticalResidualTrendMultiplier = 1.0
+
+// AtaReplacementRiskWeights is the curated ATA table plus a residual weight for
+// every attribute the curated table omits that Scrutiny can act on: one marked
+// critical, or one carrying observed thresholds, which is the input that lets
+// ValidateThreshold raise WARN or FAILED. Deriving the remainder from metadata
+// means an attribute can never again show a status on the detail page while
+// being absent from the replacement-risk score and its contributions table.
+//
+// Residuals used to require observed thresholds. That gate existed because
+// ValidateThreshold warned on any critical attribute whose value matched no
+// bucket, which made a bucketless critical attribute WARN on every drive that
+// reported it; weighting that warning would have charged healthy drives for a
+// metadata gap. ValidateThreshold now returns without setting a status when no
+// bucket applies, so the false warning is gone and the gate only suppressed
+// real signals: a manufacturer FAILING_NOW on attribute 184 or 201 scored
+// nothing.
+var AtaReplacementRiskWeights = ataReplacementRiskWeights()
+
+func ataReplacementRiskWeights() []ReplacementRiskWeight {
+	curated := make(map[string]struct{}, len(ataCuratedReplacementRiskWeights))
+	for _, weight := range ataCuratedReplacementRiskWeights {
+		curated[weight.AttributeID] = struct{}{}
+	}
+
+	// Ranged by key: AtaAttributeMetadata is large enough that copying one per
+	// iteration trips gocritic's rangeValCopy.
+	residualIDs := []int{}
+	for attributeID := range AtaMetadata {
+		if !AtaMetadata[attributeID].Critical && len(AtaMetadata[attributeID].ObservedThresholds) == 0 {
+			continue
+		}
+		if _, ok := curated[strconv.Itoa(attributeID)]; ok {
+			continue
+		}
+		residualIDs = append(residualIDs, attributeID)
+	}
+	sort.Ints(residualIDs)
+
+	weights := make([]ReplacementRiskWeight, 0, len(ataCuratedReplacementRiskWeights)+len(residualIDs))
+	weights = append(weights, ataCuratedReplacementRiskWeights...)
+	for _, attributeID := range residualIDs {
+		weights = append(weights, ReplacementRiskWeight{
+			AttributeID:     strconv.Itoa(attributeID),
+			DisplayName:     AtaMetadata[attributeID].DisplayName,
+			Weight:          residualWeightFor(AtaMetadata[attributeID].Critical),
+			TrendMultiplier: AtaCriticalResidualTrendMultiplier,
+		})
+	}
+	return weights
 }
 
 // NvmeReplacementRiskWeights defines attribute weights for NVMe drives.
@@ -171,4 +264,28 @@ func ReplacementRiskWeightsForProtocol(protocol string) []ReplacementRiskWeight 
 	default:
 		return nil
 	}
+}
+
+// residualWeightFor returns the residual weight for one uncurated attribute.
+// It takes the critical flag rather than the metadata struct, which gocritic
+// rejects as a heavy parameter and a map value cannot be addressed to pass by
+// pointer.
+func residualWeightFor(critical bool) float64 {
+	if critical {
+		return AtaCriticalResidualWeight
+	}
+	return AtaObservedThresholdResidualWeight
+}
+
+// ReplacementRiskWeightFor returns the weight a protocol's table gives one
+// attribute. Callers that score a subset of attributes use it instead of
+// repeating the numbers, which is how the dashboard summary scorer fell out of
+// step with the ATA table.
+func ReplacementRiskWeightFor(protocol string, attributeID string) (float64, bool) {
+	for _, weight := range ReplacementRiskWeightsForProtocol(protocol) {
+		if weight.AttributeID == attributeID {
+			return weight.Weight, true
+		}
+	}
+	return 0, false
 }

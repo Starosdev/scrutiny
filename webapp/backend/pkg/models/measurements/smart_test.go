@@ -416,8 +416,15 @@ func TestFromCollectorSmartInfo(t *testing.T) {
 	//check that power-on hours was correctly transformed
 	require.Equal(t, int64(1730), smartMdl.Attributes["9"].(*measurements.SmartAtaAttribute).TransformedValue)
 
-	//ensure that Scrutiny warning for a non critical attribute does not set device status to failed.
-	require.Equal(t, pkg.AttributeStatusWarningScrutiny, smartMdl.Attributes["3"].GetStatus())
+	//this healthy drive must carry no Scrutiny verdict on its usage counters. Attributes 3, 4 and
+	//192 each held observed-threshold buckets that flagged it: 3 on a vendor-scaled normalized
+	//value (removed in #1088), 4 at 9 cycles and 192 at 329 retracts on population rates that
+	//track fleet age (removed in #1093). None of the three scores an observed failure rate now.
+	for _, attributeID := range []string{"3", "4", "192"} {
+		attr := smartMdl.Attributes[attributeID].(*measurements.SmartAtaAttribute)
+		require.Equal(t, pkg.AttributeStatusPassed, attr.GetStatus(), "attribute %s", attributeID)
+		require.Zero(t, attr.FailureRate, "attribute %s", attributeID)
+	}
 
 }
 
