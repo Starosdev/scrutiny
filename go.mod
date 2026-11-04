@@ -17,7 +17,7 @@ require (
 	github.com/jaypipes/ghw v0.26.0
 	github.com/kvz/logstreamer v0.0.0-20201023134116-02d20f4338f5
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/nicholas-fedor/shoutrrr v0.22.0
+	github.com/nicholas-fedor/shoutrrr v0.22.1
 	github.com/prometheus/client_golang v1.25.0
 	github.com/prometheus/client_model v0.6.3
 	github.com/robfig/cron/v3 v3.0.1
@@ -27,7 +27,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/urfave/cli/v2 v2.27.7
 	go.uber.org/automaxprocs v1.6.0
-	go.yaml.in/yaml/v3 v3.0.5
+	go.yaml.in/yaml/v3 v3.0.6
 	golang.org/x/sync v0.24.0
 	gorm.io/driver/postgres v1.6.3
 	gorm.io/gorm v1.31.2
