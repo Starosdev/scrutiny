@@ -73,6 +73,54 @@ func TestReplacementRiskWeightForMatchesTheTable(t *testing.T) {
 	require.False(t, ok)
 }
 
+func TestAtaReplacementRiskWeightsCoverEveryAttributeScrutinyCanActOn(t *testing.T) {
+	// Issue #1095: an attribute carrying observed thresholds can be marked WARN or
+	// FAILED by ValidateThreshold. One that carries no weight shows that status on
+	// the detail page and never appears in the replacement-risk table, which is the
+	// second half of the complaint in #1084.
+	weighted := make(map[string]float64, len(AtaReplacementRiskWeights))
+	for _, weight := range AtaReplacementRiskWeights {
+		weighted[weight.AttributeID] = weight.Weight
+	}
+
+	for attributeID := range AtaMetadata {
+		metadata := AtaMetadata[attributeID]
+		if !metadata.Critical && len(metadata.ObservedThresholds) == 0 {
+			continue
+		}
+		weight, ok := weighted[strconv.Itoa(attributeID)]
+		require.True(t, ok, "attribute %d (%s) can take a status but carries no weight", attributeID, metadata.DisplayName)
+		require.Greater(t, weight, 0.0)
+	}
+}
+
+func TestAtaResidualWeightsRankCriticalAboveNonCritical(t *testing.T) {
+	// Non-critical cutoffs warn where a critical attribute would already have
+	// failed, so a non-critical residual carries less weight.
+	require.Greater(t, float64(AtaCriticalResidualWeight), float64(AtaObservedThresholdResidualWeight))
+
+	curated := make(map[string]struct{}, len(ataCuratedReplacementRiskWeights))
+	for _, weight := range ataCuratedReplacementRiskWeights {
+		curated[weight.AttributeID] = struct{}{}
+	}
+
+	checked := 0
+	for _, weight := range AtaReplacementRiskWeights {
+		if _, isCurated := curated[weight.AttributeID]; isCurated {
+			continue
+		}
+		attributeID, err := strconv.Atoi(weight.AttributeID)
+		require.NoError(t, err)
+		if AtaMetadata[attributeID].Critical {
+			require.Equal(t, float64(AtaCriticalResidualWeight), weight.Weight, "attribute %d", attributeID)
+		} else {
+			require.Equal(t, float64(AtaObservedThresholdResidualWeight), weight.Weight, "attribute %d", attributeID)
+		}
+		checked++
+	}
+	require.NotZero(t, checked, "no residual weights found; this test would pass vacuously")
+}
+
 func TestAtaReplacementRiskWeightsAreUniqueAndOrdered(t *testing.T) {
 	seen := make(map[string]struct{}, len(AtaReplacementRiskWeights))
 	for _, weight := range AtaReplacementRiskWeights {
@@ -90,6 +138,8 @@ func TestAtaReplacementRiskWeightsAreUniqueAndOrdered(t *testing.T) {
 		require.NoError(t, err)
 		require.Greater(t, attributeID, previous)
 		previous = attributeID
-		require.Equal(t, float64(AtaCriticalResidualWeight), weight.Weight)
+		require.Contains(t,
+			[]float64{float64(AtaCriticalResidualWeight), float64(AtaObservedThresholdResidualWeight)},
+			weight.Weight)
 	}
 }
