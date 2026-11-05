@@ -1209,6 +1209,19 @@ func migrateTemperatureNotificationSettings(tx *gorm.DB) error {
 	return nil
 }
 
+// migrateFilesystemUsageThresholdSetting seeds the Btrfs and ZFS usage alert
+// threshold row. SaveSettings only updates rows that exist, so without this
+// row a saved threshold lives only in memory until the next restart.
+func migrateFilesystemUsageThresholdSetting(tx *gorm.DB) error {
+	entry := models.SettingEntry{
+		SettingKeyName:        "metrics.filesystem_usage_threshold_percent",
+		SettingKeyDescription: "Notify when Btrfs or ZFS usage reaches this percent (0 = disabled)",
+		SettingDataType:       "numeric",
+		SettingValueNumeric:   0,
+	}
+	return tx.Where("setting_key_name = ?", entry.SettingKeyName).FirstOrCreate(&entry).Error
+}
+
 // schemaMigrations is the full relational migration history, in order.
 func (sr *scrutinyRepository) schemaMigrations(ctx context.Context) []*gormigrate.Migration {
 	return []*gormigrate.Migration{
@@ -1691,12 +1704,13 @@ func (sr *scrutinyRepository) schemaMigrations(ctx context.Context) []*gormigrat
 				Where("device_id <> ''").
 				Update("device_identity", gorm.Expr("device_id")).Error
 		}},
-		{ID: "m20260924000000", Migrate: m20260924000000.Migrate},  // add scheduler_leases table (#880)
-		{ID: "m20260925000000", Migrate: m20260925000000.Migrate},  // add notification_outbox table (#880)
-		{ID: "m20260926000000", Migrate: migrateSettingsUniqueKey}, // one settings row per key, unique key (#889)
-		{ID: "m20260930000000", Migrate: m20260930000000.Migrate},  // add btrfs statfs used/available columns
-		{ID: "m20261002000000", Migrate: m20261002000000.Migrate},  // drop btrfs free_statfs column (#929)
-		{ID: "m20261027000000", Migrate: m20261027000000.Migrate},  // add filesystem_devices table (#470)
+		{ID: "m20260924000000", Migrate: m20260924000000.Migrate},                // add scheduler_leases table (#880)
+		{ID: "m20260925000000", Migrate: m20260925000000.Migrate},                // add notification_outbox table (#880)
+		{ID: "m20260926000000", Migrate: migrateSettingsUniqueKey},               // one settings row per key, unique key (#889)
+		{ID: "m20260930000000", Migrate: m20260930000000.Migrate},                // add btrfs statfs used/available columns
+		{ID: "m20261002000000", Migrate: m20261002000000.Migrate},                // drop btrfs free_statfs column (#929)
+		{ID: "m20261027000000", Migrate: m20261027000000.Migrate},                // add filesystem_devices table (#470)
+		{ID: "m20261105000000", Migrate: migrateFilesystemUsageThresholdSetting}, // seed the Btrfs/ZFS usage alert threshold (#1132)
 	}
 }
 

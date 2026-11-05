@@ -46,7 +46,7 @@ func TestShouldNotify_MustSkipPassingDevices(t *testing.T) {
 	defer mockCtrl.Finish()
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
 	//assert
-	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil))
+	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 
 func TestShouldNotify_MustSkipMutedDevices(t *testing.T) {
@@ -64,7 +64,7 @@ func TestShouldNotify_MustSkipMutedDevices(t *testing.T) {
 	defer mockCtrl.Finish()
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
 	//assert
-	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil))
+	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 
 func TestShouldNotify_MetricsStatusThresholdBoth_FailingSmartDevice(t *testing.T) {
@@ -80,7 +80,7 @@ func TestShouldNotify_MetricsStatusThresholdBoth_FailingSmartDevice(t *testing.T
 	defer mockCtrl.Finish()
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
 	//assert
-	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil))
+	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 
 func TestShouldNotify_MetricsStatusThresholdSmart_FailingSmartDevice(t *testing.T) {
@@ -96,7 +96,7 @@ func TestShouldNotify_MetricsStatusThresholdSmart_FailingSmartDevice(t *testing.
 	defer mockCtrl.Finish()
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
 	//assert
-	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil))
+	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 
 func TestShouldNotify_MetricsStatusThresholdScrutiny_FailingSmartDevice(t *testing.T) {
@@ -112,7 +112,7 @@ func TestShouldNotify_MetricsStatusThresholdScrutiny_FailingSmartDevice(t *testi
 	defer mockCtrl.Finish()
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
 	//assert
-	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil))
+	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 
 func TestShouldNotify_MetricsStatusFilterAttributesCritical_WithCriticalAttrs(t *testing.T) {
@@ -133,7 +133,7 @@ func TestShouldNotify_MetricsStatusFilterAttributesCritical_WithCriticalAttrs(t 
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
 
 	//assert
-	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil))
+	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 
 func TestShouldNotify_MetricsStatusFilterAttributesCritical_WithMultipleCriticalAttrs(t *testing.T) {
@@ -157,7 +157,7 @@ func TestShouldNotify_MetricsStatusFilterAttributesCritical_WithMultipleCritical
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
 
 	//assert
-	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil))
+	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 
 func TestShouldNotify_MetricsStatusFilterAttributesCritical_WithNoCriticalAttrs(t *testing.T) {
@@ -178,7 +178,7 @@ func TestShouldNotify_MetricsStatusFilterAttributesCritical_WithNoCriticalAttrs(
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
 
 	//assert
-	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil))
+	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 
 func TestShouldNotify_MetricsStatusFilterAttributesCritical_WithNoFailingCriticalAttrs(t *testing.T) {
@@ -199,7 +199,7 @@ func TestShouldNotify_MetricsStatusFilterAttributesCritical_WithNoFailingCritica
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
 
 	//assert
-	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil))
+	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 
 func TestShouldNotify_MetricsStatusFilterAttributesCritical_MetricsStatusThresholdSmart_WithCriticalAttrsFailingScrutiny(t *testing.T) {
@@ -223,7 +223,7 @@ func TestShouldNotify_MetricsStatusFilterAttributesCritical_MetricsStatusThresho
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
 
 	//assert
-	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil))
+	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 func TestShouldNotify_NoRepeat_DatabaseFailure(t *testing.T) {
 	t.Parallel()
@@ -244,7 +244,7 @@ func TestShouldNotify_NoRepeat_DatabaseFailure(t *testing.T) {
 	fakeDatabase.EXPECT().GetPreviousSmartSubmission(&gin.Context{}, "").Return([]measurements.Smart{}, errors.New("")).Times(1)
 
 	//assert
-	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, false, "", &gin.Context{}, fakeDatabase, nil))
+	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, false, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 
 func TestShouldNotify_NoRepeat_NoDatabaseData(t *testing.T) {
@@ -266,7 +266,7 @@ func TestShouldNotify_NoRepeat_NoDatabaseData(t *testing.T) {
 	fakeDatabase.EXPECT().GetPreviousSmartSubmission(&gin.Context{}, "").Return([]measurements.Smart{}, nil).Times(1)
 
 	//assert
-	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, false, "", &gin.Context{}, fakeDatabase, nil))
+	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, false, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 func TestShouldNotify_NoRepeat(t *testing.T) {
 	t.Parallel()
@@ -288,7 +288,7 @@ func TestShouldNotify_NoRepeat(t *testing.T) {
 	fakeDatabase.EXPECT().GetPreviousSmartSubmission(&gin.Context{}, "").Return([]measurements.Smart{smartAttrs}, nil).Times(1)
 
 	//assert
-	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, false, "", &gin.Context{}, fakeDatabase, nil))
+	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, false, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 
 // shouldNotifyNoRepeat runs ShouldNotify with repeat notifications off against a previous
@@ -302,7 +302,7 @@ func shouldNotifyNoRepeat(t *testing.T, notifyLevel pkg.MetricsNotifyLevel, prev
 	defer mockCtrl.Finish()
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
 	fakeDatabase.EXPECT().GetPreviousSmartSubmission(&gin.Context{}, "").Return([]measurements.Smart{previousSmart}, nil).Times(1)
-	return ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, notifyLevel, pkg.MetricsStatusThresholdBoth, pkg.MetricsStatusFilterAttributesAll, false, "", &gin.Context{}, fakeDatabase, nil)
+	return ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, notifyLevel, pkg.MetricsStatusThresholdBoth, pkg.MetricsStatusFilterAttributesAll, false, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed)
 }
 
 // ATA attributes without a Transform function have TransformedValue 0 on every submission, so
@@ -471,7 +471,7 @@ func TestShouldNotify_NoRepeat_AttributeAbsentFromPreviousSubmission(t *testing.
 	fakeDatabase.EXPECT().GetPreviousSmartSubmission(&gin.Context{}, "").Return([]measurements.Smart{previousSmartAttrs}, nil).Times(1)
 
 	//assert
-	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, false, "", &gin.Context{}, fakeDatabase, nil))
+	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, false, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 
 func TestShouldNotify_WarnLevel_PassedDeviceWithWarnAttr(t *testing.T) {
@@ -491,7 +491,7 @@ func TestShouldNotify_WarnLevel_PassedDeviceWithWarnAttr(t *testing.T) {
 	defer mockCtrl.Finish()
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
 	//assert: warn level should trigger on a device with only warning attributes
-	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelWarn, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil))
+	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelWarn, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 
 func TestShouldNotify_WarnLevel_PassedDeviceWithFailLevelSetting(t *testing.T) {
@@ -511,7 +511,64 @@ func TestShouldNotify_WarnLevel_PassedDeviceWithFailLevelSetting(t *testing.T) {
 	defer mockCtrl.Finish()
 	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
 	//assert: fail level should not trigger on a device with only warning attributes
-	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil))
+	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, true, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
+}
+
+// shouldNotifyOverallHealthFailed runs ShouldNotify for a submission whose smartctl overall health
+// check failed while no attribute is flagged (#1108): for example a vendor attribute without Scrutiny
+// thresholds, or one an override ignores.
+func shouldNotifyOverallHealthFailed(t *testing.T, notifyLevel pkg.MetricsNotifyLevel, statusThreshold pkg.MetricsStatusThreshold, filter pkg.MetricsStatusFilterAttributes, repeat bool, previousDeviceStatus pkg.DeviceStatus) bool {
+	t.Helper()
+	device := models.Device{DeviceStatus: pkg.DeviceStatusFailedSmart}
+	smartAttrs := measurements.Smart{
+		Status: pkg.DeviceStatusFailedSmart,
+		Attributes: map[string]measurements.SmartAttribute{
+			"22": &measurements.SmartAtaAttribute{AttributeId: 22, Status: pkg.AttributeStatusPassed, Value: 20, Threshold: 25},
+		},
+	}
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
+	fakeDatabase.EXPECT().GetPreviousSmartSubmission(gomock.Any(), gomock.Any()).Return([]measurements.Smart{smartAttrs}, nil).AnyTimes()
+	return ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, notifyLevel, statusThreshold, filter, repeat, "", &gin.Context{}, fakeDatabase, nil, previousDeviceStatus)
+}
+
+func TestShouldNotify_OverallHealthFailed_QualifiesAtEveryLevelAndFilter(t *testing.T) {
+	t.Parallel()
+	for _, level := range []pkg.MetricsNotifyLevel{pkg.MetricsNotifyLevelWarn, pkg.MetricsNotifyLevelFail} {
+		for _, filter := range []pkg.MetricsStatusFilterAttributes{pkg.MetricsStatusFilterAttributesAll, pkg.MetricsStatusFilterAttributesCritical} {
+			for _, threshold := range []pkg.MetricsStatusThreshold{pkg.MetricsStatusThresholdBoth, pkg.MetricsStatusThresholdSmart} {
+				require.True(t, shouldNotifyOverallHealthFailed(t, level, threshold, filter, true, pkg.DeviceStatusFailedSmart),
+					"level=%d filter=%d threshold=%d", level, filter, threshold)
+			}
+		}
+	}
+}
+
+func TestShouldNotify_OverallHealthFailed_ScrutinyThresholdIgnoresIt(t *testing.T) {
+	t.Parallel()
+	require.False(t, shouldNotifyOverallHealthFailed(t, pkg.MetricsNotifyLevelWarn, pkg.MetricsStatusThresholdScrutiny, pkg.MetricsStatusFilterAttributesAll, true, pkg.DeviceStatusPassed))
+}
+
+func TestShouldNotify_OverallHealthFailed_NoRepeatNotifiesOnlyOnTransition(t *testing.T) {
+	t.Parallel()
+	for _, level := range []pkg.MetricsNotifyLevel{pkg.MetricsNotifyLevelWarn, pkg.MetricsNotifyLevelFail} {
+		// newly failing: the stored status before this submission did not carry FailedSmart
+		require.True(t, shouldNotifyOverallHealthFailed(t, level, pkg.MetricsStatusThresholdBoth, pkg.MetricsStatusFilterAttributesAll, false, pkg.DeviceStatusPassed))
+		require.True(t, shouldNotifyOverallHealthFailed(t, level, pkg.MetricsStatusThresholdBoth, pkg.MetricsStatusFilterAttributesAll, false, pkg.DeviceStatusFailedScrutiny))
+		// already failing, nothing else changed
+		require.False(t, shouldNotifyOverallHealthFailed(t, level, pkg.MetricsStatusThresholdBoth, pkg.MetricsStatusFilterAttributesAll, false, pkg.DeviceStatusFailedSmart))
+	}
+}
+
+func TestShouldNotify_OverallHealthFailed_MutedDeviceStaysSilent(t *testing.T) {
+	t.Parallel()
+	device := models.Device{DeviceStatus: pkg.DeviceStatusFailedSmart, Muted: true}
+	smartAttrs := measurements.Smart{Status: pkg.DeviceStatusFailedSmart, Attributes: map[string]measurements.SmartAttribute{}}
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
+	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelWarn, pkg.MetricsStatusThresholdBoth, pkg.MetricsStatusFilterAttributesAll, true, "", &gin.Context{}, fakeDatabase, nil, pkg.DeviceStatusPassed))
 }
 
 func TestNewPayload(t *testing.T) {

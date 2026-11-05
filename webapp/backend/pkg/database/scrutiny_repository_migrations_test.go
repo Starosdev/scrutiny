@@ -773,6 +773,33 @@ func TestTemperatureSettingsPersistAcrossConfigReload(t *testing.T) {
 	}
 }
 
+// Without the seeded row SaveSettings has nothing to update, so a threshold
+// set in the UI silently reverts to disabled on the next restart.
+func TestFilesystemUsageThresholdPersistsAcrossConfigReload(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+	require.NoError(t, repo.Migrate(context.Background()))
+	var err error
+	repo.appConfig, err = config.Create()
+	require.NoError(t, err)
+	settings, err := repo.LoadSettings(context.Background())
+	require.NoError(t, err)
+	require.Zero(t, settings.Metrics.FilesystemUsageThresholdPercent)
+
+	settings.Metrics.FilesystemUsageThresholdPercent = 80
+	require.NoError(t, repo.SaveSettings(context.Background(), *settings))
+	repo.appConfig, err = config.Create()
+	require.NoError(t, err)
+	settings, err = repo.LoadSettings(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, 80, settings.Metrics.FilesystemUsageThresholdPercent)
+
+	// Re-running the migration keeps the saved value.
+	require.NoError(t, migrateFilesystemUsageThresholdSetting(repo.gormClient))
+	var saved models.SettingEntry
+	require.NoError(t, repo.gormClient.Where("setting_key_name = ?", "metrics.filesystem_usage_threshold_percent").First(&saved).Error)
+	require.Equal(t, 80, saved.SettingValueNumeric)
+}
+
 func TestTemperatureStorageMigrationPreservesValues(t *testing.T) {
 	for _, value := range []bool{false, true} {
 		t.Run(fmt.Sprint(value), func(t *testing.T) {

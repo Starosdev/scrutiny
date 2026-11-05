@@ -32,12 +32,13 @@ func TestTriggerCollectorsEnablement(t *testing.T) {
 		t.Skip("POSIX executable fixture")
 	}
 	for _, tc := range []struct {
-		name     string
-		only     string
-		schedule string
-		startup  string
-		enabled  bool
-		fail     bool
+		name       string
+		only       string
+		schedule   string
+		startup    string
+		enabledEnv string
+		enabled    bool
+		fail       bool
 	}{
 		{name: "optional disabled"},
 		{name: "quoted-empty double", schedule: `""`},
@@ -54,11 +55,16 @@ func TestTriggerCollectorsEnablement(t *testing.T) {
 		{name: "startup disabled", startup: "false"},
 		{name: "schedule survives startup false", schedule: "*/15 * * * *", startup: "false", enabled: true},
 		{name: "enabled failure remains visible", startup: "true", enabled: true, fail: true},
+		// COLLECTOR_*_ENABLED belongs to the standalone omnibus manager only; the all-in-one image
+		// ignores it, so manual runs must too (#1116).
+		{name: "explicit false ignored with schedule", schedule: "*/15 * * * *", enabledEnv: "false", enabled: true},
+		{name: "explicit true ignored without schedule", enabledEnv: "true"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, prefix := range []string{"COLLECTOR_ZFS", "COLLECTOR_MDADM"} {
 				t.Setenv(prefix+"_CRON_SCHEDULE", tc.schedule)
 				t.Setenv(prefix+"_RUN_STARTUP", tc.startup)
+				t.Setenv(prefix+"_ENABLED", tc.enabledEnv)
 				if tc.only != "" && prefix != "COLLECTOR_"+tc.only {
 					t.Setenv(prefix+"_CRON_SCHEDULE", "")
 					t.Setenv(prefix+"_RUN_STARTUP", "")
@@ -67,6 +73,7 @@ func TestTriggerCollectorsEnablement(t *testing.T) {
 			dir := t.TempDir()
 			t.Setenv("PATH", dir)
 			t.Setenv("COLLECTOR_CRON_SCHEDULE", "0 0 * * *")
+			t.Setenv("COLLECTOR_METRICS_ENABLED", tc.enabledEnv)
 			t.Setenv("COLLECTOR_API_ENDPOINT", "http://example.invalid")
 			t.Setenv("COLLECTOR_API_TOKEN", "test-token")
 			for _, name := range []string{"metrics", "zfs", "mdadm"} {
