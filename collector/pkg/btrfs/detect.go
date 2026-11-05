@@ -448,6 +448,11 @@ func finalizeScrubStatus(fs *Filesystem) {
 	if fs.ScrubTotalBytes == 0 {
 		fs.ScrubTotalBytes = fs.ScrubScrubbedBytes
 	}
+	// btrfs-progs prints "Bytes scrubbed" only while a scrub is running or interrupted. A
+	// finished scrub covered everything it reported as "Total to scrub".
+	if fs.ScrubState == ScrubStateFinished && fs.ScrubScrubbedBytes == 0 {
+		fs.ScrubScrubbedBytes = fs.ScrubTotalBytes
+	}
 	if fs.ScrubState == ScrubStateFinished && fs.ScrubStartedAt != nil && fs.ScrubDuration != "" {
 		if duration, err := parseClockDuration(fs.ScrubDuration); err == nil {
 			finished := fs.ScrubStartedAt.Add(duration)
@@ -614,13 +619,15 @@ func parseFreeEstimated(value string) (int64, int64) {
 	return mainValue, minValue
 }
 
+// parseBtrfsTime parses the timestamps btrfs-progs prints for scrubs. They carry no zone
+// because btrfs-progs formats them in the host's local time, so they are read in time.Local.
 func parseBtrfsTime(value string) (time.Time, error) {
 	layouts := []string{
 		time.ANSIC,
 		"Mon Jan _2 15:04:05 2006",
 	}
 	for _, layout := range layouts {
-		if ts, err := time.Parse(layout, value); err == nil {
+		if ts, err := time.ParseInLocation(layout, value, time.Local); err == nil {
 			return ts, nil
 		}
 	}

@@ -447,7 +447,8 @@ func parseZFSBytes(s string) int64 {
 	return int64(val * float64(mult))
 }
 
-// parseZFSDate parses a date string from ZFS output
+// parseZFSDate parses a date string from ZFS output. zpool status prints scrub and
+// resilver times in the host's local time with no zone, so they are read in time.Local.
 func (d *Detect) parseZFSDate(dateStr string) (time.Time, error) {
 	// ZFS uses format like: "Sun Jan  5 00:34:31 2026"
 	layouts := []string{
@@ -460,7 +461,7 @@ func (d *Detect) parseZFSDate(dateStr string) (time.Time, error) {
 	dateStr = strings.TrimSpace(dateStr)
 
 	for _, layout := range layouts {
-		if t, err := time.Parse(layout, dateStr); err == nil {
+		if t, err := time.ParseInLocation(layout, dateStr, time.Local); err == nil {
 			return t, nil
 		}
 	}
