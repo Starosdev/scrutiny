@@ -82,6 +82,8 @@ func TriggerCollectors(c *gin.Context) {
 
 // manualCollectorEnabled follows the all-in-one image's optional collector gate.
 // A false startup flag suppresses startup only; a schedule still enables manual runs.
+// COLLECTOR_*_ENABLED (spec.EnabledEnv) is deliberately not read: only the standalone
+// omnibus manager honors it, and that manager never runs alongside this handler (#1116).
 func manualCollectorEnabled(binaryName string) bool {
 	for _, spec := range omnibus.CollectorSpecs {
 		if spec.BinaryName != binaryName {
