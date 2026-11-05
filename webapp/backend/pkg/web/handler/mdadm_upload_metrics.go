@@ -88,7 +88,7 @@ func handleMDADMNotification(c *gin.Context, dbRepo database.DeviceRepo, logger 
 		appConfig := c.MustGet("CONFIG").(config.Interface)
 		notification := notify.NewMDADMNotify(logger, appConfig, array, *metrics)
 		notification.LoadDatabaseUrls(c.Request.Context(), dbRepo)
-		return sendMDADMNotification(c, logger, uuid, &notification, settings)
+		return sendNotificationWithGate(c, logger, uuid, &notification, settings)
 	}
 	if tracker == nil {
 		send()
@@ -97,13 +97,15 @@ func handleMDADMNotification(c *gin.Context, dbRepo database.DeviceRepo, logger 
 	tracker.Evaluate(uuid, metrics, settings != nil && settings.Metrics.RepeatNotifications, send)
 }
 
-// sendMDADMNotification reports whether the notification was delivered or queued.
-func sendMDADMNotification(c *gin.Context, logger *logrus.Entry, uuid string, notification *notify.Notify, settings *models.Settings) bool {
+// sendNotificationWithGate dispatches through the shared gate when one is
+// registered and settings loaded, and sends directly otherwise. It reports
+// whether the notification was delivered or queued.
+func sendNotificationWithGate(c *gin.Context, logger *logrus.Entry, identifier string, notification *notify.Notify, settings *models.Settings) bool {
 	if gate := notificationGate(c); gate != nil && settings != nil {
 		return gate.TrySend(notification, settings, false)
 	}
 	if err := notification.Send(); err != nil {
-		logger.Warnf("Failed to send MDADM notification for array %s: %v", uuid, err)
+		logger.Warnf("Failed to send %s notification for %s: %v", notification.Payload.DeviceType, identifier, err)
 		return false
 	}
 	return true

@@ -4,18 +4,23 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
+	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	mock_database "github.com/analogj/scrutiny/webapp/backend/pkg/database/mock"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/notify"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/web/handler"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func setupBtrfsRouter(t *testing.T, configure func(*mock_database.MockDeviceRepo)) *gin.Engine {
@@ -87,6 +92,7 @@ func TestUploadBtrfsMetricsPreservesDevices(t *testing.T) {
 
 	var captured models.BtrfsFilesystem
 	router := setupBtrfsRouter(t, func(repo *mock_database.MockDeviceRepo) {
+		repo.EXPECT().GetBtrfsFilesystemDetails(gomock.Any(), uuid).Return(models.BtrfsFilesystem{}, gorm.ErrRecordNotFound)
 		repo.EXPECT().RegisterBtrfsFilesystem(gomock.Any(), gomock.Any()).DoAndReturn(
 			func(_ context.Context, fs *models.BtrfsFilesystem) error {
 				captured = *fs
@@ -134,4 +140,112 @@ func TestDeleteBtrfsFilesystemRejectsInvalidUUID(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func postBtrfsMetrics(t *testing.T, router *gin.Engine, filesystem models.BtrfsFilesystem) int {
+	t.Helper()
+	body, _ := json.Marshal(filesystem)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPost, "/api/btrfs/filesystem/"+filesystem.UUID+"/metrics", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+	return w.Code
+}
+
+// A healthy upload with a healthy previous state never reaches the settings
+// load, so the notification path costs nothing on the common case.
+func TestUploadBtrfsMetricsSkipsNotificationWhenHealthy(t *testing.T) {
+	uuid := "11111111-2222-3333-4444-555555555555"
+	stored := models.BtrfsFilesystem{UUID: uuid, Status: models.BtrfsFilesystemStatusOnline}
+	router := setupBtrfsRouter(t, func(repo *mock_database.MockDeviceRepo) {
+		repo.EXPECT().GetBtrfsFilesystemDetails(gomock.Any(), uuid).Return(stored, nil)
+		repo.EXPECT().RegisterBtrfsFilesystem(gomock.Any(), gomock.Any()).Return(nil)
+		repo.EXPECT().SaveBtrfsMetrics(gomock.Any(), gomock.Any()).Return(nil)
+		repo.EXPECT().LoadSettings(gomock.Any()).Times(0)
+	})
+	router.POST("/api/btrfs/filesystem/:uuid/metrics", handler.UploadBtrfsMetrics)
+
+	require.Equal(t, http.StatusOK, postBtrfsMetrics(t, router, models.BtrfsFilesystem{UUID: uuid, Status: models.BtrfsFilesystemStatusOnline}))
+}
+
+// A devices query that fails returns the row with an error. Treating that as
+// "no previous state" would count every existing counter as new and send one
+// spurious notification, so the upload skips the check instead.
+func TestUploadBtrfsMetricsSkipsNotificationWhenPreviousStateIsUnreadable(t *testing.T) {
+	uuid := "11111111-2222-3333-4444-555555555555"
+	stored := models.BtrfsFilesystem{UUID: uuid, Status: models.BtrfsFilesystemStatusOnline}
+	router := setupBtrfsRouter(t, func(repo *mock_database.MockDeviceRepo) {
+		repo.EXPECT().GetBtrfsFilesystemDetails(gomock.Any(), uuid).Return(stored, errors.New("devices query failed"))
+		repo.EXPECT().RegisterBtrfsFilesystem(gomock.Any(), gomock.Any()).Return(nil)
+		repo.EXPECT().SaveBtrfsMetrics(gomock.Any(), gomock.Any()).Return(nil)
+		repo.EXPECT().LoadSettings(gomock.Any()).Times(0)
+	})
+	router.POST("/api/btrfs/filesystem/:uuid/metrics", handler.UploadBtrfsMetrics)
+
+	upload := models.BtrfsFilesystem{UUID: uuid, Status: models.BtrfsFilesystemStatusOnline,
+		Devices: []models.BtrfsDevice{{DeviceID: 1, WriteIOErrors: 4}}}
+	require.Equal(t, http.StatusOK, postBtrfsMetrics(t, router, upload))
+}
+
+// The mute route writes a flag the upload payload never carries. Without this
+// test the flag goes inert the moment the stored-row check moves.
+func TestUploadBtrfsMetricsSkipsNotificationForAMutedFilesystem(t *testing.T) {
+	uuid := "11111111-2222-3333-4444-555555555555"
+	stored := models.BtrfsFilesystem{UUID: uuid, Status: models.BtrfsFilesystemStatusOnline, Muted: true}
+	router := setupBtrfsRouter(t, func(repo *mock_database.MockDeviceRepo) {
+		repo.EXPECT().GetBtrfsFilesystemDetails(gomock.Any(), uuid).Return(stored, nil)
+		repo.EXPECT().RegisterBtrfsFilesystem(gomock.Any(), gomock.Any()).Return(nil)
+		repo.EXPECT().SaveBtrfsMetrics(gomock.Any(), gomock.Any()).Return(nil)
+		repo.EXPECT().LoadSettings(gomock.Any()).Times(0)
+	})
+	router.POST("/api/btrfs/filesystem/:uuid/metrics", handler.UploadBtrfsMetrics)
+
+	require.Equal(t, http.StatusOK, postBtrfsMetrics(t, router, models.BtrfsFilesystem{UUID: uuid, Status: models.BtrfsFilesystemStatusDegraded, DeviceMissing: 1}))
+}
+
+// A filesystem that becomes degraded sends one notification through the gate,
+// with the previous state read before the register call replaces it.
+func TestUploadBtrfsMetricsNotifiesWhenFilesystemBecomesDegraded(t *testing.T) {
+	uuid := "11111111-2222-3333-4444-555555555555"
+	var deliveries atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		deliveries.Add(1)
+		var payload notify.Payload
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+		require.Equal(t, notify.NotifyFailureTypeBtrfsDegraded, payload.FailureType)
+		require.Equal(t, uuid, payload.DeviceSerial)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	cfg, err := config.Create()
+	require.NoError(t, err)
+	cfg.Set("notify.urls", []string{server.URL})
+	settings := &models.Settings{}
+	settings.ApplyDefaults()
+
+	stored := models.BtrfsFilesystem{UUID: uuid, Status: models.BtrfsFilesystemStatusOnline}
+	var calls []string
+	router := setupBtrfsRouter(t, func(repo *mock_database.MockDeviceRepo) {
+		repo.EXPECT().GetBtrfsFilesystemDetails(gomock.Any(), uuid).DoAndReturn(func(context.Context, string) (models.BtrfsFilesystem, error) {
+			calls = append(calls, "details")
+			return stored, nil
+		})
+		repo.EXPECT().RegisterBtrfsFilesystem(gomock.Any(), gomock.Any()).DoAndReturn(func(context.Context, *models.BtrfsFilesystem) error {
+			calls = append(calls, "register")
+			return nil
+		})
+		repo.EXPECT().SaveBtrfsMetrics(gomock.Any(), gomock.Any()).Return(nil)
+		repo.EXPECT().LoadSettings(gomock.Any()).Return(settings, nil)
+		repo.EXPECT().GetNotifyUrls(gomock.Any()).Return(nil, nil)
+	})
+	router.Use(func(c *gin.Context) {
+		c.Set("CONFIG", cfg)
+		c.Set("NOTIFICATION_GATE", notify.NewNotificationGate(logrus.New()))
+		c.Next()
+	})
+	router.POST("/api/btrfs/filesystem/:uuid/metrics", handler.UploadBtrfsMetrics)
+
+	require.Equal(t, http.StatusOK, postBtrfsMetrics(t, router, models.BtrfsFilesystem{UUID: uuid, Status: models.BtrfsFilesystemStatusDegraded, DeviceMissing: 1}))
+	require.Equal(t, []string{"details", "register"}, calls)
+	require.Equal(t, int32(1), deliveries.Load())
 }

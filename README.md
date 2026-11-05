@@ -150,7 +150,7 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **SMART Self-Test History** - Persist and display recent ATA and SCSI/SAS SMART self-test log entries on device detail pages
 - **Scheduled Reports** [WIP] - Automated health reports on daily/weekly/monthly schedules with HTML emails and PDF export
 - **Missed Ping Digest** - Batch notification when multiple collectors go unreachable
-- **HTML Email Notifications** - Rich HTML formatting with plain-text fallback for SMTP notifications, including reports, test notifications, collector errors, missed ping digests, heartbeat, performance degradation, replacement risk, and MDADM degradation alerts
+- **HTML Email Notifications** - Rich HTML formatting with plain-text fallback for SMTP notifications, including reports, test notifications, collector errors, missed ping digests, heartbeat, performance degradation, replacement risk, MDADM degradation, and Btrfs filesystem alerts
 - **Workload Insights** - Daily read/write rates, R/W ratio, I/O intensity classification, SSD endurance tracking, and activity spike detection
 - **SMART Host Management** - Global dashboard host search, host-count pagination, and bulk archive, unarchive, or confirmed permanent purge with shared-WWN protection ([operator guide](docs/HOST_MANAGEMENT.md))
 - **Consumer Drive Profiles** - Apply vetted ATA HDD and SSD profiles based on Backblaze-informed thresholds, with opt-out controls and replacement-risk transparency
