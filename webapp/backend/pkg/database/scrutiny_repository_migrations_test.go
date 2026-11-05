@@ -129,7 +129,9 @@ func TestMigrateKeepsDevicesSharingAWWNAndSerial(t *testing.T) {
 			('0x5000039xxxxxxxx1', 'TOSHIBA AL13SEB300', '48L0A0ZXFVNE', 'scrutiny')
 	`).Error)
 
-	require.NoError(t, repo.Migrate(context.Background()))
+	// Run the migration chain directly: this fixture's recorded history predates the beta
+	// upgrade-from floor (m20260823000000), so Migrate would refuse it before the chain runs.
+	require.NoError(t, repo.migrateSQLite(context.Background(), false))
 
 	var deviceCount int64
 	require.NoError(t, repo.gormClient.Raw(`SELECT COUNT(*) FROM devices`).Scan(&deviceCount).Error)
@@ -710,7 +712,7 @@ func TestMigrateCreatesDeviceSelfTestsTable(t *testing.T) {
 func TestMigrateCreatesFilesystemDevicesTable(t *testing.T) {
 	repo := createMigrationTestRepository(t)
 
-	require.NoError(t, repo.Migrate(context.Background()))
+	require.NoError(t, repo.migrateSQLite(context.Background(), false))
 	require.True(t, repo.gormClient.Migrator().HasTable(&models.FilesystemDevice{}))
 }
 
