@@ -73,6 +73,7 @@ func TestZFSFailureTypes(t *testing.T) {
 			return pool
 		}(), want: []string{NotifyFailureTypeZFSPoolDegraded, NotifyFailureTypeZFSDeviceErrors}},
 		{name: "usage crosses threshold", previous: withUsage(80), current: withUsage(90), threshold: 90, want: []string{NotifyFailureTypeZFSUsageHigh}},
+		{name: "usage at threshold", previous: withUsage(80), current: withUsage(90), threshold: 90, want: []string{NotifyFailureTypeZFSUsageHigh}},
 		{name: "usage stays above without repeat", previous: withUsage(91), current: withUsage(92), threshold: 90},
 		{name: "usage stays above with repeat", previous: withUsage(91), current: withUsage(92), threshold: 90, repeat: true, want: []string{NotifyFailureTypeZFSUsageHigh}},
 		{name: "usage above on first upload", current: withUsage(95), threshold: 90, want: []string{NotifyFailureTypeZFSUsageHigh}},
