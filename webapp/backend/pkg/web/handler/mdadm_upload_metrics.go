@@ -94,7 +94,7 @@ func handleMDADMNotification(c *gin.Context, dbRepo database.DeviceRepo, logger 
 		send()
 		return
 	}
-	tracker.Evaluate(uuid, *metrics, settings != nil && settings.Metrics.RepeatNotifications, send)
+	tracker.Evaluate(uuid, metrics, settings != nil && settings.Metrics.RepeatNotifications, send)
 }
 
 // sendMDADMNotification reports whether the notification was delivered or queued.

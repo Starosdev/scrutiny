@@ -135,7 +135,7 @@ func NewMDADMTracker() *MDADMTracker {
 // it yet, or when it lost an active member or gained a failed one since the last announcement.
 // send reports whether the notification was delivered or queued. Only then is it recorded, so a
 // failed delivery is retried on the next collection instead of being lost.
-func (t *MDADMTracker) Evaluate(uuid string, metrics colmodels.MDADMMetrics, repeat bool, send func() bool) {
+func (t *MDADMTracker) Evaluate(uuid string, metrics *colmodels.MDADMMetrics, repeat bool, send func() bool) {
 	current := mdadmDegradation{active: metrics.ActiveDevices, failed: metrics.FailedDevices}
 
 	t.mu.Lock()

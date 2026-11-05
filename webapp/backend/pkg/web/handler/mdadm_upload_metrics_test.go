@@ -38,7 +38,7 @@ func postMdadmMetrics(t *testing.T, repo *mock_database.MockDeviceRepo, gate *no
 
 // seedAnnounced records the array as already announced in this degraded shape.
 func seedAnnounced(gate *notify.NotificationGate, metrics collector.MDADMMetrics) {
-	gate.MDADM().Evaluate(mdadmUploadTestUUID, metrics, false, func() bool { return true })
+	gate.MDADM().Evaluate(mdadmUploadTestUUID, &metrics, false, func() bool { return true })
 }
 
 // A muted array sends no notification. The mute route writes the flag and this
@@ -96,7 +96,7 @@ func TestUploadMdadmMetricsForgetsTheAnnouncementOnceHealthy(t *testing.T) {
 	postMdadmMetrics(t, repo, gate, `{"state":"clean","failed_devices":0,"active_devices":2}`)
 
 	attempted := false
-	gate.MDADM().Evaluate(mdadmUploadTestUUID, degradedMetrics, false, func() bool { attempted = true; return true })
+	gate.MDADM().Evaluate(mdadmUploadTestUUID, &degradedMetrics, false, func() bool { attempted = true; return true })
 	require.True(t, attempted)
 }
 

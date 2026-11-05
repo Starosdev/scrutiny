@@ -16,7 +16,7 @@ func degraded(active, failed int) colmodels.MDADMMetrics {
 // evaluate runs one collection and reports whether a send was attempted.
 func evaluate(tracker *MDADMTracker, metrics colmodels.MDADMMetrics, repeat, delivered bool) bool {
 	attempted := false
-	tracker.Evaluate(mdadmTestUUID, metrics, repeat, func() bool {
+	tracker.Evaluate(mdadmTestUUID, &metrics, repeat, func() bool {
 		attempted = true
 		return delivered
 	})
