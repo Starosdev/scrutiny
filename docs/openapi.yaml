@@ -790,6 +790,10 @@ paths:
         - $ref: "#/components/parameters/DeviceId"
         - name: trend_window
           in: query
+          description: >-
+            Window for rate-of-change analysis. History rows are daily aggregates timestamped
+            at the end of their UTC day, so the window boundary resolves to a day: a sample
+            taken shortly before the cutoff is included when its day ends after it.
           schema:
             type: string
             enum: [7d, 30d, 90d]
@@ -1598,7 +1602,86 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MDADMDetailsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "404":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/mdadm/array/{uuid}/archive:
+    post:
+      tags: [MDADM]
+      summary: Archive an MDADM array
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/mdadm/array/{uuid}/unarchive:
+    post:
+      tags: [MDADM]
+      summary: Unarchive an MDADM array
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/mdadm/array/{uuid}/mute:
+    post:
+      tags: [MDADM]
+      summary: Mute notifications for an MDADM array
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/mdadm/array/{uuid}/unmute:
+    post:
+      tags: [MDADM]
+      summary: Unmute notifications for an MDADM array
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/mdadm/array/{uuid}/label:
+    post:
+      tags: [MDADM]
+      summary: Set a custom label for an MDADM array
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label:
+                  type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/mdadm/array/{uuid}:
+    delete:
+      tags: [MDADM]
+      summary: Delete an MDADM array and its metrics history
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
           $ref: "#/components/responses/ErrorResponse"
 components:
   securitySchemes:
@@ -2094,9 +2177,54 @@ components:
             current_percent:
               type: integer
               format: int64
+        scsi_background_scan:
+          description: Background Medium Scan status (log page 0x15). Absent on drives that do not support the page.
+          type: object
+          properties:
+            status:
+              type: object
+              properties:
+                string:
+                  type: string
+                scan_progress:
+                  type: string
+                value:
+                  type: integer
+                number_scans_performed:
+                  type: integer
+                number_medium_scans_performed:
+                  type: integer
+        scsi_start_stop_cycle_counter:
+          description: >-
+            Start-Stop Cycle Counter log page (0x0e). Absent on drives that do not support the
+            page. Each counter is also individually optional: smartctl emits a parameter only
+            when the drive reports it.
+          type: object
+          properties:
+            year_of_manufacture:
+              type: string
+            week_of_manufacture:
+              type: string
+            specified_cycle_count_over_device_lifetime:
+              type: integer
+              format: int64
+            accumulated_start_stop_cycles:
+              type: integer
+              format: int64
+            specified_load_unload_count_over_device_lifetime:
+              type: integer
+              format: int64
+            accumulated_load_unload_cycles:
+              type: integer
+              format: int64
         seagate_farm_log:
           $ref: "#/components/schemas/SeagateFarmLog"
       additionalProperties: true
+      description: >-
+        smartctl --xall --json output. The numbered SCSI keys smartctl emits at the top level
+        (scsi_self_test_N, and scsi_sas_port_N holding one phy_M object per PHY) are collected
+        by the backend's custom decoder and so are covered by additionalProperties rather than
+        being listed here.
     DeviceDetailsResponse:
       type: object
       properties:
@@ -2111,6 +2239,18 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/SmartMeasurement"
+            filesystems:
+              type: array
+              description: Mounted filesystems backed by this drive.
+              items:
+                $ref: "#/components/schemas/FilesystemCapacity"
+            filesystem_status:
+              description: Filesystem collector status for this drive's host. Absent when the collector has never reported for the host, which is why an empty filesystems array is not the same as a drive with no mounted filesystem.
+              allOf:
+                - $ref: "#/components/schemas/FilesystemHostStatus"
+            filesystem_collector_reporting:
+              type: boolean
+              description: True when the filesystem collector has reported for any host. With filesystem_status absent, this separates a deployment that never enabled the collector from one running it under a host id this drive's host does not share.
         metadata:
           type: object
           additionalProperties: true
@@ -2528,6 +2668,11 @@ components:
         used_percent:
           type: number
           format: double
+        backing_devices:
+          type: array
+          description: Kernel device names of the whole disks backing this filesystem. Absent when the collector could not attribute it, which does not mean the filesystem has no disk behind it.
+          items:
+            type: string
       required: [host_id, mount_point]
     FilesystemHostStatus:
       type: object
@@ -3004,6 +3149,10 @@ components:
           $ref: "#/components/schemas/ScsiErrorCounterDirection"
         write:
           $ref: "#/components/schemas/ScsiErrorCounterDirection"
+        verify:
+          description: Verify Error Counter log page (0x05). Absent on drives that do not support the page.
+          allOf:
+            - $ref: "#/components/schemas/ScsiErrorCounterDirection"
     ScsiErrorCounterDirection:
       type: object
       properties:
@@ -3348,6 +3497,11 @@ components:
             (daily by default). Omitted when monitoring is disabled, staleness could not be determined
             (last-seen query failed), or the device never reported. Last-seen data is cached for 30
             seconds.
+        filesystems:
+          type: array
+          description: Mounted filesystems backed by this drive.
+          items:
+            $ref: "#/components/schemas/FilesystemCapacity"
     SmartSummary:
       type: object
       properties:
@@ -3922,12 +4076,32 @@ components:
               enum: [7d, 30d, 90d]
             trend_bonus:
               type: number
+              description: >-
+                Points inside `score` that came from rate-of-change analysis, clamped so it
+                never exceeds the headroom left under the score ceiling of 100. On a drive
+                that hits the ceiling, the per-attribute `trend_score` values can sum past
+                this number: contributions report what each attribute contributed, and only
+                the totals carry the clamp.
             consumer_drive_profiles_enabled:
               type: boolean
               description: Reports whether ATA consumer-drive profile overrides were enabled when this score was computed.
             consumer_drive_profile_applied:
               type: boolean
               description: True when the device matched a vetted ATA consumer-drive profile and that profile was used instead of generic ATA rules.
+            consumer_drive_profile_observed_thresholds:
+              type: boolean
+              description: >-
+                True when the applied profile carries observed-threshold buckets, which can replace
+                the Backblaze-derived failure-rate buckets for the attributes the profile covers.
+                False when the profile overrides counter severities only, in which case failure
+                rates remain Backblaze-derived. The field carries no `omitempty`, so false is
+                emitted rather than dropped; this schema declares no `required` list, so a strict
+                generated client still types it optional. True does not promise that any specific
+                attribute used a profile bucket: an ATA SSD whose reported attribute name does not
+                match its metadata name skips observed-threshold scoring before the override
+                applies. Use `GET /api/device/{id}/drive-profile` for the per-attribute answer.
+                Attribution must use this field rather than `consumer_drive_profile_applied`, which
+                is true for any matched profile.
             consumer_drive_profile_family:
               type: string
               description: Matched ATA consumer-drive profile family when `consumer_drive_profile_applied` is true.
@@ -3939,7 +4113,7 @@ components:
               description: Sample size behind the applied profile. Omitted when generic ATA logic is used.
             consumer_drive_profile_match_method:
               type: string
-              enum: [model_family, model_name, model_name_normalized, model_pattern]
+              enum: [model_name, model_name_normalized, model_pattern, model_family]
               description: Lookup stage that matched the drive, strongest-first. Omitted when generic ATA logic is used.
             consumer_drive_profile_catalog_version:
               type: string
@@ -3960,8 +4134,20 @@ components:
                   value:
                     type: integer
                     format: int64
+                    description: >-
+                      Attribute value behind this contribution: the raw counter for
+                      counter-scored attributes, and the charted value (raw, normalized or
+                      transformed, per attribute metadata) for attributes scored from their
+                      status. Whether a higher value is better or worse depends on the
+                      attribute's `ideal` metadata, so a normalized attribute can report a
+                      high value and a zero score.
                   trend_score:
                     type: number
+                    description: >-
+                      Extra points from the attribute worsening between the newest snapshot
+                      and the oldest one still inside trend_window. Pre-clamp, like `score`
+                      on the same row: on a drive at the ceiling these sum past the
+                      response's `score` and `trend_bonus`.
     DriveProfileInspectionResponse:
       type: object
       properties:
@@ -3997,7 +4183,7 @@ components:
               description: True when the matched profile is actually used for SMART status evaluation and replacement-risk scoring.
             match_method:
               type: string
-              enum: [model_family, model_name, model_name_normalized, model_pattern]
+              enum: [model_name, model_name_normalized, model_pattern, model_family]
               description: Lookup stage that matched the drive.
             matched_value:
               type: string

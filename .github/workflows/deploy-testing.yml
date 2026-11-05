@@ -50,6 +50,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The Docker workflow publishes the same two tags with OCI labels attached.
+      # Whichever workflow finishes last owns the tag, so this one stamps the same
+      # labels; otherwise a push that lands second leaves the image without the
+      # revision label that deployment checks read.
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.image_name.outputs.value }}
+
       - name: Build and push testing image
         uses: docker/build-push-action@v7
         with:
@@ -60,5 +70,6 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ steps.image_name.outputs.value }}:develop
             ${{ env.REGISTRY }}/${{ steps.image_name.outputs.value }}:develop-omnibus
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=testing-omnibus
           cache-to: type=gha,mode=max,scope=testing-omnibus

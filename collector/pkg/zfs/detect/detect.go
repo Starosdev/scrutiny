@@ -97,9 +97,8 @@ func (d *Detect) listPools() ([]models.ZFSPool, error) {
 			ScrubState:      models.ZFSScrubStateNone,
 		}
 
-		// Set HostID if configured
-		if d.Config != nil && d.Config.IsSet("host.id") {
-			pool.HostID = d.Config.GetString("host.id")
+		if d.Config != nil {
+			pool.HostID = d.Config.GetHostID()
 		}
 
 		pools = append(pools, pool)

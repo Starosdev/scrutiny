@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"math"
+	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
@@ -40,10 +40,9 @@ func maybeNotifyReplacementRisk(
 		logger.Warnf("Could not retrieve SMART history for replacement risk notification: %v", err)
 	}
 
-	var oldestAttrs map[string]measurements.SmartAttribute
-	if len(history) > 0 {
-		oldestAttrs = history[0].Attributes
-	}
+	// The query above asks for the "month" bucket, so the notification path uses
+	// the same 30-day window as the endpoint's default.
+	oldestAttrs := oldestAttributesFromHistory(history, trendWindowCutoff(models.TrendWindow30Days, time.Now().UTC()))
 
 	weights := thresholds.ReplacementRiskWeightsForProtocol(device.DeviceProtocol)
 	var profile *thresholds.ConsumerDriveProfile
@@ -52,12 +51,9 @@ func maybeNotifyReplacementRisk(
 			profile = match.Profile
 		}
 	}
-	_, totalScore, _ := computeRiskContributions(weights, latestAttrs, oldestAttrs, profile)
+	_, totalScore, totalTrendBonus := computeRiskContributions(weights, latestAttrs, oldestAttrs, profile)
 
-	score := int(math.Round(totalScore))
-	if score > 100 {
-		score = 100
-	}
+	score, _ := clampRiskTotals(totalScore, totalTrendBonus)
 	category := models.ScoreToRiskCategory(score)
 
 	if !notify.ReplacementRiskMeetsThreshold(category, notifyCategory) {

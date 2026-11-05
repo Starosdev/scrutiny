@@ -336,3 +336,23 @@ func TestResult_ForceStatusAction(t *testing.T) {
 	assert.Equal(t, pkg.AttributeStatusFailedScrutiny, *result.Status)
 	assert.Equal(t, "Status forced by user configuration", result.StatusReason)
 }
+
+// TestResult_IsLoadBearing pins the field set that decides whether an override changes an
+// attribute's evaluation. Trend suppression in the measurements package skips an attribute
+// whose override is load-bearing, so a field added to applyOverrideResult's switch and not
+// to IsLoadBearing would let a trend heuristic silently undo a user's rule.
+func TestResult_IsLoadBearing(t *testing.T) {
+	status := pkg.AttributeStatusFailedScrutiny
+	value := int64(5)
+
+	var nilResult *Result
+	require.False(t, nilResult.IsLoadBearing())
+	require.False(t, (&Result{}).IsLoadBearing())
+	require.False(t, (&Result{StatusReason: "set by nothing"}).IsLoadBearing())
+
+	require.True(t, (&Result{ShouldIgnore: true}).IsLoadBearing())
+	require.True(t, (&Result{Status: &status}).IsLoadBearing())
+	require.True(t, (&Result{WarnAbove: &value}).IsLoadBearing())
+	require.True(t, (&Result{FailAbove: &value}).IsLoadBearing())
+	require.True(t, (&Result{AcknowledgedValue: &value}).IsLoadBearing())
+}

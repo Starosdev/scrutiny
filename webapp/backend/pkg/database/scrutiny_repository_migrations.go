@@ -42,6 +42,7 @@ import (
 	m20261002000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20261002000000"
 	m20261013000000 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20261013000000"
 	m20261013000001 "github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20261013000001"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20261027000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/deviceid"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
@@ -674,9 +675,11 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 		return fmt.Errorf("failed to rename devices_new: %w", err)
 	}
 
-	// Step 5: Partial unique index on wwn (allows multiple empty/NULL values)
-	if err := tx.Exec("CREATE UNIQUE INDEX idx_devices_wwn ON devices(wwn) WHERE wwn IS NOT NULL AND wwn != ''").Error; err != nil {
-		return fmt.Errorf("failed to create wwn unique index: %w", err)
+	// Step 5: Plain index on wwn. Drives can share a WWN (#314, #851), and an
+	// AnalogJ 0.9.x database can already hold two rows for one drive (#1056), so a
+	// unique index here aborts the whole migration chain.
+	if err := tx.Exec("CREATE INDEX idx_devices_wwn ON devices(wwn)").Error; err != nil {
+		return fmt.Errorf("failed to create wwn index: %w", err)
 	}
 
 	// Step 6: Index on deleted_at (GORM soft-delete convention)
@@ -888,7 +891,8 @@ missed_ping_timeout_override INTEGER DEFAULT 0
 	if err := tx.Exec("ALTER TABLE devices_new RENAME TO devices").Error; err != nil {
 		return fmt.Errorf("failed to rename devices during smart_support migration: %w", err)
 	}
-	if err := tx.Exec("CREATE UNIQUE INDEX idx_devices_wwn ON devices(wwn) WHERE wwn IS NOT NULL AND wwn != ''").Error; err != nil {
+	// Plain, not unique: see m20260401000000 step 5 and m20260914000000.
+	if err := tx.Exec("CREATE INDEX idx_devices_wwn ON devices(wwn)").Error; err != nil {
 		return fmt.Errorf("failed to recreate idx_devices_wwn: %w", err)
 	}
 	if err := tx.Exec("CREATE INDEX idx_devices_deleted_at ON devices(deleted_at)").Error; err != nil {
@@ -1042,7 +1046,7 @@ func m20201107210306_FromPreInfluxDBSmartResultsCreatePostInfluxDBSmartResults(d
 
 	} else if preDevice.IsScsi() {
 		defectList, errorLog := buildLegacyScsiErrorLog(&preSmartResult)
-		postDeviceSmartData.ProcessScsiSmartInfo(nil, defectList, errorLog, nil)
+		postDeviceSmartData.ProcessScsiSmartInfo(nil, defectList, &errorLog)
 	} else {
 		return fmt.Errorf("unknown device protocol: %s", preDevice.DeviceProtocol), postDeviceSmartData
 	}
@@ -1142,26 +1146,7 @@ func buildLegacyNvmeHealthLog(preSmartResult *m20201107210306.Smart) collector.N
 // collector error-counter log.
 func buildLegacyScsiErrorLog(preSmartResult *m20201107210306.Smart) (int64, collector.ScsiErrorCounterLog) {
 	var postScsiGrownDefectList int64
-	postScsiErrorCounterLog := collector.ScsiErrorCounterLog{
-		Read: struct {
-			ErrorsCorrectedByEccfast         int64  `json:"errors_corrected_by_eccfast"`
-			ErrorsCorrectedByEccdelayed      int64  `json:"errors_corrected_by_eccdelayed"`
-			ErrorsCorrectedByRereadsRewrites int64  `json:"errors_corrected_by_rereads_rewrites"`
-			TotalErrorsCorrected             int64  `json:"total_errors_corrected"`
-			CorrectionAlgorithmInvocations   int64  `json:"correction_algorithm_invocations"`
-			GigabytesProcessed               string `json:"gigabytes_processed"`
-			TotalUncorrectedErrors           int64  `json:"total_uncorrected_errors"`
-		}{},
-		Write: struct {
-			ErrorsCorrectedByEccfast         int64  `json:"errors_corrected_by_eccfast"`
-			ErrorsCorrectedByEccdelayed      int64  `json:"errors_corrected_by_eccdelayed"`
-			ErrorsCorrectedByRereadsRewrites int64  `json:"errors_corrected_by_rereads_rewrites"`
-			TotalErrorsCorrected             int64  `json:"total_errors_corrected"`
-			CorrectionAlgorithmInvocations   int64  `json:"correction_algorithm_invocations"`
-			GigabytesProcessed               string `json:"gigabytes_processed"`
-			TotalUncorrectedErrors           int64  `json:"total_uncorrected_errors"`
-		}{},
-	}
+	var postScsiErrorCounterLog collector.ScsiErrorCounterLog
 
 	for _, preScsiAttribute := range preSmartResult.ScsiAttributes {
 		switch preScsiAttribute.AttributeId {
@@ -1509,13 +1494,15 @@ func (sr *scrutinyRepository) schemaMigrations(ctx context.Context) []*gormigrat
 				return sr.migrateM20260401000000(tx)
 			},
 		},
-		// Drop unique constraint on wwn, replace with regular index.
-		// The unique index caused INSERT failures for devices sharing the same
-		// non-empty WWN (e.g. multiple disks reporting 0x0000000000000000).
-		// Since device_id is now the primary key, wwn uniqueness is no longer needed.
+		// Rebuild idx_devices_wwn as a plain index. m20260401000000 and
+		// m20260508000000 once created it UNIQUE, which made INSERT fail for devices
+		// sharing a non-empty WWN (e.g. multiple disks reporting
+		// 0x0000000000000000) and aborted the chain on an AnalogJ 0.9.x database that
+		// already held two rows for one drive. Both now create the plain index, so
+		// this entry and m20260914000000 are no-ops for a fresh run and still repair
+		// a database that applied the earlier UNIQUE definition.
 		// Fixes: https://github.com/Staros-Labs/scrutiny/issues/314
-		// m20260508000000 later rebuilt the devices table and recreated the index as
-		// UNIQUE; m20260914000000 restores the plain index (#851).
+		// Fixes: https://github.com/Starosdev/scrutiny/issues/1056
 		{
 			ID: "m20260402000000",
 			Migrate: func(tx *gorm.DB) error {
@@ -1716,10 +1703,11 @@ func (sr *scrutinyRepository) schemaMigrations(ctx context.Context) []*gormigrat
 		{ID: "m20260908000000", Migrate: migrateTemperatureStorageKey},
 		{ID: "m20260908000001", Migrate: migrateTemperatureNotificationSettings},
 		{ID: "m20260910000000", Migrate: m20260910000000.Migrate},
-		// m20260508000000 recreated idx_devices_wwn as UNIQUE while rebuilding the devices
-		// table, undoing m20260402000000. device_id is the identity, and drives behind one
-		// controller or with vendor-default WWNs can share a WWN (#851), so restore the
-		// plain index with the same statements m20260402000000 used.
+		// device_id is the identity, and drives behind one controller or with
+		// vendor-default WWNs can share a WWN (#851). m20260508000000 recreated
+		// idx_devices_wwn as UNIQUE while rebuilding the devices table, undoing
+		// m20260402000000; it now creates the plain index, so this entry only repairs
+		// a database that applied that earlier definition.
 		{ID: "m20260914000000", Migrate: func(tx *gorm.DB) error {
 			return sr.migrateM20260402000000(tx)
 		}},
@@ -1741,6 +1729,7 @@ func (sr *scrutinyRepository) schemaMigrations(ctx context.Context) []*gormigrat
 		{ID: "m20261002000000", Migrate: m20261002000000.Migrate},  // drop btrfs free_statfs column (#929)
 		{ID: "m20261013000000", Migrate: m20261013000000.Migrate},  // drop legacy 'full' api_tokens.scope default (#965)
 		{ID: "m20261013000001", Migrate: m20261013000001.Migrate},  // add devices.auto_archived (#965)
+		{ID: "m20261027000000", Migrate: m20261027000000.Migrate},  // add filesystem_devices table (#470)
 	}
 }
 

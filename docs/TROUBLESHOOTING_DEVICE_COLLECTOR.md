@@ -532,7 +532,7 @@ To move devices without deleting history:
 3. Run one collection from the new host.
 4. Confirm the device appears under the new host ID in the SMART dashboard.
 
-An empty host ID clears the stored assignment. If two collectors report the same device, the most recent registration wins. Devices with no model, serial number, or WWN use a device-name and host-ID fallback identity, so host migration cannot preserve their history reliably.
+An empty host ID clears the stored assignment, which now takes an explicitly empty value: an unconfigured collector derives one from the machine instead of sending nothing. If two collectors report the same device, the most recent registration wins. Devices with no model, serial number, or WWN use a device-name and host-ID fallback identity, so host migration cannot preserve their history reliably.
 
 ## Collector DEBUG mode
 
@@ -571,3 +571,37 @@ the variable responsible, so `docker logs <container>` tells you whether a resta
 collected anything. This matters after a configuration change: with startup collection
 off, nothing is collected until the next cron tick, and until then the dashboard still
 shows the previous run's data.
+
+## Manual collection with a configured schedule
+
+The SMART collector stays running when `cron.schedule` is set in its YAML file or
+`COLLECTOR_CRON_SCHEDULE` is set in its environment. To collect once and exit,
+pass an explicit empty schedule:
+
+```sh
+docker exec scrutiny /opt/scrutiny/bin/scrutiny-collector-metrics run --cron-schedule=""
+```
+
+Replace `scrutiny` with your container name. For a standalone binary, use the same
+`run --cron-schedule=""` arguments. This override also skips the scheduler's startup
+delay. API, authentication, and device settings remain in effect.
+
+The dashboard's **Run collectors** action, the omnibus manager, and Docker SMART
+cron and startup jobs pass this override. Removing the environment variable alone
+does not disable a schedule in the YAML file. Standalone scheduled runs without
+this override retain their configured schedule.
+
+### Optional collectors in the dashboard
+
+The dashboard's **Run collectors** action runs SMART by default. It runs ZFS and
+MDADM only when their cron schedule is nonempty or their startup flag is true.
+Surrounding quotes and whitespace do not enable an empty schedule.
+These are the same enablement conditions used by the all-in-one image:
+
+- ZFS: `COLLECTOR_ZFS_CRON_SCHEDULE` or `COLLECTOR_ZFS_RUN_STARTUP`
+- MDADM: `COLLECTOR_MDADM_CRON_SCHEDULE` or `COLLECTOR_MDADM_RUN_STARTUP`
+
+A false startup flag prevents startup collection. It does not disable manual
+collection when a cron schedule is set. Installed binaries alone do not enable
+optional collectors. Disabled collectors log a skip message. Errors from enabled
+collectors remain failures, including missing access to `/dev/zfs` for ZFS.

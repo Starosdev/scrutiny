@@ -104,6 +104,12 @@ var routeScopes = map[string]string{
 	"GET /api/mdadm/summary":                     models.APITokenScopeRead,
 	"POST /api/mdadm/array/:uuid/metrics":        models.APITokenScopeCollector,
 	"GET /api/mdadm/array/:uuid/details":         models.APITokenScopeRead,
+	"POST /api/mdadm/array/:uuid/archive":        models.APITokenScopeAdmin,
+	"POST /api/mdadm/array/:uuid/unarchive":      models.APITokenScopeAdmin,
+	"POST /api/mdadm/array/:uuid/mute":           models.APITokenScopeAdmin,
+	"POST /api/mdadm/array/:uuid/unmute":         models.APITokenScopeAdmin,
+	"POST /api/mdadm/array/:uuid/label":          models.APITokenScopeAdmin,
+	"DELETE /api/mdadm/array/:uuid":              models.APITokenScopeAdmin,
 }
 
 // publicRoutes need no token (see publicPathSuffixes in middleware/auth.go).

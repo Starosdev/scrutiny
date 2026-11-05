@@ -9,6 +9,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"gorm.io/gorm"
 )
 
@@ -89,12 +90,17 @@ func (sr *scrutinyRepository) UpdateMdadmArrayLabel(ctx context.Context, uuid st
 
 // DeleteMdadmArray deletes an MDADM array and its associated data
 func (sr *scrutinyRepository) DeleteMdadmArray(ctx context.Context, uuid string) error {
-	// Delete relational metadata
-	if err := sr.gormClient.WithContext(ctx).Where(mdadmUUIDFilter, uuid).Delete(&models.MDADMArray{}).Error; err != nil {
-		return err
+	if err := validation.ValidateMdadmArrayID(uuid); err != nil {
+		return fmt.Errorf("mdadm array delete: %w", err)
 	}
 
-	// Delete data from InfluxDB
+	// The metrics series go first. The caller's context is cancelled when its
+	// client disconnects, and an InfluxDB delete across four buckets is the
+	// slow half of this, so deleting the row first would leave an array that
+	// no page lists and ten years of series still in InfluxDB. A delete by
+	// identifier does not need the row, so that state is recoverable by
+	// hand, but nothing in the UI offers the retry. Failing here instead
+	// leaves the array whole and the retry one click away.
 	buckets := []string{
 		sr.appConfig.GetString(cfgInfluxDBBucket),
 		sr.appConfig.GetString(cfgInfluxDBBucket) + "_weekly",
@@ -109,10 +115,17 @@ func (sr *scrutinyRepository) DeleteMdadmArray(ctx context.Context, uuid string)
 			bucket,
 			time.Now().AddDate(-10, 0, 0),
 			time.Now(),
-			fmt.Sprintf(`array_uuid="%s"`, uuid),
+			// %q, not %s: an identifier carrying a quote would otherwise end the
+			// predicate string and leave the metrics series behind.
+			fmt.Sprintf(`array_uuid=%q`, uuid),
 		); err != nil {
 			return err
 		}
+	}
+
+	// Delete relational metadata
+	if err := sr.gormClient.WithContext(ctx).Where(mdadmUUIDFilter, uuid).Delete(&models.MDADMArray{}).Error; err != nil {
+		return err
 	}
 
 	return nil
@@ -175,8 +188,13 @@ func (sr *scrutinyRepository) SaveMdadmMetrics(ctx context.Context, uuid string,
 // GetMdadmMetricsHistory retrieves historical metrics for an MDADM array.
 // Uses schema.fieldsAsCols() instead of aggregateWindow+pivot to preserve string fields
 // (state, raw_mdstat) that aggregateWindow(fn: last) silently drops.
-// Note: UUID is validated at the handler level before reaching this function.
+// The identifier is interpolated into the Flux predicate, so it is checked
+// here rather than trusted from the caller.
 func (sr *scrutinyRepository) GetMdadmMetricsHistory(ctx context.Context, uuid string, durationKey string) ([]measurements.MDADMMetrics, error) {
+	if err := validation.ValidateMdadmArrayID(uuid); err != nil {
+		return nil, err
+	}
+
 	bucketName := sr.lookupBucketName(durationKey)
 	duration := sr.lookupDuration(durationKey)
 
@@ -221,8 +239,13 @@ func (sr *scrutinyRepository) GetMdadmMetricsHistory(ctx context.Context, uuid s
 
 // GetLatestMdadmMetrics fetches the single most recent datapoint with all fields preserved.
 // Uses schema.fieldsAsCols() to correctly merge string and numeric fields into a single row.
-// Note: UUID is validated at the handler level before reaching this function.
+// The identifier is interpolated into the Flux predicate, so it is checked
+// here rather than trusted from the caller.
 func (sr *scrutinyRepository) GetLatestMdadmMetrics(ctx context.Context, uuid string) (*measurements.MDADMMetrics, error) {
+	if err := validation.ValidateMdadmArrayID(uuid); err != nil {
+		return nil, err
+	}
+
 	bucketName := sr.appConfig.GetString(cfgInfluxDBBucket)
 
 	queryStr := fmt.Sprintf(`

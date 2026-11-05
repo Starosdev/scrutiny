@@ -20,7 +20,9 @@ export interface ReplacementRiskModel {
     computed_at: string;
     consumer_drive_profiles_enabled: boolean;
     consumer_drive_profile_applied: boolean;
+    consumer_drive_profile_observed_thresholds?: boolean;
     consumer_drive_profile_family?: string;
+    consumer_drive_profile_source?: string;
 }
 
 export interface ReplacementRiskResponseWrapper {

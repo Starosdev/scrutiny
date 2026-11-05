@@ -87,6 +87,18 @@
                 <div class="flex items-center ml-4 gap-3">
                     <h3 class="m-0">{{ hostId.key }}</h3>
                     @if (getCollectorVersionForHost(hostId.value); as version) {
+                    @if (getReleaseUrl(version); as releaseUrl) {
+                    <a
+                        class="text-sm px-2 py-0.5 rounded-full text-white cursor-pointer no-underline hover:underline"
+                        [class.bg-yellow-600]="isHostCollectorOutdated(hostId.value)"
+                        [class.bg-gray-500]="!isHostCollectorOutdated(hostId.value)"
+                        [href]="releaseUrl"
+                        target="_blank"
+                        rel="noopener"
+                    >
+                        collector v{{ version }}
+                    </a>
+                    } @else {
                     <span
                         class="text-sm px-2 py-0.5 rounded-full text-white"
                         [class.bg-yellow-600]="isHostCollectorOutdated(hostId.value)"
@@ -94,8 +106,18 @@
                     >
                         collector v{{ version }}
                     </span>
+                    }
                     } @if (config?.server_version) {
+                    @if (getReleaseUrl(config.server_version); as releaseUrl) {
+                    <a
+                        class="gt-sm:hidden text-sm px-2 py-0.5 rounded-full text-white bg-gray-500 cursor-pointer no-underline hover:underline"
+                        [href]="releaseUrl"
+                        target="_blank"
+                        rel="noopener"
+                    > server v{{ config.server_version }} </a>
+                    } @else {
                     <span class="gt-sm:hidden text-sm px-2 py-0.5 rounded-full text-white bg-gray-500"> server v{{ config.server_version }} </span>
+                    }
                     }
                 </div>
                 }

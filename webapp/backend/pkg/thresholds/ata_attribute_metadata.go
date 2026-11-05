@@ -65,114 +65,27 @@ var AtaMetadata = map[int]AtaAttributeMetadata{
 		Ideal:       ObservedThresholdIdealLow,
 		Critical:    false,
 		Description: "Average time of spindle spin up (from zero RPM to fully operational [milliseconds]).",
-		ObservedThresholds: []ObservedThreshold{
-			{
-				Low:               78,
-				High:              96,
-				AnnualFailureRate: 0.11452195377351217,
-				ErrorInterval:     []float64{0.10591837762295722, 0.12363823501915781},
-			},
-			{
-				Low:               96,
-				High:              114,
-				AnnualFailureRate: 0.040274562840558074,
-				ErrorInterval:     []float64{0.03465055611002801, 0.046551312468303144},
-			},
-			{
-				Low:               114,
-				High:              132,
-				AnnualFailureRate: 0.009100406705780476,
-				ErrorInterval:     []float64{0.006530608971356785, 0.012345729280075591},
-			},
-			{
-				Low:               132,
-				High:              150,
-				AnnualFailureRate: 0.008561351734020232,
-				ErrorInterval:     []float64{0.004273795939256936, 0.015318623141355509},
-			},
-			{
-				Low:               150,
-				High:              168,
-				AnnualFailureRate: 0.015780508262068848,
-				ErrorInterval:     []float64{0.005123888078524015, 0.03682644215646287},
-			},
-			{
-				Low:               168,
-				High:              186,
-				AnnualFailureRate: 0.05262688124794024,
-				ErrorInterval:     []float64{0.0325768689524594, 0.08044577830285578},
-			},
-			{
-				Low:               186,
-				High:              204,
-				AnnualFailureRate: 0.01957419424036038,
-				ErrorInterval:     []float64{0.0023705257325185624, 0.0707087198669825},
-			},
-			{
-				Low:               204,
-				High:              222,
-				AnnualFailureRate: 0.026050959960031404,
-				ErrorInterval:     []float64{0.0006595532020744994, 0.1451466588889228},
-			},
-		},
+		// No observed-threshold buckets: this attribute is reported as a vendor-scaled
+		// normalized value, so buckets derived from a mixed-drive population are not
+		// comparable across vendors. The manufacturer threshold decides it instead, and a
+		// matched consumer drive profile can still supply buckets for the models it covers.
 	},
 	4: {
 		ID:          4,
 		DisplayName: "Start/Stop Count",
 		DisplayType: AtaSmartAttributeDisplayTypeRaw,
-		Ideal:       "",
+		// A start/stop cycle is wear, so a higher tally is never the healthier reading. The
+		// direction is reported through the API and orders any buckets a consumer drive profile
+		// supplies; the bundled table carries none, for the reason below.
+		Ideal:       ObservedThresholdIdealLow,
 		Critical:    false,
 		Description: "A tally of spindle start/stop cycles. The spindle turns on, and hence the count is increased, both when the hard disk is turned on after having before been turned entirely off (disconnected from power source) and when the hard disk returns from having previously been put to sleep mode.",
-		ObservedThresholds: []ObservedThreshold{
-			{
-				Low:               0,
-				High:              13,
-				AnnualFailureRate: 0.01989335424860646,
-				ErrorInterval:     []float64{0.016596548909440657, 0.023653263230617408},
-			},
-			{
-				Low:               13,
-				High:              26,
-				AnnualFailureRate: 0.03776935438256488,
-				ErrorInterval:     []float64{0.03310396052098642, 0.04290806173460437},
-			},
-			{
-				Low:               26,
-				High:              39,
-				AnnualFailureRate: 0.11022223828187004,
-				ErrorInterval:     []float64{0.09655110535164119, 0.12528657238811672},
-			},
-			{
-				Low:               39,
-				High:              52,
-				AnnualFailureRate: 0.16289995457762474,
-				ErrorInterval:     []float64{0.13926541653588131, 0.18939614504497515},
-			},
-			{
-				Low:               52,
-				High:              65,
-				AnnualFailureRate: 0.19358212432279714,
-				ErrorInterval:     []float64{0.15864522253849073, 0.23392418181765526},
-			},
-			{
-				Low:               65,
-				High:              78,
-				AnnualFailureRate: 0.1157094940074447,
-				ErrorInterval:     []float64{0.07861898732346269, 0.16424039052527728},
-			},
-			{
-				Low:               78,
-				High:              91,
-				AnnualFailureRate: 0.12262136155304391,
-				ErrorInterval:     []float64{0.0670382394080032, 0.20573780888032978},
-			},
-			{
-				Low:               91,
-				High:              104,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-		},
+		// No observed-threshold buckets: a start/stop cycle is normal operation, not an error, so
+		// the population failure rates for it tracked fleet age rather than damage. The source
+		// table was non-monotonic to match: the 52-65 bucket read 19.4 percent while 91-104 read
+		// 0 percent. Once severity became monotonic in #1088 every spinning drive scored the same
+		// 19.4 percent from 27 cycles upward. The manufacturer threshold decides it instead.
+		// See scrutiny #1093.
 	},
 	5: {
 		ID:          5,
@@ -648,56 +561,10 @@ var AtaMetadata = map[int]AtaAttributeMetadata{
 		Ideal:       ObservedThresholdIdealLow,
 		Critical:    true,
 		Description: "This attribute is a part of Hewlett-Packard\"s SMART IV technology, as well as part of other vendors\" IO Error Detection and Correction schemas, and it contains a count of parity errors which occur in the data path to the media via the drive\"s cache RAM",
-		ObservedThresholds: []ObservedThreshold{
-			{
-				Low:               93,
-				High:              94,
-				AnnualFailureRate: 1.631212012870933,
-				ErrorInterval:     []float64{1.055634407303844, 2.407990716767714},
-			},
-			{
-				Low:               94,
-				High:              95,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-			{
-				Low:               95,
-				High:              96,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-			{
-				Low:               96,
-				High:              97,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-			{
-				Low:               97,
-				High:              97,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-			{
-				Low:               97,
-				High:              98,
-				AnnualFailureRate: 1.8069306930693072,
-				ErrorInterval:     []float64{0.04574752432804858, 10.067573453924245},
-			},
-			{
-				Low:               98,
-				High:              99,
-				AnnualFailureRate: 0.8371559633027523,
-				ErrorInterval:     []float64{0.10138347095016888, 3.0240951820174824},
-			},
-			{
-				Low:               99,
-				High:              100,
-				AnnualFailureRate: 0.09334816849865138,
-				ErrorInterval:     []float64{0.08689499010435861, 0.10015372448181788},
-			},
-		},
+		// No observed-threshold buckets: this attribute is reported as a vendor-scaled
+		// normalized value, so buckets derived from a mixed-drive population are not
+		// comparable across vendors. The manufacturer threshold decides it instead, and a
+		// matched consumer drive profile can still supply buckets for the models it covers.
 	},
 	185: {
 		ID:          185,
@@ -964,56 +831,12 @@ var AtaMetadata = map[int]AtaAttributeMetadata{
 		Ideal:       ObservedThresholdIdealLow,
 		Critical:    false,
 		Description: "Number of power-off or emergency retract cycles.",
-		ObservedThresholds: []ObservedThreshold{
-			{
-				Low:               1,
-				High:              2,
-				AnnualFailureRate: 0.02861098445412803,
-				ErrorInterval:     []float64{0.022345416230915037, 0.036088863823297186},
-			},
-			{
-				Low:               2,
-				High:              6,
-				AnnualFailureRate: 0.0738571777154862,
-				ErrorInterval:     []float64{0.06406927746420421, 0.0847175264009771},
-			},
-			{
-				Low:               6,
-				High:              16,
-				AnnualFailureRate: 0.11970378206823593,
-				ErrorInterval:     []float64{0.10830059875098269, 0.13198105985656441},
-			},
-			{
-				Low:               16,
-				High:              40,
-				AnnualFailureRate: 0.027266868552620425,
-				ErrorInterval:     []float64{0.021131448605713823, 0.03462795920968522},
-			},
-			{
-				Low:               40,
-				High:              100,
-				AnnualFailureRate: 0.011741682974559688,
-				ErrorInterval:     []float64{0.00430899071133239, 0.025556700631152028},
-			},
-			{
-				Low:               100,
-				High:              250,
-				AnnualFailureRate: 0.012659940134091309,
-				ErrorInterval:     []float64{0.00607093338127348, 0.023282080653656938},
-			},
-			{
-				Low:               250,
-				High:              650,
-				AnnualFailureRate: 0.01634692899031039,
-				ErrorInterval:     []float64{0.009522688540043157, 0.026173016865409605},
-			},
-			{
-				Low:               650,
-				High:              1600,
-				AnnualFailureRate: 0.005190074354440066,
-				ErrorInterval:     []float64{0.0025908664180103293, 0.009286476666453648},
-			},
-		},
+		// No observed-threshold buckets: a power-off retract is normal operation, not an error, so
+		// the population failure rates for it tracked fleet age rather than damage. A drive at
+		// 1600 retracts inherited 11.97 percent from the 6-16 bucket while its own bucket read
+		// 0.52 percent, and after #1088 made severity monotonic every drive scored that same
+		// 11.97 percent from 7 retracts upward. The manufacturer threshold decides it instead.
+		// See scrutiny #1093.
 	},
 	193: {
 		ID:          193,
@@ -1042,56 +865,14 @@ var AtaMetadata = map[int]AtaAttributeMetadata{
 		Ideal:       "",
 		Critical:    false,
 		Description: "(Vendor-specific raw value.) The raw value has different structure for different vendors and is often not meaningful as a decimal number.",
-		ObservedThresholds: []ObservedThreshold{
-			{
-				Low:               12,
-				High:              24,
-				AnnualFailureRate: 0.31472916829975706,
-				ErrorInterval:     []float64{0.15711166685282174, 0.5631374192486645},
-			},
-			{
-				Low:               24,
-				High:              36,
-				AnnualFailureRate: 0.15250310197260136,
-				ErrorInterval:     []float64{0.10497611828070175, 0.21417105521823687},
-			},
-			{
-				Low:               36,
-				High:              48,
-				AnnualFailureRate: 0.2193119102723874,
-				ErrorInterval:     []float64{0.16475385681835103, 0.28615447006525274},
-			},
-			{
-				Low:               48,
-				High:              60,
-				AnnualFailureRate: 0.05672658497265746,
-				ErrorInterval:     []float64{0.043182904776447234, 0.07317316161437043},
-			},
-			{
-				Low:               60,
-				High:              72,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-			{
-				Low:               72,
-				High:              84,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-			{
-				Low:               84,
-				High:              96,
-				AnnualFailureRate: 0,
-				ErrorInterval:     []float64{0, 0},
-			},
-			{
-				Low:               96,
-				High:              108,
-				AnnualFailureRate: 0.04074570216566197,
-				ErrorInterval:     []float64{0.001031591863615295, 0.22702052218047528},
-			},
-		},
+		// No observed-threshold buckets: this attribute is reported as a vendor-scaled
+		// normalized value, so buckets derived from a mixed-drive population are not
+		// comparable across vendors. The manufacturer threshold decides it instead.
+		//
+		// Unlike attributes 3 and 184, this one declares no Ideal, because which direction is
+		// healthier depends on how the vendor scales it. A consumer drive profile supplying
+		// buckets here would therefore be scored one bucket at a time rather than ordered by
+		// severity; give the attribute a direction before relying on profile buckets for it.
 	},
 	196: {
 		ID:          196,

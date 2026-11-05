@@ -1,11 +1,13 @@
 import { DeviceModel } from 'app/core/models/device-model';
 import { SmartTemperatureModel } from 'app/core/models/measurements/smart-temperature-model';
+import { FilesystemCapacityModel } from 'app/core/models/filesystem-summary-model';
 
 // maps to webapp/backend/pkg/models/device_summary.go
 export interface DeviceSummaryModel {
     device: DeviceModel;
     smart?: SmartSummary;
     temp_history?: SmartTemperatureModel[];
+    filesystems?: FilesystemCapacityModel[];
 }
 
 export interface SmartSummary {

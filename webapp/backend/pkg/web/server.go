@@ -197,11 +197,24 @@ func registerAPIRoutes(api *gin.RouterGroup, metricsEnabled bool, allowZFSPoolMo
 	btrfs.admin.DELETE("/filesystem/:uuid", handler.DeleteBtrfsFilesystem)
 
 	// MDADM Array API endpoints
-	mdadm := g.sub("/mdadm")
+	registerMdadmRoutes(g.sub("/mdadm"))
+}
+
+// registerMdadmRoutes is the MDADM route table. It is a function so that a test
+// can bind the same routes the server binds: a missing route is the defect this
+// set of routes was added to fix, and a test that declares its own copy cannot
+// see it.
+func registerMdadmRoutes(mdadm routeGroups) {
 	mdadm.collector.POST("/arrays/register", handler.RegisterMdadmArrays)    // used by Collector to register new arrays
 	mdadm.read.GET(apiSummaryPath, handler.GetMdadmSummary)                  // used by Dashboard
 	mdadm.collector.POST("/array/:uuid/metrics", handler.UploadMdadmMetrics) // used by Collector to upload metrics
 	mdadm.read.GET("/array/:uuid/details", handler.GetMdadmArrayDetails)     // used by Array Details view
+	mdadm.admin.POST("/array/:uuid/archive", handler.ArchiveMdadmArray)
+	mdadm.admin.POST("/array/:uuid/unarchive", handler.UnarchiveMdadmArray)
+	mdadm.admin.POST("/array/:uuid/mute", handler.MuteMdadmArray)
+	mdadm.admin.POST("/array/:uuid/unmute", handler.UnmuteMdadmArray)
+	mdadm.admin.POST("/array/:uuid/label", handler.UpdateMdadmArrayLabel)
+	mdadm.admin.DELETE("/array/:uuid", handler.DeleteMdadmArray)
 }
 
 func (ae *AppEngine) registerMiddleware(r *gin.Engine, logger *logrus.Entry) {

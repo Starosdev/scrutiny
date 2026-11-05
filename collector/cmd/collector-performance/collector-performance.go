@@ -184,7 +184,7 @@ func applyRunFlags(c *cli.Context, appConfig config.Interface, bootstrapLogger *
 		}
 	}
 	if c.IsSet(flagHostId) {
-		appConfig.Set("host.id", c.String(flagHostId))
+		appConfig.Set(config.KeyHostID, c.String(flagHostId))
 	}
 	if c.Bool("debug") {
 		appConfig.Set("log.level", "DEBUG")

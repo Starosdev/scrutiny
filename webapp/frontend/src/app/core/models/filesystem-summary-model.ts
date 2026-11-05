@@ -8,6 +8,10 @@ export interface FilesystemCapacityModel {
     available_bytes: number;
     used_percent: number;
     updated_at: string;
+    // Whole disks backing this filesystem, by kernel device name. Absent when
+    // the collector could not attribute it, which is not the same as a
+    // filesystem with no disk behind it.
+    backing_devices?: string[];
 }
 
 export interface FilesystemHostStatusModel {

@@ -66,12 +66,7 @@ func GetDeviceReplacementRisk(c *gin.Context) {
 		history = nil
 	}
 
-	// Build oldest-attribute lookup from the first entry in the history slice.
-	// GetSmartAttributeHistory returns entries ordered oldest-first.
-	var oldestAttrs map[string]measurements.SmartAttribute
-	if len(history) > 0 {
-		oldestAttrs = history[0].Attributes
-	}
+	oldestAttrs := oldestAttributesFromHistory(history, trendWindowCutoff(trendWindow, time.Now().UTC()))
 
 	weights := thresholds.ReplacementRiskWeightsForProtocol(device.DeviceProtocol)
 	profilesEnabled := consumerDriveProfilesEnabled(appConfig)
@@ -85,10 +80,7 @@ func GetDeviceReplacementRisk(c *gin.Context) {
 	}
 	contributions, totalScore, totalTrendBonus := computeRiskContributions(weights, latestAttrs, oldestAttrs, profile)
 
-	score := int(math.Round(totalScore))
-	if score > 100 {
-		score = 100
-	}
+	score, trendBonus := clampRiskTotals(totalScore, totalTrendBonus)
 
 	riskScore := models.ReplacementRiskScore{
 		DeviceWWN:                    device.WWN,
@@ -97,12 +89,13 @@ func GetDeviceReplacementRisk(c *gin.Context) {
 		Category:                     models.ScoreToRiskCategory(score),
 		Contributions:                contributions,
 		TrendWindow:                  trendWindow,
-		TrendBonus:                   math.Round(totalTrendBonus*100) / 100,
+		TrendBonus:                   trendBonus,
 		ComputedAt:                   time.Now().UTC(),
 		ConsumerDriveProfilesEnabled: profilesEnabled,
 		ConsumerDriveProfileApplied:  profile != nil,
 	}
 	if profile != nil {
+		riskScore.ConsumerDriveProfileObservedThresholds = len(profile.AtaObservedThresholds) > 0
 		riskScore.ConsumerDriveProfileFamily = profile.ModelFamily
 		riskScore.ConsumerDriveProfileSource = profile.Source
 		riskScore.ConsumerDriveProfileSampleCount = profile.SampleCount
@@ -139,6 +132,12 @@ func consumerDriveProfileDenylist(cfg config.Interface) map[string]struct{} {
 
 // computeRiskContributions builds the per-attribute contribution list and returns
 // the total score and total trend bonus.
+//
+// Contributions are per-attribute and pre-clamp: each row reports what that one
+// attribute contributed, so the rows can sum past the response's clamped score
+// and clamped trend bonus on a badly degraded drive. Scaling the rows down to
+// match the clamped totals would make every row misreport its own attribute, so
+// the rows stay truthful and the totals carry the ceiling.
 func computeRiskContributions(
 	weights []thresholds.ReplacementRiskWeight,
 	latestAttrs map[string]measurements.SmartAttribute,
@@ -179,9 +178,9 @@ func computeSingleContribution(
 
 	latest, hasLatest := latestAttrs[w.AttributeID]
 	if hasLatest {
-		severity := replacementRiskSeverity(latest, w.AttributeID, profile)
+		severity, value := replacementRiskSeverity(latest, w.AttributeID, profile)
 		contrib.Score = math.Round(severity*w.Weight*100) / 100
-		contrib.Value = latest.GetTransformedValue()
+		contrib.Value = value
 	}
 
 	if hasLatest && oldestAttrs != nil {
@@ -194,6 +193,70 @@ func computeSingleContribution(
 	}
 
 	return contrib
+}
+
+// oldestAttributesFromHistory returns the attributes of the oldest entry that
+// still falls inside the trend window, or nil when the slice holds none.
+//
+// Two things make this more than an index. GetSmartAttributeHistory returns
+// entries newest-first, so the oldest entry is the last one; reading history[0]
+// instead compares the latest submission against itself and makes every trend
+// score zero. And the InfluxDB duration keys are coarser than the advertised
+// windows - a 90-day window queries the "year" key, which reaches back a full
+// year - so the last entry can be far older than the window the caller asked
+// for. Entries with no timestamp are kept; only a stored row predating the
+// cutoff is skipped.
+//
+// The cutoff resolves to one day, not to the instant. History rows are daily
+// aggregates whose timestamp is the end of their UTC day
+// (`duplicate(column: "_stop", as: "_time")` in generateSmartAttributesSubquery),
+// so a sample taken hours before the cutoff is kept when its day ends after it.
+// Narrowing that further means filtering inside the history query, which is a
+// wire contract shared with every other history caller.
+func oldestAttributesFromHistory(history []measurements.Smart, cutoff time.Time) map[string]measurements.SmartAttribute {
+	for index := len(history) - 1; index >= 0; index-- {
+		entry := history[index]
+		if !entry.Date.IsZero() && entry.Date.Before(cutoff) {
+			continue
+		}
+		return entry.Attributes
+	}
+	return nil
+}
+
+// trendWindowCutoff returns the earliest timestamp that belongs to a trend
+// window, so rate-of-change is measured over the window the caller asked for
+// rather than over whatever range the backing bucket happens to cover.
+func trendWindowCutoff(trendWindow models.TrendWindow, now time.Time) time.Time {
+	switch trendWindow {
+	case models.TrendWindow7Days:
+		return now.AddDate(0, 0, -7)
+	case models.TrendWindow90Days:
+		return now.AddDate(0, 0, -90)
+	default: // TrendWindow30Days
+		return now.AddDate(0, 0, -30)
+	}
+}
+
+// clampRiskTotals converts a raw score and trend bonus into the reported pair.
+// The score ceiling is 100, and the reported bonus is the part of the trend
+// that fits under that ceiling: reporting the raw bonus beside a clamped score
+// lets a card read "100 /100 +118 trend".
+//
+// It clamps the totals only. Per-attribute contributions stay at their own
+// values, so on a clamped drive the rows can sum past what this reports.
+func clampRiskTotals(totalScore float64, totalTrendBonus float64) (int, float64) {
+	staticScore := totalScore - totalTrendBonus
+	bonus := totalTrendBonus
+	if headroom := 100 - staticScore; bonus > headroom {
+		bonus = math.Max(0, headroom)
+	}
+
+	score := int(math.Round(staticScore + bonus))
+	if score > 100 {
+		score = 100
+	}
+	return score, math.Round(bonus*100) / 100
 }
 
 // trendWindowToDurationKey maps a TrendWindow constant to the InfluxDB duration
@@ -237,15 +300,31 @@ func trendSeverity(old, new measurements.SmartAttribute, attributeID string, pro
 }
 
 func ataTrendSeverity(old, new *measurements.SmartAtaAttribute, id string, profile *thresholds.ConsumerDriveProfile) float64 {
-	switch id {
-	case "5", "196", "197", "198", "10":
+	if isAtaCounterAttribute(id) {
 		// Counter attributes: score the delta between oldest and newest raw value.
 		delta := new.RawValue - old.RawValue
 		return counterSeverityWithProfile(delta, profile, id)
-	default:
-		// For status-based attributes, detect a status regression.
-		return statusRegressionSeverity(old.GetStatus(), new.GetStatus())
 	}
+	// For status-based attributes, detect a status regression.
+	return statusRegressionSeverity(old.GetStatus(), new.GetStatus())
+}
+
+// ataCounterAttributeIDs lists the ATA attributes scored from their raw counter
+// value rather than from Scrutiny's status. They are counters that should stay
+// at zero, so the raw number carries more signal than a threshold crossing.
+// Static scoring and trend scoring must agree on this set.
+var ataCounterAttributeIDs = map[string]struct{}{
+	"5":   {}, // Reallocated Sector Count
+	"10":  {}, // Spin Retry Count
+	"187": {}, // Reported Uncorrectable Errors
+	"196": {}, // Reallocated Event Count
+	"197": {}, // Current Pending Sector Count
+	"198": {}, // Offline Uncorrectable
+}
+
+func isAtaCounterAttribute(id string) bool {
+	_, ok := ataCounterAttributeIDs[id]
+	return ok
 }
 
 func nvmeTrendSeverity(old, new *measurements.SmartNvmeAttribute, id string) float64 {
@@ -297,9 +376,11 @@ func statusRegressionSeverity(old, new pkg.AttributeStatus) float64 {
 }
 
 // replacementRiskSeverity returns a severity in [0.0, 1.0] for a single SMART
-// attribute. The caller multiplies this by the attribute's weight to get the
-// point contribution to the total score.
-func replacementRiskSeverity(attr measurements.SmartAttribute, attributeID string, profile *thresholds.ConsumerDriveProfile) float64 {
+// attribute, together with the attribute value that severity was derived from.
+// The caller multiplies the severity by the attribute's weight to get the point
+// contribution to the total score, and reports the value beside it, so the two
+// can never describe different numbers.
+func replacementRiskSeverity(attr measurements.SmartAttribute, attributeID string, profile *thresholds.ConsumerDriveProfile) (float64, int64) {
 	switch a := attr.(type) {
 	case *measurements.SmartAtaAttribute:
 		return ataAttributeSeverity(a, attributeID, profile)
@@ -308,24 +389,24 @@ func replacementRiskSeverity(attr measurements.SmartAttribute, attributeID strin
 	case *measurements.SmartScsiAttribute:
 		return scsiAttributeSeverity(a, attributeID)
 	}
-	return attributeStatusSeverity(attr.GetStatus())
+	// Unreachable for every weighted attribute: the remaining implementations
+	// (device statistics, FARM) key as devstat_*/farm_* and no weight table
+	// carries those IDs. Both set TransformedValue from their own value, so the
+	// pair stays consistent if a weight is ever added.
+	return attributeStatusSeverity(attr.GetStatus()), attr.GetTransformedValue()
 }
 
-// ataAttributeSeverity computes severity for an ATA SMART attribute.
-// Counter attributes (reallocated sectors, pending sectors, etc.) are scored
-// by raw value because any non-zero count is a surface degradation signal,
-// regardless of whether the drive's internal threshold has been crossed.
-func ataAttributeSeverity(a *measurements.SmartAtaAttribute, id string, profile *thresholds.ConsumerDriveProfile) float64 {
-	switch id {
-	case "5", // Reallocated Sector Count
-		"196", // Reallocated Event Count
-		"197", // Current Pending Sector Count
-		"198", // Offline Uncorrectable
-		"10":  // Spin Retry Count
-		return counterSeverityWithProfile(a.RawValue, profile, id)
-	default:
-		return attributeStatusSeverity(a.GetStatus())
+// ataAttributeSeverity computes severity for an ATA SMART attribute, and returns
+// the value that severity came from. Counter attributes (reallocated sectors,
+// pending sectors, etc.) are scored by raw value because any non-zero count is a
+// surface degradation signal, regardless of whether the drive's internal
+// threshold has been crossed. Every other attribute is scored from its status,
+// so it reports the value the detail charts plot for it.
+func ataAttributeSeverity(a *measurements.SmartAtaAttribute, id string, profile *thresholds.ConsumerDriveProfile) (float64, int64) {
+	if isAtaCounterAttribute(id) {
+		return counterSeverityWithProfile(a.RawValue, profile, id), a.RawValue
 	}
+	return attributeStatusSeverity(a.GetStatus()), a.DisplayValue()
 }
 
 func counterSeverityWithProfile(value int64, profile *thresholds.ConsumerDriveProfile, attributeID string) float64 {
@@ -351,37 +432,37 @@ func counterSeverityWithProfile(value int64, profile *thresholds.ConsumerDrivePr
 // nvmeAttributeSeverity computes severity for an NVMe SMART attribute.
 // Wear indicators (percentage_used, available_spare) are scored from their raw
 // values. Error counters use the same stepped scale as ATA counters.
-func nvmeAttributeSeverity(a *measurements.SmartNvmeAttribute, id string) float64 {
+func nvmeAttributeSeverity(a *measurements.SmartNvmeAttribute, id string) (float64, int64) {
 	switch id {
 	case "percentage_used":
 		// Direct wear indicator: 0% used = 0.0 severity, 100% used = 1.0 severity.
-		return math.Min(float64(a.Value)/100.0, 1.0)
+		return math.Min(float64(a.Value)/100.0, 1.0), a.Value
 	case "available_spare":
 		// The drive firmware sets its own threshold; Status reflects whether spare
 		// has dropped below that threshold. Use status rather than a fixed scale.
-		return attributeStatusSeverity(a.GetStatus())
+		return attributeStatusSeverity(a.GetStatus()), a.Value
 	case "media_errors":
-		return counterSeverity(a.Value)
+		return counterSeverity(a.Value), a.Value
 	case "critical_warning":
 		// Bitfield: any non-zero bit indicates a critical controller condition.
 		if a.Value > 0 {
-			return 1.0
+			return 1.0, a.Value
 		}
-		return 0.0
+		return 0.0, a.Value
 	default:
-		return attributeStatusSeverity(a.GetStatus())
+		return attributeStatusSeverity(a.GetStatus()), a.Value
 	}
 }
 
 // scsiAttributeSeverity computes severity for a SCSI SMART attribute.
-func scsiAttributeSeverity(a *measurements.SmartScsiAttribute, id string) float64 {
+func scsiAttributeSeverity(a *measurements.SmartScsiAttribute, id string) (float64, int64) {
 	switch id {
 	case "scsi_grown_defect_list",
 		"read_total_uncorrected_errors",
 		"write_total_uncorrected_errors":
-		return counterSeverity(a.Value)
+		return counterSeverity(a.Value), a.Value
 	default:
-		return attributeStatusSeverity(a.GetStatus())
+		return attributeStatusSeverity(a.GetStatus()), a.Value
 	}
 }
 

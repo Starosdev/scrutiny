@@ -111,7 +111,8 @@ func deviceProtocol(device *models.Device) string {
 func isCriticalAttribute(device *models.Device, attrId string) bool {
 	switch {
 	case device.IsScsi():
-		return thresholds.ScsiMetadata[attrId].Critical
+		metadata, _ := thresholds.ScsiMetadataFor(attrId)
+		return metadata.Critical
 	case device.IsNvme():
 		return thresholds.NmveMetadata[attrId].Critical
 	default:
@@ -205,8 +206,8 @@ func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *
 }
 
 // hasQualifyingFailure reports whether any failing attribute meets the required status and,
-// when repeat notifications are disabled, has a transformed value that changed from the previous
-// submission (lastPoints). A missing previous submission (hasPrevious=false) is treated as a change.
+// when repeat notifications are disabled, either did not already have the required status or has
+// an evaluated value that changed from the previous submission (lastPoints). A missing previous submission (hasPrevious=false) is treated as a change.
 func hasQualifyingFailure(failingAttributes []string, smartAttrs *measurements.Smart, lastPoints []measurements.Smart, requiredAttrStatus pkg.AttributeStatus, repeatNotifications bool, hasPrevious bool) bool {
 	for _, attrId := range failingAttributes {
 		if !pkg.AttributeStatusHas(smartAttrs.Attributes[attrId].GetStatus(), requiredAttrStatus) {
@@ -215,12 +216,42 @@ func hasQualifyingFailure(failingAttributes []string, smartAttrs *measurements.S
 		if repeatNotifications {
 			return true
 		}
-		// Notify only when the failing value changed since the previous submission.
-		if !hasPrevious || lastPoints[0].Attributes[attrId].GetTransformedValue() != smartAttrs.Attributes[attrId].GetTransformedValue() {
+		// Notify only when the failing value changed since the previous submission. An
+		// attribute the previous submission did not carry counts as changed: Attributes is a
+		// map of interfaces, so a missing key yields a nil SmartAttribute and calling a method
+		// on it would panic. That happens whenever a release starts decoding a log page it
+		// previously ignored, which is the normal path on upgrade.
+		if !hasPrevious {
+			return true
+		}
+		previousAttribute, previousAttributeRecorded := lastPoints[0].Attributes[attrId]
+		if !previousAttributeRecorded {
+			return true
+		}
+		currentAttribute := smartAttrs.Attributes[attrId]
+		// Compare the required bits themselves, not "any required bit set", so a warning that
+		// becomes a failure at warn level counts as new, while an extra bit that was already
+		// covered by a required bit does not.
+		required := currentAttribute.GetStatus() & requiredAttrStatus
+		if required&^(previousAttribute.GetStatus()&requiredAttrStatus) != 0 {
+			return true
+		}
+		if comparableValue(previousAttribute) != comparableValue(currentAttribute) {
 			return true
 		}
 	}
 	return false
+}
+
+// comparableValue returns the value an attribute's status is evaluated on, so a change in it
+// is a change the user can act on. GetTransformedValue is not used first because it is 0 for
+// most ATA attributes and all NVMe attributes, which made every submission look unchanged.
+// Attribute types AttributeEvaluatedValue does not know fall back to the transformed value.
+func comparableValue(attribute measurements.SmartAttribute) int64 {
+	if value, ok := measurements.AttributeEvaluatedValue(attribute); ok {
+		return value
+	}
+	return attribute.GetTransformedValue()
 }
 
 type Payload struct {

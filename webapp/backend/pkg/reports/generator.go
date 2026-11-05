@@ -7,6 +7,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/thresholds"
 )
 
 // SummaryProvider is the subset of database.DeviceRepo needed by the generator.
@@ -56,19 +57,26 @@ func (g *Generator) Generate(ctx context.Context, periodType string, start, end 
 
 		report.Devices = append(report.Devices, deviceReport)
 
+		hasWarning := false
+		for _, failure := range deviceReport.ActiveFailures {
+			if failure.Status == "warning" {
+				hasWarning = true
+				break
+			}
+		}
+
 		report.TotalDevices++
 		switch {
-		case summary.Device.DeviceStatus == pkg.DeviceStatusPassed:
-			report.PassedDevices++
 		case pkg.DeviceStatusHas(summary.Device.DeviceStatus, pkg.DeviceStatusFailedSmart) || pkg.DeviceStatusHas(summary.Device.DeviceStatus, pkg.DeviceStatusFailedScrutiny):
 			report.FailedDevices++
+		case hasWarning:
+			report.WarningDevices++
 		default:
 			report.PassedDevices++
 		}
 	}
 
 	report.ArchivedDevices = archivedCount
-	report.WarningDevices = report.TotalDevices - report.PassedDevices - report.FailedDevices
 
 	// Populate ZFS pool data
 	g.populateZFSPools(ctx, report)
@@ -89,9 +97,12 @@ func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, device
 			continue
 		}
 
+		name, value, threshold := alertAttributeDetails(attrID, attr)
 		entry := AlertEntry{
-			AttributeID: attrID,
-			Value:       attr.GetTransformedValue(),
+			AttributeID:   attrID,
+			AttributeName: name,
+			Value:         value,
+			Threshold:     threshold,
 		}
 
 		switch {
@@ -109,6 +120,69 @@ func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, device
 			dr.ActiveFailures = append(dr.ActiveFailures, entry)
 		}
 	}
+}
+
+// alertAttributeDetails returns the display name, the value the attribute is evaluated on and the
+// manufacturer threshold for one SMART attribute. It follows the detail page: ATA attributes use the
+// metadata display name and ThresholdValue (normalized, transformed or raw), and show the threshold
+// only for normalized values or attributes without metadata. Device-statistics and FARM attributes
+// prefer the metadata threshold over the drive-reported one.
+//
+// The threshold is 0 when there is nothing to show. NVMe and SCSI attributes store -1 for "no
+// threshold"; it is mapped to 0 here so every formatter (text, HTML, PDF) sees the same thing.
+//
+// ATA value rule: when the attribute has metadata, the value is the one the status is evaluated on.
+// That choice belongs to measurements.AttributeEvaluatedValue (#1086); until it is merged this
+// calls ThresholdValue, which has the same result. The rule kept here is only for an ATA attribute
+// with no metadata: it reports the normalized Value, as the detail page does, whereas the helper
+// would fall through to RawValue. ATA attributes 174, 204, 227 and 228 have metadata without a
+// display type, so they report RawValue; that is deliberate, because an override pins the raw
+// value and the status reason refers to it.
+func alertAttributeDetails(attrID string, attribute measurements.SmartAttribute) (name string, value int64, threshold int64) {
+	switch attr := attribute.(type) {
+	case *measurements.SmartAtaAttribute:
+		name, value, threshold = attr.Name, int64(attr.Value), attr.Threshold
+		if metadata, ok := thresholds.AtaMetadata[attr.AttributeId]; ok {
+			name = metadata.DisplayName
+			value = attr.ThresholdValue(metadata.DisplayType)
+			if metadata.DisplayType != thresholds.AtaSmartAttributeDisplayTypeNormalized {
+				threshold = 0
+			}
+		}
+	case *measurements.SmartAtaDeviceStatAttribute:
+		name, value, threshold = attr.AttributeId, attr.Value, attr.Threshold
+		if metadata, ok := thresholds.AtaDeviceStatsMetadata[attr.AttributeId]; ok {
+			name = metadata.DisplayName
+			if metadata.Threshold != 0 {
+				threshold = metadata.Threshold
+			}
+		}
+	case *measurements.SmartFarmAttribute:
+		name, value, threshold = attr.AttributeId, attr.Value, attr.Threshold
+		if metadata, ok := thresholds.FarmMetadata[attr.AttributeId]; ok {
+			name = metadata.DisplayName
+			if metadata.Threshold != 0 {
+				threshold = metadata.Threshold
+			}
+		}
+	case *measurements.SmartNvmeAttribute:
+		name, value, threshold = attr.AttributeId, attr.Value, attr.Threshold
+		if metadata, ok := thresholds.NmveMetadata[attr.AttributeId]; ok {
+			name = metadata.DisplayName
+		}
+	case *measurements.SmartScsiAttribute:
+		name, value, threshold = attr.AttributeId, attr.Value, attr.Threshold
+		if metadata, ok := thresholds.ScsiMetadataFor(attr.AttributeId); ok {
+			name = metadata.DisplayName
+		}
+	}
+	if threshold < 0 {
+		threshold = 0
+	}
+	if name == "" {
+		name = attrID
+	}
+	return name, value, threshold
 }
 
 func (g *Generator) populateZFSPools(ctx context.Context, report *ReportData) {

@@ -8,6 +8,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	collector_models "github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -31,6 +32,12 @@ func RegisterMdadmArrays(c *gin.Context) {
 		trimmedUUID := strings.TrimSpace(collectorArray.UUID)
 		if trimmedUUID == "" {
 			registrationErrors = append(registrationErrors, fmt.Sprintf("array %s rejected: missing UUID", collectorArray.Name))
+			continue
+		}
+		// An array stored under an identifier the archive, mute, label and
+		// delete routes refuse would be a row no API call could ever remove.
+		if err := validation.ValidateMdadmArrayID(trimmedUUID); err != nil {
+			registrationErrors = append(registrationErrors, fmt.Sprintf("array %s rejected: %v", collectorArray.Name, err))
 			continue
 		}
 		devices := collectorArray.Devices

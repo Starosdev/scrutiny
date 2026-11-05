@@ -1,6 +1,7 @@
 package thresholds
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -178,10 +179,10 @@ func TestLookupConsumerDriveProfileBySanDisk3dRegex(t *testing.T) {
 	}
 }
 
-func TestLookupConsumerDriveProfileByRegexFallback(t *testing.T) {
+func TestLookupConsumerDriveProfileByModelAlias(t *testing.T) {
 	profile, ok := LookupConsumerDriveProfile("ATA", "", "ST3000DM001-1ER166")
 	if !ok || profile == nil {
-		t.Fatalf("expected regex-backed profile match")
+		t.Fatalf("expected alias-backed profile match")
 	}
 	if profile.ModelFamily != "Seagate Desktop HDD.15" {
 		t.Fatalf("unexpected model family: %s", profile.ModelFamily)
@@ -230,5 +231,36 @@ func TestParseConsumerDriveProfilesRejectsUnknownFamilyAlias(t *testing.T) {
 	_, err := parseConsumerDriveProfiles([]byte(invalidJSON))
 	if err == nil || !strings.Contains(err.Error(), "unknown family") {
 		t.Fatalf("expected unknown family alias error, got %v", err)
+	}
+}
+
+// A profile's observed-threshold buckets are ordered by severity using the attribute's Ideal
+// direction. An attribute that declares no Ideal falls back to scoring one bucket at a time, which
+// would silently drop that ordering for every drive the profile matches.
+func TestBundledProfileObservedThresholdAttributesDeclareAnIdealDirection(t *testing.T) {
+	var catalog consumerDriveProfileCatalog
+	if err := json.Unmarshal(consumerDriveProfilesJSON, &catalog); err != nil {
+		t.Fatalf("unmarshal bundled catalog: %v", err)
+	}
+
+	checked := 0
+	for _, profile := range catalog.Profiles {
+		for attributeID := range profile.AtaObservedThresholds {
+			metadata, ok := AtaMetadata[attributeID]
+			if !ok {
+				t.Errorf("profile %q supplies observed thresholds for unknown ATA attribute %d",
+					profile.ModelFamily+profile.ModelName, attributeID)
+				continue
+			}
+			if metadata.Ideal != ObservedThresholdIdealLow && metadata.Ideal != ObservedThresholdIdealHigh {
+				t.Errorf("profile %q supplies observed thresholds for attribute %d (%s), which declares no Ideal",
+					profile.ModelFamily+profile.ModelName, attributeID, metadata.DisplayName)
+			}
+			checked++
+		}
+	}
+
+	if checked == 0 {
+		t.Fatal("no profile supplies observed thresholds, so this test proves nothing")
 	}
 }

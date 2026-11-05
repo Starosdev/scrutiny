@@ -106,6 +106,50 @@ func TestMigrateBackfillsDistinctDeviceIDsForLegacyDevicesWithMissingWWN(t *test
 	require.Equal(t, int64(2), nullWWNCount)
 }
 
+// fixes #1056: an AnalogJ/scrutiny 0.9.x database can hold two devices rows for one
+// drive, same WWN and serial, because 0.9.x keyed devices by a UUID over
+// model + serial + WWN and the drive's reported model name changed. m20260401000000
+// and m20260508000000 built idx_devices_wwn as UNIQUE, so importing that database
+// aborted the whole chain on "failed to create wwn unique index".
+func TestMigrateKeepsDevicesSharingAWWNAndSerial(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+
+	// The Staros schema before m20260401000000 keys devices by wwn, so the duplicate
+	// can only arrive from AnalogJ 0.9.x, which keyed them by its own UUID instead.
+	// CREATE TABLE AS SELECT copies the columns and drops the primary key, which is
+	// the shape the import actually presents.
+	require.NoError(t, repo.gormClient.Exec(`CREATE TABLE devices_analogj AS SELECT * FROM devices`).Error)
+	require.NoError(t, repo.gormClient.Exec(`DROP TABLE devices`).Error)
+	require.NoError(t, repo.gormClient.Exec(`ALTER TABLE devices_analogj RENAME TO devices`).Error)
+
+	require.NoError(t, repo.gormClient.Exec(`
+		INSERT INTO devices (wwn, model_name, serial_number, smart_display_mode)
+		VALUES
+			('0x5000039xxxxxxxx1', '', '48L0A0ZXFVNE', 'scrutiny'),
+			('0x5000039xxxxxxxx1', 'TOSHIBA AL13SEB300', '48L0A0ZXFVNE', 'scrutiny')
+	`).Error)
+
+	// Run the migration chain directly: this fixture's recorded history predates the beta
+	// upgrade-from floor (m20260823000000), so Migrate would refuse it before the chain runs.
+	require.NoError(t, repo.migrateSQLite(context.Background(), false))
+
+	var deviceCount int64
+	require.NoError(t, repo.gormClient.Raw(`SELECT COUNT(*) FROM devices`).Scan(&deviceCount).Error)
+	require.Equal(t, int64(2), deviceCount)
+
+	var distinctDeviceIDCount int64
+	require.NoError(t, repo.gormClient.Raw(`
+		SELECT COUNT(DISTINCT device_id) FROM devices WHERE device_id != ''
+	`).Scan(&distinctDeviceIDCount).Error)
+	require.Equal(t, int64(2), distinctDeviceIDCount)
+
+	var indexSQL string
+	require.NoError(t, repo.gormClient.Raw(
+		`SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'idx_devices_wwn'`,
+	).Scan(&indexSQL).Error)
+	require.Equal(t, "CREATE INDEX idx_devices_wwn ON devices(wwn)", indexSQL)
+}
+
 func TestMigrateAttributeOverridesSupportsDistinctDeviceSelectors(t *testing.T) {
 	repo := createMigrationTestRepository(t)
 	require.NoError(t, repo.migrateSQLite(context.Background(), false))
@@ -663,6 +707,13 @@ func TestMigrateCreatesDeviceSelfTestsTable(t *testing.T) {
 
 	require.NoError(t, repo.migrateSQLite(context.Background(), false))
 	require.True(t, repo.gormClient.Migrator().HasTable(&models.DeviceSelfTest{}))
+}
+
+func TestMigrateCreatesFilesystemDevicesTable(t *testing.T) {
+	repo := createMigrationTestRepository(t)
+
+	require.NoError(t, repo.migrateSQLite(context.Background(), false))
+	require.True(t, repo.gormClient.Migrator().HasTable(&models.FilesystemDevice{}))
 }
 
 func TestMigrateAddsDashboardPageSizeSetting(t *testing.T) {
