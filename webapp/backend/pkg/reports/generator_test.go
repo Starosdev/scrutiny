@@ -410,7 +410,7 @@ func TestGenerateReport_CountsWarningDevicesFromActiveFailures(t *testing.T) {
 					DeviceName:   "/dev/sda",
 					DeviceStatus: pkg.DeviceStatusPassed,
 				},
-				SmartResults: &models.SmartSummary{Temp: tempPtr(30)},
+				SmartResults: &models.SmartSummary{Temp: int64Ptr(30)},
 			},
 			"devid-warn": {
 				Device: models.Device{
@@ -418,7 +418,7 @@ func TestGenerateReport_CountsWarningDevicesFromActiveFailures(t *testing.T) {
 					DeviceName:   "/dev/sdb",
 					DeviceStatus: pkg.DeviceStatusPassed,
 				},
-				SmartResults: &models.SmartSummary{Temp: tempPtr(35)},
+				SmartResults: &models.SmartSummary{Temp: int64Ptr(35)},
 			},
 			"devid-failed": {
 				Device: models.Device{
@@ -426,7 +426,7 @@ func TestGenerateReport_CountsWarningDevicesFromActiveFailures(t *testing.T) {
 					DeviceName:   "/dev/sdc",
 					DeviceStatus: pkg.DeviceStatusFailedSmart,
 				},
-				SmartResults: &models.SmartSummary{Temp: tempPtr(40)},
+				SmartResults: &models.SmartSummary{Temp: int64Ptr(40)},
 			},
 		},
 		smartHistory: map[string][]measurements.Smart{
