@@ -133,6 +133,10 @@ export class DashboardService {
     runCollectors(): Observable<any> {
         return this._httpClient.post(getBasePath() + '/api/collectors/run', {});
     }
+
+    getCollectorRunStatus(): Observable<boolean> {
+        return this._httpClient.get<{ running: boolean }>(getBasePath() + '/api/collectors/run').pipe(map((response) => response.running));
+    }
     getFilesystemSummaryData(): Observable<{ filesystems: Record<string, FilesystemCapacityModel[]>; hosts: Record<string, FilesystemHostStatusModel> }> {
         return this._httpClient.get(getBasePath() + '/api/filesystems/summary').pipe(
             map((response: FilesystemSummaryResponseWrapper) => {

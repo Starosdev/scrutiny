@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
-import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { Subject, timer } from 'rxjs';
+import { first, switchMap, takeUntil, timeout } from 'rxjs/operators';
 import { ApexOptions, ChartComponent } from 'ng-apexcharts';
 import { DashboardService } from 'app/modules/dashboard/dashboard.service';
 import { MatDialog as MatDialog } from '@angular/material/dialog';
@@ -34,6 +34,10 @@ import { MatFormField, MatLabel, MatPrefix } from '@angular/material/form-field'
 import { FormsModule } from '@angular/forms';
 import { alignTemperatureChartSeries, TemperatureChartSeries, temperatureSlotProvenance, TemperatureSlotProvenance } from './temperature-chart-series';
 import { createTemperatureChartTooltip } from './temperature-chart-tooltip';
+
+const COLLECTOR_RUN_POLL_MS = 2000;
+// Upper bound that only stops a stuck spinner. A longer run reloads the page before it finishes.
+const COLLECTOR_RUN_WAIT_MS = 10 * 60 * 1000;
 
 const DASHBOARD_SHELL_WIDTHS: Record<DashboardColumns, string> = {
     2: '1440px',
@@ -101,7 +105,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     hostSearch = '';
     appliedHostSearch = '';
     isTriggering: boolean = false;
-    countdown: number = 0;
+    collectorRunMessage = '';
     pagination: DeviceSummaryPagination = {
         page: 1,
         page_size: 10,
@@ -664,26 +668,44 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
 
         this.isTriggering = true;
-        this._dashboardService.runCollectors().subscribe(
-            () => {
-                this.countdown = 15;
-                this._changeDetectorRef.markForCheck();
-
-                const interval = setInterval(() => {
-                    this.countdown--;
+        this.collectorRunMessage = 'Running collectors...';
+        this._changeDetectorRef.markForCheck();
+        this._dashboardService.runCollectors().subscribe({
+            next: () => this._waitForCollectorRun(),
+            error: (err) => {
+                if (err?.status === 409) {
+                    this.collectorRunMessage = 'A collector run is already in progress. Waiting for it to finish...';
                     this._changeDetectorRef.markForCheck();
-
-                    if (this.countdown <= 0) {
-                        clearInterval(interval);
-                        window.location.reload();
-                    }
-                }, 1000);
-            },
-            (err) => {
+                    this._waitForCollectorRun();
+                    return;
+                }
                 this.isTriggering = false;
+                this.collectorRunMessage = '';
                 this._changeDetectorRef.markForCheck();
                 console.error('Failed to trigger collectors', err);
-            }
-        );
+            },
+        });
+    }
+
+    /**
+     * Poll the run status and reload once the run has finished, so the page shows the new data.
+     * A status error or the wait cap also reloads, which matches the old fixed-timer behavior.
+     */
+    private _waitForCollectorRun(): void {
+        timer(COLLECTOR_RUN_POLL_MS, COLLECTOR_RUN_POLL_MS)
+            .pipe(
+                switchMap(() => this._dashboardService.getCollectorRunStatus()),
+                first((running) => !running),
+                timeout(COLLECTOR_RUN_WAIT_MS),
+                takeUntil(this._unsubscribeAll)
+            )
+            .subscribe({
+                next: () => this._reloadPage(),
+                error: () => this._reloadPage(),
+            });
+    }
+
+    private _reloadPage(): void {
+        window.location.reload();
     }
 }

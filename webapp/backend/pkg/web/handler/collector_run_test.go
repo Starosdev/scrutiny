@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -27,6 +28,19 @@ func triggerCollectorsRequest() int {
 	c.Set("LOGGER", logrus.NewEntry(logrus.New()))
 	TriggerCollectors(c)
 	return w.Code
+}
+
+func collectorRunStatus(t *testing.T) bool {
+	t.Helper()
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	GetCollectorRunStatus(c)
+	require.Equal(t, http.StatusOK, w.Code)
+	var body struct {
+		Running bool `json:"running"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	return body.Running
 }
 
 func TestTriggerCollectors_NotFound(t *testing.T) {
@@ -66,6 +80,7 @@ func TestTriggerCollectors_RunsAllSpecsAndRejectsConcurrent(t *testing.T) {
 	require.Equal(t, http.StatusAccepted, triggerCollectorsRequest())
 	<-started
 	require.Equal(t, http.StatusConflict, triggerCollectorsRequest(), "second request during a run must be rejected")
+	require.True(t, collectorRunStatus(t), "status must report the run in progress")
 
 	close(release)
 	require.Eventually(t, func() bool {
@@ -75,6 +90,8 @@ func TestTriggerCollectors_RunsAllSpecsAndRejectsConcurrent(t *testing.T) {
 		collectorRunMu.Unlock()
 		return true
 	}, 2*time.Second, 5*time.Millisecond)
+
+	require.False(t, collectorRunStatus(t), "status must report no run once the lock is free")
 
 	mu.Lock()
 	defer mu.Unlock()
