@@ -369,7 +369,8 @@ func (sr *scrutinyRepository) SaveZFSPoolMetrics(ctx context.Context, pool model
 }
 
 // GetZFSPoolMetricsHistory retrieves historical metrics for a ZFS pool
-// Note: GUID is validated at the handler level before reaching this function.
+// The GUID is interpolated into the Flux predicate, so it is checked here
+// rather than trusted from the caller.
 func (sr *scrutinyRepository) GetZFSPoolMetricsHistory(ctx context.Context, guid string, durationKey string) ([]measurements.ZFSPoolMetrics, error) {
 	// Flux query parameters (params.*) are InfluxDB Cloud only. InfluxDB OSS fails with
 	// "undefined identifier params" (#157, #1111). ValidateGUID allows only digits or
