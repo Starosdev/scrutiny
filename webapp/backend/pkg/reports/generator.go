@@ -57,19 +57,26 @@ func (g *Generator) Generate(ctx context.Context, periodType string, start, end 
 
 		report.Devices = append(report.Devices, deviceReport)
 
+		hasWarning := false
+		for _, failure := range deviceReport.ActiveFailures {
+			if failure.Status == "warning" {
+				hasWarning = true
+				break
+			}
+		}
+
 		report.TotalDevices++
 		switch {
-		case summary.Device.DeviceStatus == pkg.DeviceStatusPassed:
-			report.PassedDevices++
 		case pkg.DeviceStatusHas(summary.Device.DeviceStatus, pkg.DeviceStatusFailedSmart) || pkg.DeviceStatusHas(summary.Device.DeviceStatus, pkg.DeviceStatusFailedScrutiny):
 			report.FailedDevices++
+		case hasWarning:
+			report.WarningDevices++
 		default:
 			report.PassedDevices++
 		}
 	}
 
 	report.ArchivedDevices = archivedCount
-	report.WarningDevices = report.TotalDevices - report.PassedDevices - report.FailedDevices
 
 	// Populate ZFS pool data
 	g.populateZFSPools(ctx, report)
