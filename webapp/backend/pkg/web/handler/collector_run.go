@@ -63,6 +63,7 @@ func TriggerCollectors(c *gin.Context) {
 func runCollectorsSequentially(logger *logrus.Entry) {
 	logger.Info("Starting manual sequential collector run")
 
+	ran := false
 	for _, spec := range omnibus.CollectorSpecs {
 		path, err := collectorLookPath(spec.BinaryName)
 		if err != nil {
@@ -73,6 +74,12 @@ func runCollectorsSequentially(logger *logrus.Entry) {
 			logger.Infof("Collector %s disabled, skipping manual run", spec.BinaryName)
 			continue
 		}
+
+		// Pause between collectors only. A pause after the last one would hold the run lock for nothing.
+		if ran {
+			time.Sleep(collectorGap)
+		}
+		ran = true
 
 		logger.Infof("Executing collector: %s", spec.BinaryName)
 
@@ -85,8 +92,6 @@ func runCollectorsSequentially(logger *logrus.Entry) {
 		} else {
 			logger.Infof("Collector %s completed successfully", spec.BinaryName)
 		}
-
-		time.Sleep(collectorGap)
 	}
 
 	logger.Info("Manual sequential collector run finished")

@@ -82,6 +82,31 @@ func TestTriggerCollectors_RunsAllSpecsAndRejectsConcurrent(t *testing.T) {
 	require.Equal(t, "/bin/scrutiny-collector-btrfs", ran[3])
 }
 
+func TestTriggerCollectors_NoGapAfterLastCollector(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	origLook, origExec, origGap := collectorLookPath, collectorExec, collectorGap
+	defer func() { collectorLookPath, collectorExec, collectorGap = origLook, origExec, origGap }()
+
+	// Only the SMART collector exists, so the run executes exactly one collector.
+	collectorLookPath = func(name string) (string, error) {
+		if name == omnibus.CollectorSpecs[0].BinaryName {
+			return "/bin/" + name, nil
+		}
+		return "", errors.New("missing")
+	}
+	collectorExec = func(context.Context, string, []string) ([]byte, error) { return nil, nil }
+	collectorGap = time.Hour
+
+	require.Equal(t, http.StatusAccepted, triggerCollectorsRequest())
+	require.Eventually(t, func() bool {
+		if !collectorRunMu.TryLock() {
+			return false
+		}
+		collectorRunMu.Unlock()
+		return true
+	}, 2*time.Second, 5*time.Millisecond, "run lock must be released without waiting for a gap after the last collector")
+}
+
 type collectorFinishedHook struct{ done chan struct{} }
 
 func (h collectorFinishedHook) Levels() []logrus.Level { return logrus.AllLevels }
@@ -96,6 +121,9 @@ func TestTriggerCollectorsEnablement(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX executable fixture")
 	}
+	origGap := collectorGap
+	t.Cleanup(func() { collectorGap = origGap })
+	collectorGap = 0
 	for _, tc := range []struct {
 		name     string
 		only     string
