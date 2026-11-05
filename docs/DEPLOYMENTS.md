@@ -56,11 +56,19 @@ The release job installs exact versions from the root package-lock.json with
 npm ci, then runs .github/scripts/run-semantic-release.mjs. Update
 package.json and package-lock.json together when changing release tooling.
 
+`conventional-changelog-conventionalcommits` must stay on the generation that
+`@semantic-release/release-notes-generator` renders with, currently 9.x against
+writer 8 and parser 6. Preset 10.x was rewritten onto `@conventional-changelog/template`
+and renders an empty body: commit analysis still succeeds and the release still
+publishes, so the only symptom is a changelog entry with no bullets. That pin
+cost 28 releases of changelog history (#1112).
+
 - Semantic versioning still comes from conventional commits and `semantic-release`.
 - Raw release notes are generated deterministically from `master` PR merge commits reachable between the previous tag and the new tag.
 - The generator uses merged PR metadata as the source of truth. Master promotion PRs must contain `## Product changes` followed by `## Summary`. Only non-`None.` summaries are user-facing; their linked issues supply release-note content.
 - Validation checks that extracted summary content survives note formatting before it emits notes.
 - If note generation fails, the step fails visibly and the run continues: the tag and release already exist at that point, and the binary build and asset upload must not be skipped. Repair the notes afterwards with `.github/scripts/generate-release-notes.sh <prev-tag> <tag>` and `gh release edit <tag> --notes-file`.
+- Verify a release-tooling change before it ships: run the workflow with `dry_run` checked. It skips Docker image validation, runs semantic-release with no tag, commit or publish, prints the notes it would write to the job summary, and fails if a version resolves with an empty notes body. The build and upload jobs stay skipped. `dry_run` and `rebuild_tag` are mutually exclusive.
 - A release left without binaries can be repaired without tagging a new version: run the workflow with `rebuild_tag` set to the existing tag (for example `v1.79.1`) and `release_type` left at `auto`. That skips semantic-release and release notes, verifies the release exists, and re-runs the build and upload jobs for that tag with `--clobber`.
 - Each release adds a `chore(release)` commit to `master` that `develop` does not have. `master` requires branches to be up to date, so a promotion PR first reports `BEHIND`. Run `gh pr update-branch <pr>` on the promotion PR to merge `master` into `develop`. Nothing syncs `develop` automatically: its ruleset requires a pull request, and a squash merge would not make `master` an ancestor of `develop`.
 
