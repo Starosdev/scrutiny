@@ -180,6 +180,18 @@ export class DashboardSettingsComponent implements OnInit {
         return this.notifyOnTemperature && (this.temperatureThresholdInvalid || this.temperatureDurationInvalid);
     }
 
+    // Btrfs and ZFS usage alert, percent; 0 disables it
+    filesystemUsageThresholdPercent: number | null = 0;
+
+    get filesystemUsageThresholdInvalid(): boolean {
+        const value = this.filesystemUsageThresholdPercent;
+        return value == null || !Number.isInteger(value) || value < 0 || value > 100;
+    }
+
+    get notificationSettingsInvalid(): boolean {
+        return this.temperatureSettingsInvalid || this.filesystemUsageThresholdInvalid;
+    }
+
     // Missed ping settings
     notifyOnMissedPing: boolean;
     missedPingTimeoutMinutes: number;
@@ -312,6 +324,7 @@ export class DashboardSettingsComponent implements OnInit {
             this.notifyOnTemperature = config.metrics.notify_on_temperature ?? false;
             this.temperatureThresholdCelsius = config.metrics.temperature_threshold_celsius ?? DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS;
             this.temperatureDurationMinutes = config.metrics.temperature_duration_minutes ?? DEFAULT_TEMPERATURE_DURATION_MINUTES;
+            this.filesystemUsageThresholdPercent = config.metrics.filesystem_usage_threshold_percent ?? 0;
 
             // Missed ping settings
             this.notifyOnMissedPing = config.metrics.notify_on_missed_ping ?? false;
@@ -630,7 +643,7 @@ export class DashboardSettingsComponent implements OnInit {
     }
 
     saveSettings(): void {
-        if (this.temperatureSettingsInvalid) {
+        if (this.notificationSettingsInvalid) {
             return;
         }
         this.normalizeTemperatureThreshold();
@@ -665,6 +678,7 @@ export class DashboardSettingsComponent implements OnInit {
                 notify_on_temperature: this.notifyOnTemperature,
                 temperature_threshold_celsius: this.temperatureThresholdInvalid ? DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS : this.temperatureThresholdCelsius,
                 temperature_duration_minutes: this.temperatureDurationInvalid ? DEFAULT_TEMPERATURE_DURATION_MINUTES : this.temperatureDurationMinutes,
+                filesystem_usage_threshold_percent: this.filesystemUsageThresholdInvalid ? 0 : this.filesystemUsageThresholdPercent,
                 notify_on_missed_ping: this.notifyOnMissedPing,
                 missed_ping_timeout_minutes: this.missedPingTimeoutMinutes,
                 missed_ping_check_interval_mins: this.missedPingCheckIntervalMins,

@@ -306,6 +306,18 @@
             }
         }
 
+        <!-- Filesystem Usage Notifications -->
+        <div class="flex flex-col mt-5 gt-md:flex-row">
+            <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
+                <mat-label>Filesystem Usage Threshold (%)</mat-label>
+                <input matInput type="number" [(ngModel)]="filesystemUsageThresholdPercent" min="0" max="100" step="1" required />
+                <mat-hint>Alert when a Btrfs filesystem or ZFS pool reaches this usage; 0 disables</mat-hint>
+            </mat-form-field>
+        </div>
+        @if (filesystemUsageThresholdInvalid) {
+            <p role="alert" class="mt-5">Enter a whole number between 0 and 100.</p>
+        }
+
         <!-- Notification Rate Limiting -->
         <div class="flex flex-col mt-5 gt-md:flex-row">
             <mat-form-field class="flex-auto gt-xs:pr-3 gt-md:pr-3">
@@ -951,5 +963,5 @@
 </mat-dialog-content>
 <mat-dialog-actions align="end">
     <button mat-button mat-dialog-close>Cancel</button>
-    <button mat-button mat-dialog-close (click)="saveSettings()" [disabled]="temperatureSettingsInvalid" cdkFocusInitial>Save</button>
+    <button mat-button mat-dialog-close (click)="saveSettings()" [disabled]="notificationSettingsInvalid" cdkFocusInitial>Save</button>
 </mat-dialog-actions>

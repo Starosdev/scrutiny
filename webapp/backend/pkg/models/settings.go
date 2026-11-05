@@ -11,6 +11,8 @@ const (
 	MinTemperatureThresholdCelsius     = 1
 	MaxTemperatureThresholdCelsius     = 150
 	MaxTemperatureDurationMinutes      = int(math.MaxInt64 / int64(time.Minute))
+	// MaxFilesystemUsageThresholdPercent bounds the Btrfs and ZFS usage alert; 0 disables it.
+	MaxFilesystemUsageThresholdPercent = 100
 )
 
 // Settings is made up of parsed SettingEntry objects retrieved from the database
@@ -22,41 +24,42 @@ const (
 
 type Settings struct {
 	Metrics struct {
-		NotifyOnTemperature           bool   `json:"notify_on_temperature" mapstructure:"notify_on_temperature"`
-		TemperatureThresholdCelsius   int    `json:"temperature_threshold_celsius" mapstructure:"temperature_threshold_celsius"`
-		TemperatureDurationMinutes    int    `json:"temperature_duration_minutes" mapstructure:"temperature_duration_minutes"`
-		NotificationQuietStart        string `json:"notification_quiet_start" mapstructure:"notification_quiet_start"`
-		ReportPDFPath                 string `json:"report_pdf_path" mapstructure:"report_pdf_path"`
-		ReportMonthlyTime             string `json:"report_monthly_time" mapstructure:"report_monthly_time"`
-		ReportWeeklyTime              string `json:"report_weekly_time" mapstructure:"report_weekly_time"`
-		ReportDailyTime               string `json:"report_daily_time" mapstructure:"report_daily_time"`
-		UptimeKumaPushURL             string `json:"uptime_kuma_push_url" mapstructure:"uptime_kuma_push_url"`
-		ReplacementRiskNotifyCategory string `json:"replacement_risk_notify_category" mapstructure:"replacement_risk_notify_category"`
-		NotificationQuietEnd          string `json:"notification_quiet_end" mapstructure:"notification_quiet_end"`
-		MissedPingCooldownMinutes     int    `json:"missed_ping_cooldown_minutes" mapstructure:"missed_ping_cooldown_minutes"`
-		NotificationRateLimit         int    `json:"notification_rate_limit" mapstructure:"notification_rate_limit"`
-		NotifyLevel                   int    `json:"notify_level" mapstructure:"notify_level"`
-		StatusFilterAttributes        int    `json:"status_filter_attributes" mapstructure:"status_filter_attributes"`
-		StatusThreshold               int    `json:"status_threshold" mapstructure:"status_threshold"`
-		MissedPingCheckIntervalMins   int    `json:"missed_ping_check_interval_mins" mapstructure:"missed_ping_check_interval_mins"`
-		ReportMonthlyDay              int    `json:"report_monthly_day" mapstructure:"report_monthly_day"`
-		HeartbeatIntervalHours        int    `json:"heartbeat_interval_hours" mapstructure:"heartbeat_interval_hours"`
-		ReportWeeklyDay               int    `json:"report_weekly_day" mapstructure:"report_weekly_day"`
-		MissedPingTimeoutMinutes      int    `json:"missed_ping_timeout_minutes" mapstructure:"missed_ping_timeout_minutes"`
-		UptimeKumaIntervalSeconds     int    `json:"uptime_kuma_interval_seconds" mapstructure:"uptime_kuma_interval_seconds"`
-		ConsumerDriveProfilesDenylist string `json:"consumer_drive_profiles_denylist" mapstructure:"consumer_drive_profiles_denylist"`
-		ReportEnabled                 bool   `json:"report_enabled" mapstructure:"report_enabled"`
-		ReportDailyEnabled            bool   `json:"report_daily_enabled" mapstructure:"report_daily_enabled"`
-		ConsumerDriveProfilesEnabled  bool   `json:"consumer_drive_profiles_enabled" mapstructure:"consumer_drive_profiles_enabled"`
-		NotifyOnMissedPing            bool   `json:"notify_on_missed_ping" mapstructure:"notify_on_missed_ping"`
-		ReportWeeklyEnabled           bool   `json:"report_weekly_enabled" mapstructure:"report_weekly_enabled"`
-		UptimeKumaEnabled             bool   `json:"uptime_kuma_enabled" mapstructure:"uptime_kuma_enabled"`
-		RepeatNotifications           bool   `json:"repeat_notifications" mapstructure:"repeat_notifications"`
-		ReportMonthlyEnabled          bool   `json:"report_monthly_enabled" mapstructure:"report_monthly_enabled"`
-		HeartbeatEnabled              bool   `json:"heartbeat_enabled" mapstructure:"heartbeat_enabled"`
-		NotifyOnReplacementRisk       bool   `json:"notify_on_replacement_risk" mapstructure:"notify_on_replacement_risk"`
-		ReportPDFEnabled              bool   `json:"report_pdf_enabled" mapstructure:"report_pdf_enabled"`
-		NotifyOnCollectorError        bool   `json:"notify_on_collector_error" mapstructure:"notify_on_collector_error"`
+		NotifyOnTemperature             bool   `json:"notify_on_temperature" mapstructure:"notify_on_temperature"`
+		TemperatureThresholdCelsius     int    `json:"temperature_threshold_celsius" mapstructure:"temperature_threshold_celsius"`
+		TemperatureDurationMinutes      int    `json:"temperature_duration_minutes" mapstructure:"temperature_duration_minutes"`
+		FilesystemUsageThresholdPercent int    `json:"filesystem_usage_threshold_percent" mapstructure:"filesystem_usage_threshold_percent"`
+		NotificationQuietStart          string `json:"notification_quiet_start" mapstructure:"notification_quiet_start"`
+		ReportPDFPath                   string `json:"report_pdf_path" mapstructure:"report_pdf_path"`
+		ReportMonthlyTime               string `json:"report_monthly_time" mapstructure:"report_monthly_time"`
+		ReportWeeklyTime                string `json:"report_weekly_time" mapstructure:"report_weekly_time"`
+		ReportDailyTime                 string `json:"report_daily_time" mapstructure:"report_daily_time"`
+		UptimeKumaPushURL               string `json:"uptime_kuma_push_url" mapstructure:"uptime_kuma_push_url"`
+		ReplacementRiskNotifyCategory   string `json:"replacement_risk_notify_category" mapstructure:"replacement_risk_notify_category"`
+		NotificationQuietEnd            string `json:"notification_quiet_end" mapstructure:"notification_quiet_end"`
+		MissedPingCooldownMinutes       int    `json:"missed_ping_cooldown_minutes" mapstructure:"missed_ping_cooldown_minutes"`
+		NotificationRateLimit           int    `json:"notification_rate_limit" mapstructure:"notification_rate_limit"`
+		NotifyLevel                     int    `json:"notify_level" mapstructure:"notify_level"`
+		StatusFilterAttributes          int    `json:"status_filter_attributes" mapstructure:"status_filter_attributes"`
+		StatusThreshold                 int    `json:"status_threshold" mapstructure:"status_threshold"`
+		MissedPingCheckIntervalMins     int    `json:"missed_ping_check_interval_mins" mapstructure:"missed_ping_check_interval_mins"`
+		ReportMonthlyDay                int    `json:"report_monthly_day" mapstructure:"report_monthly_day"`
+		HeartbeatIntervalHours          int    `json:"heartbeat_interval_hours" mapstructure:"heartbeat_interval_hours"`
+		ReportWeeklyDay                 int    `json:"report_weekly_day" mapstructure:"report_weekly_day"`
+		MissedPingTimeoutMinutes        int    `json:"missed_ping_timeout_minutes" mapstructure:"missed_ping_timeout_minutes"`
+		UptimeKumaIntervalSeconds       int    `json:"uptime_kuma_interval_seconds" mapstructure:"uptime_kuma_interval_seconds"`
+		ConsumerDriveProfilesDenylist   string `json:"consumer_drive_profiles_denylist" mapstructure:"consumer_drive_profiles_denylist"`
+		ReportEnabled                   bool   `json:"report_enabled" mapstructure:"report_enabled"`
+		ReportDailyEnabled              bool   `json:"report_daily_enabled" mapstructure:"report_daily_enabled"`
+		ConsumerDriveProfilesEnabled    bool   `json:"consumer_drive_profiles_enabled" mapstructure:"consumer_drive_profiles_enabled"`
+		NotifyOnMissedPing              bool   `json:"notify_on_missed_ping" mapstructure:"notify_on_missed_ping"`
+		ReportWeeklyEnabled             bool   `json:"report_weekly_enabled" mapstructure:"report_weekly_enabled"`
+		UptimeKumaEnabled               bool   `json:"uptime_kuma_enabled" mapstructure:"uptime_kuma_enabled"`
+		RepeatNotifications             bool   `json:"repeat_notifications" mapstructure:"repeat_notifications"`
+		ReportMonthlyEnabled            bool   `json:"report_monthly_enabled" mapstructure:"report_monthly_enabled"`
+		HeartbeatEnabled                bool   `json:"heartbeat_enabled" mapstructure:"heartbeat_enabled"`
+		NotifyOnReplacementRisk         bool   `json:"notify_on_replacement_risk" mapstructure:"notify_on_replacement_risk"`
+		ReportPDFEnabled                bool   `json:"report_pdf_enabled" mapstructure:"report_pdf_enabled"`
+		NotifyOnCollectorError          bool   `json:"notify_on_collector_error" mapstructure:"notify_on_collector_error"`
 	} `json:"metrics" mapstructure:"metrics"`
 	Theme                 string `json:"theme" mapstructure:"theme"`
 	Layout                string `json:"layout" mapstructure:"layout"`

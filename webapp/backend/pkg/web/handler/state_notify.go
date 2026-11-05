@@ -12,8 +12,9 @@ import (
 // are found by comparing the upload with the row stored by the previous one.
 type stateNotification struct {
 	// failureTypes reports the problems that warrant a notification for the
-	// given repeat setting, ordered by severity; empty means nothing to send.
-	failureTypes func(repeat bool) []string
+	// given repeat and usage threshold settings, ordered by severity; empty
+	// means nothing to send.
+	failureTypes func(repeat bool, usageThreshold int) []string
 	// build creates the notification for a non-empty failureTypes result.
 	build      func(appConfig config.Interface, failureTypes []string) notify.Notify
 	kind       string
@@ -24,14 +25,11 @@ type stateNotification struct {
 }
 
 // notifyStateChange sends at most one notification for an upload, through the
-// shared gate when one is registered. A healthy upload never loads settings.
+// shared gate when one is registered. Settings are loaded on every unsilenced
+// upload because the usage threshold is one of them.
 func notifyStateChange(c *gin.Context, deviceRepo database.DeviceRepo, logger *logrus.Entry, n stateNotification) {
 	if n.silenced {
 		logger.Debugf("Skipping notification for %s %s: muted or archived", n.kind, n.identifier)
-		return
-	}
-	// Repeat on is the widest filter: nothing it rejects passes without it.
-	if len(n.failureTypes(true)) == 0 {
 		return
 	}
 
@@ -39,8 +37,12 @@ func notifyStateChange(c *gin.Context, deviceRepo database.DeviceRepo, logger *l
 	if err != nil {
 		logger.Warnf("Failed to load settings for %s notification: %v", n.kind, err)
 	}
-	repeat := settings != nil && settings.Metrics.RepeatNotifications
-	failureTypes := n.failureTypes(repeat)
+	repeat, usageThreshold := false, 0
+	if settings != nil {
+		repeat = settings.Metrics.RepeatNotifications
+		usageThreshold = settings.Metrics.FilesystemUsageThresholdPercent
+	}
+	failureTypes := n.failureTypes(repeat, usageThreshold)
 	if len(failureTypes) == 0 {
 		return
 	}

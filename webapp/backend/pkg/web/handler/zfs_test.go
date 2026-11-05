@@ -80,15 +80,18 @@ func postZFSMetrics(t *testing.T, router *gin.Engine, pool models.ZFSPool) int {
 	return w.Code
 }
 
-// A healthy upload with a healthy previous state never reaches the settings
-// load, so the notification path costs nothing on the common case.
+// A healthy upload with a healthy previous state reads settings (the usage
+// threshold lives there) and then sends nothing.
 func TestUploadZFSPoolMetricsSkipsNotificationWhenHealthy(t *testing.T) {
 	const guid = "1234567890"
+	settings := &models.Settings{}
+	settings.ApplyDefaults()
 	router := setupZFSUploadRouter(t, func(repo *mock_database.MockDeviceRepo) {
 		repo.EXPECT().GetZFSPoolDetails(gomock.Any(), guid).Return(models.ZFSPool{GUID: guid, Status: models.ZFSPoolStatusOnline}, nil)
 		repo.EXPECT().RegisterZFSPool(gomock.Any(), gomock.Any()).Return(nil)
 		repo.EXPECT().SaveZFSPoolMetrics(gomock.Any(), gomock.Any()).Return(nil)
-		repo.EXPECT().LoadSettings(gomock.Any()).Times(0)
+		repo.EXPECT().LoadSettings(gomock.Any()).Return(settings, nil)
+		repo.EXPECT().GetNotifyUrls(gomock.Any()).Times(0)
 	})
 	router.POST("/api/zfs/pool/:guid/metrics", handler.UploadZFSPoolMetrics)
 

@@ -93,6 +93,7 @@ func TestUploadBtrfsMetricsPreservesDevices(t *testing.T) {
 	var captured models.BtrfsFilesystem
 	router := setupBtrfsRouter(t, func(repo *mock_database.MockDeviceRepo) {
 		repo.EXPECT().GetBtrfsFilesystemDetails(gomock.Any(), uuid).Return(models.BtrfsFilesystem{}, gorm.ErrRecordNotFound)
+		repo.EXPECT().LoadSettings(gomock.Any()).Return(&models.Settings{}, nil)
 		repo.EXPECT().RegisterBtrfsFilesystem(gomock.Any(), gomock.Any()).DoAndReturn(
 			func(_ context.Context, fs *models.BtrfsFilesystem) error {
 				captured = *fs
@@ -152,16 +153,19 @@ func postBtrfsMetrics(t *testing.T, router *gin.Engine, filesystem models.BtrfsF
 	return w.Code
 }
 
-// A healthy upload with a healthy previous state never reaches the settings
-// load, so the notification path costs nothing on the common case.
+// A healthy upload with a healthy previous state reads settings (the usage
+// threshold lives there) and then sends nothing.
 func TestUploadBtrfsMetricsSkipsNotificationWhenHealthy(t *testing.T) {
 	uuid := "11111111-2222-3333-4444-555555555555"
 	stored := models.BtrfsFilesystem{UUID: uuid, Status: models.BtrfsFilesystemStatusOnline}
+	settings := &models.Settings{}
+	settings.ApplyDefaults()
 	router := setupBtrfsRouter(t, func(repo *mock_database.MockDeviceRepo) {
 		repo.EXPECT().GetBtrfsFilesystemDetails(gomock.Any(), uuid).Return(stored, nil)
 		repo.EXPECT().RegisterBtrfsFilesystem(gomock.Any(), gomock.Any()).Return(nil)
 		repo.EXPECT().SaveBtrfsMetrics(gomock.Any(), gomock.Any()).Return(nil)
-		repo.EXPECT().LoadSettings(gomock.Any()).Times(0)
+		repo.EXPECT().LoadSettings(gomock.Any()).Return(settings, nil)
+		repo.EXPECT().GetNotifyUrls(gomock.Any()).Times(0)
 	})
 	router.POST("/api/btrfs/filesystem/:uuid/metrics", handler.UploadBtrfsMetrics)
 

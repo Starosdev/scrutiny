@@ -70,8 +70,8 @@ func maybeNotifyBtrfs(c *gin.Context, deviceRepo database.DeviceRepo, logger *lo
 		kind:       "Btrfs filesystem",
 		identifier: current.UUID,
 		silenced:   previous != nil && (previous.Muted || previous.Archived),
-		failureTypes: func(repeat bool) []string {
-			return notify.BtrfsFailureTypes(previous, current, repeat)
+		failureTypes: func(repeat bool, usageThreshold int) []string {
+			return notify.BtrfsFailureTypes(previous, current, repeat, usageThreshold)
 		},
 		build: func(appConfig config.Interface, failureTypes []string) notify.Notify {
 			return notify.NewBtrfsNotify(logger, appConfig, current, failureTypes)
