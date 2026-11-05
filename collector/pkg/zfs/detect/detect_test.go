@@ -133,6 +133,7 @@ func TestParseUsableSpace(t *testing.T) {
 // --- parseScrubStatus tests ---
 
 func TestParseScrubStatus_ScrubFinishedShortDuration(t *testing.T) {
+	pinLocalEST(t)
 	d := newTestDetect()
 	pool := &models.ZFSPool{}
 
@@ -161,13 +162,14 @@ config:
 	if pool.ScrubEndTime == nil {
 		t.Fatal("expected ScrubEndTime to be set")
 	}
-	expectedDate := time.Date(2026, time.January, 5, 0, 34, 31, 0, time.UTC)
+	expectedDate := time.Date(2026, time.January, 5, 0, 34, 31, 0, time.Local)
 	if !pool.ScrubEndTime.Equal(expectedDate) {
 		t.Errorf("expected ScrubEndTime=%v, got %v", expectedDate, *pool.ScrubEndTime)
 	}
 }
 
 func TestParseScrubStatus_ScrubFinishedMultiDayDuration(t *testing.T) {
+	pinLocalEST(t)
 	d := newTestDetect()
 	pool := &models.ZFSPool{}
 
@@ -190,7 +192,7 @@ config:
 	if pool.ScrubEndTime == nil {
 		t.Fatal("expected ScrubEndTime to be set")
 	}
-	expectedDate := time.Date(2026, time.January, 12, 0, 36, 38, 0, time.UTC)
+	expectedDate := time.Date(2026, time.January, 12, 0, 36, 38, 0, time.Local)
 	if !pool.ScrubEndTime.Equal(expectedDate) {
 		t.Errorf("expected ScrubEndTime=%v, got %v", expectedDate, *pool.ScrubEndTime)
 	}
@@ -356,7 +358,17 @@ config:
 
 // --- parseZFSDate tests ---
 
+// pinLocalEST sets time.Local to a fixed non-UTC zone for one test. zpool status prints local
+// time, so a parse that ignored time.Local would be off by five hours here on any CI zone.
+func pinLocalEST(t *testing.T) {
+	t.Helper()
+	saved := time.Local
+	time.Local = time.FixedZone("EST", -5*60*60)
+	t.Cleanup(func() { time.Local = saved })
+}
+
 func TestParseZFSDate(t *testing.T) {
+	pinLocalEST(t)
 	d := newTestDetect()
 
 	tests := []struct {
@@ -368,17 +380,17 @@ func TestParseZFSDate(t *testing.T) {
 		{
 			name:     "single digit day with double space",
 			input:    "Sun Jan  5 00:34:31 2026",
-			expected: time.Date(2026, time.January, 5, 0, 34, 31, 0, time.UTC),
+			expected: time.Date(2026, time.January, 5, 0, 34, 31, 0, time.Local),
 		},
 		{
 			name:     "double digit day",
 			input:    "Mon Jan 12 00:36:38 2026",
-			expected: time.Date(2026, time.January, 12, 0, 36, 38, 0, time.UTC),
+			expected: time.Date(2026, time.January, 12, 0, 36, 38, 0, time.Local),
 		},
 		{
 			name:     "different month",
 			input:    "Tue Feb 14 10:15:30 2026",
-			expected: time.Date(2026, time.February, 14, 10, 15, 30, 0, time.UTC),
+			expected: time.Date(2026, time.February, 14, 10, 15, 30, 0, time.Local),
 		},
 		{
 			name:    "invalid date",
