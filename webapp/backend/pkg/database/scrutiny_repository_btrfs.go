@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
@@ -206,19 +207,25 @@ func (sr *scrutinyRepository) SaveBtrfsMetrics(ctx context.Context, filesystem *
 }
 
 func (sr *scrutinyRepository) GetBtrfsMetricsHistory(ctx context.Context, uuid string, durationKey string) ([]measurements.BtrfsMetrics, error) {
+	// Flux query parameters (params.*) are InfluxDB Cloud only. InfluxDB OSS fails with
+	// "undefined identifier params" (#157, #1111). Validate the identifier and inline it.
+	if err := validation.ValidateUUID(uuid); err != nil {
+		return nil, err
+	}
+
 	bucketName := sr.lookupBucketName(durationKey)
 	duration := sr.lookupDuration(durationKey)
 	queryStr := fmt.Sprintf(`
 		from(bucket: "%s")
 		|> range(start: %s, stop: %s)
 		|> filter(fn: (r) => r["_measurement"] == "btrfs_filesystem")
-		|> filter(fn: (r) => r["filesystem_uuid"] == params.uuid)
+		|> filter(fn: (r) => r["filesystem_uuid"] == %s)
 		|> aggregateWindow(every: 1h, fn: last, createEmpty: false)
 		|> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
 		|> sort(columns: ["_time"], desc: false)
-	`, bucketName, duration[0], duration[1])
+	`, bucketName, duration[0], duration[1], strconv.Quote(uuid))
 
-	result, err := sr.influxQueryApi.QueryWithParams(ctx, queryStr, map[string]interface{}{"uuid": uuid})
+	result, err := sr.influxQueryApi.Query(ctx, queryStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query Btrfs metrics: %v", err)
 	}
