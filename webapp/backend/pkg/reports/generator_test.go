@@ -60,7 +60,7 @@ func TestGenerateReport_BasicSummary(t *testing.T) {
 					DeviceStatus:   pkg.DeviceStatusPassed,
 				},
 				SmartResults: &models.SmartSummary{
-					Temp:         tempPtr(35),
+					Temp:         int64Ptr(35),
 					PowerOnHours: 25000,
 				},
 			},
@@ -75,7 +75,7 @@ func TestGenerateReport_BasicSummary(t *testing.T) {
 					DeviceStatus:   pkg.DeviceStatusFailedSmart,
 				},
 				SmartResults: &models.SmartSummary{
-					Temp:         tempPtr(45),
+					Temp:         int64Ptr(45),
 					PowerOnHours: 8000,
 				},
 			},
@@ -115,7 +115,7 @@ func TestGenerateReport_TempAggregation(t *testing.T) {
 					DeviceName:   "/dev/sda",
 					DeviceStatus: pkg.DeviceStatusPassed,
 				},
-				SmartResults: &models.SmartSummary{Temp: tempPtr(35), PowerOnHours: 100},
+				SmartResults: &models.SmartSummary{Temp: int64Ptr(35), PowerOnHours: 100},
 			},
 		},
 		tempHistory: map[string][]measurements.SmartTemperature{
@@ -147,14 +147,14 @@ func TestGenerateReport_ArchivedDevicesExcluded(t *testing.T) {
 					DeviceID: "devid-active", WWN: "wwn1", DeviceName: "/dev/sda", Archived: false,
 					DeviceStatus: pkg.DeviceStatusPassed,
 				},
-				SmartResults: &models.SmartSummary{Temp: tempPtr(35)},
+				SmartResults: &models.SmartSummary{Temp: int64Ptr(35)},
 			},
 			"devid-archived": {
 				Device: models.Device{
 					DeviceID: "devid-archived", WWN: "wwn2", DeviceName: "/dev/sdb", Archived: true,
 					DeviceStatus: pkg.DeviceStatusPassed,
 				},
-				SmartResults: &models.SmartSummary{Temp: tempPtr(30)},
+				SmartResults: &models.SmartSummary{Temp: int64Ptr(30)},
 			},
 		},
 		tempHistory: map[string][]measurements.SmartTemperature{},
@@ -256,7 +256,7 @@ func TestGenerateReport_AlertEntriesCarryNameValueAndThreshold(t *testing.T) {
 
 	assert.Equal(t, "Spin-Up Time", byID["3"].AttributeName)
 	assert.Equal(t, int64(83), byID["3"].Value)
-	assert.Equal(t, i64(1), byID["3"].Threshold)
+	assert.Equal(t, int64Ptr(1), byID["3"].Threshold)
 
 	assert.Equal(t, "Start/Stop Count", byID["4"].AttributeName)
 	assert.Equal(t, int64(69), byID["4"].Value)
@@ -303,13 +303,13 @@ func TestAlertAttributeDetails(t *testing.T) {
 			attr: &measurements.SmartAtaAttribute{
 				AttributeId: 999, Name: "Vendor_Thing", Value: 77, Threshold: 5, RawValue: 123456,
 			},
-			wantName: "Vendor_Thing", wantValue: 77, wantThreshold: i64(5),
+			wantName: "Vendor_Thing", wantValue: 77, wantThreshold: int64Ptr(5),
 		},
 		{
 			name:     "ATA attribute without metadata or name uses the attribute id",
 			attrID:   "999",
 			attr:     &measurements.SmartAtaAttribute{AttributeId: 999, Value: 77},
-			wantName: "999", wantValue: 77, wantThreshold: i64(0),
+			wantName: "999", wantValue: 77, wantThreshold: int64Ptr(0),
 		},
 		{
 			name:   "devstat uses the metadata threshold when the drive reports none",
@@ -317,7 +317,7 @@ func TestAlertAttributeDetails(t *testing.T) {
 			attr: &measurements.SmartAtaDeviceStatAttribute{
 				AttributeId: "devstat_7_8", Value: 100,
 			},
-			wantName: "Percentage Used Endurance Indicator", wantValue: 100, wantThreshold: i64(100),
+			wantName: "Percentage Used Endurance Indicator", wantValue: 100, wantThreshold: int64Ptr(100),
 		},
 		{
 			name:   "FARM uses the metadata threshold when the drive reports none",
@@ -325,7 +325,7 @@ func TestAlertAttributeDetails(t *testing.T) {
 			attr: &measurements.SmartFarmAttribute{
 				AttributeId: "farm_test_threshold", Value: 90,
 			},
-			wantName: "Test FARM", wantValue: 90, wantThreshold: i64(80),
+			wantName: "Test FARM", wantValue: 90, wantThreshold: int64Ptr(80),
 		},
 		{
 			name:   "NVMe no-threshold sentinel -1 becomes nil",
@@ -349,7 +349,7 @@ func TestAlertAttributeDetails(t *testing.T) {
 			attr: &measurements.SmartScsiAttribute{
 				AttributeId: "scsi_grown_defect_list", Value: 12, Threshold: 3,
 			},
-			wantName: "Grown Defect List", wantValue: 12, wantThreshold: i64(3),
+			wantName: "Grown Defect List", wantValue: 12, wantThreshold: int64Ptr(3),
 		},
 		{
 			name:   "ATA normalized attribute keeps a real threshold of 0",
@@ -357,7 +357,7 @@ func TestAlertAttributeDetails(t *testing.T) {
 			attr: &measurements.SmartAtaAttribute{
 				AttributeId: 1, Value: 90, Threshold: 0, RawValue: 12,
 			},
-			wantName: "Read Error Rate", wantValue: 90, wantThreshold: i64(0),
+			wantName: "Read Error Rate", wantValue: 90, wantThreshold: int64Ptr(0),
 		},
 		{
 			name:   "NVMe keeps a real threshold of 0",
@@ -365,7 +365,7 @@ func TestAlertAttributeDetails(t *testing.T) {
 			attr: &measurements.SmartNvmeAttribute{
 				AttributeId: "critical_warning", Value: 1, Threshold: 0,
 			},
-			wantName: "Critical Warning", wantValue: 1, wantThreshold: i64(0),
+			wantName: "Critical Warning", wantValue: 1, wantThreshold: int64Ptr(0),
 		},
 		{
 			name:   "devstat threshold of 0 means none",
@@ -386,5 +386,3 @@ func TestAlertAttributeDetails(t *testing.T) {
 		})
 	}
 }
-
-func i64(v int64) *int64 { return &v }
