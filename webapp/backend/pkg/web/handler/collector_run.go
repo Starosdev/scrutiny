@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 	"unicode"
@@ -20,10 +19,9 @@ import (
 const collectorRunTimeout = 5 * time.Minute
 
 var (
-	// collectorRunMu is held for the whole background run. A second request while it is held
-	// gets 409 instead of joining: runs take minutes, and a rejected caller can simply retry.
-	collectorRunMu sync.Mutex
-	// collectorRunning mirrors collectorRunMu for status reads, which must not take the lock themselves.
+	// collectorRunning is true for the whole background run and is the only run lock. A second
+	// request while it is set gets 409 instead of joining: runs take minutes, and a rejected caller
+	// can simply retry. The status endpoint reads it directly.
 	collectorRunning atomic.Bool
 
 	// seams for tests
@@ -47,14 +45,12 @@ func TriggerCollectors(c *gin.Context) {
 		return
 	}
 
-	if !collectorRunMu.TryLock() {
+	if !collectorRunning.CompareAndSwap(false, true) {
 		c.JSON(http.StatusConflict, gin.H{"success": false, "error": "A collector run is already in progress"})
 		return
 	}
 
-	collectorRunning.Store(true)
 	go func() {
-		defer collectorRunMu.Unlock()
 		defer collectorRunning.Store(false)
 		runCollectorsSequentially(logger)
 	}()

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation, inject } from '@angular/core';
 import { Subject, timer } from 'rxjs';
-import { first, switchMap, takeUntil, timeout } from 'rxjs/operators';
+import { exhaustMap, first, takeUntil, timeout } from 'rxjs/operators';
 import { ApexOptions, ChartComponent } from 'ng-apexcharts';
 import { DashboardService } from 'app/modules/dashboard/dashboard.service';
 import { MatDialog as MatDialog } from '@angular/material/dialog';
@@ -694,7 +694,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private _waitForCollectorRun(): void {
         timer(COLLECTOR_RUN_POLL_MS, COLLECTOR_RUN_POLL_MS)
             .pipe(
-                switchMap(() => this._dashboardService.getCollectorRunStatus()),
+                // exhaustMap lets a slow status request finish instead of cancelling it on the next tick.
+                exhaustMap(() => this._dashboardService.getCollectorRunStatus()),
+                // first() must stay before timeout(): nothing reaches timeout() until the run ends,
+                // so the timeout bounds the whole wait rather than the gap between polls.
                 first((running) => !running),
                 timeout(COLLECTOR_RUN_WAIT_MS),
                 takeUntil(this._unsubscribeAll)

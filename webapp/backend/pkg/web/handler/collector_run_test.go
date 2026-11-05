@@ -83,15 +83,9 @@ func TestTriggerCollectors_RunsAllSpecsAndRejectsConcurrent(t *testing.T) {
 	require.True(t, collectorRunStatus(t), "status must report the run in progress")
 
 	close(release)
-	require.Eventually(t, func() bool {
-		if !collectorRunMu.TryLock() {
-			return false
-		}
-		collectorRunMu.Unlock()
-		return true
-	}, 2*time.Second, 5*time.Millisecond)
+	require.Eventually(t, func() bool { return !collectorRunning.Load() }, 2*time.Second, 5*time.Millisecond)
 
-	require.False(t, collectorRunStatus(t), "status must report no run once the lock is free")
+	require.False(t, collectorRunStatus(t), "status must report no run once the run has finished")
 
 	mu.Lock()
 	defer mu.Unlock()
@@ -115,13 +109,7 @@ func TestTriggerCollectors_NoGapAfterLastCollector(t *testing.T) {
 	collectorGap = time.Hour
 
 	require.Equal(t, http.StatusAccepted, triggerCollectorsRequest())
-	require.Eventually(t, func() bool {
-		if !collectorRunMu.TryLock() {
-			return false
-		}
-		collectorRunMu.Unlock()
-		return true
-	}, 2*time.Second, 5*time.Millisecond, "run lock must be released without waiting for a gap after the last collector")
+	require.Eventually(t, func() bool { return !collectorRunning.Load() }, 2*time.Second, 5*time.Millisecond, "run flag must clear without waiting for a gap after the last collector")
 }
 
 type collectorFinishedHook struct{ done chan struct{} }
@@ -201,14 +189,8 @@ func TestTriggerCollectorsEnablement(t *testing.T) {
 			case <-time.After(10 * time.Second):
 				t.Fatal("manual collector run did not finish")
 			}
-			// The run lock is released after the finish log, so wait for it before the next case.
-			require.Eventually(t, func() bool {
-				if !collectorRunMu.TryLock() {
-					return false
-				}
-				collectorRunMu.Unlock()
-				return true
-			}, 2*time.Second, 5*time.Millisecond)
+			// The run flag clears after the finish log, so wait for it before the next case.
+			require.Eventually(t, func() bool { return !collectorRunning.Load() }, 2*time.Second, 5*time.Millisecond)
 			for _, name := range []string{"metrics", "zfs", "mdadm"} {
 				args, err := os.ReadFile(filepath.Join(dir, "scrutiny-collector-"+name+".args"))
 				if name != "metrics" && (!tc.enabled || (tc.only != "" && strings.ToUpper(name) != tc.only)) {

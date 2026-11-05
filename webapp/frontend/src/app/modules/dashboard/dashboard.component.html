@@ -37,7 +37,7 @@
                     <!-- Collector run progress -->
                     @if (isTriggering) {
                     <div class="ml-4 flex items-center text-secondary font-medium" role="status">
-                        <mat-progress-spinner class="mr-2" [diameter]="20" [mode]="'indeterminate'"> </mat-progress-spinner>
+                        <mat-progress-spinner class="mr-2" [diameter]="20" [mode]="'indeterminate'" aria-hidden="true"> </mat-progress-spinner>
                         {{ collectorRunMessage }}
                     </div>
                     }
