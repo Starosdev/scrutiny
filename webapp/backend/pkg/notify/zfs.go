@@ -15,14 +15,16 @@ import (
 const NotifyFailureTypeZFSPoolDegraded = "ZFSPoolDegraded"
 const NotifyFailureTypeZFSDeviceErrors = "ZFSDeviceErrors"
 const NotifyFailureTypeZFSScrubErrors = "ZFSScrubErrors"
+const NotifyFailureTypeZFSUsageHigh = "ZFSUsageHigh"
 
 // ZFSFailureTypes reports which pool problems in current warrant a
 // notification, given the state recorded at the previous upload. previous is
 // nil on the first upload of a pool. With repeat set, a problem that is still
 // present notifies again; otherwise only a new problem notifies: a pool whose
 // status changed away from ONLINE, an error total that grew, or a scrub that
-// finished with errors since the last upload.
-func ZFSFailureTypes(previous *models.ZFSPool, current *models.ZFSPool, repeat bool) []string {
+// finished with errors since the last upload. usageThreshold is a percent
+// compared with the pool's capacity_percent; 0 disables the usage check.
+func ZFSFailureTypes(previous *models.ZFSPool, current *models.ZFSPool, repeat bool, usageThreshold int) []string {
 	var types []string
 	if !current.IsHealthy() && (repeat || previous == nil || previous.Status != current.Status) {
 		types = append(types, NotifyFailureTypeZFSPoolDegraded)
@@ -32,6 +34,13 @@ func ZFSFailureTypes(previous *models.ZFSPool, current *models.ZFSPool, repeat b
 	}
 	if zfsScrubFoundErrors(previous, current, repeat) {
 		types = append(types, NotifyFailureTypeZFSScrubErrors)
+	}
+	var previousUsage float64
+	if previous != nil {
+		previousUsage = previous.CapacityPercent
+	}
+	if usageCrossed(previousUsage, current.CapacityPercent, previous == nil, repeat, usageThreshold) {
+		types = append(types, NotifyFailureTypeZFSUsageHigh)
 	}
 	return types
 }
@@ -86,6 +95,7 @@ func NewZFSNotify(logger logrus.FieldLogger, appconfig config.Interface, pool *m
 		{"Host Id", pool.HostID},
 		{"Status", string(pool.Status)},
 		{"Health", pool.Health},
+		{"Usage", fmt.Sprintf("%.1f%%", pool.CapacityPercent)},
 		{"Error Totals", errorTotals},
 		{"Scrub State", string(pool.ScrubState)},
 		{"Scrub Errors", fmt.Sprintf("%d", pool.ScrubErrorsCount)},
@@ -98,6 +108,7 @@ func NewZFSNotify(logger logrus.FieldLogger, appconfig config.Interface, pool *m
 		fmt.Sprintf(fmtHostId, pool.HostID),
 		fmt.Sprintf("Status: %s", pool.Status),
 		fmt.Sprintf("Health: %s", pool.Health),
+		fmt.Sprintf("Usage: %.1f%%", pool.CapacityPercent),
 		fmt.Sprintf("Error Totals: %s", errorTotals),
 		fmt.Sprintf("Scrub State: %s", pool.ScrubState),
 		fmt.Sprintf("Scrub Errors: %d", pool.ScrubErrorsCount),

@@ -2319,6 +2319,12 @@ components:
               maximum: 153722867
               default: 30
               description: Sustained hot duration in whole minutes; defaults to 30 when omitted. Explicit 0 alerts on the first hot reading. Range is validated even when notifications are disabled. Restart history seeding is limited to 24 hours.
+            filesystem_usage_threshold_percent:
+              type: integer
+              minimum: 0
+              maximum: 100
+              default: 0
+              description: Notify when a Btrfs filesystem or ZFS pool reaches this usage percent, evaluated on collector uploads. 0 disables the check. Honors mute, archive, repeat_notifications and the notification gate.
             notify_on_replacement_risk:
               type: boolean
             replacement_risk_notify_category:

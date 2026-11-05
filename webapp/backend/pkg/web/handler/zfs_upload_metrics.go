@@ -85,8 +85,8 @@ func maybeNotifyZFS(c *gin.Context, deviceRepo database.DeviceRepo, logger *logr
 		kind:       "ZFS pool",
 		identifier: current.GUID,
 		silenced:   previous != nil && (previous.Muted || previous.Archived),
-		failureTypes: func(repeat bool) []string {
-			return notify.ZFSFailureTypes(previous, current, repeat)
+		failureTypes: func(repeat bool, usageThreshold int) []string {
+			return notify.ZFSFailureTypes(previous, current, repeat, usageThreshold)
 		},
 		build: func(appConfig config.Interface, failureTypes []string) notify.Notify {
 			return notify.NewZFSNotify(logger, appConfig, current, failureTypes)

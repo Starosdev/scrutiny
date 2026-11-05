@@ -15,14 +15,16 @@ import (
 const NotifyFailureTypeBtrfsDegraded = "BtrfsDegraded"
 const NotifyFailureTypeBtrfsDeviceErrors = "BtrfsDeviceErrors"
 const NotifyFailureTypeBtrfsScrubErrors = "BtrfsScrubErrors"
+const NotifyFailureTypeBtrfsUsageHigh = "BtrfsUsageHigh"
 
 // BtrfsFailureTypes reports which Btrfs problems in current warrant a
 // notification, given the state recorded at the previous upload. previous is
 // nil on the first upload of a filesystem. With repeat set, a problem that is
 // still present notifies again; otherwise only a new problem notifies: a
 // filesystem that became degraded, a device error counter that grew, or a scrub
-// that finished with errors since the last upload.
-func BtrfsFailureTypes(previous *models.BtrfsFilesystem, current *models.BtrfsFilesystem, repeat bool) []string {
+// that finished with errors since the last upload. usageThreshold is a percent;
+// 0 disables the usage check.
+func BtrfsFailureTypes(previous *models.BtrfsFilesystem, current *models.BtrfsFilesystem, repeat bool, usageThreshold int) []string {
 	var types []string
 	if current.Status == models.BtrfsFilesystemStatusDegraded && (repeat || previous == nil || previous.Status != models.BtrfsFilesystemStatusDegraded) {
 		types = append(types, NotifyFailureTypeBtrfsDegraded)
@@ -33,7 +35,36 @@ func BtrfsFailureTypes(previous *models.BtrfsFilesystem, current *models.BtrfsFi
 	if btrfsScrubFoundErrors(previous, current, repeat) {
 		types = append(types, NotifyFailureTypeBtrfsScrubErrors)
 	}
+	var previousUsage float64
+	if previous != nil {
+		previousUsage = BtrfsUsagePercent(previous)
+	}
+	if usageCrossed(previousUsage, BtrfsUsagePercent(current), previous == nil, repeat, usageThreshold) {
+		types = append(types, NotifyFailureTypeBtrfsUsageHigh)
+	}
 	return types
+}
+
+// BtrfsUsagePercent mirrors the dashboard: statfs figures when the collector
+// sent them, raw used over device size otherwise.
+func BtrfsUsagePercent(filesystem *models.BtrfsFilesystem) float64 {
+	used, total := filesystem.Used, filesystem.DeviceSize
+	if filesystem.StatfsUsed+filesystem.StatfsAvailable > 0 {
+		used, total = filesystem.StatfsUsed, filesystem.StatfsUsed+filesystem.StatfsAvailable
+	}
+	if total <= 0 {
+		return 0
+	}
+	return float64(used) / float64(total) * 100
+}
+
+// usageCrossed reports whether usage warrants a notification: at or above a
+// non-zero threshold, and either newly so, first seen, or repeating.
+func usageCrossed(previousUsage, currentUsage float64, first, repeat bool, threshold int) bool {
+	if threshold <= 0 || currentUsage < float64(threshold) {
+		return false
+	}
+	return repeat || first || previousUsage < float64(threshold)
 }
 
 func btrfsDeviceErrorsGrew(previous *models.BtrfsFilesystem, current *models.BtrfsFilesystem, repeat bool) bool {
@@ -111,6 +142,7 @@ func NewBtrfsNotify(logger logrus.FieldLogger, appconfig config.Interface, files
 	scrubErrors := fmt.Sprintf("read=%d csum=%d verify=%d super=%d",
 		filesystem.ScrubReadErrors, filesystem.ScrubCsumErrors, filesystem.ScrubVerifyErrors, filesystem.ScrubSuperErrors)
 
+	usage := fmt.Sprintf("%.1f%%", BtrfsUsagePercent(filesystem))
 	rows := [][2]string{
 		{notifyRowFailureType, strings.Join(failureTypes, ", ")},
 		{"Filesystem", name},
@@ -119,6 +151,7 @@ func NewBtrfsNotify(logger logrus.FieldLogger, appconfig config.Interface, files
 		{"Mount Point", filesystem.MountPoint},
 		{"Status", string(filesystem.Status)},
 		{"Missing Devices", fmt.Sprintf("%d", filesystem.DeviceMissing)},
+		{"Usage", usage},
 		{"Scrub State", string(filesystem.ScrubState)},
 		{"Scrub Errors", scrubErrors},
 	}
@@ -130,6 +163,7 @@ func NewBtrfsNotify(logger logrus.FieldLogger, appconfig config.Interface, files
 		fmt.Sprintf("Mount Point: %s", filesystem.MountPoint),
 		fmt.Sprintf("Status: %s", filesystem.Status),
 		fmt.Sprintf("Missing Devices: %d", filesystem.DeviceMissing),
+		fmt.Sprintf("Usage: %s", usage),
 		fmt.Sprintf("Scrub State: %s", filesystem.ScrubState),
 		fmt.Sprintf("Scrub Errors: %s", scrubErrors),
 	}

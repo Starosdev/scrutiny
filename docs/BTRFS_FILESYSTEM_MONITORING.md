@@ -207,9 +207,10 @@ Every metrics upload is compared with the state stored from the previous upload.
 
 - the filesystem status changes to `DEGRADED` (a device is missing),
 - a per-device error counter grows (`write_io_errs`, `read_io_errs`, `flush_io_errs`, `corruption_errs`, `generation_errs`),
-- a scrub finishes with errors (read, csum, verify or super errors above 0).
+- a scrub finishes with errors (read, csum, verify or super errors above 0),
+- usage reaches the **Filesystem Usage Threshold** set in the dashboard settings (`metrics.filesystem_usage_threshold_percent`, 1 to 100; 0 disables it). Usage is `statfs_used / (statfs_used + statfs_available)`, the same figure the dashboard shows.
 
-One notification carries every reason found in that upload. Its `failure_type` is the most severe one: `BtrfsDegraded`, then `BtrfsDeviceErrors`, then `BtrfsScrubErrors`. The `device_type` is `Btrfs` and `device_serial` is the filesystem UUID.
+One notification carries every reason found in that upload. Its `failure_type` is the most severe one: `BtrfsDegraded`, then `BtrfsDeviceErrors`, then `BtrfsScrubErrors`, then `BtrfsUsageHigh`. The `device_type` is `Btrfs` and `device_serial` is the filesystem UUID.
 
 Notifications go through the shared notification gate, so quiet hours and the rate limit apply. With **Repeat Notifications** enabled, a problem that is still present notifies on every upload; otherwise only a new problem notifies. A muted or archived filesystem never notifies.
 

@@ -28,6 +28,11 @@ func TestBtrfsFailureTypes(t *testing.T) {
 		fs.Devices[1].WriteIOErrors = write
 		return fs
 	}
+	withUsage := func(used int64) *models.BtrfsFilesystem {
+		fs := online()
+		fs.StatfsUsed, fs.StatfsAvailable = used, 100-used
+		return fs
+	}
 	withScrubErrors := func(finished time.Time) *models.BtrfsFilesystem {
 		fs := online()
 		fs.ScrubCsumErrors = 3
@@ -36,11 +41,12 @@ func TestBtrfsFailureTypes(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name     string
-		previous *models.BtrfsFilesystem
-		current  *models.BtrfsFilesystem
-		repeat   bool
-		want     []string
+		name      string
+		previous  *models.BtrfsFilesystem
+		current   *models.BtrfsFilesystem
+		repeat    bool
+		threshold int
+		want      []string
 	}{
 		{name: "healthy first upload", current: online()},
 		{name: "healthy stays healthy", previous: online(), current: online()},
@@ -66,9 +72,16 @@ func TestBtrfsFailureTypes(t *testing.T) {
 			fs.Devices[0].ReadIOErrors = 5
 			return fs
 		}(), want: []string{NotifyFailureTypeBtrfsDegraded, NotifyFailureTypeBtrfsDeviceErrors}},
+		{name: "usage crosses threshold", previous: withUsage(80), current: withUsage(91), threshold: 90, want: []string{NotifyFailureTypeBtrfsUsageHigh}},
+		{name: "usage at threshold", previous: withUsage(80), current: withUsage(90), threshold: 90, want: []string{NotifyFailureTypeBtrfsUsageHigh}},
+		{name: "usage stays above without repeat", previous: withUsage(91), current: withUsage(92), threshold: 90},
+		{name: "usage stays above with repeat", previous: withUsage(91), current: withUsage(92), threshold: 90, repeat: true, want: []string{NotifyFailureTypeBtrfsUsageHigh}},
+		{name: "usage above on first upload", current: withUsage(95), threshold: 90, want: []string{NotifyFailureTypeBtrfsUsageHigh}},
+		{name: "usage below threshold", previous: withUsage(50), current: withUsage(89), threshold: 90},
+		{name: "usage threshold disabled", previous: withUsage(50), current: withUsage(99)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.want, BtrfsFailureTypes(tc.previous, tc.current, tc.repeat))
+			require.Equal(t, tc.want, BtrfsFailureTypes(tc.previous, tc.current, tc.repeat, tc.threshold))
 		})
 	}
 }
@@ -102,9 +115,17 @@ func TestNewBtrfsNotify(t *testing.T) {
 	require.Equal(t, "Scrutiny Btrfs problem (BtrfsDegraded) detected on filesystem: tank", n.Payload.Subject)
 	require.Contains(t, n.Payload.Message, "Failure Type: BtrfsDegraded, BtrfsScrubErrors")
 	require.Contains(t, n.Payload.Message, "Status: DEGRADED")
+	require.Contains(t, n.Payload.Message, "Usage: 0.0%")
 	require.Contains(t, n.Payload.Message, "Scrub Errors: read=0 csum=3 verify=0 super=0")
 	require.Contains(t, n.Payload.Message, "Device 1 (/dev/sda): missing")
 	require.Contains(t, n.Payload.Message, "Device 2 (/dev/sdb): write_io_errs=0 read_io_errs=0 flush_io_errs=0 corruption_errs=7 generation_errs=0")
 	require.Contains(t, n.Payload.HTMLMessage, "BTRFS PROBLEM")
 	require.Contains(t, n.Payload.HTMLMessage, "/dev/sdb")
+}
+
+func TestBtrfsUsagePercent(t *testing.T) {
+	require.Equal(t, 0.0, BtrfsUsagePercent(&models.BtrfsFilesystem{}))
+	require.InDelta(t, 25.0, BtrfsUsagePercent(&models.BtrfsFilesystem{Used: 25, DeviceSize: 100}), 0.001)
+	// statfs figures win over the raw device figures when present.
+	require.InDelta(t, 75.0, BtrfsUsagePercent(&models.BtrfsFilesystem{Used: 25, DeviceSize: 100, StatfsUsed: 3, StatfsAvailable: 1}), 0.001)
 }

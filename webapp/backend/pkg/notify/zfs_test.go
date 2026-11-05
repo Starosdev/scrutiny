@@ -26,6 +26,11 @@ func TestZFSFailureTypes(t *testing.T) {
 		pool.TotalChecksumErrors = checksum
 		return pool
 	}
+	withUsage := func(percent float64) *models.ZFSPool {
+		pool := online()
+		pool.CapacityPercent = percent
+		return pool
+	}
 	withScrubErrors := func(end time.Time) *models.ZFSPool {
 		pool := online()
 		pool.ScrubErrorsCount = 2
@@ -34,11 +39,12 @@ func TestZFSFailureTypes(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name     string
-		previous *models.ZFSPool
-		current  *models.ZFSPool
-		repeat   bool
-		want     []string
+		name      string
+		previous  *models.ZFSPool
+		current   *models.ZFSPool
+		repeat    bool
+		threshold int
+		want      []string
 	}{
 		{name: "healthy first upload", current: online()},
 		{name: "healthy stays healthy", previous: online(), current: online()},
@@ -66,9 +72,14 @@ func TestZFSFailureTypes(t *testing.T) {
 			pool.TotalReadErrors = 4
 			return pool
 		}(), want: []string{NotifyFailureTypeZFSPoolDegraded, NotifyFailureTypeZFSDeviceErrors}},
+		{name: "usage crosses threshold", previous: withUsage(80), current: withUsage(90), threshold: 90, want: []string{NotifyFailureTypeZFSUsageHigh}},
+		{name: "usage stays above without repeat", previous: withUsage(91), current: withUsage(92), threshold: 90},
+		{name: "usage stays above with repeat", previous: withUsage(91), current: withUsage(92), threshold: 90, repeat: true, want: []string{NotifyFailureTypeZFSUsageHigh}},
+		{name: "usage above on first upload", current: withUsage(95), threshold: 90, want: []string{NotifyFailureTypeZFSUsageHigh}},
+		{name: "usage threshold disabled", previous: withUsage(50), current: withUsage(99)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.want, ZFSFailureTypes(tc.previous, tc.current, tc.repeat))
+			require.Equal(t, tc.want, ZFSFailureTypes(tc.previous, tc.current, tc.repeat, tc.threshold))
 		})
 	}
 }
@@ -96,6 +107,7 @@ func TestNewZFSNotify(t *testing.T) {
 	require.Equal(t, "Scrutiny ZFS pool problem (ZFSPoolDegraded) detected on pool: tank", n.Payload.Subject)
 	require.Contains(t, n.Payload.Message, "Failure Type: ZFSPoolDegraded, ZFSScrubErrors")
 	require.Contains(t, n.Payload.Message, "Status: DEGRADED")
+	require.Contains(t, n.Payload.Message, "Usage: 0.0%")
 	require.Contains(t, n.Payload.Message, "Error Totals: read=0 write=0 checksum=7")
 	require.Contains(t, n.Payload.Message, "Scrub Errors: 2")
 	require.Contains(t, n.Payload.HTMLMessage, "ZFS POOL PROBLEM")
