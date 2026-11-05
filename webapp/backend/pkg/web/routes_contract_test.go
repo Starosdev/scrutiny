@@ -42,6 +42,7 @@ var routeScopes = map[string]string{
 	"POST /api/hosts/purge":                      models.APITokenScopeAdmin,
 	"GET /api/filesystems/summary":               models.APITokenScopeRead,
 	"POST /api/filesystems/summary":              models.APITokenScopeCollector,
+	"GET /api/collectors/run":                    models.APITokenScopeAdmin,
 	"POST /api/collectors/run":                   models.APITokenScopeAdmin,
 	"GET /api/metrics":                           models.APITokenScopeRead,
 	"POST /api/device/:id/smart":                 models.APITokenScopeCollector,

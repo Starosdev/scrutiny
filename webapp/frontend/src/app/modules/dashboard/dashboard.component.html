@@ -34,11 +34,11 @@
                     </button>
                     }
 
-                    <!-- Countdown display -->
-                    @if (countdown > 0) {
-                    <div class="ml-4 flex items-center text-secondary font-medium">
-                        <mat-progress-spinner class="mr-2" [diameter]="20" [mode]="'indeterminate'"> </mat-progress-spinner>
-                        Refreshing in {{ countdown }}s...
+                    <!-- Collector run progress -->
+                    @if (isTriggering) {
+                    <div class="ml-4 flex items-center text-secondary font-medium" role="status">
+                        <mat-progress-spinner class="mr-2" [diameter]="20" [mode]="'indeterminate'" aria-hidden="true"> </mat-progress-spinner>
+                        {{ collectorRunMessage }}
                     </div>
                     }
 

@@ -130,6 +130,7 @@ func registerAPIRoutes(api *gin.RouterGroup, metricsEnabled bool, allowZFSPoolMo
 	g.read.GET("/filesystems/summary", handler.GetFilesystemSummary)          // used by Dashboard filesystem capacity panel
 	g.collector.POST("/filesystems/summary", handler.UploadFilesystemSummary) // used by Filesystem Collector to upload data
 	g.admin.POST("/collectors/run", handler.TriggerCollectors)                // used by Dashboard to trigger local collectors in omnibus mode
+	g.admin.GET("/collectors/run", handler.GetCollectorRunStatus)             // used by Dashboard to wait for a triggered run to finish
 
 	// Prometheus metrics endpoint (only registered if enabled)
 	if metricsEnabled {

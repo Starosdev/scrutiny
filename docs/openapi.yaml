@@ -444,6 +444,23 @@ paths:
         "500":
           $ref: "#/components/responses/ErrorResponse"
   /api/collectors/run:
+    get:
+      tags: [Devices]
+      summary: Report whether a manual collector run is in progress
+      description: Lets the dashboard wait for a run started by POST /api/collectors/run to finish.
+      responses:
+        "200":
+          description: Current manual collector run state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  running:
+                    type: boolean
+                required: [success, running]
     post:
       tags: [Devices]
       summary: Trigger local collectors in omnibus mode

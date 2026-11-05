@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 	"unicode"
 
@@ -19,9 +19,10 @@ import (
 const collectorRunTimeout = 5 * time.Minute
 
 var (
-	// collectorRunMu is held for the whole background run. A second request while it is held
-	// gets 409 instead of joining: runs take minutes, and a rejected caller can simply retry.
-	collectorRunMu sync.Mutex
+	// collectorRunning is true for the whole background run and is the only run lock. A second
+	// request while it is set gets 409 instead of joining: runs take minutes, and a rejected caller
+	// can simply retry. The status endpoint reads it directly.
+	collectorRunning atomic.Bool
 
 	// seams for tests
 	collectorLookPath = exec.LookPath
@@ -44,13 +45,13 @@ func TriggerCollectors(c *gin.Context) {
 		return
 	}
 
-	if !collectorRunMu.TryLock() {
+	if !collectorRunning.CompareAndSwap(false, true) {
 		c.JSON(http.StatusConflict, gin.H{"success": false, "error": "A collector run is already in progress"})
 		return
 	}
 
 	go func() {
-		defer collectorRunMu.Unlock()
+		defer collectorRunning.Store(false)
 		runCollectorsSequentially(logger)
 	}()
 
@@ -120,4 +121,10 @@ func manualCollectorEnabled(binaryName string) bool {
 		return enabled
 	}
 	return false
+}
+
+// GetCollectorRunStatus reports whether a manual collector run is in progress, so the dashboard
+// can wait for the run to finish before it reloads.
+func GetCollectorRunStatus(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"success": true, "running": collectorRunning.Load()})
 }
