@@ -266,7 +266,7 @@ identical drives can report different usable sizes.
 
 Every metrics upload is compared with the state stored from the previous upload. A notification is sent when:
 
-- the pool status changes away from `ONLINE` (`DEGRADED`, `FAULTED`, `OFFLINE`, `UNAVAIL`, `REMOVED`), including a change from one unhealthy status to a worse one,
+- the pool status changes away from `ONLINE` (`DEGRADED`, `FAULTED`, `OFFLINE`, `UNAVAIL`, `REMOVED`), including a change from one unhealthy status to another,
 - a pool-level error total grows (`total_read_errors`, `total_write_errors`, `total_checksum_errors`),
 - a scrub finishes with `scrub_errors_count` above 0.
 
