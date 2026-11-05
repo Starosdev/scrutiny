@@ -304,6 +304,189 @@ func TestShouldNotify_NoRepeat(t *testing.T) {
 	require.False(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, false, "", &gin.Context{}, fakeDatabase, nil))
 }
 
+// shouldNotifyNoRepeat runs ShouldNotify with repeat notifications off against a previous
+// submission, so each case below only has to describe the two attribute sets.
+func shouldNotifyNoRepeat(t *testing.T, notifyLevel pkg.MetricsNotifyLevel, previous, current map[string]measurements.SmartAttribute) bool {
+	t.Helper()
+	device := models.Device{DeviceStatus: pkg.DeviceStatusFailedScrutiny}
+	smartAttrs := measurements.Smart{Attributes: current}
+	previousSmart := measurements.Smart{Attributes: previous}
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
+	fakeDatabase.EXPECT().GetPreviousSmartSubmission(&gin.Context{}, "").Return([]measurements.Smart{previousSmart}, nil).Times(1)
+	return ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, notifyLevel, pkg.MetricsStatusThresholdBoth, pkg.MetricsStatusFilterAttributesAll, false, "", &gin.Context{}, fakeDatabase, nil)
+}
+
+// ATA attributes without a Transform function have TransformedValue 0 on every submission, so
+// the repeat check must compare the raw value the attribute is evaluated on.
+func TestShouldNotify_NoRepeat_AtaPassedToFailedWithoutTransform(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{Status: pkg.AttributeStatusPassed, RawValue: 0},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{Status: pkg.AttributeStatusFailedScrutiny, RawValue: 8},
+	}
+	require.True(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelFail, previous, current))
+}
+
+func TestShouldNotify_NoRepeat_AtaFailingValueChanged(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{Status: pkg.AttributeStatusFailedScrutiny, RawValue: 8},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{Status: pkg.AttributeStatusFailedScrutiny, RawValue: 12},
+	}
+	require.True(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelFail, previous, current))
+}
+
+func TestShouldNotify_NoRepeat_AtaFailingValueUnchanged(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{Status: pkg.AttributeStatusFailedScrutiny, RawValue: 8},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{Status: pkg.AttributeStatusFailedScrutiny, RawValue: 8},
+	}
+	require.False(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelFail, previous, current))
+}
+
+// Same value, status moved from passed to failed (for example WhenFailed on a steady raw
+// value): only the status comparison can see this one.
+func TestShouldNotify_NoRepeat_AtaStatusChangedValueUnchanged(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{AttributeId: 5, Status: pkg.AttributeStatusPassed, RawValue: 8},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{AttributeId: 5, Status: pkg.AttributeStatusFailedSmart, RawValue: 8, WhenFailed: "FAILING_NOW"},
+	}
+	require.True(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelFail, previous, current))
+}
+
+// A warning bit appearing next to an already-set failure bit is not a new failure.
+func TestShouldNotify_NoRepeat_AtaExtraWarningBitIsNotChange(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{AttributeId: 5, Status: pkg.AttributeStatusFailedScrutiny, RawValue: 8},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{AttributeId: 5, Status: pkg.AttributeStatusFailedScrutiny | pkg.AttributeStatusWarningScrutiny, RawValue: 8},
+	}
+	require.False(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelFail, previous, current))
+}
+
+// At warn level a warning that becomes a failure is the first time the user sees a failure,
+// so it must notify even when the evaluated value did not move (for example a new fail_above
+// override on an attribute that was already warning).
+func TestShouldNotify_NoRepeat_AtaWarnLevelWarningEscalatesToFailure(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{AttributeId: 5, Status: pkg.AttributeStatusWarningScrutiny, RawValue: 8},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"5": &measurements.SmartAtaAttribute{AttributeId: 5, Status: pkg.AttributeStatusWarningScrutiny | pkg.AttributeStatusFailedScrutiny, RawValue: 8},
+	}
+	require.True(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelWarn, previous, current))
+}
+
+// Attribute 195 is evaluated on its normalized value. The raw counter climbing every poll
+// must not count as a change.
+func TestShouldNotify_NoRepeat_AtaNormalizedAttributeRawChurnIsNotChange(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"195": &measurements.SmartAtaAttribute{AttributeId: 195, Status: pkg.AttributeStatusFailedScrutiny, Value: 100, RawValue: 1000},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"195": &measurements.SmartAtaAttribute{AttributeId: 195, Status: pkg.AttributeStatusFailedScrutiny, Value: 100, RawValue: 1500},
+	}
+	require.False(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelFail, previous, current))
+}
+
+// ...and a normalized value that moves while the raw value is static is a change.
+func TestShouldNotify_NoRepeat_AtaNormalizedAttributeValueChanged(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"195": &measurements.SmartAtaAttribute{AttributeId: 195, Status: pkg.AttributeStatusFailedScrutiny, Value: 100, RawValue: 1000},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"195": &measurements.SmartAtaAttribute{AttributeId: 195, Status: pkg.AttributeStatusFailedScrutiny, Value: 80, RawValue: 1000},
+	}
+	require.True(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelFail, previous, current))
+}
+
+// Attribute 194 is evaluated on the transformed (current temperature) value; the raw value also
+// packs min/max, which can change at a constant temperature.
+func TestShouldNotify_NoRepeat_AtaTemperatureMinMaxChurnIsNotChange(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"194": &measurements.SmartAtaAttribute{AttributeId: 194, Status: pkg.AttributeStatusFailedScrutiny, TransformedValue: 60, RawValue: 0x1001E3C},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"194": &measurements.SmartAtaAttribute{AttributeId: 194, Status: pkg.AttributeStatusFailedScrutiny, TransformedValue: 60, RawValue: 0x2001E3C},
+	}
+	require.False(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelFail, previous, current))
+}
+
+// NVMe attributes never set TransformedValue, so media_errors going 0 -> 3 was invisible.
+func TestShouldNotify_NoRepeat_NvmeMediaErrorsChanged(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"media_errors": &measurements.SmartNvmeAttribute{AttributeId: "media_errors", Status: pkg.AttributeStatusFailedScrutiny, Value: 3},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"media_errors": &measurements.SmartNvmeAttribute{AttributeId: "media_errors", Status: pkg.AttributeStatusFailedScrutiny, Value: 5},
+	}
+	require.True(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelFail, previous, current))
+}
+
+func TestShouldNotify_NoRepeat_NvmeMediaErrorsUnchanged(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"media_errors": &measurements.SmartNvmeAttribute{AttributeId: "media_errors", Status: pkg.AttributeStatusFailedScrutiny, Value: 3},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"media_errors": &measurements.SmartNvmeAttribute{AttributeId: "media_errors", Status: pkg.AttributeStatusFailedScrutiny, Value: 3},
+	}
+	require.False(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelFail, previous, current))
+}
+
+// TestShouldNotify_NoRepeat_AttributeAbsentFromPreviousSubmission covers a failing attribute
+// that the previous submission did not carry at all, which is what a release decoding a log
+// page it previously ignored produces on its first collection. Attributes is a map of
+// interfaces, so the missing key yields a nil SmartAttribute: reading a value off it would
+// panic rather than notify.
+func TestShouldNotify_NoRepeat_AttributeAbsentFromPreviousSubmission(t *testing.T) {
+	t.Parallel()
+	//setup
+	device := models.Device{
+		DeviceStatus: pkg.DeviceStatusFailedScrutiny,
+	}
+	smartAttrs := measurements.Smart{Attributes: map[string]measurements.SmartAttribute{
+		"sas_port_0_phy_0_invalid_dword_count": &measurements.SmartScsiAttribute{
+			AttributeId:      "sas_port_0_phy_0_invalid_dword_count",
+			Status:           pkg.AttributeStatusFailedScrutiny,
+			TransformedValue: 32,
+		},
+	}}
+	previousSmartAttrs := measurements.Smart{Attributes: map[string]measurements.SmartAttribute{
+		"read_total_uncorrected_errors": &measurements.SmartScsiAttribute{
+			AttributeId: "read_total_uncorrected_errors",
+		},
+	}}
+	statusThreshold := pkg.MetricsStatusThresholdBoth
+	notifyFilterAttributes := pkg.MetricsStatusFilterAttributesAll
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeDatabase := mock_database.NewMockDeviceRepo(mockCtrl)
+	fakeDatabase.EXPECT().GetPreviousSmartSubmission(&gin.Context{}, "").Return([]measurements.Smart{previousSmartAttrs}, nil).Times(1)
+
+	//assert
+	require.True(t, ShouldNotify(logrus.StandardLogger(), &device, &smartAttrs, pkg.MetricsNotifyLevelFail, statusThreshold, notifyFilterAttributes, false, "", &gin.Context{}, fakeDatabase, nil))
+}
+
 func TestShouldNotify_WarnLevel_PassedDeviceWithWarnAttr(t *testing.T) {
 	t.Parallel()
 	//setup

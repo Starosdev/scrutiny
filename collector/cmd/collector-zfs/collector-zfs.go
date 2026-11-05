@@ -192,7 +192,7 @@ func readOptionalCollectorConfig(cfg config.Interface, configFilePath string, bo
 
 func applyCollectorOverrides(c *cli.Context, cfg config.Interface) {
 	if c.IsSet(flagHostId) {
-		cfg.Set("host.id", c.String(flagHostId))
+		cfg.Set(config.KeyHostID, c.String(flagHostId))
 	}
 	if c.Bool("debug") {
 		cfg.Set("log.level", "DEBUG")

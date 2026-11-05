@@ -42,7 +42,8 @@
 version: 1
 
 # The host id is a label used for identifying groups of disks running on the same host
-# Primiarly used for hub/spoke deployments (can be left empty if using all-in-one image).
+# Left empty, it is derived from this machine: the hostname, then /etc/machine-id.
+# Set it in a container, where the hostname changes when the container is recreated.
 host:
   id: ""
 

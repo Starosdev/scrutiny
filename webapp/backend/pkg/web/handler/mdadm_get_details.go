@@ -12,33 +12,41 @@ import (
 func GetMdadmArrayDetails(c *gin.Context) {
 	dbRepo := c.MustGet("DEVICE_REPOSITORY").(database.DeviceRepo)
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
-	uuid := c.Param("uuid")
-		durationKey := c.DefaultQuery("duration", "week")
-
-		array, err := dbRepo.GetMdadmArrayDetails(c.Request.Context(), uuid)
-		if err != nil {
-			logger.Errorf("Failed to get MDADM array details for %s: %v", uuid, err)
-			c.JSON(http.StatusNotFound, gin.H{"success": false, "errors": []string{"Array not found"}})
-			return
-		}
-
-		history, err := dbRepo.GetMdadmMetricsHistory(c.Request.Context(), uuid, durationKey)
-		if err != nil {
-			logger.Errorf("Failed to get MDADM metrics history for %s: %v", uuid, err)
-			// Continue with empty history
-		}
-
-		latest, err := dbRepo.GetLatestMdadmMetrics(c.Request.Context(), uuid)
-		if err != nil {
-			logger.Errorf("Failed to get latest MDADM metrics for %s: %v", uuid, err)
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"data": gin.H{
-				"array":          array,
-				"history":        history,
-				"latest_metrics": latest,
-			},
-		})
+	// The identifier is interpolated into a Flux predicate, so an unchecked
+	// one would let a caller close the string and append pipeline stages.
+	// mdadmArrayUUID is the same check the six mutation routes apply, which
+	// keeps the trimming and the error shape identical across the group.
+	uuid, ok := mdadmArrayUUID(c, logger)
+	if !ok {
+		return
 	}
+
+	durationKey := c.DefaultQuery("duration", "week")
+
+	array, err := dbRepo.GetMdadmArrayDetails(c.Request.Context(), uuid)
+	if err != nil {
+		logger.Errorf("Failed to get MDADM array details for %s: %v", uuid, err)
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "errors": []string{"Array not found"}})
+		return
+	}
+
+	history, err := dbRepo.GetMdadmMetricsHistory(c.Request.Context(), uuid, durationKey)
+	if err != nil {
+		logger.Errorf("Failed to get MDADM metrics history for %s: %v", uuid, err)
+		// Continue with empty history
+	}
+
+	latest, err := dbRepo.GetLatestMdadmMetrics(c.Request.Context(), uuid)
+	if err != nil {
+		logger.Errorf("Failed to get latest MDADM metrics for %s: %v", uuid, err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"array":          array,
+			"history":        history,
+			"latest_metrics": latest,
+		},
+	})
+}

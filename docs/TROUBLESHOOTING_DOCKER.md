@@ -10,6 +10,10 @@ Scrutiny uses two branch-backed image channels and one release-backed stable cha
 - `beta` branch -> `beta` and `beta-omnibus`
 - release tag -> `latest` and `latest-omnibus`
 
+Each channel also publishes one tag per image in `docker/image-matrix.json`, such as
+`develop-collector-omnibus` or `latest-collector`. The full set is in
+[DEPLOYMENTS.md](DEPLOYMENTS.md#published-channel-tags).
+
 Direct pushes to `master` do not publish stable images. Release tags are the only source for `latest` tags.
 
 Typical flow is `develop -> master`, with optional `develop -> beta -> master` promotion when a feature needs pre-release validation.

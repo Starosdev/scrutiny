@@ -67,14 +67,13 @@ func (sa *SmartScsiAttribute) Inflate(key string, val interface{}) {
 	}
 }
 
-//
-//populate attribute status, using SMART Thresholds & Observed Metadata
-//Chainable
+// populate attribute status, using SMART Thresholds & Observed Metadata
+// Chainable
 func (sa *SmartScsiAttribute) PopulateAttributeStatus() *SmartScsiAttribute {
 
 	//-1 is a special number meaning no threshold.
 	if sa.Threshold != -1 {
-		if smartMetadata, ok := thresholds.ScsiMetadata[sa.AttributeId]; ok {
+		if smartMetadata, ok := thresholds.ScsiMetadataFor(sa.AttributeId); ok {
 			//check what the ideal is. Ideal tells us if we our recorded value needs to be above, or below the threshold
 			if (smartMetadata.Ideal == "low" && sa.Value > sa.Threshold) ||
 				(smartMetadata.Ideal == "high" && sa.Value < sa.Threshold) {

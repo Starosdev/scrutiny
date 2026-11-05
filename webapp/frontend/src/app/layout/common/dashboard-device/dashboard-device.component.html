@@ -128,6 +128,26 @@
             </div>
         </div>
 
+        <!-- Free space: a single figure when one filesystem owns this drive, a mount count otherwise -->
+        @if (exclusiveFilesystem(); as filesystem) {
+        <div class="dashboard-device-metric flex flex-col mx-6 my-3 xs:w-full">
+            <div class="dashboard-device-metric-label font-semibold text-xs text-hint uppercase tracking-wider">Free</div>
+            <div class="dashboard-device-metric-value mt-2 font-medium text-3xl leading-none" [matTooltip]="filesystem.mount_point">
+                {{ filesystem.available_bytes | fileSize : config.file_size_si_units }}
+            </div>
+        </div>
+        } @else if (filesystemMountCount() > 0) {
+        <div class="dashboard-device-metric flex flex-col mx-6 my-3 xs:w-full">
+            <div class="dashboard-device-metric-label font-semibold text-xs text-hint uppercase tracking-wider">Mounts</div>
+            <div
+                class="dashboard-device-metric-value mt-2 font-medium text-3xl leading-none"
+                [matTooltip]="'Free space is reported per filesystem on the device detail page'"
+            >
+                {{ filesystemMountCount() }}
+            </div>
+        </div>
+        }
+
         <!-- Powered On -->
         <div class="dashboard-device-metric flex flex-col mx-6 my-3 xs:w-full">
             <div class="dashboard-device-metric-label font-semibold text-xs text-hint uppercase tracking-wider">Powered On</div>

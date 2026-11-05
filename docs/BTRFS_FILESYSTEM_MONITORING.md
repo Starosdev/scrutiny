@@ -97,7 +97,7 @@ These variables configure the collector binary itself:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `COLLECTOR_BTRFS_API_ENDPOINT` or `COLLECTOR_API_ENDPOINT` | `http://localhost:8080` | URL of the Scrutiny web server API |
-| `COLLECTOR_BTRFS_HOST_ID` or `COLLECTOR_HOST_ID` | (empty) | Identifier for this host, used to group filesystems in the dashboard |
+| `COLLECTOR_BTRFS_HOST_ID` or `COLLECTOR_HOST_ID` | derived from the machine | Identifier for this host, used to group filesystems in the dashboard. Unset, it is derived from this machine's hostname, else `/etc/machine-id`. Set it explicitly so the id survives a hostname change or a container rebuild, and so every collector on this machine reports the same one. |
 | `COLLECTOR_BTRFS_LOG_FILE` or `COLLECTOR_LOG_FILE` | (empty) | Path to log file. Leave empty for stdout |
 | `COLLECTOR_BTRFS_DEBUG` or `COLLECTOR_DEBUG` or `DEBUG` | `false` | Enable debug logging |
 | `COLLECTOR_BTRFS_API_TOKEN` or `COLLECTOR_API_TOKEN` | (empty) | API token when Scrutiny authentication is enabled |

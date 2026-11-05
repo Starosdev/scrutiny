@@ -312,4 +312,55 @@ describe('DashboardDeviceComponent', () => {
             expect(component.getSSDHealthDisplay()).toBe('95%');
         });
     });
+
+    describe('#exclusiveFilesystem()', () => {
+        const filesystem = (mountPoint: string, backingDevices?: string[]) =>
+            ({
+                host_id: 'atlas',
+                mount_point: mountPoint,
+                source_device: '/dev/sda1',
+                filesystem_type: 'ext4',
+                total_bytes: 100,
+                used_bytes: 60,
+                available_bytes: 40,
+                used_percent: 60,
+                updated_at: '',
+                backing_devices: backingDevices,
+            }) as never;
+
+        const summaryWith = (filesystems: unknown[]) =>
+            ({
+                device: { device_status: 0, device_name: 'sda' },
+                filesystems,
+            }) as DeviceSummaryModel;
+
+        it('should report the one filesystem that sits on this drive alone', () => {
+            component.deviceSummary = summaryWith([filesystem('/data', ['sda'])]);
+            expect(component.exclusiveFilesystem()?.mount_point).toBe('/data');
+            expect(component.filesystemMountCount()).toBe(1);
+        });
+
+        it('should report no exclusive filesystem when the drive holds several', () => {
+            component.deviceSummary = summaryWith([filesystem('/data', ['sda']), filesystem('/srv', ['sda'])]);
+            expect(component.exclusiveFilesystem()).toBeNull();
+            expect(component.filesystemMountCount()).toBe(2);
+        });
+
+        it('should report no exclusive filesystem when the filesystem spans other drives', () => {
+            // An md or LVM filesystem's free space belongs to the set of
+            // drives, so attributing it to this one would overstate it.
+            component.deviceSummary = summaryWith([filesystem('/array', ['sda', 'sdb'])]);
+            expect(component.exclusiveFilesystem()).toBeNull();
+            expect(component.filesystemMountCount()).toBe(1);
+        });
+
+        it('should report nothing when the filesystem collector attributed nothing', () => {
+            component.deviceSummary = summaryWith([filesystem('/data', undefined)]);
+            expect(component.exclusiveFilesystem()).toBeNull();
+
+            component.deviceSummary = { device: { device_status: 0 } } as DeviceSummaryModel;
+            expect(component.exclusiveFilesystem()).toBeNull();
+            expect(component.filesystemMountCount()).toBe(0);
+        });
+    });
 });

@@ -302,10 +302,22 @@ type SmartInfo struct {
 	// field. See SmartInfo.UnmarshalJSON, which extracts these keys manually.
 	ScsiSelfTests []ScsiSelfTestEntry `json:"-"`
 
+	// ScsiSasPhys captures the per-PHY counters of the SAS Protocol log page. smartctl
+	// reports one numbered top-level key per port ("scsi_sas_port_0", "scsi_sas_port_1",
+	// ...), each holding one numbered key per PHY ("phy_0", ...), so there is no field to
+	// decode into directly. See SmartInfo.UnmarshalJSON, which extracts them manually.
+	ScsiSasPhys []ScsiSasPhy `json:"-"`
+
 	// ScsiBackgroundScan captures the SAS Background Medium Scan status ("scsi_background_scan").
 	// It describes an in-progress/periodic scan rather than a discrete self-test result, so it
 	// is not folded into ScsiSelfTests/SelfTestEntries.
 	ScsiBackgroundScan *ScsiBackgroundScan `json:"scsi_background_scan,omitempty"`
+
+	// ScsiStartStopCycleCounter captures the Start-Stop Cycle Counter log page (0x0e), which
+	// reports mechanical wear counters alongside the manufacturer's rated limit for each. It
+	// is a pointer because drives that do not support the page report no key at all, which a
+	// value type cannot tell apart from a drive reporting zero cycles.
+	ScsiStartStopCycleCounter *ScsiStartStopCycleCounter `json:"scsi_start_stop_cycle_counter,omitempty"`
 }
 
 // ScsiSelfTestEntry represents one entry of the SCSI/SAS self-test log
@@ -336,13 +348,97 @@ type ScsiBackgroundScan struct {
 	} `json:"status"`
 }
 
+// ScsiSasPhy represents one PHY of one SAS port, from the SAS Protocol log page
+// (e.g. the "scsi_sas_port_0" -> "phy_0" object in `smartctl --json -l sasphy`).
+// Port and Phy carry the indexes of the keys the PHY was found under, because the
+// counters of each PHY are tracked separately: a cable, backplane or HBA port fault
+// shows up on the PHY it affects, and folding them together would hide which.
+type ScsiSasPhy struct {
+	// The string leads for the same fieldalignment reason as ScsiErrorCounters.
+	NegotiatedLogicalLinkRate       string `json:"negotiated_logical_link_rate"`
+	Port                            int    `json:"-"`
+	Phy                             int    `json:"-"`
+	InvalidDwordCount               int64  `json:"invalid_dword_count"`
+	RunningDisparityErrorCount      int64  `json:"running_disparity_error_count"`
+	LossOfDwordSynchronizationCount int64  `json:"loss_of_dword_synchronization_count"`
+	PhyResetProblemCount            int64  `json:"phy_reset_problem_count"`
+}
+
+// scsiSasPortKeyPrefix is the prefix smartctl uses for each numbered SAS port key
+// (e.g. "scsi_sas_port_0", "scsi_sas_port_1", ...).
+const scsiSasPortKeyPrefix = "scsi_sas_port_"
+
+// scsiSasPhyKeyPrefix is the prefix smartctl uses for each numbered PHY key inside a
+// port object (e.g. "phy_0", ...).
+const scsiSasPhyKeyPrefix = "phy_"
+
+// parseScsiSasPhys collects every PHY of every SAS port from the raw smartctl object,
+// sorted by port then PHY so the slice order does not depend on map iteration order.
+func parseScsiSasPhys(raw map[string]json.RawMessage) []ScsiSasPhy {
+	var phys []ScsiSasPhy
+	for key, value := range raw {
+		if !strings.HasPrefix(key, scsiSasPortKeyPrefix) {
+			continue
+		}
+		portSuffix := strings.TrimPrefix(key, scsiSasPortKeyPrefix)
+		port, err := strconv.Atoi(portSuffix)
+		// Require the digits to round-trip, so "scsi_sas_port_0" and "scsi_sas_port_00" cannot
+		// both claim port 0 and leave which one wins up to map iteration order.
+		if err != nil || port < 0 || strconv.Itoa(port) != portSuffix {
+			continue
+		}
+		var rawPhys map[string]json.RawMessage
+		if err := json.Unmarshal(value, &rawPhys); err != nil {
+			continue
+		}
+		for phyKey, phyValue := range rawPhys {
+			if !strings.HasPrefix(phyKey, scsiSasPhyKeyPrefix) {
+				continue
+			}
+			phySuffix := strings.TrimPrefix(phyKey, scsiSasPhyKeyPrefix)
+			phyIndex, err := strconv.Atoi(phySuffix)
+			if err != nil || phyIndex < 0 || strconv.Itoa(phyIndex) != phySuffix {
+				continue
+			}
+			var phy ScsiSasPhy
+			if err := json.Unmarshal(phyValue, &phy); err != nil {
+				continue
+			}
+			phy.Port = port
+			phy.Phy = phyIndex
+			phys = append(phys, phy)
+		}
+	}
+	sort.Slice(phys, func(i, j int) bool {
+		if phys[i].Port != phys[j].Port {
+			return phys[i].Port < phys[j].Port
+		}
+		return phys[i].Phy < phys[j].Phy
+	})
+	return phys
+}
+
+// ScsiStartStopCycleCounter represents the SCSI Start-Stop Cycle Counter log page (0x0e).
+// Each accumulated counter comes with the count the manufacturer rates the drive for over
+// its lifetime, so the pair is a wear percentage rather than a bare number.
+type ScsiStartStopCycleCounter struct {
+	// Every field is a pointer because smartctl emits each parameter of the page only when
+	// the drive reports it: a drive can report start/stop cycles and omit load/unload
+	// entirely, and a value type would turn that absence into a permanent zero.
+	SpecifiedCycleCountOverDeviceLifetime      *int64 `json:"specified_cycle_count_over_device_lifetime"`
+	AccumulatedStartStopCycles                 *int64 `json:"accumulated_start_stop_cycles"`
+	SpecifiedLoadUnloadCountOverDeviceLifetime *int64 `json:"specified_load_unload_count_over_device_lifetime"`
+	AccumulatedLoadUnloadCycles                *int64 `json:"accumulated_load_unload_cycles"`
+}
+
 // scsiSelfTestKeyPrefix is the prefix smartctl uses for each numbered SCSI
 // self-test log entry key (e.g. "scsi_self_test_0", "scsi_self_test_1", ...).
 const scsiSelfTestKeyPrefix = "scsi_self_test_"
 
-// UnmarshalJSON decodes the standard SmartInfo fields, then makes a second pass
-// over the raw object to collect the SCSI self-test log entries, which smartctl
-// reports as individually numbered top-level keys rather than a JSON array.
+// UnmarshalJSON decodes the standard SmartInfo fields, then makes a second pass over the
+// raw object to collect the SCSI structures smartctl reports as individually numbered
+// top-level keys rather than as arrays: the self-test log entries and the per-port SAS
+// PHY counters.
 func (s *SmartInfo) UnmarshalJSON(data []byte) error {
 	type smartInfoAlias SmartInfo
 	var alias smartInfoAlias
@@ -382,6 +478,8 @@ func (s *SmartInfo) UnmarshalJSON(data []byte) error {
 	for _, item := range indexed {
 		s.ScsiSelfTests = append(s.ScsiSelfTests, item.entry)
 	}
+
+	s.ScsiSasPhys = parseScsiSasPhys(raw)
 
 	return nil
 }
@@ -497,23 +595,30 @@ type NvmeSmartHealthInformationLog struct {
 	CriticalCompTime        int64 `json:"critical_comp_time"`
 }
 
+// ScsiErrorCounters holds one group of the SCSI Error Counter log pages
+// (read: 0x02, write: 0x03, verify: 0x05). All three pages report the same
+// seven counters, so they share one type.
+type ScsiErrorCounters struct {
+	// The string is declared first because govet's fieldalignment analyzer, which this repo
+	// runs with enable-all, reports the struct's leading pointer bytes: every pointer-bearing
+	// field belongs ahead of the plain integers.
+	GigabytesProcessed               string `json:"gigabytes_processed"`
+	ErrorsCorrectedByEccfast         int64  `json:"errors_corrected_by_eccfast"`
+	ErrorsCorrectedByEccdelayed      int64  `json:"errors_corrected_by_eccdelayed"`
+	ErrorsCorrectedByRereadsRewrites int64  `json:"errors_corrected_by_rereads_rewrites"`
+	TotalErrorsCorrected             int64  `json:"total_errors_corrected"`
+	CorrectionAlgorithmInvocations   int64  `json:"correction_algorithm_invocations"`
+	TotalUncorrectedErrors           int64  `json:"total_uncorrected_errors"`
+}
+
 type ScsiErrorCounterLog struct {
-	Read struct {
-		ErrorsCorrectedByEccfast         int64  `json:"errors_corrected_by_eccfast"`
-		ErrorsCorrectedByEccdelayed      int64  `json:"errors_corrected_by_eccdelayed"`
-		ErrorsCorrectedByRereadsRewrites int64  `json:"errors_corrected_by_rereads_rewrites"`
-		TotalErrorsCorrected             int64  `json:"total_errors_corrected"`
-		CorrectionAlgorithmInvocations   int64  `json:"correction_algorithm_invocations"`
-		GigabytesProcessed               string `json:"gigabytes_processed"`
-		TotalUncorrectedErrors           int64  `json:"total_uncorrected_errors"`
-	} `json:"read"`
-	Write struct {
-		ErrorsCorrectedByEccfast         int64  `json:"errors_corrected_by_eccfast"`
-		ErrorsCorrectedByEccdelayed      int64  `json:"errors_corrected_by_eccdelayed"`
-		ErrorsCorrectedByRereadsRewrites int64  `json:"errors_corrected_by_rereads_rewrites"`
-		TotalErrorsCorrected             int64  `json:"total_errors_corrected"`
-		CorrectionAlgorithmInvocations   int64  `json:"correction_algorithm_invocations"`
-		GigabytesProcessed               string `json:"gigabytes_processed"`
-		TotalUncorrectedErrors           int64  `json:"total_uncorrected_errors"`
-	} `json:"write"`
+	// Verify is the Verify Error Counter log page (0x05). It is a pointer because
+	// a drive that does not support the page reports no "verify" key at all, which
+	// a value type cannot tell apart from a drive reporting all-zero counters. Being
+	// the only pointer here it is also declared first, for the same fieldalignment
+	// reason as ScsiErrorCounters: the analyzer reports the leading pointer bytes.
+	Verify *ScsiErrorCounters `json:"verify"`
+
+	Read  ScsiErrorCounters `json:"read"`
+	Write ScsiErrorCounters `json:"write"`
 }

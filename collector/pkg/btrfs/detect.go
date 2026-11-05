@@ -154,8 +154,8 @@ func (d *Detect) inspectFilesystem(mount mountedFilesystem) (Filesystem, error) 
 		Status:     FilesystemStatusOnline,
 		ScrubState: ScrubStateUnknown,
 	}
-	if d.Config != nil && d.Config.IsSet("host.id") {
-		fs.HostID = d.Config.GetString("host.id")
+	if d.Config != nil {
+		fs.HostID = d.Config.GetHostID()
 	}
 
 	showOutput, err := d.RunCommand("btrfs", "filesystem", "show", "--raw", mount.mountPoint)

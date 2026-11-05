@@ -54,7 +54,11 @@ type DeviceSummary struct {
 	LastSeen     *time.Time                      `json:"last_seen,omitempty"`
 	SmartResults *SmartSummary                   `json:"smart,omitempty"`
 	TempHistory  []measurements.SmartTemperature `json:"temp_history,omitempty"`
-	Device       Device                          `json:"device"`
+	// Filesystems are the mounted filesystems this drive backs, as reported by
+	// the filesystem collector. Absent when nothing is attributed to the drive,
+	// which is a different fact from a drive whose filesystems are full.
+	Filesystems []FilesystemCapacity `json:"filesystems,omitempty"`
+	Device      Device               `json:"device"`
 	// Stale is true when the device has been silent longer than its missed-ping timeout. Nil means
 	// staleness could not be determined (last-seen query failed) or the device never reported.
 	Stale *bool `json:"stale,omitempty"`

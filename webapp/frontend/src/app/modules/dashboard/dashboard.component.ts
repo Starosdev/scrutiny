@@ -12,6 +12,7 @@ import { TemperaturePipe } from 'app/shared/temperature.pipe';
 import { DeviceTitlePipe } from 'app/shared/device-title.pipe';
 import { DeviceSummaryModel } from 'app/core/models/device-summary-model';
 import { FilesystemCapacityModel, FilesystemHostStatusModel } from 'app/core/models/filesystem-summary-model';
+import { filesystemUsageClass } from 'app/shared/filesystem-usage.utils';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -31,7 +32,7 @@ import { SmartTemperatureModel } from 'app/core/models/measurements/smart-temper
 import { MatInput } from '@angular/material/input';
 import { MatFormField, MatLabel, MatPrefix } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
-import { alignTemperatureChartSeries, TemperatureChartSeries } from './temperature-chart-series';
+import { alignTemperatureChartSeries, TemperatureChartSeries, temperatureSlotProvenance, TemperatureSlotProvenance } from './temperature-chart-series';
 import { createTemperatureChartTooltip } from './temperature-chart-tooltip';
 
 const DASHBOARD_SHELL_WIDTHS: Record<DashboardColumns, string> = {
@@ -88,6 +89,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     hostGroups: { [hostId: string]: string[] } = {};
     filesystemSummaryData: { filesystems: Record<string, FilesystemCapacityModel[]>; hosts: Record<string, FilesystemHostStatusModel> } | null = null;
     temperatureOptions: ApexOptions;
+    /** What each slot of the series currently on the chart represents, by series index then data-point index. */
+    private _temperatureSlotProvenance: TemperatureSlotProvenance[][] = [];
     tempDurationKey = 'week';
     config: AppConfig;
     showArchived: boolean = false;
@@ -261,7 +264,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
             }
             deviceTemperatureSeries.push(deviceSeriesMetadata);
         }
-        return alignTemperatureChartSeries(deviceTemperatureSeries);
+        const aligned = alignTemperatureChartSeries(deviceTemperatureSeries);
+        // Recorded here, the one place aligned series are produced, so the tooltip can never
+        // read provenance for a set of series that is no longer on the chart.
+        this._temperatureSlotProvenance = temperatureSlotProvenance(aligned);
+        return aligned;
     }
 
     private determineTheme(config: AppConfig): string {
@@ -346,7 +353,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
                     offsetX: 12,
                     offsetY: 12,
                 },
-                custom: createTemperatureChartTooltip(this._document, this.config.temperature_unit, this.config.time_format),
+                custom: createTemperatureChartTooltip(
+                    this._document,
+                    this.config.temperature_unit,
+                    this.config.time_format,
+                    (seriesIndex, dataPointIndex) => this._temperatureSlotProvenance[seriesIndex]?.[dataPointIndex]
+                ),
             },
             xaxis: {
                 type: 'datetime',
@@ -439,14 +451,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
         return this.filesystemHosts().length > 0;
     }
 
-    filesystemUsageClass(filesystem: FilesystemCapacityModel): string {
-        if (filesystem.used_percent >= 90) {
-            return 'bg-red-500';
+    filesystemUsageClass = filesystemUsageClass;
+
+    getReleaseUrl(version: string): string | null {
+        if (!/^\d+\.\d+\.\d+(?:-beta\.\d+)?$/.test(version)) {
+            return null;
         }
-        if (filesystem.used_percent >= 80) {
-            return 'bg-yellow-500';
-        }
-        return 'bg-green-500';
+
+        return `https://github.com/Starosdev/scrutiny/releases/tag/v${version}`;
     }
 
     /**

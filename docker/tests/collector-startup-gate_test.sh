@@ -53,7 +53,7 @@ run_service() {
         chmod +x "${stub}/${command}"
     done
 
-    printf '#!/usr/bin/env bash\ntouch %s/collector-ran\n' "$sandbox" > "${stub}/${binary}"
+    printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" > %s/collector-ran\n' "$sandbox" > "${stub}/${binary}"
     chmod +x "${stub}/${binary}"
 
     # The s6 and container paths are absolute, so the sandbox copy redirects
@@ -97,6 +97,12 @@ run_service() {
     (( status == 0 )) || fail "${service} exited ${status}, output: ${output}"
 
     if [[ -f "${sandbox}/collector-ran" ]]; then
+        local expected=$'run'
+        if [[ "$binary" == "scrutiny-collector-metrics" ]]; then
+            expected+=$'\n--cron-schedule='
+        fi
+        [[ "$(cat "${sandbox}/collector-ran")" == "$expected" ]] \
+            || fail "${service} used incorrect one-shot arguments"
         echo "ran"
     elif grep -q "skipping startup" <<< "$output"; then
         echo "skipped:gate"

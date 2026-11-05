@@ -23,7 +23,8 @@ type ExecRunner struct {
 // Run starts one collector in run-once mode.
 func (r ExecRunner) Run(ctx context.Context, spec *CollectorSpec, cfg CollectorConfig, binaryDir string) error {
 	binaryPath := filepath.Join(binaryDir, executableName(spec.BinaryName))
-	cmd := exec.CommandContext(ctx, binaryPath, "run", "--config", cfg.ConfigPath)
+	args := append(OneShotArgs(spec.BinaryName), "--config", cfg.ConfigPath)
+	cmd := exec.CommandContext(ctx, binaryPath, args...)
 	cmd.Stdout = r.Stdout
 	cmd.Stderr = r.Stderr
 	cmd.Env = childEnvironment()
@@ -48,4 +49,13 @@ func childEnvironment() []string {
 	}
 	env = append(env, "SCRUTINY_SUPPRESS_STARTUP_BANNER=true")
 	return env
+}
+
+// OneShotArgs selects a single collection even when SMART scheduling is configured.
+// Other collectors do not implement the cron-schedule flag.
+func OneShotArgs(binaryName string) []string {
+	if binaryName == "scrutiny-collector-metrics" {
+		return []string{"run", "--cron-schedule="}
+	}
+	return []string{"run"}
 }

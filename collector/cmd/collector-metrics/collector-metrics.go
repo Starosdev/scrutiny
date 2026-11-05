@@ -120,6 +120,7 @@ OPTIONS:
 					}
 					//override config with flags if set
 					if c.IsSet("host-id") {
+						// config.KeyHostID is unreachable here: the local variable shadows the package.
 						config.Set("host.id", c.String("host-id")) // set/override the host-id using CLI.
 					}
 
@@ -263,7 +264,7 @@ OPTIONS:
 
 					&cli.StringFlag{
 						Name:  "cron-schedule",
-						Usage: "Cron expression for scheduled collection (e.g. \"0 * * * *\"). If not set, the collector runs once and exits.",
+						Usage: "Cron expression for scheduled collection (e.g. \"0 * * * *\"). Pass --cron-schedule= to run once regardless of environment or config.",
 					},
 
 					&cli.BoolFlag{

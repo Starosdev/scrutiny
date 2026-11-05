@@ -20,9 +20,14 @@ type ConsumerDriveProfileLintResult struct {
 // catalog document. A non-nil error means the catalog is structurally invalid
 // and would fail to load at startup. Warnings flag quality issues: dead entries
 // that can never pass their confidence gate, regex patterns that shadow aliases
-// of other families, duplicate patterns, redundant aliases, and a missing
-// catalog version.
-func LintConsumerDriveProfileCatalog(data []byte) (*ConsumerDriveProfileLintResult, error) {
+// of other families, duplicate patterns, redundant aliases, two patterns from
+// different families matching one model string, and a missing catalog version.
+//
+// probes are extra model strings to test the patterns against, over and above
+// the catalog's own alias keys. Pass the fixture model names: they are the
+// real-world strings the catalog is maintained against, and a pattern overlap
+// only matters for a string some drive actually reports.
+func LintConsumerDriveProfileCatalog(data []byte, probes ...string) (*ConsumerDriveProfileLintResult, error) {
 	// Hard validation first: same path as startup loading.
 	if _, err := parseConsumerDriveProfiles(data); err != nil {
 		return nil, err
@@ -41,6 +46,7 @@ func LintConsumerDriveProfileCatalog(data []byte) (*ConsumerDriveProfileLintResu
 	lintDeadEntries(&catalog, result)
 	lintRedundantAliases(&catalog, result)
 	lintPatterns(&catalog, result)
+	lintPatternOverlap(&catalog, probes, result)
 
 	sort.Strings(result.Warnings)
 	return result, nil
@@ -79,8 +85,10 @@ type compiledLintPattern struct {
 }
 
 // lintPatterns flags duplicate model patterns and patterns that shadow entries
-// belonging to a different family (an alias or family name of family B matching
-// the pattern of family A would silently reroute drives at the regex stage).
+// belonging to a different family. The pattern stage runs before the family
+// stage, so a pattern of family A that matches a model string family B declares
+// reroutes those drives to A. An exact alias of B still wins; B's family name
+// no longer does.
 func lintPatterns(catalog *consumerDriveProfileCatalog, result *ConsumerDriveProfileLintResult) {
 	for _, cp := range collectLintPatterns(catalog, result) {
 		lintPatternShadowsAliases(catalog, cp, result)
@@ -111,6 +119,86 @@ func collectLintPatterns(catalog *consumerDriveProfileCatalog, result *ConsumerD
 	return compiled
 }
 
+// lintPatternOverlap warns when the patterns of two different families both match
+// one model string. The matcher appends every matching regex profile as a
+// candidate and applies the first (consumer_drive_profiles.go, candidates), so
+// the winner is decided by declaration order in the catalog file. That is silent
+// and it is not a property anyone editing the catalog would think to check, so
+// the overlap itself is the defect: narrow one pattern or move the model to an
+// alias. Regex intersection is undecidable in general, which is why this tests
+// concrete strings rather than the patterns against each other.
+func lintPatternOverlap(catalog *consumerDriveProfileCatalog, probes []string, result *ConsumerDriveProfileLintResult) {
+	compiled := make([]compiledLintPattern, 0, len(catalog.Profiles))
+	for i := range catalog.Profiles {
+		profile := &catalog.Profiles[i]
+		if profile.ModelPattern == "" {
+			continue
+		}
+		if regex, err := regexp.Compile(profile.ModelPattern); err == nil {
+			compiled = append(compiled, compiledLintPattern{regex, profile.ModelFamily, profile.ModelPattern})
+		}
+	}
+	if len(compiled) < 2 {
+		return
+	}
+
+	seen := map[string]struct{}{}
+	for _, probe := range consumerDriveProfileProbes(catalog, probes) {
+		var matched []compiledLintPattern
+		for _, cp := range compiled {
+			if cp.regex.MatchString(probe) {
+				matched = append(matched, cp)
+			}
+		}
+		if len(matched) < 2 {
+			continue
+		}
+		families := make([]string, 0, len(matched))
+		for _, cp := range matched {
+			families = append(families, fmt.Sprintf("%q (%s)", cp.family, cp.pattern))
+		}
+		sort.Strings(families)
+		key := strings.Join(families, " | ")
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		result.Warnings = append(result.Warnings, fmt.Sprintf(
+			"pattern overlap: model %q matches the patterns of more than one family (%s); the catalog file's declaration order decides which applies",
+			probe, strings.Join(families, ", ")))
+	}
+}
+
+// consumerDriveProfileProbes returns the model strings to test patterns against:
+// every alias key in the catalog, every profile's declared model name, and
+// whatever the caller passed in. Duplicates and blanks are dropped.
+func consumerDriveProfileProbes(catalog *consumerDriveProfileCatalog, extra []string) []string {
+	seen := map[string]struct{}{}
+	probes := make([]string, 0, len(catalog.Aliases)+len(extra))
+	add := func(value string) {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return
+		}
+		if _, exists := seen[value]; exists {
+			return
+		}
+		seen[value] = struct{}{}
+		probes = append(probes, value)
+	}
+	for alias := range catalog.Aliases {
+		add(alias)
+	}
+	for i := range catalog.Profiles {
+		add(catalog.Profiles[i].ModelName)
+	}
+	for _, value := range extra {
+		add(value)
+	}
+	sort.Strings(probes)
+	return probes
+}
+
 // lintPatternShadowsAliases warns when a pattern matches an alias that belongs
 // to a different family.
 func lintPatternShadowsAliases(catalog *consumerDriveProfileCatalog, cp compiledLintPattern, result *ConsumerDriveProfileLintResult) {
@@ -128,7 +216,10 @@ func lintPatternShadowsAliases(catalog *consumerDriveProfileCatalog, cp compiled
 }
 
 // lintPatternShadowsFamilies warns when a pattern matches another profile's
-// family name.
+// family name. A family name is reachable as a lookup key only through the
+// model_name_normalized stage, which runs above the pattern stage, so this rule
+// covers that narrow collision and not the broader case of a pattern matching
+// another family's models, which a regex comparison cannot decide.
 func lintPatternShadowsFamilies(catalog *consumerDriveProfileCatalog, cp compiledLintPattern, result *ConsumerDriveProfileLintResult) {
 	patternFamilyKey := normalizeConsumerDriveKey(cp.family)
 	for i := range catalog.Profiles {
