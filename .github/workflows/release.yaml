@@ -52,7 +52,6 @@ jobs:
   validate_images:
     name: Validate Docker image (${{ matrix.image }})
     needs: image_matrix
-    if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -89,14 +88,22 @@ jobs:
   release:
     name: Semantic Release
     needs: validate_images
-    # always() keeps this job reachable when image validation is skipped for a dry
-    # run; the second clause still requires a green validation for a real release.
-    if: ${{ always() && (inputs.dry_run || needs.validate_images.result == 'success') }}
+    # !cancelled() keeps this job reachable when image validation is skipped for a
+    # dry run, without surviving an operator cancelling the run. The second clause
+    # still requires a green validation for a real release.
+    if: ${{ !cancelled() && (inputs.dry_run || needs.validate_images.result == 'success') }}
     runs-on: ubuntu-latest
     outputs:
       new_release_published: ${{ steps.rebuild.outputs.new_release_published || steps.semantic.outputs.new_release_published }}
       new_release_version: ${{ steps.rebuild.outputs.new_release_version || steps.semantic.outputs.new_release_version }}
     steps:
+      # First step in the job: a later guard would run after the step it guards.
+      - name: Reject conflicting inputs
+        if: inputs.dry_run && inputs.rebuild_tag != ''
+        run: |
+          echo "::error::dry_run and rebuild_tag are mutually exclusive: an asset rebuild publishes assets."
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v7.0.1
         with:
@@ -147,12 +154,6 @@ jobs:
           gh release view "$TAG" --repo "${{ github.repository }}" --json tagName >/dev/null
           echo "new_release_published=true" >> "$GITHUB_OUTPUT"
           echo "new_release_version=${TAG#v}" >> "$GITHUB_OUTPUT"
-
-      - name: Reject conflicting inputs
-        if: inputs.dry_run && inputs.rebuild_tag != ''
-        run: |
-          echo "::error::dry_run and rebuild_tag are mutually exclusive: an asset rebuild publishes assets."
-          exit 1
 
       - name: Semantic Release
         id: semantic
