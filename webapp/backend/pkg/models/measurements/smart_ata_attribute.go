@@ -280,12 +280,6 @@ func observedThresholdReachedBy(obsThresh thresholds.ObservedThreshold, ideal st
 	return value > obsThresh.Low
 }
 
-// ThresholdValue is the exported form of thresholdValue, for callers outside this
-// package (the report generator) that must show the same value the status uses.
-func (sa *SmartAtaAttribute) ThresholdValue(displayType string) int64 {
-	return sa.thresholdValue(displayType)
-}
-
 // thresholdValue returns the attribute value to compare against observed thresholds, selected by
 // the metadata display type (normalized, transformed, or raw).
 func (sa *SmartAtaAttribute) thresholdValue(displayType string) int64 {
