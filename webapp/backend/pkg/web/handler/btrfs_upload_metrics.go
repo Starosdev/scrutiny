@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
@@ -10,6 +11,7 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 func UploadBtrfsMetrics(c *gin.Context) {
@@ -32,11 +34,16 @@ func UploadBtrfsMetrics(c *gin.Context) {
 
 	// The previous state has to be read before the register call replaces it:
 	// per-device error counters live only in the device rows it deletes.
+	// A read error other than not-found leaves the previous state unknown, and
+	// comparing against an unknown state would report every existing counter
+	// as new, so that upload skips the notification check.
 	var previous *models.BtrfsFilesystem
+	previousKnown := true
 	if stored, err := deviceRepo.GetBtrfsFilesystemDetails(c, uuid); err == nil {
 		previous = &stored
-	} else {
-		logger.Debugf("No previous Btrfs state for filesystem %s: %v", uuid, err)
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		logger.Warnf("Could not read previous Btrfs state for filesystem %s, skipping notification check: %v", uuid, err)
+		previousKnown = false
 	}
 
 	filesystem.UUID = uuid
@@ -51,7 +58,9 @@ func UploadBtrfsMetrics(c *gin.Context) {
 		return
 	}
 
-	maybeNotifyBtrfs(c, deviceRepo, logger, previous, &filesystem)
+	if previousKnown {
+		maybeNotifyBtrfs(c, deviceRepo, logger, previous, &filesystem)
+	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }

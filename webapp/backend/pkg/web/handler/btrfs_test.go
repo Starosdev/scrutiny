@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -165,6 +166,25 @@ func TestUploadBtrfsMetricsSkipsNotificationWhenHealthy(t *testing.T) {
 	router.POST("/api/btrfs/filesystem/:uuid/metrics", handler.UploadBtrfsMetrics)
 
 	require.Equal(t, http.StatusOK, postBtrfsMetrics(t, router, models.BtrfsFilesystem{UUID: uuid, Status: models.BtrfsFilesystemStatusOnline}))
+}
+
+// A devices query that fails returns the row with an error. Treating that as
+// "no previous state" would count every existing counter as new and send one
+// spurious notification, so the upload skips the check instead.
+func TestUploadBtrfsMetricsSkipsNotificationWhenPreviousStateIsUnreadable(t *testing.T) {
+	uuid := "11111111-2222-3333-4444-555555555555"
+	stored := models.BtrfsFilesystem{UUID: uuid, Status: models.BtrfsFilesystemStatusOnline}
+	router := setupBtrfsRouter(t, func(repo *mock_database.MockDeviceRepo) {
+		repo.EXPECT().GetBtrfsFilesystemDetails(gomock.Any(), uuid).Return(stored, errors.New("devices query failed"))
+		repo.EXPECT().RegisterBtrfsFilesystem(gomock.Any(), gomock.Any()).Return(nil)
+		repo.EXPECT().SaveBtrfsMetrics(gomock.Any(), gomock.Any()).Return(nil)
+		repo.EXPECT().LoadSettings(gomock.Any()).Times(0)
+	})
+	router.POST("/api/btrfs/filesystem/:uuid/metrics", handler.UploadBtrfsMetrics)
+
+	upload := models.BtrfsFilesystem{UUID: uuid, Status: models.BtrfsFilesystemStatusOnline,
+		Devices: []models.BtrfsDevice{{DeviceID: 1, WriteIOErrors: 4}}}
+	require.Equal(t, http.StatusOK, postBtrfsMetrics(t, router, upload))
 }
 
 // The mute route writes a flag the upload payload never carries. Without this
