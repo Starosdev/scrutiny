@@ -262,6 +262,18 @@ identical drives can report different usable sizes.
    docker exec scrutiny /opt/scrutiny/bin/scrutiny-collector-zfs run
    ```
 
+## Notifications
+
+Every metrics upload is compared with the state stored from the previous upload. A notification is sent when:
+
+- the pool status changes away from `ONLINE` (`DEGRADED`, `FAULTED`, `OFFLINE`, `UNAVAIL`, `REMOVED`), including a change from one unhealthy status to another,
+- a pool-level error total grows (`total_read_errors`, `total_write_errors`, `total_checksum_errors`),
+- a scrub finishes with `scrub_errors_count` above 0.
+
+One notification carries every reason found in that upload. Its `failure_type` is the most severe one: `ZFSPoolDegraded`, then `ZFSDeviceErrors`, then `ZFSScrubErrors`. The `device_type` is `ZFS` and `device_serial` is the pool GUID.
+
+Notifications go through the shared notification gate, so quiet hours and the rate limit apply. With **Repeat Notifications** enabled, a problem that is still present notifies on every upload; otherwise only a new problem notifies. A muted or archived pool never notifies.
+
 ## API Endpoints
 
 The ZFS monitoring feature exposes the following API endpoints:

@@ -66,29 +66,15 @@ func UploadBtrfsMetrics(c *gin.Context) {
 }
 
 func maybeNotifyBtrfs(c *gin.Context, deviceRepo database.DeviceRepo, logger *logrus.Entry, previous *models.BtrfsFilesystem, current *models.BtrfsFilesystem) {
-	// Mute and archive are written by their own routes and the upload payload
-	// never carries them, so the stored row is the only place to read them.
-	if previous != nil && (previous.Muted || previous.Archived) {
-		logger.Debugf("Skipping notification for Btrfs filesystem %s: muted or archived", current.UUID)
-		return
-	}
-	// A cheap pre-check so a healthy upload never loads settings.
-	if len(notify.BtrfsFailureTypes(previous, current, true)) == 0 {
-		return
-	}
-
-	settings, err := deviceRepo.LoadSettings(c.Request.Context())
-	if err != nil {
-		logger.Warnf("Failed to load settings for Btrfs notification: %v", err)
-	}
-	repeat := settings != nil && settings.Metrics.RepeatNotifications
-	failureTypes := notify.BtrfsFailureTypes(previous, current, repeat)
-	if len(failureTypes) == 0 {
-		return
-	}
-
-	appConfig := c.MustGet("CONFIG").(config.Interface)
-	notification := notify.NewBtrfsNotify(logger, appConfig, current, failureTypes)
-	notification.LoadDatabaseUrls(c.Request.Context(), deviceRepo)
-	sendNotificationWithGate(c, logger, current.UUID, &notification, settings)
+	notifyStateChange(c, deviceRepo, logger, stateNotification{
+		kind:       "Btrfs filesystem",
+		identifier: current.UUID,
+		silenced:   previous != nil && (previous.Muted || previous.Archived),
+		failureTypes: func(repeat bool) []string {
+			return notify.BtrfsFailureTypes(previous, current, repeat)
+		},
+		build: func(appConfig config.Interface, failureTypes []string) notify.Notify {
+			return notify.NewBtrfsNotify(logger, appConfig, current, failureTypes)
+		},
+	})
 }
