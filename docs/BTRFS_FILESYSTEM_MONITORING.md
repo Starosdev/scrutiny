@@ -201,6 +201,18 @@ docker exec scrutiny sh -lc "cat /host/proc/mounts | grep btrfs"
 2. Verify the container can see the host mount points the filesystem uses.
 3. Verify `btrfs-progs` is installed when running outside Docker.
 
+## Notifications
+
+Every metrics upload is compared with the state stored from the previous upload. A notification is sent when:
+
+- the filesystem status changes to `DEGRADED` (a device is missing),
+- a per-device error counter grows (`write_io_errs`, `read_io_errs`, `flush_io_errs`, `corruption_errs`, `generation_errs`),
+- a scrub finishes with errors (read, csum, verify or super errors above 0).
+
+One notification carries every reason found in that upload. Its `failure_type` is the most severe one: `BtrfsDegraded`, then `BtrfsDeviceErrors`, then `BtrfsScrubErrors`. The `device_type` is `Btrfs` and `device_serial` is the filesystem UUID.
+
+Notifications go through the shared notification gate, so quiet hours and the rate limit apply. With **Repeat Notifications** enabled, a problem that is still present notifies on every upload; otherwise only a new problem notifies. A muted or archived filesystem never notifies.
+
 ## API Endpoints
 
 The Btrfs monitoring feature exposes the following API endpoints:

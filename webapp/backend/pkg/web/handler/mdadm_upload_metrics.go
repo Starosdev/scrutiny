@@ -6,6 +6,7 @@ import (
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/notify"
 	"github.com/gin-gonic/gin"
@@ -74,7 +75,11 @@ func handleMDADMNotification(c *gin.Context, dbRepo database.DeviceRepo, logger 
 	appConfig := c.MustGet("CONFIG").(config.Interface)
 	notification := notify.NewMDADMNotify(logger, appConfig, array, *metrics)
 	notification.LoadDatabaseUrls(c.Request.Context(), dbRepo)
-	sendNotificationWithGate(c, dbRepo, logger, uuid, &notification)
+	settings, settingsErr := dbRepo.LoadSettings(c.Request.Context())
+	if settingsErr != nil {
+		logger.Warnf("Failed to load settings for notification gate: %v", settingsErr)
+	}
+	sendNotificationWithGate(c, logger, uuid, &notification, settings)
 }
 
 func shouldSendMDADMNotification(c *gin.Context, dbRepo database.DeviceRepo, uuid string, metrics *collector.MDADMMetrics) bool {
@@ -86,21 +91,17 @@ func shouldSendMDADMNotification(c *gin.Context, dbRepo database.DeviceRepo, uui
 	return !shouldNotifyForMDADMState(lastMetric.State, lastMetric.FailedDevices)
 }
 
-func sendNotificationWithGate(c *gin.Context, dbRepo database.DeviceRepo, logger *logrus.Entry, uuid string, notification *notify.Notify) {
+// sendNotificationWithGate dispatches through the shared gate when one is
+// registered and settings loaded, and sends directly otherwise.
+func sendNotificationWithGate(c *gin.Context, logger *logrus.Entry, identifier string, notification *notify.Notify, settings *models.Settings) {
 	if gateVal, exists := c.Get("NOTIFICATION_GATE"); exists {
-		if gate, ok := gateVal.(*notify.NotificationGate); ok {
-			settings, settingsErr := dbRepo.LoadSettings(c.Request.Context())
-			if settingsErr != nil {
-				logger.Warnf("Failed to load settings for notification gate: %v", settingsErr)
-			}
-			if settings != nil {
-				gate.TrySend(notification, settings, false)
-				return
-			}
+		if gate, ok := gateVal.(*notify.NotificationGate); ok && gate != nil && settings != nil {
+			gate.TrySend(notification, settings, false)
+			return
 		}
 	}
 	if sendErr := notification.Send(); sendErr != nil {
-		logger.Warnf("Failed to send MDADM notification for array %s: %v", uuid, sendErr)
+		logger.Warnf("Failed to send %s notification for %s: %v", notification.Payload.DeviceType, identifier, sendErr)
 	}
 }
 
