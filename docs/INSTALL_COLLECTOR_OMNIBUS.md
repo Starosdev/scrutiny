@@ -78,7 +78,9 @@ installations. Environment variables override YAML values:
 Optional collector prefixes are `COLLECTOR_ZFS`, `COLLECTOR_MDADM`,
 `COLLECTOR_BTRFS`, `COLLECTOR_FILESYSTEM`, and `COLLECTOR_PERF`. A non-empty
 schedule or a true startup override enables that collector unless its
-`*_ENABLED` variable explicitly disables it.
+`*_ENABLED` variable explicitly disables it. The `*_ENABLED` variables are read
+only by this manager. The Docker images ignore them and enable optional
+collectors through their schedule and startup variables.
 
 A schedule override is trimmed before it is applied, so a whitespace value
 clears the YAML schedule. See "Windows PowerShell schedule overrides" below for

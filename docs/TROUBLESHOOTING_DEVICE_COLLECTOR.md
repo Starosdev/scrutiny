@@ -565,3 +565,9 @@ A false startup flag prevents startup collection. It does not disable manual
 collection when a cron schedule is set. Installed binaries alone do not enable
 optional collectors. Disabled collectors log a skip message. Errors from enabled
 collectors remain failures, including missing access to `/dev/zfs` for ZFS.
+
+The `COLLECTOR_*_ENABLED` variables, such as `COLLECTOR_ZFS_ENABLED`, apply only
+to the [standalone collector omnibus](INSTALL_COLLECTOR_OMNIBUS.md) manager. The
+all-in-one image, the Docker collector images, and the **Run collectors** action
+ignore them. To disable an optional collector in the all-in-one image, leave its
+cron schedule empty and its startup flag unset or false.
