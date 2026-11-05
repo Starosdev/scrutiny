@@ -2,6 +2,17 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.79.3](https://github.com/Starosdev/scrutiny/compare/v1.79.2...v1.79.3) (2026-11-05)
+
+### Bug Fixes
+
+* **release:** restore changelog bodies and add a release dry run ([#1113](https://github.com/Starosdev/scrutiny/issues/1113)) ([ee517f2](https://github.com/Starosdev/scrutiny/commit/ee517f2e3cd611b4a3535121b984bccc1cdacdfe)), closes [#1112](https://github.com/Starosdev/scrutiny/issues/1112)
+* **reports:** count warning devices from active failures in report generator ([#1107](https://github.com/Starosdev/scrutiny/issues/1107)) ([1c80d1a](https://github.com/Starosdev/scrutiny/commit/1c80d1a90402e36ae0310c030c7798b5a2c51a99)), closes [#1105](https://github.com/Starosdev/scrutiny/issues/1105)
+
+### Refactoring
+
+* **reports:** use AttributeEvaluatedValue for ATA alert values ([#1104](https://github.com/Starosdev/scrutiny/issues/1104)) ([aa4e266](https://github.com/Starosdev/scrutiny/commit/aa4e26615cd467b4772f3495b590393a44127944)), closes [#1085](https://github.com/Starosdev/scrutiny/issues/1085) [#1086](https://github.com/Starosdev/scrutiny/issues/1086) [#1086](https://github.com/Starosdev/scrutiny/issues/1086) [#1085](https://github.com/Starosdev/scrutiny/issues/1085) [#1103](https://github.com/Starosdev/scrutiny/issues/1103)
+
 ## [1.79.2](https://github.com/Starosdev/scrutiny/compare/v1.79.1...v1.79.2) (2026-11-04)
 
 ## [1.79.1](https://github.com/Starosdev/scrutiny/compare/v1.79.0...v1.79.1) (2026-11-04)
