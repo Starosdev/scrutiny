@@ -57,6 +57,7 @@ type NotificationGate struct {
 	isLeader          func() bool
 	collectorError    map[string]time.Time // dedupe map for collector-side errors
 	temperature       *TemperatureTracker
+	mdadm             *MDADMTracker
 	wake              chan struct{}
 	sentTimestamps    []time.Time          // sliding window for rate limiting
 	quietQueue        []QueuedNotification // queued during quiet hours
@@ -79,6 +80,7 @@ func NewNotificationGate(logger logrus.FieldLogger) *NotificationGate {
 		logger:         logger,
 		collectorError: map[string]time.Time{},
 		temperature:    NewTemperatureTracker(),
+		mdadm:          NewMDADMTracker(),
 		wake:           make(chan struct{}, 1),
 	}
 }
@@ -104,6 +106,8 @@ func (g *NotificationGate) Wake() <-chan struct{} {
 }
 
 func (g *NotificationGate) Temperature() *TemperatureTracker { return g.temperature }
+
+func (g *NotificationGate) MDADM() *MDADMTracker { return g.mdadm }
 
 // TrySend checks rate limiting and quiet hours before dispatching a notification.
 // If quiet hours are active, the notification summary is queued for digest delivery.

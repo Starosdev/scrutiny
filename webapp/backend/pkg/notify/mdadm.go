@@ -3,6 +3,7 @@ package notify
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
@@ -110,4 +111,57 @@ func NewMDADMNotify(logger logrus.FieldLogger, appconfig config.Interface, array
 		Config:  appconfig,
 		Payload: payload,
 	}
+}
+
+// MDADMTracker remembers, per array, the degradation last announced, so an array that stays
+// degraded is not announced again on every collection unless repeat notifications are on. Like
+// the other notification dedup state it lives in memory: a restart announces each degraded
+// array once more.
+type MDADMTracker struct {
+	notified map[string]mdadmDegradation
+	mu       sync.Mutex
+}
+
+type mdadmDegradation struct {
+	active int
+	failed int
+}
+
+func NewMDADMTracker() *MDADMTracker {
+	return &MDADMTracker{notified: make(map[string]mdadmDegradation)}
+}
+
+// Evaluate announces a degraded array when repeat is on, when nothing has been announced for
+// it yet, or when it lost an active member or gained a failed one since the last announcement.
+// send reports whether the notification was delivered or queued. Only then is it recorded, so a
+// failed delivery is retried on the next collection instead of being lost.
+func (t *MDADMTracker) Evaluate(uuid string, metrics *colmodels.MDADMMetrics, repeat bool, send func() bool) {
+	current := mdadmDegradation{active: metrics.ActiveDevices, failed: metrics.FailedDevices}
+
+	t.mu.Lock()
+	previous, announced := t.notified[uuid]
+	worse := !announced || current.failed > previous.failed || current.active < previous.active
+	if !repeat && !worse {
+		// Same or better than announced: keep the current shape as the baseline, so losing a
+		// member again later is announced.
+		t.notified[uuid] = current
+		t.mu.Unlock()
+		return
+	}
+	t.mu.Unlock()
+
+	// Sent outside the lock so a slow notification service does not stall other arrays. Two
+	// concurrent uploads for one array can both announce; collectors upload an array serially.
+	if send() {
+		t.mu.Lock()
+		t.notified[uuid] = current
+		t.mu.Unlock()
+	}
+}
+
+// Forget clears the record once an array is healthy, so its next degradation is announced.
+func (t *MDADMTracker) Forget(uuid string) {
+	t.mu.Lock()
+	delete(t.notified, uuid)
+	t.mu.Unlock()
 }

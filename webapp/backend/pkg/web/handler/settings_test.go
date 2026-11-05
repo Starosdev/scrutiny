@@ -56,6 +56,34 @@ func TestSaveSettingsTemperatureValidation(t *testing.T) {
 	}
 }
 
+func TestSaveSettingsFilesystemUsageThresholdValidation(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		threshold int
+		status    int
+	}{
+		{"disabled", 0, http.StatusOK},
+		{"minimum", 1, http.StatusOK},
+		{"maximum", 100, http.StatusOK},
+		{"negative", -1, http.StatusBadRequest},
+		{"over 100", 101, http.StatusBadRequest},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := mock_database.NewMockDeviceRepo(gomock.NewController(t))
+			if tc.status == http.StatusOK {
+				repo.EXPECT().SaveSettings(gomock.Any(), gomock.Any()).Return(nil)
+			}
+			router := setupSettingsRouter(t, repo, false)
+			body := fmt.Sprintf(`{"metrics":{"filesystem_usage_threshold_percent":%d}}`, tc.threshold)
+			response := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodPost, "/api/settings", strings.NewReader(body))
+			request.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(response, request)
+			require.Equal(t, tc.status, response.Code, response.Body.String())
+		})
+	}
+}
+
 func TestSaveSettingsDefaultsOmittedTemperatureValues(t *testing.T) {
 	for _, tc := range []struct {
 		name, body string

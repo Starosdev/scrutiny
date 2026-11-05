@@ -122,6 +122,26 @@ Upgrade note:
 - if arrays were first registered before that fix, run one fresh MDADM collection on each affected host
 - confirm `GET /api/mdadm/summary` now includes `host_id` for those arrays before expecting grouped host headings in the UI
 
+## Notifications
+
+An array is reported degraded when its state contains `degraded` or it has
+failed devices. How often Scrutiny notifies follows the Repeat Notifications
+setting:
+
+- **Always**: every collection while the array stays degraded.
+- **Only when the value has changed**: once when the array becomes degraded,
+  and again when it loses an active member or gains a failed one. A
+  degradation that gets better is not announced, but a later relapse is.
+
+A notification counts as announced only once it was delivered or queued for
+quiet hours. If the notification service is unreachable, or the rate limit
+drops it, the next collection tries again. Once the array reports healthy,
+its next degradation is announced. This state is kept in memory, so a
+restart of the web server announces each array that is still degraded once
+more.
+
+Mute an array to stop its notifications entirely.
+
 ## Troubleshooting
 
 ### `No MDADM arrays found`
@@ -169,6 +189,15 @@ Check:
 - the collector `host.id` value is stable and not changing between runs
 
 If older rows were created before `host_id` was persisted on re-registration, force one new collection on each affected host to backfill the stored `host_id`.
+
+### Synology system and swap arrays always show as degraded
+
+Synology DSM mirrors its system and swap partitions as their own arrays,
+usually `md0` and `md1`. These arrays have one slot per drive bay, so on a NAS
+with empty bays they report `clean, degraded` permanently, for example
+`[4/2] [UU__]` on a four-bay unit with two drives. This is expected and does
+not affect your data volume. Mute those arrays if you do not want their
+notifications.
 
 ## API Endpoints
 

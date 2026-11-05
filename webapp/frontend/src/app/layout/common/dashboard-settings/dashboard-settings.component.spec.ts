@@ -74,6 +74,18 @@ describe('DashboardSettingsComponent temperature notifications', () => {
         expect(component.temperatureSettingsInvalid).toBeTrue();
     });
 
+    it('rejects a filesystem usage threshold outside 0 to 100 and accepts the bounds', () => {
+        for (const invalid of [null, -1, 101, 50.5]) {
+            component.filesystemUsageThresholdPercent = invalid;
+            expect(component.filesystemUsageThresholdInvalid).toBeTrue();
+            expect(component.notificationSettingsInvalid).toBeTrue();
+        }
+        for (const valid of [0, 1, 100]) {
+            component.filesystemUsageThresholdPercent = valid;
+            expect(component.filesystemUsageThresholdInvalid).toBeFalse();
+        }
+    });
+
     it('saves Celsius and a zero duration', () => {
         component.notifyOnTemperature = true;
         component.setTemperatureUnit('fahrenheit');

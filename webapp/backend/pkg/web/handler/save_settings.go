@@ -29,6 +29,10 @@ func SaveSettings(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": fmt.Sprintf("temperature_threshold_celsius must be %d..%d and temperature_duration_minutes must be 0..%d", models.MinTemperatureThresholdCelsius, models.MaxTemperatureThresholdCelsius, models.MaxTemperatureDurationMinutes)})
 		return
 	}
+	if settings.Metrics.FilesystemUsageThresholdPercent < 0 || settings.Metrics.FilesystemUsageThresholdPercent > models.MaxFilesystemUsageThresholdPercent {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": fmt.Sprintf("filesystem_usage_threshold_percent must be 0..%d", models.MaxFilesystemUsageThresholdPercent)})
+		return
+	}
 	settings.ApplyDefaults()
 	if !validSummaryPageSize(settings.DashboardPageSize) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "dashboard_page_size must be one of 25, 50, 100, or 250"})

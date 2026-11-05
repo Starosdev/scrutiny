@@ -3,11 +3,16 @@ run:
   modules-download-mode: vendor
 linters:
   enable:
+    - forbidigo
     - gocritic
     - gosec
     - misspell
     - nolintlint
   settings:
+    forbidigo:
+      forbid:
+        - pattern: 'Query(Raw)?WithParams'
+          msg: 'Flux params.* are InfluxDB Cloud only; OSS fails with "undefined identifier params" (#157, #1111). Validate the identifier and inline it with strconv.Quote.'
     gocritic:
       enabled-tags:
         - diagnostic

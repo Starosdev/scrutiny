@@ -139,6 +139,8 @@ export interface AppConfig {
         notify_on_temperature?: boolean;
         temperature_threshold_celsius?: number;
         temperature_duration_minutes?: number;
+        // Btrfs and ZFS usage alert, percent; 0 disables it
+        filesystem_usage_threshold_percent?: number;
         notify_level?: MetricsNotifyLevel;
         status_filter_attributes?: MetricsStatusFilterAttributes;
         status_threshold?: MetricsStatusThreshold;
@@ -236,6 +238,7 @@ export const appConfig: AppConfig = {
         notify_on_temperature: false,
         temperature_threshold_celsius: DEFAULT_TEMPERATURE_THRESHOLD_CELSIUS,
         temperature_duration_minutes: DEFAULT_TEMPERATURE_DURATION_MINUTES,
+        filesystem_usage_threshold_percent: 0,
         notify_level: MetricsNotifyLevel.Fail,
         status_filter_attributes: MetricsStatusFilterAttributes.All,
         status_threshold: MetricsStatusThreshold.Both,

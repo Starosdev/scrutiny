@@ -57,19 +57,26 @@ func (g *Generator) Generate(ctx context.Context, periodType string, start, end 
 
 		report.Devices = append(report.Devices, deviceReport)
 
+		hasWarning := false
+		for _, failure := range deviceReport.ActiveFailures {
+			if failure.Status == "warning" {
+				hasWarning = true
+				break
+			}
+		}
+
 		report.TotalDevices++
 		switch {
-		case summary.Device.DeviceStatus == pkg.DeviceStatusPassed:
-			report.PassedDevices++
 		case pkg.DeviceStatusHas(summary.Device.DeviceStatus, pkg.DeviceStatusFailedSmart) || pkg.DeviceStatusHas(summary.Device.DeviceStatus, pkg.DeviceStatusFailedScrutiny):
 			report.FailedDevices++
+		case hasWarning:
+			report.WarningDevices++
 		default:
 			report.PassedDevices++
 		}
 	}
 
 	report.ArchivedDevices = archivedCount
-	report.WarningDevices = report.TotalDevices - report.PassedDevices - report.FailedDevices
 
 	// Populate ZFS pool data
 	g.populateZFSPools(ctx, report)
@@ -117,7 +124,7 @@ func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, device
 
 // alertAttributeDetails returns the display name, the value the attribute is evaluated on and the
 // manufacturer threshold for one SMART attribute. It follows the detail page: ATA attributes use the
-// metadata display name and ThresholdValue (normalized, transformed or raw), and show the threshold
+// metadata display name and the value the status is evaluated on (normalized, transformed or raw), and show the threshold
 // only for normalized values or attributes without metadata. Device-statistics and FARM attributes
 // prefer the metadata threshold over the drive-reported one.
 //
@@ -127,10 +134,9 @@ func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, device
 // only a positive value as a threshold.
 //
 // ATA value rule: when the attribute has metadata, the value is the one the status is evaluated on.
-// That choice belongs to measurements.AttributeEvaluatedValue (#1086); until it is merged this
-// calls ThresholdValue, which has the same result. The rule kept here is only for an ATA attribute
-// with no metadata: it reports the normalized Value, as the detail page does, whereas the helper
-// would fall through to RawValue. ATA attributes 174, 204, 227 and 228 have metadata without a
+// That choice belongs to measurements.AttributeEvaluatedValue. The rule kept here is only for an ATA
+// attribute with no metadata: it reports the normalized Value, as the detail page does, whereas the
+// helper would fall through to RawValue. ATA attributes 174, 204, 227 and 228 have metadata without a
 // display type, so they report RawValue; that is deliberate, because an override pins the raw
 // value and the status reason refers to it.
 func alertAttributeDetails(attrID string, attribute measurements.SmartAttribute) (name string, value int64, threshold *int64) {
@@ -139,7 +145,7 @@ func alertAttributeDetails(attrID string, attribute measurements.SmartAttribute)
 		name, value, threshold = attr.Name, int64(attr.Value), &attr.Threshold
 		if metadata, ok := thresholds.AtaMetadata[attr.AttributeId]; ok {
 			name = metadata.DisplayName
-			value = attr.ThresholdValue(metadata.DisplayType)
+			value, _ = measurements.AttributeEvaluatedValue(attr)
 			if metadata.DisplayType != thresholds.AtaSmartAttributeDisplayTypeNormalized {
 				threshold = nil
 			}

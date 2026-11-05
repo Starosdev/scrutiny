@@ -18,6 +18,11 @@ on:
         required: false
         default: ''
         type: string
+      dry_run:
+        description: 'Run semantic-release without tagging, committing or publishing, and print the notes it would write. Use this to verify release tooling changes.'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -27,6 +32,9 @@ permissions:
 jobs:
   image_matrix:
     name: Validate Docker image matrix
+    # A dry run publishes nothing, so it skips image validation and reaches the
+    # release job in under a minute instead of after the Buildx matrix.
+    if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -80,11 +88,22 @@ jobs:
   release:
     name: Semantic Release
     needs: validate_images
+    # !cancelled() keeps this job reachable when image validation is skipped for a
+    # dry run, without surviving an operator cancelling the run. The second clause
+    # still requires a green validation for a real release.
+    if: ${{ !cancelled() && (inputs.dry_run || needs.validate_images.result == 'success') }}
     runs-on: ubuntu-latest
     outputs:
       new_release_published: ${{ steps.rebuild.outputs.new_release_published || steps.semantic.outputs.new_release_published }}
       new_release_version: ${{ steps.rebuild.outputs.new_release_version || steps.semantic.outputs.new_release_version }}
     steps:
+      # First step in the job: a later guard would run after the step it guards.
+      - name: Reject conflicting inputs
+        if: inputs.dry_run && inputs.rebuild_tag != ''
+        run: |
+          echo "::error::dry_run and rebuild_tag are mutually exclusive: an asset rebuild publishes assets."
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v7.0.1
         with:
@@ -99,7 +118,7 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Force release commit (manual trigger only)
-        if: github.event_name == 'workflow_dispatch' && inputs.release_type != 'auto' && inputs.rebuild_tag == ''
+        if: github.event_name == 'workflow_dispatch' && inputs.release_type != 'auto' && inputs.rebuild_tag == '' && !inputs.dry_run
         env:
           GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
         run: |
@@ -142,6 +161,7 @@ jobs:
         run: node .github/scripts/run-semantic-release.mjs
         env:
           GITHUB_TOKEN: ${{ secrets.SCRUTINY_GITHUB_TOKEN }}
+          SEMANTIC_RELEASE_DRY_RUN: ${{ inputs.dry_run }}
         # semantic-release updates webapp/backend/pkg/version/version.go in the
         # release commit. The build job must compile the tagged release commit,
         # not the pre-release workspace state, so runtime banners and API

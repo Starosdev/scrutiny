@@ -386,3 +386,72 @@ func TestAlertAttributeDetails(t *testing.T) {
 		})
 	}
 }
+
+// For every ATA attribute with metadata, the value in an alert line is the one the status is
+// evaluated on. Each field gets a different number so a wrong pick is visible.
+func TestAlertAttributeDetails_ATAValueMatchesEvaluatedValue(t *testing.T) {
+	for id := range thresholds.AtaMetadata {
+		attr := &measurements.SmartAtaAttribute{AttributeId: id, Value: 11, RawValue: 22, TransformedValue: 33}
+		want, ok := measurements.AttributeEvaluatedValue(attr)
+		require.True(t, ok)
+
+		_, got, _ := alertAttributeDetails("x", attr)
+		assert.Equal(t, want, got, "attribute %d", id)
+	}
+}
+
+func TestGenerateReport_CountsWarningDevicesFromActiveFailures(t *testing.T) {
+	now := time.Now()
+	mock := &mockSummaryProvider{
+		summary: map[string]*models.DeviceSummary{
+			"devid-passed": {
+				Device: models.Device{
+					DeviceID:     "devid-passed",
+					DeviceName:   "/dev/sda",
+					DeviceStatus: pkg.DeviceStatusPassed,
+				},
+				SmartResults: &models.SmartSummary{Temp: tempPtr(30)},
+			},
+			"devid-warn": {
+				Device: models.Device{
+					DeviceID:     "devid-warn",
+					DeviceName:   "/dev/sdb",
+					DeviceStatus: pkg.DeviceStatusPassed,
+				},
+				SmartResults: &models.SmartSummary{Temp: tempPtr(35)},
+			},
+			"devid-failed": {
+				Device: models.Device{
+					DeviceID:     "devid-failed",
+					DeviceName:   "/dev/sdc",
+					DeviceStatus: pkg.DeviceStatusFailedSmart,
+				},
+				SmartResults: &models.SmartSummary{Temp: tempPtr(40)},
+			},
+		},
+		smartHistory: map[string][]measurements.Smart{
+			"devid-warn": {
+				{
+					Attributes: map[string]measurements.SmartAttribute{
+						"199": &measurements.SmartAtaAttribute{
+							AttributeId: 199,
+							Name:        "UDMA_CRC_Error_Count",
+							Status:      pkg.AttributeStatusWarningScrutiny,
+							Value:       100,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	gen := NewGenerator(mock)
+	report, err := gen.Generate(context.Background(), "weekly", now.Add(-7*24*time.Hour), now)
+	require.NoError(t, err)
+
+	assert.Equal(t, 3, report.TotalDevices)
+	assert.Equal(t, 1, report.PassedDevices)
+	assert.Equal(t, 1, report.WarningDevices)
+	assert.Equal(t, 1, report.FailedDevices)
+	assert.True(t, report.HasWarnings())
+}
