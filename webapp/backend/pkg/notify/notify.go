@@ -157,7 +157,9 @@ func collectFailingAttributes(device *models.Device, smartAttrs *measurements.Sm
 }
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
-func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *measurements.Smart, notifyLevel pkg.MetricsNotifyLevel, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, deviceID string, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
+// previousDeviceStatus is the stored device status before this submission was reconciled; it
+// decides whether a manufacturer SMART failure is new when repeat notifications are off.
+func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *measurements.Smart, notifyLevel pkg.MetricsNotifyLevel, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, deviceID string, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface, previousDeviceStatus pkg.DeviceStatus) bool {
 	// 1. check if the device is healthy
 	// For warn level, a device with only warning attributes still has DeviceStatusPassed,
 	// so we must continue to the attribute-level check.
@@ -174,6 +176,19 @@ func ShouldNotify(logger logrus.FieldLogger, device *models.Device, smartAttrs *
 
 	// setup constants for comparison
 	requiredDeviceStatus, requiredAttrStatus := requiredNotifyStatuses(statusThreshold, notifyLevel)
+
+	// A failed smartctl overall health check (smart_status.passed=false) is the drive's own verdict,
+	// not an attribute, so the attribute path below misses it when no single attribute is flagged:
+	// a vendor attribute without Scrutiny thresholds, or one an override ignores. It qualifies at
+	// every notify level and attribute filter; the status threshold still applies. Only this
+	// submission's status counts, because the stored device status keeps failure bits until a fully
+	// passing submission resets it.
+	if smartFailure := smartAttrs.Status & requiredDeviceStatus & pkg.DeviceStatusFailedSmart; smartFailure != 0 {
+		if repeatNotifications || !pkg.DeviceStatusHas(previousDeviceStatus, smartFailure) {
+			return true
+		}
+		logger.Debugf("ShouldNotify: device %s manufacturer SMART failure is unchanged since the previous submission", device.WWN)
+	}
 
 	// This is the only case where individual attributes need not be considered.
 	// Warn level is excluded: there is no DeviceStatusWarn, so we must always check individual attributes.

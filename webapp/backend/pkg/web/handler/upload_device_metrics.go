@@ -95,6 +95,7 @@ func UploadDeviceMetrics(c *gin.Context) {
 		c,
 		deviceRepo,
 		appConfig,
+		device.DeviceStatus, // stored status from ResolveDevice, before reconcileDeviceStatus
 	) {
 		sendDeviceNotification(c, logger, appConfig, deviceRepo, device.DeviceID, &updatedDevice, settings)
 	}

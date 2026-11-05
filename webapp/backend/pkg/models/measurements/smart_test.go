@@ -490,6 +490,34 @@ func TestFromCollectorSmartInfo_Fail_ScrutinySmart(t *testing.T) {
 	require.Equal(t, 17, len(smartMdl.Attributes))
 }
 
+// smart-fail2-helium-only.json (#1108) fails only Helium_Level (22), a pre-fail attribute with no
+// Scrutiny thresholds, and carries smartctl's "when_failed": "now". The drive's own threshold is the
+// only evidence, so the attribute must be flagged from when_failed, not from observed buckets.
+func TestFromCollectorSmartInfo_Fail_ManufacturerThresholdOnlyAttribute(t *testing.T) {
+	//setup
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	fakeConfig := mock_config.NewMockInterface(mockCtrl)
+	expectConsumerDriveProfilesEnabledDefault(fakeConfig)
+	fakeConfig.EXPECT().GetIntSlice("failures.transient.ata").Return([]int{195}).AnyTimes()
+	fakeConfig.EXPECT().Get("smart.attribute_overrides").Return(nil).AnyTimes()
+
+	smartDataBytes, err := os.ReadFile("../testdata/smart-fail2-helium-only.json")
+	require.NoError(t, err)
+	var smartJson collector.SmartInfo
+	require.NoError(t, json.Unmarshal(smartDataBytes, &smartJson))
+
+	//test
+	smartMdl := measurements.Smart{}
+	err = smartMdl.FromCollectorSmartInfo(fakeConfig, "WWN-test", smartJson)
+
+	//assert
+	require.NoError(t, err)
+	require.Equal(t, pkg.DeviceStatusFailedSmart, smartMdl.Status)
+	require.Contains(t, smartMdl.Attributes, "22")
+	require.Equal(t, pkg.AttributeStatusFailedSmart, smartMdl.Attributes["22"].GetStatus())
+}
+
 func TestFromCollectorSmartInfo_Fail_ScrutinyNonCriticalFailed(t *testing.T) {
 	//setup
 	mockCtrl := gomock.NewController(t)
