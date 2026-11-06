@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -16,6 +20,98 @@ import (
 	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
+
+func triggerCollectorsRequest() int {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Set("LOGGER", logrus.NewEntry(logrus.New()))
+	TriggerCollectors(c)
+	return w.Code
+}
+
+func collectorRunStatus(t *testing.T) bool {
+	t.Helper()
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	GetCollectorRunStatus(c)
+	require.Equal(t, http.StatusOK, w.Code)
+	var body struct {
+		Running bool `json:"running"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	return body.Running
+}
+
+func TestTriggerCollectors_NotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	orig := collectorLookPath
+	defer func() { collectorLookPath = orig }()
+	collectorLookPath = func(string) (string, error) { return "", errors.New("missing") }
+
+	require.Equal(t, http.StatusNotFound, triggerCollectorsRequest())
+	require.False(t, collectorRunStatus(t))
+}
+
+func TestTriggerCollectors_RunsAllAndRejectsConcurrent(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	origLook, origExec, origGap := collectorLookPath, collectorExec, collectorGap
+	defer func() { collectorLookPath, collectorExec, collectorGap = origLook, origExec, origGap }()
+
+	collectorLookPath = func(name string) (string, error) { return "/bin/" + name, nil }
+	collectorGap = 0
+	// Enable the optional collectors, so the run covers the whole list.
+	t.Setenv("COLLECTOR_ZFS_CRON_SCHEDULE", "*/15 * * * *")
+	t.Setenv("COLLECTOR_MDADM_CRON_SCHEDULE", "*/15 * * * *")
+
+	var mu sync.Mutex
+	var ran []string
+	release := make(chan struct{})
+	started := make(chan struct{}, len(manualCollectors))
+	collectorExec = func(_ context.Context, path string, _ []string) ([]byte, error) {
+		mu.Lock()
+		ran = append(ran, path)
+		mu.Unlock()
+		started <- struct{}{}
+		<-release
+		return nil, nil
+	}
+
+	require.Equal(t, http.StatusAccepted, triggerCollectorsRequest())
+	<-started
+	require.Equal(t, http.StatusConflict, triggerCollectorsRequest(), "second request during a run must be rejected")
+	require.True(t, collectorRunStatus(t), "status must report the run in progress")
+
+	close(release)
+	require.Eventually(t, func() bool { return !collectorRunning.Load() }, 2*time.Second, 5*time.Millisecond)
+	require.False(t, collectorRunStatus(t), "status must report no run once the run has finished")
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Equal(t, []string{
+		"/bin/scrutiny-collector-metrics",
+		"/bin/scrutiny-collector-zfs",
+		"/bin/scrutiny-collector-mdadm",
+	}, ran)
+}
+
+func TestTriggerCollectors_NoGapAfterLastCollector(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	origLook, origExec, origGap := collectorLookPath, collectorExec, collectorGap
+	defer func() { collectorLookPath, collectorExec, collectorGap = origLook, origExec, origGap }()
+
+	// Only the SMART collector exists, so the run executes exactly one collector.
+	collectorLookPath = func(name string) (string, error) {
+		if name == manualCollectors[0] {
+			return "/bin/" + name, nil
+		}
+		return "", errors.New("missing")
+	}
+	collectorExec = func(context.Context, string, []string) ([]byte, error) { return nil, nil }
+	collectorGap = time.Hour
+
+	require.Equal(t, http.StatusAccepted, triggerCollectorsRequest())
+	require.Eventually(t, func() bool { return !collectorRunning.Load() }, 2*time.Second, 5*time.Millisecond, "run flag must clear without waiting for a gap after the last collector")
+}
 
 type collectorFinishedHook struct{ done chan struct{} }
 
@@ -31,6 +127,9 @@ func TestTriggerCollectorsEnablement(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX executable fixture")
 	}
+	origGap := collectorGap
+	t.Cleanup(func() { collectorGap = origGap })
+	collectorGap = 0
 	for _, tc := range []struct {
 		name       string
 		only       string
@@ -98,6 +197,8 @@ func TestTriggerCollectorsEnablement(t *testing.T) {
 			case <-time.After(10 * time.Second):
 				t.Fatal("manual collector run did not finish")
 			}
+			// The finished log fires just before the run flag clears; wait so the next case is not rejected.
+			require.Eventually(t, func() bool { return !collectorRunning.Load() }, 2*time.Second, 5*time.Millisecond)
 			for _, name := range []string{"metrics", "zfs", "mdadm"} {
 				args, err := os.ReadFile(filepath.Join(dir, "scrutiny-collector-"+name+".args"))
 				if name != "metrics" && (!tc.enabled || (tc.only != "" && strings.ToUpper(name) != tc.only)) {
