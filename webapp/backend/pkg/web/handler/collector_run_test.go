@@ -42,6 +42,19 @@ func collectorRunStatus(t *testing.T) bool {
 	return body.Running
 }
 
+// restoreCollectorSeams puts the test seams back once no run is left using them. Cleanups run
+// last-in first-out, so a test that registers this first can release a blocked run in a later
+// cleanup and the run still sees the fakes until it exits. A run that never exits fails here
+// instead of leaving collectorRunning set and turning the next test's POST into a 409.
+func restoreCollectorSeams(t *testing.T) {
+	t.Helper()
+	origLook, origExec, origGap := collectorLookPath, collectorExec, collectorGap
+	t.Cleanup(func() {
+		require.Eventually(t, func() bool { return !collectorRunning.Load() }, 5*time.Second, 5*time.Millisecond, "a manual collector run outlived its test")
+		collectorLookPath, collectorExec, collectorGap = origLook, origExec, origGap
+	})
+}
+
 func TestTriggerCollectors_NotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	orig := collectorLookPath
@@ -54,8 +67,7 @@ func TestTriggerCollectors_NotFound(t *testing.T) {
 
 func TestTriggerCollectors_RunsAllAndRejectsConcurrent(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	origLook, origExec, origGap := collectorLookPath, collectorExec, collectorGap
-	defer func() { collectorLookPath, collectorExec, collectorGap = origLook, origExec, origGap }()
+	restoreCollectorSeams(t)
 
 	collectorLookPath = func(name string) (string, error) { return "/bin/" + name, nil }
 	collectorGap = 0
@@ -66,6 +78,10 @@ func TestTriggerCollectors_RunsAllAndRejectsConcurrent(t *testing.T) {
 	var mu sync.Mutex
 	var ran []string
 	release := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseRun := func() { releaseOnce.Do(func() { close(release) }) }
+	// Unblock the run even when an assertion below fails first.
+	t.Cleanup(releaseRun)
 	started := make(chan struct{}, len(manualCollectors))
 	collectorExec = func(_ context.Context, path string, _ []string) ([]byte, error) {
 		mu.Lock()
@@ -81,7 +97,7 @@ func TestTriggerCollectors_RunsAllAndRejectsConcurrent(t *testing.T) {
 	require.Equal(t, http.StatusConflict, triggerCollectorsRequest(), "second request during a run must be rejected")
 	require.True(t, collectorRunStatus(t), "status must report the run in progress")
 
-	close(release)
+	releaseRun()
 	require.Eventually(t, func() bool { return !collectorRunning.Load() }, 2*time.Second, 5*time.Millisecond)
 	require.False(t, collectorRunStatus(t), "status must report no run once the run has finished")
 
@@ -96,8 +112,7 @@ func TestTriggerCollectors_RunsAllAndRejectsConcurrent(t *testing.T) {
 
 func TestTriggerCollectors_NoGapAfterLastCollector(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	origLook, origExec, origGap := collectorLookPath, collectorExec, collectorGap
-	defer func() { collectorLookPath, collectorExec, collectorGap = origLook, origExec, origGap }()
+	restoreCollectorSeams(t)
 
 	// Only the SMART collector exists, so the run executes exactly one collector.
 	collectorLookPath = func(name string) (string, error) {
@@ -107,10 +122,12 @@ func TestTriggerCollectors_NoGapAfterLastCollector(t *testing.T) {
 		return "", errors.New("missing")
 	}
 	collectorExec = func(context.Context, string, []string) ([]byte, error) { return nil, nil }
-	collectorGap = time.Hour
+	// Long enough that a gap after the last collector fails the 1-second check below, short enough
+	// that the cleanup in restoreCollectorSeams outlasts it, so a regression cannot leak the run flag.
+	collectorGap = 3 * time.Second
 
 	require.Equal(t, http.StatusAccepted, triggerCollectorsRequest())
-	require.Eventually(t, func() bool { return !collectorRunning.Load() }, 2*time.Second, 5*time.Millisecond, "run flag must clear without waiting for a gap after the last collector")
+	require.Eventually(t, func() bool { return !collectorRunning.Load() }, time.Second, 5*time.Millisecond, "run flag must clear without waiting for a gap after the last collector")
 }
 
 type collectorFinishedHook struct{ done chan struct{} }
