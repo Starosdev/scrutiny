@@ -1,7 +1,7 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { AppConfig } from 'app/core/config/app.config';
 import { ScrutinyConfigService } from 'app/core/config/scrutiny-config.service';
 import { DashboardComponent } from './dashboard.component';
@@ -28,7 +28,7 @@ describe('DashboardComponent', () => {
         });
         spyOn(temperatureSelection, 'restore').and.callThrough();
 
-        dashboardService = jasmine.createSpyObj('DashboardService', ['getSummaryPage', 'getTemperatureDeviceOptions', 'getSummaryTempData', 'getFilesystemSummaryData'], {
+        dashboardService = jasmine.createSpyObj('DashboardService', ['getSummaryPage', 'getTemperatureDeviceOptions', 'getSummaryTempData', 'getFilesystemSummaryData', 'runCollectors', 'getCollectorRunStatus'], {
             pageData$: of({
                 summary: {},
                 pagination: {
@@ -176,4 +176,33 @@ describe('DashboardComponent', () => {
 
         expect(dashboardService.getSummaryPage).toHaveBeenCalledWith(jasmine.objectContaining({ page: 1, hostSearch: 'host-42' }));
     });
+
+    it('reloads only after the triggered collector run has finished', fakeAsync(() => {
+        const reload = spyOn<any>(component, '_reloadPage');
+        dashboardService.runCollectors.and.returnValue(of({ success: true }));
+        dashboardService.getCollectorRunStatus.and.returnValues(of(true), of(true), of(false));
+
+        component.runCollectors();
+        expect(component.isTriggering).toBeTrue();
+
+        tick(4000);
+        expect(reload).not.toHaveBeenCalled();
+
+        tick(2000);
+        expect(reload).toHaveBeenCalledTimes(1);
+        expect(dashboardService.getCollectorRunStatus).toHaveBeenCalledTimes(3);
+    }));
+
+    it('explains a 409 and waits for the run already in progress', fakeAsync(() => {
+        const reload = spyOn<any>(component, '_reloadPage');
+        dashboardService.runCollectors.and.returnValue(throwError(() => ({ status: 409 })));
+        dashboardService.getCollectorRunStatus.and.returnValue(of(false));
+
+        component.runCollectors();
+        expect(component.collectorRunMessage).toContain('already in progress');
+
+        tick(2000);
+        expect(reload).toHaveBeenCalledTimes(1);
+    }));
+
 });
