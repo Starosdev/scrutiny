@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unicode"
 
@@ -15,69 +16,97 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const collectorRunTimeout = 5 * time.Minute
+
+var (
+	// collectorRunning is true for the whole background run and is the only run lock. A second
+	// request while it is set gets 409 instead of starting a parallel run. The status endpoint
+	// reads it directly.
+	collectorRunning atomic.Bool
+
+	// seams for tests
+	collectorLookPath = exec.LookPath
+	collectorExec     = func(ctx context.Context, path string, args []string) ([]byte, error) {
+		return exec.CommandContext(ctx, path, args...).CombinedOutput()
+	}
+	collectorGap = time.Second
+)
+
+// manualCollectors is the order in which a manual run executes the local collectors.
+var manualCollectors = []string{
+	"scrutiny-collector-metrics",
+	"scrutiny-collector-zfs",
+	"scrutiny-collector-mdadm",
+}
+
 // TriggerCollectors runs enabled local SMART, ZFS, and MDADM collectors sequentially.
 func TriggerCollectors(c *gin.Context) {
 	logger := c.MustGet("LOGGER").(*logrus.Entry)
 
 	// Check if the primary collector binary exists
-	_, execErr := exec.LookPath("scrutiny-collector-metrics")
-	if execErr != nil {
-		logger.Warn("Manually triggered collectors, but scrutiny-collector-metrics not found in PATH")
+	if _, execErr := collectorLookPath(manualCollectors[0]); execErr != nil {
+		logger.Warnf("Manually triggered collectors, but %s not found in PATH", manualCollectors[0])
 		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Collector binaries not found on this system"})
 		return
 	}
 
-	// Run collectors in the background sequentially
+	if !collectorRunning.CompareAndSwap(false, true) {
+		c.JSON(http.StatusConflict, gin.H{"success": false, "error": "A collector run is already in progress"})
+		return
+	}
+
 	go func() {
-		// Use a detached context for background execution
-		bgCtx := context.Background()
-		collectors := []string{
-			"scrutiny-collector-metrics",
-			"scrutiny-collector-zfs",
-			"scrutiny-collector-mdadm",
-		}
-
-		logger.Info("Starting manual sequential collector run")
-
-		for _, bin := range collectors {
-			if !manualCollectorEnabled(bin) {
-				logger.Infof("Collector %s disabled, skipping manual run", bin)
-				continue
-			}
-			// Check if binary exists before trying to run it
-			path, err := exec.LookPath(bin)
-			if err != nil {
-				logger.Debugf("Collector binary %s not found, skipping", bin)
-				continue
-			}
-
-			logger.Infof("Executing collector: %s", bin)
-
-			// Create command with a timeout to prevent hanging processes
-			ctx, cancel := context.WithTimeout(bgCtx, 5*time.Minute)
-			cmd := exec.CommandContext(ctx, path, omnibus.OneShotArgs(bin)...)
-
-			// We don't capture stdout/stderr here to keep it simple,
-			// but we log the result. Collectors log to their own destinations usually.
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				logger.Errorf("Collector %s failed: %v\nOutput: %s", bin, err, string(output))
-			} else {
-				logger.Infof("Collector %s completed successfully", bin)
-			}
-			cancel()
-
-			// Small buffer between collectors
-			time.Sleep(1 * time.Second)
-		}
-
-		logger.Info("Manual sequential collector run finished")
+		defer collectorRunning.Store(false)
+		runCollectorsSequentially(logger)
 	}()
 
 	c.JSON(http.StatusAccepted, gin.H{
 		"success": true,
 		"message": "Collectors triggered successfully",
 	})
+}
+
+// GetCollectorRunStatus reports whether a manual collector run is in progress, so the dashboard
+// can wait for the run to finish before it reloads.
+func GetCollectorRunStatus(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"success": true, "running": collectorRunning.Load()})
+}
+
+func runCollectorsSequentially(logger *logrus.Entry) {
+	logger.Info("Starting manual sequential collector run")
+
+	ran := false
+	for _, bin := range manualCollectors {
+		if !manualCollectorEnabled(bin) {
+			logger.Infof("Collector %s disabled, skipping manual run", bin)
+			continue
+		}
+		path, err := collectorLookPath(bin)
+		if err != nil {
+			logger.Debugf("Collector binary %s not found, skipping", bin)
+			continue
+		}
+
+		// Pause between collectors only. A pause after the last one would hold the run lock for nothing.
+		if ran {
+			time.Sleep(collectorGap)
+		}
+		ran = true
+
+		logger.Infof("Executing collector: %s", bin)
+
+		// Timeout prevents hanging processes from holding the run lock forever.
+		ctx, cancel := context.WithTimeout(context.Background(), collectorRunTimeout)
+		output, err := collectorExec(ctx, path, omnibus.OneShotArgs(bin))
+		cancel()
+		if err != nil {
+			logger.Errorf("Collector %s failed: %v\nOutput: %s", bin, err, string(output))
+		} else {
+			logger.Infof("Collector %s completed successfully", bin)
+		}
+	}
+
+	logger.Info("Manual sequential collector run finished")
 }
 
 // manualCollectorEnabled follows the all-in-one image's optional collector gate.

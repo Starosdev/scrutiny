@@ -140,6 +140,33 @@ Error summary:    csum=2 read=1
 	require.NotNil(t, fs.ScrubFinishedAt)
 }
 
+// Output captured on an Unraid 7.3.4 host (btrfs-progs, America/New_York) after a scrub
+// finished. It has no "Bytes scrubbed" line, and its timestamp is local time.
+func TestParseScrubStatusFinishedWithoutBytesScrubbedLine(t *testing.T) {
+	saved := time.Local
+	time.Local = time.FixedZone("EST", -5*60*60)
+	t.Cleanup(func() { time.Local = saved })
+
+	fs := Filesystem{}
+	output := `UUID:             65fee5dd-6a43-438d-831f-7544176adabf
+Scrub started:    Thu Nov  5 11:01:31 2026
+Status:           finished
+Duration:         0:25:26
+Total to scrub:   819430797312
+Rate:             536975360/s
+Error summary:    no errors found
+`
+
+	parseScrubStatus(&fs, output)
+	require.Equal(t, ScrubStateFinished, fs.ScrubState)
+	require.Equal(t, int64(819430797312), fs.ScrubTotalBytes)
+	require.Equal(t, int64(819430797312), fs.ScrubScrubbedBytes)
+	require.NotNil(t, fs.ScrubStartedAt)
+	require.NotNil(t, fs.ScrubFinishedAt)
+	require.True(t, fs.ScrubStartedAt.Equal(time.Date(2026, 11, 5, 16, 1, 31, 0, time.UTC)), "started at %s", fs.ScrubStartedAt)
+	require.True(t, fs.ScrubFinishedAt.Equal(time.Date(2026, 11, 5, 16, 26, 57, 0, time.UTC)), "finished at %s", fs.ScrubFinishedAt)
+}
+
 func TestParseScrubStatusSynologyDSM7Finished(t *testing.T) {
 	fs := Filesystem{}
 	output := `scrub status for 9e14872a-781a-44e8-8983-6d1699dac7bd
@@ -431,7 +458,7 @@ Data,single: Size:223346688000, Used:58304311296
 Metadata,DUP: Size:8589934592, Used:994033664
 System,DUP: Size:8388608, Used:49152
 `),
-		"btrfs device stats /volume1":     []byte(`[/dev/mapper/vg1-volume_1].write_io_errs   0`),
+		"btrfs device stats /volume1": []byte(`[/dev/mapper/vg1-volume_1].write_io_errs   0`),
 		"btrfs scrub status --raw /volume1": []byte(`scrub status for 9e14872a-781a-44e8-8983-6d1699dac7bd
         no stats available
 `),
@@ -452,7 +479,7 @@ Data,single: Size:112751280128, Used:39467454464
 Metadata,DUP: Size:1073741824, Used:44695552
 System,DUP: Size:8388608, Used:16384
 `),
-		"btrfs device stats /volume2":     []byte(`[/dev/mapper/vg2-volume_2].write_io_errs   0`),
+		"btrfs device stats /volume2": []byte(`[/dev/mapper/vg2-volume_2].write_io_errs   0`),
 		"btrfs scrub status --raw /volume2": []byte(`scrub status for 8625a86f-fe31-4d6c-aa99-4e1c9b550fae
         no stats available
 `),

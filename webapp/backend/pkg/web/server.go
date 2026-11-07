@@ -184,6 +184,7 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.GET("/filesystems/summary", handler.GetFilesystemSummary)     // used by Dashboard filesystem capacity panel
 			api.POST("/filesystems/summary", handler.UploadFilesystemSummary) // used by Filesystem Collector to upload data
 			api.POST("/collectors/run", handler.TriggerCollectors)            // used by Dashboard to trigger local collectors in omnibus mode
+			api.GET("/collectors/run", handler.GetCollectorRunStatus)         // used by Dashboard to wait for a manual collector run
 
 			// Prometheus metrics endpoint (only registered if enabled)
 			if ae.Config.GetBool(configKeyMetricsEnabled) {
