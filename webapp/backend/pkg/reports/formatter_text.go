@@ -138,8 +138,8 @@ func collectAlerts(report *ReportData, status string) []alertLine {
 				continue
 			}
 			line := fmt.Sprintf("Attribute %s (%s) = %d", alert.AttributeID, alert.AttributeName, alert.Value)
-			if alert.Threshold > 0 {
-				line += fmt.Sprintf(" [threshold: %d]", alert.Threshold)
+			if alert.Threshold != nil {
+				line += fmt.Sprintf(" [threshold: %d]", *alert.Threshold)
 			}
 			results = append(results, alertLine{
 				deviceName: device.DisplayName(),

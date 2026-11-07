@@ -15,8 +15,8 @@ import (
 func TestTempExtremesSkipsDevicesWithoutAReading(t *testing.T) {
 	devices := []DeviceReport{
 		{Name: "/dev/sda", TempCurrent: nil},
-		{Name: "/dev/sdb", TempCurrent: tempPtr(41)},
-		{Name: "/dev/sdc", TempCurrent: tempPtr(33)},
+		{Name: "/dev/sdb", TempCurrent: int64Ptr(41)},
+		{Name: "/dev/sdc", TempCurrent: int64Ptr(33)},
 	}
 
 	hottest, coldest := tempExtremes(devices)
@@ -30,8 +30,8 @@ func TestTempExtremesSkipsDevicesWithoutAReading(t *testing.T) {
 // A device genuinely reading 0C is a real measurement and must still win.
 func TestTempExtremesKeepsAGenuineZeroReading(t *testing.T) {
 	devices := []DeviceReport{
-		{Name: "/dev/sda", TempCurrent: tempPtr(20)},
-		{Name: "/dev/sdb", TempCurrent: tempPtr(0)},
+		{Name: "/dev/sda", TempCurrent: int64Ptr(20)},
+		{Name: "/dev/sdb", TempCurrent: int64Ptr(0)},
 	}
 
 	hottest, coldest := tempExtremes(devices)
@@ -49,9 +49,9 @@ func TestTempExtremesReturnsNilWhenNoDeviceReported(t *testing.T) {
 
 func TestFormatTempRendersPlaceholderOnlyForAbsent(t *testing.T) {
 	require.Equal(t, "--", formatTemp(nil))
-	require.Equal(t, "0", formatTemp(tempPtr(0)))
-	require.Equal(t, "37", formatTemp(tempPtr(37)))
-	require.Equal(t, "-5", formatTemp(tempPtr(-5)))
+	require.Equal(t, "0", formatTemp(int64Ptr(0)))
+	require.Equal(t, "37", formatTemp(int64Ptr(37)))
+	require.Equal(t, "-5", formatTemp(int64Ptr(-5)))
 }
 
 // The rendered output is what the operator actually reads, so assert on it
@@ -60,7 +60,7 @@ func TestHTMLDeviceTableRendersPlaceholderForAbsentReading(t *testing.T) {
 	report := &ReportData{
 		Devices: []DeviceReport{
 			{Name: "/dev/sda", Model: "WDC WD40EFRX", TempCurrent: nil},
-			{Name: "/dev/sdb", Model: "Samsung 860", TempCurrent: tempPtr(31)},
+			{Name: "/dev/sdb", Model: "Samsung 860", TempCurrent: int64Ptr(31)},
 		},
 	}
 
@@ -77,8 +77,8 @@ func TestHTMLDeviceTableRendersPlaceholderForAbsentReading(t *testing.T) {
 func TestTextTempSummarySkipsDevicesWithoutAReading(t *testing.T) {
 	devices := []DeviceReport{
 		{Name: "/dev/sda", TempCurrent: nil},
-		{Name: "/dev/sdb", TempCurrent: tempPtr(41), TempAvg: 40},
-		{Name: "/dev/sdc", TempCurrent: tempPtr(33), TempAvg: 33},
+		{Name: "/dev/sdb", TempCurrent: int64Ptr(41), TempAvg: 40},
+		{Name: "/dev/sdc", TempCurrent: int64Ptr(33), TempAvg: 33},
 	}
 
 	text := strings.Join(appendTempSummary(nil, devices), "\n")

@@ -3741,6 +3741,8 @@ components:
         threshold:
           type: integer
           format: int64
+          nullable: true
+          description: Threshold the attribute was checked against, or null when the attribute has no threshold (for example a non-normalized ATA attribute, an NVMe or SCSI value of -1, or a devstat or FARM value of 0). A real threshold of 0 is returned as 0.
     PerformanceSummary:
       type: object
       properties:

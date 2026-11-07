@@ -272,9 +272,18 @@ func writeAlertTable(pdf *fpdf.Fpdf, alerts []AlertEntry) {
 		pdf.CellFormat(colWidths[2], 6, alert.Status, "1", 0, "C", false, 0, "")
 		pdf.SetTextColor(33, 37, 41)
 		pdf.CellFormat(colWidths[3], 6, fmt.Sprintf("%d", alert.Value), "1", 0, "C", false, 0, "")
-		pdf.CellFormat(colWidths[4], 6, fmt.Sprintf("%d", alert.Threshold), "1", 0, "C", false, 0, "")
+		pdf.CellFormat(colWidths[4], 6, alertThresholdText(alert.Threshold), "1", 0, "C", false, 0, "")
 		pdf.CellFormat(colWidths[5], 6, alert.StatusReason, "1", 0, "C", false, 0, "")
 		pdf.Ln(-1)
 	}
 	pdf.Ln(3)
+}
+
+// alertThresholdText renders an alert threshold for the PDF table: blank when there is none, so a
+// real threshold of 0 still prints as "0".
+func alertThresholdText(threshold *int64) string {
+	if threshold == nil {
+		return ""
+	}
+	return fmt.Sprintf("%d", *threshold)
 }

@@ -128,8 +128,10 @@ func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, device
 // only for normalized values or attributes without metadata. Device-statistics and FARM attributes
 // prefer the metadata threshold over the drive-reported one.
 //
-// The threshold is 0 when there is nothing to show. NVMe and SCSI attributes store -1 for "no
-// threshold"; it is mapped to 0 here so every formatter (text, HTML, PDF) sees the same thing.
+// The threshold is nil when there is nothing to show, so a real threshold of 0 (ATA attribute 4 at
+// THRESH 000) can be told apart from no threshold. NVMe and SCSI attributes store -1 for "no
+// threshold"; device-statistics and FARM attributes use 0 for it, because their status code treats
+// only a positive value as a threshold.
 //
 // ATA value rule: when the attribute has metadata, the value is the one the status is evaluated on.
 // That choice belongs to measurements.AttributeEvaluatedValue. The rule kept here is only for an ATA
@@ -137,51 +139,62 @@ func (g *Generator) populateAlerts(ctx context.Context, dr *DeviceReport, device
 // helper would fall through to RawValue. ATA attributes 174, 204, 227 and 228 have metadata without a
 // display type, so they report RawValue; that is deliberate, because an override pins the raw
 // value and the status reason refers to it.
-func alertAttributeDetails(attrID string, attribute measurements.SmartAttribute) (name string, value int64, threshold int64) {
+func alertAttributeDetails(attrID string, attribute measurements.SmartAttribute) (name string, value int64, threshold *int64) {
 	switch attr := attribute.(type) {
 	case *measurements.SmartAtaAttribute:
-		name, value, threshold = attr.Name, int64(attr.Value), attr.Threshold
+		name, value, threshold = attr.Name, int64(attr.Value), &attr.Threshold
 		if metadata, ok := thresholds.AtaMetadata[attr.AttributeId]; ok {
 			name = metadata.DisplayName
 			value, _ = measurements.AttributeEvaluatedValue(attr)
 			if metadata.DisplayType != thresholds.AtaSmartAttributeDisplayTypeNormalized {
-				threshold = 0
+				threshold = nil
 			}
 		}
 	case *measurements.SmartAtaDeviceStatAttribute:
-		name, value, threshold = attr.AttributeId, attr.Value, attr.Threshold
+		name, value = attr.AttributeId, attr.Value
+		threshold = positiveThreshold(attr.Threshold)
 		if metadata, ok := thresholds.AtaDeviceStatsMetadata[attr.AttributeId]; ok {
 			name = metadata.DisplayName
 			if metadata.Threshold != 0 {
-				threshold = metadata.Threshold
+				threshold = positiveThreshold(metadata.Threshold)
 			}
 		}
 	case *measurements.SmartFarmAttribute:
-		name, value, threshold = attr.AttributeId, attr.Value, attr.Threshold
+		name, value = attr.AttributeId, attr.Value
+		threshold = positiveThreshold(attr.Threshold)
 		if metadata, ok := thresholds.FarmMetadata[attr.AttributeId]; ok {
 			name = metadata.DisplayName
 			if metadata.Threshold != 0 {
-				threshold = metadata.Threshold
+				threshold = positiveThreshold(metadata.Threshold)
 			}
 		}
 	case *measurements.SmartNvmeAttribute:
-		name, value, threshold = attr.AttributeId, attr.Value, attr.Threshold
+		name, value, threshold = attr.AttributeId, attr.Value, &attr.Threshold
 		if metadata, ok := thresholds.NmveMetadata[attr.AttributeId]; ok {
 			name = metadata.DisplayName
 		}
 	case *measurements.SmartScsiAttribute:
-		name, value, threshold = attr.AttributeId, attr.Value, attr.Threshold
+		name, value, threshold = attr.AttributeId, attr.Value, &attr.Threshold
 		if metadata, ok := thresholds.ScsiMetadataFor(attr.AttributeId); ok {
 			name = metadata.DisplayName
 		}
 	}
-	if threshold < 0 {
-		threshold = 0
+	if threshold != nil && *threshold < 0 {
+		threshold = nil
 	}
 	if name == "" {
 		name = attrID
 	}
 	return name, value, threshold
+}
+
+// positiveThreshold returns a pointer to v when it is a usable threshold (above zero), or nil.
+// Device-statistics and FARM attributes use 0 to mean "no threshold".
+func positiveThreshold(v int64) *int64 {
+	if v > 0 {
+		return &v
+	}
+	return nil
 }
 
 func (g *Generator) populateZFSPools(ctx context.Context, report *ReportData) {

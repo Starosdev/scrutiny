@@ -23,14 +23,14 @@ func TestGeneratePDF_CreatesFile(t *testing.T) {
 			{
 				WWN: "0x5000cca264eb01d7", Name: "/dev/sda", Model: "WDC WD40EFRX",
 				Serial: "WD-12345", Protocol: "ATA", Status: 0,
-				TempCurrent: tempPtr(35), TempMin: 30, TempMax: 40, TempAvg: 35.0,
+				TempCurrent: int64Ptr(35), TempMin: 30, TempMax: 40, TempAvg: 35.0,
 				PowerOnHours: 25000, PowerCycleCount: 150,
 				NewAlerts: []AlertEntry{}, ActiveFailures: []AlertEntry{},
 			},
 			{
 				WWN: "0x5002538e40a22954", Name: "/dev/nvme0", Model: "Samsung 970 EVO",
 				Serial: "S4EWNF0M", Protocol: "NVMe", Status: 1,
-				TempCurrent: tempPtr(45), TempMin: 40, TempMax: 50, TempAvg: 44.5,
+				TempCurrent: int64Ptr(45), TempMin: 40, TempMax: 50, TempAvg: 44.5,
 				PowerOnHours: 8000,
 				NewAlerts:    []AlertEntry{},
 				ActiveFailures: []AlertEntry{
@@ -93,4 +93,12 @@ func TestPDFFilename(t *testing.T) {
 	assert.Equal(t, "daily-2026-02-17.pdf", PDFFilename("daily", ts))
 	assert.Equal(t, "weekly-2026-02-17.pdf", PDFFilename("weekly", ts))
 	assert.Equal(t, "monthly-2026-02-01.pdf", PDFFilename("monthly", time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)))
+}
+
+func TestAlertThresholdText(t *testing.T) {
+	zero := int64(0)
+	five := int64(5)
+	assert.Equal(t, "", alertThresholdText(nil))
+	assert.Equal(t, "0", alertThresholdText(&zero))
+	assert.Equal(t, "5", alertThresholdText(&five))
 }
