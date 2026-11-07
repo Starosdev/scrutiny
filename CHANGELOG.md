@@ -2,6 +2,21 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.80.0](https://github.com/Starosdev/scrutiny/compare/v1.79.3...v1.80.0) (2026-11-05)
+
+### Features
+
+* **btrfs:** notify on degraded filesystems, device errors and scrub errors ([#1127](https://github.com/Starosdev/scrutiny/issues/1127)) ([36e1e23](https://github.com/Starosdev/scrutiny/commit/36e1e23b556788629d5fe486bdc515e0e62785a8)), closes [#1110](https://github.com/Starosdev/scrutiny/issues/1110)
+* manual release trigger ([44f3e44](https://github.com/Starosdev/scrutiny/commit/44f3e442e83c3dd5e6280e136a8b85aba561ee3a))
+* **notify:** alert when Btrfs or ZFS usage reaches a configurable threshold ([#1133](https://github.com/Starosdev/scrutiny/issues/1133)) ([6e79118](https://github.com/Starosdev/scrutiny/commit/6e791189c81b601ffc62f7015bfe4c173946e270)), closes [#1127](https://github.com/Starosdev/scrutiny/issues/1127) [#1132](https://github.com/Starosdev/scrutiny/issues/1132) [#1127](https://github.com/Starosdev/scrutiny/issues/1127)
+* **zfs:** notify on unhealthy pools, error totals and scrub errors ([#1131](https://github.com/Starosdev/scrutiny/issues/1131)) ([9c6544c](https://github.com/Starosdev/scrutiny/commit/9c6544c0b57ef28010c2d7df1ef908c8e19292af)), closes [#1127](https://github.com/Starosdev/scrutiny/issues/1127) [#1130](https://github.com/Starosdev/scrutiny/issues/1130) [#1127](https://github.com/Starosdev/scrutiny/issues/1127)
+
+### Bug Fixes
+
+* **database:** inline validated ids in Btrfs and ZFS history queries for InfluxDB OSS ([#1111](https://github.com/Starosdev/scrutiny/issues/1111)) ([#1124](https://github.com/Starosdev/scrutiny/issues/1124)) ([b0a1c69](https://github.com/Starosdev/scrutiny/commit/b0a1c69581321470ffd48068b4d2884c07667cb3)), closes [#157](https://github.com/Starosdev/scrutiny/issues/157) [#155](https://github.com/Starosdev/scrutiny/issues/155) [#157](https://github.com/Starosdev/scrutiny/issues/157) [#157](https://github.com/Starosdev/scrutiny/issues/157)
+* **mdadm:** honor repeat notifications and retry failed degraded alerts ([#1128](https://github.com/Starosdev/scrutiny/issues/1128)) ([62f9cef](https://github.com/Starosdev/scrutiny/commit/62f9cefd423f9b190e0c5e5c1f724efa791ef710)), closes [#1109](https://github.com/Starosdev/scrutiny/issues/1109)
+* **notify:** notify on manufacturer SMART failures at every notify level ([#1126](https://github.com/Starosdev/scrutiny/issues/1126)) ([5cb3622](https://github.com/Starosdev/scrutiny/commit/5cb3622eab47806e44af38cf3f392b67b6e896f5))
+
 ## [1.79.3](https://github.com/Starosdev/scrutiny/compare/v1.79.2...v1.79.3) (2026-11-05)
 
 ### Bug Fixes
