@@ -2,6 +2,14 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.80.1](https://github.com/Starosdev/scrutiny/compare/v1.80.0...v1.80.1) (2026-11-07)
+
+### Bug Fixes
+
+* **btrfs,zfs:** read scrub times in local time and count finished Btrfs scrubs ([#1139](https://github.com/Starosdev/scrutiny/issues/1139)) ([25c7151](https://github.com/Starosdev/scrutiny/commit/25c7151ebc33c140a6f6a002a2161682f9475da1)), closes [#1138](https://github.com/Starosdev/scrutiny/issues/1138)
+* **dashboard:** reload after the collector run finishes, not after 15s ([#1141](https://github.com/Starosdev/scrutiny/issues/1141)) ([5dbb8ed](https://github.com/Starosdev/scrutiny/commit/5dbb8ed70bf0d95547a5f6917b2604702bd85942)), closes [#1140](https://github.com/Starosdev/scrutiny/issues/1140) [#1123](https://github.com/Starosdev/scrutiny/issues/1123)
+* manual release trigger ([7174703](https://github.com/Starosdev/scrutiny/commit/71747034b9ce3c05a52afb492d05f687bcf96bfd))
+
 ## [1.80.0](https://github.com/Starosdev/scrutiny/compare/v1.79.3...v1.80.0) (2026-11-05)
 
 ### Features
