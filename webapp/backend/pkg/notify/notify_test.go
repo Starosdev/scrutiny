@@ -404,6 +404,31 @@ func TestShouldNotify_NoRepeat_AtaNormalizedAttributeValueChanged(t *testing.T) 
 	require.True(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelFail, previous, current))
 }
 
+// Attribute 190 is 100 minus the temperature, so its value moves between runs. When its only
+// problem is the when_failed "past" mark, the drive's state has not changed and a new value
+// must not notify again (issue 1143).
+func TestShouldNotify_NoRepeat_AtaPastFailureValueMovesIsNotChange(t *testing.T) {
+	t.Parallel()
+	newPast := func(value int64) map[string]measurements.SmartAttribute {
+		attr := &measurements.SmartAtaAttribute{AttributeId: 190, Name: "Airflow_Temperature_Cel", Value: value, Threshold: 40, WhenFailed: "past"}
+		attr.PopulateAttributeStatus(nil, false)
+		return map[string]measurements.SmartAttribute{"190": attr}
+	}
+	require.False(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelWarn, newPast(72), newPast(71)))
+}
+
+// ...but a "past" attribute that also has its own warning keeps the value-change check.
+func TestShouldNotify_NoRepeat_AtaPastFailureWithOtherWarningValueChanged(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"190": &measurements.SmartAtaAttribute{AttributeId: 190, Status: pkg.AttributeStatusWarningScrutiny, StatusReason: "Attribute has previously failed manufacturer SMART threshold" + "Observed Failure Rate for Non-Critical Attribute is greater than 10%", WhenFailed: "past", Value: 72},
+	}
+	current := map[string]measurements.SmartAttribute{
+		"190": &measurements.SmartAtaAttribute{AttributeId: 190, Status: pkg.AttributeStatusWarningScrutiny, StatusReason: "Attribute has previously failed manufacturer SMART threshold" + "Observed Failure Rate for Non-Critical Attribute is greater than 10%", WhenFailed: "past", Value: 71},
+	}
+	require.True(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelWarn, previous, current))
+}
+
 // Attribute 194 is evaluated on the transformed (current temperature) value; the raw value also
 // packs min/max, which can change at a constant temperature.
 func TestShouldNotify_NoRepeat_AtaTemperatureMinMaxChurnIsNotChange(t *testing.T) {

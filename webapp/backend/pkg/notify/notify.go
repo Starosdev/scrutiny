@@ -251,6 +251,12 @@ func hasQualifyingFailure(failingAttributes []string, smartAttrs *measurements.S
 		if required&^(previousAttribute.GetStatus()&requiredAttrStatus) != 0 {
 			return true
 		}
+		// A "past" mark stays on the drive for life and does not depend on the current value.
+		// The attribute may be a moving one (190 is 100 minus the temperature), so a changed
+		// value would otherwise look like a new failure on every run.
+		if ataAttr, ok := currentAttribute.(*measurements.SmartAtaAttribute); ok && ataAttr.FailedOnlyInThePast() {
+			continue
+		}
 		if comparableValue(previousAttribute) != comparableValue(currentAttribute) {
 			return true
 		}

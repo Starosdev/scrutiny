@@ -106,6 +106,18 @@ func (sa *SmartAtaAttribute) Inflate(key string, val interface{}) {
 	}
 }
 
+const ataStatusReasonFailedInThePast = "Attribute has previously failed manufacturer SMART threshold"
+
+// FailedOnlyInThePast reports whether the attribute's only problem is smartctl's
+// when_failed "past" flag, a historical mark that does not depend on the current value.
+// Any other warning or failure adds a status bit or an extra status reason, so it is not
+// "only in the past".
+func (sa *SmartAtaAttribute) FailedOnlyInThePast() bool {
+	return strings.EqualFold(sa.WhenFailed, pkg.AttributeWhenFailedInThePast) &&
+		sa.Status == pkg.AttributeStatusWarningScrutiny &&
+		sa.StatusReason == ataStatusReasonFailedInThePast
+}
+
 // populate attribute status, using SMART Thresholds & Observed Metadata
 // Chainable
 func (sa *SmartAtaAttribute) PopulateAttributeStatus(profile *thresholds.ConsumerDriveProfile, isAtaSsd bool) *SmartAtaAttribute {
@@ -118,7 +130,7 @@ func (sa *SmartAtaAttribute) PopulateAttributeStatus(profile *thresholds.Consume
 
 	} else if strings.EqualFold(sa.WhenFailed, pkg.AttributeWhenFailedInThePast) {
 		sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusWarningScrutiny)
-		sa.StatusReason += "Attribute has previously failed manufacturer SMART threshold"
+		sa.StatusReason += ataStatusReasonFailedInThePast
 	}
 
 	if smartMetadata, ok := thresholds.AtaMetadata[sa.AttributeId]; ok {
