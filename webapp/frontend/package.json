@@ -46,7 +46,7 @@
     "perfect-scrollbar": "^1.5.5",
     "rrule": "^2.7.1",
     "rxjs": "^7.5.7",
-    "tslib": "^2.4.1",
+    "tslib": "^2.9.1",
     "web-animations-js": "^2.3.2",
     "zone.js": "^0.16.3"
   },
