@@ -67,7 +67,7 @@
     "@typescript-eslint/eslint-plugin": "^8.72.1",
     "@typescript-eslint/parser": "^8.72.1",
     "angular-eslint": "^22.6.0",
-    "apexcharts": "~8.6.0",
+    "apexcharts": "~8.7.0",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^8.10.2",
     "eslint-plugin-prettier": "^5.5.7",
