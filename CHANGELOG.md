@@ -2,6 +2,12 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.80.2](https://github.com/Starosdev/scrutiny/compare/v1.80.1...v1.80.2) (2026-11-11)
+
+### Bug Fixes
+
+* **notify:** notify once for a when_failed "past" attribute ([#1143](https://github.com/Starosdev/scrutiny/issues/1143)) ([#1151](https://github.com/Starosdev/scrutiny/issues/1151)) ([bf353ec](https://github.com/Starosdev/scrutiny/commit/bf353ec26e2eacc44cf3c74d6c990baf4771026c)), closes [#1126](https://github.com/Starosdev/scrutiny/issues/1126) [#1108](https://github.com/Starosdev/scrutiny/issues/1108) [#1144](https://github.com/Starosdev/scrutiny/issues/1144) [#1129](https://github.com/Starosdev/scrutiny/issues/1129)
+
 ## [1.80.1](https://github.com/Starosdev/scrutiny/compare/v1.80.0...v1.80.1) (2026-11-07)
 
 ### Bug Fixes
