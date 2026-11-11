@@ -251,6 +251,15 @@ func hasQualifyingFailure(failingAttributes []string, smartAttrs *measurements.S
 		if required&^(previousAttribute.GetStatus()&requiredAttrStatus) != 0 {
 			return true
 		}
+		// A "past" mark never clears, and Value keeps moving under it (attribute 190 is 100 minus
+		// the temperature), so comparing Value re-notified on every submission. Worst changes
+		// only on a new excursion, which is the event worth a second notification.
+		if currentAta, ok := currentAttribute.(*measurements.SmartAtaAttribute); ok && currentAta.FailedOnlyInThePast() {
+			if previousAta, ok := previousAttribute.(*measurements.SmartAtaAttribute); !ok || previousAta.Worst != currentAta.Worst {
+				return true
+			}
+			continue
+		}
 		if comparableValue(previousAttribute) != comparableValue(currentAttribute) {
 			return true
 		}

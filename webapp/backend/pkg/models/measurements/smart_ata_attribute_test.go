@@ -560,3 +560,15 @@ func TestPopulateAttributeStatus_WhenFailed(t *testing.T) {
 		})
 	}
 }
+
+func TestFailedOnlyInThePast(t *testing.T) {
+	past := (&SmartAtaAttribute{AttributeId: 190, Value: 72, Worst: 37, Threshold: 40, WhenFailed: "past"}).PopulateAttributeStatus(nil, false)
+	require.True(t, past.FailedOnlyInThePast())
+
+	now := (&SmartAtaAttribute{AttributeId: 190, Value: 38, Worst: 37, Threshold: 40, WhenFailed: "now"}).PopulateAttributeStatus(nil, false)
+	require.False(t, now.FailedOnlyInThePast())
+
+	withOwnFinding := (&SmartAtaAttribute{AttributeId: 190, Value: 72, Worst: 37, Threshold: 40, WhenFailed: "past"}).PopulateAttributeStatus(nil, false)
+	withOwnFinding.Status = pkg.AttributeStatusSet(withOwnFinding.Status, pkg.AttributeStatusFailedScrutiny)
+	require.False(t, withOwnFinding.FailedOnlyInThePast())
+}
