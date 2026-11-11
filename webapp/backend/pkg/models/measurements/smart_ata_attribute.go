@@ -20,6 +20,8 @@ var ataAttributeNameIgnoredTokens = map[string]struct{}{
 
 const ataSsdVendorSpecificThresholdSkipReason = "Skipped generic ATA observed-threshold scoring for vendor-specific SSD attribute"
 
+const ataFailedInThePastReason = "Attribute has previously failed manufacturer SMART threshold"
+
 type SmartAtaAttribute struct {
 	AttributeId int    `json:"attribute_id"`
 	Name        string `json:"name,omitempty"`
@@ -35,6 +37,15 @@ type SmartAtaAttribute struct {
 	Status           pkg.AttributeStatus `json:"status"`
 	StatusReason     string              `json:"status_reason,omitempty"`
 	FailureRate      float64             `json:"failure_rate,omitempty"`
+}
+
+// FailedOnlyInThePast reports whether the attribute's only finding is smartctl's sticky
+// when_failed "past" mark: no current failure and no threshold or override finding of its own.
+// smartctl derives that mark from worst <= thresh, so Worst, not Value, is what can change it.
+func (sa *SmartAtaAttribute) FailedOnlyInThePast() bool {
+	return strings.EqualFold(sa.WhenFailed, pkg.AttributeWhenFailedInThePast) &&
+		sa.Status == pkg.AttributeStatusWarningScrutiny &&
+		sa.StatusReason == ataFailedInThePastReason
 }
 
 func (sa *SmartAtaAttribute) GetTransformedValue() int64 {
@@ -118,7 +129,7 @@ func (sa *SmartAtaAttribute) PopulateAttributeStatus(profile *thresholds.Consume
 
 	} else if strings.EqualFold(sa.WhenFailed, pkg.AttributeWhenFailedInThePast) {
 		sa.Status = pkg.AttributeStatusSet(sa.Status, pkg.AttributeStatusWarningScrutiny)
-		sa.StatusReason += "Attribute has previously failed manufacturer SMART threshold"
+		sa.StatusReason += ataFailedInThePastReason
 	}
 
 	if smartMetadata, ok := thresholds.AtaMetadata[sa.AttributeId]; ok {
