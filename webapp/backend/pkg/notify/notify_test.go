@@ -1417,3 +1417,50 @@ func TestLoadHeartbeatDatabaseUrls_RepoError_Degrades(t *testing.T) {
 
 	require.Empty(t, n.DatabaseUrls)
 }
+
+// pastOnlyAirflowTemp builds attribute 190 as smartctl reports it after an old over-temperature
+// excursion: when_failed "past", Value tracking the current temperature, Worst stuck at the low.
+func pastOnlyAirflowTemp(value, worst int64) *measurements.SmartAtaAttribute {
+	attr := &measurements.SmartAtaAttribute{AttributeId: 190, Value: value, Worst: worst, Threshold: 40, WhenFailed: "past"}
+	attr.PopulateAttributeStatus(nil, false)
+	return attr
+}
+
+// Issue #1143: Value moves between runs under a "past" mark; that is not a change.
+func TestShouldNotify_NoRepeat_AtaPastFailureValueMovesIsNotChange(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{"190": pastOnlyAirflowTemp(72, 37)}
+	current := map[string]measurements.SmartAttribute{"190": pastOnlyAirflowTemp(71, 37)}
+	require.False(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelWarn, previous, current))
+}
+
+// A lower Worst under a "past" mark is a new excursion since the previous submission.
+func TestShouldNotify_NoRepeat_AtaPastFailureNewWorstIsChange(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{"190": pastOnlyAirflowTemp(72, 37)}
+	current := map[string]measurements.SmartAttribute{"190": pastOnlyAirflowTemp(72, 35)}
+	require.True(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelWarn, previous, current))
+}
+
+// The first submission with the mark still notifies once: the status bit is new.
+func TestShouldNotify_NoRepeat_AtaPastFailureFirstSeenIsChange(t *testing.T) {
+	t.Parallel()
+	previous := map[string]measurements.SmartAttribute{
+		"190": &measurements.SmartAtaAttribute{AttributeId: 190, Value: 72, Worst: 37, Threshold: 40, Status: pkg.AttributeStatusPassed},
+	}
+	current := map[string]measurements.SmartAttribute{"190": pastOnlyAirflowTemp(72, 37)}
+	require.True(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelWarn, previous, current))
+}
+
+// An attribute with a finding of its own besides the "past" mark keeps the Value comparison.
+func TestShouldNotify_NoRepeat_AtaPastFailureWithOwnWarningValueChanged(t *testing.T) {
+	t.Parallel()
+	withOwnWarning := func(value int64) *measurements.SmartAtaAttribute {
+		attr := pastOnlyAirflowTemp(value, 37)
+		attr.StatusReason += "Observed Failure Rate for Non-Critical Attribute is greater than 10%"
+		return attr
+	}
+	previous := map[string]measurements.SmartAttribute{"190": withOwnWarning(72)}
+	current := map[string]measurements.SmartAttribute{"190": withOwnWarning(71)}
+	require.True(t, shouldNotifyNoRepeat(t, pkg.MetricsNotifyLevelWarn, previous, current))
+}
