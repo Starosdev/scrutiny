@@ -11,6 +11,10 @@ on:
       - 'go.sum'
       - '.github/workflows/docker-permissions.yaml'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   image_matrix:
     name: Validate Docker image matrix
