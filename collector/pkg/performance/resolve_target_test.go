@@ -48,6 +48,16 @@ func requireBenchmarkableDir(t *testing.T, collector *Collector, dir string) {
 	}
 }
 
+// resolvedPath returns path with symlinks resolved, the way resolveTargetPath
+// reports it. On macOS t.TempDir() sits under /var, a symlink to /private/var,
+// so an expectation built from the raw directory would never match.
+func resolvedPath(t *testing.T, path string) string {
+	t.Helper()
+	resolved, err := filepath.EvalSymlinks(path)
+	require.NoError(t, err)
+	return resolved
+}
+
 func TestResolveTargetPath_UsesConfiguredMountPoint(t *testing.T) {
 	dir := t.TempDir()
 	collector := newTestCollector(t, dir, false)
@@ -57,7 +67,7 @@ func TestResolveTargetPath_UsesConfiguredMountPoint(t *testing.T) {
 
 	require.NoError(t, err)
 	require.False(t, directIO, "a configured mount point must enable write tests")
-	require.Equal(t, filepath.Join(dir, ".scrutiny_perf_bench"), target)
+	require.Equal(t, filepath.Join(resolvedPath(t, dir), ".scrutiny_perf_bench"), target)
 	require.NotNil(t, cleanup)
 }
 
@@ -124,7 +134,7 @@ func TestResolveTargetPath_ConfiguredMountPointBeatsDirectIOOptIn(t *testing.T) 
 
 	require.NoError(t, err)
 	require.False(t, directIO)
-	require.Equal(t, filepath.Join(dir, ".scrutiny_perf_bench"), target)
+	require.Equal(t, filepath.Join(resolvedPath(t, dir), ".scrutiny_perf_bench"), target)
 }
 
 func TestResolveTargetPath_CleanupRemovesTestFile(t *testing.T) {
